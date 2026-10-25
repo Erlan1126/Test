@@ -126,6 +126,10 @@
   .meta { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 0.85rem; }
   .meta span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
   .note-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .due { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .due.today { color: var(--accent); }
+  .due.overdue { color: var(--danger); }
+  .done .due { color: var(--muted); }
   .flag { flex: none; color: var(--star); margin-top: 2px; }
   .section-toggle {
     margin: 26px 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500;
@@ -169,6 +173,8 @@
     padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   .field { position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 16px; }
+  .chips-row { display: block; min-height: 0; }
+  .chips-row::before { display: none; }
   .field + .field::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 0.5px solid var(--line); }
   #task-title { width: 100%; border: none; background: none; color: var(--fg); font: inherit; font-size: 1.2rem; font-weight: 500; padding: 14px 0; }
   #task-title:focus, #task-note:focus, .sub-input:focus { outline: none; }
@@ -183,6 +189,17 @@
   .sub.done .sub-input { color: var(--muted); }
   .sub-remove { color: var(--muted); width: 32px; height: 32px; display: grid; place-items: center; }
   .field label { flex: 1; }
+  .badge { flex: none; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: #fff; }
+  .badge.red { background: var(--danger); }
+  .badge.blue { background: var(--accent); }
+  #task-date, #task-time {
+    border: none; background: var(--soft); color: var(--fg); font: inherit; font-size: 1rem;
+    padding: 6px 10px; border-radius: 8px; min-width: 120px; min-height: 34px; text-align: right;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 12px 40px; }
+  .chip { padding: 6px 12px; border-radius: 999px; background: var(--soft); font-size: 0.9rem; }
+  .chip:hover { background: var(--line); }
+  .row-btn.danger { color: var(--danger); }
   #task-list {
     border: none; background: none; color: var(--muted); font: inherit; font-size: 1rem;
     text-align: right; max-width: 60%; cursor: pointer;
@@ -277,6 +294,28 @@
     </div>
     <div class="group">
       <div class="field">
+        <span class="badge red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>
+        <label for="task-date">Deadline</label>
+        <input id="task-date" type="date">
+      </div>
+      <div class="field chips-row">
+        <div class="chips">
+          <button class="chip" type="button" data-days="0">Today</button>
+          <button class="chip" type="button" data-days="1">Tomorrow</button>
+          <button class="chip" type="button" data-days="7">Next week</button>
+        </div>
+      </div>
+      <div class="field" id="time-row" hidden>
+        <span class="badge blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+        <label for="task-time">Time</label>
+        <input id="task-time" type="time">
+      </div>
+      <div class="field" id="due-clear-row" hidden>
+        <button class="row-btn danger" id="due-clear" type="button">Remove deadline</button>
+      </div>
+    </div>
+    <div class="group">
+      <div class="field">
         <label for="task-list">List</label>
         <select id="task-list"></select>
       </div>
@@ -328,6 +367,8 @@
     todos ??= [
       { id: 1, list: "todo", text: "Example: tap a task to open it", note: "Notes show up under the title.", important: true, done: false,
         subtasks: [{ id: 11, text: "Add a subtask", done: true }, { id: 12, text: "Tick it off", done: false }] },
+      { id: 4, list: "todo", text: "Example: give a task a deadline", note: "", important: false, done: false, subtasks: [],
+        due: dateStr(0), dueTime: "" },
       { id: 2, list: "todo", text: "Example: swipe left to delete", note: "", important: false, done: false, subtasks: [] },
       { id: 3, list: "todo", text: "Example: tap the title to switch lists", note: "", important: false, done: false, subtasks: [] },
     ];
@@ -337,6 +378,41 @@
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   }
+
+  // ---------- Deadlines ----------
+  // Dates are stored as "YYYY-MM-DD" in local time, times as "HH:MM".
+  function dateStr(daysFromToday) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromToday);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function dueDate(t) {
+    const [y, m, d] = t.due.split("-").map(Number);
+    const [hh, mm] = (t.dueTime || "23:59").split(":").map(Number);
+    return new Date(y, m - 1, d, hh, mm);
+  }
+
+  function dueInfo(t) {
+    const [y, m, d] = t.due.split("-").map(Number);
+    const day = new Date(y, m - 1, d);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.round((day - today) / 864e5);
+    let label;
+    if (diff === 0) label = "Today";
+    else if (diff === 1) label = "Tomorrow";
+    else if (diff === -1) label = "Yesterday";
+    else if (diff > 1 && diff < 7) label = day.toLocaleDateString(undefined, { weekday: "long" });
+    else label = day.toLocaleDateString(undefined, { month: "short", day: "numeric", year: y === today.getFullYear() ? undefined : "numeric" });
+    if (t.dueTime) {
+      const [hh, mm] = t.dueTime.split(":").map(Number);
+      label += ", " + new Date(2000, 0, 1, hh, mm).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    }
+    const overdue = !t.done && dueDate(t) < new Date();
+    return { label, overdue, today: diff === 0 && !overdue };
+  }
+
+  const dueSort = (a, b) => (a.due ? dueDate(a).getTime() : Infinity) - (b.due ? dueDate(b).getTime() : Infinity);
 
   const currentList = () => state.lists.find(l => l.id === state.current) || state.lists[0];
 
@@ -387,6 +463,14 @@
 
     const meta = document.createElement("span");
     meta.className = "meta";
+    if (t.due) {
+      const info = dueInfo(t);
+      const s = document.createElement("span");
+      s.className = "due" + (info.overdue ? " overdue" : info.today ? " today" : "");
+      s.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+      s.append(info.overdue ? "Overdue · " + info.label : info.label);
+      meta.appendChild(s);
+    }
     if (t.subtasks.length) {
       const s = document.createElement("span");
       s.textContent = `☐ ${t.subtasks.filter(x => x.done).length}/${t.subtasks.length}`;
@@ -486,8 +570,8 @@
     $("list-title").textContent = list.name;
 
     const visible = state.todos.filter(matches);
-    // Starred tasks first, then newest first.
-    const open = visible.filter(t => !t.done).sort((a, b) => (b.important - a.important) || (b.id - a.id));
+    // Starred tasks first, then the soonest deadline, then newest first.
+    const open = visible.filter(t => !t.done).sort((a, b) => (b.important - a.important) || dueSort(a, b) || (b.id - a.id));
     const done = visible.filter(t => t.done).sort((a, b) => b.id - a.id);
 
     openRow = null;
@@ -569,7 +653,7 @@
     editing = task || null;
     draft = task
       ? JSON.parse(JSON.stringify(task))
-      : { id: Date.now(), list: state.current, text: "", note: "", important: false, done: false, subtasks: [] };
+      : { id: Date.now(), list: state.current, text: "", note: "", important: false, done: false, subtasks: [], due: "", dueTime: "" };
 
     $("sheet-heading").textContent = editing ? "Task" : "New Task";
     $("task-title").value = draft.text;
@@ -577,6 +661,9 @@
     $("task-note").hidden = !draft.note;
     $("note-btn").hidden = !!draft.note;
     $("delete-btn").hidden = !editing;
+    $("task-date").value = draft.due || "";
+    $("task-time").value = draft.dueTime || "";
+    updateDueRows();
     $("task-list").replaceChildren(...state.lists.map(l => new Option(l.name, l.id, false, l.id === draft.list)));
     renderStar();
     renderSubtasks();
@@ -596,6 +683,8 @@
     draft.text = $("task-title").value.trim();
     draft.note = $("task-note").value.trim();
     draft.list = $("task-list").value;
+    draft.due = $("task-date").value;
+    draft.dueTime = draft.due ? $("task-time").value : "";
     draft.subtasks = draft.subtasks.filter(s => s.text.trim());
     if (!draft.text) return;
     if (editing) Object.assign(editing, draft);
@@ -603,6 +692,12 @@
     save();
     closeSheet();
     render();
+  }
+
+  function updateDueRows() {
+    const has = !!$("task-date").value;
+    $("time-row").hidden = !has;
+    $("due-clear-row").hidden = !has;
   }
 
   function renderStar() {
@@ -676,6 +771,16 @@
     $("task-note").focus();
   });
   $("sub-add").addEventListener("click", addSubtask);
+  $("task-date").addEventListener("input", updateDueRows);
+  $("task-date").addEventListener("change", updateDueRows);
+  document.querySelectorAll(".chip").forEach(chip => chip.addEventListener("click", () => {
+    $("task-date").value = dateStr(Number(chip.dataset.days));
+    updateDueRows();
+  }));
+  $("due-clear").addEventListener("click", () => {
+    $("task-date").value = $("task-time").value = "";
+    updateDueRows();
+  });
   $("star-btn").addEventListener("click", () => { draft.important = !draft.important; renderStar(); });
   $("delete-btn").addEventListener("click", () => { const t = editing; closeSheet(); deleteTask(t); });
   document.addEventListener("keydown", e => {
@@ -729,6 +834,9 @@
     visualViewport.addEventListener("resize", lift);
     visualViewport.addEventListener("scroll", lift);
   }
+
+  // Refresh "Today" and "Overdue" labels as time passes.
+  setInterval(() => { if ($("sheet").hidden && !openRow) render(); }, 60000);
 
   render();
 </script>
