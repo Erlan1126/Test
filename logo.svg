@@ -1,46 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#30343f"/><stop offset="0.55" stop-color="#15171c"/><stop offset="1" stop-color="#07080a"/>
-    </linearGradient>
-    <radialGradient id="shine" cx="0.25" cy="0" r="0.9">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/><stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.05"/>
-    </linearGradient>
-    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0.08"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.03"/>
-    </linearGradient>
-    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#5cb0ff"/><stop offset="1" stop-color="#0a6cff"/>
-    </linearGradient>
-    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur stdDeviation="26"/>
-    </filter>
-    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#000000" flood-opacity="0.55"/>
-    </filter>
+    <linearGradient id="bg-C1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2b31"/><stop offset="1" stop-color="#0b0c0f"/></linearGradient>
+    <linearGradient id="blue-C1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d9bff"/><stop offset="1" stop-color="#0a6cff"/></linearGradient>
   </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
-  <rect width="1024" height="1024" fill="url(#shine)"/>
-
-  <g transform="translate(512 512) scale(1.12) translate(-512 -512)">
-  <g filter="url(#drop)">
-    <rect x="164" y="214" width="696" height="596" rx="128" fill="url(#card)"/>
-  </g>
-  <rect x="165.5" y="215.5" width="693" height="593" rx="126.5" fill="none" stroke="url(#edge)" stroke-width="3"/>
-
-  <!-- row 1: done -->
-  <circle cx="318" cy="372" r="66" fill="#0a84ff" opacity="0.75" filter="url(#glow)"/>
-  <circle cx="318" cy="372" r="62" fill="url(#blue)"/>
-  <path d="M290 374 l20 20 l40 -44" fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="424" y="347" width="312" height="50" rx="25" fill="#ffffff"/>
-
-  <!-- rows 2 and 3: to do -->
-  <circle cx="318" cy="512" r="54" fill="none" stroke="#ffffff" stroke-opacity="0.42" stroke-width="13"/>
-  <rect x="424" y="489" width="252" height="46" rx="23" fill="#ffffff" fill-opacity="0.38"/>
-  <circle cx="318" cy="652" r="54" fill="none" stroke="#ffffff" stroke-opacity="0.42" stroke-width="13"/>
-  <rect x="424" y="629" width="284" height="46" rx="23" fill="#ffffff" fill-opacity="0.38"/>
-  </g>
+  <rect width="1024" height="1024" fill="url(#bg-C1)"/>
+  <circle cx="306" cy="352" r="70" fill="url(#blue-C1)"/>
+  <path d="M274 354 l23 23 l45 -50" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="416" y="320" width="352" height="64" rx="32" fill="#ffffff"/>
+  <circle cx="306" cy="512" r="62" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="16"/>
+  <rect x="416" y="480" width="272" height="64" rx="32" fill="rgba(255,255,255,0.5)"/>
+  <circle cx="306" cy="672" r="62" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="16"/>
+  <rect x="416" y="640" width="312" height="64" rx="32" fill="rgba(255,255,255,0.5)"/>
 </svg>
