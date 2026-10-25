@@ -42,7 +42,7 @@
       padding: 24px;
     }
     h1 { margin: 0 0 16px; font-size: 1.5rem; }
-    form { display: flex; gap: 8px; }
+    .new-todo { display: flex; gap: 8px; }
     input[type="text"] {
       flex: 1;
       padding: 10px 12px;
@@ -105,10 +105,10 @@
 <body>
   <main>
     <h1>To-Do List</h1>
-    <form id="new-todo">
-      <input type="text" id="todo-text" placeholder="What needs doing?" autocomplete="off" required>
-      <button class="add" type="submit">Add</button>
-    </form>
+    <div class="new-todo">
+      <input type="text" id="todo-text" placeholder="What needs doing?" autocomplete="off">
+      <button class="add" id="add" type="button">Add</button>
+    </div>
     <ul id="list"></ul>
     <footer>
       <span id="count"></span>
@@ -126,7 +126,6 @@
     let todos = load();
     let filter = "all";
 
-    const form = document.getElementById("new-todo");
     const input = document.getElementById("todo-text");
     const list = document.getElementById("list");
     const count = document.getElementById("count");
@@ -195,14 +194,20 @@
       count.textContent = `${left} ${left === 1 ? "task" : "tasks"} left`;
     }
 
-    form.addEventListener("submit", e => {
-      e.preventDefault();
+    // Plain click/Enter handlers instead of a <form>, since sandboxed previews block form submission.
+    function addTodo() {
       const text = input.value.trim();
       if (!text) return;
       todos.push({ id: Date.now(), text, done: false });
       input.value = "";
+      input.focus();
       save();
       render();
+    }
+
+    document.getElementById("add").addEventListener("click", addTodo);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") addTodo();
     });
 
     document.querySelectorAll(".filters button").forEach(btn => {
