@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>To-Do List</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --border: #d2d2d7;
+      --accent: #0a66c2;
+      --danger: #c62828;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111113;
+        --card: #1c1c1f;
+        --text: #f2f2f2;
+        --muted: #9a9aa0;
+        --border: #333338;
+        --accent: #4c9aff;
+        --danger: #ff6b6b;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 40px 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    h1 { margin: 0 0 16px; font-size: 1.5rem; }
+    form { display: flex; gap: 8px; }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+    }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    .add {
+      padding: 10px 16px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+    }
+    ul { list-style: none; padding: 0; margin: 20px 0 0; }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    li span { flex: 1; word-break: break-word; }
+    li.done span { text-decoration: line-through; color: var(--muted); }
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+    .delete {
+      border: none;
+      background: none;
+      color: var(--danger);
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 4px 8px;
+    }
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .filters button, .clear {
+      border: 1px solid transparent;
+      background: none;
+      color: inherit;
+      padding: 4px 8px;
+    }
+    .filters button.active { border-color: var(--border); color: var(--text); }
+    .empty { color: var(--muted); text-align: center; padding: 20px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>To-Do List</h1>
+    <form id="new-todo">
+      <input type="text" id="todo-text" placeholder="What needs doing?" autocomplete="off" required>
+      <button class="add" type="submit">Add</button>
+    </form>
+    <ul id="list"></ul>
+    <footer>
+      <span id="count"></span>
+      <div class="filters">
+        <button data-filter="all" class="active">All</button>
+        <button data-filter="active">Active</button>
+        <button data-filter="done">Done</button>
+      </div>
+      <button class="clear" id="clear-done">Clear done</button>
+    </footer>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "todos";
+    let todos = load();
+    let filter = "all";
+
+    const form = document.getElementById("new-todo");
+    const input = document.getElementById("todo-text");
+    const list = document.getElementById("list");
+    const count = document.getElementById("count");
+
+    // Saved to the browser, so the list survives a page reload.
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+      } catch {
+        // Storage unavailable (e.g. private mode); the list still works for this visit.
+      }
+    }
+
+    function render() {
+      const visible = todos.filter(t =>
+        filter === "all" || (filter === "done" ? t.done : !t.done)
+      );
+
+      list.innerHTML = "";
+      if (visible.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "empty";
+        empty.textContent = todos.length ? "Nothing here." : "No tasks yet. Add one above!";
+        list.appendChild(empty);
+      }
+
+      for (const todo of visible) {
+        const li = document.createElement("li");
+        if (todo.done) li.className = "done";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = todo.done;
+        checkbox.addEventListener("change", () => {
+          todo.done = checkbox.checked;
+          save();
+          render();
+        });
+
+        const text = document.createElement("span");
+        text.textContent = todo.text;
+
+        const del = document.createElement("button");
+        del.className = "delete";
+        del.textContent = "×";
+        del.setAttribute("aria-label", "Delete task");
+        del.addEventListener("click", () => {
+          todos = todos.filter(t => t.id !== todo.id);
+          save();
+          render();
+        });
+
+        li.append(checkbox, text, del);
+        list.appendChild(li);
+      }
+
+      const left = todos.filter(t => !t.done).length;
+      count.textContent = `${left} ${left === 1 ? "task" : "tasks"} left`;
+    }
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      todos.push({ id: Date.now(), text, done: false });
+      input.value = "";
+      save();
+      render();
+    });
+
+    document.querySelectorAll(".filters button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        filter = btn.dataset.filter;
+        document.querySelectorAll(".filters button").forEach(b => b.classList.toggle("active", b === btn));
+        render();
+      });
+    });
+
+    document.getElementById("clear-done").addEventListener("click", () => {
+      todos = todos.filter(t => !t.done);
+      save();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
