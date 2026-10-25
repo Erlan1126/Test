@@ -25,17 +25,22 @@
     --accent: #007aff;
     --star: #ffb800;
     --danger: #ff3b30;
+    --toast-bg: #1c1c1e;
+    --toast-fg: #ffffff;
+    --toast-link: #5eb3ff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #000000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #8e8e93; --line: #38383a; --soft: #2c2c2e;
       --glass: rgb(28 28 30 / 0.72); --fab: #f2f2f7; --on-fab: #000000; --accent: #0a84ff; --star: #ffcc00; --danger: #ff453a;
+      --toast-bg: #f2f2f7; --toast-fg: #000000; --toast-link: #007aff;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #000000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #8e8e93; --line: #38383a; --soft: #2c2c2e;
     --glass: rgb(28 28 30 / 0.72); --fab: #f2f2f7; --on-fab: #000000; --accent: #0a84ff; --star: #ffcc00; --danger: #ff453a;
+    --toast-bg: #f2f2f7; --toast-fg: #000000; --toast-link: #007aff;
     color-scheme: dark;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -85,6 +90,11 @@
   .menu-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu-item .count { color: var(--muted); font-variant-numeric: tabular-nums; }
   .menu-item.danger { color: var(--danger); }
+  .mini-badge { flex: none; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: #fff; }
+  .mini-badge.blue { background: var(--accent); }
+  .mini-badge.red { background: var(--danger); }
+  .menu-note { padding: 8px 12px 6px; color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+  .menu-note.ok::before { content: "✓ "; color: var(--accent); }
   .menu hr { border: none; border-top: 1px solid var(--line); margin: 6px 4px; }
   .new-list { display: flex; gap: 6px; padding: 6px; }
   #new-list-name { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: none; background: var(--soft); color: var(--fg); font: inherit; font-size: 1rem; }
@@ -137,6 +147,25 @@
   }
   .section-toggle svg { transition: transform 0.2s; }
   .section-toggle.open svg { transform: rotate(90deg); }
+  .day-head {
+    margin: 22px 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  #upcoming > .day-head:first-child { margin-top: 8px; }
+  #upcoming { display: grid; }
+  .list-tag { font-weight: 500; }
+  .toast {
+    position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
+    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    width: max-content; max-width: calc(100vw - 32px);
+    display: flex; align-items: center; gap: 18px;
+    padding: 12px 16px 12px 18px; border-radius: 14px;
+    background: var(--toast-bg); color: var(--toast-fg);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); font-size: 0.95rem;
+    animation: toast-in 0.2s ease-out;
+  }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+  #toast-undo { color: var(--toast-link); font-weight: 600; }
   .empty { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 1.15rem; pointer-events: none; }
 
   .fab {
@@ -221,7 +250,7 @@
   .save:disabled { opacity: 0.4; cursor: default; }
 
   @media (prefers-reduced-motion: reduce) {
-    .sheet { animation: none; }
+    .sheet, .toast { animation: none; }
     * { transition: none !important; }
   }
 </style>
@@ -244,6 +273,8 @@
     <div class="menu" id="menu" hidden>
       <button class="menu-item" type="button" id="menu-starred">Show starred only</button>
       <button class="menu-item danger" type="button" id="menu-clear">Delete completed tasks</button>
+      <hr>
+      <div class="menu-note" id="sync-note">Saved on this device only</div>
     </div>
   </div>
   <div class="search-wrap" id="search-wrap" hidden>
@@ -253,6 +284,7 @@
 
 <main>
   <ul class="group" id="open-list"></ul>
+  <div id="upcoming" hidden></div>
   <button class="section-toggle" id="done-toggle" type="button" hidden>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
     <span id="done-label"></span>
@@ -261,6 +293,11 @@
 </main>
 
 <div class="empty" id="empty" hidden>Tap + to add</div>
+
+<div class="toast" id="toast" role="status" hidden>
+  <span id="toast-text"></span>
+  <button id="toast-undo" type="button">Undo</button>
+</div>
 
 <button class="fab" id="fab" type="button" aria-label="Add task">
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -350,6 +387,22 @@
   let draft = null;        // working copy while the sheet is open
   let openRow = null;      // the row currently swiped open
   let confirmDelete = false;
+  let undoSnapshot = null; // lists and tasks as they were before the last undoable action
+  let toastTimer = null;
+
+  // Smart views gather tasks from every list by deadline, like Reminders.
+  const SMART = [{ id: "@today", name: "Today" }, { id: "@upcoming", name: "Upcoming" }];
+  const CAL_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+  const CLOCK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+
+  // Cloud sync: when this page runs on claude.ai, lists and tasks are also kept in the
+  // viewer's private space in the artifact's database, so they follow them across devices.
+  let docRef = null;
+  let writeTimer = null;
+  let writing = false;
+  let writeAgain = false;
+  let lastSynced = "";
+  let pendingRemote = null;
 
   // Everything is saved in this browser so it survives a reload.
   function load() {
@@ -375,8 +428,105 @@
     return { lists, current: "todo", todos };
   }
 
+  // The part of the state that syncs; the open list stays per device.
+  const cloudBody = () => JSON.stringify({ lists: state.lists, todos: state.todos });
+
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    if (docRef) {
+      clearTimeout(writeTimer);
+      writeTimer = setTimeout(() => { writeTimer = null; pushToCloud(); }, 400);
+    }
+  }
+
+  async function pushToCloud() {
+    if (writing) { writeAgain = true; return; }
+    writing = true;
+    const body = cloudBody();
+    try {
+      if (body !== lastSynced) { await docRef.set(JSON.parse(body)); lastSynced = body; }
+      setSync("ok");
+    } catch (e) {
+      setSync(e && e.code === "quota_exceeded" ? "full" : "error");
+    }
+    writing = false;
+    if (writeAgain) { writeAgain = false; pushToCloud(); }
+  }
+
+  function setSync(status) {
+    const note = $("sync-note");
+    note.className = "menu-note" + (status === "ok" ? " ok" : "");
+    note.textContent = {
+      ok: "Saved to your Claude account. Open this link on any device to see your tasks.",
+      error: "Couldn't reach your Claude account. Your tasks are saved on this device.",
+      full: "Your storage is full. Delete some tasks to keep saving to your account.",
+    }[status] || "Saved on this device only";
+  }
+
+  function adopt(data) {
+    if (!data || !Array.isArray(data.lists) || !data.lists.length || !Array.isArray(data.todos)) return;
+    state.lists = JSON.parse(JSON.stringify(data.lists));
+    state.todos = JSON.parse(JSON.stringify(data.todos));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    render();
+  }
+
+  async function connectCloud() {
+    if (!window.claude?.use) return;
+    try {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      const uid = user && await user.id();
+      if (!db || !uid) return;
+      docRef = db.doc("data/users/" + uid + "/state");
+      const snap = await docRef.get();
+      if (snap.exists && Array.isArray(snap.data()?.lists)) {
+        lastSynced = JSON.stringify(snap.data());
+        adopt(snap.data());
+        setSync("ok");
+      } else {
+        await pushToCloud();   // first visit: upload what this device already has
+      }
+      // Live updates from your other devices.
+      docRef.onSnapshot(s => {
+        if (!s.exists || s.metadata.hasPendingWrites) return;
+        const body = JSON.stringify(s.data());
+        if (body === lastSynced || writeTimer || writing) return;
+        lastSynced = body;
+        if (!$("sheet").hidden) { pendingRemote = s.data(); return; }
+        adopt(s.data());
+      }, () => setSync("error"));
+    } catch {
+      docRef = null;
+      setSync("error");
+    }
+  }
+
+  // ---------- Undo ----------
+  function withUndo(message, change) {
+    const before = cloudBody();
+    change();
+    save();
+    render();
+    undoSnapshot = before;
+    $("toast-text").textContent = message;
+    $("toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 5000);
+  }
+
+  function hideToast() {
+    $("toast").hidden = true;
+    undoSnapshot = null;
+  }
+
+  function undo() {
+    if (!undoSnapshot) return;
+    const before = JSON.parse(undoSnapshot);
+    state.lists = before.lists;
+    state.todos = before.todos;
+    hideToast();
+    save();
+    render();
   }
 
   // ---------- Deadlines ----------
@@ -414,11 +564,28 @@
 
   const dueSort = (a, b) => (a.due ? dueDate(a).getTime() : Infinity) - (b.due ? dueDate(b).getTime() : Infinity);
 
-  const currentList = () => state.lists.find(l => l.id === state.current) || state.lists[0];
+  function dayDiff(t) {
+    const [y, m, d] = t.due.split("-").map(Number);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d) - today) / 864e5);
+  }
+
+  function inView(t, viewId) {
+    if (viewId === "@today") return !!t.due && (t.done ? dayDiff(t) === 0 : dayDiff(t) <= 0);
+    if (viewId === "@upcoming") return !!t.due && dayDiff(t) >= 1;
+    return t.list === viewId;
+  }
+
+  const isSmart = id => id.startsWith("@");
+  const isExample = t => t.text.startsWith("Example: ");
+  const realListFor = () => state.lists.find(l => l.id === state.lastList) || state.lists[0];
+
+  const currentList = () =>
+    SMART.find(l => l.id === state.current) || state.lists.find(l => l.id === state.current) || state.lists[0];
 
   // ---------- List ----------
   function matches(t) {
-    if (t.list !== state.current) return false;
+    if (!inView(t, state.current)) return false;
     if (starredOnly && !t.important) return false;
     if (!query) return true;
     const q = query.toLowerCase();
@@ -427,9 +594,7 @@
   }
 
   function deleteTask(t) {
-    state.todos = state.todos.filter(x => x !== t);
-    save();
-    render();
+    withUndo("Task deleted", () => { state.todos = state.todos.filter(x => x !== t); });
   }
 
   function taskItem(t) {
@@ -451,7 +616,10 @@
     check.type = "button";
     check.innerHTML = CHECK_SVG;
     check.setAttribute("aria-label", t.done ? "Mark as not done" : "Mark as done");
-    check.addEventListener("click", () => { t.done = !t.done; save(); render(); });
+    check.addEventListener("click", () => {
+      if (t.done) { t.done = false; save(); render(); }
+      else withUndo("Completed", () => { t.done = true; });
+    });
 
     const body = document.createElement("button");
     body.className = "body";
@@ -463,11 +631,17 @@
 
     const meta = document.createElement("span");
     meta.className = "meta";
+    if (isSmart(state.current)) {
+      const l = document.createElement("span");
+      l.className = "list-tag";
+      l.textContent = state.lists.find(x => x.id === t.list)?.name || "";
+      meta.appendChild(l);
+    }
     if (t.due) {
       const info = dueInfo(t);
       const s = document.createElement("span");
       s.className = "due" + (info.overdue ? " overdue" : info.today ? " today" : "");
-      s.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+      s.innerHTML = CLOCK_SVG.replace(/14/g, "13");
       s.append(info.overdue ? "Overdue · " + info.label : info.label);
       meta.appendChild(s);
     }
@@ -570,21 +744,48 @@
     $("list-title").textContent = list.name;
 
     const visible = state.todos.filter(matches);
-    // Starred tasks first, then the soonest deadline, then newest first.
-    const open = visible.filter(t => !t.done).sort((a, b) => (b.important - a.important) || dueSort(a, b) || (b.id - a.id));
+    const smart = isSmart(list.id);
+    // In a list: starred first, then the soonest deadline, then newest. In smart views: by deadline.
+    const open = visible.filter(t => !t.done).sort((a, b) => smart
+      ? dueSort(a, b) || (b.important - a.important)
+      : (b.important - a.important) || dueSort(a, b) || (b.id - a.id));
     const done = visible.filter(t => t.done).sort((a, b) => b.id - a.id);
 
     openRow = null;
-    $("open-list").replaceChildren(...open.map(taskItem));
+    if (list.id === "@upcoming") {
+      // One section per day, like Reminders' Scheduled view.
+      const days = [];
+      for (const t of open) {
+        if (!days.length || days[days.length - 1].due !== t.due) days.push({ due: t.due, tasks: [] });
+        days[days.length - 1].tasks.push(t);
+      }
+      $("upcoming").replaceChildren(...days.flatMap(d => {
+        const head = document.createElement("h2");
+        head.className = "day-head";
+        head.textContent = dueInfo({ due: d.due, dueTime: "", done: true }).label;
+        const ul = document.createElement("ul");
+        ul.className = "group";
+        ul.append(...d.tasks.map(taskItem));
+        return [head, ul];
+      }));
+      $("open-list").replaceChildren();
+    } else {
+      $("upcoming").replaceChildren();
+      $("open-list").replaceChildren(...open.map(taskItem));
+    }
+    $("upcoming").hidden = list.id !== "@upcoming";
     $("done-list").replaceChildren(...done.map(taskItem));
     $("done-toggle").hidden = done.length === 0;
     $("done-toggle").classList.toggle("open", showDone);
     $("done-label").textContent = `Completed (${done.length})`;
     $("done-list").hidden = !showDone || done.length === 0;
 
-    const inList = state.todos.some(t => t.list === list.id);
+    const inList = state.todos.some(t => inView(t, list.id));
     $("empty").hidden = visible.length > 0;
-    $("empty").textContent = inList ? "No matching tasks" : "Tap + to add";
+    $("empty").textContent = inList ? "No matching tasks"
+      : list.id === "@today" ? "Nothing due today"
+      : list.id === "@upcoming" ? "No upcoming deadlines"
+      : "Tap + to add";
     $("menu-starred").textContent = starredOnly ? "Show all tasks" : "Show starred only";
   }
 
@@ -592,6 +793,17 @@
   function renderListsMenu() {
     const menu = $("lists-menu");
     menu.replaceChildren();
+    for (const l of SMART) {
+      const b = document.createElement("button");
+      b.className = "menu-item";
+      b.type = "button";
+      const left = state.todos.filter(t => !t.done && inView(t, l.id)).length;
+      const badge = l.id === "@today" ? `<span class="mini-badge blue">${CLOCK_SVG}</span>` : `<span class="mini-badge red">${CAL_SVG}</span>`;
+      b.innerHTML = `<span class="tick">${l.id === state.current ? CHECK_SVG : ""}</span>${badge}<span class="name">${l.name}</span><span class="count">${left}</span>`;
+      b.addEventListener("click", () => { state.current = l.id; save(); closeMenus(); render(); });
+      menu.appendChild(b);
+    }
+    menu.appendChild(document.createElement("hr"));
     for (const l of state.lists) {
       const b = document.createElement("button");
       b.className = "menu-item";
@@ -599,7 +811,7 @@
       const left = state.todos.filter(t => t.list === l.id && !t.done).length;
       b.innerHTML = `<span class="tick">${l.id === state.current ? CHECK_SVG : ""}</span><span class="name"></span><span class="count">${left}</span>`;
       b.querySelector(".name").textContent = l.name;
-      b.addEventListener("click", () => { state.current = l.id; save(); closeMenus(); render(); });
+      b.addEventListener("click", () => { state.current = state.lastList = l.id; save(); closeMenus(); render(); });
       menu.appendChild(b);
     }
     menu.appendChild(document.createElement("hr"));
@@ -613,13 +825,13 @@
       if (!name) { $("new-list-name").focus(); return; }
       const l = { id: "l" + Date.now(), name };
       state.lists.push(l);
-      state.current = l.id;
+      state.current = state.lastList = l.id;
       save(); closeMenus(); render();
     };
     $("new-list-add").addEventListener("click", addList);
     $("new-list-name").addEventListener("keydown", e => { if (e.key === "Enter") addList(); });
 
-    if (state.lists.length > 1) {
+    if (state.lists.length > 1 && !isSmart(state.current)) {
       const del = document.createElement("button");
       del.className = "menu-item danger";
       del.type = "button";
@@ -630,10 +842,13 @@
       del.addEventListener("click", e => {
         e.stopPropagation();
         if (!confirmDelete) { confirmDelete = true; renderListsMenu(); return; }
-        state.todos = state.todos.filter(t => t.list !== state.current);
-        state.lists = state.lists.filter(l => l.id !== state.current);
-        state.current = state.lists[0].id;
-        save(); closeMenus(); render();
+        const gone = state.current;
+        closeMenus();
+        withUndo("List deleted", () => {
+          state.todos = state.todos.filter(t => t.list !== gone);
+          state.lists = state.lists.filter(l => l.id !== gone);
+          state.current = state.lists[0].id;
+        });
       });
       menu.appendChild(del);
     }
@@ -653,7 +868,8 @@
     editing = task || null;
     draft = task
       ? JSON.parse(JSON.stringify(task))
-      : { id: Date.now(), list: state.current, text: "", note: "", important: false, done: false, subtasks: [], due: "", dueTime: "" };
+      : { id: Date.now(), list: isSmart(state.current) ? realListFor().id : state.current, text: "", note: "", important: false,
+          done: false, subtasks: [], due: state.current === "@today" ? dateStr(0) : state.current === "@upcoming" ? dateStr(1) : "", dueTime: "" };
 
     $("sheet-heading").textContent = editing ? "Task" : "New Task";
     $("task-title").value = draft.text;
@@ -677,6 +893,8 @@
     $("sheet").hidden = true;
     $("fab").hidden = false;
     editing = draft = null;
+    // Apply changes that arrived from another device while the sheet was open.
+    if (pendingRemote) { adopt(pendingRemote); pendingRemote = null; }
   }
 
   function commit() {
@@ -687,8 +905,13 @@
     draft.dueTime = draft.due ? $("task-time").value : "";
     draft.subtasks = draft.subtasks.filter(s => s.text.trim());
     if (!draft.text) return;
+    pendingRemote = null;   // this edit is newer; it wins
     if (editing) Object.assign(editing, draft);
-    else state.todos.push(draft);
+    else {
+      // The first real task clears out the examples.
+      if (!isExample(draft)) state.todos = state.todos.filter(t => !isExample(t));
+      state.todos.push(draft);
+    }
     save();
     closeSheet();
     render();
@@ -819,9 +1042,14 @@
   });
   $("menu-starred").addEventListener("click", () => { starredOnly = !starredOnly; closeMenus(); render(); });
   $("menu-clear").addEventListener("click", () => {
-    state.todos = state.todos.filter(t => !(t.done && t.list === state.current));
-    closeMenus(); save(); render();
+    const n = state.todos.filter(t => t.done && inView(t, state.current)).length;
+    closeMenus();
+    if (!n) return;
+    withUndo(`${n} ${n === 1 ? "task" : "tasks"} deleted`, () => {
+      state.todos = state.todos.filter(t => !(t.done && inView(t, state.current)));
+    });
   });
+  $("toast-undo").addEventListener("click", undo);
 
   $("done-toggle").addEventListener("click", () => { showDone = !showDone; render(); });
 
@@ -839,6 +1067,7 @@
   setInterval(() => { if ($("sheet").hidden && !openRow) render(); }, 60000);
 
   render();
+  connectCloud();
 </script>
 </body>
 </html>
