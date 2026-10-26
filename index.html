@@ -242,7 +242,7 @@
     width: 60px; height: 60px; border-radius: 999px;
     background: var(--fab); color: var(--on-fab);
     display: grid; place-items: center;
-    box-shadow: 0 8px 24px rgb(0 122 255 / 0.35);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--fab) 35%, transparent);
     transition: transform 0.15s;
   }
   .fab:active { transform: scale(0.94); }
@@ -338,11 +338,75 @@
   .confirm-btn.danger { color: var(--danger); }
   .confirm-btn.bold { font-weight: 600; }
 
+  /* Week strip on Today */
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 2px 0 4px; }
+  .wday {
+    display: grid; justify-items: center; gap: 1px; padding: 8px 0 6px; border-radius: 14px;
+    background: var(--card); font-variant-numeric: tabular-nums; min-width: 0;
+  }
+  .wday .wd { font-size: 0.66rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .wday .dn { font-size: 1.1rem; font-weight: 700; }
+  .wday .cnt { font-size: 0.7rem; font-weight: 600; color: var(--accent); min-height: 1em; }
+  .wday[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .wday[aria-pressed="true"] .wd, .wday[aria-pressed="true"] .cnt { color: rgb(255 255 255 / 0.88); }
+  .task.preview { text-align: left; }
+  .task.preview .check { border-style: dashed; }
+  .task.preview .title { color: var(--muted); }
+  .pop .check { animation: pop 0.35s ease; }
+  @keyframes pop { 40% { transform: scale(1.25); } }
+  .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+  #pin-btn[aria-pressed="true"] { color: var(--accent); }
+
+  /* Wallpaper: a fixed layer behind everything, softened by a scrim in the page's own color */
+  #wall { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-size: cover; background-position: center; }
+  #wall::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 42%, transparent); }
+  .has-wall header, .has-wall body::before { background: transparent; }
+  .has-wall.scrolled header, .has-wall.scrolled body::before { background: var(--glass); }
+  .has-wall .group, .has-wall .wday:not([aria-pressed="true"]), .has-wall .filter-chip {
+    background: color-mix(in srgb, var(--card) 80%, transparent);
+    backdrop-filter: saturate(160%) blur(24px); -webkit-backdrop-filter: saturate(160%) blur(24px);
+  }
+  .has-wall .task { background: transparent; }
+  .has-wall .row-wrap.swiping .task, .has-wall .row-wrap.dragging .task { background: var(--card); }
+  .has-wall .day-head, .has-wall .section-toggle, .has-wall .older-toggle, .has-wall .empty {
+    text-shadow: 0 1px 10px color-mix(in srgb, var(--bg) 80%, transparent);
+  }
+
+  /* Settings */
+  .set-title { margin: 0 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+  .set-note { margin: 8px 16px 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+  .accent-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; padding: 14px 16px; }
+  .accent { width: 100%; max-width: 34px; aspect-ratio: 1; justify-self: center; border-radius: 999px; }
+  .accent[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px currentColor; }
+  .wall-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 10px; padding: 14px 16px; }
+  .wall-opt { display: grid; gap: 6px; justify-items: center; font-size: 0.75rem; color: var(--muted); min-width: 0; }
+  .wall-thumb {
+    width: 100%; aspect-ratio: 9 / 16; border-radius: 10px; background-color: var(--bg);
+    background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px var(--line);
+    display: grid; place-items: center; color: var(--muted);
+  }
+  .wall-opt[aria-pressed="true"] { color: var(--fg); font-weight: 600; }
+  .wall-opt[aria-pressed="true"] .wall-thumb { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+  .switch {
+    appearance: none; -webkit-appearance: none; flex: none; width: 51px; height: 31px; margin: 0;
+    border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background 0.2s;
+  }
+  .switch::before {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 999px;
+    background: #fff; box-shadow: 0 2px 4px rgb(0 0 0 / 0.25); transition: transform 0.2s;
+  }
+  .switch:checked { background: #34c759; }
+  .switch:checked::before { transform: translateX(20px); }
+  .text-btn.bold { font-weight: 600; }
+
   @media (prefers-reduced-motion: reduce) {
     .sheet, .toast, .confirm-card, .row-wrap.leaving { animation: none; }
     * { transition: none !important; }
   }
 </style>
+<style id="theme-style"></style>
+
+<div id="wall" aria-hidden="true"></div>
 
 <header>
   <div class="header-row">
@@ -360,6 +424,8 @@
       </button>
     </div>
     <div class="menu" id="menu" hidden>
+      <button class="menu-item" type="button" id="menu-settings">Settings</button>
+      <hr>
       <button class="menu-item" type="button" id="menu-starred">Show starred only</button>
       <button class="menu-item" type="button" id="menu-autosort" hidden>Sort automatically</button>
       <button class="menu-item danger" type="button" id="menu-clear">Delete completed tasks</button>
@@ -378,6 +444,7 @@
       <span class="star">★</span> Starred only <span class="x">✕</span>
     </button>
   </div>
+  <div class="week" id="week" hidden></div>
   <div id="groups"></div>
   <button class="section-toggle" id="done-toggle" type="button" hidden>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
@@ -482,6 +549,9 @@
     <button class="icon-btn" id="star-btn" type="button" aria-label="Star this task" aria-pressed="false">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>
     </button>
+    <button class="icon-btn" id="pin-btn" type="button" aria-label="Pin to the top" aria-pressed="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5h6l-1 6.5 3.5 3.5h-11L10 10z"/><path d="M12 13.5V21"/></svg>
+    </button>
     <button class="icon-btn skip" id="skip-btn" type="button" hidden>Skip</button>
     <button class="icon-btn delete" id="delete-btn" type="button" aria-label="Delete task" hidden>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
@@ -504,6 +574,46 @@
   </div>
 </div>
 
+<div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="settings-heading">
+  <div class="sheet-top">
+    <span style="width: 56px"></span>
+    <span class="sheet-heading" id="settings-heading">Settings</span>
+    <button class="text-btn bold" id="settings-done" type="button">Done</button>
+  </div>
+  <div class="sheet-body">
+    <section>
+      <h3 class="set-title">Accent color</h3>
+      <div class="group"><div class="accent-row" id="accent-row" role="group" aria-label="Accent color"></div></div>
+    </section>
+    <section>
+      <h3 class="set-title">Wallpaper</h3>
+      <div class="group">
+        <div class="wall-grid" id="wall-grid" role="group" aria-label="Wallpaper"></div>
+        <div class="field"><button class="row-btn" id="photo-btn" type="button">Choose from Photos…</button></div>
+        <div class="field" id="photo-remove-row" hidden><button class="row-btn danger" id="photo-remove" type="button">Remove my photo</button></div>
+      </div>
+      <p class="set-note" id="photo-note">Your photo stays on this device.</p>
+      <input type="file" id="photo-input" accept="image/*" hidden>
+    </section>
+    <section>
+      <h3 class="set-title">Sounds</h3>
+      <div class="group">
+        <div class="field"><label for="sounds-toggle">Sounds and celebrations</label><input type="checkbox" class="switch" id="sounds-toggle"></div>
+      </div>
+      <p class="set-note">A soft tick when you finish a task, and confetti when today is all done.</p>
+    </section>
+    <section>
+      <h3 class="set-title">Backup</h3>
+      <div class="group">
+        <div class="field"><button class="row-btn" id="export-btn" type="button">Save a backup file</button></div>
+        <div class="field"><button class="row-btn" id="import-btn" type="button">Restore from a backup file…</button></div>
+      </div>
+      <p class="set-note" id="backup-note">Saves every list and task to a file. Restore it here or in your other copy of the app to move your tasks over.</p>
+      <input type="file" id="import-input" accept=".json,application/json" hidden>
+    </section>
+  </div>
+</div>
+
 <script>
   const STORAGE_KEY = "todos-v3";
   const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
@@ -518,6 +628,7 @@
   let showDone = false;
   let showLater = false;   // the "Next days" section starts folded so today stays in focus
   let showOld = false;     // completed tasks older than a week stay tucked away
+  let selDay = "";         // the day picked in Today's week strip ("" = today)
   const PALETTE = ["#007aff", "#ff9500", "#34c759", "#ff3b30", "#af52de", "#ff2d55", "#30b0c7", "#8e8e93"];
   const listColor = l => l.color || PALETTE[Math.max(0, state.lists.indexOf(l)) % PALETTE.length];
   let editing = null;      // the task open in the sheet, or null for a new one
@@ -647,6 +758,114 @@
       docRef = null;
       setSync("error");
     }
+  }
+
+  // ---------- Appearance and sounds (kept per device) ----------
+  const SETTINGS_KEY = "todo-settings";
+  const PHOTO_KEY = "todo-wallpaper-photo";
+  const ACCENTS = [
+    { id: "blue", name: "Blue", light: "#007aff", dark: "#0a84ff" },
+    { id: "purple", name: "Purple", light: "#af52de", dark: "#bf5af2" },
+    { id: "pink", name: "Pink", light: "#ff2d55", dark: "#ff375f" },
+    { id: "red", name: "Red", light: "#ff3b30", dark: "#ff453a" },
+    { id: "orange", name: "Orange", light: "#ff9500", dark: "#ff9f0a" },
+    { id: "green", name: "Green", light: "#34c759", dark: "#30d158" },
+    { id: "teal", name: "Teal", light: "#30b0c7", dark: "#40c8e0" },
+    { id: "graphite", name: "Graphite", light: "#636366", dark: "#98989d" },
+  ];
+  const WALLS = [
+    { id: "none", name: "None", bg: "" },
+    { id: "sunrise", name: "Sunrise", bg: "radial-gradient(at 20% 15%, #ffd29d 0, transparent 55%), radial-gradient(at 85% 30%, #ff9a9e 0, transparent 50%), radial-gradient(at 50% 90%, #fbc2eb 0, transparent 60%), linear-gradient(160deg, #ffe7c7, #ffc3c9)" },
+    { id: "ocean", name: "Ocean", bg: "radial-gradient(at 15% 20%, #8fd3fe 0, transparent 55%), radial-gradient(at 80% 75%, #4facfe 0, transparent 55%), linear-gradient(160deg, #c2e9fb, #6a93f8)" },
+    { id: "forest", name: "Forest", bg: "radial-gradient(at 25% 25%, #c3f0ca 0, transparent 50%), radial-gradient(at 80% 80%, #3fa66b 0, transparent 55%), linear-gradient(160deg, #d4fc79, #5bb381)" },
+    { id: "lavender", name: "Lavender", bg: "radial-gradient(at 20% 20%, #fbc2eb 0, transparent 50%), radial-gradient(at 80% 70%, #a18cd1 0, transparent 55%), linear-gradient(160deg, #e9defa, #b9a7f2)" },
+    { id: "midnight", name: "Midnight", bg: "radial-gradient(at 20% 15%, #3a4a8f 0, transparent 50%), radial-gradient(at 85% 85%, #6b3fa0 0, transparent 50%), linear-gradient(160deg, #141e30, #243b55)" },
+    { id: "aurora", name: "Aurora", bg: "radial-gradient(at 15% 25%, #43e97b 0, transparent 45%), radial-gradient(at 75% 20%, #38f9d7 0, transparent 45%), radial-gradient(at 60% 85%, #7f5af0 0, transparent 55%), linear-gradient(160deg, #0f2027, #203a43)" },
+  ];
+
+  function loadSettings() {
+    const base = { accent: "blue", wall: "none", sounds: true };
+    try { return { ...base, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; } catch { return base; }
+  }
+  let settings = loadSettings();
+  let photo = null;
+  try { photo = localStorage.getItem(PHOTO_KEY); } catch {}
+
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {}
+  }
+
+  function applyAppearance() {
+    const a = ACCENTS.find(x => x.id === settings.accent) || ACCENTS[0];
+    $("theme-style").textContent =
+      `:root { --accent: ${a.light}; --fab: ${a.light}; }
+       @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --accent: ${a.dark}; --fab: ${a.dark}; } }
+       :root[data-theme="dark"] { --accent: ${a.dark}; --fab: ${a.dark}; }`;
+    const bg = settings.wall === "photo" ? (photo ? `url("${photo}") center / cover` : "")
+      : WALLS.find(w => w.id === settings.wall)?.bg || "";
+    $("wall").style.background = bg;
+    document.documentElement.classList.toggle("has-wall", !!bg);
+  }
+
+  // Sounds are made on the fly; the audio is unlocked inside a tap, as iPhones require.
+  let audio = null;
+  function unlockAudio() {
+    if (!settings.sounds) return;
+    try {
+      audio ??= new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === "suspended") audio.resume();
+    } catch {}
+  }
+
+  function sound(kind) {
+    if (!settings.sounds || !audio) return;
+    try {
+      const notes = kind === "cheer" ? [523.25, 659.25, 783.99, 1046.5] : [880, 1318.5];
+      notes.forEach((f, i) => {
+        const o = audio.createOscillator(), g = audio.createGain();
+        const t0 = audio.currentTime + i * (kind === "cheer" ? 0.1 : 0.05);
+        o.type = "sine";
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(kind === "cheer" ? 0.16 : 0.08, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + (kind === "cheer" ? 0.45 : 0.18));
+        o.connect(g).connect(audio.destination);
+        o.start(t0);
+        o.stop(t0 + 0.5);
+      });
+    } catch {}
+  }
+
+  function celebrate() {
+    sound("cheer");
+    if (!settings.sounds || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const c = document.createElement("canvas");
+    c.className = "confetti";
+    document.body.appendChild(c);
+    const w = innerWidth, h = innerHeight, dpr = devicePixelRatio || 1;
+    c.width = w * dpr;
+    c.height = h * dpr;
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    const colors = ["#007aff", "#ff9500", "#34c759", "#ff2d55", "#af52de", "#ffcc00", "#30b0c7"];
+    const bits = Array.from({ length: 150 }, () => ({
+      x: w / 2 + (Math.random() - 0.5) * 60, y: h * 0.4,
+      vx: (Math.random() - 0.5) * 12, vy: -Math.random() * 12 - 5,
+      s: Math.random() * 6 + 5, a: Math.random() * 6, va: (Math.random() - 0.5) * 0.35,
+      c: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    const start = performance.now();
+    const frame = now => {
+      const t = now - start;
+      g.clearRect(0, 0, w, h);
+      g.globalAlpha = Math.max(0, 1 - t / 2400);
+      for (const b of bits) {
+        b.vy += 0.3; b.vx *= 0.99; b.x += b.vx; b.y += b.vy; b.a += b.va;
+        g.save(); g.translate(b.x, b.y); g.rotate(b.a); g.fillStyle = b.c; g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); g.restore();
+      }
+      if (t < 2400) requestAnimationFrame(frame); else c.remove();
+    };
+    requestAnimationFrame(frame);
   }
 
   // ---------- Undo ----------
@@ -844,6 +1063,15 @@
     return out;
   }
 
+  // Future dates a repeating task will land on, for the week strip.
+  function landsOn(t, key) {
+    let d = t.due;
+    for (let i = 0; i < 60 && d < key; i++) d = nextDue({ ...t, due: d });
+    return d === key;
+  }
+  const projectedOn = key => state.todos.filter(t => !t.done && t.repeat && t.due && t.due < key && landsOn(t, key));
+  const todayLeft = () => state.todos.filter(t => !t.done && t.due && dayDiff(t) <= 0).length;
+
   const isSmart = id => id.startsWith("@");
   const isExample = t => t.text.startsWith("Example: ");
   const realListFor = () => state.lists.find(l => l.id === state.lastList) || state.lists[0];
@@ -869,13 +1097,20 @@
       row.classList.remove("done");
       return;
     }
-    row.classList.add("done");
+    row.classList.add("done", "pop");
     completing.set(t.id, setTimeout(() => {
       wrap.classList.add("leaving");
       setTimeout(() => {
         completing.delete(t.id);
         const live = state.todos.find(x => x.id === t.id);
         if (!live) return render();
+        const leftBefore = todayLeft();
+        const cheer = () => {
+          if (leftBefore > 0 && todayLeft() === 0) {
+            celebrate();
+            $("toast-text").textContent = "All done for today 🎉";
+          } else sound("tick");
+        };
         if (live.repeat && live.due) {
           const next = nextDue(live);
           // Doing it on time (or early) grows the streak; catching up late starts it again.
@@ -889,6 +1124,7 @@
         } else {
           withUndo("Completed", () => { live.done = true; live.doneOn = todayKey(); });
         }
+        cheer();
       }, 250);
     }, 700));
   }
@@ -987,6 +1223,7 @@
     check.innerHTML = CHECK_SVG;
     check.setAttribute("aria-label", t.done ? "Mark as not done" : "Mark as done");
     check.addEventListener("click", () => {
+      unlockAudio();
       if (t.done) { t.done = false; delete t.doneOn; save(); render(); }
       else complete(t, wrap, row);
     });
@@ -1112,6 +1349,25 @@
     return wrap;
   }
 
+  // A future repeat of a task, shown in the week view; tapping it opens the task.
+  function previewItem(t) {
+    const li = document.createElement("li");
+    li.className = "row-wrap";
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "task preview";
+    row.style.width = "100%";
+    row.innerHTML = '<span class="check" aria-hidden="true"></span><span class="col"><span class="title"></span><span class="meta"></span></span>';
+    row.querySelector(".title").textContent = t.text;
+    const owner = state.lists.find(x => x.id === t.list);
+    const meta = row.querySelector(".meta");
+    meta.innerHTML = REPEAT_SVG;
+    meta.append(" Repeats" + (owner ? " · " + owner.name : "") + (t.dueTime ? " · " + timeLabel(t) : ""));
+    row.addEventListener("click", () => openSheet(t));
+    li.appendChild(row);
+    return li;
+  }
+
   // Swipe left on a row to show Delete; swipe far to delete straight away, like Mail.
   function enableSwipe(wrap, row, onDelete) {
     let startX, startY, base, dx = 0, tracking = false, dragging = false, decided = false, swiped = false;
@@ -1193,17 +1449,50 @@
     const reorder = !smart && !query && !starredOnly;
     const done = visible.filter(t => t.done).sort((a, b) => (b.doneOn || "").localeCompare(a.doneOn || "") || b.id - a.id);
 
+    // Week strip: the next seven days on Today; tap one to see what's planned that day.
+    const tkNow = todayKey();
+    if (!selDay || selDay < tkNow || list.id !== "@today") selDay = tkNow;
+    const showWeek = list.id === "@today" && !query;
+    const viewingDay = showWeek && selDay !== tkNow;
+    $("week").hidden = !showWeek;
+    if (showWeek) {
+      $("week").replaceChildren(...Array.from({ length: 7 }, (_, i) => {
+        const key = dateStr(i);
+        const [y, m, d] = key.split("-").map(Number);
+        const day = new Date(y, m - 1, d);
+        const n = state.todos.filter(t => !t.done && t.due && (i === 0 ? dayDiff(t) <= 0 : t.due === key)).length
+          + (i ? projectedOn(key).length : 0);
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "wday";
+        b.setAttribute("aria-pressed", String(key === selDay));
+        b.setAttribute("aria-label", `${day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}, ${n} ${n === 1 ? "task" : "tasks"}`);
+        b.innerHTML = '<span class="wd"></span><span class="dn"></span><span class="cnt"></span>';
+        b.children[0].textContent = i === 0 ? "Today" : DAY_NAMES[day.getDay()];
+        b.children[1].textContent = d;
+        b.children[2].textContent = n || "";
+        b.addEventListener("click", () => { selDay = key; render(); });
+        return b;
+      }));
+    }
+
+    // Pinned tasks get their own card at the top: a list's own, or on Today from every list.
+    const pinned = list.id === "@upcoming" || viewingDay ? []
+      : list.id === "@today" && !query ? state.todos.filter(t => t.pinned && !t.done && (!starredOnly || t.important))
+      : open.filter(t => t.pinned);
+    const openDueNow = open.filter(t => t.due && dayDiff(t) <= 0).length;
+
     openRow = null;
     // Today comes first, with anything overdue folded into it. Tasks with no date follow as
     // "Anytime", and later days wait in a folded "Next days" section at the bottom.
-    const sections = groupByDay(open);
+    const sections = groupByDay(open.filter(t => !pinned.includes(t)));
     const overdue = sections.find(g => g.key === "overdue");
     const today = sections.find(g => g.rank === 0);
     const anytime = sections.find(g => g.key === "none");
     const later = sections.filter(g => g.rank >= 1 && g.rank !== Infinity);
     const todayTasks = [...(overdue?.tasks || []), ...(today?.tasks || [])];
     const sectionOf = t => t.due && dayDiff(t) < 0 ? "overdue" : "today";
-    const headed = !(anytime && sections.length === 1);
+    const headed = pinned.length > 0 || viewingDay || !(anytime && sections.length === 1);
     const foldLater = list.id !== "@upcoming" && !query;
 
     // Today's progress counts what was finished today against what's left for today.
@@ -1220,10 +1509,12 @@
       return el;
     };
 
-    const block = (label, sub, tasks, sectionFor, emptyText, extra) => {
+    const block = (label, sub, tasks, sectionFor, emptyText, extra, previews = []) => {
       const ul = document.createElement("ul");
       ul.className = "group";
-      if (tasks.length) ul.append(...tasks.map(t => taskItem(t, reorder && tasks.length > 1, sectionFor(t))));
+      if (tasks.length || previews.length) {
+        ul.append(...tasks.map(t => taskItem(t, reorder && tasks.length > 1, sectionFor(t))), ...previews);
+      }
       else {
         const li = document.createElement("li");
         li.className = "day-empty";
@@ -1245,12 +1536,22 @@
     };
 
     const parts = [];
+    if (viewingDay) {
+      const [y, m, d] = selDay.split("-").map(Number);
+      const day = new Date(y, m - 1, d);
+      const tasks = state.todos.filter(t => !t.done && t.due === selDay && (!starredOnly || t.important)).sort(dueSort);
+      parts.push(...block(dayDiff({ due: selDay }) === 1 ? "Tomorrow" : day.toLocaleDateString(undefined, { weekday: "long" }),
+        day.toLocaleDateString(undefined, { month: "short", day: "numeric" }), tasks, () => "future", "Nothing planned yet",
+        null, projectedOn(selDay).map(previewItem)));
+    } else {
+    if (pinned.length) parts.push(...block("📌 Pinned", "", pinned, () => null, ""));
     const todaySub = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
     // Show the Today card whenever this list uses deadlines, even if today is clear.
-    if (todayTasks.length || doneToday || (later.length && foldLater) || list.id === "@today") {
-      const total = todayTasks.length + doneToday;
+    if (list.id !== "@upcoming" && (todayTasks.length || doneToday || (later.length && foldLater) || list.id === "@today")) {
+      const total = openDueNow + doneToday;
       parts.push(...block("Today", todaySub, todayTasks, sectionOf,
-        doneToday ? "All done for today 🎉" : "Nothing due today", total ? progress(doneToday, total) : null));
+        openDueNow ? "Just your pinned tasks left" : doneToday ? "All done for today 🎉" : "Nothing due today",
+        total ? progress(doneToday, total) : null));
     }
     if (anytime) parts.push(...block(anytime.label, "", anytime.tasks, () => "none"));
     if (later.length) {
@@ -1266,6 +1567,7 @@
         parts.push(toggle);
       }
       if (showLater || !foldLater) for (const g of later) parts.push(...block(g.label, g.sub, g.tasks, () => g.key));
+    }
     }
     $("groups").replaceChildren(...parts);
     // Completed tasks from the last week show; older ones wait behind "Show older".
@@ -1423,7 +1725,8 @@
     draft = task
       ? JSON.parse(JSON.stringify(task))
       : { id: Date.now(), list: isSmart(state.current) ? realListFor().id : state.current, text: "", note: "", important: false,
-          done: false, subtasks: [], due: state.current === "@today" ? dateStr(0) : state.current === "@upcoming" ? dateStr(1) : "", dueTime: "" };
+          done: false, subtasks: [], pinned: false, dueTime: "",
+          due: state.current === "@today" ? (selDay || dateStr(0)) : state.current === "@upcoming" ? dateStr(1) : "" };
 
     $("sheet-heading").textContent = editing ? "Task" : "New Task";
     $("task-title").value = draft.text;
@@ -1441,6 +1744,7 @@
     updateDueRows();
     $("task-list").replaceChildren(...state.lists.map(l => new Option(l.name, l.id, false, l.id === draft.list)));
     renderStar();
+    renderPin();
     renderSubtasks();
     updateSave();
     sheetStart = formState();
@@ -1452,7 +1756,7 @@
 
   const formState = () => JSON.stringify([
     $("task-title").value.trim(), $("task-note").value.trim(), $("task-date").value, $("task-time").value,
-    $("task-repeat").value, pickedDays().join(), $("task-list").value, draft.important,
+    $("task-repeat").value, pickedDays().join(), $("task-list").value, draft.important, !!draft.pinned,
     draft.subtasks.filter(s => s.text.trim()).map(s => [s.text.trim(), s.done]),
   ]);
 
@@ -1542,6 +1846,11 @@
     document.querySelectorAll(".day-btn").forEach(b => b.setAttribute("aria-pressed", String(days.includes(Number(b.dataset.day)))));
   }
 
+  function renderPin() {
+    $("pin-btn").setAttribute("aria-pressed", String(!!draft.pinned));
+    $("pin-btn").querySelector("path").setAttribute("fill", draft.pinned ? "currentColor" : "none");
+  }
+
   function renderStar() {
     $("star-btn").setAttribute("aria-pressed", String(draft.important));
     $("star-btn").querySelector("path").setAttribute("fill", draft.important ? "currentColor" : "none");
@@ -1601,6 +1910,133 @@
     renderSubtasks(prev && prev.id);
   }
 
+  // ---------- Settings ----------
+  function renderSettings() {
+    $("accent-row").replaceChildren(...ACCENTS.map(a => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "accent";
+      b.style.background = a.light;
+      b.style.color = a.light;
+      b.setAttribute("aria-label", a.name);
+      b.setAttribute("aria-pressed", String(settings.accent === a.id));
+      b.addEventListener("click", () => { settings.accent = a.id; saveSettings(); applyAppearance(); renderSettings(); });
+      return b;
+    }));
+    const opts = [...WALLS, ...(photo ? [{ id: "photo", name: "My photo", bg: `url("${photo}") center / cover` }] : [])];
+    $("wall-grid").replaceChildren(...opts.map(w => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "wall-opt";
+      b.setAttribute("aria-pressed", String(settings.wall === w.id));
+      b.innerHTML = '<span class="wall-thumb"></span><span></span>';
+      if (w.bg) b.firstChild.style.background = w.bg;
+      else b.firstChild.textContent = "—";
+      b.lastChild.textContent = w.name;
+      b.addEventListener("click", () => { settings.wall = w.id; saveSettings(); applyAppearance(); renderSettings(); });
+      return b;
+    }));
+    $("photo-remove-row").hidden = !photo;
+    $("sounds-toggle").checked = settings.sounds;
+  }
+
+  function openSettings() {
+    closeMenus();
+    renderSettings();
+    $("settings").hidden = false;
+    $("fab").hidden = true;
+  }
+
+  function closeSettings() {
+    $("settings").hidden = true;
+    $("fab").hidden = false;
+  }
+
+  // Shrink a chosen photo so it fits comfortably in the browser's storage.
+  function usePhoto(file) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      photo = c.toDataURL("image/jpeg", 0.82);
+      let kept = true;
+      try { localStorage.setItem(PHOTO_KEY, photo); } catch { kept = false; }
+      $("photo-note").textContent = kept ? "Your photo stays on this device."
+        : "This photo is too big to keep after you close the app. Try a smaller one.";
+      settings.wall = "photo";
+      saveSettings();
+      applyAppearance();
+      renderSettings();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      $("photo-note").textContent = "That photo couldn't be opened. Try a JPEG or PNG.";
+    };
+    img.src = url;
+  }
+
+  async function exportBackup() {
+    const data = JSON.stringify({ app: "to-do", version: 1, exportedAt: new Date().toISOString(), lists: state.lists, todos: state.todos }, null, 2);
+    const filename = `to-do-backup-${todayKey()}.json`;
+    const note = $("backup-note");
+    let downloads = null;
+    try { downloads = window.claude?.use ? await claude.use("downloads") : null; } catch {}
+    if (downloads) {
+      try {
+        await downloads.save({ filename, data });
+        note.textContent = "Backup saved.";
+      } catch (e) {
+        if (e?.code !== "declined") note.textContent = "The backup couldn't be saved here. Try again in a moment.";
+      }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    note.textContent = "Backup saved. On iPhone, choose “Save to Files” if asked.";
+  }
+
+  async function importBackup(file) {
+    try {
+      const d = JSON.parse(await file.text());
+      if (!Array.isArray(d.lists) || !d.lists.length || !Array.isArray(d.todos)) throw new Error("not a backup");
+      closeSettings();
+      withUndo(`Restored ${d.todos.length} ${d.todos.length === 1 ? "task" : "tasks"}`, () => {
+        state.lists = d.lists;
+        state.todos = d.todos;
+        state.current = "@today";
+      });
+    } catch {
+      $("backup-note").textContent = "That file isn't a To do backup. Pick a file named like “to-do-backup-….json”.";
+    }
+  }
+
+  $("menu-settings").addEventListener("click", openSettings);
+  $("settings-done").addEventListener("click", closeSettings);
+  $("photo-btn").addEventListener("click", () => $("photo-input").click());
+  $("photo-input").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) usePhoto(f); });
+  $("photo-remove").addEventListener("click", () => {
+    photo = null;
+    try { localStorage.removeItem(PHOTO_KEY); } catch {}
+    if (settings.wall === "photo") settings.wall = "none";
+    saveSettings();
+    applyAppearance();
+    renderSettings();
+  });
+  $("sounds-toggle").addEventListener("change", e => { settings.sounds = e.target.checked; saveSettings(); unlockAudio(); });
+  $("export-btn").addEventListener("click", exportBackup);
+  $("import-btn").addEventListener("click", () => $("import-input").click());
+  $("import-input").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) importBackup(f); });
+
   // ---------- Events ----------
   $("fab").addEventListener("click", () => openSheet(null));
   $("sheet-close").addEventListener("click", requestClose);
@@ -1641,12 +2077,14 @@
     updateDueRows();
   });
   $("star-btn").addEventListener("click", () => { draft.important = !draft.important; renderStar(); });
+  $("pin-btn").addEventListener("click", () => { draft.pinned = !draft.pinned; renderPin(); });
   $("delete-btn").addEventListener("click", () => { const t = editing; closeSheet(); deleteTask(t); });
   $("skip-btn").addEventListener("click", () => { const t = editing; closeSheet(); skipTask(t); });
   $("older-toggle").addEventListener("click", () => { showOld = !showOld; render(); });
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape") return;
-    if (!$("discard").hidden) $("discard").hidden = true;
+    if (!$("settings").hidden) closeSettings();
+    else if (!$("discard").hidden) $("discard").hidden = true;
     else if (!$("sheet").hidden) requestClose();
     else closeMenus();
   });
@@ -1712,6 +2150,7 @@
   // Refresh "Today" and "Overdue" labels as time passes.
   setInterval(() => { if ($("sheet").hidden && !openRow && !completing.size) render(); }, 60000);
 
+  applyAppearance();
   render();
   connectCloud();
 </script>
