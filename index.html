@@ -190,12 +190,17 @@
   }
   .section-toggle svg { transition: transform 0.2s; }
   .section-toggle.open svg { transform: rotate(90deg); }
+  /* One rounded card per day, with the day as a heading above it. */
+  #groups { display: grid; }
   .day-head {
-    margin: 22px 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500;
-    text-transform: uppercase; letter-spacing: 0.04em;
+    margin: 26px 4px 10px; display: flex; align-items: baseline; gap: 8px;
+    font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em;
   }
-  #upcoming > .day-head:first-child { margin-top: 8px; }
-  #upcoming { display: grid; }
+  #groups > .day-head:first-child { margin-top: 6px; }
+  .day-head .sub { color: var(--muted); font-size: 0.95rem; font-weight: 500; letter-spacing: 0; }
+  .day-head.overdue { color: var(--danger); }
+  #groups > .section-toggle { margin-left: 4px; }
+  .day-empty { padding: 14px 16px; color: var(--muted); font-size: 0.95rem; }
   .list-tag { font-weight: 500; }
   .toast {
     position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
@@ -345,8 +350,7 @@
       <span class="star">★</span> Starred only <span class="x">✕</span>
     </button>
   </div>
-  <ul class="group" id="open-list"></ul>
-  <div id="upcoming" hidden></div>
+  <div id="groups"></div>
   <button class="section-toggle" id="done-toggle" type="button" hidden>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
     <span id="done-label"></span>
@@ -468,6 +472,7 @@
   let query = "";
   let starredOnly = false;
   let showDone = false;
+  let showLater = false;   // the "Next days" section starts folded so today stays in focus
   let editing = null;      // the task open in the sheet, or null for a new one
   let draft = null;        // working copy while the sheet is open
   let openRow = null;      // the row currently swiped open
@@ -689,6 +694,37 @@
     return t.list === viewId;
   }
 
+  // Split open tasks into day sections: Overdue, Today, Tomorrow, the days of this week,
+  // later dates, then tasks with no date.
+  function groupByDay(tasks) {
+    const groups = new Map();
+    for (const t of tasks) {
+      const diff = t.due ? dayDiff(t) : null;
+      const key = diff === null ? "none" : diff < 0 ? "overdue" : t.due;
+      if (!groups.has(key)) {
+        let label, sub = "";
+        if (key === "none") label = "Anytime";
+        else if (key === "overdue") label = "Overdue";
+        else {
+          const [y, m, d] = t.due.split("-").map(Number);
+          const day = new Date(y, m - 1, d);
+          label = dueInfo({ due: t.due, dueTime: "", done: true }).label;
+          sub = diff < 7
+            ? day.toLocaleDateString(undefined, diff < 2 ? { weekday: "short", month: "short", day: "numeric" } : { month: "short", day: "numeric" })
+            : day.toLocaleDateString(undefined, { weekday: "long" });
+        }
+        groups.set(key, { key, label, sub, rank: key === "overdue" ? -Infinity : key === "none" ? Infinity : diff, tasks: [] });
+      }
+      groups.get(key).tasks.push(t);
+    }
+    return [...groups.values()].sort((a, b) => a.rank - b.rank);
+  }
+
+  const timeLabel = t => {
+    const [hh, mm] = t.dueTime.split(":").map(Number);
+    return new Date(2000, 0, 1, hh, mm).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  };
+
   const isSmart = id => id.startsWith("@");
   const isExample = t => t.text.startsWith("Example: ");
   const realListFor = () => state.lists.find(l => l.id === state.lastList) || state.lists[0];
@@ -796,7 +832,7 @@
     withUndo("Task deleted", () => { state.todos = state.todos.filter(x => x !== t); });
   }
 
-  function taskItem(t, reorder) {
+  function taskItem(t, reorder, section) {
     const wrap = document.createElement("li");
     wrap.className = "row-wrap";
     wrap.dataset.id = t.id;
@@ -839,11 +875,16 @@
     }
     if (t.due) {
       const info = dueInfo(t);
-      const s = document.createElement("span");
-      s.className = "due" + (info.overdue ? " overdue" : info.today ? " today" : "");
-      s.innerHTML = CLOCK_SVG.replace(/14/g, "13");
-      s.append(info.overdue ? "Overdue · " + info.label : info.label);
-      meta.appendChild(s);
+      // Inside a day section the heading already names the day, so only the time is shown.
+      const dayShown = section && section !== "overdue";
+      if (!dayShown || t.dueTime) {
+        const s = document.createElement("span");
+        s.className = "due" + (info.overdue ? " overdue" : info.today ? " today" : "");
+        s.innerHTML = CLOCK_SVG.replace(/14/g, "13");
+        s.append(dayShown ? (info.overdue ? "Overdue · " : "") + timeLabel(t)
+          : info.overdue ? "Overdue · " + info.label : info.label);
+        meta.appendChild(s);
+      }
       if (t.repeat) {
         const r = document.createElement("span");
         r.innerHTML = REPEAT_SVG;
@@ -987,32 +1028,67 @@
       ? dueSort(a, b) || (b.important - a.important)
       : list.manual ? (a.order ?? 0) - (b.order ?? 0) || (b.id - a.id)
       : (b.important - a.important) || dueSort(a, b) || (b.id - a.id));
-    const reorder = !smart && !query && !starredOnly && open.length > 1;
+    const reorder = !smart && !query && !starredOnly;
     const done = visible.filter(t => t.done).sort((a, b) => b.id - a.id);
 
     openRow = null;
-    if (list.id === "@upcoming") {
-      // One section per day, like Reminders' Scheduled view.
-      const days = [];
-      for (const t of open) {
-        if (!days.length || days[days.length - 1].due !== t.due) days.push({ due: t.due, tasks: [] });
-        days[days.length - 1].tasks.push(t);
+    // Today comes first, with anything overdue folded into it. Tasks with no date follow as
+    // "Anytime", and later days wait in a folded "Next days" section at the bottom.
+    const sections = groupByDay(open);
+    const overdue = sections.find(g => g.key === "overdue");
+    const today = sections.find(g => g.rank === 0);
+    const anytime = sections.find(g => g.key === "none");
+    const later = sections.filter(g => g.rank >= 1 && g.rank !== Infinity);
+    const todayTasks = [...(overdue?.tasks || []), ...(today?.tasks || [])];
+    const sectionOf = t => t.due && dayDiff(t) < 0 ? "overdue" : "today";
+    const headed = !(anytime && sections.length === 1);
+    const foldLater = list.id !== "@upcoming";
+
+    const block = (label, sub, tasks, sectionFor, emptyText) => {
+      const ul = document.createElement("ul");
+      ul.className = "group";
+      if (tasks.length) ul.append(...tasks.map(t => taskItem(t, reorder && tasks.length > 1, sectionFor(t))));
+      else {
+        const li = document.createElement("li");
+        li.className = "day-empty";
+        li.textContent = emptyText;
+        ul.appendChild(li);
       }
-      $("upcoming").replaceChildren(...days.flatMap(d => {
-        const head = document.createElement("h2");
-        head.className = "day-head";
-        head.textContent = dueInfo({ due: d.due, dueTime: "", done: true }).label;
-        const ul = document.createElement("ul");
-        ul.className = "group";
-        ul.append(...d.tasks.map(t => taskItem(t, false)));
-        return [head, ul];
-      }));
-      $("open-list").replaceChildren();
-    } else {
-      $("upcoming").replaceChildren();
-      $("open-list").replaceChildren(...open.map(t => taskItem(t, reorder)));
+      if (!headed) return [ul];
+      const head = document.createElement("h2");
+      head.className = "day-head";
+      head.textContent = label;
+      if (sub) {
+        const s = document.createElement("span");
+        s.className = "sub";
+        s.textContent = sub;
+        head.appendChild(s);
+      }
+      return [head, ul];
+    };
+
+    const parts = [];
+    const todaySub = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    // Show the Today card whenever this list uses deadlines, even if today is clear.
+    if (todayTasks.length || (later.length && foldLater)) {
+      parts.push(...block("Today", todaySub, todayTasks, sectionOf, "Nothing due today"));
     }
-    $("upcoming").hidden = list.id !== "@upcoming";
+    if (anytime) parts.push(...block(anytime.label, "", anytime.tasks, () => "none"));
+    if (later.length) {
+      if (foldLater) {
+        const n = later.reduce((sum, g) => sum + g.tasks.length, 0);
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "section-toggle" + (showLater ? " open" : "");
+        toggle.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg><span></span>';
+        toggle.lastChild.textContent = `Next days (${n})`;
+        toggle.setAttribute("aria-expanded", String(showLater));
+        toggle.addEventListener("click", () => { showLater = !showLater; render(); });
+        parts.push(toggle);
+      }
+      if (showLater || !foldLater) for (const g of later) parts.push(...block(g.label, g.sub, g.tasks, () => g.key));
+    }
+    $("groups").replaceChildren(...parts);
     $("done-list").replaceChildren(...done.map(t => taskItem(t, false)));
     $("done-toggle").hidden = done.length === 0;
     $("done-toggle").classList.toggle("open", showDone);

@@ -1,6 +1,6 @@
 // Keeps the app working offline. The page itself is fetched fresh when online
 // (so updates show up), and served from the cache when there's no connection.
-const CACHE = "todo-v8";
+const CACHE = "todo-v9";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
