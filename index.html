@@ -6,13 +6,24 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="To do">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+  // Let a wallpaper (or dark mode) run under the iPhone status bar. That mode always draws the
+  // time in white, so the light theme without a wallpaper keeps the normal bar.
+  (function () {
+    var style = "default";
+    try {
+      var s = JSON.parse(localStorage.getItem("todo-settings") || "{}");
+      if ((s.wall && s.wall !== "none") || matchMedia("(prefers-color-scheme: dark)").matches) style = "black-translucent";
+    } catch (e) {}
+    document.write('<meta name="apple-mobile-web-app-status-bar-style" content="' + style + '">');
+  })();
+</script>
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<style>[hidden]{display:none!important} body{margin:0}</style>
+<style>[hidden]{display:none!important} body{margin:0} :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 <title>To do</title>
 </head>
 <body>
@@ -360,7 +371,9 @@
   /* Wallpaper: a fixed layer behind everything, softened by a scrim in the page's own color */
   #wall { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-size: cover; background-position: center; }
   #wall::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 42%, transparent); }
-  .has-wall header, .has-wall body::before { background: transparent; }
+  .has-wall header { background: transparent; }
+  /* A soft shade keeps the white status-bar text readable over light wallpapers. */
+  .has-wall body::before { background: linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0)); }
   .has-wall.scrolled header, .has-wall.scrolled body::before { background: var(--glass); }
   .has-wall .group, .has-wall .wday:not([aria-pressed="true"]), .has-wall .filter-chip {
     background: color-mix(in srgb, var(--card) 80%, transparent);
