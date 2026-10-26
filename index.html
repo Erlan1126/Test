@@ -6,18 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="To do">
-<script>
-  // Let a wallpaper (or dark mode) run under the iPhone status bar. That mode always draws the
-  // time in white, so the light theme without a wallpaper keeps the normal bar.
-  (function () {
-    var style = "default";
-    try {
-      var s = JSON.parse(localStorage.getItem("todo-settings") || "{}");
-      if ((s.wall && s.wall !== "none") || matchMedia("(prefers-color-scheme: dark)").matches) style = "black-translucent";
-    } catch (e) {}
-    document.write('<meta name="apple-mobile-web-app-status-bar-style" content="' + style + '">');
-  })();
-</script>
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -368,38 +357,9 @@
   .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
   #pin-btn[aria-pressed="true"] { color: var(--accent); }
 
-  /* Wallpaper: a fixed layer behind everything, softened by a scrim in the page's own color */
-  #wall { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-size: cover; background-position: center; }
-  #wall::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 42%, transparent); }
-  .has-wall header { background: transparent; }
-  /* A soft shade keeps the white status-bar text readable over light wallpapers. */
-  .has-wall body::before { background: linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0)); }
-  .has-wall.scrolled header, .has-wall.scrolled body::before { background: var(--glass); }
-  .has-wall .group, .has-wall .wday:not([aria-pressed="true"]), .has-wall .filter-chip {
-    background: color-mix(in srgb, var(--card) 80%, transparent);
-    backdrop-filter: saturate(160%) blur(24px); -webkit-backdrop-filter: saturate(160%) blur(24px);
-  }
-  .has-wall .task { background: transparent; }
-  .has-wall .row-wrap.swiping .task, .has-wall .row-wrap.dragging .task { background: var(--card); }
-  .has-wall .day-head, .has-wall .section-toggle, .has-wall .older-toggle, .has-wall .empty {
-    text-shadow: 0 1px 10px color-mix(in srgb, var(--bg) 80%, transparent);
-  }
-
   /* Settings */
   .set-title { margin: 0 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
   .set-note { margin: 8px 16px 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
-  .accent-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; padding: 14px 16px; }
-  .accent { width: 100%; max-width: 34px; aspect-ratio: 1; justify-self: center; border-radius: 999px; }
-  .accent[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px currentColor; }
-  .wall-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 10px; padding: 14px 16px; }
-  .wall-opt { display: grid; gap: 6px; justify-items: center; font-size: 0.75rem; color: var(--muted); min-width: 0; }
-  .wall-thumb {
-    width: 100%; aspect-ratio: 9 / 16; border-radius: 10px; background-color: var(--bg);
-    background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px var(--line);
-    display: grid; place-items: center; color: var(--muted);
-  }
-  .wall-opt[aria-pressed="true"] { color: var(--fg); font-weight: 600; }
-  .wall-opt[aria-pressed="true"] .wall-thumb { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
   .switch {
     appearance: none; -webkit-appearance: none; flex: none; width: 51px; height: 31px; margin: 0;
     border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background 0.2s;
@@ -417,9 +377,6 @@
     * { transition: none !important; }
   }
 </style>
-<style id="theme-style"></style>
-
-<div id="wall" aria-hidden="true"></div>
 
 <header>
   <div class="header-row">
@@ -595,20 +552,6 @@
   </div>
   <div class="sheet-body">
     <section>
-      <h3 class="set-title">Accent color</h3>
-      <div class="group"><div class="accent-row" id="accent-row" role="group" aria-label="Accent color"></div></div>
-    </section>
-    <section>
-      <h3 class="set-title">Wallpaper</h3>
-      <div class="group">
-        <div class="wall-grid" id="wall-grid" role="group" aria-label="Wallpaper"></div>
-        <div class="field"><button class="row-btn" id="photo-btn" type="button">Choose from Photos…</button></div>
-        <div class="field" id="photo-remove-row" hidden><button class="row-btn danger" id="photo-remove" type="button">Remove my photo</button></div>
-      </div>
-      <p class="set-note" id="photo-note">Your photo stays on this device.</p>
-      <input type="file" id="photo-input" accept="image/*" hidden>
-    </section>
-    <section>
       <h3 class="set-title">Sounds</h3>
       <div class="group">
         <div class="field"><label for="sounds-toggle">Sounds and celebrations</label><input type="checkbox" class="switch" id="sounds-toggle"></div>
@@ -775,49 +718,17 @@
 
   // ---------- Appearance and sounds (kept per device) ----------
   const SETTINGS_KEY = "todo-settings";
-  const PHOTO_KEY = "todo-wallpaper-photo";
-  const ACCENTS = [
-    { id: "blue", name: "Blue", light: "#007aff", dark: "#0a84ff" },
-    { id: "purple", name: "Purple", light: "#af52de", dark: "#bf5af2" },
-    { id: "pink", name: "Pink", light: "#ff2d55", dark: "#ff375f" },
-    { id: "red", name: "Red", light: "#ff3b30", dark: "#ff453a" },
-    { id: "orange", name: "Orange", light: "#ff9500", dark: "#ff9f0a" },
-    { id: "green", name: "Green", light: "#34c759", dark: "#30d158" },
-    { id: "teal", name: "Teal", light: "#30b0c7", dark: "#40c8e0" },
-    { id: "graphite", name: "Graphite", light: "#636366", dark: "#98989d" },
-  ];
-  const WALLS = [
-    { id: "none", name: "None", bg: "" },
-    { id: "sunrise", name: "Sunrise", bg: "radial-gradient(at 20% 15%, #ffd29d 0, transparent 55%), radial-gradient(at 85% 30%, #ff9a9e 0, transparent 50%), radial-gradient(at 50% 90%, #fbc2eb 0, transparent 60%), linear-gradient(160deg, #ffe7c7, #ffc3c9)" },
-    { id: "ocean", name: "Ocean", bg: "radial-gradient(at 15% 20%, #8fd3fe 0, transparent 55%), radial-gradient(at 80% 75%, #4facfe 0, transparent 55%), linear-gradient(160deg, #c2e9fb, #6a93f8)" },
-    { id: "forest", name: "Forest", bg: "radial-gradient(at 25% 25%, #c3f0ca 0, transparent 50%), radial-gradient(at 80% 80%, #3fa66b 0, transparent 55%), linear-gradient(160deg, #d4fc79, #5bb381)" },
-    { id: "lavender", name: "Lavender", bg: "radial-gradient(at 20% 20%, #fbc2eb 0, transparent 50%), radial-gradient(at 80% 70%, #a18cd1 0, transparent 55%), linear-gradient(160deg, #e9defa, #b9a7f2)" },
-    { id: "midnight", name: "Midnight", bg: "radial-gradient(at 20% 15%, #3a4a8f 0, transparent 50%), radial-gradient(at 85% 85%, #6b3fa0 0, transparent 50%), linear-gradient(160deg, #141e30, #243b55)" },
-    { id: "aurora", name: "Aurora", bg: "radial-gradient(at 15% 25%, #43e97b 0, transparent 45%), radial-gradient(at 75% 20%, #38f9d7 0, transparent 45%), radial-gradient(at 60% 85%, #7f5af0 0, transparent 55%), linear-gradient(160deg, #0f2027, #203a43)" },
-  ];
+  // Wallpapers and accent colors were removed; clear what an earlier version saved.
+  try { localStorage.removeItem("todo-wallpaper-photo"); } catch {}
 
   function loadSettings() {
-    const base = { accent: "blue", wall: "none", sounds: true };
+    const base = { sounds: true };
     try { return { ...base, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; } catch { return base; }
   }
   let settings = loadSettings();
-  let photo = null;
-  try { photo = localStorage.getItem(PHOTO_KEY); } catch {}
 
   function saveSettings() {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {}
-  }
-
-  function applyAppearance() {
-    const a = ACCENTS.find(x => x.id === settings.accent) || ACCENTS[0];
-    $("theme-style").textContent =
-      `:root { --accent: ${a.light}; --fab: ${a.light}; }
-       @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --accent: ${a.dark}; --fab: ${a.dark}; } }
-       :root[data-theme="dark"] { --accent: ${a.dark}; --fab: ${a.dark}; }`;
-    const bg = settings.wall === "photo" ? (photo ? `url("${photo}") center / cover` : "")
-      : WALLS.find(w => w.id === settings.wall)?.bg || "";
-    $("wall").style.background = bg;
-    document.documentElement.classList.toggle("has-wall", !!bg);
   }
 
   // Sounds are made on the fly; the audio is unlocked inside a tap, as iPhones require.
@@ -1925,31 +1836,6 @@
 
   // ---------- Settings ----------
   function renderSettings() {
-    $("accent-row").replaceChildren(...ACCENTS.map(a => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "accent";
-      b.style.background = a.light;
-      b.style.color = a.light;
-      b.setAttribute("aria-label", a.name);
-      b.setAttribute("aria-pressed", String(settings.accent === a.id));
-      b.addEventListener("click", () => { settings.accent = a.id; saveSettings(); applyAppearance(); renderSettings(); });
-      return b;
-    }));
-    const opts = [...WALLS, ...(photo ? [{ id: "photo", name: "My photo", bg: `url("${photo}") center / cover` }] : [])];
-    $("wall-grid").replaceChildren(...opts.map(w => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "wall-opt";
-      b.setAttribute("aria-pressed", String(settings.wall === w.id));
-      b.innerHTML = '<span class="wall-thumb"></span><span></span>';
-      if (w.bg) b.firstChild.style.background = w.bg;
-      else b.firstChild.textContent = "—";
-      b.lastChild.textContent = w.name;
-      b.addEventListener("click", () => { settings.wall = w.id; saveSettings(); applyAppearance(); renderSettings(); });
-      return b;
-    }));
-    $("photo-remove-row").hidden = !photo;
     $("sounds-toggle").checked = settings.sounds;
   }
 
@@ -1963,34 +1849,6 @@
   function closeSettings() {
     $("settings").hidden = true;
     $("fab").hidden = false;
-  }
-
-  // Shrink a chosen photo so it fits comfortably in the browser's storage.
-  function usePhoto(file) {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.naturalWidth * scale);
-      c.height = Math.round(img.naturalHeight * scale);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      photo = c.toDataURL("image/jpeg", 0.82);
-      let kept = true;
-      try { localStorage.setItem(PHOTO_KEY, photo); } catch { kept = false; }
-      $("photo-note").textContent = kept ? "Your photo stays on this device."
-        : "This photo is too big to keep after you close the app. Try a smaller one.";
-      settings.wall = "photo";
-      saveSettings();
-      applyAppearance();
-      renderSettings();
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      $("photo-note").textContent = "That photo couldn't be opened. Try a JPEG or PNG.";
-    };
-    img.src = url;
   }
 
   async function exportBackup() {
@@ -2035,16 +1893,6 @@
 
   $("menu-settings").addEventListener("click", openSettings);
   $("settings-done").addEventListener("click", closeSettings);
-  $("photo-btn").addEventListener("click", () => $("photo-input").click());
-  $("photo-input").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) usePhoto(f); });
-  $("photo-remove").addEventListener("click", () => {
-    photo = null;
-    try { localStorage.removeItem(PHOTO_KEY); } catch {}
-    if (settings.wall === "photo") settings.wall = "none";
-    saveSettings();
-    applyAppearance();
-    renderSettings();
-  });
   $("sounds-toggle").addEventListener("change", e => { settings.sounds = e.target.checked; saveSettings(); unlockAudio(); });
   $("export-btn").addEventListener("click", exportBackup);
   $("import-btn").addEventListener("click", () => $("import-input").click());
@@ -2163,7 +2011,6 @@
   // Refresh "Today" and "Overdue" labels as time passes.
   setInterval(() => { if ($("sheet").hidden && !openRow && !completing.size) render(); }, 60000);
 
-  applyAppearance();
   render();
   connectCloud();
 </script>
