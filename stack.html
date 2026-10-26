@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Stack Up</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    background: #1b1530;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #fff;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #share {
+    position: fixed;
+    left: 50%;
+    bottom: 12%;
+    transform: translateX(-50%);
+    display: none;
+    padding: 14px 28px;
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+    color: #1b1530;
+    font: 700 18px system-ui, sans-serif;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(12% + 70px);
+    transform: translateX(-50%);
+    display: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    font: 500 14px system-ui, sans-serif;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="share">Challenge a friend</button>
+<div id="toast"></div>
+<script>
+(() => {
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const shareBtn = document.getElementById("share");
+  const toast = document.getElementById("toast");
+
+  const BLOCK_H = 34;
+  const PERFECT = 6; // pixels of forgiveness for a "perfect" drop
+
+  let W = 0, H = 0;
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+
+  function loadBest() {
+    try { return Number(localStorage.getItem("stackUpBest")) || 0; } catch { return 0; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem("stackUpBest", String(v)); } catch {}
+  }
+
+  // Each game starts at a random hue so every run looks a little different.
+  let baseHue = Math.random() * 360;
+  const blockColor = i => `hsl(${(baseHue + i * 7) % 360}, 75%, 62%)`;
+  const blockShade = i => `hsl(${(baseHue + i * 7) % 360}, 65%, 45%)`;
+
+  let state = "menu"; // menu | playing | over
+  let stack, mover, debris, popups, score, best = loadBest(), combo, camY, camTarget, flash;
+
+  function reset() {
+    baseHue = Math.random() * 360;
+    const w = Math.min(220, W * 0.55);
+    stack = [{ x: (W - w) / 2, w, i: 0 }];
+    debris = []; popups = [];
+    score = 0; combo = 0; camY = 0; camTarget = 0; flash = 0;
+    newMover();
+  }
+
+  function newMover() {
+    const top = stack[stack.length - 1];
+    const fromLeft = stack.length % 2 === 0;
+    mover = {
+      x: fromLeft ? -top.w : W,
+      w: top.w,
+      i: stack.length,
+      dir: fromLeft ? 1 : -1,
+      speed: Math.min(520, 170 + stack.length * 9),
+    };
+  }
+
+  // Blocks are stacked upward from a base line near the bottom of the screen.
+  const baseY = () => H * 0.72;
+  const blockY = i => baseY() - i * BLOCK_H;
+
+  function drop() {
+    const top = stack[stack.length - 1];
+    let left = Math.max(mover.x, top.x);
+    let right = Math.min(mover.x + mover.w, top.x + top.w);
+    const overlap = right - left;
+
+    if (overlap <= 0) {
+      debris.push({ x: mover.x, y: blockY(mover.i), w: mover.w, i: mover.i, vy: 0, vx: mover.dir * 60, rot: 0 });
+      gameOver();
+      return;
+    }
+
+    if (Math.abs(mover.x - top.x) <= PERFECT) {
+      // Perfect: snap into place, and after a streak the block grows back a little.
+      combo++;
+      left = top.x;
+      let w = top.w;
+      if (combo >= 3) {
+        const grow = Math.min(12, Math.min(220, W * 0.55) - w);
+        w += grow;
+        left -= grow / 2;
+      }
+      stack.push({ x: left, w, i: mover.i });
+      score += 1;
+      flash = 1;
+      popups.push({ text: combo > 1 ? `PERFECT x${combo}` : "PERFECT", y: blockY(mover.i) - 20, life: 1 });
+      vibrate(20);
+    } else {
+      combo = 0;
+      // Cut off the overhang and let it fall.
+      if (mover.x < top.x) {
+        debris.push({ x: mover.x, y: blockY(mover.i), w: top.x - mover.x, i: mover.i, vy: 0, vx: -40, rot: 0 });
+      } else {
+        debris.push({ x: right, y: blockY(mover.i), w: mover.x + mover.w - right, i: mover.i, vy: 0, vx: 40, rot: 0 });
+      }
+      stack.push({ x: left, w: overlap, i: mover.i });
+      score += 1;
+      vibrate(8);
+    }
+
+    camTarget = Math.max(0, (stack.length - 6) * BLOCK_H);
+    newMover();
+  }
+
+  function gameOver() {
+    state = "over";
+    mover = null;
+    overTime = performance.now();
+    if (score > best) { best = score; saveBest(best); }
+    vibrate([40, 40, 80]);
+    setTimeout(() => { if (state === "over") shareBtn.style.display = "block"; }, 500);
+  }
+
+  function vibrate(p) {
+    try { if (navigator.vibrate) navigator.vibrate(p); } catch {}
+  }
+
+  // ---------- Input: one tap does everything ----------
+  let lastTap = 0, overTime = 0;
+  function tap() {
+    const now = performance.now();
+    if (now - lastTap < 120) return;
+    lastTap = now;
+    if (state === "menu") { reset(); state = "playing"; }
+    else if (state === "playing") drop();
+    else if (state === "over" && now - overTime > 600) { shareBtn.style.display = "none"; reset(); state = "playing"; }
+  }
+  canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); tap(); }
+  });
+
+  // ---------- Sharing ----------
+  shareBtn.addEventListener("click", async () => {
+    const url = location.href.split("#")[0];
+    const text = `I stacked ${score} blocks in Stack Up 🏗️ Can you beat me?`;
+    try {
+      if (navigator.share) { await navigator.share({ title: "Stack Up", text, url }); return; }
+    } catch { return; } // user closed the share sheet
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      showToast("Copied! Paste it to a friend");
+    } catch {
+      showToast(text);
+    }
+  });
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.style.display = "block";
+    clearTimeout(showToast.t);
+    showToast.t = setTimeout(() => { toast.style.display = "none"; }, 2200);
+  }
+
+  // ---------- Update ----------
+  function update(dt) {
+    if (state === "playing" && mover) {
+      mover.x += mover.dir * mover.speed * dt;
+      if (mover.x > W - mover.w * 0.2) mover.dir = -1;
+      if (mover.x < -mover.w * 0.8) mover.dir = 1;
+    }
+
+    camY += (camTarget - camY) * Math.min(1, dt * 6);
+    flash = Math.max(0, flash - dt * 3);
+    for (const d of debris) { d.vy += 1400 * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.rot += d.vx * 0.0004; }
+    debris = debris.filter(d => d.y - camY < H + 200);
+    for (const p of popups) { p.life -= dt; p.y -= 40 * dt; }
+    popups = popups.filter(p => p.life > 0);
+  }
+
+  // ---------- Draw ----------
+  function drawBlock(x, y, w, i, alpha = 1) {
+    const sy = y + camY;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = blockShade(i);
+    ctx.fillRect(x, sy + BLOCK_H - 8, w, 8);
+    ctx.fillStyle = blockColor(i);
+    ctx.fillRect(x, sy, w, BLOCK_H - 8);
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.fillRect(x, sy, w, 4);
+    ctx.globalAlpha = 1;
+  }
+
+  function text(str, x, y, size, weight = 800, color = "#fff", align = "center") {
+    ctx.font = `${weight} ${size}px system-ui, sans-serif`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(str, x, y);
+  }
+
+  function draw() {
+    // The background slowly changes color as the tower gets taller.
+    const h = (baseHue + (stack ? stack.length : 0) * 4) % 360;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `hsl(${(h + 200) % 360}, 45%, 22%)`);
+    g.addColorStop(1, `hsl(${(h + 240) % 360}, 40%, 10%)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    if (stack) {
+      // Ground under the first block
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(0, baseY() + BLOCK_H + camY, W, H);
+
+      for (const b of stack) drawBlock(b.x, blockY(b.i), b.w, b.i);
+      if (mover) drawBlock(mover.x, blockY(mover.i), mover.w, mover.i);
+      for (const d of debris) {
+        ctx.save();
+        ctx.translate(d.x + d.w / 2, d.y + camY + BLOCK_H / 2);
+        ctx.rotate(d.rot);
+        ctx.translate(-(d.x + d.w / 2), -(d.y + camY + BLOCK_H / 2));
+        drawBlock(d.x, d.y, d.w, d.i, 0.9);
+        ctx.restore();
+      }
+      if (flash > 0) {
+        const t = stack[stack.length - 1];
+        ctx.strokeStyle = `rgba(255,255,255,${flash})`;
+        ctx.lineWidth = 3;
+        const pad = (1 - flash) * 14;
+        ctx.strokeRect(t.x - pad, blockY(t.i) + camY - pad, t.w + pad * 2, BLOCK_H - 8 + pad * 2);
+      }
+      for (const p of popups) {
+        ctx.globalAlpha = Math.min(1, p.life * 2);
+        text(p.text, W / 2, p.y + camY, 20, 800, "#fff");
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    if (state === "playing") {
+      text(String(score), W / 2, H * 0.14, 64);
+    } else if (state === "menu") {
+      text("STACK UP", W / 2, H * 0.22, Math.min(64, W / 6));
+      text("Tap to drop the block", W / 2, H * 0.22 + 44, 18, 500, "rgba(255,255,255,0.85)");
+      text("Line it up perfectly to keep it big", W / 2, H * 0.22 + 70, 16, 500, "rgba(255,255,255,0.65)");
+      if (best) text(`Best: ${best}`, W / 2, H * 0.22 + 104, 16, 600, "rgba(255,255,255,0.85)");
+      const pulse = 0.6 + Math.sin(performance.now() / 300) * 0.4;
+      text("TAP TO START", W / 2, H * 0.88, 20, 700, `rgba(255,255,255,${pulse})`);
+    } else if (state === "over") {
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(0, 0, W, H);
+      text(String(score), W / 2, H * 0.2, 80);
+      text(score >= best && score > 0 ? "NEW BEST!" : `Best: ${best}`, W / 2, H * 0.2 + 40, 20, 700, "#ffe066");
+      text("Tap to try again", W / 2, H * 0.2 + 76, 18, 500, "rgba(255,255,255,0.8)");
+    }
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
