@@ -278,6 +278,12 @@
   .chip { padding: 6px 12px; border-radius: 999px; background: var(--soft); font-size: 0.9rem; }
   .chip:hover { background: var(--line); }
   .row-btn.danger { color: var(--danger); }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 2px 0 14px; }
+  .day-btn {
+    width: 100%; max-width: 42px; aspect-ratio: 1; justify-self: center; border-radius: 999px; background: var(--soft);
+    font-size: 0.9rem; font-weight: 600; transition: background 0.15s, color 0.15s;
+  }
+  .day-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
   #task-list, #task-repeat {
     border: none; background: none; color: var(--muted); font: inherit; font-size: 1rem;
     text-align: right; max-width: 60%; cursor: pointer;
@@ -413,17 +419,29 @@
         <label for="task-time">Time</label>
         <input id="task-time" type="time">
       </div>
-      <div class="field" id="repeat-row" hidden>
+      <div class="field" id="repeat-row">
         <span class="badge gray"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg></span>
         <label for="task-repeat">Repeat</label>
         <select id="task-repeat">
           <option value="">Never</option>
           <option value="daily">Every day</option>
           <option value="weekdays">Weekdays</option>
+          <option value="days">Certain days…</option>
           <option value="weekly">Every week</option>
           <option value="monthly">Every month</option>
           <option value="yearly">Every year</option>
         </select>
+      </div>
+      <div class="field chips-row" id="days-row" hidden>
+        <div class="days" role="group" aria-label="Repeat on">
+          <button class="day-btn" type="button" data-day="0" aria-pressed="false" aria-label="Sunday">S</button>
+          <button class="day-btn" type="button" data-day="1" aria-pressed="false" aria-label="Monday">M</button>
+          <button class="day-btn" type="button" data-day="2" aria-pressed="false" aria-label="Tuesday">T</button>
+          <button class="day-btn" type="button" data-day="3" aria-pressed="false" aria-label="Wednesday">W</button>
+          <button class="day-btn" type="button" data-day="4" aria-pressed="false" aria-label="Thursday">T</button>
+          <button class="day-btn" type="button" data-day="5" aria-pressed="false" aria-label="Friday">F</button>
+          <button class="day-btn" type="button" data-day="6" aria-pressed="false" aria-label="Saturday">S</button>
+        </div>
       </div>
       <div class="field" id="due-clear-row" hidden>
         <button class="row-btn danger" id="due-clear" type="button">Remove deadline</button>
@@ -483,6 +501,10 @@
   let sheetStart = "";     // the sheet's fields when it opened, to spot unsaved changes
   const completing = new Map(); // task id -> timer while the check animation plays
   const REPEAT_LABELS = { daily: "Daily", weekdays: "Weekdays", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly" };
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const repeatLabel = t => t.repeat === "days"
+    ? (t.repeatDays.length === 7 ? "Daily" : [...t.repeatDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAY_NAMES[d]).join(", "))
+    : REPEAT_LABELS[t.repeat] || "";
   const REPEAT_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>';
   const GRIP_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 9h14M5 15h14"/></svg>';
 
@@ -639,6 +661,15 @@
     return toKey(d);
   }
 
+  // The first deadline for a task set to repeat without a date: today, or for chosen days the
+  // next one of them.
+  function firstDue(t) {
+    const date = new Date();
+    if (t.repeat === "days") while (!t.repeatDays.includes(date.getDay())) date.setDate(date.getDate() + 1);
+    else if (t.repeat === "weekdays") while (date.getDay() === 0 || date.getDay() === 6) date.setDate(date.getDate() + 1);
+    return toKey(date);
+  }
+
   // The next deadline of a repeating task, skipping any dates already in the past.
   function nextDue(t) {
     const [y, m, d] = t.due.split("-").map(Number);
@@ -648,6 +679,7 @@
     do {
       if (t.repeat === "daily") date.setDate(date.getDate() + 1);
       else if (t.repeat === "weekdays") { do date.setDate(date.getDate() + 1); while (date.getDay() === 0 || date.getDay() === 6); }
+      else if (t.repeat === "days") { do date.setDate(date.getDate() + 1); while (!t.repeatDays.includes(date.getDay())); }
       else if (t.repeat === "weekly") date.setDate(date.getDate() + 7);
       else if (t.repeat === "monthly") { const yr = date.getFullYear(), mo = date.getMonth() + 1; date = new Date(yr, mo, Math.min(d, daysIn(yr, mo))); }
       else { const yr = date.getFullYear() + 1; date = new Date(yr, m - 1, Math.min(d, daysIn(yr, m - 1))); }
@@ -888,7 +920,7 @@
       if (t.repeat) {
         const r = document.createElement("span");
         r.innerHTML = REPEAT_SVG;
-        r.append(REPEAT_LABELS[t.repeat] || "");
+        r.append(repeatLabel(t));
         meta.appendChild(r);
       }
     }
@@ -1227,6 +1259,7 @@
     $("task-date").value = draft.due || "";
     $("task-time").value = draft.dueTime || "";
     $("task-repeat").value = draft.repeat || "";
+    setPickedDays(draft.repeat === "days" ? draft.repeatDays || [] : []);
     updateDueRows();
     $("task-list").replaceChildren(...state.lists.map(l => new Option(l.name, l.id, false, l.id === draft.list)));
     renderStar();
@@ -1241,7 +1274,7 @@
 
   const formState = () => JSON.stringify([
     $("task-title").value.trim(), $("task-note").value.trim(), $("task-date").value, $("task-time").value,
-    $("task-repeat").value, $("task-list").value, draft.important,
+    $("task-repeat").value, pickedDays().join(), $("task-list").value, draft.important,
     draft.subtasks.filter(s => s.text.trim()).map(s => [s.text.trim(), s.done]),
   ]);
 
@@ -1266,7 +1299,11 @@
     draft.list = $("task-list").value;
     draft.due = $("task-date").value;
     draft.dueTime = draft.due ? $("task-time").value : "";
-    draft.repeat = draft.due ? $("task-repeat").value : "";
+    draft.repeat = $("task-repeat").value;
+    draft.repeatDays = draft.repeat === "days" ? pickedDays() : [];
+    if (draft.repeat === "days" && !draft.repeatDays.length) draft.repeat = "";
+    // Choosing a repeat without a date starts it on the first matching day.
+    if (draft.repeat && !draft.due) draft.due = firstDue(draft);
     draft.subtasks = draft.subtasks.filter(s => s.text.trim());
     if (!draft.text) return;
     pendingRemote = null;   // this edit is newer; it wins
@@ -1289,8 +1326,15 @@
   function updateDueRows() {
     const has = !!$("task-date").value;
     $("time-row").hidden = !has;
-    $("repeat-row").hidden = !has;
+    $("days-row").hidden = $("task-repeat").value !== "days";
     $("due-clear-row").hidden = !has;
+  }
+
+  const pickedDays = () => [...document.querySelectorAll(".day-btn")]
+    .filter(b => b.getAttribute("aria-pressed") === "true").map(b => Number(b.dataset.day));
+
+  function setPickedDays(days) {
+    document.querySelectorAll(".day-btn").forEach(b => b.setAttribute("aria-pressed", String(days.includes(Number(b.dataset.day)))));
   }
 
   function renderStar() {
@@ -1373,8 +1417,21 @@
     $("task-date").value = dateStr(Number(chip.dataset.days));
     updateDueRows();
   }));
+  $("task-repeat").addEventListener("change", () => {
+    // Start the day picker on the task's own weekday (or today's) so it's never empty.
+    if ($("task-repeat").value === "days" && !pickedDays().length) {
+      const v = $("task-date").value;
+      const d = v ? new Date(...v.split("-").map((n, i) => Number(n) - (i === 1 ? 1 : 0))) : new Date();
+      setPickedDays([d.getDay()]);
+    }
+    updateDueRows();
+  });
+  document.querySelectorAll(".day-btn").forEach(b => b.addEventListener("click", () => {
+    b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+  }));
   $("due-clear").addEventListener("click", () => {
     $("task-date").value = $("task-time").value = $("task-repeat").value = "";
+    setPickedDays([]);
     updateDueRows();
   });
   $("star-btn").addEventListener("click", () => { draft.important = !draft.important; renderStar(); });
