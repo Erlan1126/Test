@@ -360,6 +360,9 @@
   /* Settings */
   .set-title { margin: 0 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
   .set-note { margin: 8px 16px 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+  .accent-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; padding: 14px 16px; }
+  .accent { width: 100%; max-width: 34px; aspect-ratio: 1; justify-self: center; border-radius: 999px; }
+  .accent[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px currentColor; }
   .switch {
     appearance: none; -webkit-appearance: none; flex: none; width: 51px; height: 31px; margin: 0;
     border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background 0.2s;
@@ -377,6 +380,7 @@
     * { transition: none !important; }
   }
 </style>
+<style id="theme-style"></style>
 
 <header>
   <div class="header-row">
@@ -552,6 +556,10 @@
   </div>
   <div class="sheet-body">
     <section>
+      <h3 class="set-title">Accent color</h3>
+      <div class="group"><div class="accent-row" id="accent-row" role="group" aria-label="Accent color"></div></div>
+    </section>
+    <section>
       <h3 class="set-title">Sounds</h3>
       <div class="group">
         <div class="field"><label for="sounds-toggle">Sounds and celebrations</label><input type="checkbox" class="switch" id="sounds-toggle"></div>
@@ -718,17 +726,35 @@
 
   // ---------- Appearance and sounds (kept per device) ----------
   const SETTINGS_KEY = "todo-settings";
-  // Wallpapers and accent colors were removed; clear what an earlier version saved.
+  // Wallpapers were removed; clear a photo an earlier version saved.
   try { localStorage.removeItem("todo-wallpaper-photo"); } catch {}
+  const ACCENTS = [
+    { id: "blue", name: "Blue", light: "#007aff", dark: "#0a84ff" },
+    { id: "purple", name: "Purple", light: "#af52de", dark: "#bf5af2" },
+    { id: "pink", name: "Pink", light: "#ff2d55", dark: "#ff375f" },
+    { id: "red", name: "Red", light: "#ff3b30", dark: "#ff453a" },
+    { id: "orange", name: "Orange", light: "#ff9500", dark: "#ff9f0a" },
+    { id: "green", name: "Green", light: "#34c759", dark: "#30d158" },
+    { id: "teal", name: "Teal", light: "#30b0c7", dark: "#40c8e0" },
+    { id: "graphite", name: "Graphite", light: "#636366", dark: "#98989d" },
+  ];
 
   function loadSettings() {
-    const base = { sounds: true };
+    const base = { accent: "blue", sounds: true };
     try { return { ...base, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; } catch { return base; }
   }
   let settings = loadSettings();
 
   function saveSettings() {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {}
+  }
+
+  function applyAccent() {
+    const a = ACCENTS.find(x => x.id === settings.accent) || ACCENTS[0];
+    $("theme-style").textContent =
+      `:root { --accent: ${a.light}; --fab: ${a.light}; }
+       @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --accent: ${a.dark}; --fab: ${a.dark}; } }
+       :root[data-theme="dark"] { --accent: ${a.dark}; --fab: ${a.dark}; }`;
   }
 
   // Sounds are made on the fly; the audio is unlocked inside a tap, as iPhones require.
@@ -1836,6 +1862,17 @@
 
   // ---------- Settings ----------
   function renderSettings() {
+    $("accent-row").replaceChildren(...ACCENTS.map(a => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "accent";
+      b.style.background = a.light;
+      b.style.color = a.light;
+      b.setAttribute("aria-label", a.name);
+      b.setAttribute("aria-pressed", String(settings.accent === a.id));
+      b.addEventListener("click", () => { settings.accent = a.id; saveSettings(); applyAccent(); renderSettings(); });
+      return b;
+    }));
     $("sounds-toggle").checked = settings.sounds;
   }
 
@@ -2011,6 +2048,7 @@
   // Refresh "Today" and "Overdue" labels as time passes.
   setInterval(() => { if ($("sheet").hidden && !openRow && !completing.size) render(); }, 60000);
 
+  applyAccent();
   render();
   connectCloud();
 </script>
