@@ -1544,7 +1544,7 @@
         day.toLocaleDateString(undefined, { month: "short", day: "numeric" }), tasks, () => "future", "Nothing planned yet",
         null, projectedOn(selDay).map(previewItem)));
     } else {
-    if (pinned.length) parts.push(...block("📌 Pinned", "", pinned, () => null, ""));
+    if (pinned.length) parts.push(...block("Pinned", "", pinned, () => null, ""));
     const todaySub = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
     // Show the Today card whenever this list uses deadlines, even if today is clear.
     if (list.id !== "@upcoming" && (todayTasks.length || doneToday || (later.length && foldLater) || list.id === "@today")) {
