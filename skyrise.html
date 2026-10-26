@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Stack Up</title>
+<title>Skyrise</title>
 <style>
   :root { color-scheme: dark; }
   html, body {
@@ -24,7 +24,7 @@
   #share {
     position: fixed;
     left: 50%;
-    bottom: calc(9% + env(safe-area-inset-bottom, 0px));
+    bottom: calc(7% + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
     padding: 15px 30px;
     border: 0;
@@ -51,15 +51,45 @@
     color: #fff;
   }
   #mute svg { width: 22px; height: 22px; }
+  #styles {
+    position: fixed;
+    left: 50%;
+    bottom: calc(17% + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
+    white-space: nowrap;
+  }
+  #styles button {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 22px;
+    line-height: 1;
+  }
+  #style-name {
+    min-width: 170px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  #style-name small { display: block; font-size: 11px; font-weight: 600; opacity: 0.8; }
   #toast {
     position: fixed;
     left: 50%;
-    bottom: calc(9% + 70px + env(safe-area-inset-bottom, 0px));
+    top: 45%;
     transform: translateX(-50%);
     max-width: 80vw;
-    padding: 8px 14px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.65);
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.7);
     font-size: 14px;
     text-align: center;
   }
@@ -69,6 +99,11 @@
 <body>
 <canvas id="game"></canvas>
 <button id="mute" aria-label="Mute sound"></button>
+<div id="styles">
+  <button id="style-prev" aria-label="Previous building style">‹</button>
+  <div id="style-name" aria-live="polite"></div>
+  <button id="style-next" aria-label="Next building style">›</button>
+</div>
 <button id="share" hidden>Challenge a friend</button>
 <div id="toast" hidden></div>
 <script>
@@ -77,17 +112,21 @@
   const ctx = canvas.getContext("2d");
   const shareBtn = document.getElementById("share");
   const muteBtn = document.getElementById("mute");
+  const stylesBar = document.getElementById("styles");
+  const styleName = document.getElementById("style-name");
   const toast = document.getElementById("toast");
 
   // Link included in shared scores. Empty means "use this page's address".
   const SHARE_URL = "";
 
   // Gameplay is measured in world units, not pixels, so it plays the same on every screen.
-  const BLOCK_SIZE = 10;      // starting width and depth of a block
-  const RANGE = 13;           // how far the sliding block travels from the tower's center
+  const BLOCK_SIZE = 10;      // starting width and depth of a floor
+  const RANGE = 13;           // how far the sliding floor travels from the tower's center
   const PERFECT = 0.35;       // forgiveness for a perfect drop
-  const GROW = 0.6;           // how much a block grows back during a perfect streak
-  const METERS_PER_BLOCK = 5;
+  const GROW = 0.6;           // how much a floor grows back during a perfect streak
+  const METERS_PER_FLOOR = 5;
+  const PEOPLE_PER_AREA = 0.2; // a full 10 x 10 floor holds 20 people
+  const WIND_START = 25;      // floor where gusts begin
   const ISO_X = Math.cos(Math.PI / 6), ISO_Y = 0.5;
 
   const MILESTONES = [
@@ -102,15 +141,20 @@
     { m: 828, name: "the Burj Khalifa" },
   ];
 
-  const PALETTES = [
-    ["#ff6b6b", "#ff922b", "#69db7c", "#38d9a9", "#4dabf7", "#9775fa"],
-    ["#f783ac", "#da77f2", "#9775fa", "#748ffc", "#4dabf7", "#3bc9db"],
-    ["#38d9a9", "#3bc9db", "#4dabf7", "#748ffc", "#b197fc", "#f783ac"],
-    ["#ffa94d", "#ff8787", "#f783ac", "#e599f7", "#91a7ff", "#66d9e8"],
+  // Building styles. Each unlocks once your best tower passes a landmark.
+  const STYLES = [
+    { name: "Glass Tower", unlock: -1, floors: ["#4dabf7", "#3bc9db", "#5c7cfa", "#22b8cf", "#74c0fc"],
+      window: "#e7f5ff", lit: ["#ffe8a3"], frame: 0.55 },
+    { name: "Brick Block", unlock: 0, floors: ["#c0504d", "#d9734e", "#b5463f", "#cc6649", "#a8483d"],
+      window: "#f1f3f5", lit: ["#ffd8a8"], frame: 0.5 },
+    { name: "Candy Tower", unlock: 2, floors: ["#f783ac", "#8ce99a", "#faa2c1", "#a5d8ff", "#d0bfff"],
+      window: "#ffffff", lit: ["#fff3bf"], frame: 0.7 },
+    { name: "Neon Nights", unlock: 6, floors: ["#2b2350", "#3a2d6b", "#241d45", "#33295c"],
+      window: "#495057", lit: ["#ff4fd8", "#3bf0ff", "#b6ff3b"], frame: 0.6, alwaysLit: true },
   ];
-  const GOLD = "#ffd23f"; // reserved for gold blocks, so no palette uses yellow
+  const GOLD = "#ffd23f"; // reserved for penthouse floors
 
-  // Sky colors (top, bottom) by tower height in blocks: day, sunset, dusk, night.
+  // Sky colors (top, bottom) by tower height in floors: day, sunset, dusk, night.
   const SKY = [
     { at: 0, top: "#4ea8de", bottom: "#c8ecfb" },
     { at: 25, top: "#5b7fd1", bottom: "#ffd2a1" },
@@ -125,6 +169,8 @@
   const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
   const mixRgb = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
   const shade = (c, f) => `rgb(${c.map(v => clamp(Math.round(v * f), 0, 255)).join(",")})`;
+  const hash = (a, b, c) => { const v = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453; return v - Math.floor(v); };
+  const fmt = n => n.toLocaleString("en-US");
 
   function load(key) {
     try { return localStorage.getItem(key); } catch { return null; }
@@ -136,7 +182,7 @@
   // ---------- Sound (synthesized, no files needed) ----------
   const sound = (() => {
     let ac = null;
-    let muted = load("stackUpMuted") === "1";
+    let muted = load("skyriseMuted") === "1";
     const SCALE = [0, 2, 4, 7, 9];
 
     function ensure() {
@@ -165,7 +211,8 @@
     return {
       ensure,
       get muted() { return muted; },
-      toggle() { muted = !muted; save("stackUpMuted", muted ? "1" : "0"); },
+      toggle() { muted = !muted; save("skyriseMuted", muted ? "1" : "0"); },
+      click() { tone(900, 0.05, "triangle", 0.08); },
       cut() { tone(200, 0.1, "triangle", 0.3, 0, 80); tone(120, 0.18, "square", 0.04, 0.02, 50); },
       perfect(combo) {
         const f = note(Math.min(combo - 1, 11) + 3);
@@ -174,6 +221,7 @@
       },
       golden() { [0, 4, 7, 12, 16].forEach((s, i) => tone(784 * Math.pow(2, s / 12), 0.2, "triangle", 0.12, i * 0.045)); },
       milestone() { [0, 4, 7, 12].forEach((s, i) => tone(523 * Math.pow(2, s / 12), 0.35, "triangle", 0.14, i * 0.09)); },
+      wind() { tone(140, 1.2, "sawtooth", 0.025, 0, 320); },
       fail() { tone(260, 0.6, "sawtooth", 0.06, 0, 60); tone(130, 0.5, "triangle", 0.2, 0.05, 50); },
     };
   })();
@@ -187,6 +235,34 @@
   muteBtn.addEventListener("click", () => { sound.toggle(); sound.ensure(); renderMute(); muteBtn.blur(); });
   renderMute();
 
+  // ---------- Building styles ----------
+  let bestMeters = Number(load("skyriseBestMeters")) || 0;
+  let styleIndex = clamp(Number(load("skyriseStyle")) || 0, 0, STYLES.length - 1);
+  const isUnlocked = st => st.unlock < 0 || bestMeters > MILESTONES[st.unlock].m;
+  if (!isUnlocked(STYLES[styleIndex])) styleIndex = 0;
+  let style = STYLES[styleIndex];
+
+  function renderStyle() {
+    const st = STYLES[styleIndex];
+    styleName.innerHTML = isUnlocked(st)
+      ? `${st.name}<small>Building style ${styleIndex + 1} of ${STYLES.length}</small>`
+      : `Locked<small>Build taller than ${MILESTONES[st.unlock].name}</small>`;
+    if (isUnlocked(st)) {
+      style = st;
+      save("skyriseStyle", styleIndex);
+      // Repaint the tower on screen in the chosen style.
+      if (stack && state !== "playing") stack.forEach(b => { if (!b.golden) b.color = colorAt(b.y); });
+    }
+  }
+  function changeStyle(d) {
+    sound.ensure();
+    sound.click();
+    styleIndex = (styleIndex + d + STYLES.length) % STYLES.length;
+    renderStyle();
+  }
+  document.getElementById("style-prev").addEventListener("click", e => { changeStyle(-1); e.currentTarget.blur(); });
+  document.getElementById("style-next").addEventListener("click", e => { changeStyle(1); e.currentTarget.blur(); });
+
   // ---------- Screen and camera ----------
   let W = 0, H = 0, s = 1, th = 1;
   const view = { zoom: 1, level: 0, originY: 0 };
@@ -198,7 +274,7 @@
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // A full block is about 17.3 units wide on screen; size it to the smaller screen dimension.
+    // A full floor is about 17.3 units wide on screen; size it to the smaller screen dimension.
     s = Math.min(W * 0.58, H * 0.38) / (BLOCK_SIZE * 2 * ISO_X);
     th = s * 1.3;
     if (!view.originY) view.originY = H * 0.62;
@@ -215,24 +291,26 @@
   // ---------- Game state ----------
   let state = "menu"; // menu | playing | over
   let stack, mover, debris, particles, popups, banner;
-  let score, combo, best = Number(load("stackUpBest")) || 0, palette;
-  let bounce, flash, overAt, overReady, newBest, lastMilestone, shareBlob;
+  let score, combo, best = Number(load("skyriseBest")) || 0, time;
+  let bounce, flash, overAt, overReady, newBest, lastMilestone, shareBlob, unlockedNow, windWarned;
 
   const level = () => stack.length - 1;
-  const meters = () => level() * METERS_PER_BLOCK;
+  const meters = () => level() * METERS_PER_FLOOR;
+  const windAt = n => clamp((n - WIND_START) / 30, 0, 1);
+  const people = b => Math.round((b.x1 - b.x0) * (b.z1 - b.z0) * PEOPLE_PER_AREA);
 
   function colorAt(n) {
-    const i = Math.floor(n / 6), f = (n % 6) / 6;
-    return mixRgb(hexRgb(palette[i % palette.length]), hexRgb(palette[(i + 1) % palette.length]), f);
+    const f = style.floors, i = Math.floor(n / 5), t = (n % 5) / 5;
+    return mixRgb(hexRgb(f[i % f.length]), hexRgb(f[(i + 1) % f.length]), t);
   }
 
   function reset() {
-    palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
     const h = BLOCK_SIZE / 2;
     stack = [{ x0: -h, x1: h, z0: -h, z1: h, y: 0, color: colorAt(0) }];
     debris = []; particles = []; popups = []; banner = null;
-    score = 0; combo = 0; bounce = 0; flash = 0;
+    score = 0; combo = 0; bounce = 0; flash = 0; time = 0;
     overReady = false; newBest = false; lastMilestone = -1; shareBlob = null;
+    unlockedNow = null; windWarned = false;
     newMover();
   }
 
@@ -245,10 +323,16 @@
       x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, y: n,
       axis, dir: 1, golden,
       speed: Math.min(20, 8 + n * 0.28) * (golden ? 1.35 : 1),
+      gustPhase: Math.random() * Math.PI * 2,
       color: golden ? hexRgb(GOLD) : colorAt(n),
     };
     mover[axis + "0"] -= RANGE;
     mover[axis + "1"] -= RANGE;
+    if (!windWarned && windAt(n) > 0) {
+      windWarned = true;
+      banner = { text: "Windy up here! Watch the gusts", life: 2.6 };
+      sound.wind();
+    }
   }
 
   function drop() {
@@ -266,7 +350,7 @@
     }
 
     const placed = { x0: m.x0, x1: m.x1, z0: m.z0, z1: m.z1, y: m.y, color: m.color, golden: m.golden };
-    let points = 1;
+    let points;
 
     if (Math.abs(m[a0] - top[a0]) <= PERFECT) {
       combo++;
@@ -277,11 +361,12 @@
         placed[a0] -= grow / 2;
         placed[a1] += grow / 2;
       }
-      points = m.golden ? 5 : 2;
+      // Perfect floors attract more people; penthouses even more.
+      points = Math.round(people(placed) * (m.golden ? 5 : 1.5));
       flash = 1;
       sparkle(placed, m.golden ? 40 : 18, m.golden ? GOLD : "#ffffff");
       popups.push({
-        text: m.golden ? `GOLDEN! +${points}` : combo > 1 ? `PERFECT x${combo} +${points}` : `PERFECT +${points}`,
+        text: m.golden ? `PENTHOUSE! +${points}` : combo > 1 ? `PERFECT x${combo} +${points}` : `PERFECT +${points}`,
         y: m.y + 1, life: 1.1, color: m.golden ? GOLD : "#ffffff",
       });
       if (m.golden) sound.golden(); else sound.perfect(combo);
@@ -290,6 +375,8 @@
       combo = 0;
       placed[a0] = lo;
       placed[a1] = hi;
+      points = people(placed);
+      popups.push({ text: `+${points}`, y: m.y + 1, life: 0.8, color: "#ffffff" });
       // The part hanging over the edge breaks off and falls.
       const piece = { ...m, vy: 0, life: 1 };
       if (m[a0] < top[a0]) { piece[a1] = top[a0]; piece.back = true; }
@@ -334,7 +421,18 @@
     state = "over";
     overAt = performance.now();
     combo = 0;
-    if (score > best) { best = score; newBest = true; save("stackUpBest", best); }
+    if (score > best) { best = score; newBest = true; save("skyriseBest", best); }
+    if (meters() > bestMeters) {
+      const before = STYLES.filter(isUnlocked).length;
+      bestMeters = meters();
+      save("skyriseBestMeters", bestMeters);
+      const unlocked = STYLES.filter(isUnlocked);
+      if (unlocked.length > before) {
+        // Switch to the newest style right away so the next tower shows it off.
+        unlockedNow = unlocked[unlocked.length - 1];
+        styleIndex = STYLES.indexOf(unlockedNow);
+      }
+    }
     sound.fail();
     vibrate([40, 40, 90]);
   }
@@ -344,35 +442,47 @@
   }
 
   // ---------- Input: one tap does everything ----------
+  function start() {
+    if (!isUnlocked(STYLES[styleIndex])) {
+      showToast(`Locked. Build taller than ${MILESTONES[STYLES[styleIndex].unlock].name} to unlock it.`);
+      return;
+    }
+    shareBtn.hidden = true;
+    stylesBar.hidden = true;
+    reset();
+    state = "playing";
+  }
   function tap() {
     sound.ensure();
-    if (state === "menu") { reset(); state = "playing"; }
+    if (state === "menu") start();
     else if (state === "playing") drop();
-    else if (state === "over" && overReady) { shareBtn.hidden = true; reset(); state = "playing"; }
+    else if (state === "over" && overReady) start();
   }
   canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
   window.addEventListener("keydown", e => {
     if (e.target instanceof HTMLButtonElement) return;
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); if (!e.repeat) tap(); }
+    if (state !== "playing" && e.code === "ArrowLeft") changeStyle(-1);
+    if (state !== "playing" && e.code === "ArrowRight") changeStyle(1);
   });
 
   // ---------- Sharing ----------
   function shareText() {
     const ms = lastMilestone >= 0 ? `, taller than ${MILESTONES[lastMilestone].name}` : "";
-    return `I scored ${score} in Stack Up and built a ${meters()} m tower${ms} 🏗️ Can you beat me?`;
+    return `My Skyrise tower is ${meters()} m tall${ms}, with ${fmt(score)} people living in it 🏙️ Can you build a bigger one?`;
   }
   shareBtn.addEventListener("click", async () => {
     const url = SHARE_URL || location.href.split("#")[0];
     const text = shareText();
     try {
       if (shareBlob && navigator.canShare) {
-        const file = new File([shareBlob], "stack-up.png", { type: "image/png" });
+        const file = new File([shareBlob], "skyrise.png", { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], text: `${text} ${url}` });
           return;
         }
       }
-      if (navigator.share) { await navigator.share({ title: "Stack Up", text, url }); return; }
+      if (navigator.share) { await navigator.share({ title: "Skyrise", text, url }); return; }
     } catch (e) {
       if (e.name === "AbortError") return; // user closed the share sheet
     }
@@ -392,10 +502,14 @@
 
   // ---------- Update ----------
   function update(dt) {
+    time += dt;
     if (state === "playing" && mover) {
       const a0 = mover.axis + "0", a1 = mover.axis + "1";
       const top = stack[stack.length - 1];
-      const step = mover.dir * mover.speed * dt;
+      // Gusts make the floor speed up and slow down unpredictably up high.
+      const w = windAt(mover.y);
+      const gust = 1 + w * 0.55 * Math.sin(time * 2.3 + mover.gustPhase) * Math.sin(time * 0.9 + mover.gustPhase * 2);
+      const step = mover.dir * mover.speed * gust * dt;
       mover[a0] += step;
       mover[a1] += step;
       const offset = mover[a0] - top[a0];
@@ -406,8 +520,8 @@
     // Camera: follow the top while playing, zoom out to show the whole tower at game over.
     let tZoom = 1, tLevel = Math.max(0, level() - Math.floor(H * 0.2 / th)), tOrigin = H * 0.62;
     if (state === "over") {
-      const towerPx = (level() + 2) * th + BLOCK_SIZE * 2 * ISO_Y * s;
-      tZoom = Math.min(1, H * 0.42 / towerPx);
+      const towerPx = (level() + 5) * th + BLOCK_SIZE * 2 * ISO_Y * s;
+      tZoom = Math.min(1, H * 0.4 / towerPx);
       tLevel = 0;
       tOrigin = H * 0.8;
     }
@@ -419,6 +533,8 @@
     if (state === "over" && !overReady && performance.now() - overAt > 900) {
       overReady = true;
       shareBtn.hidden = false;
+      stylesBar.hidden = false;
+      renderStyle();
       // Snapshot the next frame (which shows "Tap to play again") for the share picture.
       requestAnimationFrame(() => canvas.toBlob(b => { shareBlob = b; }));
     }
@@ -440,6 +556,7 @@
   // ---------- Draw ----------
   const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.4 + 0.3 }));
   const clouds = Array.from({ length: 5 }, (_, i) => ({ x: Math.random(), y: 0.1 + i * 0.13, w: 0.25 + Math.random() * 0.2, v: 0.006 + Math.random() * 0.01 }));
+  const streaks = Array.from({ length: 14 }, () => ({ x: Math.random(), y: Math.random(), len: 0.08 + Math.random() * 0.15, v: 0.6 + Math.random() * 0.8 }));
 
   function skyAt(n) {
     let i = 0;
@@ -448,6 +565,7 @@
     const t = clamp((n - a.at) / (b.at - a.at), 0, 1);
     return [mixRgb(hexRgb(a.top), hexRgb(b.top), t), mixRgb(hexRgb(a.bottom), hexRgb(b.bottom), t)];
   }
+  const nightAt = n => clamp((n - 50) / 40, 0, 1);
 
   function drawSky(dt) {
     const n = stack ? stack.length : 0;
@@ -458,14 +576,13 @@
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
-    const night = clamp((n - 50) / 40, 0, 1);
+    const night = nightAt(n);
     if (night > 0) {
       ctx.fillStyle = "#ffffff";
       for (const st of stars) {
         ctx.globalAlpha = night * (0.5 + 0.5 * Math.sin(performance.now() / 600 + st.x * 40));
         ctx.fillRect(st.x * W, st.y * H * 0.8, st.r, st.r);
       }
-      ctx.globalAlpha = 1;
     }
     const day = clamp(1 - n / 45, 0, 1);
     if (day > 0) {
@@ -481,8 +598,23 @@
         ctx.ellipse(cx + cw * 0.12, cy - cw * 0.06, cw * 0.18, cw * 0.11, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
     }
+    const wind = state === "playing" ? windAt(n) : 0;
+    if (wind > 0) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      for (const st of streaks) {
+        st.x += st.v * dt * (0.6 + wind);
+        if (st.x > 1.2) { st.x = -0.3; st.y = Math.random(); }
+        ctx.globalAlpha = wind * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(st.x * W, st.y * H);
+        ctx.lineTo((st.x + st.len) * W, st.y * H);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   function poly(points, fill) {
@@ -493,8 +625,29 @@
     ctx.fill();
   }
 
-  // An isometric box: the top face plus the two faces turned toward the viewer.
-  function drawBox(b, y0, y1, alpha = 1) {
+  // Windows along one visible face of a floor. The face runs along `axis` at the fixed
+  // coordinate `at`; windows stay put in the world so cutting a floor keeps them aligned.
+  function drawWindows(b, axis, at, y, top, night, faceShade, faceId) {
+    const lo = axis === "x" ? b.x0 : b.z0, hi = axis === "x" ? b.x1 : b.z1;
+    const ya = y + 0.3, yb = Math.min(y + 0.78, top - 0.08);
+    if (yb <= ya) return;
+    const first = Math.ceil((lo + 0.45) / 1.6 - 0.5);
+    for (let i = first; (i + 0.5) * 1.6 + 0.45 <= hi; i++) {
+      const c = (i + 0.5) * 1.6;
+      const p = (u, yy) => axis === "x" ? project(u, yy, at) : project(at, yy, u);
+      const r = hash(y, faceId, i);
+      let color;
+      if (style.alwaysLit || r < night * 0.8) {
+        color = style.lit[Math.floor(r * 97) % style.lit.length];
+      } else {
+        color = shade(mixRgb(hexRgb(style.window), [20, 30, 60], night * 0.85), faceShade);
+      }
+      poly([p(c - 0.45, yb), p(c + 0.45, yb), p(c + 0.45, ya), p(c - 0.45, ya)], color);
+    }
+  }
+
+  // An isometric floor: the top face plus the two faces turned toward the viewer, with windows.
+  function drawFloor(b, y0, y1, alpha = 1, withWindows = true) {
     const c = b.color;
     const A = project(b.x0, y1, b.z0), B = project(b.x1, y1, b.z0);
     const C = project(b.x1, y1, b.z1), D = project(b.x0, y1, b.z1);
@@ -503,8 +656,21 @@
     poly([D, C, Cb, Db], shade(c, 0.86));
     poly([B, C, Cb, Bb], shade(c, 0.7));
     poly([A, B, C, D], shade(c, 1.1));
+
+    if (withWindows) {
+      const night = nightAt(stack.length);
+      // Skip floors far below the camera; they are off screen.
+      const from = Math.max(Math.ceil(y0), Math.floor(view.level) - 14);
+      for (let fy = from; fy < y1; fy++) {
+        drawWindows(b, "x", b.z1, fy, y1, night, 0.95, 1);
+        drawWindows(b, "z", b.x1, fy, y1, night, 0.8, 2);
+        // A thin slab between floors
+        poly([project(b.x0, fy + 0.1, b.z1), project(b.x1, fy + 0.1, b.z1), project(b.x1, fy + 0.1, b.z0),
+              project(b.x1, fy, b.z0), project(b.x1, fy, b.z1), project(b.x0, fy, b.z1)], shade(c, style.frame));
+      }
+    }
     if (b.golden) {
-      // A shine that sweeps across gold blocks
+      // A shine that sweeps across penthouse floors
       const t = (performance.now() / 900) % 1.6 - 0.3;
       if (t > 0 && t < 1) {
         const x = lerp(b.x0, b.x1, t), x2 = Math.min(b.x1, x + 1.2);
@@ -512,6 +678,20 @@
       }
     }
     ctx.globalAlpha = 1;
+  }
+
+  // A rooftop and blinking antenna, so the finished tower looks like a real skyscraper.
+  function drawRoof(t) {
+    const cx = (t.x0 + t.x1) / 2, cz = (t.z0 + t.z1) / 2;
+    const hw = Math.min(1.6, (t.x1 - t.x0) / 3), hd = Math.min(1.6, (t.z1 - t.z0) / 3);
+    drawFloor({ x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd, y: t.y + 1, color: [173, 181, 189] }, t.y + 1, t.y + 1.6, 1, false);
+    const [bx, by] = project(cx, t.y + 1.6, cz), [tx, ty] = project(cx, t.y + 4, cz);
+    ctx.strokeStyle = "#dee2e6";
+    ctx.lineWidth = Math.max(1.5, 3 * view.zoom);
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
+    const on = Math.floor(performance.now() / 500) % 2 === 0;
+    ctx.fillStyle = on ? "#ff3b3b" : "#7a1f1f";
+    ctx.beginPath(); ctx.arc(tx, ty, Math.max(2.5, 5 * view.zoom), 0, Math.PI * 2); ctx.fill();
   }
 
   function text(str, x, y, size, weight = 800, color = "#fff", alpha = 1) {
@@ -522,7 +702,7 @@
     const fit = (W - 32) / ctx.measureText(str).width;
     if (fit < 1) ctx.font = font(Math.floor(size * fit));
     ctx.textAlign = "center";
-    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowColor = "rgba(0,0,0,0.4)";
     ctx.shadowBlur = 8;
     ctx.fillStyle = color;
     ctx.fillText(str, x, y);
@@ -538,14 +718,15 @@
     drawSky(dt);
     if (!stack) return;
 
-    for (const d of debris) if (d.back) drawBox(d, d.y, d.y + 1, d.life);
+    for (const d of debris) if (d.back) drawFloor(d, d.y, d.y + 1, d.life);
     stack.forEach((b, i) => {
       const isTop = i === stack.length - 1 && i > 0;
       const squish = isTop ? bounce * 0.3 : 0;
-      drawBox(b, i === 0 ? -60 : b.y, b.y + 1 - squish);
+      drawFloor(b, i === 0 ? -60 : b.y, b.y + 1 - squish);
     });
-    if (mover && state === "playing") drawBox(mover, mover.y, mover.y + 1);
-    for (const d of debris) if (!d.back) drawBox(d, d.y, d.y + 1, d.life);
+    if (state === "over" && stack.length > 1) drawRoof(stack[stack.length - 1]);
+    if (mover && state === "playing") drawFloor(mover, mover.y, mover.y + 1);
+    for (const d of debris) if (!d.back) drawFloor(d, d.y, d.y + 1, d.life);
 
     if (flash > 0) {
       const t = stack[stack.length - 1], g = (1 - flash) * 1.6;
@@ -573,30 +754,31 @@
 
     const top = Math.max(16, H * 0.04);
     if (state === "playing") {
-      text(String(score), W / 2, top + 56, 60, 900);
-      text(`${meters()} m`, W / 2, top + 86, 18, 700, "#fff", 0.9);
+      text(fmt(score), W / 2, top + 56, 60, 900);
+      text(`people · ${meters()} m`, W / 2, top + 86, 18, 700, "#fff", 0.9);
       const next = nextMilestone();
-      if (next) text(`Next: ${next.name}, ${next.m} m`, W / 2, top + 110, 14, 600, "#fff", 0.75);
+      if (next) text(`Next: ${next.name}, ${next.m} m`, W / 2, top + 110, 14, 600, "#fff", 0.8);
       if (banner) {
         const a = clamp(banner.life, 0, 1) * clamp((2.6 - banner.life) * 4, 0, 1);
         text(banner.text, W / 2, top + 150, 26, 900, GOLD, a);
       }
     } else if (state === "menu") {
       const y = top + H * 0.12;
-      text("STACK UP", W / 2, y, Math.min(68, W / 5.5), 900);
-      text("Build the tallest tower in the world", W / 2, y + 40, 18, 700, "#fff", 0.95);
-      text("Tap to drop each block.", W / 2, y + 72, 15, 500, "#fff", 0.9);
-      text("Line it up perfectly to keep it big.", W / 2, y + 94, 15, 500, "#fff", 0.9);
-      text("Gold blocks are fast, but worth 5 points.", W / 2, y + 116, 15, 500, "#fff", 0.9);
-      if (best) text(`Best: ${best}`, W / 2, y + 148, 16, 700, GOLD);
+      text("SKYRISE", W / 2, y, Math.min(72, W / 5), 900);
+      text("Build the tallest skyscraper in the world", W / 2, y + 40, 18, 700, "#fff", 0.95);
+      text("Tap to drop each floor.", W / 2, y + 72, 15, 500, "#fff", 0.92);
+      text("Wider floors fit more people. Perfect drops keep them wide.", W / 2, y + 94, 15, 500, "#fff", 0.92);
+      text("Gold penthouses are fast, but worth 5x the people.", W / 2, y + 116, 15, 500, "#fff", 0.92);
+      if (best) text(`Best: ${fmt(best)} people`, W / 2, y + 148, 16, 700, GOLD);
       const pulse = 0.55 + Math.sin(performance.now() / 300) * 0.45;
-      text("TAP TO START", W / 2, H * 0.9, 20, 800, "#fff", pulse);
+      text("TAP TO START", W / 2, H * 0.92, 20, 800, "#fff", pulse);
     } else if (state === "over") {
-      text(String(score), W / 2, top + 70, 76, 900);
-      const ms = lastMilestone >= 0 ? ` · taller than ${MILESTONES[lastMilestone].name}` : "";
-      text(`${meters()} m tower${ms}`, W / 2, top + 104, 17, 700);
-      text(newBest ? "NEW BEST!" : `Best: ${best}`, W / 2, top + 134, 18, 800, GOLD);
-      if (overReady) text("Tap to play again", W / 2, top + 162, 16, 600, "#fff", 0.85);
+      text(fmt(score), W / 2, top + 64, 64, 900);
+      text(`people live in your ${meters()} m tower`, W / 2, top + 94, 17, 700);
+      if (lastMilestone >= 0) text(`Taller than ${MILESTONES[lastMilestone].name}`, W / 2, top + 118, 15, 600, "#fff", 0.9);
+      text(newBest ? "NEW BEST!" : `Best: ${fmt(best)}`, W / 2, top + 146, 18, 800, GOLD);
+      if (unlockedNow) text(`New style unlocked: ${unlockedNow.name}!`, W / 2, top + 172, 16, 800, "#8ce99a");
+      if (overReady) text("Tap to play again", W / 2, top + (unlockedNow ? 198 : 174), 16, 600, "#fff", 0.85);
     }
   }
 
@@ -611,6 +793,7 @@
   }
 
   resize();
+  renderStyle();
   reset();
   requestAnimationFrame(frame);
 })();
