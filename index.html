@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>[hidden]{display:none!important} body{margin:0}</style>
-<title>Daily To-Do List</title>
+<title>To do</title>
 </head>
 <body>
 <style>
@@ -23,12 +23,13 @@
     --bg: #f2f2f7;
     --card: #ffffff;
     --fg: #111214;
-    --muted: #8e8e93;
+    --muted: #6c6c70;
     --line: #d8d8dc;
     --soft: #e9e9ee;
     --glass: rgb(248 248 250 / 0.78);
-    --fab: #111214;
+    --fab: #007aff;
     --on-fab: #ffffff;
+    --grip: #c7c7cc;
     --accent: #007aff;
     --star: #ffb800;
     --danger: #ff3b30;
@@ -38,15 +39,15 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #000000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #8e8e93; --line: #38383a; --soft: #2c2c2e;
-      --glass: rgb(28 28 30 / 0.72); --fab: #f2f2f7; --on-fab: #000000; --accent: #0a84ff; --star: #ffcc00; --danger: #ff453a;
+      --bg: #000000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #a1a1a8; --line: #38383a; --soft: #2c2c2e;
+      --glass: rgb(28 28 30 / 0.72); --fab: #0a84ff; --on-fab: #ffffff; --grip: #545458; --accent: #0a84ff; --star: #ffcc00; --danger: #ff453a;
       --toast-bg: #f2f2f7; --toast-fg: #000000; --toast-link: #007aff;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #000000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #8e8e93; --line: #38383a; --soft: #2c2c2e;
-    --glass: rgb(28 28 30 / 0.72); --fab: #f2f2f7; --on-fab: #000000; --accent: #0a84ff; --star: #ffcc00; --danger: #ff453a;
+    --bg: #000000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #a1a1a8; --line: #38383a; --soft: #2c2c2e;
+    --glass: rgb(28 28 30 / 0.72); --fab: #0a84ff; --on-fab: #ffffff; --grip: #545458; --accent: #0a84ff; --star: #ffcc00; --danger: #ff453a;
     --toast-bg: #f2f2f7; --toast-fg: #000000; --toast-link: #007aff;
     color-scheme: dark;
   }
@@ -104,8 +105,8 @@
   .menu-note.ok::before { content: "✓ "; color: var(--accent); }
   .menu hr { border: none; border-top: 1px solid var(--line); margin: 6px 4px; }
   .new-list { display: flex; gap: 6px; padding: 6px; }
-  #new-list-name { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: none; background: var(--soft); color: var(--fg); font: inherit; font-size: 1rem; }
-  #new-list-add { padding: 0 12px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; font-weight: 600; }
+  #new-list-name, #rename-name { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: none; background: var(--soft); color: var(--fg); font: inherit; font-size: 1rem; }
+  #new-list-add, #rename-save { padding: 0 12px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; font-weight: 600; }
 
   /* Grouped list */
   main {
@@ -148,6 +149,34 @@
   .due.overdue { color: var(--danger); }
   .done .due { color: var(--muted); }
   .flag { flex: none; color: var(--star); margin-top: 2px; }
+  .col { flex: 1; min-width: 0; display: grid; gap: 6px; }
+  .subs { list-style: none; margin: 0; padding: 0; display: grid; }
+  .sub-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font-size: 0.92rem; padding: 5px 0; }
+  .sub-item span { min-width: 0; overflow-wrap: anywhere; }
+  .mini-check {
+    flex: none; width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid var(--line);
+    display: grid; place-items: center; color: #fff; transition: background 0.15s, border-color 0.15s;
+  }
+  .mini-check svg { opacity: 0; }
+  .sub-item.done .mini-check { background: var(--accent); border-color: var(--accent); }
+  .sub-item.done .mini-check svg { opacity: 1; }
+  .sub-item.done span:last-child { color: var(--muted); }
+  .grip {
+    flex: none; width: 30px; height: 30px; margin: -3px -8px -3px 0; display: grid; place-items: center;
+    color: var(--grip); touch-action: none; cursor: grab;
+  }
+  .row-wrap.shift { transition: transform 0.2s ease; }
+  .row-wrap.dragging { z-index: 3; transition: none; box-shadow: 0 10px 30px rgb(0 0 0 / 0.2); }
+  .row-wrap.dragging .task { background: var(--card); }
+  .row-wrap.leaving { animation: leave 0.25s ease forwards; }
+  @keyframes leave { to { opacity: 0; transform: translateX(12px); } }
+  .filters { display: flex; margin: 0 0 12px; }
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+    background: var(--card); font-size: 0.9rem; font-weight: 500;
+  }
+  .filter-chip .star { color: var(--star); }
+  .filter-chip .x { color: var(--muted); margin-left: 2px; }
   .section-toggle {
     margin: 26px 16px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 500;
     text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px;
@@ -182,7 +211,7 @@
     width: 60px; height: 60px; border-radius: 999px;
     background: var(--fab); color: var(--on-fab);
     display: grid; place-items: center;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+    box-shadow: 0 8px 24px rgb(0 122 255 / 0.35);
     transition: transform 0.15s;
   }
   .fab:active { transform: scale(0.94); }
@@ -228,6 +257,7 @@
   .badge { flex: none; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: #fff; }
   .badge.red { background: var(--danger); }
   .badge.blue { background: var(--accent); }
+  .badge.gray { background: #8e8e93; }
   #task-date, #task-time {
     border: none; background: var(--soft); color: var(--fg); font: inherit; font-size: 1rem;
     padding: 6px 10px; border-radius: 8px; min-width: 120px; min-height: 34px; text-align: right;
@@ -236,7 +266,7 @@
   .chip { padding: 6px 12px; border-radius: 999px; background: var(--soft); font-size: 0.9rem; }
   .chip:hover { background: var(--line); }
   .row-btn.danger { color: var(--danger); }
-  #task-list {
+  #task-list, #task-repeat {
     border: none; background: none; color: var(--muted); font: inherit; font-size: 1rem;
     text-align: right; max-width: 60%; cursor: pointer;
   }
@@ -256,8 +286,20 @@
   .save { height: 44px; min-width: 88px; padding: 0 20px; border-radius: 12px; background: var(--accent); color: #fff; display: grid; place-items: center; }
   .save:disabled { opacity: 0.4; cursor: default; }
 
+  .confirm {
+    position: absolute; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.35);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  .confirm-card { width: 100%; max-width: 420px; display: grid; gap: 8px; animation: up 0.2s ease-out; }
+  .confirm-group { background: var(--card); border-radius: 14px; overflow: hidden; display: grid; }
+  .confirm-group p { margin: 0; padding: 14px 16px; text-align: center; color: var(--muted); font-size: 0.85rem; border-bottom: 0.5px solid var(--line); }
+  .confirm-btn { width: 100%; padding: 16px; font-size: 1.1rem; color: var(--accent); text-align: center; }
+  .confirm-btn.danger { color: var(--danger); }
+  .confirm-btn.bold { font-weight: 600; }
+
   @media (prefers-reduced-motion: reduce) {
-    .sheet, .toast { animation: none; }
+    .sheet, .toast, .confirm-card, .row-wrap.leaving { animation: none; }
     * { transition: none !important; }
   }
 </style>
@@ -279,6 +321,7 @@
     </div>
     <div class="menu" id="menu" hidden>
       <button class="menu-item" type="button" id="menu-starred">Show starred only</button>
+      <button class="menu-item" type="button" id="menu-autosort" hidden>Sort automatically</button>
       <button class="menu-item danger" type="button" id="menu-clear">Delete completed tasks</button>
       <hr>
       <div class="menu-note" id="sync-note">Saved on this device only</div>
@@ -290,6 +333,11 @@
 </header>
 
 <main>
+  <div class="filters" id="filters" hidden>
+    <button class="filter-chip" id="filter-chip" type="button" aria-label="Stop showing starred only">
+      <span class="star">★</span> Starred only <span class="x">✕</span>
+    </button>
+  </div>
   <ul class="group" id="open-list"></ul>
   <div id="upcoming" hidden></div>
   <button class="section-toggle" id="done-toggle" type="button" hidden>
@@ -354,6 +402,18 @@
         <label for="task-time">Time</label>
         <input id="task-time" type="time">
       </div>
+      <div class="field" id="repeat-row" hidden>
+        <span class="badge gray"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg></span>
+        <label for="task-repeat">Repeat</label>
+        <select id="task-repeat">
+          <option value="">Never</option>
+          <option value="daily">Every day</option>
+          <option value="weekdays">Weekdays</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+          <option value="yearly">Every year</option>
+        </select>
+      </div>
       <div class="field" id="due-clear-row" hidden>
         <button class="row-btn danger" id="due-clear" type="button">Remove deadline</button>
       </div>
@@ -377,6 +437,17 @@
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
     </button>
   </div>
+  <div class="confirm" id="discard" hidden role="alertdialog" aria-labelledby="discard-text">
+    <div class="confirm-card">
+      <div class="confirm-group">
+        <p id="discard-text">You have changes that aren't saved.</p>
+        <button class="confirm-btn danger" id="discard-yes" type="button">Discard changes</button>
+      </div>
+      <div class="confirm-group">
+        <button class="confirm-btn bold" id="discard-no" type="button">Keep editing</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -396,6 +467,12 @@
   let confirmDelete = false;
   let undoSnapshot = null; // lists and tasks as they were before the last undoable action
   let toastTimer = null;
+  let renaming = false;
+  let sheetStart = "";     // the sheet's fields when it opened, to spot unsaved changes
+  const completing = new Map(); // task id -> timer while the check animation plays
+  const REPEAT_LABELS = { daily: "Daily", weekdays: "Weekdays", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly" };
+  const REPEAT_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>';
+  const GRIP_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 9h14M5 15h14"/></svg>';
 
   // Smart views gather tasks from every list by deadline, like Reminders.
   const SMART = [{ id: "@today", name: "Today" }, { id: "@upcoming", name: "Upcoming" }];
@@ -510,7 +587,7 @@
 
   // ---------- Undo ----------
   function withUndo(message, change) {
-    const before = cloudBody();
+    const before = JSON.stringify({ body: cloudBody(), current: state.current });
     change();
     save();
     render();
@@ -529,8 +606,10 @@
   function undo() {
     if (!undoSnapshot) return;
     const before = JSON.parse(undoSnapshot);
-    state.lists = before.lists;
-    state.todos = before.todos;
+    const body = JSON.parse(before.body);
+    state.lists = body.lists;
+    state.todos = body.todos;
+    state.current = before.current;
     hideToast();
     save();
     render();
@@ -538,10 +617,30 @@
 
   // ---------- Deadlines ----------
   // Dates are stored as "YYYY-MM-DD" in local time, times as "HH:MM".
+  function toKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
   function dateStr(daysFromToday) {
     const d = new Date();
     d.setDate(d.getDate() + daysFromToday);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return toKey(d);
+  }
+
+  // The next deadline of a repeating task, skipping any dates already in the past.
+  function nextDue(t) {
+    const [y, m, d] = t.due.split("-").map(Number);
+    const daysIn = (yr, mo) => new Date(yr, mo + 1, 0).getDate();
+    let date = new Date(y, m - 1, d);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    do {
+      if (t.repeat === "daily") date.setDate(date.getDate() + 1);
+      else if (t.repeat === "weekdays") { do date.setDate(date.getDate() + 1); while (date.getDay() === 0 || date.getDay() === 6); }
+      else if (t.repeat === "weekly") date.setDate(date.getDate() + 7);
+      else if (t.repeat === "monthly") { const yr = date.getFullYear(), mo = date.getMonth() + 1; date = new Date(yr, mo, Math.min(d, daysIn(yr, mo))); }
+      else { const yr = date.getFullYear() + 1; date = new Date(yr, m - 1, Math.min(d, daysIn(yr, m - 1))); }
+    } while (date < today);
+    return toKey(date);
   }
 
   function dueDate(t) {
@@ -600,13 +699,100 @@
       t.subtasks.some(s => s.text.toLowerCase().includes(q));
   }
 
+  // Show the check for a moment before the task leaves, like Reminders. Tapping again cancels.
+  function complete(t, wrap, row) {
+    if (completing.has(t.id)) {
+      clearTimeout(completing.get(t.id));
+      completing.delete(t.id);
+      row.classList.remove("done");
+      return;
+    }
+    row.classList.add("done");
+    completing.set(t.id, setTimeout(() => {
+      wrap.classList.add("leaving");
+      setTimeout(() => {
+        completing.delete(t.id);
+        const live = state.todos.find(x => x.id === t.id);
+        if (!live) return render();
+        if (live.repeat && live.due) {
+          const next = nextDue(live);
+          withUndo("Next: " + dueInfo({ ...live, due: next, done: true }).label, () => {
+            live.due = next;
+            live.subtasks.forEach(s => { s.done = false; });
+          });
+        } else {
+          withUndo("Completed", () => { live.done = true; });
+        }
+      }, 250);
+    }, 700));
+  }
+
+  function toggleSubtask(t, s) {
+    const live = state.todos.find(x => x.id === t.id);
+    const sub = live && live.subtasks.find(x => x.id === s.id);
+    if (!sub) return;
+    sub.done = !sub.done;
+    save();
+    render();
+  }
+
+  // Reorder by dragging the handle; the list then keeps its own order.
+  function enableDrag(wrap, grip) {
+    grip.addEventListener("pointerdown", e => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeOpenRow();
+      const items = [...wrap.parentElement.children];
+      const from = items.indexOf(wrap);
+      const rects = items.map(el => el.getBoundingClientRect());
+      const h = rects[from].height;
+      const startY = e.clientY;
+      let to = from;
+      grip.setPointerCapture(e.pointerId);
+      wrap.classList.add("dragging");
+      items.forEach(el => { if (el !== wrap) el.classList.add("shift"); });
+
+      const move = ev => {
+        const dy = ev.clientY - startY;
+        wrap.style.transform = `translateY(${dy}px)`;
+        const mid = rects[from].top + h / 2 + dy;
+        to = from;
+        for (let i = 0; i < from; i++) if (mid < rects[i].top + rects[i].height / 2) { to = i; break; }
+        if (to === from) for (let i = items.length - 1; i > from; i--) if (mid > rects[i].top + rects[i].height / 2) { to = i; break; }
+        items.forEach((el, i) => {
+          if (el === wrap) return;
+          const shift = from < to && i > from && i <= to ? -h : from > to && i >= to && i < from ? h : 0;
+          el.style.transform = shift ? `translateY(${shift}px)` : "";
+        });
+      };
+      const up = () => {
+        grip.removeEventListener("pointermove", move);
+        grip.removeEventListener("pointerup", up);
+        grip.removeEventListener("pointercancel", up);
+        const ids = items.map(el => el.dataset.id);
+        ids.splice(to, 0, ids.splice(from, 1)[0]);
+        if (to !== from) {
+          currentList().manual = true;
+          ids.forEach((id, i) => { const x = state.todos.find(t => String(t.id) === id); if (x) x.order = i; });
+          save();
+        }
+        render();
+      };
+      grip.addEventListener("pointermove", move);
+      grip.addEventListener("pointerup", up);
+      grip.addEventListener("pointercancel", up);
+    });
+  }
+
   function deleteTask(t) {
     withUndo("Task deleted", () => { state.todos = state.todos.filter(x => x !== t); });
   }
 
-  function taskItem(t) {
+  function taskItem(t, reorder) {
     const wrap = document.createElement("li");
     wrap.className = "row-wrap";
+    wrap.dataset.id = t.id;
 
     const action = document.createElement("button");
     action.className = "swipe-delete";
@@ -616,7 +802,7 @@
     action.addEventListener("click", () => deleteTask(t));
 
     const row = document.createElement("div");
-    row.className = "task" + (t.done ? " done" : "");
+    row.className = "task" + (t.done || completing.has(t.id) ? " done" : "");
 
     const check = document.createElement("button");
     check.className = "check";
@@ -625,7 +811,7 @@
     check.setAttribute("aria-label", t.done ? "Mark as not done" : "Mark as done");
     check.addEventListener("click", () => {
       if (t.done) { t.done = false; save(); render(); }
-      else withUndo("Completed", () => { t.done = true; });
+      else complete(t, wrap, row);
     });
 
     const body = document.createElement("button");
@@ -651,8 +837,14 @@
       s.innerHTML = CLOCK_SVG.replace(/14/g, "13");
       s.append(info.overdue ? "Overdue · " + info.label : info.label);
       meta.appendChild(s);
+      if (t.repeat) {
+        const r = document.createElement("span");
+        r.innerHTML = REPEAT_SVG;
+        r.append(REPEAT_LABELS[t.repeat] || "");
+        meta.appendChild(r);
+      }
     }
-    if (t.subtasks.length) {
+    if (t.subtasks.length && t.done) {   // open tasks list their subtasks below instead
       const s = document.createElement("span");
       s.textContent = `☐ ${t.subtasks.filter(x => x.done).length}/${t.subtasks.length}`;
       meta.appendChild(s);
@@ -666,13 +858,43 @@
     if (meta.childNodes.length) body.appendChild(meta);
     body.addEventListener("click", () => openSheet(t));
 
-    row.append(check, body);
+    // Subtasks of open tasks show under the title and can be ticked right here.
+    const col = document.createElement("div");
+    col.className = "col";
+    col.appendChild(body);
+    if (!t.done && t.subtasks.length) {
+      const subs = document.createElement("ul");
+      subs.className = "subs";
+      for (const s of t.subtasks) {
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "sub-item" + (s.done ? " done" : "");
+        b.setAttribute("aria-label", (s.done ? "Mark not done: " : "Mark done: ") + s.text);
+        b.innerHTML = `<span class="mini-check">${CHECK_SVG.replace(/14/g, "11")}</span><span></span>`;
+        b.lastChild.textContent = s.text;
+        b.addEventListener("click", () => toggleSubtask(t, s));
+        li.appendChild(b);
+        subs.appendChild(li);
+      }
+      col.appendChild(subs);
+    }
+
+    row.append(check, col);
     if (t.important) {
       const flag = document.createElement("span");
       flag.className = "flag";
       flag.setAttribute("aria-label", "Starred");
       flag.innerHTML = STAR_SVG;
       row.appendChild(flag);
+    }
+    if (reorder) {
+      const grip = document.createElement("span");
+      grip.className = "grip";
+      grip.setAttribute("aria-hidden", "true");
+      grip.innerHTML = GRIP_SVG;
+      row.appendChild(grip);
+      enableDrag(wrap, grip);
     }
 
     wrap.append(action, row);
@@ -752,10 +974,13 @@
 
     const visible = state.todos.filter(matches);
     const smart = isSmart(list.id);
-    // In a list: starred first, then the soonest deadline, then newest. In smart views: by deadline.
+    // In a list: your own order once you've dragged, otherwise starred first, then the soonest
+    // deadline, then newest. In smart views: by deadline.
     const open = visible.filter(t => !t.done).sort((a, b) => smart
       ? dueSort(a, b) || (b.important - a.important)
+      : list.manual ? (a.order ?? 0) - (b.order ?? 0) || (b.id - a.id)
       : (b.important - a.important) || dueSort(a, b) || (b.id - a.id));
+    const reorder = !smart && !query && !starredOnly && open.length > 1;
     const done = visible.filter(t => t.done).sort((a, b) => b.id - a.id);
 
     openRow = null;
@@ -772,16 +997,16 @@
         head.textContent = dueInfo({ due: d.due, dueTime: "", done: true }).label;
         const ul = document.createElement("ul");
         ul.className = "group";
-        ul.append(...d.tasks.map(taskItem));
+        ul.append(...d.tasks.map(t => taskItem(t, false)));
         return [head, ul];
       }));
       $("open-list").replaceChildren();
     } else {
       $("upcoming").replaceChildren();
-      $("open-list").replaceChildren(...open.map(taskItem));
+      $("open-list").replaceChildren(...open.map(t => taskItem(t, reorder)));
     }
     $("upcoming").hidden = list.id !== "@upcoming";
-    $("done-list").replaceChildren(...done.map(taskItem));
+    $("done-list").replaceChildren(...done.map(t => taskItem(t, false)));
     $("done-toggle").hidden = done.length === 0;
     $("done-toggle").classList.toggle("open", showDone);
     $("done-label").textContent = `Completed (${done.length})`;
@@ -794,6 +1019,8 @@
       : list.id === "@upcoming" ? "No upcoming deadlines"
       : "Tap + to add";
     $("menu-starred").textContent = starredOnly ? "Show all tasks" : "Show starred only";
+    $("menu-autosort").hidden = smart || !list.manual;
+    $("filters").hidden = !starredOnly;
   }
 
   // ---------- Lists menu ----------
@@ -838,6 +1065,35 @@
     $("new-list-add").addEventListener("click", addList);
     $("new-list-name").addEventListener("keydown", e => { if (e.key === "Enter") addList(); });
 
+    if (!isSmart(state.current)) {
+      const list = currentList();
+      if (renaming) {
+        const f = document.createElement("div");
+        f.className = "new-list";
+        f.innerHTML = '<input id="rename-name" type="text" autocomplete="off" enterkeyhint="done" aria-label="List name"><button id="rename-save" type="button">Save</button>';
+        menu.appendChild(f);
+        $("rename-name").value = list.name;
+        const saveName = e => {
+          e?.stopPropagation();
+          const name = $("rename-name").value.trim();
+          if (!name) { $("rename-name").focus(); return; }
+          list.name = name;
+          save(); closeMenus(); render();
+        };
+        $("rename-save").addEventListener("click", saveName);
+        $("rename-name").addEventListener("keydown", e => { if (e.key === "Enter") saveName(e); });
+        $("rename-name").focus();
+        $("rename-name").select();
+      } else {
+        const ren = document.createElement("button");
+        ren.className = "menu-item";
+        ren.type = "button";
+        ren.textContent = `Rename “${list.name}”`;
+        ren.addEventListener("click", e => { e.stopPropagation(); renaming = true; confirmDelete = false; renderListsMenu(); });
+        menu.appendChild(ren);
+      }
+    }
+
     if (state.lists.length > 1 && !isSmart(state.current)) {
       const del = document.createElement("button");
       del.className = "menu-item danger";
@@ -866,6 +1122,7 @@
     $("menu-btn").setAttribute("aria-expanded", "false");
     $("list-picker").setAttribute("aria-expanded", "false");
     confirmDelete = false;
+    renaming = false;
   }
 
   // ---------- Sheet ----------
@@ -886,17 +1143,33 @@
     $("delete-btn").hidden = !editing;
     $("task-date").value = draft.due || "";
     $("task-time").value = draft.dueTime || "";
+    $("task-repeat").value = draft.repeat || "";
     updateDueRows();
     $("task-list").replaceChildren(...state.lists.map(l => new Option(l.name, l.id, false, l.id === draft.list)));
     renderStar();
     renderSubtasks();
     updateSave();
+    sheetStart = formState();
+    $("discard").hidden = true;
     $("sheet").hidden = false;
     $("fab").hidden = true;
     $("task-title").focus();
   }
 
+  const formState = () => JSON.stringify([
+    $("task-title").value.trim(), $("task-note").value.trim(), $("task-date").value, $("task-time").value,
+    $("task-repeat").value, $("task-list").value, draft.important,
+    draft.subtasks.filter(s => s.text.trim()).map(s => [s.text.trim(), s.done]),
+  ]);
+
+  // Cancel asks first when something was typed or changed.
+  function requestClose() {
+    if (formState() !== sheetStart) $("discard").hidden = false;
+    else closeSheet();
+  }
+
   function closeSheet() {
+    $("discard").hidden = true;
     $("sheet").hidden = true;
     $("fab").hidden = false;
     editing = draft = null;
@@ -910,9 +1183,15 @@
     draft.list = $("task-list").value;
     draft.due = $("task-date").value;
     draft.dueTime = draft.due ? $("task-time").value : "";
+    draft.repeat = draft.due ? $("task-repeat").value : "";
     draft.subtasks = draft.subtasks.filter(s => s.text.trim());
     if (!draft.text) return;
     pendingRemote = null;   // this edit is newer; it wins
+    // A task arriving in a list you've put in your own order goes to the top.
+    const target = state.lists.find(l => l.id === draft.list);
+    if (target?.manual && (!editing || editing.list !== draft.list)) {
+      draft.order = Math.min(0, ...state.todos.filter(t => t.list === draft.list).map(t => t.order ?? 0)) - 1;
+    }
     if (editing) Object.assign(editing, draft);
     else {
       // The first real task clears out the examples.
@@ -927,6 +1206,7 @@
   function updateDueRows() {
     const has = !!$("task-date").value;
     $("time-row").hidden = !has;
+    $("repeat-row").hidden = !has;
     $("due-clear-row").hidden = !has;
   }
 
@@ -991,7 +1271,10 @@
 
   // ---------- Events ----------
   $("fab").addEventListener("click", () => openSheet(null));
-  $("sheet-close").addEventListener("click", closeSheet);
+  $("sheet-close").addEventListener("click", requestClose);
+  $("discard-yes").addEventListener("click", closeSheet);
+  $("discard-no").addEventListener("click", () => { $("discard").hidden = true; });
+  $("discard").addEventListener("click", e => { if (e.target === $("discard")) $("discard").hidden = true; });
   $("save-btn").addEventListener("click", commit);
   $("task-title").addEventListener("input", updateSave);
   $("task-title").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); commit(); } });
@@ -1008,14 +1291,16 @@
     updateDueRows();
   }));
   $("due-clear").addEventListener("click", () => {
-    $("task-date").value = $("task-time").value = "";
+    $("task-date").value = $("task-time").value = $("task-repeat").value = "";
     updateDueRows();
   });
   $("star-btn").addEventListener("click", () => { draft.important = !draft.important; renderStar(); });
   $("delete-btn").addEventListener("click", () => { const t = editing; closeSheet(); deleteTask(t); });
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape") return;
-    if (!$("sheet").hidden) closeSheet(); else closeMenus();
+    if (!$("discard").hidden) $("discard").hidden = true;
+    else if (!$("sheet").hidden) requestClose();
+    else closeMenus();
   });
 
   $("search-btn").addEventListener("click", () => {
@@ -1048,6 +1333,8 @@
     if (openRow && !openRow.wrap.contains(e.target)) closeOpenRow();
   });
   $("menu-starred").addEventListener("click", () => { starredOnly = !starredOnly; closeMenus(); render(); });
+  $("filter-chip").addEventListener("click", () => { starredOnly = false; render(); });
+  $("menu-autosort").addEventListener("click", () => { currentList().manual = false; closeMenus(); save(); render(); });
   $("menu-clear").addEventListener("click", () => {
     const n = state.todos.filter(t => t.done && inView(t, state.current)).length;
     closeMenus();
@@ -1071,7 +1358,7 @@
   }
 
   // Refresh "Today" and "Overdue" labels as time passes.
-  setInterval(() => { if ($("sheet").hidden && !openRow) render(); }, 60000);
+  setInterval(() => { if ($("sheet").hidden && !openRow && !completing.size) render(); }, 60000);
 
   render();
   connectCloud();
