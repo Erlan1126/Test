@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Stack Up</title>
 <style>
+  :root { color-scheme: dark; }
   html, body {
     margin: 0;
     height: 100%;
@@ -13,58 +14,183 @@
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
-    background: #1b1530;
+    background: #0b1030;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     color: #fff;
   }
-  :root { color-scheme: dark; }
   canvas { display: block; width: 100%; height: 100%; }
+  button { font-family: inherit; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   #share {
     position: fixed;
     left: 50%;
-    bottom: calc(12% + env(safe-area-inset-bottom, 0px));
+    bottom: calc(9% + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
-    display: none;
-    padding: 14px 28px;
+    padding: 15px 30px;
     border: 0;
     border-radius: 999px;
     background: #fff;
-    color: #1b1530;
-    font: 700 18px system-ui, sans-serif;
+    color: #141a3a;
+    font-size: 18px;
+    font-weight: 800;
     white-space: nowrap;
-    cursor: pointer;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
+  #mute {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+  }
+  #mute svg { width: 22px; height: 22px; }
   #toast {
     position: fixed;
     left: 50%;
-    bottom: calc(12% + 70px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(9% + 70px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
-    display: none;
+    max-width: 80vw;
     padding: 8px 14px;
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.6);
-    font: 500 14px system-ui, sans-serif;
+    background: rgba(0, 0, 0, 0.65);
+    font-size: 14px;
+    text-align: center;
   }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<button id="share">Challenge a friend</button>
-<div id="toast"></div>
+<button id="mute" aria-label="Mute sound"></button>
+<button id="share" hidden>Challenge a friend</button>
+<div id="toast" hidden></div>
 <script>
 (() => {
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const shareBtn = document.getElementById("share");
+  const muteBtn = document.getElementById("mute");
   const toast = document.getElementById("toast");
 
-  const BLOCK_H = 34;
-  const PERFECT = 6; // pixels of forgiveness for a "perfect" drop
   // Link included in shared scores. Empty means "use this page's address".
   const SHARE_URL = "";
 
-  let W = 0, H = 0;
+  // Gameplay is measured in world units, not pixels, so it plays the same on every screen.
+  const BLOCK_SIZE = 10;      // starting width and depth of a block
+  const RANGE = 13;           // how far the sliding block travels from the tower's center
+  const PERFECT = 0.35;       // forgiveness for a perfect drop
+  const GROW = 0.6;           // how much a block grows back during a perfect streak
+  const METERS_PER_BLOCK = 5;
+  const ISO_X = Math.cos(Math.PI / 6), ISO_Y = 0.5;
+
+  const MILESTONES = [
+    { m: 15, name: "a house" },
+    { m: 51, name: "Niagara Falls" },
+    { m: 93, name: "the Statue of Liberty" },
+    { m: 139, name: "the Great Pyramid" },
+    { m: 184, name: "the Space Needle" },
+    { m: 227, name: "the Golden Gate Bridge" },
+    { m: 330, name: "the Eiffel Tower" },
+    { m: 443, name: "the Empire State Building" },
+    { m: 828, name: "the Burj Khalifa" },
+  ];
+
+  const PALETTES = [
+    ["#ff6b6b", "#ff922b", "#69db7c", "#38d9a9", "#4dabf7", "#9775fa"],
+    ["#f783ac", "#da77f2", "#9775fa", "#748ffc", "#4dabf7", "#3bc9db"],
+    ["#38d9a9", "#3bc9db", "#4dabf7", "#748ffc", "#b197fc", "#f783ac"],
+    ["#ffa94d", "#ff8787", "#f783ac", "#e599f7", "#91a7ff", "#66d9e8"],
+  ];
+  const GOLD = "#ffd23f"; // reserved for gold blocks, so no palette uses yellow
+
+  // Sky colors (top, bottom) by tower height in blocks: day, sunset, dusk, night.
+  const SKY = [
+    { at: 0, top: "#4ea8de", bottom: "#c8ecfb" },
+    { at: 25, top: "#5b7fd1", bottom: "#ffd2a1" },
+    { at: 45, top: "#5b3f8c", bottom: "#ff9a6b" },
+    { at: 70, top: "#1d1a4a", bottom: "#7a3e74" },
+    { at: 100, top: "#060a1c", bottom: "#1a1f4a" },
+  ];
+
+  // ---------- Small helpers ----------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mixRgb = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
+  const shade = (c, f) => `rgb(${c.map(v => clamp(Math.round(v * f), 0, 255)).join(",")})`;
+
+  function load(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch {}
+  }
+
+  // ---------- Sound (synthesized, no files needed) ----------
+  const sound = (() => {
+    let ac = null;
+    let muted = load("stackUpMuted") === "1";
+    const SCALE = [0, 2, 4, 7, 9];
+
+    function ensure() {
+      if (!ac) {
+        try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+      }
+      if (ac.state === "suspended") ac.resume();
+    }
+    function tone(freq, dur, type = "sine", vol = 0.2, delay = 0, slideTo = 0) {
+      if (muted || !ac) return;
+      const t = ac.currentTime + delay;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ac.destination);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+    // Notes climb a pentatonic scale, so a perfect streak plays a rising tune.
+    const note = i => 261.63 * Math.pow(2, (SCALE[i % 5] + 12 * Math.floor(i / 5)) / 12);
+
+    return {
+      ensure,
+      get muted() { return muted; },
+      toggle() { muted = !muted; save("stackUpMuted", muted ? "1" : "0"); },
+      cut() { tone(200, 0.1, "triangle", 0.3, 0, 80); tone(120, 0.18, "square", 0.04, 0.02, 50); },
+      perfect(combo) {
+        const f = note(Math.min(combo - 1, 11) + 3);
+        tone(f, 0.3, "triangle", 0.22);
+        tone(f * 2, 0.2, "sine", 0.06, 0.02);
+      },
+      golden() { [0, 4, 7, 12, 16].forEach((s, i) => tone(784 * Math.pow(2, s / 12), 0.2, "triangle", 0.12, i * 0.045)); },
+      milestone() { [0, 4, 7, 12].forEach((s, i) => tone(523 * Math.pow(2, s / 12), 0.35, "triangle", 0.14, i * 0.09)); },
+      fail() { tone(260, 0.6, "sawtooth", 0.06, 0, 60); tone(130, 0.5, "triangle", 0.2, 0.05, 50); },
+    };
+  })();
+
+  const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+  const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="m16 9 6 6"/><path d="m22 9-6 6"/></svg>';
+  function renderMute() {
+    muteBtn.innerHTML = sound.muted ? ICON_OFF : ICON_ON;
+    muteBtn.setAttribute("aria-label", sound.muted ? "Turn sound on" : "Mute sound");
+  }
+  muteBtn.addEventListener("click", () => { sound.toggle(); sound.ensure(); renderMute(); muteBtn.blur(); });
+  renderMute();
+
+  // ---------- Screen and camera ----------
+  let W = 0, H = 0, s = 1, th = 1;
+  const view = { zoom: 1, level: 0, originY: 0 };
+
   function resize() {
     const dpr = window.devicePixelRatio || 1;
     W = canvas.clientWidth;
@@ -72,100 +198,145 @@
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // A full block is about 17.3 units wide on screen; size it to the smaller screen dimension.
+    s = Math.min(W * 0.58, H * 0.38) / (BLOCK_SIZE * 2 * ISO_X);
+    th = s * 1.3;
+    if (!view.originY) view.originY = H * 0.62;
   }
   window.addEventListener("resize", resize);
 
-  function loadBest() {
-    try { return Number(localStorage.getItem("stackUpBest")) || 0; } catch { return 0; }
-  }
-  function saveBest(v) {
-    try { localStorage.setItem("stackUpBest", String(v)); } catch {}
+  function project(x, y, z) {
+    return [
+      W / 2 + (x - z) * ISO_X * s * view.zoom,
+      view.originY + ((x + z) * ISO_Y * s - (y - view.level) * th) * view.zoom,
+    ];
   }
 
-  // Each game starts at a random hue so every run looks a little different.
-  let baseHue = Math.random() * 360;
-  const blockColor = i => `hsl(${(baseHue + i * 7) % 360}, 75%, 62%)`;
-  const blockShade = i => `hsl(${(baseHue + i * 7) % 360}, 65%, 45%)`;
-
+  // ---------- Game state ----------
   let state = "menu"; // menu | playing | over
-  let stack, mover, debris, popups, score, best = loadBest(), combo, camY, camTarget, flash;
+  let stack, mover, debris, particles, popups, banner;
+  let score, combo, best = Number(load("stackUpBest")) || 0, palette;
+  let bounce, flash, overAt, overReady, newBest, lastMilestone, shareBlob;
+
+  const level = () => stack.length - 1;
+  const meters = () => level() * METERS_PER_BLOCK;
+
+  function colorAt(n) {
+    const i = Math.floor(n / 6), f = (n % 6) / 6;
+    return mixRgb(hexRgb(palette[i % palette.length]), hexRgb(palette[(i + 1) % palette.length]), f);
+  }
 
   function reset() {
-    baseHue = Math.random() * 360;
-    const w = Math.min(220, W * 0.55);
-    stack = [{ x: (W - w) / 2, w, i: 0 }];
-    debris = []; popups = [];
-    score = 0; combo = 0; camY = 0; camTarget = 0; flash = 0;
+    palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+    const h = BLOCK_SIZE / 2;
+    stack = [{ x0: -h, x1: h, z0: -h, z1: h, y: 0, color: colorAt(0) }];
+    debris = []; particles = []; popups = []; banner = null;
+    score = 0; combo = 0; bounce = 0; flash = 0;
+    overReady = false; newBest = false; lastMilestone = -1; shareBlob = null;
     newMover();
   }
 
   function newMover() {
     const top = stack[stack.length - 1];
-    const fromLeft = stack.length % 2 === 0;
+    const n = stack.length;
+    const axis = n % 2 ? "x" : "z";
+    const golden = n >= 6 && !top.golden && Math.random() < 0.14;
     mover = {
-      x: fromLeft ? -top.w : W,
-      w: top.w,
-      i: stack.length,
-      dir: fromLeft ? 1 : -1,
-      speed: Math.min(520, 170 + stack.length * 9),
+      x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, y: n,
+      axis, dir: 1, golden,
+      speed: Math.min(20, 8 + n * 0.28) * (golden ? 1.35 : 1),
+      color: golden ? hexRgb(GOLD) : colorAt(n),
     };
+    mover[axis + "0"] -= RANGE;
+    mover[axis + "1"] -= RANGE;
   }
-
-  // Blocks are stacked upward from a base line near the bottom of the screen.
-  const baseY = () => H * 0.72;
-  const blockY = i => baseY() - i * BLOCK_H;
 
   function drop() {
     const top = stack[stack.length - 1];
-    let left = Math.max(mover.x, top.x);
-    let right = Math.min(mover.x + mover.w, top.x + top.w);
-    const overlap = right - left;
+    const m = mover;
+    const a0 = m.axis + "0", a1 = m.axis + "1";
+    const lo = Math.max(m[a0], top[a0]);
+    const hi = Math.min(m[a1], top[a1]);
 
-    if (overlap <= 0) {
-      debris.push({ x: mover.x, y: blockY(mover.i), w: mover.w, i: mover.i, vy: 0, vx: mover.dir * 60, rot: 0 });
+    if (hi <= lo) {
+      debris.push({ ...m, vy: 0, life: 1, back: m[a0] < top[a0] });
+      mover = null;
       gameOver();
       return;
     }
 
-    if (Math.abs(mover.x - top.x) <= PERFECT) {
-      // Perfect: snap into place, and after a streak the block grows back a little.
+    const placed = { x0: m.x0, x1: m.x1, z0: m.z0, z1: m.z1, y: m.y, color: m.color, golden: m.golden };
+    let points = 1;
+
+    if (Math.abs(m[a0] - top[a0]) <= PERFECT) {
       combo++;
-      left = top.x;
-      let w = top.w;
+      placed[a0] = top[a0];
+      placed[a1] = top[a1];
       if (combo >= 3) {
-        const grow = Math.min(12, Math.min(220, W * 0.55) - w);
-        w += grow;
-        left -= grow / 2;
+        const grow = Math.min(GROW, BLOCK_SIZE - (top[a1] - top[a0]));
+        placed[a0] -= grow / 2;
+        placed[a1] += grow / 2;
       }
-      stack.push({ x: left, w, i: mover.i });
-      score += 1;
+      points = m.golden ? 5 : 2;
       flash = 1;
-      popups.push({ text: combo > 1 ? `PERFECT x${combo}` : "PERFECT", y: blockY(mover.i) - 20, life: 1 });
-      vibrate(20);
+      sparkle(placed, m.golden ? 40 : 18, m.golden ? GOLD : "#ffffff");
+      popups.push({
+        text: m.golden ? `GOLDEN! +${points}` : combo > 1 ? `PERFECT x${combo} +${points}` : `PERFECT +${points}`,
+        y: m.y + 1, life: 1.1, color: m.golden ? GOLD : "#ffffff",
+      });
+      if (m.golden) sound.golden(); else sound.perfect(combo);
+      vibrate(m.golden ? [20, 30, 20] : 20);
     } else {
       combo = 0;
-      // Cut off the overhang and let it fall.
-      if (mover.x < top.x) {
-        debris.push({ x: mover.x, y: blockY(mover.i), w: top.x - mover.x, i: mover.i, vy: 0, vx: -40, rot: 0 });
-      } else {
-        debris.push({ x: right, y: blockY(mover.i), w: mover.x + mover.w - right, i: mover.i, vy: 0, vx: 40, rot: 0 });
-      }
-      stack.push({ x: left, w: overlap, i: mover.i });
-      score += 1;
+      placed[a0] = lo;
+      placed[a1] = hi;
+      // The part hanging over the edge breaks off and falls.
+      const piece = { ...m, vy: 0, life: 1 };
+      if (m[a0] < top[a0]) { piece[a1] = top[a0]; piece.back = true; }
+      else { piece[a0] = top[a1]; piece.back = false; }
+      debris.push(piece);
+      sound.cut();
       vibrate(8);
     }
 
-    camTarget = Math.max(0, (stack.length - 6) * BLOCK_H);
+    stack.push(placed);
+    score += points;
+    bounce = 1;
+    checkMilestone();
     newMover();
+  }
+
+  function checkMilestone() {
+    let reached = -1;
+    MILESTONES.forEach((ms, i) => { if (meters() > ms.m) reached = i; });
+    if (reached > lastMilestone) {
+      lastMilestone = reached;
+      banner = { text: `Taller than ${MILESTONES[reached].name}!`, life: 2.6 };
+      setTimeout(() => sound.milestone(), 120);
+    }
+  }
+
+  function sparkle(b, n, color) {
+    for (let i = 0; i < n; i++) {
+      const edge = Math.random();
+      const onX = Math.random() < 0.5;
+      const x = onX ? lerp(b.x0, b.x1, edge) : (Math.random() < 0.5 ? b.x0 : b.x1);
+      const z = onX ? (Math.random() < 0.5 ? b.z0 : b.z1) : lerp(b.z0, b.z1, edge);
+      particles.push({
+        x, z, y: b.y + 1,
+        vx: (x - (b.x0 + b.x1) / 2) * 0.4, vz: (z - (b.z0 + b.z1) / 2) * 0.4,
+        vy: 1 + Math.random() * 2, life: 0.5 + Math.random() * 0.5, color,
+      });
+    }
   }
 
   function gameOver() {
     state = "over";
-    mover = null;
-    overTime = performance.now();
-    if (score > best) { best = score; saveBest(best); }
-    vibrate([40, 40, 80]);
-    setTimeout(() => { if (state === "over") shareBtn.style.display = "block"; }, 500);
+    overAt = performance.now();
+    combo = 0;
+    if (score > best) { best = score; newBest = true; save("stackUpBest", best); }
+    sound.fail();
+    vibrate([40, 40, 90]);
   }
 
   function vibrate(p) {
@@ -173,25 +344,34 @@
   }
 
   // ---------- Input: one tap does everything ----------
-  let lastTap = 0, overTime = 0;
   function tap() {
-    const now = performance.now();
-    if (now - lastTap < 120) return;
-    lastTap = now;
+    sound.ensure();
     if (state === "menu") { reset(); state = "playing"; }
     else if (state === "playing") drop();
-    else if (state === "over" && now - overTime > 600) { shareBtn.style.display = "none"; reset(); state = "playing"; }
+    else if (state === "over" && overReady) { shareBtn.hidden = true; reset(); state = "playing"; }
   }
   canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
   window.addEventListener("keydown", e => {
-    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); tap(); }
+    if (e.target instanceof HTMLButtonElement) return;
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); if (!e.repeat) tap(); }
   });
 
   // ---------- Sharing ----------
+  function shareText() {
+    const ms = lastMilestone >= 0 ? `, taller than ${MILESTONES[lastMilestone].name}` : "";
+    return `I scored ${score} in Stack Up and built a ${meters()} m tower${ms} 🏗️ Can you beat me?`;
+  }
   shareBtn.addEventListener("click", async () => {
     const url = SHARE_URL || location.href.split("#")[0];
-    const text = `I stacked ${score} blocks in Stack Up 🏗️ Can you beat me?`;
+    const text = shareText();
     try {
+      if (shareBlob && navigator.canShare) {
+        const file = new File([shareBlob], "stack-up.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text: `${text} ${url}` });
+          return;
+        }
+      }
       if (navigator.share) { await navigator.share({ title: "Stack Up", text, url }); return; }
     } catch (e) {
       if (e.name === "AbortError") return; // user closed the share sheet
@@ -200,114 +380,233 @@
       await navigator.clipboard.writeText(`${text} ${url}`);
       showToast("Copied! Paste it to a friend");
     } catch {
-      showToast(text);
+      showToast(`${text} ${url}`);
     }
   });
   function showToast(msg) {
     toast.textContent = msg;
-    toast.style.display = "block";
+    toast.hidden = false;
     clearTimeout(showToast.t);
-    showToast.t = setTimeout(() => { toast.style.display = "none"; }, 2200);
+    showToast.t = setTimeout(() => { toast.hidden = true; }, 2600);
   }
 
   // ---------- Update ----------
   function update(dt) {
     if (state === "playing" && mover) {
-      mover.x += mover.dir * mover.speed * dt;
-      if (mover.x > W - mover.w * 0.2) mover.dir = -1;
-      if (mover.x < -mover.w * 0.8) mover.dir = 1;
+      const a0 = mover.axis + "0", a1 = mover.axis + "1";
+      const top = stack[stack.length - 1];
+      const step = mover.dir * mover.speed * dt;
+      mover[a0] += step;
+      mover[a1] += step;
+      const offset = mover[a0] - top[a0];
+      if (offset > RANGE) mover.dir = -1;
+      if (offset < -RANGE) mover.dir = 1;
     }
 
-    camY += (camTarget - camY) * Math.min(1, dt * 6);
-    flash = Math.max(0, flash - dt * 3);
-    for (const d of debris) { d.vy += 1400 * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.rot += d.vx * 0.0004; }
-    debris = debris.filter(d => d.y - camY < H + 200);
-    for (const p of popups) { p.life -= dt; p.y -= 40 * dt; }
+    // Camera: follow the top while playing, zoom out to show the whole tower at game over.
+    let tZoom = 1, tLevel = Math.max(0, level() - Math.floor(H * 0.2 / th)), tOrigin = H * 0.62;
+    if (state === "over") {
+      const towerPx = (level() + 2) * th + BLOCK_SIZE * 2 * ISO_Y * s;
+      tZoom = Math.min(1, H * 0.42 / towerPx);
+      tLevel = 0;
+      tOrigin = H * 0.8;
+    }
+    const k = Math.min(1, dt * (state === "over" ? 3 : 6));
+    view.zoom = lerp(view.zoom, tZoom, k);
+    view.level = lerp(view.level, tLevel, k);
+    view.originY = lerp(view.originY, tOrigin, k);
+
+    if (state === "over" && !overReady && performance.now() - overAt > 900) {
+      overReady = true;
+      shareBtn.hidden = false;
+      // Snapshot the next frame (which shows "Tap to play again") for the share picture.
+      requestAnimationFrame(() => canvas.toBlob(b => { shareBlob = b; }));
+    }
+
+    bounce = Math.max(0, bounce - dt * 6);
+    flash = Math.max(0, flash - dt * 2.5);
+    for (const d of debris) { d.vy += 30 * dt; d.y -= d.vy * dt; d.life -= dt * 0.8; }
+    debris = debris.filter(d => d.life > 0);
+    for (const p of particles) {
+      p.x += p.vx * dt; p.z += p.vz * dt; p.y += p.vy * dt;
+      p.vy -= 3 * dt; p.life -= dt;
+    }
+    particles = particles.filter(p => p.life > 0);
+    for (const p of popups) { p.life -= dt; p.y += dt * 1.2; }
     popups = popups.filter(p => p.life > 0);
+    if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
   }
 
   // ---------- Draw ----------
-  function drawBlock(x, y, w, i, alpha = 1) {
-    const sy = y + camY;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = blockShade(i);
-    ctx.fillRect(x, sy + BLOCK_H - 8, w, 8);
-    ctx.fillStyle = blockColor(i);
-    ctx.fillRect(x, sy, w, BLOCK_H - 8);
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.fillRect(x, sy, w, 4);
-    ctx.globalAlpha = 1;
+  const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.4 + 0.3 }));
+  const clouds = Array.from({ length: 5 }, (_, i) => ({ x: Math.random(), y: 0.1 + i * 0.13, w: 0.25 + Math.random() * 0.2, v: 0.006 + Math.random() * 0.01 }));
+
+  function skyAt(n) {
+    let i = 0;
+    while (i < SKY.length - 2 && n > SKY[i + 1].at) i++;
+    const a = SKY[i], b = SKY[i + 1];
+    const t = clamp((n - a.at) / (b.at - a.at), 0, 1);
+    return [mixRgb(hexRgb(a.top), hexRgb(b.top), t), mixRgb(hexRgb(a.bottom), hexRgb(b.bottom), t)];
   }
 
-  function text(str, x, y, size, weight = 800, color = "#fff", align = "center") {
-    ctx.font = `${weight} ${size}px system-ui, sans-serif`;
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
-    ctx.fillText(str, x, y);
-  }
-
-  function draw() {
-    // The background slowly changes color as the tower gets taller.
-    const h = (baseHue + (stack ? stack.length : 0) * 4) % 360;
+  function drawSky(dt) {
+    const n = stack ? stack.length : 0;
+    const [top, bottom] = skyAt(n);
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, `hsl(${(h + 200) % 360}, 45%, 22%)`);
-    g.addColorStop(1, `hsl(${(h + 240) % 360}, 40%, 10%)`);
+    g.addColorStop(0, shade(top, 1));
+    g.addColorStop(1, shade(bottom, 1));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
-    if (stack) {
-      // Ground under the first block
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      ctx.fillRect(0, baseY() + BLOCK_H + camY, W, H);
-
-      for (const b of stack) drawBlock(b.x, blockY(b.i), b.w, b.i);
-      if (mover) drawBlock(mover.x, blockY(mover.i), mover.w, mover.i);
-      for (const d of debris) {
-        ctx.save();
-        ctx.translate(d.x + d.w / 2, d.y + camY + BLOCK_H / 2);
-        ctx.rotate(d.rot);
-        ctx.translate(-(d.x + d.w / 2), -(d.y + camY + BLOCK_H / 2));
-        drawBlock(d.x, d.y, d.w, d.i, 0.9);
-        ctx.restore();
+    const night = clamp((n - 50) / 40, 0, 1);
+    if (night > 0) {
+      ctx.fillStyle = "#ffffff";
+      for (const st of stars) {
+        ctx.globalAlpha = night * (0.5 + 0.5 * Math.sin(performance.now() / 600 + st.x * 40));
+        ctx.fillRect(st.x * W, st.y * H * 0.8, st.r, st.r);
       }
-      if (flash > 0) {
-        const t = stack[stack.length - 1];
-        ctx.strokeStyle = `rgba(255,255,255,${flash})`;
-        ctx.lineWidth = 3;
-        const pad = (1 - flash) * 14;
-        ctx.strokeRect(t.x - pad, blockY(t.i) + camY - pad, t.w + pad * 2, BLOCK_H - 8 + pad * 2);
-      }
-      for (const p of popups) {
-        ctx.globalAlpha = Math.min(1, p.life * 2);
-        text(p.text, W / 2, p.y + camY, 20, 800, "#fff");
-        ctx.globalAlpha = 1;
-      }
+      ctx.globalAlpha = 1;
     }
-
-    if (state === "playing") {
-      text(String(score), W / 2, H * 0.14, 64);
-    } else if (state === "menu") {
-      text("STACK UP", W / 2, H * 0.22, Math.min(64, W / 6));
-      text("Tap to drop the block", W / 2, H * 0.22 + 44, 18, 500, "rgba(255,255,255,0.85)");
-      text("Line it up perfectly to keep it big", W / 2, H * 0.22 + 70, 16, 500, "rgba(255,255,255,0.65)");
-      if (best) text(`Best: ${best}`, W / 2, H * 0.22 + 104, 16, 600, "rgba(255,255,255,0.85)");
-      const pulse = 0.6 + Math.sin(performance.now() / 300) * 0.4;
-      text("TAP TO START", W / 2, H * 0.88, 20, 700, `rgba(255,255,255,${pulse})`);
-    } else if (state === "over") {
-      ctx.fillStyle = "rgba(0,0,0,0.35)";
-      ctx.fillRect(0, 0, W, H);
-      text(String(score), W / 2, H * 0.2, 80);
-      text(score >= best && score > 0 ? "NEW BEST!" : `Best: ${best}`, W / 2, H * 0.2 + 40, 20, 700, "#ffe066");
-      text("Tap to try again", W / 2, H * 0.2 + 76, 18, 500, "rgba(255,255,255,0.8)");
+    const day = clamp(1 - n / 45, 0, 1);
+    if (day > 0) {
+      ctx.fillStyle = "#ffffff";
+      for (const c of clouds) {
+        c.x += c.v * dt;
+        if (c.x > 1.3) c.x = -0.4;
+        ctx.globalAlpha = day * 0.55;
+        const cx = c.x * W, cy = c.y * H, cw = c.w * Math.min(W, 520);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, cw * 0.5, cw * 0.12, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx - cw * 0.15, cy - cw * 0.08, cw * 0.22, cw * 0.13, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx + cw * 0.12, cy - cw * 0.06, cw * 0.18, cw * 0.11, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   }
 
+  function poly(points, fill) {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // An isometric box: the top face plus the two faces turned toward the viewer.
+  function drawBox(b, y0, y1, alpha = 1) {
+    const c = b.color;
+    const A = project(b.x0, y1, b.z0), B = project(b.x1, y1, b.z0);
+    const C = project(b.x1, y1, b.z1), D = project(b.x0, y1, b.z1);
+    const Bb = project(b.x1, y0, b.z0), Cb = project(b.x1, y0, b.z1), Db = project(b.x0, y0, b.z1);
+    ctx.globalAlpha = alpha;
+    poly([D, C, Cb, Db], shade(c, 0.86));
+    poly([B, C, Cb, Bb], shade(c, 0.7));
+    poly([A, B, C, D], shade(c, 1.1));
+    if (b.golden) {
+      // A shine that sweeps across gold blocks
+      const t = (performance.now() / 900) % 1.6 - 0.3;
+      if (t > 0 && t < 1) {
+        const x = lerp(b.x0, b.x1, t), x2 = Math.min(b.x1, x + 1.2);
+        poly([project(x, y1, b.z0), project(x2, y1, b.z0), project(x2, y1, b.z1), project(x, y1, b.z1)], "rgba(255,255,255,0.45)");
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function text(str, x, y, size, weight = 800, color = "#fff", alpha = 1) {
+    const font = px => `${weight} ${px}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+    ctx.globalAlpha = alpha;
+    ctx.font = font(size);
+    // Shrink long lines so they always fit on narrow phones.
+    const fit = (W - 32) / ctx.measureText(str).width;
+    if (fit < 1) ctx.font = font(Math.floor(size * fit));
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = color;
+    ctx.fillText(str, x, y);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+
+  function nextMilestone() {
+    return MILESTONES.find(ms => ms.m >= meters());
+  }
+
+  function draw(dt) {
+    drawSky(dt);
+    if (!stack) return;
+
+    for (const d of debris) if (d.back) drawBox(d, d.y, d.y + 1, d.life);
+    stack.forEach((b, i) => {
+      const isTop = i === stack.length - 1 && i > 0;
+      const squish = isTop ? bounce * 0.3 : 0;
+      drawBox(b, i === 0 ? -60 : b.y, b.y + 1 - squish);
+    });
+    if (mover && state === "playing") drawBox(mover, mover.y, mover.y + 1);
+    for (const d of debris) if (!d.back) drawBox(d, d.y, d.y + 1, d.life);
+
+    if (flash > 0) {
+      const t = stack[stack.length - 1], g = (1 - flash) * 1.6;
+      const pts = [[t.x0 - g, t.z0 - g], [t.x1 + g, t.z0 - g], [t.x1 + g, t.z1 + g], [t.x0 - g, t.z1 + g]]
+        .map(([x, z]) => project(x, t.y + 1, z));
+      ctx.strokeStyle = `rgba(255,255,255,${flash})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.stroke();
+    }
+    for (const p of particles) {
+      const [x, y] = project(p.x, p.y, p.z);
+      ctx.globalAlpha = clamp(p.life * 2, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x - 2, y - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+    for (const p of popups) {
+      const t = stack[stack.length - 1];
+      const [, y] = project((t.x0 + t.x1) / 2, p.y, (t.z0 + t.z1) / 2);
+      text(p.text, W / 2, y - 30, 20, 900, p.color, clamp(p.life * 2, 0, 1));
+    }
+
+    const top = Math.max(16, H * 0.04);
+    if (state === "playing") {
+      text(String(score), W / 2, top + 56, 60, 900);
+      text(`${meters()} m`, W / 2, top + 86, 18, 700, "#fff", 0.9);
+      const next = nextMilestone();
+      if (next) text(`Next: ${next.name}, ${next.m} m`, W / 2, top + 110, 14, 600, "#fff", 0.75);
+      if (banner) {
+        const a = clamp(banner.life, 0, 1) * clamp((2.6 - banner.life) * 4, 0, 1);
+        text(banner.text, W / 2, top + 150, 26, 900, GOLD, a);
+      }
+    } else if (state === "menu") {
+      const y = top + H * 0.12;
+      text("STACK UP", W / 2, y, Math.min(68, W / 5.5), 900);
+      text("Build the tallest tower in the world", W / 2, y + 40, 18, 700, "#fff", 0.95);
+      text("Tap to drop each block.", W / 2, y + 72, 15, 500, "#fff", 0.9);
+      text("Line it up perfectly to keep it big.", W / 2, y + 94, 15, 500, "#fff", 0.9);
+      text("Gold blocks are fast, but worth 5 points.", W / 2, y + 116, 15, 500, "#fff", 0.9);
+      if (best) text(`Best: ${best}`, W / 2, y + 148, 16, 700, GOLD);
+      const pulse = 0.55 + Math.sin(performance.now() / 300) * 0.45;
+      text("TAP TO START", W / 2, H * 0.9, 20, 800, "#fff", pulse);
+    } else if (state === "over") {
+      text(String(score), W / 2, top + 70, 76, 900);
+      const ms = lastMilestone >= 0 ? ` · taller than ${MILESTONES[lastMilestone].name}` : "";
+      text(`${meters()} m tower${ms}`, W / 2, top + 104, 17, 700);
+      text(newBest ? "NEW BEST!" : `Best: ${best}`, W / 2, top + 134, 18, 800, GOLD);
+      if (overReady) text("Tap to play again", W / 2, top + 162, 16, 600, "#fff", 0.85);
+    }
+  }
+
+  // ---------- Loop ----------
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     update(dt);
-    draw();
+    draw(dt);
     requestAnimationFrame(frame);
   }
 

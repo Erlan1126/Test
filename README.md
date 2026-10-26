@@ -14,9 +14,12 @@ The game gets harder every 25 seconds, with faster spawns and new enemy types. Y
 
 ## Stack Up
 
-A one-tap stacking game made for phones. Open `stack.html` to play.
+A one-tap 3D stacking game made for phones. Open `stack.html` to play.
 
 - Tap (or press Space) to drop the sliding block onto the tower.
-- Any part that hangs over the edge gets cut off, so your blocks get smaller.
-- Land it perfectly to keep the full size. Three perfects in a row make the block grow back.
-- When you lose, a **Challenge a friend** button shares your score.
+- Any part that hangs over the edge breaks off, so your blocks get smaller.
+- Land it perfectly for 2 points and keep the full size. Three perfects in a row make the block grow back.
+- Gold blocks slide faster, but a perfect drop on one is worth 5 points.
+- Each block adds 5 m. Build past real landmarks, from a house up to the Burj Khalifa, while the sky turns from day to night.
+- Sound effects (with a mute button), and perfect streaks play a rising tune.
+- When you lose, the camera zooms out to show your whole tower, and **Challenge a friend** shares a picture of it with your score.
