@@ -16,10 +16,14 @@ The game gets harder every 25 seconds, with faster spawns and new enemy types. Y
 
 A one-tap skyscraper building game made for phones. Open `skyrise.html` to play.
 
-- Tap (or press Space) to drop each floor onto your tower. Any part that hangs over the edge breaks off.
+Your tower starts on a small floating island, next to a few houses and trees. Tap (or press Space) to drop each floor. Any part that hangs over the edge shatters and falls.
+
 - **People are your score.** Wider floors fit more people, and perfect drops attract extra residents. Sloppy drops shrink every floor after them.
 - **Gold penthouse floors** slide faster, but a perfect drop on one is worth 5x the people.
-- **Landmarks:** each floor adds 5 m. Build past a house, the Statue of Liberty, the Eiffel Tower and more, up to the Burj Khalifa. The sky turns from day to night and the windows light up.
+- **Landmarks:** each floor adds 5 m. A progress bar shows the next landmark to beat, from a house up to the Burj Khalifa.
+- **Day to night:** the sun sets as you climb, you pass through a cloud layer, and at night the moon and stars come out while the windows light up.
 - **Wind:** above about 125 m, gusts make floors speed up and slow down.
-- **Building styles:** Glass Tower, Brick Block, Candy Tower and Neon Nights. Unlock them by building past landmarks, and switch styles with the arrows on the start and game-over screens (or the arrow keys).
-- When you lose, your tower gets a rooftop and antenna, the camera zooms out, and **Challenge a friend** shares a picture of it.
+- **Building styles:** Glass Tower, Brick Block, Candy Tower and Neon Nights. Unlock them by building past landmarks, and switch styles with the arrows on the title and game-over screens (or the arrow keys).
+- **Game over:** your tower gets a rooftop and antenna, the camera pulls back to show the whole island, and **Challenge a friend** shares a picture card of your tower and score.
+
+Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
