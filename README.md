@@ -9,7 +9,8 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 - **Landmarks:** each floor adds 5 m. A progress bar shows the next landmark to beat, from a house up to the Burj Khalifa.
 - **Day to night:** the sun sets as you climb, you pass through a cloud layer, and at night the moon and stars come out while the windows light up.
 - **Wind:** above about 125 m, gusts make floors speed up and slow down.
-- **Building styles:** Glass Tower, Brick Block, Candy Tower and Neon Nights. Unlock them by building past landmarks, and switch styles with the arrows on the title and game-over screens (or the arrow keys).
+- **10 tower skins:** Glass Tower to start, then one more for every landmark you pass: Brick Block, Ocean Breeze, Candy Tower, Desert Sandstone, Retro Future, Bridge Red, Neon Nights, Art Deco and Diamond Spire. Pick one from the **Tower skins** gallery on the title and game-over screens.
+- **Gentle start:** floors barely speed up for the first 15 floors, then the pace ramps up to top speed around floor 50.
 - **Challenge a friend:** shares a picture of your finished tower and a link with your score in it. When a friend opens the link, their game shows your score as the one to beat.
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.

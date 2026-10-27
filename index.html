@@ -118,23 +118,26 @@
 
   #banner {
     position: fixed;
-    left: 50%;
+    left: 0;
+    right: 0;
     top: calc(176px + env(safe-area-inset-top, 0px));
+    width: fit-content;
     max-width: calc(100vw - 32px);
+    margin: 0 auto;
+    box-sizing: border-box;
     padding: 10px 20px 12px;
     border-radius: 16px;
     background: linear-gradient(180deg, var(--gold), var(--gold-deep));
     color: var(--gold-ink);
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    transform: translateX(-50%);
     pointer-events: none;
   }
   #banner.show { animation: banner 2.6s ease-in-out forwards; }
   @keyframes banner {
-    0% { opacity: 0; transform: translate(-50%, -16px) scale(0.9); }
-    10%, 82% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -8px) scale(0.98); }
+    0% { opacity: 0; transform: translateY(-16px) scale(0.9); }
+    10%, 82% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-8px) scale(0.98); }
   }
   #banner small { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; }
   #banner strong { display: block; font: 400 clamp(16px, 5vw, 22px)/1.2 var(--display); }
@@ -162,35 +165,110 @@
   }
   .btn-primary:active { box-shadow: 0 2px 0 #b9741a, 0 6px 16px rgba(0, 0, 0, 0.3); }
   .btn-secondary { background: rgba(255, 255, 255, 0.14); border: 1px solid var(--line); }
-  .picker {
+  .skin-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 14px;
     border: 1px solid var(--line);
     border-radius: 16px;
     background: var(--panel);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
+    text-align: left;
   }
-  .picker button {
+  .skin-btn:hover { background: rgba(30, 36, 80, 0.75); }
+  .swatch { display: flex; flex: none; }
+  .swatch i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(12, 16, 44, 0.9); margin-left: -6px; }
+  .swatch i:first-child { margin-left: 0; }
+  .skin-btn-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .skin-btn-name { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .skin-btn-sub { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .skin-btn-go { font-size: 26px; line-height: 1; color: var(--muted); }
+
+  /* ---------- Skins gallery ---------- */
+  #skins {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+    background: rgba(5, 8, 30, 0.55);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+  @media (min-width: 640px) { #skins { align-items: center; padding-bottom: 16px; } }
+  .sheet {
+    width: min(560px, 100%);
+    max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--line);
+    border-radius: 24px 24px 0 0;
+    background: #121845;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+    animation: rise 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  }
+  @media (min-width: 640px) { .sheet { border-radius: 24px; max-height: 88vh; } }
+  .sheet-top { position: sticky; top: 0; z-index: 1; padding-top: 18px; background: #121845; }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .sheet-head h2 { margin: 0; font: 400 24px var(--display); letter-spacing: 0.02em; }
+  .sheet-head p { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+  #skins-close {
     width: 40px;
     height: 40px;
     flex: none;
     border: 0;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.12);
-    font-size: 22px;
+    font-size: 26px;
     line-height: 1;
   }
-  .picker-info { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
-  .swatch { display: flex; flex: none; }
-  .swatch i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(12, 16, 44, 0.9); margin-left: -5px; }
-  .swatch i:first-child { margin-left: 0; }
-  .picker-text { min-width: 0; text-align: left; }
-  .picker-name { font-size: 15px; font-weight: 800; white-space: nowrap; }
-  .picker-sub { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .locked .swatch { filter: grayscale(1) brightness(0.6); }
+  .sheet .bar { margin: 12px 0 0; }
+  .sheet-top::after { content: ""; display: block; height: 14px; }
+  .skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  @media (max-width: 360px) { .skin-grid { grid-template-columns: 1fr 1fr; } }
+  .skin {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 8px 10px;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.07);
+    text-align: center;
+  }
+  .skin canvas { display: block; width: 100%; height: auto; aspect-ratio: 120 / 132; border-radius: 10px; margin-bottom: 6px; }
+  .skin-name { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .skin-sub { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .skin.equipped { border-color: var(--gold); background: rgba(255, 210, 63, 0.12); }
+  .skin.equipped .skin-sub { color: var(--gold); font-weight: 800; }
+  .skin.locked canvas { filter: grayscale(1) brightness(0.55); }
+  .skin.locked .skin-name { color: var(--muted); }
+  .lock {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(12, 16, 44, 0.85);
+    color: #fff;
+  }
+  .lock svg { width: 16px; height: 16px; }
+  .skin.nope { animation: nope 0.35s; }
+  @keyframes nope { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 
   /* ---------- Title screen ---------- */
   #menu {
@@ -336,7 +414,7 @@
     text-align: center;
   }
   @media (prefers-reduced-motion: reduce) {
-    #banner.show, .card, #people.bump { animation-duration: 0.01s; }
+    #banner.show, .card, #people.bump, .sheet, .skin.nope { animation-duration: 0.01s; }
   }
 </style>
 </head>
@@ -367,7 +445,7 @@
   <div class="menu-bottom">
     <div class="challenge-chip" id="menu-challenge" hidden></div>
     <div class="best-chip" id="menu-best" hidden></div>
-    <div class="picker"></div>
+    <button type="button" class="skin-btn"></button>
     <button class="btn btn-primary" id="play">Start building</button>
   </div>
 </div>
@@ -387,12 +465,28 @@
       <div class="stat"><b id="stat-streak">0</b><span>best streak</span></div>
     </div>
     <div class="unlock" id="over-unlock" hidden></div>
-    <div class="picker"></div>
+    <button type="button" class="skin-btn"></button>
     <div class="actions">
       <button class="btn btn-secondary" id="share">Challenge a friend</button>
       <button class="btn btn-primary" id="again">Build again</button>
     </div>
     <button class="menu-link" id="to-menu">Main menu</button>
+  </div>
+</div>
+
+<div id="skins" hidden role="dialog" aria-modal="true" aria-labelledby="skins-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div>
+          <h2 id="skins-title">Tower skins</h2>
+          <p id="skins-count"></p>
+        </div>
+        <button type="button" id="skins-close" aria-label="Close">×</button>
+      </div>
+      <div class="bar"><i id="skins-bar"></i></div>
+    </div>
+    <div class="skin-grid" id="skin-grid"></div>
   </div>
 </div>
 
@@ -412,7 +506,8 @@
     overLandmark: $("over-landmark"), overVersus: $("over-versus"), overUnlock: $("over-unlock"),
     statFloors: $("stat-floors"), statPerfect: $("stat-perfect"), statStreak: $("stat-streak"),
     share: $("share"), again: $("again"), toMenu: $("to-menu"), mute: $("mute"), toast: $("toast"),
-    pickers: document.querySelectorAll(".picker"),
+    skinButtons: document.querySelectorAll(".skin-btn"),
+    skins: $("skins"), skinsClose: $("skins-close"), skinsCount: $("skins-count"), skinsBar: $("skins-bar"), skinGrid: $("skin-grid"),
   };
 
   // Site address used in shared links. Empty means "use this page's address". The link
@@ -446,23 +541,44 @@
   ];
   const shortName = n => { const t = n.replace(/^(the|a) /, ""); return t[0].toUpperCase() + t.slice(1); };
 
-  // Building styles. Each unlocks once your best tower passes a landmark.
+  // Tower skins. `unlock: { at: i }` unlocks once your best tower is taller than MILESTONES[i];
+  // no `unlock` means free from the start. New unlock kinds (paid skins, battle pass rewards)
+  // can be added here alongside isUnlocked() and unlockText().
   //  ribbon:  continuous glass bands with mullions (modern office tower)
   //  punched: individual framed windows
   const STYLES = [
-    { name: "Glass Tower", unlock: -1, kind: "ribbon",
+    { id: "glass", name: "Glass Tower", kind: "ribbon",
       floors: ["#3f7fe0", "#2f9fd6", "#4a6ee0", "#25aec4", "#5b8ff0"],
       glass: "#7fc2f0", frame: "#eef6ff", slab: "#dfe9f7", slabH: 0.1, lit: ["#ffe7a1", "#fff3cf"] },
-    { name: "Brick Block", unlock: 0, kind: "punched",
+    { id: "brick", name: "Brick Block", unlock: { at: 0 }, kind: "punched",
       floors: ["#b8543f", "#c4624a", "#ad4b3a", "#bf5c45"],
       glass: "#35507a", frame: "#f4efe6", slab: "#e9dfd0", slabH: 0.12, lit: ["#ffd8a0", "#ffe9b8"] },
-    { name: "Candy Tower", unlock: 2, kind: "punched",
+    { id: "ocean", name: "Ocean Breeze", unlock: { at: 1 }, kind: "ribbon",
+      floors: ["#14a39a", "#22b8b0", "#0f8fa8", "#3cc6d8"],
+      glass: "#b9f3ff", frame: "#ffffff", slab: "#e6fbfc", slabH: 0.12, lit: ["#fff4c2", "#d7fbff"] },
+    { id: "candy", name: "Candy Tower", unlock: { at: 2 }, kind: "punched",
       floors: ["#ff9ec7", "#8fe3c0", "#ffc29e", "#b5b0ff", "#9fd8ff"],
       glass: "#ffffff", frame: "#ffffff", slab: "#ffffff", slabH: 0.18, lit: ["#fff1a8", "#ffd6ec"] },
-    { name: "Neon Nights", unlock: 6, kind: "ribbon", neon: true,
+    { id: "desert", name: "Desert Sandstone", unlock: { at: 3 }, kind: "punched",
+      floors: ["#d9a066", "#e2b47c", "#cc9258", "#dcaa70"],
+      glass: "#4a3326", frame: "#f6e6cc", slab: "#c48850", slabH: 0.16, lit: ["#ffcf7a", "#ffe2a8"] },
+    { id: "retro", name: "Retro Future", unlock: { at: 4 }, kind: "ribbon",
+      floors: ["#f4a261", "#e9c46a", "#2a9d8f", "#e76f51"],
+      glass: "#264653", frame: "#fefae0", slab: "#fefae0", slabH: 0.14, lit: ["#fefae0", "#ffd6a0"] },
+    { id: "bridge", name: "Bridge Red", unlock: { at: 5 }, kind: "punched",
+      floors: ["#c0362c", "#cf4630", "#b32d25", "#d25235"],
+      glass: "#2f3b4d", frame: "#ffe0d0", slab: "#8f241d", slabH: 0.14, lit: ["#ffd29a", "#ffe8c4"] },
+    { id: "neon", name: "Neon Nights", unlock: { at: 6 }, kind: "ribbon", neon: true,
       floors: ["#241d48", "#2b2256", "#1e1940"],
       glass: "#151231", frame: "#3a3170", slab: "#120f28", slabH: 0.08,
       lit: ["#ff4fd8", "#3bf0ff", "#b6ff3b", "#ffb13b"], alwaysLit: true, swatch: ["#ff4fd8", "#3bf0ff", "#b6ff3b"] },
+    { id: "deco", name: "Art Deco", unlock: { at: 7 }, kind: "punched",
+      floors: ["#1d1d24", "#26262f", "#1a1a21"],
+      glass: "#34343f", frame: "#d4af37", slab: "#d4af37", slabH: 0.14, lit: ["#ffd877", "#fff0c0"],
+      swatch: ["#1d1d24", "#d4af37", "#26262f"] },
+    { id: "diamond", name: "Diamond Spire", unlock: { at: 8 }, kind: "ribbon",
+      floors: ["#e4ebf5", "#cfdcef", "#f2f6fb", "#d9e4f3"],
+      glass: "#9cc4ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.12, lit: ["#ffffff", "#e3f0ff"] },
   ];
   const NEIGHBOR = { kind: "punched", glass: "#7f9cc4", frame: "#ffffff", slab: "#d9d3c7", slabH: 0.1, lit: ["#ffe7a1"] };
   const GOLD = "#ffd23f"; // reserved for penthouse floors
@@ -550,47 +666,136 @@
   ui.mute.addEventListener("click", () => { sound.toggle(); sound.ensure(); renderMute(); ui.mute.blur(); });
   renderMute();
 
-  // ---------- Building styles ----------
+  // ---------- Tower skins ----------
   let bestMeters = Number(load("skyriseBestMeters")) || 0;
-  let styleIndex = clamp(Number(load("skyriseStyle")) || 0, 0, STYLES.length - 1);
-  const isUnlocked = st => st.unlock < 0 || bestMeters > MILESTONES[st.unlock].m;
+  const isUnlocked = st => !st.unlock || bestMeters > MILESTONES[st.unlock.at].m;
+  const unlockText = st => `Build taller than ${MILESTONES[st.unlock.at].name} (${MILESTONES[st.unlock.at].m} m)`;
+  // The equipped skin is saved by id. Older saves stored a position in the original 4-skin list.
+  const savedSkin = load("skyriseSkin") ?? ["glass", "brick", "candy", "neon"][Number(load("skyriseStyle")) || 0];
+  let styleIndex = Math.max(0, STYLES.findIndex(st => st.id === savedSkin));
   if (!isUnlocked(STYLES[styleIndex])) styleIndex = 0;
   let style = STYLES[styleIndex];
 
-  ui.pickers.forEach(p => {
-    p.innerHTML = `
-      <button type="button" data-dir="-1" aria-label="Previous building style">‹</button>
-      <div class="picker-info" aria-live="polite">
-        <div class="swatch"></div>
-        <div class="picker-text"><div class="picker-name"></div><div class="picker-sub"></div></div>
-      </div>
-      <button type="button" data-dir="1" aria-label="Next building style">›</button>`;
-    p.querySelectorAll("button").forEach(b => b.addEventListener("click", () => changeStyle(Number(b.dataset.dir))));
+  ui.skinButtons.forEach(b => {
+    b.innerHTML = `
+      <span class="swatch"></span>
+      <span class="skin-btn-text"><span class="skin-btn-name"></span><span class="skin-btn-sub"></span></span>
+      <span class="skin-btn-go" aria-hidden="true">›</span>`;
+    b.addEventListener("click", openSkins);
   });
 
   function renderStyle() {
-    const st = STYLES[styleIndex], open = isUnlocked(st);
-    ui.pickers.forEach(p => {
-      p.classList.toggle("locked", !open);
-      p.querySelector(".swatch").innerHTML = (st.swatch || st.floors).slice(0, 3).map(c => `<i style="background:${c}"></i>`).join("");
-      p.querySelector(".picker-name").textContent = open ? st.name : `${st.name} (locked)`;
-      p.querySelector(".picker-sub").textContent = open
-        ? `Style ${styleIndex + 1} of ${STYLES.length}`
-        : `Build taller than ${MILESTONES[st.unlock].name}`;
+    const st = STYLES[styleIndex];
+    const count = STYLES.filter(isUnlocked).length;
+    ui.skinButtons.forEach(b => {
+      b.querySelector(".swatch").innerHTML = (st.swatch || st.floors).slice(0, 3).map(c => `<i style="background:${c}"></i>`).join("");
+      b.querySelector(".skin-btn-name").textContent = st.name;
+      b.querySelector(".skin-btn-sub").textContent = `Tower skins · ${count} of ${STYLES.length} unlocked`;
+      b.setAttribute("aria-label", `Tower skin: ${st.name}. Change skin`);
     });
-    if (open) {
-      style = st;
-      save("skyriseStyle", styleIndex);
-      // Repaint the tower on screen in the chosen style.
-      if (stack && state !== "playing") stack.forEach(b => { if (!b.golden) b.color = colorAt(b.y); });
-    }
+    style = st;
+    save("skyriseSkin", st.id);
+    // Repaint the tower on screen in the chosen skin.
+    if (stack && state !== "playing") stack.forEach(b => { if (!b.golden) b.color = colorAt(b.y); });
   }
+  // Arrow keys on the title and game-over screens step through unlocked skins.
   function changeStyle(d) {
+    const open = STYLES.map((st, i) => i).filter(i => isUnlocked(STYLES[i]));
+    const at = open.indexOf(styleIndex);
+    styleIndex = open[(at + d + open.length) % open.length];
     sound.ensure();
     sound.click();
-    styleIndex = (styleIndex + d + STYLES.length) % STYLES.length;
     renderStyle();
   }
+
+  // A small picture of a tower in the given skin, for the skins gallery.
+  function drawSkinPreview(cv, st) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = 120, h = 132;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const night = st.neon || st.id === "deco";
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, night ? "#1c1650" : "#4f8fe0");
+    sky.addColorStop(1, night ? "#5a2f86" : "#ffd9b5");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+    const fill = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+    const cx = 60, hw = 30, hh = 15, fh = 14, floors = 5, base = 92;
+    // Island
+    fill([[cx - 52, base], [cx, base + 26], [cx, base + 34], [cx - 52, base + 8]], "#9c7650");
+    fill([[cx, base + 26], [cx + 52, base], [cx + 52, base + 8], [cx, base + 34]], "#7d5d3c");
+    fill([[cx - 52, base], [cx, base - 26], [cx + 52, base], [cx, base + 26]], "#7fc76a");
+    fill([[cx - 38, base], [cx, base - 19], [cx + 38, base], [cx, base + 19]], "#e3e7ec");
+    for (let k = 0; k < floors; k++) {
+      const c = hexRgb(st.floors[k % st.floors.length]);
+      const yb = base - k * fh, yt = yb - fh;
+      const L = (u, v) => [cx - hw + u * hw, yt + u * hh + v * fh];
+      const R = (u, v) => [cx + u * hw, yt + hh - u * hh + v * fh];
+      fill([L(0, 0), L(1, 0), L(1, 1), L(0, 1)], rgb(c, 1));
+      fill([R(0, 0), R(1, 0), R(1, 1), R(0, 1)], rgb(c, 0.74));
+      for (const [F, sh] of [[L, 1], [R, 0.82]]) {
+        if (st.neon) fill([F(0, 0.9), F(1, 0.9), F(1, 1), F(0, 1)], st.lit[k % st.lit.length]);
+        else fill([F(0, 0.88), F(1, 0.88), F(1, 1), F(0, 1)], rgb(hexRgb(st.slab), sh));
+        const pane = i => (st.alwaysLit || night ? st.lit[(k + i) % st.lit.length] : rgb(hexRgb(st.glass), sh));
+        if (st.kind === "ribbon") {
+          fill([F(0.1, 0.25), F(0.9, 0.25), F(0.9, 0.72), F(0.1, 0.72)], pane(0));
+        } else {
+          for (const [a, b2] of [[0.14, 0.42], [0.58, 0.86]]) {
+            fill([F(a - 0.05, 0.2), F(b2 + 0.05, 0.2), F(b2 + 0.05, 0.78), F(a - 0.05, 0.78)], rgb(hexRgb(st.frame), sh));
+            fill([F(a, 0.27), F(b2, 0.27), F(b2, 0.72), F(a, 0.72)], pane(a > 0.5 ? 1 : 0));
+          }
+        }
+      }
+      if (k === floors - 1) fill([[cx - hw, yt], [cx, yt - hh], [cx + hw, yt], [cx, yt + hh]], rgb(c, 1.15));
+    }
+  }
+
+  // ---------- Skins gallery ----------
+  let skinsOpener = null;
+  function openSkins() {
+    sound.ensure();
+    sound.click();
+    skinsOpener = document.activeElement;
+    const count = STYLES.filter(isUnlocked).length;
+    ui.skinsCount.textContent = `${count} of ${STYLES.length} unlocked. Build taller to unlock more.`;
+    ui.skinsBar.style.width = `${count / STYLES.length * 100}%`;
+    ui.skinGrid.innerHTML = "";
+    STYLES.forEach((st, i) => {
+      const open = isUnlocked(st), on = i === styleIndex;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `skin${open ? "" : " locked"}${on ? " equipped" : ""}`;
+      b.innerHTML = `<canvas aria-hidden="true"></canvas>
+        <span class="skin-name"></span><span class="skin-sub"></span>
+        ${open ? "" : '<span class="lock" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="5" y="10" width="14" height="11" rx="3" fill="currentColor"/></svg></span>'}`;
+      b.querySelector(".skin-name").textContent = st.name;
+      b.querySelector(".skin-sub").textContent = on ? "Equipped" : open ? "Tap to use" : `Over ${MILESTONES[st.unlock.at].m} m`;
+      b.setAttribute("aria-label", open ? `${st.name}${on ? ", equipped" : ""}` : `${st.name}, locked. ${unlockText(st)}`);
+      drawSkinPreview(b.querySelector("canvas"), st);
+      b.addEventListener("click", () => {
+        if (!open) {
+          sound.click();
+          showToast(`${unlockText(st)} to unlock ${st.name}.`);
+          b.classList.remove("nope"); void b.offsetWidth; b.classList.add("nope");
+          return;
+        }
+        styleIndex = i;
+        renderStyle();
+        sound.click();
+        closeSkins();
+      });
+      ui.skinGrid.appendChild(b);
+    });
+    ui.skins.hidden = false;
+    ui.skinsClose.focus();
+  }
+  function closeSkins() {
+    ui.skins.hidden = true;
+    if (skinsOpener && skinsOpener.focus) skinsOpener.focus();
+  }
+  ui.skinsClose.addEventListener("click", closeSkins);
+  ui.skins.addEventListener("click", e => { if (e.target === ui.skins) closeSkins(); });
 
   // ---------- Screen and camera ----------
   let W = 0, H = 0, s = 1, th = 1;
@@ -653,6 +858,10 @@
     newMover();
   }
 
+  // Sliding speed in world units per second. Nearly flat for the first 15 floors so new
+  // players can find the rhythm, then it ramps up and tops out around floor 50.
+  const floorSpeed = n => Math.min(20, 6.5 + n * 0.06 + Math.max(0, n - 15) * 0.32);
+
   function newMover() {
     const top = stack[stack.length - 1];
     const n = stack.length;
@@ -661,7 +870,7 @@
     mover = {
       x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, y: n,
       axis, dir: 1, golden,
-      speed: Math.min(20, 8 + n * 0.28) * (golden ? 1.35 : 1),
+      speed: floorSpeed(n) * (golden ? 1.35 : 1),
       gustPhase: Math.random() * Math.PI * 2,
       color: golden ? hexRgb(GOLD) : colorAt(n),
     };
@@ -869,7 +1078,7 @@
   function start() {
     sound.ensure();
     if (!isUnlocked(STYLES[styleIndex])) {
-      showToast(`Locked. Build taller than ${MILESTONES[STYLES[styleIndex].unlock].name} to unlock it.`);
+      showToast(`Locked. ${unlockText(STYLES[styleIndex])} to unlock it.`);
       return;
     }
     ui.menu.hidden = true;
@@ -901,6 +1110,7 @@
     ui.menu.hidden = false;
   }
   window.addEventListener("keydown", e => {
+    if (!ui.skins.hidden) { if (e.code === "Escape") closeSkins(); return; }
     if (e.target instanceof HTMLButtonElement && (e.code === "Space" || e.code === "Enter")) return;
     if (e.code === "Space" || e.code === "Enter") {
       e.preventDefault();
