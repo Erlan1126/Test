@@ -1,0 +1,14 @@
+{
+  "appId": "com.erlan1126.todo",
+  "appName": "To do",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f2f2f7"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#007AFF"
+    }
+  }
+}

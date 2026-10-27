@@ -559,6 +559,13 @@
       <h3 class="set-title">Accent color</h3>
       <div class="group"><div class="accent-row" id="accent-row" role="group" aria-label="Accent color"></div></div>
     </section>
+    <section id="reminders-section" hidden>
+      <h3 class="set-title">Reminders</h3>
+      <div class="group">
+        <div class="field"><label for="reminders-toggle">Remind me when tasks are due</label><input type="checkbox" class="switch" id="reminders-toggle"></div>
+      </div>
+      <p class="set-note" id="reminders-note">Tasks without a time remind you at 9:00 AM on their day.</p>
+    </section>
     <section>
       <h3 class="set-title">Sounds</h3>
       <div class="group">
@@ -656,6 +663,7 @@
 
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    scheduleReminders();
     if (docRef) {
       clearTimeout(writeTimer);
       writeTimer = setTimeout(() => { writeTimer = null; pushToCloud(); }, 400);
@@ -740,13 +748,75 @@
   ];
 
   function loadSettings() {
-    const base = { accent: "blue", sounds: true };
+    const base = { accent: "blue", sounds: true, reminders: true };
     try { return { ...base, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; } catch { return base; }
   }
   let settings = loadSettings();
 
   function saveSettings() {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {}
+  }
+
+  // ---------- iPhone app extras (only inside the installed app, built with Capacitor) ----------
+  const native = !!window.Capacitor?.isNativePlatform?.();
+  const plugin = name => native ? window.Capacitor.Plugins?.[name] || null : null;
+
+  function haptic(kind) {
+    const h = plugin("Haptics");
+    if (!h || !settings.sounds) return;
+    (kind === "success" ? h.notification({ type: "SUCCESS" }) : h.impact({ style: "LIGHT" })).catch(() => {});
+  }
+
+  // Reminders are rebuilt from the task list after every change: clear what's pending, then
+  // schedule the next 60 due tasks (iPhone keeps at most 64 per app).
+  let remindTimer = null;
+  function scheduleReminders() {
+    if (!native) return;
+    clearTimeout(remindTimer);
+    remindTimer = setTimeout(syncReminders, 600);
+  }
+
+  const reminderAt = t => {
+    const [y, m, d] = t.due.split("-").map(Number);
+    const [hh, mm] = (t.dueTime || "09:00").split(":").map(Number);
+    return new Date(y, m - 1, d, hh, mm).getTime();
+  };
+
+  async function syncReminders() {
+    const ln = plugin("LocalNotifications");
+    if (!ln) return;
+    try {
+      const pending = await ln.getPending();
+      if (pending.notifications.length) await ln.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
+      if (!settings.reminders) return;
+      const now = Date.now();
+      const next = state.todos.filter(t => !t.done && t.due)
+        .map(t => ({ t, at: reminderAt(t) })).filter(x => x.at > now)
+        .sort((a, b) => a.at - b.at).slice(0, 60);
+      if (!next.length) return;
+      let perm = await ln.checkPermissions();
+      if (perm.display.startsWith("prompt")) perm = await ln.requestPermissions();
+      if (perm.display !== "granted") return;
+      await ln.schedule({
+        notifications: next.map(({ t, at }, i) => ({
+          id: i + 1,
+          title: t.text,
+          body: [t.dueTime ? "Due now" : "Due today", state.lists.find(l => l.id === t.list)?.name].filter(Boolean).join(" · "),
+          schedule: { at: new Date(at), allowWhileIdle: true },
+        })),
+      });
+    } catch {}
+  }
+
+  async function renderReminderNote() {
+    const ln = plugin("LocalNotifications");
+    if (!ln) return;
+    try {
+      const perm = await ln.checkPermissions();
+      $("reminders-note").textContent = perm.display === "denied"
+        ? "Notifications are off for To do. Turn them on in the iPhone Settings app → Notifications → To do."
+        : "Tasks without a time remind you at 9:00 AM on their day.";
+    } catch {}
   }
 
   function applyAccent() {
@@ -1058,8 +1128,12 @@
         const cheer = () => {
           if (leftBefore > 0 && todayLeft() === 0) {
             celebrate();
+            haptic("success");
             $("toast-text").textContent = "All done for today 🎉";
-          } else sound("tick");
+          } else {
+            sound("tick");
+            haptic("tick");
+          }
         };
         if (live.repeat && live.due) {
           const next = nextDue(live);
@@ -1874,6 +1948,9 @@
       return b;
     }));
     $("sounds-toggle").checked = settings.sounds;
+    $("reminders-section").hidden = !native;
+    $("reminders-toggle").checked = settings.reminders;
+    renderReminderNote();
   }
 
   function openSettings() {
@@ -1892,6 +1969,18 @@
     const data = JSON.stringify({ app: "to-do", version: 1, exportedAt: new Date().toISOString(), lists: state.lists, todos: state.todos }, null, 2);
     const filename = `to-do-backup-${todayKey()}.json`;
     const note = $("backup-note");
+    // In the iPhone app, write the file and open the Share sheet (Save to Files, AirDrop, …).
+    const fsys = plugin("Filesystem"), share = plugin("Share");
+    if (fsys && share) {
+      try {
+        const file = await fsys.writeFile({ path: filename, data, directory: "CACHE", encoding: "utf8" });
+        await share.share({ title: "To do backup", files: [file.uri] });
+        note.textContent = "Backup ready. Choose “Save to Files” to keep it.";
+      } catch (e) {
+        if (!/cancel/i.test(e?.message || "")) note.textContent = "The backup couldn't be shared. Try again.";
+      }
+      return;
+    }
     let downloads = null;
     try { downloads = window.claude?.use ? await claude.use("downloads") : null; } catch {}
     if (downloads) {
@@ -1931,6 +2020,11 @@
   $("menu-settings").addEventListener("click", openSettings);
   $("settings-done").addEventListener("click", closeSettings);
   $("sounds-toggle").addEventListener("change", e => { settings.sounds = e.target.checked; saveSettings(); unlockAudio(); });
+  $("reminders-toggle").addEventListener("change", e => {
+    settings.reminders = e.target.checked;
+    saveSettings();
+    syncReminders().then(renderReminderNote);
+  });
   $("export-btn").addEventListener("click", exportBackup);
   $("import-btn").addEventListener("click", () => $("import-input").click());
   $("import-input").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) importBackup(f); });
@@ -2051,6 +2145,7 @@
   applyAccent();
   render();
   connectCloud();
+  scheduleReminders();
 </script>
 <script>
   // Lets the app open offline once it has been loaded.
