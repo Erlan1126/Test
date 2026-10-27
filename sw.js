@@ -1,6 +1,6 @@
 // Offline support for Skyrise. Pages load from the network first so updates show up
 // right away, and fall back to the saved copy when there is no connection.
-const CACHE = "skyrise-v1";
+const CACHE = "skyrise-v2";
 const CORE = [
   "./",
   "index.html",
