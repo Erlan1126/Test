@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f7fd6"/>
+      <stop offset="0.65" stop-color="#9a6fc4"/>
+      <stop offset="1" stop-color="#ff9468"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#sky)"/>
+  <circle cx="122" cy="124" r="40" fill="#ffe2a8" opacity="0.85"/>
+  <g transform="translate(0 -26)">
+  <!-- Island -->
+  <path d="M256 368 380 430 256 492 132 430Z" fill="#7fc76a"/>
+  <path d="M132 430 256 492 256 512 132 450Z" fill="#a07a52"/>
+  <path d="M256 492 380 430 380 450 256 512Z" fill="#86643f"/>
+  <!-- Tower -->
+  <path d="M168 176 256 220 256 446 168 402Z" fill="#3f7fe0"/>
+  <path d="M256 220 344 176 344 402 256 446Z" fill="#2b5fb8"/>
+  <path d="M256 132 344 176 256 220 168 176Z" fill="#8fd3ff"/>
+  <path d="M256 146 316 176 256 206 196 176Z" fill="#6cbcf2"/>
+  <g fill="#cfeaff">
+    <path d="M176 218 248 254 248 270 176 234Z" fill="#ffd23f"/>
+    <path d="M176 254 248 290 248 306 176 270Z"/>
+    <path d="M176 290 248 326 248 342 176 306Z"/>
+    <path d="M176 326 248 362 248 378 176 342Z"/>
+    <path d="M176 362 248 398 248 414 176 378Z"/>
+  </g>
+  <g fill="#9fcff5">
+    <path d="M264 254 336 218 336 234 264 270Z" fill="#f5b51e"/>
+    <path d="M264 290 336 254 336 270 264 306Z"/>
+    <path d="M264 326 336 290 336 306 264 342Z"/>
+    <path d="M264 362 336 326 336 342 264 378Z"/>
+    <path d="M264 398 336 362 336 378 264 414Z"/>
+  </g>
+  <!-- Antenna -->
+  <path d="M256 176V66" stroke="#eef2f7" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="256" cy="60" r="14" fill="#ff4646"/>
+  </g>
+</svg>
