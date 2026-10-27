@@ -293,6 +293,20 @@
   }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .actions .btn { padding: 0 12px; }
+  .menu-link {
+    align-self: center;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .menu-link:hover { color: var(--text); }
 
   #mute {
     position: fixed;
@@ -378,6 +392,7 @@
       <button class="btn btn-secondary" id="share">Challenge a friend</button>
       <button class="btn btn-primary" id="again">Build again</button>
     </div>
+    <button class="menu-link" id="to-menu">Main menu</button>
   </div>
 </div>
 
@@ -396,7 +411,7 @@
     over: $("over"), overEyebrow: $("over-eyebrow"), overPeople: $("over-people"), overSub: $("over-sub"),
     overLandmark: $("over-landmark"), overVersus: $("over-versus"), overUnlock: $("over-unlock"),
     statFloors: $("stat-floors"), statPerfect: $("stat-perfect"), statStreak: $("stat-streak"),
-    share: $("share"), again: $("again"), mute: $("mute"), toast: $("toast"),
+    share: $("share"), again: $("again"), toMenu: $("to-menu"), mute: $("mute"), toast: $("toast"),
     pickers: document.querySelectorAll(".picker"),
   };
 
@@ -872,6 +887,19 @@
   canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
   ui.play.addEventListener("click", start);
   ui.again.addEventListener("click", start);
+  ui.toMenu.addEventListener("click", goToMenu);
+
+  // Back to the title screen, with a fresh island ready to build on.
+  function goToMenu() {
+    sound.ensure();
+    sound.click();
+    ui.over.hidden = true;
+    ui.hud.hidden = true;
+    reset();
+    state = "menu";
+    renderMenu();
+    ui.menu.hidden = false;
+  }
   window.addEventListener("keydown", e => {
     if (e.target instanceof HTMLButtonElement && (e.code === "Space" || e.code === "Enter")) return;
     if (e.code === "Space" || e.code === "Enter") {
@@ -879,6 +907,7 @@
       if (e.repeat) return;
       if (state === "over") { if (overReady) start(); } else tap();
     }
+    if (e.code === "Escape" && state === "over" && overReady) goToMenu();
     if (state !== "playing" && e.code === "ArrowLeft") changeStyle(-1);
     if (state !== "playing" && e.code === "ArrowRight") changeStyle(1);
   });
