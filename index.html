@@ -107,14 +107,31 @@
   .bar { height: 6px; margin-top: 7px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
   .bar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--mint), var(--gold)); transition: width 0.35s ease-out; }
   #wind {
-    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(12, 16, 44, 0.5);
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
+  #wind.strong { background: rgba(255, 90, 90, 0.55); }
+  .gust { display: block; width: 64px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+  .gust b { display: block; height: 100%; width: 50%; border-radius: 3px; background: #fff; }
+  #hint {
+    max-width: calc(100vw - 48px);
+    padding: 8px 14px;
+    border-radius: 14px;
+    background: rgba(12, 16, 44, 0.72);
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    animation: hint-in 0.3s ease-out;
+  }
+  @keyframes hint-in { from { opacity: 0; transform: translateY(-6px); } }
 
   #banner {
     position: fixed;
@@ -189,7 +206,7 @@
   .skin-btn-go { font-size: 26px; line-height: 1; color: var(--muted); }
 
   /* ---------- Skins gallery ---------- */
-  #skins {
+  .modal {
     position: fixed;
     inset: 0;
     z-index: 5;
@@ -201,7 +218,7 @@
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
   }
-  @media (min-width: 640px) { #skins { align-items: center; padding-bottom: 16px; } }
+  @media (min-width: 640px) { .modal { align-items: center; padding-bottom: 16px; } }
   .sheet {
     width: min(560px, 100%);
     max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
@@ -220,7 +237,7 @@
   .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .sheet-head h2 { margin: 0; font: 400 24px var(--display); letter-spacing: 0.02em; }
   .sheet-head p { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
-  #skins-close {
+  .close-btn {
     width: 40px;
     height: 40px;
     flex: none;
@@ -232,6 +249,42 @@
   }
   .sheet .bar { margin: 12px 0 0; }
   .sheet-top::after { content: ""; display: block; height: 14px; }
+  .sheet.narrow { width: min(440px, 100%); }
+  .sheet-sub { margin: 20px 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .mission {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    align-items: center;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .mission b { font-size: 15px; }
+  .mission .reward-tag { grid-row: span 2; padding: 6px 10px; border-radius: 10px; background: rgba(255, 210, 63, 0.16); color: var(--gold); font-weight: 800; white-space: nowrap; }
+  .mission .m-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+  .mission .m-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--mint), var(--gold)); }
+  .mission small { color: var(--muted); font-weight: 700; }
+  .star-rewards, .island-list { display: grid; gap: 8px; }
+  .row-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); font-size: 14px; }
+  .row-item b { display: block; font-size: 15px; }
+  .row-item small { color: var(--muted); font-weight: 600; }
+  .row-item .state { margin-left: auto; font-weight: 800; white-space: nowrap; color: var(--muted); }
+  .row-item.done .state { color: var(--mint); }
+  .setting-list { display: flex; flex-direction: column; gap: 10px; }
+  .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); cursor: pointer; }
+  .setting b { display: block; font-size: 15px; }
+  .setting small { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .switch { appearance: none; -webkit-appearance: none; flex: none; width: 50px; height: 30px; margin: 0; border-radius: 15px; background: rgba(255, 255, 255, 0.2); position: relative; cursor: pointer; transition: background 0.2s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+  .switch:checked { background: var(--mint); }
+  .switch:checked::after { transform: translateX(20px); }
+  .switch:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  .seg { display: flex; flex: none; padding: 3px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); }
+  .seg button { padding: 7px 10px; border: 0; border-radius: 9px; background: none; font-size: 13px; font-weight: 800; color: var(--muted); }
+  .seg button[aria-checked="true"] { background: #fff; color: var(--ink); }
+  .btn.wide { width: 100%; }
   .skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   @media (max-width: 360px) { .skin-grid { grid-template-columns: 1fr 1fr; } }
   .skin {
@@ -270,6 +323,55 @@
   .skin.nope { animation: nope 0.35s; }
   @keyframes nope { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 
+  /* ---------- Pause and second-chance dialogs ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(5, 8, 30, 0.6);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .dialog {
+    width: min(340px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 22px 18px 14px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: #121845;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    animation: rise 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  }
+  .dialog h2 { margin: 0; font: 400 26px var(--display); }
+  .dialog p { margin: 0 0 6px; color: var(--muted); font-weight: 600; }
+  .dialog .menu-link { align-self: center; }
+  .countdown { height: 6px; margin: 2px 0 8px; border-radius: 3px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+  .countdown i { display: block; height: 100%; background: var(--gold); transform-origin: left; animation: countdown 5s linear forwards; }
+  @keyframes countdown { to { transform: scaleX(0); } }
+  .corner-btn {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+    z-index: 2;
+  }
+  .corner-btn svg { width: 22px; height: 22px; }
+  #settings-btn { right: calc(12px + env(safe-area-inset-right, 0px)); }
+  #pause { left: calc(12px + env(safe-area-inset-left, 0px)); }
+
   /* ---------- Title screen ---------- */
   #menu {
     position: fixed;
@@ -285,7 +387,7 @@
   #menu > * { pointer-events: auto; }
   .logo {
     margin: 0;
-    font: 400 clamp(54px, 17vw, 104px)/0.95 var(--display);
+    font: 400 clamp(48px, 14.5vw, 104px)/0.95 var(--display);
     letter-spacing: 0.01em;
     color: #fff;
     text-shadow: 0 2px 0 #c9d6ff, 0 4px 0 #8fa3e8, 0 6px 0 #5a6fc4, 0 14px 28px rgba(10, 16, 60, 0.45);
@@ -318,6 +420,38 @@
   }
   .challenge-chip b { font: 400 17px var(--num); }
   .menu-bottom .btn { width: 100%; font-size: 19px; }
+  .menu-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .skin-btn.compact { min-height: 56px; padding: 8px 10px; gap: 8px; }
+  .skin-btn.compact .skin-btn-go { display: none; }
+  .skin-btn.compact .swatch i { width: 13px; height: 13px; margin-left: -5px; }
+  .skin-btn.compact .swatch i:first-child { margin-left: 0; }
+  .tile-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 56px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    text-align: left;
+  }
+  .tile-btn:hover, .skin-btn:hover { background: rgba(30, 36, 80, 0.75); }
+  .tile-ico { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: rgba(255, 255, 255, 0.12); font-size: 17px; }
+  .tile-ico.star { color: var(--gold); }
+  .tile-ico svg { width: 18px; height: 18px; }
+  .tile-text { min-width: 0; display: flex; flex-direction: column; }
+  .tile-text b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile-text small { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dot { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: #ff5a5a; box-shadow: 0 0 0 2px rgba(12, 16, 44, 0.9); }
+  .island-chip { align-self: center; padding: 6px 14px; border-radius: 999px; background: var(--panel); font-size: 12px; font-weight: 700; color: var(--muted); text-align: center; }
+  .island-chip b { color: var(--mint); }
+  @media (max-height: 760px) { .rules { display: none; } }
+  @media (max-height: 680px) { .tagline { display: none; } .island-chip { display: none; } }
 
   /* ---------- Game over card ---------- */
   #over {
@@ -331,6 +465,9 @@
   }
   .card {
     width: min(440px, 100%);
+    max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
     padding: 18px 18px 16px;
     border: 1px solid var(--line);
     border-radius: 24px;
@@ -360,7 +497,9 @@
   .stat { padding: 8px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); text-align: center; }
   .stat b { display: block; font: 400 24px var(--num); font-variant-numeric: tabular-nums; }
   .stat span { font-size: 11px; font-weight: 700; color: var(--muted); }
-  .unlock {
+  .rewards { display: flex; flex-direction: column; gap: 6px; }
+  .reward.star { background: rgba(255, 210, 63, 0.14); color: var(--gold); }
+  .reward {
     padding: 8px 12px;
     border-radius: 12px;
     background: rgba(140, 233, 154, 0.16);
@@ -386,20 +525,6 @@
   }
   .menu-link:hover { color: var(--text); }
 
-  #mute {
-    position: fixed;
-    top: calc(12px + env(safe-area-inset-top, 0px));
-    right: calc(12px + env(safe-area-inset-right, 0px));
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--panel);
-  }
-  #mute svg { width: 22px; height: 22px; }
   #toast {
     position: fixed;
     left: 50%;
@@ -414,7 +539,7 @@
     text-align: center;
   }
   @media (prefers-reduced-motion: reduce) {
-    #banner.show, .card, #people.bump, .sheet, .skin.nope { animation-duration: 0.01s; }
+    #banner.show, .card, #people.bump, .sheet, .skin.nope, .dialog, #hint { animation-duration: 0.01s; }
   }
 </style>
 </head>
@@ -428,8 +553,12 @@
     <div class="alt-row"><b id="height">0 m</b><span id="next"></span></div>
     <div class="bar"><i id="bar"></i></div>
   </div>
-  <div id="wind" hidden>Wind gusts</div>
+  <div id="wind" hidden><span id="wind-label">Wind</span><i class="gust"><b id="gust"></b></i></div>
+  <div id="hint" hidden></div>
 </div>
+<button id="pause" class="corner-btn" hidden aria-label="Pause">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
+</button>
 <div id="banner" hidden><small id="banner-eyebrow"></small><strong id="banner-title"></strong></div>
 
 <div id="menu">
@@ -445,8 +574,26 @@
   <div class="menu-bottom">
     <div class="challenge-chip" id="menu-challenge" hidden></div>
     <div class="best-chip" id="menu-best" hidden></div>
-    <button type="button" class="skin-btn"></button>
+    <div class="menu-row">
+      <button type="button" class="skin-btn compact"></button>
+      <button type="button" class="tile-btn" id="missions-btn">
+        <span class="tile-ico star" aria-hidden="true">★</span>
+        <span class="tile-text"><b>Missions</b><small id="missions-sub"></small></span>
+        <span class="dot" id="missions-dot" hidden></span>
+      </button>
+    </div>
     <button class="btn btn-primary" id="play">Start building</button>
+    <div class="menu-row">
+      <button type="button" class="tile-btn" id="daily-btn">
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <span class="tile-text"><b id="daily-title">Daily tower</b><small id="daily-sub"></small></span>
+      </button>
+      <button type="button" class="tile-btn" id="zen-btn">
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor"/></svg></span>
+        <span class="tile-text"><b>Zen mode</b><small>Relax, no failing</small></span>
+      </button>
+    </div>
+    <div class="island-chip" id="island-chip"></div>
   </div>
 </div>
 
@@ -464,7 +611,7 @@
       <div class="stat"><b id="stat-perfect">0</b><span>perfect drops</span></div>
       <div class="stat"><b id="stat-streak">0</b><span>best streak</span></div>
     </div>
-    <div class="unlock" id="over-unlock" hidden></div>
+    <div class="rewards" id="over-rewards" hidden></div>
     <button type="button" class="skin-btn"></button>
     <div class="actions">
       <button class="btn btn-secondary" id="share">Challenge a friend</button>
@@ -474,7 +621,7 @@
   </div>
 </div>
 
-<div id="skins" hidden role="dialog" aria-modal="true" aria-labelledby="skins-title">
+<div id="skins" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="skins-title">
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
@@ -482,7 +629,7 @@
           <h2 id="skins-title">Tower skins</h2>
           <p id="skins-count"></p>
         </div>
-        <button type="button" id="skins-close" aria-label="Close">×</button>
+        <button type="button" class="close-btn" id="skins-close" aria-label="Close">×</button>
       </div>
       <div class="bar"><i id="skins-bar"></i></div>
     </div>
@@ -490,7 +637,76 @@
   </div>
 </div>
 
-<button id="mute" aria-label="Mute sound"></button>
+<div id="missions" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="missions-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div>
+          <h2 id="missions-title">Missions</h2>
+          <p id="missions-count"></p>
+        </div>
+        <button type="button" class="close-btn" id="missions-close" aria-label="Close">×</button>
+      </div>
+      <div class="bar"><i id="missions-bar"></i></div>
+    </div>
+    <div class="mission-list" id="mission-list"></div>
+    <h3 class="sheet-sub">Star rewards</h3>
+    <div class="star-rewards" id="star-rewards"></div>
+    <h3 class="sheet-sub">Your island</h3>
+    <div class="island-list" id="island-list"></div>
+  </div>
+</div>
+
+<div id="settings" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="sheet narrow">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <h2 id="settings-title">Settings</h2>
+        <button type="button" class="close-btn" id="settings-close" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="setting-list">
+      <label class="setting"><span><b>Sound effects</b><small>Drops, perfects and cheers</small></span><input type="checkbox" id="set-sound" class="switch"></label>
+      <label class="setting"><span><b>Music</b><small>Builds up as your tower climbs</small></span><input type="checkbox" id="set-music" class="switch"></label>
+      <label class="setting" id="vibrate-row"><span><b>Vibration</b><small>Buzz on drops (Android)</small></span><input type="checkbox" id="set-vibrate" class="switch"></label>
+      <div class="setting">
+        <span><b>Graphics</b><small id="quality-note">Auto picks smooth mode on slower phones</small></span>
+        <div class="seg" role="radiogroup" aria-label="Graphics quality">
+          <button type="button" role="radio" data-q="auto">Auto</button>
+          <button type="button" role="radio" data-q="high">High</button>
+          <button type="button" role="radio" data-q="low">Smooth</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary wide" id="replay-tips">Show beginner tips again</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause-menu" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
+  <div class="dialog">
+    <h2 id="pause-title">Paused</h2>
+    <p id="pause-sub"></p>
+    <button type="button" class="btn btn-primary wide" id="resume">Resume</button>
+    <button type="button" class="btn btn-secondary wide" id="finish-zen" hidden>Finish tower</button>
+    <button type="button" class="btn btn-secondary wide" id="pause-settings">Settings</button>
+    <button type="button" class="menu-link" id="pause-menu-btn">Quit to main menu</button>
+  </div>
+</div>
+
+<div id="rescue" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="rescue-title">
+  <div class="dialog">
+    <div class="eyebrow">So close!</div>
+    <h2 id="rescue-title">Rewind that floor?</h2>
+    <p>You get one rewind per tower.</p>
+    <div class="countdown" aria-hidden="true"><i></i></div>
+    <button type="button" class="btn btn-primary wide" id="rewind">Rewind</button>
+    <button type="button" class="btn btn-secondary wide" id="give-up">End tower</button>
+  </div>
+</div>
+
+<button id="settings-btn" class="corner-btn" aria-label="Settings">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.8c.1.6.1 1.3 0 1.9l2 1.8-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.8a6 6 0 0 1 0-1.9l-2-1.8L5.9 4.6l2.5.9c.5-.4 1.1-.7 1.7-.9L10.3 2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" transform="translate(0 1.5)"/></svg>
+</button>
 <div id="toast" hidden></div>
 
 <script>
@@ -503,9 +719,20 @@
     banner: $("banner"), bannerEyebrow: $("banner-eyebrow"), bannerTitle: $("banner-title"),
     menu: $("menu"), menuBest: $("menu-best"), menuChallenge: $("menu-challenge"), play: $("play"),
     over: $("over"), overEyebrow: $("over-eyebrow"), overPeople: $("over-people"), overSub: $("over-sub"),
-    overLandmark: $("over-landmark"), overVersus: $("over-versus"), overUnlock: $("over-unlock"),
+    overLandmark: $("over-landmark"), overVersus: $("over-versus"),
     statFloors: $("stat-floors"), statPerfect: $("stat-perfect"), statStreak: $("stat-streak"),
-    share: $("share"), again: $("again"), toMenu: $("to-menu"), mute: $("mute"), toast: $("toast"),
+    share: $("share"), again: $("again"), toMenu: $("to-menu"), toast: $("toast"),
+    overRewards: $("over-rewards"), hint: $("hint"), gust: $("gust"), windLabel: $("wind-label"),
+    pause: $("pause"), pauseMenu: $("pause-menu"), pauseSub: $("pause-sub"), resume: $("resume"), finishZen: $("finish-zen"),
+    pauseSettings: $("pause-settings"), pauseMenuBtn: $("pause-menu-btn"),
+    rescue: $("rescue"), rewind: $("rewind"), giveUp: $("give-up"),
+    settingsBtn: $("settings-btn"), settings: $("settings"), settingsClose: $("settings-close"),
+    setSound: $("set-sound"), setMusic: $("set-music"), setVibrate: $("set-vibrate"), vibrateRow: $("vibrate-row"),
+    replayTips: $("replay-tips"), qualityButtons: document.querySelectorAll(".seg button"),
+    missionsBtn: $("missions-btn"), missionsSub: $("missions-sub"), missionsDot: $("missions-dot"),
+    missions: $("missions"), missionsClose: $("missions-close"), missionsCount: $("missions-count"), missionsBar: $("missions-bar"),
+    missionList: $("mission-list"), starRewards: $("star-rewards"), islandList: $("island-list"), islandChip: $("island-chip"),
+    dailyBtn: $("daily-btn"), dailyTitle: $("daily-title"), dailySub: $("daily-sub"), zenBtn: $("zen-btn"),
     skinButtons: document.querySelectorAll(".skin-btn"),
     skins: $("skins"), skinsClose: $("skins-close"), skinsCount: $("skins-count"), skinsBar: $("skins-bar"), skinGrid: $("skin-grid"),
   };
@@ -517,7 +744,8 @@
   // Gameplay is measured in world units, not pixels, so it plays the same on every screen.
   const BLOCK_SIZE = 10;       // starting width and depth of a floor
   const RANGE = 13;            // how far the sliding floor travels from the tower's center
-  const PERFECT = 0.35;        // forgiveness for a perfect drop
+  const PERFECT = 0.35;        // smallest forgiveness for a perfect drop, in world units
+  const PERFECT_TIME = 0.045;  // ...which grows with speed so it always covers about 45 ms of movement
   const GROW = 0.6;            // how much a floor grows back during a perfect streak
   const METERS_PER_FLOOR = 5;
   const PEOPLE_PER_AREA = 0.2; // a full 10 x 10 floor holds 20 people
@@ -579,6 +807,24 @@
     { id: "diamond", name: "Diamond Spire", unlock: { at: 8 }, kind: "ribbon",
       floors: ["#e4ebf5", "#cfdcef", "#f2f6fb", "#d9e4f3"],
       glass: "#9cc4ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.12, lit: ["#ffffff", "#e3f0ff"] },
+    // Mission rewards: unlocked with stars earned from missions.
+    { id: "starlight", name: "Starlight", unlock: { stars: 10 }, kind: "ribbon",
+      floors: ["#1b2a5e", "#22336e", "#182553"],
+      glass: "#0e1740", frame: "#6f86d6", slab: "#2b3d80", slabH: 0.1,
+      lit: ["#ffffff", "#bcd4ff", "#ffe9a8"], alwaysLit: true, swatch: ["#1b2a5e", "#bcd4ff", "#ffe9a8"] },
+    { id: "rainbow", name: "Rainbow Rise", unlock: { stars: 25 }, kind: "ribbon",
+      floors: ["#ff6b6b", "#ff922b", "#51cf66", "#339af0", "#845ef7", "#f06595"],
+      glass: "#eaf6ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.12, lit: ["#fff4c2", "#ffe0f0"] },
+  ];
+
+  // The island grows as your best tower passes landmarks.
+  const ISLAND_UPGRADES = [
+    { at: 0, name: "Fountain plaza" },
+    { at: 1, name: "Duck pond" },
+    { at: 2, name: "New neighbors" },
+    { at: 3, name: "Street lights and traffic" },
+    { at: 4, name: "Ferris wheel" },
+    { at: 5, name: "Hot-air balloons" },
   ];
   const NEIGHBOR = { kind: "punched", glass: "#7f9cc4", frame: "#ffffff", slab: "#d9d3c7", slabH: 0.1, lit: ["#ffe7a1"] };
   const GOLD = "#ffd23f"; // reserved for penthouse floors
@@ -609,20 +855,46 @@
     try { localStorage.setItem(key, String(value)); } catch {}
   }
 
-  // ---------- Sound (synthesized, no files needed) ----------
+  // ---------- Settings ----------
+  const settings = {
+    sound: load("skyriseMuted") !== "1",
+    music: load("skyriseMusic") !== "0",
+    vibrate: load("skyriseVibrate") !== "0",
+    quality: load("skyriseQuality") || "auto",
+  };
+  let autoLow = load("skyriseAutoLow") === "1";
+  const lowGfx = () => settings.quality === "low" || (settings.quality === "auto" && autoLow);
+
+  // ---------- Sound and music (synthesized, no files needed) ----------
   const sound = (() => {
-    let ac = null;
-    let muted = load("skyriseMuted") === "1";
+    let ac = null, sfx = null, mus = null, noiseBuf = null, ducked = false;
     const SCALE = [0, 2, 4, 7, 9];
 
     function ensure() {
       if (!ac) {
         try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+        sfx = ac.createGain();
+        sfx.gain.value = settings.sound ? 1 : 0;
+        sfx.connect(ac.destination);
+        mus = ac.createGain();
+        mus.gain.value = 0;
+        mus.connect(ac.destination);
+        noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        music.next = ac.currentTime + 0.1;
+        setInterval(() => music.tick(), 60);
+        applyMusic();
       }
       if (ac.state === "suspended") ac.resume();
     }
-    function tone(freq, dur, type = "sine", vol = 0.2, delay = 0, slideTo = 0) {
-      if (muted || !ac) return;
+    function applyMusic() {
+      if (!mus) return;
+      const target = settings.music ? (ducked ? 0.15 : 0.55) : 0;
+      mus.gain.setTargetAtTime(target, ac.currentTime, 0.4);
+    }
+    function tone(freq, dur, type = "sine", vol = 0.2, delay = 0, slideTo = 0, out = sfx) {
+      if (!ac) return;
       const t = ac.currentTime + delay;
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = type;
@@ -631,45 +903,150 @@
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g).connect(ac.destination);
+      o.connect(g).connect(out);
       o.start(t);
       o.stop(t + dur + 0.05);
     }
+    // Filtered noise: thuds, glass, wind and crowd cheers.
+    function noise(dur, vol, freq, type = "lowpass", q = 1, delay = 0, attack = 0.005) {
+      if (!ac) return;
+      const t = ac.currentTime + delay;
+      const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      src.buffer = noiseBuf;
+      f.type = type; f.frequency.value = freq; f.Q.value = q;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f).connect(g).connect(sfx);
+      src.start(t, Math.random() * 0.5);
+      src.stop(t + dur + 0.05);
+    }
     // Notes climb a pentatonic scale, so a perfect streak plays a rising tune.
     const note = i => 261.63 * Math.pow(2, (SCALE[i % 5] + 12 * Math.floor(i / 5)) / 12);
+    // A heavy floor landing: a low thud plus a short metallic clunk.
+    function land(weight = 1) {
+      noise(0.14, 0.35 * weight, 180);
+      tone(95, 0.16, "sine", 0.3 * weight, 0, 55);
+      tone(620, 0.06, "square", 0.025 * weight, 0.004);
+      tone(930, 0.05, "square", 0.018 * weight, 0.008);
+    }
+
+    // Gentle generative music. A pad always plays; bass, an arpeggio and high sparkles
+    // join as the tower grows and streaks build (music.intensity 0 to 3).
+    const CHORDS = [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]]; // C, G, Am, F
+    const music = {
+      intensity: 0, next: 0, step: 0,
+      tick() {
+        if (!ac || ac.state !== "running") { if (ac) this.next = ac.currentTime + 0.1; return; }
+        const eighth = 60 / 84 / 2;
+        if (this.next < ac.currentTime) this.next = ac.currentTime + 0.05;
+        while (this.next < ac.currentTime + 0.3) {
+          if (settings.music) this.play(this.step, this.next - ac.currentTime, eighth);
+          this.next += eighth;
+          this.step++;
+        }
+      },
+      play(step, delay, e) {
+        const chord = CHORDS[Math.floor(step / 16) % 4], beat = step % 8;
+        const f = semi => 130.81 * Math.pow(2, semi / 12);
+        if (step % 16 === 0) chord.forEach(n => pad(f(n + 12), e * 16, delay));
+        if (this.intensity >= 1 && beat % 4 === 0) tone(f(chord[0] - 12), e * 3.5, "sine", 0.2, delay, 0, mus);
+        if (this.intensity >= 2) tone(f(chord[[0, 1, 2, 1][beat % 4]] + 24), e * 1.5, "triangle", 0.045, delay, 0, mus);
+        if (this.intensity >= 3 && beat % 2 === 1 && Math.random() < 0.7) {
+          tone(f(chord[Math.floor(Math.random() * 3)] + 36), e * 2.5, "sine", 0.035, delay, 0, mus);
+        }
+      },
+    };
+    function pad(freq, dur, delay) {
+      const t = ac.currentTime + delay;
+      for (const fr of [freq, freq * 1.006]) {
+        const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+        o.type = "triangle";
+        o.frequency.value = fr;
+        lp.type = "lowpass";
+        lp.frequency.value = 900;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.035, t + 1.2);
+        g.gain.setValueAtTime(0.035, t + dur - 0.8);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.6);
+        o.connect(lp).connect(g).connect(mus);
+        o.start(t);
+        o.stop(t + dur + 0.7);
+      }
+    }
+
+    // Pause audio while the page is in the background.
+    document.addEventListener("visibilitychange", () => {
+      if (!ac) return;
+      if (document.hidden) ac.suspend(); else ac.resume();
+    });
 
     return {
       ensure,
-      get muted() { return muted; },
-      toggle() { muted = !muted; save("skyriseMuted", muted ? "1" : "0"); },
+      music,
+      setSound(on) { settings.sound = on; save("skyriseMuted", on ? "0" : "1"); if (sfx) sfx.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, 0.02); },
+      setMusic(on) { settings.music = on; save("skyriseMusic", on ? "1" : "0"); applyMusic(); },
+      duck(on) { ducked = on; applyMusic(); },
       click() { tone(900, 0.05, "triangle", 0.08); },
-      cut() { tone(200, 0.1, "triangle", 0.3, 0, 80); tone(1800, 0.12, "square", 0.02, 0.01, 900); },
+      land() { land(0.8); },
+      cut() { land(0.8); noise(0.3, 0.1, 3500, "highpass", 0.7, 0.01); tone(2100, 0.1, "square", 0.015, 0.02, 1200); },
       perfect(combo) {
+        land(0.6);
         const f = note(Math.min(combo - 1, 11) + 3);
         tone(f, 0.3, "triangle", 0.22);
         tone(f * 2, 0.2, "sine", 0.06, 0.02);
       },
-      golden() { [0, 4, 7, 12, 16].forEach((s, i) => tone(784 * Math.pow(2, s / 12), 0.2, "triangle", 0.12, i * 0.045)); },
-      milestone() { [0, 4, 7, 12].forEach((s, i) => tone(523 * Math.pow(2, s / 12), 0.35, "triangle", 0.14, i * 0.09)); },
-      unlock() { [0, 7, 12, 16, 19].forEach((s, i) => tone(392 * Math.pow(2, s / 12), 0.4, "triangle", 0.12, 0.4 + i * 0.07)); },
-      wind() { tone(140, 1.2, "sawtooth", 0.025, 0, 320); },
+      streak() { [0, 4, 7, 12, 16, 19].forEach((n, i) => tone(523 * Math.pow(2, n / 12), 0.25, "triangle", 0.1, i * 0.04)); },
+      golden() { land(0.7); [0, 4, 7, 12, 16].forEach((n, i) => tone(784 * Math.pow(2, n / 12), 0.2, "triangle", 0.12, i * 0.045)); },
+      milestone() {
+        noise(1.6, 0.07, 1400, "bandpass", 0.5, 0.05, 0.45); // crowd cheer swell
+        [0, 4, 7, 12].forEach((n, i) => tone(523 * Math.pow(2, n / 12), 0.35, "triangle", 0.14, i * 0.09));
+      },
+      unlock() { [0, 7, 12, 16, 19].forEach((n, i) => tone(392 * Math.pow(2, n / 12), 0.4, "triangle", 0.12, 0.4 + i * 0.07)); },
+      star() { [0, 7, 12].forEach((n, i) => tone(1046 * Math.pow(2, n / 12), 0.3, "sine", 0.1, 0.2 + i * 0.08)); },
+      wind() { noise(1.8, 0.08, 500, "lowpass", 1, 0, 0.6); },
+      rewind() { tone(160, 0.5, "sawtooth", 0.05, 0, 900); tone(320, 0.5, "triangle", 0.08, 0.05, 1400); },
       fail() { tone(260, 0.6, "sawtooth", 0.06, 0, 60); tone(130, 0.5, "triangle", 0.2, 0.05, 50); },
     };
   })();
 
-  const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
-  const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="m16 9 6 6"/><path d="m22 9-6 6"/></svg>';
-  function renderMute() {
-    ui.mute.innerHTML = sound.muted ? ICON_OFF : ICON_ON;
-    ui.mute.setAttribute("aria-label", sound.muted ? "Turn sound on" : "Mute sound");
+  // ---------- Missions ----------
+  // Three missions are active at a time. Finishing one earns stars and deals a new one.
+  // "game" missions must be done within a single tower; the others add up across towers.
+  const MISSION_TYPES = {
+    perfects: { game: true, tiers: [5, 10, 20], text: n => `Land ${n} perfect drops in one tower` },
+    streak: { game: true, tiers: [3, 6, 10], text: n => `Get a perfect streak of ${n}` },
+    height: { game: true, tiers: [60, 120, 200], text: n => `Build a tower taller than ${n} m` },
+    people: { game: true, tiers: [400, 1000, 2000], text: n => `House ${fmt(n)} people in one tower` },
+    wind: { game: true, tiers: [5, 12, 25], text: n => `Build ${n} floors in the wind` },
+    penthouse: { tiers: [1, 3, 6], text: n => `Land ${n} gold penthouse${n > 1 ? "s" : ""} perfectly` },
+    towers: { tiers: [3, 5, 8], text: n => `Build ${n} towers` },
+    floors: { tiers: [50, 150, 300], text: n => `Build ${n} floors in total` },
+    daily: { tiers: [1, 1, 1], text: () => "Build today's daily tower" },
+  };
+  let missions;
+  try { missions = JSON.parse(load("skyriseMissions")); } catch {}
+  if (!missions || !Array.isArray(missions.slots)) missions = { slots: [], done: 0, stars: 0, seen: 0 };
+  function dealMissions() {
+    while (missions.slots.length < 3) {
+      const taken = missions.slots.map(m => m.t);
+      const pool = Object.keys(MISSION_TYPES).filter(t => !taken.includes(t));
+      const t = pool[Math.floor(Math.random() * pool.length)];
+      const tier = Math.min(2, Math.floor(missions.done / 3));
+      missions.slots.push({ t, n: MISSION_TYPES[t].tiers[tier], r: tier + 1, p: 0 });
+    }
+    save("skyriseMissions", JSON.stringify(missions));
   }
-  ui.mute.addEventListener("click", () => { sound.toggle(); sound.ensure(); renderMute(); ui.mute.blur(); });
-  renderMute();
+  dealMissions();
+  const missionText = m => MISSION_TYPES[m.t].text(m.n);
 
   // ---------- Tower skins ----------
   let bestMeters = Number(load("skyriseBestMeters")) || 0;
-  const isUnlocked = st => !st.unlock || bestMeters > MILESTONES[st.unlock.at].m;
-  const unlockText = st => `Build taller than ${MILESTONES[st.unlock.at].name} (${MILESTONES[st.unlock.at].m} m)`;
+  const isUnlocked = st => !st.unlock || (st.unlock.stars ? missions.stars >= st.unlock.stars : bestMeters > MILESTONES[st.unlock.at].m);
+  const unlockText = st => st.unlock.stars
+    ? `Earn ${st.unlock.stars} ★ from missions`
+    : `Build taller than ${MILESTONES[st.unlock.at].name} (${MILESTONES[st.unlock.at].m} m)`;
+  const islandLevel = () => ISLAND_UPGRADES.filter(u => bestMeters > MILESTONES[u.at].m).length;
   // The equipped skin is saved by id. Older saves stored a position in the original 4-skin list.
   const savedSkin = load("skyriseSkin") ?? ["glass", "brick", "candy", "neon"][Number(load("skyriseStyle")) || 0];
   let styleIndex = Math.max(0, STYLES.findIndex(st => st.id === savedSkin));
@@ -690,7 +1067,8 @@
     ui.skinButtons.forEach(b => {
       b.querySelector(".swatch").innerHTML = (st.swatch || st.floors).slice(0, 3).map(c => `<i style="background:${c}"></i>`).join("");
       b.querySelector(".skin-btn-name").textContent = st.name;
-      b.querySelector(".skin-btn-sub").textContent = `Tower skins · ${count} of ${STYLES.length} unlocked`;
+      b.querySelector(".skin-btn-sub").textContent = b.classList.contains("compact")
+        ? `Skins ${count}/${STYLES.length}` : `Tower skins · ${count} of ${STYLES.length} unlocked`;
       b.setAttribute("aria-label", `Tower skin: ${st.name}. Change skin`);
     });
     style = st;
@@ -714,7 +1092,7 @@
     cv.width = w * dpr; cv.height = h * dpr;
     const g = cv.getContext("2d");
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const night = st.neon || st.id === "deco";
+    const night = st.neon || st.id === "deco" || st.id === "starlight";
     const sky = g.createLinearGradient(0, 0, 0, h);
     sky.addColorStop(0, night ? "#1c1650" : "#4f8fe0");
     sky.addColorStop(1, night ? "#5a2f86" : "#ffd9b5");
@@ -758,7 +1136,7 @@
     sound.click();
     skinsOpener = document.activeElement;
     const count = STYLES.filter(isUnlocked).length;
-    ui.skinsCount.textContent = `${count} of ${STYLES.length} unlocked. Build taller to unlock more.`;
+    ui.skinsCount.textContent = `${count} of ${STYLES.length} unlocked. Build taller and finish missions to unlock more.`;
     ui.skinsBar.style.width = `${count / STYLES.length * 100}%`;
     ui.skinGrid.innerHTML = "";
     STYLES.forEach((st, i) => {
@@ -770,7 +1148,8 @@
         <span class="skin-name"></span><span class="skin-sub"></span>
         ${open ? "" : '<span class="lock" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="5" y="10" width="14" height="11" rx="3" fill="currentColor"/></svg></span>'}`;
       b.querySelector(".skin-name").textContent = st.name;
-      b.querySelector(".skin-sub").textContent = on ? "Equipped" : open ? "Tap to use" : `Over ${MILESTONES[st.unlock.at].m} m`;
+      b.querySelector(".skin-sub").textContent = on ? "Equipped" : open ? "Tap to use"
+        : st.unlock.stars ? `${st.unlock.stars} ★ from missions` : `Over ${MILESTONES[st.unlock.at].m} m`;
       b.setAttribute("aria-label", open ? `${st.name}${on ? ", equipped" : ""}` : `${st.name}, locked. ${unlockText(st)}`);
       drawSkinPreview(b.querySelector("canvas"), st);
       b.addEventListener("click", () => {
@@ -803,7 +1182,7 @@
   const wide = () => W / H >= 1.25 && W >= 760;
 
   function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, lowGfx() ? 1.25 : 2);
     W = canvas.clientWidth;
     H = canvas.clientHeight;
     canvas.width = Math.round(W * dpr);
@@ -830,12 +1209,32 @@
   let challenge = 0;
   try { challenge = clamp(parseInt(new URLSearchParams(location.search).get("beat"), 10) || 0, 0, 999999); } catch {}
 
+  // ---------- Daily tower ----------
+  // Everyone gets the same gold floors and gusts on the same day (UTC).
+  const dayNumber = () => Math.max(1, Math.floor((Date.now() - Date.UTC(2026, 9, 27)) / 864e5) + 1);
+  function seeded(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function dailyRecord() {
+    let d = null;
+    try { d = JSON.parse(load("skyriseDaily")); } catch {}
+    return d && d.day === dayNumber() ? d : { day: dayNumber(), best: 0, plays: 0 };
+  }
+
   // ---------- Game state ----------
-  let state = "menu"; // menu | playing | over
+  let state = "menu"; // menu | playing | paused | rescue | over
+  let mode = "classic"; // classic | daily | zen
+  let rng = Math.random;
   let stack, mover, debris, particles, popups;
   let score, combo, best = Number(load("skyriseBest")) || 0, time = 0;
-  let bounce, flash, shake, overAt, overReady, newBest, lastMilestone, shareBlob, unlockedNow, windWarned;
-  let perfects, bestStreak;
+  let bounce, flash, shake, punch = 0, whiteFlash = 0, overAt, overReady, newBest, lastMilestone, shareBlob, windWarned;
+  let perfects, bestStreak, penthouses, windFloors, rewindUsed, rescueAt, rewards, dailyBest;
+  let tutorial = load("skyriseTutorial") !== "done";
 
   const level = () => stack.length - 1;
   const meters = () => level() * METERS_PER_FLOOR;
@@ -852,31 +1251,39 @@
     stack = [{ x0: -h, x1: h, z0: -h, z1: h, y: 0, color: colorAt(0), lobby: true }];
     debris = []; particles = []; popups = [];
     score = 0; combo = 0; bounce = 0; flash = 0; shake = 0;
-    perfects = 0; bestStreak = 0;
+    perfects = 0; bestStreak = 0; penthouses = 0; windFloors = 0; rewindUsed = false;
     overReady = false; newBest = false; lastMilestone = -1; shareBlob = null;
-    unlockedNow = null; windWarned = false;
+    rewards = []; windWarned = false;
+    rng = mode === "daily" ? seeded(dayNumber() * 7919 + 17) : Math.random;
     newMover();
   }
 
   // Sliding speed in world units per second. Nearly flat for the first 15 floors so new
   // players can find the rhythm, then it ramps up and tops out around floor 50.
   const floorSpeed = n => Math.min(20, 6.5 + n * 0.06 + Math.max(0, n - 15) * 0.32);
+  // Zen mode stays at the gentle early pace with no wind.
+  const speedFor = n => (mode === "zen" ? floorSpeed(Math.min(n, 12)) : floorSpeed(n));
+  const windFor = n => (mode === "zen" ? 0 : windAt(n));
+  // How strong the gust is at time t: 1 is calm, up to about 1.55 or down to about 0.45.
+  const gustAt = (m, t) => 1 + windFor(m.y) * 0.55 * Math.sin(t * 2.3 + m.gustPhase) * Math.sin(t * 0.9 + m.gustPhase * 2);
+  // Perfect drops allow a fixed slice of time rather than distance, so fast floors stay fair.
+  const perfectWindow = m => Math.max(PERFECT, (m.v || m.speed) * PERFECT_TIME);
 
   function newMover() {
     const top = stack[stack.length - 1];
     const n = stack.length;
     const axis = n % 2 ? "x" : "z";
-    const golden = n >= 6 && !top.golden && Math.random() < 0.14;
+    const golden = n >= 6 && !top.golden && rng() < 0.14;
     mover = {
       x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, y: n,
       axis, dir: 1, golden,
-      speed: floorSpeed(n) * (golden ? 1.35 : 1),
-      gustPhase: Math.random() * Math.PI * 2,
+      speed: speedFor(n) * (golden ? 1.35 : 1),
+      gustPhase: rng() * Math.PI * 2,
       color: golden ? hexRgb(GOLD) : colorAt(n),
     };
     mover[axis + "0"] -= RANGE;
     mover[axis + "1"] -= RANGE;
-    if (!windWarned && windAt(n) > 0) {
+    if (!windWarned && windFor(n) > 0) {
       windWarned = true;
       showBanner("Altitude warning", "Wind gusts up here!");
       sound.wind();
@@ -892,7 +1299,16 @@
 
     if (hi <= lo) {
       debris.push({ ...m, vy: 0, vside: m[a0] < top[a0] ? -3 : 3, life: 1.4, back: m[a0] < top[a0] });
+      combo = 0;
+      if (mode === "zen") {
+        // Zen never ends on a miss: the floor falls away and a new one slides in.
+        sound.cut();
+        shake = 0.3;
+        newMover();
+        return;
+      }
       mover = null;
+      if (!rewindUsed) { offerRescue(); return; }
       gameOver();
       return;
     }
@@ -900,10 +1316,12 @@
     const placed = { x0: m.x0, x1: m.x1, z0: m.z0, z1: m.z1, y: m.y, color: m.color, golden: m.golden };
     let points;
 
-    if (Math.abs(m[a0] - top[a0]) <= PERFECT) {
+    if (Math.abs(m[a0] - top[a0]) <= perfectWindow(m)) {
       combo++;
       perfects++;
+      if (m.golden) penthouses++;
       bestStreak = Math.max(bestStreak, combo);
+      punch = Math.max(punch, combo >= 5 ? 1 : 0.45);
       placed[a0] = top[a0];
       placed[a1] = top[a1];
       if (combo >= 3) {
@@ -919,12 +1337,22 @@
         text: m.golden ? `PENTHOUSE +${points}` : combo > 1 ? `PERFECT x${combo}` : "PERFECT",
         sub: m.golden ? "" : `+${points}`, y: m.y + 1, life: 1.1, color: m.golden ? GOLD : "#ffffff",
       });
-      if (m.golden) sound.golden(); else sound.perfect(combo);
+      if (m.golden) { sound.golden(); whiteFlash = 0.35; } else sound.perfect(combo);
+      if (combo === 5 || combo === 10 || combo === 20) {
+        popups.push({ text: combo >= 10 ? "UNSTOPPABLE!" : "ON FIRE!", sub: "", y: m.y + 2.2, life: 1.4, color: "#ffb13b", big: true });
+        sound.streak();
+      }
       vibrate(m.golden ? [20, 30, 20] : 20);
     } else {
       combo = 0;
       placed[a0] = lo;
       placed[a1] = hi;
+      if (mode === "zen") {
+        // Zen floors slowly grow back so a relaxed tower never dwindles away.
+        const grow = Math.min(0.4, BLOCK_SIZE - (hi - lo));
+        placed[a0] -= grow / 2;
+        placed[a1] += grow / 2;
+      }
       points = people(placed);
       popups.push({ text: `+${points}`, sub: "", y: m.y + 1, life: 0.8, color: "#ffffff" });
       // The part hanging over the edge breaks off and falls.
@@ -941,10 +1369,58 @@
     dust(placed);
     stack.push(placed);
     score += points;
+    if (windFor(placed.y) > 0) windFloors++;
     bounce = 1;
+    punch = Math.max(punch, 0.25);
     updateHud(true);
     checkMilestone();
     newMover();
+    updateHint();
+  }
+
+  // ---------- Second chance ----------
+  function offerRescue() {
+    state = "rescue";
+    rescueAt = performance.now();
+    sound.fail();
+    vibrate([40, 40, 90]);
+    shake = 0.4;
+    ui.pause.hidden = true;
+    ui.rescue.hidden = false;
+    const bar = ui.rescue.querySelector(".countdown i");
+    bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+    ui.rewind.focus();
+  }
+  function rewind() {
+    if (state !== "rescue") return;
+    rewindUsed = true;
+    debris = [];
+    ui.rescue.hidden = true;
+    ui.pause.hidden = false;
+    state = "playing";
+    sound.rewind();
+    newMover();
+    popups.push({ text: "REWIND", sub: "Last chance!", y: stack.length + 1, life: 1.2, color: "#8ce99a" });
+  }
+  function endFromRescue() {
+    if (state !== "rescue") return;
+    ui.rescue.hidden = true;
+    gameOver(true);
+  }
+
+  // ---------- Beginner tips ----------
+  // The first towers show where to tap and explain the people score.
+  function updateHint() {
+    let text = "";
+    if (tutorial && state === "playing" && mode !== "zen") {
+      const n = stack.length;
+      if (n <= 2) text = "Tap when the sliding floor lines up with the one below";
+      else if (n <= 4) text = "Overhangs break off. Wider floors fit more people!";
+      else if (n <= 6) text = "Perfect drops add bonus people and keep floors wide";
+      else { tutorial = false; save("skyriseTutorial", "done"); }
+    }
+    ui.hint.hidden = !text;
+    if (text && ui.hint.textContent !== text) ui.hint.textContent = text;
   }
 
   function checkMilestone() {
@@ -986,31 +1462,65 @@
     }
   }
 
-  function gameOver() {
+  function gameOver(silent) {
     state = "over";
     overAt = performance.now();
     combo = 0;
     shake = 0.6;
-    if (score > best) { best = score; newBest = true; save("skyriseBest", best); }
-    if (meters() > bestMeters) {
-      const before = STYLES.filter(isUnlocked).length;
-      bestMeters = meters();
-      save("skyriseBestMeters", bestMeters);
-      const unlocked = STYLES.filter(isUnlocked);
-      if (unlocked.length > before) {
-        // Switch to the newest style right away so the next tower shows it off.
-        unlockedNow = unlocked[unlocked.length - 1];
-        styleIndex = STYLES.indexOf(unlockedNow);
-        sound.unlock();
-      }
-    }
     ui.hud.hidden = true;
     ui.wind.hidden = true;
-    sound.fail();
-    vibrate([40, 40, 90]);
+    ui.hint.hidden = true;
+    ui.pause.hidden = true;
+    sound.music.intensity = 0;
+    if (mode !== "zen") recordResults();
+    if (!silent) { sound.fail(); vibrate([40, 40, 90]); }
   }
 
+  // Saves bests, updates missions, and notes anything newly unlocked for the game-over card.
+  function recordResults() {
+    const unlockedBefore = new Set(STYLES.filter(isUnlocked).map(st => st.id));
+    const islandBefore = islandLevel();
+    if (score > best) { best = score; newBest = true; save("skyriseBest", best); }
+    if (meters() > bestMeters) { bestMeters = meters(); save("skyriseBestMeters", bestMeters); }
+    if (mode === "daily") {
+      const d = dailyRecord();
+      d.plays++;
+      d.best = Math.max(d.best, score);
+      dailyBest = d.best;
+      save("skyriseDaily", JSON.stringify(d));
+    }
+
+    // Missions: what this tower achieved, per mission type.
+    const got = {
+      perfects, streak: bestStreak, height: meters(), people: score, wind: windFloors,
+      penthouse: penthouses, towers: 1, floors: level(), daily: mode === "daily" ? 1 : 0,
+    };
+    const finished = [];
+    missions.slots = missions.slots.filter(m => {
+      m.p = MISSION_TYPES[m.t].game ? Math.max(m.p, got[m.t]) : m.p + got[m.t];
+      if (m.p < m.n) return true;
+      finished.push(m);
+      missions.done++;
+      missions.stars += m.r;
+      return false;
+    });
+    dealMissions();
+    for (const m of finished) rewards.push({ kind: "star", text: `Mission complete: ${missionText(m)} (+${m.r} ★)` });
+
+    // One line for new skins and one for island upgrades, however many arrived at once.
+    const list = names => names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+    const newSkins = STYLES.filter(st => isUnlocked(st) && !unlockedBefore.has(st.id));
+    if (newSkins.length) {
+      rewards.push({ kind: "skin", text: `New skin${newSkins.length > 1 ? "s" : ""} unlocked: ${list(newSkins.map(st => st.name))}` });
+      styleIndex = STYLES.indexOf(newSkins[newSkins.length - 1]); // show off the newest skin on the next tower
+    }
+    const built = ISLAND_UPGRADES.slice(islandBefore, islandLevel()).map(u => u.name);
+    if (built.length) rewards.push({ kind: "island", text: `Island upgrade${built.length > 1 ? "s" : ""}: ${list(built)}` });
+    if (finished.length) setTimeout(() => sound.star(), 300);
+    if (rewards.some(r => r.kind !== "star")) sound.unlock();
+  }
   function vibrate(p) {
+    if (!settings.vibrate) return;
     try { if (navigator.vibrate) navigator.vibrate(p); } catch {}
   }
 
@@ -1029,7 +1539,7 @@
       ui.next.textContent = "Taller than every landmark";
       ui.bar.style.width = "100%";
     }
-    ui.wind.hidden = windAt(stack.length) <= 0;
+    ui.wind.hidden = windFor(stack.length) <= 0;
   }
 
   function showBanner(eyebrow, title) {
@@ -1044,17 +1554,25 @@
   }
 
   function showOver() {
-    ui.overEyebrow.textContent = newBest ? "New best!" : "Tower complete";
-    ui.overEyebrow.classList.toggle("best", newBest);
+    ui.overEyebrow.textContent = mode === "zen" ? "Zen tower" : mode === "daily" ? `Daily tower #${dayNumber()}` : newBest ? "New best!" : "Tower complete";
+    ui.overEyebrow.classList.toggle("best", newBest && mode !== "zen");
     ui.overPeople.textContent = fmt(score);
     ui.overSub.textContent = `people live in your ${meters()} m tower`;
-    ui.overLandmark.textContent = lastMilestone >= 0 ? `Taller than ${MILESTONES[lastMilestone].name}` : `Best: ${fmt(best)} people`;
+    ui.overLandmark.textContent = mode === "daily" ? `Today's best: ${fmt(dailyBest)} people${newBest ? " · New all-time best!" : ""}`
+      : lastMilestone >= 0 ? `Taller than ${MILESTONES[lastMilestone].name}`
+      : mode === "zen" ? "Zen towers don't count toward bests" : `Best: ${fmt(best)} people`;
     ui.statFloors.textContent = level();
     ui.statPerfect.textContent = perfects;
     ui.statStreak.textContent = bestStreak;
-    ui.overUnlock.hidden = !unlockedNow;
-    if (unlockedNow) ui.overUnlock.textContent = `New style unlocked: ${unlockedNow.name}`;
-    ui.overVersus.hidden = !challenge;
+    ui.overRewards.hidden = !rewards.length;
+    ui.overRewards.innerHTML = "";
+    for (const r of rewards) {
+      const el = document.createElement("div");
+      el.className = `reward${r.kind === "star" ? " star" : ""}`;
+      el.textContent = r.text;
+      ui.overRewards.appendChild(el);
+    }
+    ui.overVersus.hidden = !challenge || mode === "zen";
     if (challenge) {
       const won = score > challenge;
       ui.overVersus.classList.toggle("won", won);
@@ -1064,6 +1582,7 @@
     }
     renderStyle();
     ui.over.hidden = false;
+    ui.settingsBtn.hidden = false;
   }
 
   function renderMenu() {
@@ -1071,46 +1590,190 @@
     ui.menuBest.innerHTML = `Best tower: <b>${fmt(best)}</b> people`;
     ui.menuChallenge.hidden = !challenge;
     ui.menuChallenge.innerHTML = `A friend housed <b>${fmt(challenge)}</b> people. Can you beat them?`;
+    ui.missionsSub.textContent = `${missions.stars} ★ earned`;
+    ui.missionsDot.hidden = missions.seen >= missions.done;
+    const d = dailyRecord();
+    ui.dailyTitle.textContent = `Daily #${dayNumber()}`;
+    ui.dailySub.textContent = d.plays ? `Today's best: ${fmt(d.best)}` : "New tower today";
+    const lvl = islandLevel(), next = ISLAND_UPGRADES[lvl];
+    ui.islandChip.innerHTML = next
+      ? `Island level <b>${lvl + 1}</b> · Next: ${next.name} at ${MILESTONES[next.at].m + 1} m`
+      : `Island level <b>${lvl + 1}</b> · Fully upgraded`;
     renderStyle();
   }
 
   // ---------- Input ----------
-  function start() {
+  function start(newMode = mode) {
     sound.ensure();
     if (!isUnlocked(STYLES[styleIndex])) {
       showToast(`Locked. ${unlockText(STYLES[styleIndex])} to unlock it.`);
       return;
     }
+    mode = newMode;
     ui.menu.hidden = true;
     ui.over.hidden = true;
     ui.hud.hidden = false;
+    ui.pause.hidden = false;
+    ui.settingsBtn.hidden = true;
     reset();
     updateHud(false);
     state = "playing";
+    updateHint();
   }
   function tap() {
     sound.ensure();
-    if (state === "menu") start();
+    if (state === "menu") start("classic");
     else if (state === "playing") drop();
   }
   canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
-  ui.play.addEventListener("click", start);
-  ui.again.addEventListener("click", start);
+  ui.play.addEventListener("click", () => start("classic"));
+  ui.dailyBtn.addEventListener("click", () => start("daily"));
+  ui.zenBtn.addEventListener("click", () => start("zen"));
+  ui.again.addEventListener("click", () => start());
   ui.toMenu.addEventListener("click", goToMenu);
 
   // Back to the title screen, with a fresh island ready to build on.
   function goToMenu() {
     sound.ensure();
     sound.click();
+    sound.duck(false);
     ui.over.hidden = true;
     ui.hud.hidden = true;
+    ui.pause.hidden = true;
+    ui.pauseMenu.hidden = true;
+    ui.rescue.hidden = true;
+    ui.settingsBtn.hidden = false;
+    mode = "classic";
     reset();
     state = "menu";
     renderMenu();
     ui.menu.hidden = false;
   }
+
+  // ---------- Pause ----------
+  function pauseGame() {
+    if (state !== "playing") return;
+    state = "paused";
+    sound.duck(true);
+    ui.finishZen.hidden = mode !== "zen";
+    ui.pauseSub.textContent = mode === "zen" ? "Take your time." : `${fmt(score)} people · ${meters()} m so far`;
+    ui.pauseMenu.hidden = false;
+    ui.resume.focus();
+  }
+  function resumeGame() {
+    if (state !== "paused") return;
+    ui.pauseMenu.hidden = true;
+    sound.duck(false);
+    state = "playing";
+  }
+  ui.pause.addEventListener("click", () => { sound.ensure(); sound.click(); pauseGame(); });
+  ui.resume.addEventListener("click", resumeGame);
+  ui.finishZen.addEventListener("click", () => { ui.pauseMenu.hidden = true; sound.duck(false); gameOver(true); });
+  ui.pauseMenuBtn.addEventListener("click", goToMenu);
+  ui.pauseSettings.addEventListener("click", openSettings);
+  ui.rewind.addEventListener("click", rewind);
+  ui.giveUp.addEventListener("click", endFromRescue);
+  // Leaving the app mid-tower pauses it.
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
+  window.addEventListener("blur", pauseGame);
+
+  // ---------- Dialogs ----------
+  let dialogOpener = null;
+  function openModal(el, focusEl) {
+    dialogOpener = document.activeElement;
+    el.hidden = false;
+    (focusEl || el.querySelector(".close-btn")).focus();
+  }
+  function closeModal(el) {
+    el.hidden = true;
+    if (dialogOpener && dialogOpener.focus && !dialogOpener.closest("[hidden]")) dialogOpener.focus();
+  }
+  for (const el of [ui.settings, ui.missions]) {
+    el.addEventListener("click", e => { if (e.target === el) closeModal(el); });
+    el.querySelector(".close-btn").addEventListener("click", () => closeModal(el));
+  }
+  const openModalEl = () => [ui.skins, ui.missions, ui.settings].find(el => !el.hidden);
+
+  // Settings
+  function renderSettings() {
+    ui.setSound.checked = settings.sound;
+    ui.setMusic.checked = settings.music;
+    ui.setVibrate.checked = settings.vibrate;
+    ui.vibrateRow.hidden = !("vibrate" in navigator);
+    ui.qualityButtons.forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === settings.quality)));
+  }
+  function openSettings() {
+    sound.ensure();
+    sound.click();
+    renderSettings();
+    openModal(ui.settings);
+  }
+  ui.settingsBtn.addEventListener("click", openSettings);
+  ui.setSound.addEventListener("change", () => { sound.setSound(ui.setSound.checked); sound.click(); });
+  ui.setMusic.addEventListener("change", () => sound.setMusic(ui.setMusic.checked));
+  ui.setVibrate.addEventListener("change", () => { settings.vibrate = ui.setVibrate.checked; save("skyriseVibrate", settings.vibrate ? "1" : "0"); vibrate(20); });
+  ui.qualityButtons.forEach(b => b.addEventListener("click", () => {
+    settings.quality = b.dataset.q;
+    save("skyriseQuality", settings.quality);
+    if (settings.quality !== "auto") { autoLow = false; save("skyriseAutoLow", "0"); }
+    renderSettings();
+    resize();
+  }));
+  ui.replayTips.addEventListener("click", () => {
+    tutorial = true;
+    save("skyriseTutorial", "");
+    showToast("Tips will show on your next tower");
+  });
+
+  // Missions
+  function openMissions() {
+    sound.ensure();
+    sound.click();
+    missions.seen = missions.done;
+    save("skyriseMissions", JSON.stringify(missions));
+    ui.missionsDot.hidden = true;
+    const nextStar = STYLES.find(st => st.unlock && st.unlock.stars && !isUnlocked(st));
+    ui.missionsCount.textContent = nextStar
+      ? `${missions.stars} ★ earned · ${nextStar.unlock.stars - missions.stars} more for ${nextStar.name}`
+      : `${missions.stars} ★ earned · All star rewards unlocked`;
+    ui.missionsBar.style.width = `${nextStar ? missions.stars / nextStar.unlock.stars * 100 : 100}%`;
+    ui.missionList.innerHTML = missions.slots.map(m => `
+      <div class="mission">
+        <b>${missionText(m)}</b>
+        <span class="reward-tag">+${m.r} ★</span>
+        <div class="m-bar"><i style="width:${Math.min(100, m.p / m.n * 100)}%"></i></div>
+        <small>${MISSION_TYPES[m.t].game ? `Best so far: ${fmt(Math.min(m.p, m.n))} of ${fmt(m.n)}` : `${fmt(Math.min(m.p, m.n))} of ${fmt(m.n)}`}</small>
+      </div>`).join("");
+    ui.starRewards.innerHTML = STYLES.filter(st => st.unlock && st.unlock.stars).map(st => `
+      <div class="row-item${isUnlocked(st) ? " done" : ""}">
+        <span class="swatch">${(st.swatch || st.floors).slice(0, 3).map(c => `<i style="background:${c}"></i>`).join("")}</span>
+        <span><b>${st.name}</b><small>Tower skin</small></span>
+        <span class="state">${isUnlocked(st) ? "Unlocked" : `${st.unlock.stars} ★`}</span>
+      </div>`).join("");
+    ui.islandList.innerHTML = ISLAND_UPGRADES.map((u, i) => `
+      <div class="row-item${i < islandLevel() ? " done" : ""}">
+        <span><b>${u.name}</b><small>Build taller than ${MILESTONES[u.at].name}</small></span>
+        <span class="state">${i < islandLevel() ? "Built" : `${MILESTONES[u.at].m + 1} m`}</span>
+      </div>`).join("");
+    openModal(ui.missions);
+  }
+  ui.missionsBtn.addEventListener("click", openMissions);
+
   window.addEventListener("keydown", e => {
-    if (!ui.skins.hidden) { if (e.code === "Escape") closeSkins(); return; }
+    const modal = openModalEl();
+    if (modal) {
+      if (e.code === "Escape") { if (modal === ui.skins) closeSkins(); else closeModal(modal); }
+      return;
+    }
+    if (state === "rescue") {
+      if (e.code === "Escape") endFromRescue();
+      return;
+    }
+    if (state === "paused") {
+      if (e.code === "Escape" || e.code === "KeyP") resumeGame();
+      return;
+    }
+    if (state === "playing" && (e.code === "Escape" || e.code === "KeyP")) { pauseGame(); return; }
     if (e.target instanceof HTMLButtonElement && (e.code === "Space" || e.code === "Enter")) return;
     if (e.code === "Space" || e.code === "Enter") {
       e.preventDefault();
@@ -1118,13 +1781,14 @@
       if (state === "over") { if (overReady) start(); } else tap();
     }
     if (e.code === "Escape" && state === "over" && overReady) goToMenu();
-    if (state !== "playing" && e.code === "ArrowLeft") changeStyle(-1);
-    if (state !== "playing" && e.code === "ArrowRight") changeStyle(1);
+    if ((state === "menu" || state === "over") && e.code === "ArrowLeft") changeStyle(-1);
+    if ((state === "menu" || state === "over") && e.code === "ArrowRight") changeStyle(1);
   });
 
   // ---------- Sharing ----------
   function shareText() {
     const ms = lastMilestone >= 0 ? `, taller than ${MILESTONES[lastMilestone].name}` : "";
+    if (mode === "daily") return `Skyrise Daily #${dayNumber()}: ${fmt(score)} people in a ${meters()} m tower${ms}. Can you beat it today?`;
     return `My Skyrise tower is ${meters()} m tall${ms}, with ${fmt(score)} people living in it. Can you build a bigger one?`;
   }
   // A portrait share card: the finished tower with the score laid over it.
@@ -1202,16 +1866,28 @@
     if (state === "playing" && mover) {
       const a0 = mover.axis + "0", a1 = mover.axis + "1";
       const top = stack[stack.length - 1];
-      // Gusts make the floor speed up and slow down unpredictably up high.
-      const w = windAt(mover.y);
-      const gust = 1 + w * 0.55 * Math.sin(time * 2.3 + mover.gustPhase) * Math.sin(time * 0.9 + mover.gustPhase * 2);
-      const step = mover.dir * mover.speed * gust * dt;
+      // Gusts make the floor speed up and slow down up high.
+      mover.v = mover.speed * gustAt(mover, time);
+      const step = mover.dir * mover.v * dt;
       mover[a0] += step;
       mover[a1] += step;
       const offset = mover[a0] - top[a0];
       if (offset > RANGE) mover.dir = -1;
       if (offset < -RANGE) mover.dir = 1;
+      // The wind meter shows the gust half a second ahead, so you can see it coming.
+      if (windFor(mover.y) > 0) {
+        const ahead = gustAt(mover, time + 0.5);
+        ui.gust.style.width = `${clamp((ahead - 0.45) / 1.1, 0.05, 1) * 100}%`;
+        const strong = ahead > 1.25;
+        ui.wind.classList.toggle("strong", strong);
+        const label = strong ? "Gust coming" : ahead < 0.75 ? "Calm" : "Wind";
+        if (ui.windLabel.textContent !== label) ui.windLabel.textContent = label;
+      }
     }
+    if (state === "rescue" && performance.now() - rescueAt > 5000) endFromRescue();
+    // Music layers join as the tower grows and streaks build.
+    sound.music.intensity = state === "playing" || state === "paused"
+      ? 1 + (level() >= 12 ? 1 : 0) + (combo >= 5 ? 1 : 0) : 0;
 
     // Camera: follow the top while playing; at game over, frame the whole tower above the card.
     let tZoom = 1, tLevel = Math.max(0, level() - Math.floor(H * 0.2 / th)), tOrigin = H * 0.6, tCx = W / 2;
@@ -1225,6 +1901,7 @@
       tOrigin = H * 0.08 + above * tZoom;
       if (wide()) tCx = W * 0.27;
     }
+    tZoom *= 1 + punch * 0.035; // a small push-in on good drops
     const k = Math.min(1, dt * (state === "over" ? 3 : 6));
     view.zoom = lerp(view.zoom, tZoom, k);
     view.level = lerp(view.level, tLevel, k);
@@ -1241,6 +1918,8 @@
     bounce = Math.max(0, bounce - dt * 6);
     flash = Math.max(0, flash - dt * 2.2);
     shake = Math.max(0, shake - dt * 1.8);
+    punch = Math.max(0, punch - dt * 2.5);
+    whiteFlash = Math.max(0, whiteFlash - dt * 2);
     for (const d of debris) {
       d.vy += 26 * dt;
       d.y -= d.vy * dt;
@@ -1288,11 +1967,11 @@
   const NEIGHBORS = [
     { x0: -15.5, x1: -10, z0: 9, z1: 14.5, h: 4, color: hexRgb("#e8dcc8") },
     { x0: 9.5, x1: 15, z0: -15, z1: -9.5, h: 6, color: hexRgb("#c9d6e6") },
-    { x0: -15, x1: -11, z0: -1, z1: 4, h: 2, color: hexRgb("#f0c9a8") },
+    { x0: -15, x1: -11, z0: 2.2, z1: 6.6, h: 2, color: hexRgb("#f0c9a8") },
   ];
   const TREES = [
     [-8, 9], [-6.5, 12.5], [-3, 14.5], [8.5, 8.5], [12, 4], [14.5, 1], [4, 12], [-13, -5.5], [-11, -8.5],
-    [2.5, -13], [-1, -15], [12.5, 11.5], [15.5, 7], [-15, 6.5],
+    [2.5, -13], [-1, -15], [12.5, 11.5], [15.5, 7], [-14.5, -2.6],
   ].map(([x, z], i) => ({ x, z, size: 0.8 + hash(i, 3, 7) * 0.5, hue: hash(i, 9, 1) }));
 
   function skyAt(n) {
@@ -1430,6 +2109,7 @@
 
   // Big soft clouds that live at a fixed altitude, so the tower climbs through them.
   function drawBandClouds(front, dt) {
+    if (front && lowGfx()) return;
     const tint = 1 - env.nf * 0.6;
     for (const c of bandClouds) {
       if (c.front !== front) continue;
@@ -1491,6 +2171,143 @@
     poly([P(-6.8, 0.03, -6.8), P(6.8, 0.03, -6.8), P(6.8, 0.03, 6.8), P(-6.8, 0.03, 6.8)], rgb(hexRgb("#e3e7ec"), d));
   }
 
+  // ---------- Island upgrades ----------
+  const EXTRA_NEIGHBORS = [
+    { x0: -8.5, x1: -5, z0: 12, z1: 15.5, h: 2, color: hexRgb("#f2d0a4") },
+    { x0: 10, x1: 14, z0: -6.5, z1: -3, h: 3, color: hexRgb("#d7e3c9") },
+  ];
+  const FOUNTAIN = { x: -6.2, z: 6.2 }, POND = { x: 12, z: 12, r: 3.2 }, WHEEL = { x: -12, z: -12 };
+  const LAMPS = [];
+  for (const u of [9, 12.5, 16]) {
+    for (const side of [-1.9, 1.9]) LAMPS.push([u, side], [side, u], [-u, side]);
+  }
+  const CARS = [
+    { road: "x", lane: -0.65, speed: 2.6, off: 0, color: hexRgb("#ff6b6b") },
+    { road: "x", lane: 0.65, speed: -2.1, off: 4, color: hexRgb("#f1f3f5") },
+    { road: "z", lane: 0.65, speed: 2.3, off: 2, color: hexRgb("#4dabf7") },
+    { road: "z", lane: -0.65, speed: -2.8, off: 7, color: hexRgb("#51cf66") },
+  ];
+  const BALLOONS = [
+    { x: -14, z: 7, level: 7, color: "#ff6b6b", trim: "#ffe3e3", phase: 0 },
+    { x: 13, z: -9, level: 10.5, color: "#4dabf7", trim: "#e7f5ff", phase: 2 },
+    { x: 7, z: 15, level: 14, color: "#845ef7", trim: "#f3f0ff", phase: 4 },
+  ];
+  let islandNow = 0; // island level, refreshed each frame
+  const has = i => islandNow > i;
+  // Trees make room for the upgrades that are built.
+  function treeVisible(t) {
+    const near = (x, z, r) => Math.hypot(t.x - x, t.z - z) < r;
+    if (has(0) && near(FOUNTAIN.x, FOUNTAIN.z, 2)) return false;
+    if (has(1) && near(POND.x, POND.z, POND.r + 1)) return false;
+    if (has(4) && near(WHEEL.x, WHEEL.z, 3)) return false;
+    if (has(2) && EXTRA_NEIGHBORS.some(b => t.x > b.x0 - 1 && t.x < b.x1 + 1 && t.z > b.z0 - 1 && t.z < b.z1 + 1)) return false;
+    return true;
+  }
+  // An ellipse on the ground: a circle of radius r (world units) seen in isometric view.
+  function groundEllipse(x, y, z, r, fill) {
+    const [cx, cy] = project(x, y, z);
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r * Math.SQRT2 * ISO_X * s * view.zoom, r * Math.SQRT2 * ISO_Y * s * view.zoom, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawPond() {
+    const d = 1 - env.nf * 0.6;
+    groundEllipse(POND.x, 0.02, POND.z, POND.r + 0.45, rgb(hexRgb("#d9c79a"), d));
+    groundEllipse(POND.x, 0.03, POND.z, POND.r, rgb(hexRgb("#3f9fd8"), d));
+    groundEllipse(POND.x - 0.6, 0.04, POND.z - 0.6, POND.r * 0.55, rgb(hexRgb("#6cc3f0"), d));
+    for (let i = 0; i < 2; i++) {
+      const a = time * 0.35 + i * Math.PI;
+      const [x, y] = project(POND.x + Math.cos(a) * 1.8, 0.1, POND.z + Math.sin(a) * 1.8);
+      const r = 0.3 * s * view.zoom;
+      ctx.fillStyle = rgb(hexRgb("#ffe066"), d);
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.65, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + r * 0.6 * Math.sign(Math.cos(a + Math.PI / 2)), y - r * 0.6, r * 0.45, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  function drawFountain() {
+    const d = 1 - env.nf * 0.5, f = FOUNTAIN;
+    groundEllipse(f.x, 0.03, f.z, 1.25, rgb(hexRgb("#aab3bf"), d));
+    groundEllipse(f.x, 0.22, f.z, 1.2, rgb(hexRgb("#cfd6df"), d));
+    groundEllipse(f.x, 0.24, f.z, 0.9, rgb(hexRgb("#5ab4ea"), d));
+    ctx.fillStyle = `rgba(200,235,255,${0.9 * d})`;
+    for (let k = 0; k < 14; k++) {
+      const ph = (time * 0.9 + k / 14) % 1, a = k * 2.4;
+      const [x, y] = project(f.x + Math.cos(a) * ph * 0.75, 0.25 + 4 * ph * (1 - ph) * 1.1, f.z + Math.sin(a) * ph * 0.75);
+      ctx.beginPath(); ctx.arc(x, y, Math.max(1, 2.2 * view.zoom), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  function drawFerrisWheel() {
+    const d = 1 - env.nf * 0.4;
+    const [gx, gy] = project(WHEEL.x, 0, WHEEL.z), [hx, hy] = project(WHEEL.x, 3.6, WHEEL.z);
+    const r = 2.5 * s * view.zoom;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = rgb(hexRgb("#dee2e6"), d);
+    ctx.lineWidth = Math.max(1.5, 3 * view.zoom);
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(gx - r * 0.6, gy); ctx.moveTo(hx, hy); ctx.lineTo(gx + r * 0.6, gy); ctx.stroke();
+    const spin = time * 0.25;
+    ctx.lineWidth = Math.max(1, 1.5 * view.zoom);
+    ctx.strokeStyle = rgb(hexRgb("#ffffff"), d, 0.85);
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) { const a = spin + i * Math.PI / 4; ctx.moveTo(hx, hy); ctx.lineTo(hx + Math.cos(a) * r, hy + Math.sin(a) * r); }
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, 3 * view.zoom);
+    ctx.strokeStyle = rgb(hexRgb("#ff8fab"), d);
+    ctx.beginPath(); ctx.arc(hx, hy, r, 0, Math.PI * 2); ctx.stroke();
+    const cabin = ["#ffd43b", "#4dabf7", "#ff6b6b", "#51cf66"];
+    for (let i = 0; i < 8; i++) {
+      const a = spin + i * Math.PI / 4, cx = hx + Math.cos(a) * r, cy = hy + Math.sin(a) * r, c = r * 0.16;
+      ctx.fillStyle = env.nf > 0.4 ? "#ffe7a1" : rgb(hexRgb(cabin[i % 4]), d);
+      ctx.fillRect(cx - c, cy, c * 2, c * 1.4);
+    }
+  }
+  function drawBalloon(b) {
+    const d = 1 - env.nf * 0.4;
+    const x = b.x + Math.sin(time * 0.15 + b.phase) * 2, lvl = b.level + Math.sin(time * 0.6 + b.phase) * 0.4;
+    const [px, py] = project(x, lvl, b.z);
+    const r = 1.1 * s * view.zoom;
+    if (py < -r * 3 || py > H + r * 3) return;
+    ctx.strokeStyle = `rgba(80,60,40,${0.8 * d})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px - r * 0.5, py + r * 0.7); ctx.lineTo(px - r * 0.25, py + r * 1.5); ctx.moveTo(px + r * 0.5, py + r * 0.7); ctx.lineTo(px + r * 0.25, py + r * 1.5); ctx.stroke();
+    ctx.fillStyle = rgb(hexRgb("#a0703c"), d);
+    ctx.fillRect(px - r * 0.3, py + r * 1.45, r * 0.6, r * 0.4);
+    ctx.fillStyle = rgb(hexRgb(b.color), d);
+    ctx.beginPath(); ctx.ellipse(px, py, r, r * 1.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgb(hexRgb(b.trim), d);
+    ctx.beginPath(); ctx.ellipse(px, py, r * 0.35, r * 1.08, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawLampsAndCars() {
+    const d = 1 - env.nf * 0.5;
+    for (const c of CARS) {
+      const u = 7.8 + (((c.off + time * c.speed) % 8.8) + 8.8) % 8.8;
+      const body = c.road === "x"
+        ? { x0: u - 0.8, x1: u + 0.8, z0: c.lane - 0.38, z1: c.lane + 0.38 }
+        : { x0: c.lane - 0.38, x1: c.lane + 0.38, z0: u - 0.8, z1: u + 0.8 };
+      drawBlock({ ...body, color: c.color }, 0, 0.42, { plain: true });
+      const cab = c.road === "x"
+        ? { x0: u - 0.45, x1: u + 0.35, z0: c.lane - 0.3, z1: c.lane + 0.3 }
+        : { x0: c.lane - 0.3, x1: c.lane + 0.3, z0: u - 0.45, z1: u + 0.35 };
+      drawBlock({ ...cab, color: [190, 220, 245] }, 0.42, 0.7, { plain: true });
+    }
+    for (const [x, z] of LAMPS) {
+      const [bx, by] = project(x, 0, z), [tx, ty] = project(x, 1.5, z);
+      ctx.strokeStyle = rgb(hexRgb("#495057"), d);
+      ctx.lineWidth = Math.max(1, 1.6 * view.zoom);
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
+      const lit = env.nf > 0.25;
+      if (lit && !lowGfx()) {
+        const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, 26 * view.zoom);
+        g.addColorStop(0, `rgba(255,220,140,${0.6 * env.nf})`);
+        g.addColorStop(1, "rgba(255,220,140,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(tx - 26 * view.zoom, ty - 26 * view.zoom, 52 * view.zoom, 52 * view.zoom);
+      }
+      ctx.fillStyle = lit ? "#ffe7a1" : rgb(hexRgb("#f1f3f5"), d);
+      ctx.beginPath(); ctx.arc(tx, ty, Math.max(1.5, 2.6 * view.zoom), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   function drawTree(t) {
     const d = 1 - env.nf * 0.6;
     const [x, y] = project(t.x, 0, t.z);
@@ -1519,6 +2336,7 @@
   }
 
   function glowQuad(q, color) {
+    if (lowGfx()) return;
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha *= 0.22;
     poly(q, color);
@@ -1732,6 +2550,33 @@
     ctx.globalAlpha = 1;
   }
 
+  // Beginner guide: a dashed outline where the sliding floor should land. It turns green
+  // when tapping now would be a perfect drop.
+  function drawGuide() {
+    const t = stack[stack.length - 1], y0 = mover.y, y1 = mover.y + 1;
+    const a0 = mover.axis + "0";
+    const ready = Math.abs(mover[a0] - t[a0]) <= perfectWindow(mover);
+    const P = (x, y, z) => project(x, y, z);
+    const top = [P(t.x0, y1, t.z0), P(t.x1, y1, t.z0), P(t.x1, y1, t.z1), P(t.x0, y1, t.z1)];
+    ctx.save();
+    ctx.setLineDash([7, 6]);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = ready ? "#8ce99a" : `rgba(255,255,255,${0.55 + Math.sin(time * 6) * 0.25})`;
+    ctx.beginPath();
+    top.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    for (const [x, z] of [[t.x0, t.z1], [t.x1, t.z1], [t.x1, t.z0]]) {
+      const [ax, ay] = P(x, y1, z), [bx, by] = P(x, y0, z);
+      ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    }
+    ctx.stroke();
+    if (ready) {
+      ctx.globalAlpha = 0.25;
+      poly(top, "#8ce99a");
+    }
+    ctx.restore();
+  }
+
   function drawPopups() {
     ctx.textAlign = "center";
     for (const p of popups) {
@@ -1740,7 +2585,7 @@
       const a = clamp(p.life * 2, 0, 1);
       const pop = 1 + Math.max(0, p.life - 0.9) * 2;
       ctx.globalAlpha = a;
-      ctx.font = `${Math.round(28 * pop)}px ${NUMFONT}`;
+      ctx.font = `${Math.round((p.big ? 40 : 28) * pop)}px ${NUMFONT}`;
       ctx.lineWidth = 5;
       ctx.lineJoin = "round";
       ctx.strokeStyle = "rgba(10,14,40,0.55)";
@@ -1769,13 +2614,29 @@
     if (shake > 0) ctx.translate(rand(-1, 1) * 10 * shake, rand(-1, 1) * 10 * shake);
 
     // Scenery below and behind the tower
+    islandNow = islandLevel();
     const islandVisible = project(0, 0, 0)[1] - ISLAND * s * view.zoom < H + 40;
     if (islandVisible) {
       drawIsland();
-      for (const t of TREES) if (t.x + t.z < 0) drawTree(t);
+      if (has(1)) drawPond();
+      if (has(0)) drawFountain();
+      for (const t of TREES) if (t.x + t.z < 0 && treeVisible(t)) drawTree(t);
+      if (has(4)) drawFerrisWheel();
       for (const nb of NEIGHBORS) drawBlock(nb, 0, nb.h, { look: NEIGHBOR });
+      if (has(2)) for (const nb of EXTRA_NEIGHBORS) drawBlock(nb, 0, nb.h, { look: NEIGHBOR });
     }
+    if (has(5)) for (const b of BALLOONS) if (b.x + b.z < 0) drawBalloon(b);
     drawBandClouds(false, dt);
+    // A warm glow around the top of the tower during a perfect streak.
+    if (combo >= 5 && state === "playing") {
+      const t = stack[stack.length - 1], [gx, gy] = project((t.x0 + t.x1) / 2, t.y + 0.5, (t.z0 + t.z1) / 2);
+      const gr = BLOCK_SIZE * 0.9 * s * view.zoom * (1 + Math.sin(time * 6) * 0.06);
+      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+      g.addColorStop(0, `rgba(255,190,80,${combo >= 10 ? 0.5 : 0.35})`);
+      g.addColorStop(1, "rgba(255,190,80,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+    }
 
     for (const dbr of debris) if (dbr.back) drawBlock(dbr, dbr.y, dbr.y + 1, { alpha: clamp(dbr.life, 0, 1) });
     const reach = (BLOCK_SIZE * s + th * 2) * view.zoom;
@@ -1787,8 +2648,15 @@
     });
     drawLandingShadow();
     if (state === "over" && stack.length > 1) drawRoof(stack[stack.length - 1]);
-    if (islandVisible) for (const t of TREES) if (t.x + t.z >= 0) drawTree(t);
-    if (mover && state === "playing") drawBlock(mover, mover.y, mover.y + 1);
+    if (islandVisible) {
+      for (const t of TREES) if (t.x + t.z >= 0 && treeVisible(t)) drawTree(t);
+      if (has(3)) drawLampsAndCars();
+    }
+    if (has(5)) for (const b of BALLOONS) if (b.x + b.z >= 0) drawBalloon(b);
+    if (mover && (state === "playing" || state === "paused")) {
+      drawBlock(mover, mover.y, mover.y + 1);
+      if (tutorial && mode !== "zen" && stack.length <= 4) drawGuide();
+    }
     for (const dbr of debris) if (!dbr.back) drawBlock(dbr, dbr.y, dbr.y + 1, { alpha: clamp(dbr.life, 0, 1) });
 
     if (flash > 0) {
@@ -1811,13 +2679,32 @@
 
     // Soft vignette to focus the eye on the tower
     ctx.drawImage(vignette, 0, 0, W, H);
+    if (whiteFlash > 0) {
+      ctx.fillStyle = `rgba(255,248,220,${whiteFlash * 0.5})`;
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   // ---------- Loop ----------
   let last = performance.now();
+  // Auto graphics: if a tower plays below about 40 fps, switch to smooth mode for this device.
+  const perf = { frames: 0, time: 0 };
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const raw = (now - last) / 1000;
+    const dt = Math.min(0.05, raw);
     last = now;
+    if (state === "playing" && settings.quality === "auto" && !autoLow && raw < 0.5) {
+      perf.frames++;
+      perf.time += raw;
+      if (perf.time > 4) {
+        if (perf.frames / perf.time < 40) {
+          autoLow = true;
+          save("skyriseAutoLow", "1");
+          resize();
+        }
+        perf.frames = 0; perf.time = 0;
+      }
+    }
     update(dt);
     draw(dt);
     requestAnimationFrame(frame);

@@ -9,11 +9,19 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 - **Landmarks:** each floor adds 5 m. A progress bar shows the next landmark to beat, from a house up to the Burj Khalifa.
 - **Day to night:** the sun sets as you climb, you pass through a cloud layer, and at night the moon and stars come out while the windows light up.
 - **Wind:** above about 125 m, gusts make floors speed up and slow down.
-- **10 tower skins:** Glass Tower to start, then one more for every landmark you pass: Brick Block, Ocean Breeze, Candy Tower, Desert Sandstone, Retro Future, Bridge Red, Neon Nights, Art Deco and Diamond Spire. Pick one from the **Tower skins** gallery on the title and game-over screens.
-- **Gentle start:** floors barely speed up for the first 15 floors, then the pace ramps up to top speed around floor 50.
+- **Three ways to play:** Classic; a **Daily tower** where everyone gets the same gold floors and gusts each day; and **Zen mode**, a relaxed build with no failing that you finish from the pause menu.
+- **One rewind per tower:** miss a floor and you can rewind it once before the tower ends.
+- **Missions:** three goals at a time, like "Get a perfect streak of 6". Finishing one earns stars, and stars unlock the Starlight and Rainbow Rise skins.
+- **A growing island:** your best tower upgrades your island for good, adding a fountain, a duck pond, new neighbors, street lights and traffic, a Ferris wheel, and hot-air balloons.
+- **12 tower skins:** Glass Tower to start, one more for every landmark you pass (Brick Block, Ocean Breeze, Candy Tower, Desert Sandstone, Retro Future, Bridge Red, Neon Nights, Art Deco, Diamond Spire), plus two mission rewards. Pick one from the **Tower skins** gallery.
+- **Fair at every speed:** the window for a perfect drop is measured in time, so it stays fair as floors speed up. Floors barely speed up for the first 15 floors, then ramp up to top speed around floor 50.
+- **Wind warning:** above about 125 m, a wind meter shows each gust half a second before it hits.
+- **Music and sound:** calm generated music that adds layers as you climb and during perfect streaks, plus landing thuds, breaking glass and crowd cheers. Sound, music, vibration and graphics quality are in Settings.
+- **Beginner tips:** the first tower shows where to tap and explains the people score.
+- **Pause** any time; the game also pauses itself when you switch apps.
 - **Challenge a friend:** shares a picture of your finished tower and a link with your score in it. When a friend opens the link, their game shows your score as the one to beat.
 
-Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
+Sound and music are generated in the browser. Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
 ## The website
 
