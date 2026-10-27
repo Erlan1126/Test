@@ -272,6 +272,20 @@
   .row-item small { color: var(--muted); font-weight: 600; }
   .row-item .state { margin-left: auto; font-weight: 800; white-space: nowrap; color: var(--muted); }
   .row-item.done .state { color: var(--mint); }
+  .sheet-note { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-grid div { padding: 10px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); text-align: center; }
+  .stat-grid b { display: block; font: 400 20px var(--num); }
+  .stat-grid span { font-size: 11px; font-weight: 700; color: var(--muted); }
+  .trophy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .trophy { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+  .trophy .t-ico { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: rgba(255, 255, 255, 0.1); color: var(--muted); }
+  .trophy .t-ico svg { width: 18px; height: 18px; }
+  .trophy.won .t-ico { background: linear-gradient(180deg, #ffe066, var(--gold-deep)); color: var(--gold-ink); }
+  .trophy b { display: block; font-size: 14px; }
+  .trophy small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.3; }
+  .trophy:not(.won) b { color: var(--muted); }
+  .swap { justify-self: start; margin-top: 2px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: none; font-size: 12px; font-weight: 800; color: var(--muted); }
   .setting-list { display: flex; flex-direction: column; gap: 10px; }
   .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); cursor: pointer; }
   .setting b { display: block; font-size: 15px; }
@@ -370,6 +384,40 @@
   }
   .corner-btn svg { width: 22px; height: 22px; }
   #settings-btn { right: calc(12px + env(safe-area-inset-right, 0px)); }
+  .level-btn {
+    left: calc(12px + env(safe-area-inset-left, 0px));
+    width: auto;
+    min-width: 64px;
+    padding: 0 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
+  .lv-text { font-size: 12px; font-weight: 800; }
+  .lv-text b { font: 400 17px var(--num); }
+  .lv-bar { display: block; width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+  .lv-bar i { display: block; height: 100%; background: var(--mint); }
+  .gift-chip {
+    align-self: center;
+    padding: 9px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffe066, var(--gold-deep));
+    color: var(--gold-ink);
+    font-size: 14px;
+    font-weight: 800;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    animation: wiggle 2.4s ease-in-out infinite;
+  }
+  @keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-3deg); } 90% { transform: rotate(3deg); } 95% { transform: rotate(-2deg); } }
+  .gift-track { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 4px 0 8px; }
+  .gift-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); font-size: 11px; font-weight: 800; color: var(--muted); }
+  .gift-day b { font: 400 16px var(--num); color: var(--gold); }
+  .gift-day.done { background: rgba(140, 233, 154, 0.16); color: var(--mint); }
+  .gift-day.today { background: linear-gradient(180deg, #ffe066, var(--gold-deep)); color: var(--gold-ink); transform: scale(1.08); }
+  .gift-day.today b { color: var(--gold-ink); }
+  .gift-dialog { width: min(380px, 100%); }
   #pause { left: calc(12px + env(safe-area-inset-left, 0px)); }
 
   /* ---------- Title screen ---------- */
@@ -392,6 +440,15 @@
     color: #fff;
     text-shadow: 0 2px 0 #c9d6ff, 0 4px 0 #8fa3e8, 0 6px 0 #5a6fc4, 0 14px 28px rgba(10, 16, 60, 0.45);
   }
+  .app-logo {
+    width: clamp(72px, 22vw, 112px);
+    margin: 0 auto 10px;
+    filter: drop-shadow(0 10px 22px rgba(20, 10, 70, 0.45));
+    animation: float 4s ease-in-out infinite;
+  }
+  .app-logo svg { display: block; width: 100%; height: auto; }
+  @keyframes float { 50% { transform: translateY(-6px) rotate(-2deg); } }
+  @media (max-height: 700px) { .app-logo { width: 64px; margin-bottom: 6px; } }
   .tagline { margin: 12px 0 0; font-size: clamp(15px, 4.4vw, 19px); font-weight: 800; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3); }
   .rules { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
   .rules span {
@@ -493,6 +550,12 @@
   .landmark { margin-top: 2px; font-size: 13px; font-weight: 700; color: var(--gold); }
   .versus { margin-top: 6px; font-size: 14px; font-weight: 800; color: var(--muted); }
   .versus.won { color: var(--mint); }
+  .near { margin-top: 6px; font-size: 14px; font-weight: 800; color: #ffb13b; }
+  .xp { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); }
+  .xp-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+  .xp-row span { color: var(--mint); font-weight: 800; }
+  .xp .bar { margin-top: 6px; }
+  .xp .bar i { transition: width 1s ease-out; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .stat { padding: 8px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); text-align: center; }
   .stat b { display: block; font: 400 24px var(--num); font-variant-numeric: tabular-nums; }
@@ -540,6 +603,8 @@
   }
   @media (prefers-reduced-motion: reduce) {
     #banner.show, .card, #people.bump, .sheet, .skin.nope, .dialog, #hint { animation-duration: 0.01s; }
+    .app-logo { animation: none; }
+    .gift-chip { animation: none; }
   }
 </style>
 </head>
@@ -556,6 +621,10 @@
   <div id="wind" hidden><span id="wind-label">Wind</span><i class="gust"><b id="gust"></b></i></div>
   <div id="hint" hidden></div>
 </div>
+<button id="level-btn" class="corner-btn level-btn" aria-label="Your builder profile">
+  <span class="lv-text">Lv <b id="level-num">1</b></span>
+  <span class="lv-bar"><i id="level-bar"></i></span>
+</button>
 <button id="pause" class="corner-btn" hidden aria-label="Pause">
   <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
 </button>
@@ -563,6 +632,205 @@
 
 <div id="menu">
   <div>
+    <div class="app-logo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="app-logo-svg" role="img" aria-label="Skyrise logo">
+<defs>
+<radialGradient id="logo-sky" cx="0.5" cy="1" r="1.15">
+<stop offset="0" stop-color="#ffcf5a"/>
+<stop offset="0.22" stop-color="#ff6a8a"/>
+<stop offset="0.5" stop-color="#8a3df0"/>
+<stop offset="0.82" stop-color="#2a1a7a"/>
+<stop offset="1" stop-color="#110b3d"/>
+</radialGradient>
+<radialGradient id="logo-halo" cx="0.5" cy="0.5" r="0.5">
+<stop offset="0" stop-color="#fff3c4" stop-opacity="0.75"/>
+<stop offset="0.45" stop-color="#ffb86b" stop-opacity="0.28"/>
+<stop offset="1" stop-color="#ff7aa8" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="logo-left" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#3d6bff"/>
+<stop offset="1" stop-color="#2a3fc4"/>
+</linearGradient>
+<linearGradient id="logo-right" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#2742c9"/>
+<stop offset="1" stop-color="#1a2580"/>
+</linearGradient>
+<linearGradient id="logo-goldL" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffe680"/>
+<stop offset="1" stop-color="#ffb21e"/>
+</linearGradient>
+<linearGradient id="logo-goldR" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#f6a417"/>
+<stop offset="1" stop-color="#c9740a"/>
+</linearGradient>
+<linearGradient id="logo-goldT" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#fff6c2"/>
+<stop offset="1" stop-color="#ffd23f"/>
+</linearGradient>
+<radialGradient id="logo-lit" cx="0.5" cy="0.5" r="0.5">
+<stop offset="0" stop-color="#fff1b0" stop-opacity="0.9"/>
+<stop offset="1" stop-color="#ffcf5a" stop-opacity="0"/>
+</radialGradient>
+<filter id="logo-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#logo-sky)"/>
+<clipPath id="logo-round"><rect width="512" height="512" rx="112"/></clipPath>
+<g clip-path="url(#logo-round)">
+<!-- art -->
+<circle cx="54" cy="121" r="1.9" fill="#fff" opacity="0.53"/>
+<circle cx="260" cy="25" r="2.0" fill="#fff" opacity="0.53"/>
+<circle cx="63" cy="100" r="2.7" fill="#fff" opacity="0.56"/>
+<circle cx="125" cy="138" r="2.9" fill="#fff" opacity="0.79"/>
+<circle cx="425" cy="74" r="1.5" fill="#fff" opacity="0.56"/>
+<circle cx="279" cy="30" r="1.3" fill="#fff" opacity="0.60"/>
+<circle cx="395" cy="152" r="1.6" fill="#fff" opacity="0.79"/>
+<circle cx="251" cy="26" r="2.4" fill="#fff" opacity="0.88"/>
+<circle cx="408" cy="73" r="1.9" fill="#fff" opacity="0.83"/>
+<circle cx="31" cy="107" r="1.5" fill="#fff" opacity="0.56"/>
+<circle cx="48" cy="166" r="1.4" fill="#fff" opacity="0.62"/>
+<circle cx="256" cy="150" r="190" fill="url(#logo-halo)"/>
+<polygon points="182.0,178.0 256.0,215.0 256.0,597.0 182.0,560.0" fill="url(#logo-left)"/>
+<polygon points="256.0,215.0 330.0,178.0 330.0,560.0 256.0,597.0" fill="url(#logo-right)"/>
+<polygon points="188.0,216.0 202.0,223.0 202.0,236.0 188.0,229.0" fill="#ffd86b"/>
+<polygon points="212.0,228.0 226.0,235.0 226.0,248.0 212.0,241.0" fill="#5b7cff"/>
+<polygon points="236.0,240.0 250.0,247.0 250.0,260.0 236.0,253.0" fill="#5b7cff"/>
+<polygon points="262.0,247.0 276.0,240.0 276.0,253.0 262.0,260.0" fill="#3348c4"/>
+<polygon points="286.0,235.0 300.0,228.0 300.0,241.0 286.0,248.0" fill="#ffd86b"/>
+<polygon points="310.0,223.0 324.0,216.0 324.0,229.0 310.0,236.0" fill="#ffd86b"/>
+<polygon points="188.0,243.0 202.0,250.0 202.0,263.0 188.0,256.0" fill="#5b7cff"/>
+<polygon points="212.0,255.0 226.0,262.0 226.0,275.0 212.0,268.0" fill="#ffd86b"/>
+<polygon points="236.0,267.0 250.0,274.0 250.0,287.0 236.0,280.0" fill="#ffd86b"/>
+<polygon points="262.0,274.0 276.0,267.0 276.0,280.0 262.0,287.0" fill="#ffd86b"/>
+<polygon points="286.0,262.0 300.0,255.0 300.0,268.0 286.0,275.0" fill="#ffd86b"/>
+<polygon points="310.0,250.0 324.0,243.0 324.0,256.0 310.0,263.0" fill="#ffd86b"/>
+<polygon points="188.0,270.0 202.0,277.0 202.0,290.0 188.0,283.0" fill="#ffd86b"/>
+<polygon points="212.0,282.0 226.0,289.0 226.0,302.0 212.0,295.0" fill="#5b7cff"/>
+<polygon points="236.0,294.0 250.0,301.0 250.0,314.0 236.0,307.0" fill="#ffd86b"/>
+<polygon points="262.0,301.0 276.0,294.0 276.0,307.0 262.0,314.0" fill="#3348c4"/>
+<polygon points="286.0,289.0 300.0,282.0 300.0,295.0 286.0,302.0" fill="#ffd86b"/>
+<polygon points="310.0,277.0 324.0,270.0 324.0,283.0 310.0,290.0" fill="#3348c4"/>
+<polygon points="188.0,297.0 202.0,304.0 202.0,317.0 188.0,310.0" fill="#5b7cff"/>
+<polygon points="212.0,309.0 226.0,316.0 226.0,329.0 212.0,322.0" fill="#5b7cff"/>
+<polygon points="236.0,321.0 250.0,328.0 250.0,341.0 236.0,334.0" fill="#ffd86b"/>
+<polygon points="262.0,328.0 276.0,321.0 276.0,334.0 262.0,341.0" fill="#ffd86b"/>
+<polygon points="286.0,316.0 300.0,309.0 300.0,322.0 286.0,329.0" fill="#ffd86b"/>
+<polygon points="310.0,304.0 324.0,297.0 324.0,310.0 310.0,317.0" fill="#ffd86b"/>
+<polygon points="188.0,324.0 202.0,331.0 202.0,344.0 188.0,337.0" fill="#ffd86b"/>
+<polygon points="212.0,336.0 226.0,343.0 226.0,356.0 212.0,349.0" fill="#ffd86b"/>
+<polygon points="236.0,348.0 250.0,355.0 250.0,368.0 236.0,361.0" fill="#ffd86b"/>
+<polygon points="262.0,355.0 276.0,348.0 276.0,361.0 262.0,368.0" fill="#ffd86b"/>
+<polygon points="286.0,343.0 300.0,336.0 300.0,349.0 286.0,356.0" fill="#3348c4"/>
+<polygon points="310.0,331.0 324.0,324.0 324.0,337.0 310.0,344.0" fill="#ffd86b"/>
+<polygon points="188.0,351.0 202.0,358.0 202.0,371.0 188.0,364.0" fill="#ffd86b"/>
+<polygon points="212.0,363.0 226.0,370.0 226.0,383.0 212.0,376.0" fill="#ffd86b"/>
+<polygon points="236.0,375.0 250.0,382.0 250.0,395.0 236.0,388.0" fill="#5b7cff"/>
+<polygon points="262.0,382.0 276.0,375.0 276.0,388.0 262.0,395.0" fill="#ffd86b"/>
+<polygon points="286.0,370.0 300.0,363.0 300.0,376.0 286.0,383.0" fill="#ffd86b"/>
+<polygon points="310.0,358.0 324.0,351.0 324.0,364.0 310.0,371.0" fill="#ffd86b"/>
+<polygon points="188.0,378.0 202.0,385.0 202.0,398.0 188.0,391.0" fill="#5b7cff"/>
+<polygon points="212.0,390.0 226.0,397.0 226.0,410.0 212.0,403.0" fill="#ffd86b"/>
+<polygon points="236.0,402.0 250.0,409.0 250.0,422.0 236.0,415.0" fill="#5b7cff"/>
+<polygon points="262.0,409.0 276.0,402.0 276.0,415.0 262.0,422.0" fill="#3348c4"/>
+<polygon points="286.0,397.0 300.0,390.0 300.0,403.0 286.0,410.0" fill="#ffd86b"/>
+<polygon points="310.0,385.0 324.0,378.0 324.0,391.0 310.0,398.0" fill="#ffd86b"/>
+<polygon points="188.0,405.0 202.0,412.0 202.0,425.0 188.0,418.0" fill="#5b7cff"/>
+<polygon points="212.0,417.0 226.0,424.0 226.0,437.0 212.0,430.0" fill="#5b7cff"/>
+<polygon points="236.0,429.0 250.0,436.0 250.0,449.0 236.0,442.0" fill="#5b7cff"/>
+<polygon points="262.0,436.0 276.0,429.0 276.0,442.0 262.0,449.0" fill="#ffd86b"/>
+<polygon points="286.0,424.0 300.0,417.0 300.0,430.0 286.0,437.0" fill="#ffd86b"/>
+<polygon points="310.0,412.0 324.0,405.0 324.0,418.0 310.0,425.0" fill="#3348c4"/>
+<polygon points="188.0,432.0 202.0,439.0 202.0,452.0 188.0,445.0" fill="#5b7cff"/>
+<polygon points="212.0,444.0 226.0,451.0 226.0,464.0 212.0,457.0" fill="#ffd86b"/>
+<polygon points="236.0,456.0 250.0,463.0 250.0,476.0 236.0,469.0" fill="#5b7cff"/>
+<polygon points="262.0,463.0 276.0,456.0 276.0,469.0 262.0,476.0" fill="#3348c4"/>
+<polygon points="286.0,451.0 300.0,444.0 300.0,457.0 286.0,464.0" fill="#3348c4"/>
+<polygon points="310.0,439.0 324.0,432.0 324.0,445.0 310.0,452.0" fill="#3348c4"/>
+<polygon points="188.0,459.0 202.0,466.0 202.0,479.0 188.0,472.0" fill="#5b7cff"/>
+<polygon points="212.0,471.0 226.0,478.0 226.0,491.0 212.0,484.0" fill="#5b7cff"/>
+<polygon points="236.0,483.0 250.0,490.0 250.0,503.0 236.0,496.0" fill="#ffd86b"/>
+<polygon points="262.0,490.0 276.0,483.0 276.0,496.0 262.0,503.0" fill="#ffd86b"/>
+<polygon points="286.0,478.0 300.0,471.0 300.0,484.0 286.0,491.0" fill="#ffd86b"/>
+<polygon points="310.0,466.0 324.0,459.0 324.0,472.0 310.0,479.0" fill="#ffd86b"/>
+<polygon points="188.0,486.0 202.0,493.0 202.0,506.0 188.0,499.0" fill="#5b7cff"/>
+<polygon points="212.0,498.0 226.0,505.0 226.0,518.0 212.0,511.0" fill="#ffd86b"/>
+<polygon points="236.0,510.0 250.0,517.0 250.0,530.0 236.0,523.0" fill="#5b7cff"/>
+<polygon points="262.0,517.0 276.0,510.0 276.0,523.0 262.0,530.0" fill="#3348c4"/>
+<polygon points="286.0,505.0 300.0,498.0 300.0,511.0 286.0,518.0" fill="#ffd86b"/>
+<polygon points="310.0,493.0 324.0,486.0 324.0,499.0 310.0,506.0" fill="#ffd86b"/>
+<polygon points="188.0,513.0 202.0,520.0 202.0,533.0 188.0,526.0" fill="#ffd86b"/>
+<polygon points="212.0,525.0 226.0,532.0 226.0,545.0 212.0,538.0" fill="#5b7cff"/>
+<polygon points="236.0,537.0 250.0,544.0 250.0,557.0 236.0,550.0" fill="#5b7cff"/>
+<polygon points="262.0,544.0 276.0,537.0 276.0,550.0 262.0,557.0" fill="#ffd86b"/>
+<polygon points="286.0,532.0 300.0,525.0 300.0,538.0 286.0,545.0" fill="#3348c4"/>
+<polygon points="310.0,520.0 324.0,513.0 324.0,526.0 310.0,533.0" fill="#ffd86b"/>
+<polygon points="188.0,540.0 202.0,547.0 202.0,560.0 188.0,553.0" fill="#5b7cff"/>
+<polygon points="212.0,552.0 226.0,559.0 226.0,572.0 212.0,565.0" fill="#5b7cff"/>
+<polygon points="236.0,564.0 250.0,571.0 250.0,584.0 236.0,577.0" fill="#5b7cff"/>
+<polygon points="262.0,571.0 276.0,564.0 276.0,577.0 262.0,584.0" fill="#ffd86b"/>
+<polygon points="286.0,559.0 300.0,552.0 300.0,565.0 286.0,572.0" fill="#3348c4"/>
+<polygon points="310.0,547.0 324.0,540.0 324.0,553.0 310.0,560.0" fill="#ffd86b"/>
+<circle cx="219" cy="265" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="243" cy="277" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="293" cy="265" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="293" cy="319" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="317" cy="307" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="195" cy="334" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="219" cy="346" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="317" cy="334" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="293" cy="373" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="317" cy="361" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="219" cy="400" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="219" cy="454" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="269" cy="493" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="293" cy="481" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="293" cy="508" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="317" cy="496" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<circle cx="269" cy="574" r="16" fill="url(#logo-lit)" opacity="0.55"/>
+<polyline points="182.0,205.0 256.0,242.0 330.0,205.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,232.0 256.0,269.0 330.0,232.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,259.0 256.0,296.0 330.0,259.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,286.0 256.0,323.0 330.0,286.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,313.0 256.0,350.0 330.0,313.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,340.0 256.0,377.0 330.0,340.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,367.0 256.0,404.0 330.0,367.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,394.0 256.0,431.0 330.0,394.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,421.0 256.0,458.0 330.0,421.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,448.0 256.0,485.0 330.0,448.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,475.0 256.0,512.0 330.0,475.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,502.0 256.0,539.0 330.0,502.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,529.0 256.0,566.0 330.0,529.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polyline points="182.0,556.0 256.0,593.0 330.0,556.0" fill="none" stroke="#0f1a66" stroke-opacity="0.45" stroke-width="2"/>
+<polygon points="182.0,178.0 256.0,215.0 256.0,242.0 182.0,205.0" fill="url(#logo-goldL)"/>
+<polygon points="256.0,215.0 330.0,178.0 330.0,205.0 256.0,242.0" fill="url(#logo-goldR)"/>
+<polygon points="256.0,141.0 330.0,178.0 256.0,215.0 182.0,178.0" fill="url(#logo-goldT)"/>
+<polygon points="256.0,153.0 306.0,178.0 256.0,203.0 206.0,178.0" fill="#ffc933"/>
+<line x1="256" y1="215" x2="256" y2="560" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3"/>
+<polyline points="182.0,178.0 256.0,215.0 330.0,178.0" fill="none" stroke="#fff8d6" stroke-width="3"/>
+<polygon points="270.0,148.0 330.0,178.0 282.0,209.0 234.0,178.0" fill="#7a4a00" opacity="0.22"/>
+<line x1="392" y1="100" x2="466" y2="63" stroke="#ffffff" stroke-opacity="0.9" stroke-width="8" stroke-linecap="round"/>
+<line x1="398" y1="132" x2="490" y2="86" stroke="#ffffff" stroke-opacity="0.75" stroke-width="7" stroke-linecap="round"/>
+<line x1="384" y1="158" x2="442" y2="129" stroke="#ffffff" stroke-opacity="0.6" stroke-width="6" stroke-linecap="round"/>
+<polygon points="234.0,119.0 308.0,156.0 308.0,180.0 234.0,143.0" fill="url(#logo-goldL)"/>
+<polygon points="308.0,156.0 382.0,119.0 382.0,143.0 308.0,180.0" fill="url(#logo-goldR)"/>
+<polygon points="308.0,82.0 382.0,119.0 308.0,156.0 234.0,119.0" fill="url(#logo-goldT)"/>
+<polyline points="234.0,119.0 308.0,156.0 382.0,119.0" fill="none" stroke="#fffbe6" stroke-width="3"/>
+<polygon points="278.0,97.0 296.0,88.0 348.0,114.0 330.0,123.0" fill="#ffffff" opacity="0.55"/>
+<polygon points="128.0,80.0 133.3,98.7 152.0,104.0 133.3,109.3 128.0,128.0 122.7,109.3 104.0,104.0 122.7,98.7" fill="#fffbe0" opacity="1"/>
+<polygon points="176.0,51.0 178.4,59.6 187.0,62.0 178.4,64.4 176.0,73.0 173.6,64.4 165.0,62.0 173.6,59.6" fill="#fffbe0" opacity="0.9"/>
+<polygon points="112.0,186.0 114.2,193.8 122.0,196.0 114.2,198.2 112.0,206.0 109.8,198.2 102.0,196.0 109.8,193.8" fill="#fffbe0" opacity="0.85"/>
+<g filter="url(#logo-soft)" opacity="0.35"><ellipse cx="256" cy="470" rx="230" ry="60" fill="#ffd1e6"/></g>
+<circle cx="70" cy="470" r="70" fill="#ffe3f0"/>
+<circle cx="160" cy="448" r="66" fill="#ffffff"/>
+<circle cx="256" cy="470" r="72" fill="#fff4fa"/>
+<circle cx="352" cy="446" r="68" fill="#ffffff"/>
+<circle cx="446" cy="474" r="72" fill="#ffe3f0"/>
+<circle cx="110" cy="512" r="80" fill="#ffffff"/>
+<circle cx="256" cy="520" r="90" fill="#ffffff"/>
+<circle cx="400" cy="512" r="82" fill="#ffffff"/>
+<!-- /art -->
+</g>
+</svg>
+    </div>
     <h1 class="logo">SKYRISE</h1>
     <p class="tagline">Build the tallest skyscraper in the world</p>
     <div class="rules">
@@ -574,6 +842,7 @@
   <div class="menu-bottom">
     <div class="challenge-chip" id="menu-challenge" hidden></div>
     <div class="best-chip" id="menu-best" hidden></div>
+    <button type="button" class="gift-chip" id="gift-chip" hidden>Daily gift ready! Tap to claim</button>
     <div class="menu-row">
       <button type="button" class="skin-btn compact"></button>
       <button type="button" class="tile-btn" id="missions-btn">
@@ -605,11 +874,16 @@
       <div class="sub" id="over-sub"></div>
       <div class="landmark" id="over-landmark"></div>
       <div class="versus" id="over-versus" hidden></div>
+      <div class="near" id="over-near" hidden></div>
     </div>
     <div class="stats">
       <div class="stat"><b id="stat-floors">0</b><span>floors</span></div>
       <div class="stat"><b id="stat-perfect">0</b><span>perfect drops</span></div>
       <div class="stat"><b id="stat-streak">0</b><span>best streak</span></div>
+    </div>
+    <div class="xp" id="over-xp">
+      <div class="xp-row"><b id="xp-level">Builder level 1</b><span id="xp-gain"></span></div>
+      <div class="bar"><i id="xp-bar"></i></div>
     </div>
     <div class="rewards" id="over-rewards" hidden></div>
     <button type="button" class="skin-btn"></button>
@@ -634,6 +908,38 @@
       <div class="bar"><i id="skins-bar"></i></div>
     </div>
     <div class="skin-grid" id="skin-grid"></div>
+    <h3 class="sheet-sub">Island themes</h3>
+    <div class="skin-grid" id="theme-grid"></div>
+  </div>
+</div>
+
+<div id="profile" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="profile-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div>
+          <h2 id="profile-title">Builder level 1</h2>
+          <p id="profile-xp"></p>
+        </div>
+        <button type="button" class="close-btn" id="profile-close" aria-label="Close">×</button>
+      </div>
+      <div class="bar"><i id="profile-bar"></i></div>
+    </div>
+    <p class="sheet-note" id="profile-next"></p>
+    <div class="stat-grid" id="profile-stats"></div>
+    <h3 class="sheet-sub" id="trophy-title">Trophies</h3>
+    <div class="trophy-grid" id="trophy-grid"></div>
+  </div>
+</div>
+
+<div id="gift" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="gift-title">
+  <div class="dialog gift-dialog">
+    <div class="eyebrow" id="gift-streak">Day 1</div>
+    <h2 id="gift-title">Daily gift</h2>
+    <p id="gift-sub">Come back every day for bigger gifts.</p>
+    <div class="gift-track" id="gift-track"></div>
+    <button type="button" class="btn btn-primary wide" id="gift-claim">Claim</button>
+    <button type="button" class="menu-link" id="gift-later">Later</button>
   </div>
 </div>
 
@@ -733,6 +1039,12 @@
     missions: $("missions"), missionsClose: $("missions-close"), missionsCount: $("missions-count"), missionsBar: $("missions-bar"),
     missionList: $("mission-list"), starRewards: $("star-rewards"), islandList: $("island-list"), islandChip: $("island-chip"),
     dailyBtn: $("daily-btn"), dailyTitle: $("daily-title"), dailySub: $("daily-sub"), zenBtn: $("zen-btn"),
+    levelBtn: $("level-btn"), levelNum: $("level-num"), levelBar: $("level-bar"), giftChip: $("gift-chip"),
+    overNear: $("over-near"), xpLevel: $("xp-level"), xpGain: $("xp-gain"), xpBar: $("xp-bar"),
+    themeGrid: $("theme-grid"), profile: $("profile"), profileTitle: $("profile-title"), profileXp: $("profile-xp"),
+    profileBar: $("profile-bar"), profileNext: $("profile-next"), profileStats: $("profile-stats"),
+    trophyTitle: $("trophy-title"), trophyGrid: $("trophy-grid"),
+    gift: $("gift"), giftStreak: $("gift-streak"), giftSub: $("gift-sub"), giftTrack: $("gift-track"), giftClaim: $("gift-claim"), giftLater: $("gift-later"),
     skinButtons: document.querySelectorAll(".skin-btn"),
     skins: $("skins"), skinsClose: $("skins-close"), skinsCount: $("skins-count"), skinsBar: $("skins-bar"), skinGrid: $("skin-grid"),
   };
@@ -815,6 +1127,26 @@
     { id: "rainbow", name: "Rainbow Rise", unlock: { stars: 25 }, kind: "ribbon",
       floors: ["#ff6b6b", "#ff922b", "#51cf66", "#339af0", "#845ef7", "#f06595"],
       glass: "#eaf6ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.12, lit: ["#fff4c2", "#ffe0f0"] },
+    { id: "aurora", name: "Aurora", unlock: { stars: 50 }, kind: "ribbon", neon: true,
+      floors: ["#0b3d3a", "#0f4f4a", "#0a3431"],
+      glass: "#0a2624", frame: "#1d6b62", slab: "#08201e", slabH: 0.08,
+      lit: ["#3ee6c4", "#7cf5ff", "#b48cff"], alwaysLit: true, swatch: ["#0b3d3a", "#3ee6c4", "#b48cff"] },
+  ];
+
+  // Island themes unlock with your builder level.
+  const ISLAND_THEMES = [
+    { id: "meadow", name: "Green Meadow", level: 1, tree: "round", lawn: "#7fc76a", lip: "#5fae4e", lipR: "#4e9640",
+      dirtL: "#a07a52", dirtR: "#86643f", rockL: "#7a5b43", rockR: "#5a4334", plaza: "#c9cfd8", plaza2: "#e3e7ec",
+      road: "#7d8597", leaf: ["#3f9b4a", "#6bbf4e"], trunk: "#7a5536", sky: ["#4f8fe0", "#ffd9b5"] },
+    { id: "snow", name: "Snowy Peaks", level: 3, tree: "pine", lawn: "#eef4fb", lip: "#d6e3f1", lipR: "#c2d2e4",
+      dirtL: "#8a96a8", dirtR: "#717d90", rockL: "#5f6a7c", rockR: "#4b5566", plaza: "#c3cdd8", plaza2: "#dfe6ee",
+      road: "#6b7385", leaf: ["#2f6b4f", "#3f8a63"], trunk: "#6b4a33", sky: ["#6f9fe0", "#e7f1ff"] },
+    { id: "desert", name: "Desert Oasis", level: 6, tree: "palm", lawn: "#ecd29b", lip: "#dcbc7d", lipR: "#c9a866",
+      dirtL: "#c08a52", dirtR: "#a5733f", rockL: "#94603a", rockR: "#7a4d2d", plaza: "#d8c3a0", plaza2: "#efe0c4",
+      road: "#9a8a76", leaf: ["#3f9b4a", "#7cc35a"], trunk: "#a0703c", sky: ["#5aa0e6", "#ffe2b0"] },
+    { id: "blossom", name: "Cherry Blossom", level: 10, tree: "round", lawn: "#a8d88a", lip: "#8cc56e", lipR: "#79b45d",
+      dirtL: "#a07a52", dirtR: "#86643f", rockL: "#7a5b43", rockR: "#5a4334", plaza: "#e6d3dc", plaza2: "#f6e9ef",
+      road: "#8a8296", leaf: ["#f48fb8", "#ffc8dd"], trunk: "#6e4a3a", sky: ["#8f8fe6", "#ffd6e6"] },
   ];
 
   // The island grows as your best tower passes landmarks.
@@ -1040,11 +1372,53 @@
   dealMissions();
   const missionText = m => MISSION_TYPES[m.t].text(m.n);
 
+  // ---------- Builder profile: levels, stats, trophies and the daily gift ----------
+  let profile = null;
+  try { profile = JSON.parse(load("skyriseProfile")); } catch {}
+  profile = Object.assign({
+    xp: 0, level: 1, towers: 0, floors: 0, perfects: 0, penthouses: 0, bestStreak: 0,
+    dailyDays: [], trophies: [], gift: { last: "", streak: 0 }, swapDay: "", island: "meadow",
+  }, profile || {});
+  const saveProfile = () => save("skyriseProfile", JSON.stringify(profile));
+  const saveMissions = () => save("skyriseMissions", JSON.stringify(missions));
+  // XP needed to go from level l to the next one.
+  const xpNeeded = l => 150 + (l - 1) * 75;
+  // Stars are one total: missions, level-ups, trophies and daily gifts all add to it.
+  const addStars = n => { missions.stars += n; saveMissions(); };
+  const theme = () => ISLAND_THEMES.find(t => t.id === profile.island && profile.level >= t.level) || ISLAND_THEMES[0];
+
+  // Local calendar days for the daily gift streak.
+  const dayKey = (offset = 0) => { const d = new Date(Date.now() + offset * 864e5); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const GIFTS = [1, 1, 2, 2, 3, 3, 5];
+  function giftState() {
+    if (profile.gift.last === dayKey()) return { ready: false, streak: profile.gift.streak };
+    return { ready: true, streak: profile.gift.last === dayKey(-1) ? profile.gift.streak + 1 : 1 };
+  }
+
+  const TROPHY_LIST = [
+    { id: "first", name: "Groundbreaker", text: "Build your first tower", zen: true, test: () => true },
+    { id: "f25", name: "Getting Tall", text: "Build 25 floors in one tower", test: g => g.floors >= 25 },
+    { id: "f60", name: "Sky High", text: "Build 60 floors in one tower", test: g => g.floors >= 60 },
+    { id: "liberty", name: "Lady Liberty", text: "Build taller than the Statue of Liberty", test: g => g.meters > 93 },
+    { id: "eiffel", name: "Parisian", text: "Build taller than the Eiffel Tower", test: g => g.meters > 330 },
+    { id: "burj", name: "World Record", text: "Build taller than the Burj Khalifa", test: g => g.meters > 828 },
+    { id: "s10", name: "In the Zone", text: "Get a perfect streak of 10", test: g => g.streak >= 10 },
+    { id: "s25", name: "Laser Focus", text: "Get a perfect streak of 25", test: g => g.streak >= 25 },
+    { id: "p1000", name: "Small Town", text: "House 1,000 people in one tower", test: g => g.score >= 1000 },
+    { id: "p3000", name: "Big City", text: "House 3,000 people in one tower", test: g => g.score >= 3000 },
+    { id: "gold3", name: "Golden Touch", text: "Land 3 penthouses perfectly in one tower", test: g => g.penthouses >= 3 },
+    { id: "comeback", name: "Second Wind", text: "Build 10 floors after a rewind", test: g => g.afterRewind >= 10 },
+    { id: "daily3", name: "Regular", text: "Play the daily tower on 3 different days", zen: true, test: () => profile.dailyDays.length >= 3 },
+    { id: "week", name: "Dedicated", text: "Claim the daily gift 7 days in a row", zen: true, test: () => profile.gift.streak >= 7 },
+    { id: "zen50", name: "Inner Peace", text: "Build 50 floors in one Zen tower", zen: true, test: g => g.zen && g.floors >= 50 },
+    { id: "skins6", name: "Collector", text: "Unlock 6 tower skins", zen: true, test: () => STYLES.filter(isUnlocked).length >= 6 },
+  ];
+
   // ---------- Tower skins ----------
   let bestMeters = Number(load("skyriseBestMeters")) || 0;
   const isUnlocked = st => !st.unlock || (st.unlock.stars ? missions.stars >= st.unlock.stars : bestMeters > MILESTONES[st.unlock.at].m);
   const unlockText = st => st.unlock.stars
-    ? `Earn ${st.unlock.stars} ★ from missions`
+    ? `Collect ${st.unlock.stars} ★ from missions, levels, trophies and daily gifts`
     : `Build taller than ${MILESTONES[st.unlock.at].name} (${MILESTONES[st.unlock.at].m} m)`;
   const islandLevel = () => ISLAND_UPGRADES.filter(u => bestMeters > MILESTONES[u.at].m).length;
   // The equipped skin is saved by id. Older saves stored a position in the original 4-skin list.
@@ -1149,7 +1523,7 @@
         ${open ? "" : '<span class="lock" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="5" y="10" width="14" height="11" rx="3" fill="currentColor"/></svg></span>'}`;
       b.querySelector(".skin-name").textContent = st.name;
       b.querySelector(".skin-sub").textContent = on ? "Equipped" : open ? "Tap to use"
-        : st.unlock.stars ? `${st.unlock.stars} ★ from missions` : `Over ${MILESTONES[st.unlock.at].m} m`;
+        : st.unlock.stars ? `Collect ${st.unlock.stars} ★` : `Over ${MILESTONES[st.unlock.at].m} m`;
       b.setAttribute("aria-label", open ? `${st.name}${on ? ", equipped" : ""}` : `${st.name}, locked. ${unlockText(st)}`);
       drawSkinPreview(b.querySelector("canvas"), st);
       b.addEventListener("click", () => {
@@ -1166,8 +1540,57 @@
       });
       ui.skinGrid.appendChild(b);
     });
+    ui.themeGrid.innerHTML = "";
+    ISLAND_THEMES.forEach(t => {
+      const open = profile.level >= t.level, on = theme().id === t.id;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `skin${open ? "" : " locked"}${on ? " equipped" : ""}`;
+      b.innerHTML = `<canvas aria-hidden="true"></canvas><span class="skin-name"></span><span class="skin-sub"></span>
+        ${open ? "" : `<span class="lock" aria-hidden="true">${LOCK_ICON}</span>`}`;
+      b.querySelector(".skin-name").textContent = t.name;
+      b.querySelector(".skin-sub").textContent = on ? "Equipped" : open ? "Tap to use" : `Builder level ${t.level}`;
+      b.setAttribute("aria-label", open ? `${t.name} island${on ? ", equipped" : ""}` : `${t.name} island, locked. Reach builder level ${t.level}`);
+      drawThemePreview(b.querySelector("canvas"), t);
+      b.addEventListener("click", () => {
+        if (!open) {
+          sound.click();
+          showToast(`Reach builder level ${t.level} to unlock the ${t.name} island.`);
+          b.classList.remove("nope"); void b.offsetWidth; b.classList.add("nope");
+          return;
+        }
+        profile.island = t.id;
+        saveProfile();
+        sound.click();
+        closeSkins();
+      });
+      ui.themeGrid.appendChild(b);
+    });
     ui.skins.hidden = false;
     ui.skinsClose.focus();
+  }
+
+  // A small picture of the island in the given theme, for the gallery.
+  function drawThemePreview(cv, t) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = 120, h = 132;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, t.sky[0]);
+    sky.addColorStop(1, t.sky[1]);
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+    const fill = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
+    const cx = 60, cy = 74, hw = 50, hh = 25;
+    fill([[cx, cy + hh], [cx, cy + hh + 30], [cx - hw, cy + 18], [cx - hw, cy]], t.rockL);
+    fill([[cx, cy + hh], [cx + hw, cy], [cx + hw, cy + 18], [cx, cy + hh + 30]], t.rockR);
+    fill([[cx - hw, cy], [cx, cy + hh], [cx, cy + hh + 9], [cx - hw, cy + 9]], t.dirtL);
+    fill([[cx, cy + hh], [cx + hw, cy], [cx + hw, cy + 9], [cx, cy + hh + 9]], t.dirtR);
+    fill([[cx - hw, cy], [cx, cy - hh], [cx + hw, cy], [cx, cy + hh]], t.lawn);
+    fill([[cx - 18, cy], [cx, cy - 9], [cx + 18, cy], [cx, cy + 9]], t.plaza2);
+    const treeAt = [[cx - 30, cy - 2], [cx + 28, cy - 4], [cx - 6, cy + 14], [cx + 12, cy - 14]];
+    for (const [x, y] of treeAt) drawTreeShape(g, t, x, y, 8, 0.5, 1);
   }
   function closeSkins() {
     ui.skins.hidden = true;
@@ -1233,7 +1656,7 @@
   let stack, mover, debris, particles, popups;
   let score, combo, best = Number(load("skyriseBest")) || 0, time = 0;
   let bounce, flash, shake, punch = 0, whiteFlash = 0, overAt, overReady, newBest, lastMilestone, shareBlob, windWarned;
-  let perfects, bestStreak, penthouses, windFloors, rewindUsed, rescueAt, rewards, dailyBest;
+  let perfects, bestStreak, penthouses, windFloors, rewindUsed, rewindLevel, rescueAt, rewards, dailyBest, xpResult, nearText;
   let tutorial = load("skyriseTutorial") !== "done";
 
   const level = () => stack.length - 1;
@@ -1394,6 +1817,7 @@
   function rewind() {
     if (state !== "rescue") return;
     rewindUsed = true;
+    rewindLevel = level();
     debris = [];
     ui.rescue.hidden = true;
     ui.pause.hidden = false;
@@ -1472,14 +1896,85 @@
     ui.hint.hidden = true;
     ui.pause.hidden = true;
     sound.music.intensity = 0;
+    const skinsBefore = new Set(STYLES.filter(isUnlocked).map(st => st.id));
+    const islandBefore = islandLevel(), levelBefore = profile.level;
     if (mode !== "zen") recordResults();
+    recordProgress();
+    announceUnlocks(skinsBefore, islandBefore, levelBefore);
+    nearText = mode === "zen" ? "" : nearMiss();
     if (!silent) { sound.fail(); vibrate([40, 40, 90]); }
+  }
+
+  // XP, lifetime stats and trophies. Every tower counts, Zen ones at half XP.
+  function recordProgress() {
+    const g = {
+      floors: level(), meters: meters(), score, streak: bestStreak, penthouses,
+      afterRewind: rewindUsed ? level() - rewindLevel : 0, zen: mode === "zen",
+    };
+    profile.towers++;
+    profile.floors += g.floors;
+    profile.perfects += perfects;
+    profile.penthouses += penthouses;
+    profile.bestStreak = Math.max(profile.bestStreak, bestStreak);
+    if (mode === "daily" && !profile.dailyDays.includes(dayNumber())) profile.dailyDays.push(dayNumber());
+
+    for (const t of TROPHY_LIST) {
+      if (profile.trophies.includes(t.id) || (g.zen && !t.zen) || !t.test(g)) continue;
+      profile.trophies.push(t.id);
+      addStars(1);
+      rewards.push({ kind: "star", text: `Trophy: ${t.name} (+1 ★)` });
+    }
+
+    let xp = g.floors * 2 + perfects * 3 + Math.floor(score / 20) + (newBest ? 50 : 0);
+    if (mode === "daily") xp = Math.round(xp * 1.5);
+    if (mode === "zen") xp = Math.round(xp / 2);
+    const startPct = profile.xp / xpNeeded(profile.level);
+    profile.xp += xp;
+    let ups = 0, stars = 0;
+    while (profile.xp >= xpNeeded(profile.level)) {
+      profile.xp -= xpNeeded(profile.level);
+      profile.level++;
+      ups++;
+      stars += profile.level % 5 === 0 ? 3 : 1;
+    }
+    if (ups) {
+      addStars(stars);
+      rewards.unshift({ kind: "star", text: `Level up! You're now builder level ${profile.level} (+${stars} ★)` });
+    }
+    xpResult = { gained: xp, startPct: ups ? 0 : startPct, endPct: profile.xp / xpNeeded(profile.level) };
+    saveProfile();
+  }
+
+  // New skins, island upgrades and island themes, one line each.
+  function announceUnlocks(skinsBefore, islandBefore, levelBefore) {
+    const list = names => names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+    const newSkins = STYLES.filter(st => isUnlocked(st) && !skinsBefore.has(st.id));
+    if (newSkins.length) {
+      rewards.push({ kind: "skin", text: `New skin${newSkins.length > 1 ? "s" : ""} unlocked: ${list(newSkins.map(st => st.name))}` });
+      styleIndex = STYLES.indexOf(newSkins[newSkins.length - 1]); // show off the newest skin on the next tower
+    }
+    const built = ISLAND_UPGRADES.slice(islandBefore, islandLevel()).map(u => u.name);
+    if (built.length) rewards.push({ kind: "island", text: `Island upgrade${built.length > 1 ? "s" : ""}: ${list(built)}` });
+    const themes = ISLAND_THEMES.filter(t => t.level > levelBefore && t.level <= profile.level).map(t => t.name);
+    if (themes.length) rewards.push({ kind: "island", text: `New island theme: ${list(themes)}` });
+    if (rewards.some(r => r.kind === "star")) setTimeout(() => sound.star(), 300);
+    if (rewards.some(r => r.kind !== "star")) sound.unlock();
+  }
+
+  // The closest goal you just missed, to make "one more tower" tempting.
+  function nearMiss() {
+    if (!newBest && best > 0 && score > 0 && best - score <= Math.max(60, best * 0.25)) {
+      return `Only ${fmt(best - score + 1)} people away from your best!`;
+    }
+    const next = MILESTONES.find(ms => ms.m >= meters());
+    if (next && next.m - meters() < 30) return `Just ${next.m - meters() + 1} m short of ${next.name}!`;
+    const close = missions.slots.find(m => MISSION_TYPES[m.t].game && m.p / m.n >= 0.6 && m.p < m.n);
+    if (close) return `Almost there: ${missionText(close)} (${fmt(close.p)} of ${fmt(close.n)})`;
+    return "";
   }
 
   // Saves bests, updates missions, and notes anything newly unlocked for the game-over card.
   function recordResults() {
-    const unlockedBefore = new Set(STYLES.filter(isUnlocked).map(st => st.id));
-    const islandBefore = islandLevel();
     if (score > best) { best = score; newBest = true; save("skyriseBest", best); }
     if (meters() > bestMeters) { bestMeters = meters(); save("skyriseBestMeters", bestMeters); }
     if (mode === "daily") {
@@ -1506,18 +2001,6 @@
     });
     dealMissions();
     for (const m of finished) rewards.push({ kind: "star", text: `Mission complete: ${missionText(m)} (+${m.r} ★)` });
-
-    // One line for new skins and one for island upgrades, however many arrived at once.
-    const list = names => names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
-    const newSkins = STYLES.filter(st => isUnlocked(st) && !unlockedBefore.has(st.id));
-    if (newSkins.length) {
-      rewards.push({ kind: "skin", text: `New skin${newSkins.length > 1 ? "s" : ""} unlocked: ${list(newSkins.map(st => st.name))}` });
-      styleIndex = STYLES.indexOf(newSkins[newSkins.length - 1]); // show off the newest skin on the next tower
-    }
-    const built = ISLAND_UPGRADES.slice(islandBefore, islandLevel()).map(u => u.name);
-    if (built.length) rewards.push({ kind: "island", text: `Island upgrade${built.length > 1 ? "s" : ""}: ${list(built)}` });
-    if (finished.length) setTimeout(() => sound.star(), 300);
-    if (rewards.some(r => r.kind !== "star")) sound.unlock();
   }
   function vibrate(p) {
     if (!settings.vibrate) return;
@@ -1572,6 +2055,16 @@
       el.textContent = r.text;
       ui.overRewards.appendChild(el);
     }
+    ui.overNear.hidden = !nearText;
+    ui.overNear.textContent = nearText;
+    ui.xpLevel.textContent = `Builder level ${profile.level}`;
+    ui.xpGain.textContent = `+${xpResult.gained} XP`;
+    ui.xpBar.style.transition = "none";
+    ui.xpBar.style.width = `${xpResult.startPct * 100}%`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ui.xpBar.style.transition = "";
+      ui.xpBar.style.width = `${xpResult.endPct * 100}%`;
+    }));
     ui.overVersus.hidden = !challenge || mode === "zen";
     if (challenge) {
       const won = score > challenge;
@@ -1581,8 +2074,15 @@
         : `Your friend's tower: ${fmt(challenge)} people. ${fmt(challenge - score + 1)} more to win.`;
     }
     renderStyle();
+    renderLevel();
     ui.over.hidden = false;
     ui.settingsBtn.hidden = false;
+    ui.levelBtn.hidden = false;
+  }
+
+  function renderLevel() {
+    ui.levelNum.textContent = profile.level;
+    ui.levelBar.style.width = `${profile.xp / xpNeeded(profile.level) * 100}%`;
   }
 
   function renderMenu() {
@@ -1594,12 +2094,16 @@
     ui.missionsDot.hidden = missions.seen >= missions.done;
     const d = dailyRecord();
     ui.dailyTitle.textContent = `Daily #${dayNumber()}`;
-    ui.dailySub.textContent = d.plays ? `Today's best: ${fmt(d.best)}` : "New tower today";
+    const left = Math.max(0, Date.UTC(2026, 9, 27) + dayNumber() * 864e5 - Date.now());
+    const hrs = Math.floor(left / 36e5), mins = Math.floor(left % 36e5 / 6e4);
+    ui.dailySub.textContent = d.plays ? `Best ${fmt(d.best)} · new in ${hrs ? `${hrs}h ` : ""}${mins}m` : "New tower today";
     const lvl = islandLevel(), next = ISLAND_UPGRADES[lvl];
     ui.islandChip.innerHTML = next
       ? `Island level <b>${lvl + 1}</b> · Next: ${next.name} at ${MILESTONES[next.at].m + 1} m`
       : `Island level <b>${lvl + 1}</b> · Fully upgraded`;
     renderStyle();
+    renderLevel();
+    ui.giftChip.hidden = !giftState().ready || profile.towers < 1;
   }
 
   // ---------- Input ----------
@@ -1615,6 +2119,7 @@
     ui.hud.hidden = false;
     ui.pause.hidden = false;
     ui.settingsBtn.hidden = true;
+    ui.levelBtn.hidden = true;
     reset();
     updateHud(false);
     state = "playing";
@@ -1643,11 +2148,13 @@
     ui.pauseMenu.hidden = true;
     ui.rescue.hidden = true;
     ui.settingsBtn.hidden = false;
+    ui.levelBtn.hidden = false;
     mode = "classic";
     reset();
     state = "menu";
     renderMenu();
     ui.menu.hidden = false;
+    maybeOfferGift();
   }
 
   // ---------- Pause ----------
@@ -1688,11 +2195,77 @@
     el.hidden = true;
     if (dialogOpener && dialogOpener.focus && !dialogOpener.closest("[hidden]")) dialogOpener.focus();
   }
-  for (const el of [ui.settings, ui.missions]) {
+  for (const el of [ui.settings, ui.missions, ui.profile]) {
     el.addEventListener("click", e => { if (e.target === el) closeModal(el); });
     el.querySelector(".close-btn").addEventListener("click", () => closeModal(el));
   }
-  const openModalEl = () => [ui.skins, ui.missions, ui.settings].find(el => !el.hidden);
+  const openModalEl = () => [ui.skins, ui.missions, ui.settings, ui.profile].find(el => !el.hidden);
+
+  // Daily gift: offered once a day, with bigger gifts for longer streaks.
+  let giftOffered = false;
+  function maybeOfferGift() {
+    if (giftOffered || state !== "menu" || profile.towers < 1 || !giftState().ready) return;
+    giftOffered = true;
+    openGift();
+  }
+  function openGift() {
+    const g = giftState();
+    const slot = (g.streak - 1) % 7;
+    ui.giftStreak.textContent = g.streak > 1 ? `Day ${g.streak} streak` : "Day 1";
+    ui.giftSub.textContent = g.streak > 1 ? "You came back! Keep the streak going for bigger gifts." : "Come back every day for bigger gifts.";
+    ui.giftTrack.innerHTML = GIFTS.map((n, i) => `
+      <div class="gift-day${i < slot ? " done" : ""}${i === slot ? " today" : ""}"><b>${n}★</b>Day ${i + 1}</div>`).join("");
+    ui.giftClaim.textContent = `Claim ${GIFTS[slot]} ★`;
+    ui.gift.hidden = false;
+    ui.giftClaim.focus();
+  }
+  ui.giftClaim.addEventListener("click", () => {
+    sound.ensure();
+    const g = giftState();
+    if (!g.ready) { ui.gift.hidden = true; return; }
+    const n = GIFTS[(g.streak - 1) % 7];
+    profile.gift = { last: dayKey(), streak: g.streak };
+    rewards = [];
+    const skinsBefore = new Set(STYLES.filter(isUnlocked).map(st => st.id));
+    addStars(n);
+    // The 7-day trophy can be earned right here.
+    const week = TROPHY_LIST.find(t => t.id === "week");
+    if (!profile.trophies.includes("week") && week.test()) { profile.trophies.push("week"); addStars(1); }
+    saveProfile();
+    sound.star();
+    ui.gift.hidden = true;
+    const newSkin = STYLES.find(st => isUnlocked(st) && !skinsBefore.has(st.id));
+    showToast(newSkin ? `+${n} ★ · ${newSkin.name} unlocked!` : `+${n} ★ · See you tomorrow for ${GIFTS[g.streak % 7]} ★`);
+    renderMenu();
+  });
+  ui.giftLater.addEventListener("click", () => { ui.gift.hidden = true; renderMenu(); });
+  ui.giftChip.addEventListener("click", () => { sound.ensure(); sound.click(); openGift(); });
+
+  // Profile: level, lifetime stats and trophies.
+  const TROPHY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3V3zm0 4H6v1a2 2 0 0 0 1 1.7V7zm10 0v2.7A2 2 0 0 0 18 8V7h-1z"/></svg>';
+  const LOCK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="5" y="10" width="14" height="11" rx="3" fill="currentColor"/></svg>';
+  function openProfile() {
+    sound.ensure();
+    sound.click();
+    const need = xpNeeded(profile.level);
+    ui.profileTitle.textContent = `Builder level ${profile.level}`;
+    ui.profileXp.textContent = `${fmt(profile.xp)} of ${fmt(need)} XP to level ${profile.level + 1}`;
+    ui.profileBar.style.width = `${profile.xp / need * 100}%`;
+    const nextTheme = ISLAND_THEMES.find(t => t.level > profile.level);
+    ui.profileNext.textContent = `Every level gives a star (3 at levels 5, 10, 15...). ${nextTheme ? `Level ${nextTheme.level} unlocks the ${nextTheme.name} island.` : "Every island theme is unlocked."}`;
+    const stats = [
+      [fmt(profile.towers), "towers"], [fmt(profile.floors), "floors"], [fmt(profile.perfects), "perfect drops"],
+      [fmt(best), "best people"], [`${fmt(bestMeters)} m`, "tallest"], [profile.bestStreak, "best streak"],
+    ];
+    ui.profileStats.innerHTML = stats.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
+    ui.trophyTitle.textContent = `Trophies · ${profile.trophies.length} of ${TROPHY_LIST.length}`;
+    ui.trophyGrid.innerHTML = TROPHY_LIST.map(t => {
+      const won = profile.trophies.includes(t.id);
+      return `<div class="trophy${won ? " won" : ""}"><span class="t-ico">${won ? TROPHY_ICON : LOCK_ICON}</span><span><b>${t.name}</b><small>${t.text}</small></span></div>`;
+    }).join("");
+    openModal(ui.profile);
+  }
+  ui.levelBtn.addEventListener("click", openProfile);
 
   // Settings
   function renderSettings() {
@@ -1729,6 +2302,7 @@
   function openMissions() {
     sound.ensure();
     sound.click();
+    const refresh = !ui.missions.hidden;
     missions.seen = missions.done;
     save("skyriseMissions", JSON.stringify(missions));
     ui.missionsDot.hidden = true;
@@ -1737,13 +2311,23 @@
       ? `${missions.stars} ★ earned · ${nextStar.unlock.stars - missions.stars} more for ${nextStar.name}`
       : `${missions.stars} ★ earned · All star rewards unlocked`;
     ui.missionsBar.style.width = `${nextStar ? missions.stars / nextStar.unlock.stars * 100 : 100}%`;
-    ui.missionList.innerHTML = missions.slots.map(m => `
+    const canSwap = profile.swapDay !== dayKey();
+    ui.missionList.innerHTML = missions.slots.map((m, i) => `
       <div class="mission">
         <b>${missionText(m)}</b>
         <span class="reward-tag">+${m.r} ★</span>
         <div class="m-bar"><i style="width:${Math.min(100, m.p / m.n * 100)}%"></i></div>
         <small>${MISSION_TYPES[m.t].game ? `Best so far: ${fmt(Math.min(m.p, m.n))} of ${fmt(m.n)}` : `${fmt(Math.min(m.p, m.n))} of ${fmt(m.n)}`}</small>
+        ${canSwap ? `<button type="button" class="swap" data-i="${i}">Swap for a new mission (1 a day)</button>` : ""}
       </div>`).join("");
+    ui.missionList.querySelectorAll(".swap").forEach(b => b.addEventListener("click", () => {
+      missions.slots.splice(Number(b.dataset.i), 1);
+      dealMissions();
+      profile.swapDay = dayKey();
+      saveProfile();
+      sound.click();
+      openMissions();
+    }));
     ui.starRewards.innerHTML = STYLES.filter(st => st.unlock && st.unlock.stars).map(st => `
       <div class="row-item${isUnlocked(st) ? " done" : ""}">
         <span class="swatch">${(st.swatch || st.floors).slice(0, 3).map(c => `<i style="background:${c}"></i>`).join("")}</span>
@@ -1755,7 +2339,7 @@
         <span><b>${u.name}</b><small>Build taller than ${MILESTONES[u.at].name}</small></span>
         <span class="state">${i < islandLevel() ? "Built" : `${MILESTONES[u.at].m + 1} m`}</span>
       </div>`).join("");
-    openModal(ui.missions);
+    if (refresh) ui.missions.querySelector(".close-btn").focus(); else openModal(ui.missions);
   }
   ui.missionsBtn.addEventListener("click", openMissions);
 
@@ -1765,6 +2349,7 @@
       if (e.code === "Escape") { if (modal === ui.skins) closeSkins(); else closeModal(modal); }
       return;
     }
+    if (!ui.gift.hidden) { if (e.code === "Escape") ui.gift.hidden = true; return; }
     if (state === "rescue") {
       if (e.code === "Escape") endFromRescue();
       return;
@@ -1791,6 +2376,10 @@
     if (mode === "daily") return `Skyrise Daily #${dayNumber()}: ${fmt(score)} people in a ${meters()} m tower${ms}. Can you beat it today?`;
     return `My Skyrise tower is ${meters()} m tall${ms}, with ${fmt(score)} people living in it. Can you build a bigger one?`;
   }
+  // The app icon, reused from the title screen for the share picture.
+  const logoImg = new Image();
+  logoImg.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(document.getElementById("app-logo-svg")));
+
   // A portrait share card: the finished tower with the score laid over it.
   function makeShareImage() {
     const out = document.createElement("canvas");
@@ -1819,7 +2408,11 @@
     o.shadowColor = "rgba(0,0,0,0.35)";
     o.shadowBlur = 16;
     o.font = `56px ${DISPLAY}`;
-    o.fillText("SKYRISE", 540, 110);
+    const nameW = o.measureText("SKYRISE").width, logo = 84, left = 540 - (logo + 18 + nameW) / 2;
+    if (logoImg.complete && logoImg.naturalWidth) o.drawImage(logoImg, left, 44, logo, logo);
+    o.textAlign = "left";
+    o.fillText("SKYRISE", left + logo + 18, 108);
+    o.textAlign = "center";
     o.font = `190px ${NUMFONT}`;
     o.fillText(fmt(score), 540, 1110);
     o.font = `800 46px ${UIFONT}`;
@@ -1908,7 +2501,7 @@
     view.originY = lerp(view.originY, tOrigin, k);
     view.cx = lerp(view.cx, tCx, k);
 
-    if (state === "over" && !overReady && performance.now() - overAt > 1100) {
+    if (state === "over" && !overReady && performance.now() - overAt > 800) {
       overReady = true;
       debris = []; // keep the fallen floor out of the share picture
       showOver();
@@ -2144,21 +2737,21 @@
   }
 
   function drawIsland() {
-    const I = ISLAND, d = 1 - env.nf * 0.6;
+    const I = ISLAND, d = 1 - env.nf * 0.6, t = theme();
     const P = (x, y, z) => project(x, y, z);
     // Rocky underside tapering to a point
     const apex = P(0, -17, 0);
-    poly([P(I, -3, -I), P(I, -3, I), apex], rgb(hexRgb("#5a4334"), d));
-    poly([P(-I, -3, I), P(I, -3, I), apex], rgb(hexRgb("#7a5b43"), d));
-    // Dirt sides with a grass lip
-    face([P(-I, 0, I), P(I, 0, I), P(I, -3, I), P(-I, -3, I)], hexRgb("#a07a52"), d, 0.75 * d);
-    face([P(I, 0, -I), P(I, 0, I), P(I, -3, I), P(I, -3, -I)], hexRgb("#86643f"), d, 0.7 * d);
-    poly([P(-I, 0, I), P(I, 0, I), P(I, -0.45, I), P(-I, -0.45, I)], rgb(hexRgb("#5fae4e"), d));
-    poly([P(I, 0, -I), P(I, 0, I), P(I, -0.45, I), P(I, -0.45, -I)], rgb(hexRgb("#4e9640"), d));
-    // Lawn
-    poly([P(-I, 0, -I), P(I, 0, -I), P(I, 0, I), P(-I, 0, I)], rgb(hexRgb("#7fc76a"), d));
+    poly([P(I, -3, -I), P(I, -3, I), apex], rgb(hexRgb(t.rockR), d));
+    poly([P(-I, -3, I), P(I, -3, I), apex], rgb(hexRgb(t.rockL), d));
+    // Dirt sides with a grassy (or snowy, or sandy) lip
+    face([P(-I, 0, I), P(I, 0, I), P(I, -3, I), P(-I, -3, I)], hexRgb(t.dirtL), d, 0.75 * d);
+    face([P(I, 0, -I), P(I, 0, I), P(I, -3, I), P(I, -3, -I)], hexRgb(t.dirtR), d, 0.7 * d);
+    poly([P(-I, 0, I), P(I, 0, I), P(I, -0.45, I), P(-I, -0.45, I)], rgb(hexRgb(t.lip), d));
+    poly([P(I, 0, -I), P(I, 0, I), P(I, -0.45, I), P(I, -0.45, -I)], rgb(hexRgb(t.lipR), d));
+    // Ground
+    poly([P(-I, 0, -I), P(I, 0, -I), P(I, 0, I), P(-I, 0, I)], rgb(hexRgb(t.lawn), d));
     // Roads leading off the island
-    const road = rgb(hexRgb("#7d8597"), d), line = rgb(hexRgb("#f1f3f5"), d);
+    const road = rgb(hexRgb(t.road), d), line = rgb(hexRgb("#f1f3f5"), d);
     poly([P(7, 0.01, -1.4), P(I, 0.01, -1.4), P(I, 0.01, 1.4), P(7, 0.01, 1.4)], road);
     poly([P(-1.4, 0.01, 7), P(1.4, 0.01, 7), P(1.4, 0.01, I), P(-1.4, 0.01, I)], road);
     poly([P(-I, 0.01, -1.4), P(-7, 0.01, -1.4), P(-7, 0.01, 1.4), P(-I, 0.01, 1.4)], road);
@@ -2167,8 +2760,8 @@
       poly([P(-0.12, 0.02, u), P(0.12, 0.02, u), P(0.12, 0.02, u + 1.1), P(-0.12, 0.02, u + 1.1)], line);
     }
     // Plaza around the tower
-    poly([P(-7.4, 0.02, -7.4), P(7.4, 0.02, -7.4), P(7.4, 0.02, 7.4), P(-7.4, 0.02, 7.4)], rgb(hexRgb("#c9cfd8"), d));
-    poly([P(-6.8, 0.03, -6.8), P(6.8, 0.03, -6.8), P(6.8, 0.03, 6.8), P(-6.8, 0.03, 6.8)], rgb(hexRgb("#e3e7ec"), d));
+    poly([P(-7.4, 0.02, -7.4), P(7.4, 0.02, -7.4), P(7.4, 0.02, 7.4), P(-7.4, 0.02, 7.4)], rgb(hexRgb(t.plaza), d));
+    poly([P(-6.8, 0.03, -6.8), P(6.8, 0.03, -6.8), P(6.8, 0.03, 6.8), P(-6.8, 0.03, 6.8)], rgb(hexRgb(t.plaza2), d));
   }
 
   // ---------- Island upgrades ----------
@@ -2309,18 +2902,43 @@
   }
 
   function drawTree(t) {
-    const d = 1 - env.nf * 0.6;
     const [x, y] = project(t.x, 0, t.z);
-    const r = 0.75 * s * view.zoom * t.size;
-    ctx.fillStyle = `rgba(20,40,20,${0.22 * d})`;
-    ctx.beginPath(); ctx.ellipse(x, y, r * 0.9, r * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = rgb(hexRgb("#7a5536"), d);
-    ctx.fillRect(x - r * 0.12, y - r * 1.1, r * 0.24, r * 1.1);
-    const leaf = mixRgb(hexRgb("#3f9b4a"), hexRgb("#6bbf4e"), t.hue);
-    ctx.fillStyle = rgb(leaf, 0.82 * d);
-    ctx.beginPath(); ctx.arc(x, y - r * 1.55, r * 0.85, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = rgb(leaf, 1.12 * d);
-    ctx.beginPath(); ctx.arc(x - r * 0.22, y - r * 1.75, r * 0.5, 0, Math.PI * 2); ctx.fill();
+    drawTreeShape(ctx, theme(), x, y, 0.75 * s * view.zoom * t.size, t.hue, 1 - env.nf * 0.6);
+  }
+  // One tree at screen point (x, y) in the island theme's style: round, pine or palm.
+  function drawTreeShape(g, th, x, y, r, hue, d) {
+    g.fillStyle = `rgba(20,40,20,${0.22 * d})`;
+    g.beginPath(); g.ellipse(x, y, r * 0.9, r * 0.45, 0, 0, Math.PI * 2); g.fill();
+    const leaf = mixRgb(hexRgb(th.leaf[0]), hexRgb(th.leaf[1]), hue);
+    g.fillStyle = rgb(hexRgb(th.trunk), d);
+    if (th.tree === "pine") {
+      g.fillRect(x - r * 0.1, y - r * 0.6, r * 0.2, r * 0.6);
+      for (let k = 0; k < 3; k++) {
+        const top = y - r * (1.2 + k * 0.62), half = r * (0.85 - k * 0.2);
+        g.fillStyle = rgb(leaf, (0.85 + k * 0.1) * d);
+        g.beginPath(); g.moveTo(x, top - r * 0.75); g.lineTo(x + half, top + r * 0.25); g.lineTo(x - half, top + r * 0.25); g.closePath(); g.fill();
+        g.fillStyle = rgb([248, 252, 255], d);
+        g.beginPath(); g.moveTo(x, top - r * 0.75); g.lineTo(x + half * 0.4, top - r * 0.35); g.lineTo(x - half * 0.4, top - r * 0.35); g.closePath(); g.fill();
+      }
+    } else if (th.tree === "palm") {
+      g.strokeStyle = rgb(hexRgb(th.trunk), d);
+      g.lineWidth = Math.max(1.5, r * 0.22);
+      g.lineCap = "round";
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + r * 0.5, y - r * 1.2, x + r * 0.2, y - r * 2.2); g.stroke();
+      g.fillStyle = rgb(leaf, d);
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k - 2) * 0.7;
+        g.beginPath();
+        g.ellipse(x + r * 0.2 + Math.cos(a) * r * 0.55, y - r * 2.2 + Math.sin(a) * r * 0.35 + r * 0.2, r * 0.7, r * 0.2, a, 0, Math.PI * 2);
+        g.fill();
+      }
+    } else {
+      g.fillRect(x - r * 0.12, y - r * 1.1, r * 0.24, r * 1.1);
+      g.fillStyle = rgb(leaf, 0.82 * d);
+      g.beginPath(); g.arc(x, y - r * 1.55, r * 0.85, 0, Math.PI * 2); g.fill();
+      g.fillStyle = rgb(leaf, 1.12 * d);
+      g.beginPath(); g.arc(x - r * 0.22, y - r * 1.75, r * 0.5, 0, Math.PI * 2); g.fill();
+    }
   }
 
   // ---------- Buildings ----------
@@ -2718,6 +3336,7 @@
   resize();
   reset();
   renderMenu();
+  setTimeout(maybeOfferGift, 600);
   requestAnimationFrame(frame);
 })();
 </script>
