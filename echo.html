@@ -41,7 +41,7 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  canvas { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  #game { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
   button {
     font: inherit;
     color: inherit;
@@ -308,7 +308,7 @@
   @keyframes blink { 50% { opacity: 0.45; } }
 
   /* Toasts */
-  #toasts { position: fixed; bottom: calc(110px + var(--bottom)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
+  #toasts { position: fixed; top: calc(64px + var(--top)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
   .toast { padding: 10px 16px; border-radius: 16px; background: rgba(14, 20, 44, 0.94); border: 1px solid rgba(255, 211, 110, 0.45); color: var(--ink); font-size: 15px; box-shadow: 0 6px 30px rgba(0,0,0,0.5); animation: toast 2.6s ease forwards; max-width: 100%; }
   .toast b { color: var(--gold); font-weight: 600; }
   @keyframes toast { 0% { opacity: 0; transform: translateY(10px); } 10%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(6px); } }
@@ -345,6 +345,28 @@
   .seg button { padding: 7px 11px; font-size: 14px; color: var(--dim); }
   .seg button[aria-pressed=true] { background: rgba(126, 232, 255, 0.2); color: var(--ink); }
   [hidden] { display: none !important; }
+  #singBtn { position: fixed; bottom: calc(26px + var(--bottom)); right: calc(22px + env(safe-area-inset-right, 0px)); width: 76px; height: 76px; border-radius: 50%;
+    font-size: 32px; color: #0a1a2e; background: radial-gradient(circle at 40% 35%, #ffffff, #bfeaff 70%); box-shadow: 0 8px 26px rgba(0,0,0,0.45), 0 0 30px rgba(126,232,255,0.35); touch-action: none; z-index: 5; }
+  #singBtn:active { transform: scale(0.94); }
+  body.left-hand #singBtn { right: auto; left: calc(22px + env(safe-area-inset-left, 0px)); }
+  body.big-text .panel, body.big-text #hint, body.big-text .title-actions, body.big-text .hero, body.big-text #levelCard, body.big-text .challenge-list { zoom: 1.15; }
+  body.big-text #hud { zoom: 1.1; }
+  .challenge-list { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 10px; }
+  .challenge { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 16px; border-radius: 18px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); text-align: left; }
+  .challenge:active { transform: scale(0.98); }
+  .ch-name { font-family: "Cinzel", Georgia, serif; font-size: 19px; }
+  .ch-info { font-size: 14px; color: var(--dim); }
+  .map-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 8px; }
+  #resultMap { border-radius: 10px; background: rgba(0, 0, 0, 0.25); max-width: 100%; }
+  .tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
+  .tabs button { padding: 8px 18px; border-radius: 99px; font-size: 17px; color: var(--dim); border: 1px solid transparent; }
+  .tabs button[aria-selected=true] { color: var(--ink); background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
+  .looks-head { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 20px; margin: 22px 0 0; }
+  .journal-h { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 18px; margin: 4px 0 10px; text-align: left; }
+  .family { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 6px; }
+  .family span { aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.06); border: 1px dashed rgba(255, 255, 255, 0.18); }
+  .family span.got { background: radial-gradient(circle at 40% 35%, #fff, #ffd1ea 60%, #ff9fcf); border: 0; box-shadow: 0 0 10px rgba(255, 150, 200, 0.6); }
+  .journal-note { color: var(--dim); font-size: 13px; text-align: left; margin: 0 0 18px; }
   /* The level's name, shown for a moment as each cave fades in. */
   #levelCard { position: fixed; left: 0; right: 0; top: 38%; text-align: center; pointer-events: none; opacity: 0; padding: 0 16px; }
   #levelCard.on { animation: levelCard 2.4s ease both; }
@@ -378,6 +400,7 @@
 </div>
 <div id="energy" aria-hidden="true"><i></i></div>
 <div id="hint"></div>
+<button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
 
@@ -440,6 +463,7 @@
     <div class="stars" id="resultStars"><span>★</span><span>★</span><span>★</span></div>
     <div class="newbest" id="newBest"></div>
     <div class="unlock" id="unlockMsg"></div>
+    <div class="map-wrap"><canvas id="resultMap" aria-label="Map of the route Lumi swam"></canvas><button class="link" id="shareMapBtn">Share map</button></div>
     <ul class="goals">
       <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
       <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
@@ -458,6 +482,18 @@
   <h2 class="story-name" id="storyName"></h2>
   <p class="story-text" id="storyText"></p>
   <button class="btn main" id="storyGo">Begin</button>
+</div>
+
+<div class="screen dim-bg" id="challengeScreen">
+  <div class="panel">
+    <h2>Challenges</h2>
+    <p class="sub">Caves that are the same for everyone in the world.</p>
+    <div class="challenge-list">
+      <button class="challenge" id="playDaily"><span class="ch-name">Daily cave</span><span class="ch-info" id="dailyInfo"></span></button>
+      <button class="challenge" id="playWeekly"><span class="ch-name">Weekly cave</span><span class="ch-info" id="weeklyInfo"></span></button>
+    </div>
+    <button class="btn" id="challengesBack">Back</button>
+  </div>
 </div>
 
 <div class="screen dim-bg" id="cardScreen">
@@ -484,16 +520,19 @@
   <div class="panel tall">
     <h2>Lumi's looks</h2>
     <p class="sub">Collect stars to unlock new colours.</p>
-    <div class="scroll"><div class="looks" id="looksGrid"></div></div>
+    <div class="scroll"><div class="looks" id="looksGrid"></div>
+      <h3 class="looks-head">Accessories</h3>
+      <p class="sub">Earn awards to unlock them.</p>
+      <div class="looks" id="hatsGrid"></div></div>
     <button class="btn" id="looksBack">Done</button>
   </div>
 </div>
 
 <div class="screen dim-bg" id="awardsScreen">
   <div class="panel tall">
-    <h2>Awards</h2>
+    <div class="tabs" role="tablist"><button role="tab" id="tabAwards" aria-selected="true">Awards</button><button role="tab" id="tabJournal" aria-selected="false">Journal</button></div>
     <p class="sub" id="awardsCount"></p>
-    <div class="scroll"><ul class="awards" id="awardsList"></ul></div>
+    <div class="scroll"><ul class="awards" id="awardsList"></ul><div id="journal" hidden></div></div>
     <button class="btn" id="awardsBack">Done</button>
   </div>
 </div>
@@ -506,6 +545,9 @@
       <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
       <div class="set"><label>Vibration<small>On phones that support it</small></label><button class="toggle" id="setVibrate" aria-label="Vibration"></button></div>
       <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
+      <div class="set"><label>Controls<small>Slide to swim, or tap where Lumi should go</small></label><div class="seg" id="setControls"><button data-v="stick">Slide</button><button data-v="tap">Tap</button></div></div>
+      <div class="set" id="handRow"><label>Sing button</label><div class="seg" id="setHand"><button data-v="left">Left</button><button data-v="right">Right</button></div></div>
+      <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>Relaxed mode<small>No light energy, Gloomlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
       <div class="set"><label>Guiding glow<small>Lights and the portal always glow a little, even in dark caves</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>

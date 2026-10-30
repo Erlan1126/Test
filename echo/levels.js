@@ -237,10 +237,13 @@ const worldOf = i => Math.floor(i / PER_WORLD);
 // The daily cave changes at midnight UTC, so everyone in the world gets the same one.
 const dayNumber = () => Math.floor(Date.now() / 86400000);
 const dayKey = (n = dayNumber()) => new Date(n * 86400000).toISOString().slice(0, 10);
-const themeIndex = i => (i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
+const WEEKLY = -2;
+const weekNumber = () => Math.floor((dayNumber() + 3) / 7);  // weeks start on Monday (UTC)
+const isChallenge = i => i < 0;
+const themeIndex = i => (i === WEEKLY ? weekNumber() + 3 : i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
 const themeOf = i => THEMES[themeIndex(i)];
 // Energy and Gloomlings get gently harder with depth; the daily cave sits in the middle.
-const depthOf = i => (i < 0 ? 0.5 : Math.min(1, Math.max(0, (i - 10) / 400)));
+const depthOf = i => (i === WEEKLY ? 0.8 : i < 0 ? 0.5 : Math.min(1, Math.max(0, (i - 10) / 400)));
 const worldName = w => THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)];
 
 // Handmade levels that introduce each new idea, placed where it first appears. Each one opens
@@ -442,6 +445,11 @@ function caveName(n) {
 
 const levelCache = new Map();
 function getLevel(i) {
+  if (i === WEEKLY) {
+    const week = weekNumber(), key = "weekly" + week;
+    if (!levelCache.has(key)) levelCache.set(key, generateLevel(90000 + week * 17, { hard: 0.8, name: "Weekly Cave" }));
+    return levelCache.get(key);
+  }
   if (i === DAILY) {
     const day = dayNumber(), key = "daily" + day;
     if (!levelCache.has(key)) levelCache.set(key, generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }));
@@ -468,6 +476,8 @@ function seeded(a) {
 // finale at the end of each world.
 const isBreather = n => n % 5 === 3 && n % PER_WORLD !== PER_WORLD - 1;
 const isFinale = n => n % PER_WORLD === PER_WORLD - 1;
+// The level in each world where one of Lumi's little lights is hiding.
+const familyLevel = w => w * PER_WORLD + (w === 0 ? 15 : 9);
 
 // Each world leans on one or two ideas it introduces, so worlds feel different from each
 // other. A level only uses ideas that have been introduced by then, and never more than
@@ -476,15 +486,15 @@ const BASICS = ["doors", "currents", "snoozles"];
 const SIGNATURE = [
   [],                         // 1 Moonlit Grotto: the basics, then light energy
   ["rescue"],                 // 2 Mossy Hollow: lost baby moths
-  ["runes"],                  // 3 Amethyst Deep: rune stones and gates
+  ["runes", "echo"],          // 3 Amethyst Deep: rune stones, gates and echo crystals
   ["gloom", "quiet"],         // 4 Ember Caverns: Gloomlings and quiet caves
   ["dark", "tall"],           // 5 Frost Tunnels: dark caves and long climbs
   ["race", "currents"],       // 6 Coral Depths: races on the tide
   ["runes", "doors", "tall"], // 7 Golden Mines
-  ["gloom", "dark", "race"],  // 8 Starlight Abyss
+  ["gloom", "dark", "race", "echo"], // 8 Starlight Abyss
 ];
 // Where each idea is first introduced (by a handmade level in INTRO).
-const UNLOCK = { doors: 3, currents: 4, snoozles: 6, rescue: 20, runes: 40, gloom: 60, quiet: 64, dark: 80, tall: 84, race: 100 };
+const UNLOCK = { doors: 3, currents: 4, snoozles: 6, rescue: 20, runes: 40, echo: 44, gloom: 60, quiet: 64, dark: 80, tall: 84, race: 100 };
 const GOALS = ["rescue", "quiet", "race"];
 function planLevel(n, daily, hard, pre) {
   const w = daily ? dayNumber() % THEMES.length : worldOf(n), sig = SIGNATURE[w % SIGNATURE.length];
@@ -511,9 +521,11 @@ function generateLevel(n, opts = {}) {
   if (!daily && isFinale(n)) hard = Math.min(1, hard + 0.25);
   const pre = seeded(n * 131 + 7);
   const plan = planLevel(n, daily, hard, pre);
-  const C = 11, R = plan.has("tall") ? (pre() < 0.55 ? 26 : 34) : 18;
+  // Big caves are either tall (scrolling up and down) or, from level 101, wide (scrolling sideways).
+  const wide = plan.has("tall") && (daily || n >= 100) && pre() < 0.4;
+  const C = wide ? 17 : 11, R = plan.has("tall") && !wide ? (pre() < 0.55 ? 26 : 34) : 18;
   const dark = plan.has("dark");
-  const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], big = R / 18;
+  const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], big = (R * C) / (18 * 11);
   for (let attempt = 0; ; attempt++) {
     const r = seeded(n * 7919 + attempt * 104729 + 17);
     const pick = a => a[Math.floor(r() * a.length)];
@@ -746,6 +758,32 @@ function generateLevel(n, opts = {}) {
       }
     }
 
+    // Echo crystals: rock faces that bounce a song onward, carrying it around corners.
+    if (plan.has("echo")) {
+      const faces = [];
+      for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) {
+        if (g[y][x] !== "#") continue;
+        const openSides = D4.filter(([dx, dy]) => open(x + dx, y + dy)).length;
+        if (openSides >= 1 && openSides <= 2) faces.push([x, y]);
+      }
+      const want = Math.min(faces.length, 2 + Math.floor(r() * 3) + Math.round(big));
+      for (let k = 0; k < want; k++) { const [x, y] = faces.splice(Math.floor(r() * faces.length), 1)[0]; g[y][x] = "W"; }
+    }
+
+    // The Great Gloom guards world finales from World 4, halfway along the way to the portal.
+    if (!daily && isFinale(n) && n >= UNLOCK.gloom) {
+      const mid = route.slice(Math.floor(route.length * 0.35), Math.floor(route.length * 0.7)).filter(([x, y]) => g[y][x] === ".");
+      if (mid.length) { const [x, y] = pick(mid); g[y][x] = "B"; }
+    }
+    // One of Lumi's little lights hides in one level of every world, away from the main path.
+    if (!daily && n === familyLevel(worldOf(n))) {
+      ({ d } = bfs(S[0], S[1]));
+      const spots = floor.filter(([x, y]) => free(x, y) && !onRoute.has(x + "," + y) && d[y][x] >= 6).sort((a, b) => d[b[1]][b[0]] - d[a[1]][a[0]]);
+      if (!spots.length) continue;
+      const [x, y] = spots[Math.floor(r() * Math.min(4, spots.length))];
+      g[y][x] = "f";
+    }
+
     // Level goal. Most caves are about exploring; some ask for something different.
     let goal = "explore", baby = null;
     goal = GOALS.find(k => plan.has(k)) || "explore";
@@ -766,7 +804,8 @@ function generateLevel(n, opts = {}) {
       pos = left.shift();
     }
     walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
-    const parPings = Math.ceil(walk / 5.5) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0);
+    // Tighter than before: in testing a robot that knew the map used under half the target.
+    const parPings = Math.ceil(walk / 8) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0) + (dark ? 2 : 0);
     return {
       name: opts.name || caveName(n), par: parPings, map: g.map(row => row.join("")), style, dark, goal, walk,
       songs: goal === "quiet" ? parPings + 2 : 0,

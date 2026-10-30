@@ -3,7 +3,7 @@
 
 // ---------- Canvas ----------
 const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d"), mainCtx = ctx;
 // If a phone can't keep up, frames are drawn at a lower resolution (see frame()).
 let qualityCap = 2, slowFrames = 0, frameCount = 0;
 let SDPR = 1, W = 0, H = 0, DPR = 1, TS = 32, OX = 0, OY = 0, bgGrad = null, vignette = null;
@@ -29,7 +29,50 @@ const GLOW = {
   pink: makeGlow(255, 140, 200),
   green: makeGlow(150, 255, 190),
   white: makeGlow(255, 255, 255),
+  ember: makeGlow(255, 140, 70),
 };
+// Accessories for Lumi, unlocked by earning awards.
+const HATS = [
+  { name: "None", need: 0 },
+  { name: "Leaf", need: 2 },
+  { name: "Bow", need: 4 },
+  { name: "Crown", need: 6 },
+  { name: "Star", need: 8 },
+  { name: "Flower", need: 10 },
+];
+const awardsEarned = () => Object.keys(save.ach || {}).length;
+const hatUnlocked = k => awardsEarned() >= HATS[k].need;
+// Draws an accessory on Lumi's head; (0, 0) is the middle of Lumi and R its radius.
+function drawHat(k, R, ctx = mainCtx) {
+  if (!k || !hatUnlocked(k)) return;
+  ctx.save();
+  if (k === 1) {        // a leaf resting on one side
+    ctx.fillStyle = "#7fe39a";
+    ctx.beginPath(); ctx.ellipse(R * 0.55, -R * 0.75, R * 0.42, R * 0.2, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#3f9e5a"; ctx.lineWidth = Math.max(1, R * 0.05);
+    ctx.beginPath(); ctx.moveTo(R * 0.25, -R * 0.55); ctx.lineTo(R * 0.85, -R * 0.95); ctx.stroke();
+  } else if (k === 2) { // a pink bow
+    ctx.fillStyle = "#ff8cc8";
+    ctx.beginPath(); ctx.moveTo(R * 0.5, -R * 0.78); ctx.lineTo(R * 0.15, -R * 1.02); ctx.lineTo(R * 0.18, -R * 0.55); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(R * 0.5, -R * 0.78); ctx.lineTo(R * 0.88, -R * 1.0); ctx.lineTo(R * 0.85, -R * 0.52); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ff5aa8"; ctx.beginPath(); ctx.arc(R * 0.5, -R * 0.78, R * 0.1, 0, Math.PI * 2); ctx.fill();
+  } else if (k === 3) { // a little gold crown
+    ctx.fillStyle = "#ffd36e";
+    ctx.beginPath();
+    ctx.moveTo(-R * 0.45, -R * 0.78); ctx.lineTo(-R * 0.5, -R * 1.22); ctx.lineTo(-R * 0.22, -R * 0.98); ctx.lineTo(0, -R * 1.3);
+    ctx.lineTo(R * 0.22, -R * 0.98); ctx.lineTo(R * 0.5, -R * 1.22); ctx.lineTo(R * 0.45, -R * 0.78); ctx.closePath(); ctx.fill();
+  } else if (k === 4) { // a star clip
+    ctx.fillStyle = "#ffe6a0";
+    ctx.beginPath();
+    for (let q = 0; q < 10; q++) { const a = -Math.PI / 2 + q * Math.PI / 5, rr = q % 2 ? R * 0.14 : R * 0.32; ctx.lineTo(-R * 0.55 + Math.cos(a) * rr, -R * 0.72 + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill();
+  } else if (k === 5) { // a flower
+    ctx.fillStyle = "#ffffff";
+    for (let q = 0; q < 5; q++) { const a = q * Math.PI * 2 / 5; ctx.beginPath(); ctx.arc(R * 0.55 + Math.cos(a) * R * 0.17, -R * 0.75 + Math.sin(a) * R * 0.17, R * 0.13, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#ffd36e"; ctx.beginPath(); ctx.arc(R * 0.55, -R * 0.75, R * 0.1, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
 // Looks for Lumi, unlocked by collecting stars.
 const SKINS = [
   { name: "Moonbeam",  need: 0,   c: [126, 232, 255], body: ["#ffffff", "#c9f6ff", "#6fd9ff"] },
@@ -87,12 +130,14 @@ function layout() {
   VIEW.top = 62 + safeInset("top");
   VIEW.bottom = H - 16 - safeInset("bottom");
   const avail = VIEW.bottom - VIEW.top;
-  TS = Math.max(8, Math.floor(Math.min((W - 16) / L.cols, avail / Math.min(L.rows, 18))));
-  OX = Math.round((W - TS * L.cols) / 2);
+  // Tiles are sized for an 11 by 18 cave; bigger caves keep that size and the camera follows Lumi.
+  TS = Math.max(8, Math.floor(Math.min((W - 16) / Math.min(L.cols, 11), avail / Math.min(L.rows, 18))));
+  L.scrollX = L.cols * TS > W - 16 + 1;
+  OX = L.scrollX ? cameraTargetX() : Math.round((W - TS * L.cols) / 2);
   L.scroll = L.rows * TS > avail + 1;
   OY = L.scroll ? cameraTarget() : Math.round(VIEW.top + (avail - TS * L.rows) / 2);
   // The painted rock and the light map cover the cave plus enough margin for anything on screen.
-  LM.mx = Math.ceil(OX / TS) + 1;
+  LM.mx = L.scrollX ? Math.ceil((8 + TS * 0.4) / TS) + 2 : Math.ceil(OX / TS) + 1;
   LM.my = L.scroll
     ? Math.ceil((Math.max(VIEW.top, H - VIEW.bottom) + TS * 0.4) / TS) + 1
     : Math.ceil(Math.max(OY, H - OY - L.rows * TS) / TS) + 1;
@@ -105,8 +150,13 @@ function cameraTarget() {
   const want = (VIEW.top + VIEW.bottom) / 2 - L.lumi.y * TS;
   return Math.max(VIEW.bottom - L.rows * TS - TS * 0.3, Math.min(VIEW.top + TS * 0.3, want));
 }
+function cameraTargetX() {
+  const want = W / 2 - L.lumi.x * TS;
+  return Math.max(W - 8 - L.cols * TS - TS * 0.3, Math.min(8 + TS * 0.3, want));
+}
 function moveCamera(dt) {
   if (L.scroll) OY += (cameraTarget() - OY) * Math.min(1, dt * 5);
+  if (L.scrollX) OX += (cameraTargetX() - OX) * Math.min(1, dt * 5);
 }
 
 // ---------- Painted cave ----------

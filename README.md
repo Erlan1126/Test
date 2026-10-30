@@ -29,7 +29,7 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | `echo.webmanifest`, `echo-icon*.png`, `echo-icon.svg`, `echo-apple-touch-icon.png` | Lets phones install Echo as its own app, with its own icon |
 | `star-defender.html` | Star Defender, an earlier arcade space shooter |
 | `manifest.webmanifest` | Lets phones install the game to the home screen, full screen like an app |
-| `sw.js` | Saves the game for offline play after the first visit |
+| `sw.js` | Saves both games for offline play after the first visit |
 | `icon.svg`, `icon-*.png`, `apple-touch-icon.png` | App and browser icons |
 | `og.jpg` | The preview picture shown when the link is pasted into a chat or social app |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
@@ -44,7 +44,8 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 **Controls**
 
-- **Tap** anywhere to sing (or press Space).
+- **Tap** anywhere to sing (or press Space). **Hold still** for a moment to charge a **long song** that travels much further but uses more light (Shift+Space on a keyboard).
+- Or switch to **Tap to move** in Settings: tap where Lumi should go and it finds the way, and a Sing button (left or right) does the singing.
 - **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
 
 **Goal and stars:** find the golden lost lights, then swim into the portal. You get one star for reaching the portal, one for finding every light, and one for singing no more than the number of times the level suggests. Each new world opens with a short story card.
@@ -55,7 +56,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - The first 10 levels are handmade and teach the basics. Each later idea is introduced by its own handmade level with a picture card: light energy (level 11), lost baby moths (21), rune stones (41), Gloomlings (61), quiet caves (65), dark caves (81), long climbs (85) and races (101).
 - The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Each one has its own name in its world's style, like "Whispering Fernway" or "Glimmering Geode", and each world ends with a "Heart of …" finale. A level only uses ideas that have already been introduced, and never more than three big ones at once.
 - Each world leans on its own ideas: Mossy Hollow on rescues, Amethyst Deep on rune gates, Ember Caverns on Gloomlings and quiet caves, Frost Tunnels on dark caves and long climbs, Coral Depths on races and currents, Golden Mines on gates, curtains and climbs, and Starlight Abyss on Gloomlings, darkness and races.
-- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. **Long climbs** are taller than the screen and the camera follows Lumi. In **dark caves** lights and the portal don't glow until your song finds them.
+- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. **Big caves** are taller or (from level 101) wider than the screen, and the camera follows Lumi. In **dark caves** lights and the portal don't glow until your song finds them, and from World 3 lights stop glowing through the dark in every cave (Guiding glow brings that back).
 - Some levels have a special goal: **Quiet caves** give you a limited number of songs, **Rescue caves** hide a lost baby moth you must bring to the portal, and **Races** have a timer.
 - Every few levels there's an easier breather level, and the last level of each world is a bigger finale with an extra light.
 - Worlds rotate through eight cave styles, each with its own colours, music key and background sounds: Moonlit Grotto, Mossy Hollow, Amethyst Deep, Ember Caverns, Frost Tunnels, Coral Depths, Golden Mines and Starlight Abyss.
@@ -66,24 +67,30 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Sound curtains** part for a few seconds when your song reaches them.
 - **Currents** carry you along.
 - **Glow-moths** follow you and make your light bigger.
-- **Snoozles** push you away if you bump into them.
+- **Snoozles** push you away if you bump into them. While asleep they snore little pulses of sound that light up the walls around them.
+- **Echo crystals** (from level 45): violet crystals in the rock that catch a song and sing it onward, around corners.
+- **The Great Gloom**: a huge, slow Gloomling that guards world finales from World 4.
+- **Lumi's family**: one of Lumi's little lights hides in one level of every world.
 - **Light energy** (from level 11): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again. The fade rate is matched to each cave's length, so a careful player always has enough.
 - **Rune stones and gates** (from level 41): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
 - **Gloomlings** (from level 61): shadow creatures that drift through rock. When your song reaches them they chase you for a few seconds, and touching one costs light. Afterwards they rest for a while before they can be woken again.
 
 **Rewards**
 
-- **Daily cave:** a new cave each day, the same for everyone, with a streak counter.
+- **Daily and weekly caves:** a new cave each day with a streak counter, and a harder one each week, the same for everyone.
+- **Results:** a map of the route Lumi swam, with a Share map button, and your best songs and time.
+- **Journal:** Lumi's family and everything you've discovered.
+- **Accessories:** a leaf, bow, crown, star and flower for Lumi, unlocked by awards.
 - **Lumi's looks:** eight colours, unlocked by collecting stars.
 - **Awards:** fourteen achievements, such as finishing a cave without bumping a wall, rescuing baby moths or opening rune gates.
 
-**Settings:** music and sound volume, vibration, joystick size, **Relaxed mode** (no light energy, Gloomlings or race timers, for young players), **Guiding glow** (lights and the portal always glow a little, even in dark caves), a high-contrast mode (star-shaped lights and outlined creatures), a **save code** to back up progress or move it to another phone, and erasing progress. Tapping the Settings title five times shows a testing switch that unlocks every level. Background music builds as you find lights.
+**Settings:** music and sound volume, vibration, controls (slide or tap to move, Sing button side), joystick size, large text, **Relaxed mode** (no light energy, Gloomlings or race timers, for young players), **Guiding glow** (lights and the portal always glow a little, even in dark caves), a high-contrast mode (star-shaped lights and outlined creatures), a **save code** to back up progress or move it to another phone, and erasing progress. Tapping the Settings title five times shows a testing switch that unlocks every level. Background music builds as you find lights.
 
 The daily cave changes at midnight UTC, so it's the same cave for everyone in the world. If a phone struggles to keep up, the game lowers its drawing resolution automatically.
 
 Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button). The pause menu shows the current cave's goal. On phones, the Back button pauses a level, then goes to the map, then to the title, instead of leaving the game.
 
-Each cave fades in with its name. Lumi has a swaying antenna, a soft light trail and a little squash and stretch when swimming; spores drift through the light, a faint far-away cave layer drifts behind the rock, and songs sparkle along their leading edge.
+Each world has its own floating particles: snow in Frost Tunnels, embers in Ember Caverns, bubbles in Coral Depths and so on. Lumi's face shows its mood: scared near hunting Gloomlings, happy after a find, sleepy when its light is low. Sounds from the left or right come from that side. Each cave fades in with its name. Lumi has a swaying antenna, a soft light trail and a little squash and stretch when swimming; spores drift through the light, a faint far-away cave layer drifts behind the rock, and songs sparkle along their leading edge.
 
 **Testing Echo**
 

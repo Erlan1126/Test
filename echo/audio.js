@@ -70,6 +70,13 @@ function note(freq, o = {}) {
   }
   osc.connect(g);
   const bus = o.music ? musicBus : sfxBus;
+  // Sounds from things to Lumi's left or right come from that side (best with headphones).
+  if (o.pan && AC.createStereoPanner) {
+    const p = AC.createStereoPanner();
+    p.pan.value = Math.max(-0.9, Math.min(0.9, o.pan));
+    out.connect(p);
+    out = p;
+  }
   out.connect(bus);
   if (o.echo !== 0) {
     const s = AC.createGain();
@@ -113,6 +120,14 @@ const sfx = {
     note(f, { dur: 0.9, vol: 0.17, echo: 0.8 });
     note(f * 2, { dur: 0.5, vol: 0.035, type: "triangle", echo: 0.5 });
   },
+  longSong(n) {
+    const f = pitch(n % 5, 0);
+    note(f, { dur: 1.8, vol: 0.18, attack: 0.05, echo: 0.9 });
+    note(f * 1.5, { dur: 1.4, vol: 0.06, type: "triangle", attack: 0.08, echo: 0.8 });
+    note(f / 2, { dur: 1.6, vol: 0.07, attack: 0.1, echo: 0.5 });
+  },
+  echo(dx = 0) { note(pitch(4, 2), { dur: 0.8, vol: 0.04, type: "triangle", echo: 1, pan: dx / 6 }); },
+  charged() { note(pitch(7, 1), { dur: 0.25, vol: 0.05, echo: 0.3 }); },
   bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
   crystal() { note(pitch(4, 2), { dur: 1.2, vol: 0.06, echo: 0.9 }); note(pitch(6, 2), { at: 0.06, dur: 0.9, vol: 0.03, echo: 0.9 }); },
   light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.6, vol: 0.1 })); },
@@ -120,7 +135,8 @@ const sfx = {
   doorClose() { note(220, { dur: 0.4, vol: 0.06, type: "sawtooth", lowpass: 400, glide: 140, echo: 0.2 }); },
   moth() { note(1318.5, { dur: 0.25, vol: 0.06 }); note(1760, { at: 0.08, dur: 0.35, vol: 0.06 }); },
   grumble() { note(210, { dur: 0.45, vol: 0.13, type: "sawtooth", lowpass: 700, glide: 85, echo: 0.3 }); },
-  gloomWake() { note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
+  snore(dx = 0) { note(150, { dur: 0.7, vol: 0.035, type: "triangle", lowpass: 500, attack: 0.25, glide: 110, echo: 0.3, pan: dx / 6 }); },
+  gloomWake(dx = 0, big = false) { if (big) { note(70, { dur: 1.6, vol: 0.14, type: "sawtooth", lowpass: 260, attack: 0.4, glide: 52, echo: 0.8, pan: dx / 6 }); return; } note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
   hurt() { note(330, { dur: 0.35, vol: 0.12, type: "square", lowpass: 900, glide: 120, echo: 0.3 }); },
   lowEnergy() { note(98, { dur: 0.18, vol: 0.12, echo: 0 }); note(98, { at: 0.22, dur: 0.18, vol: 0.09, echo: 0 }); },
   fail() { [4, 3, 2, 0].forEach((d, i) => note(pitch(d, 0), { at: i * 0.18, dur: 0.7, vol: 0.09, type: "triangle" })); },

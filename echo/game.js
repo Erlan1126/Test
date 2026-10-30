@@ -22,21 +22,24 @@ function loadLevel(i, demo = false) {
     seen: new Uint8Array(n),
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
+  // From World 3 lights stop glowing through the dark: you have to sing to find them.
+  hideLights: (!!def.dark || i >= 40) && !save.settings.glow,
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
-    waves: [], particles: [], spores: [], trail: [],
+    waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [],
     pings: 0, time: 0, got: 0,
     pingCd: 0, bumpCd: 0,
     ending: 0, done: false,
     tut: 0, moved: 0,
     demo, demoT: 1.2, flash: 0, bumps: 0, hits: 0, failing: 0, lowCd: 0, ambT: 2,
-    useEnergy: (i >= 10 || i === DAILY) && !save.settings.relaxed, energy: 100, drain: fairDrain(i, def, rows),
+    useEnergy: (i >= 10 || isChallenge(i)) && !save.settings.relaxed, energy: 100, drain: fairDrain(i, def, rows),
   };
   const dirs = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] };
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     const ch = def.map[y][x], i2 = y * cols + x;
-    L.tile[i2] = ch === "#" ? "#" : ch === "D" ? "D" : ch === "G" ? "G" : ".";
+    L.tile[i2] = ch === "#" || ch === "W" ? "#" : ch === "D" ? "D" : ch === "G" ? "G" : ".";
+    if (ch === "W") L.echoWalls.add(i2);
     const cx = x + 0.5, cy = y + 0.5;
     if (dirs[ch]) L.flow[i2] = dirs[ch];
     if (ch === "S") { L.lumi.x = cx; L.lumi.y = cy; }
@@ -49,6 +52,8 @@ function loadLevel(i, demo = false) {
     if (ch === "G") L.gate = { x: cx, y: cy, i: i2, open: 0 };
     if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
     if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
+    if (ch === "B" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6, big: true });
+    if (ch === "f") L.family = { x: cx, y: cy, i: i2, got: false, ph: Math.random() * 6, w: worldOf(i) };
   }
   let seed = ((i + 1000003) * 9973) % 2147483647 || 1;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -72,7 +77,7 @@ function loadLevel(i, demo = false) {
     if (sp.length) L.spikes[i2] = sp;
   }
   mood = MOODS[themeIndex(i)];
-  musicStart(i < 0 ? dayNumber() : i, demo ? 0 : 2);
+  musicStart(i === WEEKLY ? weekNumber() + 7 : i < 0 ? dayNumber() : i, demo ? 0 : 2);
   layout();
   updateHud();
   if (demo) return;
@@ -89,6 +94,7 @@ function goalLine() {
   if (L.runes.length) return "Sing close to each rune stone to open the gate";
   if (i === 10) return "Lights and crystals refill Lumi's glow";
   if (i === DAILY) return "Today's cave is the same for everyone";
+  if (i === WEEKLY) return "This week's cave: harder, and the same for everyone";
   if (i > 0 && isFinale(i)) return "World finale: one extra light to find";
   if (i > 0 && i % PER_WORLD === 0) return `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}`;
   return "";
@@ -99,10 +105,13 @@ function goalLine() {
 function fairDrain(i, def, rows) {
   const base = (1.0 + depthOf(i) * 0.5) * 18 / rows;
   if (!def.walk) return base;
-  const lights = def.map.join("").split("o").length - 1;
-  const budget = 100 + 35 * lights;
+  const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length;
+  // Light gained from lights, minus what songs (about one every five tiles) and a couple of
+  // Gloomling touches cost, spread over the time a careful swim takes.
+  const songs = (def.walk / 5) * 2.5 * (def.dark ? 0.6 : 1);
+  const budget = Math.max(60, 100 + 35 * lights - songs - gloom * 30);
   const seconds = def.walk / 2 + 10;
-  return Math.min(base, (budget * 0.6) / seconds);
+  return Math.max(0.35, Math.min(base, (budget * 0.6) / seconds));
 }
 
 const idx = (x, y) => y * L.cols + x;
@@ -160,7 +169,19 @@ function eachSolidNeighbour(i, fn) {
 }
 
 // ---------- Actions ----------
-function ping() {
+const LONG_RANGE = 11.5, LONG_SPEED = 6.5;
+// Floating particles per cave style: motes, pollen, sparkles, embers, snow, bubbles, gold dust, stars.
+const PARTICLES = [
+  { glow: "white", vy: -0.12, wob: 0.05, rate: 7 },
+  { glow: "green", vy: -0.05, wob: 0.14, rate: 7 },
+  { glow: "violet", vy: 0, wob: 0.02, rate: 6, twinkle: true },
+  { glow: "ember", vy: -0.5, wob: 0.1, rate: 9 },
+  { glow: "white", vy: 0.38, wob: 0.12, rate: 11 },
+  { glow: "cyan", vy: -0.32, wob: 0.1, rate: 6, bubble: true },
+  { glow: "gold", vy: 0.08, wob: 0.04, rate: 6 },
+  { glow: "pink", vy: 0, wob: 0.02, rate: 6, twinkle: true },
+];
+function ping(long = false) {
   if (!L || L.ending || L.failing || L.pingCd > 0 || (screen !== "play" && !L.demo)) return;
   if (L.songLimit && L.pings >= L.songLimit && !L.demo) {
     setHint("No songs left. Remember the way!", 2.5);
@@ -170,22 +191,26 @@ function ping() {
   }
   L.pingCd = 0.4;
   if (!L.demo) L.pings++;
-  if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - (L.dark ? 1.5 : 2.5));  // dark caves need more songs
-  L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, WAVE_RANGE + 1), r: 0, prev: -1 });
-  L.lumi.sing = 0.45;
-  if (!L.demo) { sfx.ping(L.pings - 1); buzz(8); }
+  // Dark caves need more songs, so each costs less there; a long song costs more.
+  if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - (L.dark ? 1.5 : 2.5) * (long ? 1.6 : 1));
+  const range = long ? LONG_RANGE : WAVE_RANGE;
+  L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, range + 1), r: 0, prev: -1, range, speed: long ? LONG_SPEED : WAVE_SPEED, echoed: new Set(), long });
+  L.lumi.sing = long ? 0.9 : 0.45;
+  if (!L.demo) { long ? sfx.longSong(L.pings - 1) : sfx.ping(L.pings - 1); buzz(long ? [10, 30, 20] : 8); }
   for (let k = 0; k < 14; k++) {
     const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
     spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "skin", 0.12);
   }
-  if (L.def.hint === "first" && L.tut === 0 && !L.demo) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
+  if (L.def.hint === "first" && L.tut === 0 && !L.demo && !long) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
   updateHud();
 }
 
 const RUNE_RANGE = 2.6;
-function reveal(i, d = 0) {
+function reveal(i, d = 0, w = null) {
   L.lit[i] = 1;
+  const snore = w && w.snore;  // a Snoozle's snore lights the walls but wakes nothing
   for (const r of L.runes) {
+    if (snore) break;
     if (r.i !== i || r.on) continue;
     if (d <= RUNE_RANGE) wakeRune(r);
     else {
@@ -198,13 +223,24 @@ function reveal(i, d = 0) {
     L.lit[j] = 1;
     L.seen[j] = 1;
     if (side && L.tile[j] === "D") openDoor(j);
+    if (side && w && L.echoWalls.has(j) && !w.echoed.has(j) && L.waves.length < 10) echoFrom(i, j, d, w);
   });
   for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
   for (const g of L.gloom) {
-    if (g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
-    g.hunt = 3.5;
-    sfx.gloomWake();
+    if (snore || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
+    g.hunt = g.big ? 6 : 3.5;
+    sfx.gloomWake(g.x - L.lumi.x, g.big);
   }
+}
+
+function echoFrom(i, j, d, w) {
+  w.echoed.add(j);
+  const left = Math.max(3.5, w.range - d + 2.5);
+  const x = (i % L.cols) + 0.5, y = ((i / L.cols) | 0) + 0.5;
+  L.waves.push({ dist: soundMap(x, y, left + 1), r: 0, prev: -1, range: left, speed: w.speed, echoed: new Set(w.echoed), echo: true });
+  L.echoFlash = L.echoFlash || new Map();
+  L.echoFlash.set(j, 1);
+  sfx.echo(x - L.lumi.x);
 }
 
 function wakeRune(r) {
@@ -270,11 +306,63 @@ canvas.addEventListener("pointermove", e => {
   const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
   if (d > STICK_R) { p.ax = p.x - dx / d * STICK_R; p.ay = p.y - dy / d * STICK_R; }
 });
+const LONG_HOLD = 380;  // ms of holding still before a long song starts charging
+
+// Tap-to-move: Lumi finds its own way to the tapped spot along open tiles.
+function travelTo(px, py) {
+  if (!L || L.ending || L.failing) return;
+  let tx = Math.floor((px - OX) / TS), ty = Math.floor((py - OY) / TS);
+  if (solidAt(tx, ty)) {
+    let best = null, bd = Infinity;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      if (!solidAt(tx + dx, ty + dy) && Math.hypot(dx, dy) < bd) { bd = Math.hypot(dx, dy); best = [tx + dx, ty + dy]; }
+    }
+    if (!best) return;
+    [tx, ty] = best;
+  }
+  const sx0 = Math.floor(L.lumi.x), sy0 = Math.floor(L.lumi.y), prev = new Map([[sx0 + "," + sy0, null]]), q = [[sx0, sy0]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === tx && y === ty) break;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const k = (x + dx) + "," + (y + dy);
+      if (solidAt(x + dx, y + dy) || prev.has(k)) continue;
+      prev.set(k, [x, y]);
+      q.push([x + dx, y + dy]);
+    }
+  }
+  if (!prev.has(tx + "," + ty)) { setHint("Lumi can't find a way there yet", 1.5); return; }
+  const path = [];
+  for (let c = [tx, ty]; c; c = prev.get(c + "")) path.unshift([c[0] + 0.5, c[1] + 0.5]);
+  path.shift();
+  L.autoPath = path;
+  L.tapMark = { x: tx + 0.5, y: ty + 0.5, t: 1 };
+}
+
+// The Sing button (tap-to-move mode): tap to sing, hold for a long song.
+let singHold = 0;
+const singBtn = document.getElementById("singBtn");
+singBtn.addEventListener("pointerdown", e => { e.stopPropagation(); audio(); singHold = performance.now(); try { singBtn.setPointerCapture(e.pointerId); } catch (err) {} });
+singBtn.addEventListener("pointerup", e => {
+  e.stopPropagation();
+  if (!singHold || !L) return;
+  const held = performance.now() - singHold;
+  singHold = 0;
+  if (held < LONG_HOLD) ping(); else if (L.charge >= 1) ping(true);
+  L.charge = 0;
+});
+singBtn.addEventListener("pointercancel", () => { singHold = 0; if (L) L.charge = 0; });
 function pointerEnd(e) {
   const p = pointers.get(e.pointerId);
   if (!p) return;
   pointers.delete(e.pointerId);
-  if (!p.moved && performance.now() - p.t < 260 && e.type === "pointerup") ping();
+  const held = performance.now() - p.t;
+  if (!p.moved && e.type === "pointerup" && L) {
+    if (save.settings.controls === "tap") { if (held < LONG_HOLD) travelTo(p.x, p.y); }
+    else if (held < LONG_HOLD) ping();
+    else if (L.charge >= 1) ping(true);
+  }
+  if (L) L.charge = 0;
   if (steer === e.pointerId) steer = pointers.size ? pointers.keys().next().value : null;
 }
 canvas.addEventListener("pointerup", pointerEnd);
@@ -284,7 +372,7 @@ window.addEventListener("keydown", e => {
   audio();
   keys[e.key.toLowerCase()] = true;
   if (screen === "play") {
-    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) ping(); }
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) ping(e.shiftKey); }
     if (e.key === "Escape" || e.key.toLowerCase() === "p") pause();
   } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
 });
@@ -297,6 +385,16 @@ function update(dt) {
   L.pingCd -= dt;
   L.bumpCd -= dt;
   const lumi = L.lumi;
+
+  // Holding a finger still charges a long song; the ring around Lumi shows how full it is.
+  {
+    const hp = steer != null ? pointers.get(steer) : null;
+    const held = singHold ? performance.now() - singHold - LONG_HOLD
+      : hp && !hp.moved && save.settings.controls !== "tap" ? performance.now() - hp.t - LONG_HOLD : -1;
+    const before = L.charge;
+    L.charge = held > 0 && !L.ending && !L.failing ? Math.min(1, held / 550) : 0;
+    if (before < 1 && L.charge >= 1) { buzz(12); sfx.charged(); }
+  }
 
   // Steering: the floating stick or the keyboard sets the speed Lumi wants to swim at.
   let wx = 0, wy = 0;
@@ -319,6 +417,19 @@ function update(dt) {
     const ky = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
     if (kx || ky) { const m = Math.hypot(kx, ky); wx = kx / m * SWIM_MAX; wy = ky / m * SWIM_MAX; }
   }
+  // Following a tapped route, unless the player steers by hand.
+  if (wx || wy) L.autoPath = null;
+  else if (L.autoPath && L.autoPath.length && ctl) {
+    let [tx, ty] = L.autoPath[0];
+    if (Math.hypot(tx - lumi.x, ty - lumi.y) < 0.3) { L.autoPath.shift(); if (!L.autoPath.length) L.autoPath = null; }
+    if (L.autoPath) {
+      [tx, ty] = L.autoPath[0];
+      const dx = tx - lumi.x, dy = ty - lumi.y, d = Math.hypot(dx, dy) || 1;
+      const sp = SWIM_MAX * Math.min(1, 0.45 + d);
+      wx = dx / d * sp; wy = dy / d * sp;
+    }
+  }
+  if (L.tapMark) L.tapMark.t -= dt * 1.5;
   const steering = wx || wy;
   if (steering) {
     L.moved += dt;
@@ -387,13 +498,13 @@ function update(dt) {
   // Song waves spread through the cave.
   for (let k = L.waves.length - 1; k >= 0; k--) {
     const w = L.waves[k];
-    w.r += WAVE_SPEED * dt;
+    w.r += w.speed * dt;
     for (let i = 0; i < L.n; i++) {
       const d = w.dist[i];
-      if (d > w.prev && d <= w.r && d <= WAVE_RANGE) reveal(i, d);
+      if (d > w.prev && d <= w.r && d <= w.range) reveal(i, d, w);
     }
     w.prev = w.r;
-    if (w.r > WAVE_RANGE + 1.5) L.waves.splice(k, 1);
+    if (w.r > w.range + 1.5) L.waves.splice(k, 1);
   }
 
   // Light: song fades, Lumi, moths and crystals glow.
@@ -423,6 +534,7 @@ function update(dt) {
     if (o.got || L.demo || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
     o.got = true;
     L.got++;
+    L.happy = 1.5;
     if (L.useEnergy) L.energy = Math.min(100, L.energy + 35);
     music.layers = 3;
     sfx.light();
@@ -458,10 +570,17 @@ function update(dt) {
     m.y += (ty - m.y) * Math.min(1, dt * 4);
   }
 
-  // Snoozles push you away if you bump them.
+  // Snoozles push you away if you bump them. While asleep they snore, and each snore is a
+  // tiny pulse of sound that lights the walls around them (handy in the dark).
   for (const c of L.critters) {
     c.ph += dt;
     c.awake = Math.max(0, c.awake - dt);
+    c.quiet = Math.max(0, (c.quiet || 0) - dt);
+    if (!c.awake && !c.quiet && !L.demo && (c.snoreT = (c.snoreT == null ? Math.random() * 3 : c.snoreT) - dt) <= 0) {
+      c.snoreT = 3.2 + Math.random() * 1.6;
+      L.waves.push({ dist: soundMap(c.hx, c.hy, 3), r: 0, prev: -1, range: 2.3, speed: 3.5, echoed: new Set(), snore: true });
+      if (Math.hypot(c.x - lumi.x, c.y - lumi.y) < 7) sfx.snore(c.x - lumi.x);
+    }
     const dx = lumi.x - c.x, dy = lumi.y - c.y, d = Math.hypot(dx, dy);
     if (d < LUMI_R + CRITTER_R && !L.ending && !L.failing && !L.demo) {
       const nx = d > 0.001 ? dx / d : 0, ny = d > 0.001 ? dy / d : 1;
@@ -472,6 +591,7 @@ function update(dt) {
       lumi.squash = 1;
       if (c.awake < 1) { sfx.grumble(); buzz(35); }
       c.awake = 1.8;
+      c.quiet = 8;
       L.lit[c.i] = 1;
       eachSolidNeighbour(c.i, j => { L.lit[j] = Math.max(L.lit[j], 0.8); L.seen[j] = 1; });
     }
@@ -490,17 +610,17 @@ function update(dt) {
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? lumi.x : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? lumi.y : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = hunting ? 1.25 + depthOf(levelIndex) * 0.35 : 0.6;
+    const spd = g.big ? (hunting ? 0.9 : 0.35) : hunting ? 1.25 + depthOf(levelIndex) * 0.35 : 0.6;
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
-    if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + 0.28) {
+    if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
       const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - 20);
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 30 : 20));
       L.hits++;
-      g.gone = 8;
-      g.calm = 6;
+      g.gone = g.big ? 10 : 8;
+      g.calm = g.big ? 8 : 6;
       sfx.hurt();
       buzz(50);
       for (let k = 0; k < 16; k++) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5, 0.7, "violet", 0.1); }
@@ -562,6 +682,28 @@ function update(dt) {
   if (L.gate && L.gate.open) L.gate.open = Math.min(2, L.gate.open + dt);
   L.portalHintCd -= dt;
 
+  // Lumi's mood: scared when a Gloomling hunts nearby, happy after a find, sleepy when dim.
+  L.happy = Math.max(0, (L.happy || 0) - dt);
+  L.mood = L.gloom.some(g => g.hunt > 0 && !g.gone && Math.hypot(g.x - lumi.x, g.y - lumi.y) < (g.big ? 5 : 3)) ? "scared"
+    : L.happy > 0 ? "happy" : L.useEnergy && L.energy < 25 ? "sleepy" : "";
+
+  // One of Lumi's little lights.
+  const fam = L.family;
+  if (fam && !fam.got) {
+    fam.ph += dt;
+    if (ctl && Math.hypot(fam.x - lumi.x, fam.y - lumi.y) < 0.55) {
+      fam.got = true;
+      save.family = save.family || {};
+      save.family[fam.w] = 1;
+      persist();
+      L.happy = 2.5;
+      sfx.unlock();
+      buzz([20, 30, 20]);
+      for (let k = 0; k < 30; k++) { const a = Math.random() * 6.28, s = 0.5 + Math.random() * 2.5; spark(fam.x, fam.y, Math.cos(a) * s, Math.sin(a) * s, 1.1, k % 2 ? "pink" : "gold", 0.1); }
+      setHint("One of Lumi's little lights! It joins Lumi's family", 3.5);
+    }
+  }
+
   // Cave sounds now and then.
   if (!L.demo && (L.ambT -= dt) <= 0) { L.ambT = 3 + Math.random() * 5; sfx.ambient(); }
   L.flash = Math.max(0, L.flash - dt * 1.6);
@@ -591,18 +733,21 @@ function update(dt) {
     if (L.ending > 1.1 && !L.done) { L.done = true; finish(); }
   }
 
-  // Spores drift up through lit parts of the cave; Lumi leaves a short trail of light.
-  if (Math.random() < dt * 7) {
-    const a = Math.random() * Math.PI * 2, d = 0.5 + Math.random() * 2.5;
-    L.spores.push({ x: lumi.x + Math.cos(a) * d, y: lumi.y + Math.sin(a) * d, vx: (Math.random() - 0.5) * 0.15, life: 0, max: 3 + Math.random() * 3 });
+  // Each world has its own floating particles (snow, embers, bubbles...), seen where it's lit.
+  const pt = PARTICLES[themeIndex(levelIndex)];
+  if (Math.random() < dt * pt.rate) {
+    const a = Math.random() * Math.PI * 2, d = 0.5 + Math.random() * 3;
+    L.spores.push({ x: lumi.x + Math.cos(a) * d, y: lumi.y + Math.sin(a) * d - pt.vy * 2, vx: (Math.random() - 0.5) * 0.15, life: 0, max: 3 + Math.random() * 3, ph: Math.random() * 6 });
   }
   for (let k = L.spores.length - 1; k >= 0; k--) {
     const s = L.spores[k];
     s.life += dt;
     if (s.life >= s.max) { L.spores.splice(k, 1); continue; }
-    s.x += (s.vx + Math.sin(s.life * 1.3 + k) * 0.05) * dt;
-    s.y -= 0.12 * dt;
+    s.x += (s.vx + Math.sin(s.life * 1.3 + s.ph) * pt.wob) * dt;
+    s.y += pt.vy * dt;
   }
+  // Lumi's route, for the map on the results screen.
+  if (ctl && (L.pathT = (L.pathT || 0) - dt) <= 0) { L.pathT = 0.2; L.path.push([lumi.x, lumi.y]); }
   L.trail.push([lumi.x, lumi.y]);
   if (L.trail.length > 14) L.trail.shift();
 
