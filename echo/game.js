@@ -1,0 +1,640 @@
+// Echo: level state, how songs travel, input, and the game update.
+"use strict";
+
+// ---------- Level state ----------
+let L = null;          // the cave being played
+let levelIndex = 0;
+let screen = "title";  // title | levels | play | pause | result
+
+function loadLevel(i, demo = false) {
+  levelIndex = i;
+  const def = getLevel(i);
+  const rows = def.map.length, cols = def.map[0].length, n = rows * cols;
+  L = {
+    def, rows, cols, n,
+    tile: new Array(n),       // "#", "D" or "."
+    flow: new Array(n).fill(null),
+    door: new Float32Array(n),   // seconds a door stays open
+    doorAnim: new Float32Array(n),
+    lit: new Float32Array(n),
+    glowT: new Float32Array(n),
+    glow: new Float32Array(n),
+    seen: new Uint8Array(n),
+    lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
+    goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
+    timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
+    exit: null,
+    lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
+    waves: [], particles: [],
+    pings: 0, time: 0, got: 0,
+    pingCd: 0, bumpCd: 0,
+    ending: 0, done: false,
+    tut: 0, moved: 0,
+    demo, demoT: 1.2, flash: 0, bumps: 0, hits: 0, failing: 0, lowCd: 0, ambT: 2,
+    useEnergy: (i >= 10 || i === DAILY) && !save.settings.relaxed, energy: 100, drain: fairDrain(i, def, rows),
+  };
+  const dirs = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] };
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const ch = def.map[y][x], i2 = y * cols + x;
+    L.tile[i2] = ch === "#" ? "#" : ch === "D" ? "D" : ch === "G" ? "G" : ".";
+    const cx = x + 0.5, cy = y + 0.5;
+    if (dirs[ch]) L.flow[i2] = dirs[ch];
+    if (ch === "S") { L.lumi.x = cx; L.lumi.y = cy; }
+    if (ch === "E") L.exit = { x: cx, y: cy, i: i2 };
+    if (ch === "o") L.lights.push({ x: cx, y: cy, i: i2, got: false, ph: Math.random() * 6 });
+    if (ch === "c") L.crystals.push({ x: cx, y: cy, i: i2, on: 0, cells: null });
+    if (ch === "z") L.critters.push({ x: cx, y: cy, hx: cx, hy: cy, i: i2, awake: 0, ph: Math.random() * 6 });
+    if (ch === "b") L.moths.push({ x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6, idx: 0 });
+    if (ch === "r") L.runes.push({ x: cx, y: cy, i: i2, on: 0, far: 0 });
+    if (ch === "G") L.gate = { x: cx, y: cy, i: i2, open: 0 };
+    if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
+    if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
+  }
+  let seed = ((i + 1000003) * 9973) % 2147483647 || 1;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  L.spikes = new Array(n).fill(null);
+  L.shrooms = [];
+  const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const i2 = y * cols + x;
+    if (L.tile[i2] !== ".") continue;
+    const sp = [];
+    if (rock(x, y - 1)) {
+      if (rnd() < 0.45) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y, dir: 1, len: 0.22 + rnd() * 0.1, w: 0.1 + rnd() * 0.05 });
+    }
+    if (rock(x, y + 1)) {
+      if (rnd() < 0.2) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y + 1, dir: -1, len: 0.14 + rnd() * 0.06, w: 0.1 + rnd() * 0.04 });
+      else if (rnd() < 0.4) {
+        const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.2 + rnd() * 0.5;
+        for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.17, y: y + 1.06, s: q ? 0.07 + rnd() * 0.03 : 0.1 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
+      }
+    }
+    if (sp.length) L.spikes[i2] = sp;
+  }
+  mood = MOODS[themeIndex(i)];
+  musicStart(i < 0 ? dayNumber() : i, demo ? 0 : 2);
+  layout();
+  updateHud();
+  if (demo) return;
+  setHint(def.hint === "first" ? "Tap anywhere to sing 🎵" : def.hint || goalLine(), def.hint === "first" ? 0 : 4.5);
+}
+
+// One short line about what this cave asks of you, shown at the start and in the pause menu.
+function goalLine() {
+  const i = levelIndex;
+  if (L.goal === "quiet") return `Only ${L.songLimit} songs here. Make them count`;
+  if (L.goal === "rescue") return "Find the lost baby moth and bring it home";
+  if (L.goal === "race" && L.timeLeft) return `Reach the portal in ${Math.ceil(L.timeLeft)} seconds`;
+  if (L.dark) return "Total darkness. Only your song shows the way";
+  if (L.runes.length) return "Sing close to each rune stone to open the gate";
+  if (i === 10) return "Lights and crystals refill Lumi's glow";
+  if (i === DAILY) return "Today's cave is the same for everyone";
+  if (i > 0 && isFinale(i)) return "World finale: one extra light to find";
+  if (i > 0 && i % PER_WORLD === 0) return `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}`;
+  return "Find the lights, then the portal";
+}
+
+// How fast Lumi's light fades. It gets a little faster deeper in, but never so fast that a
+// careful player swimming the whole route at a slow pace (and singing as they go) runs out.
+function fairDrain(i, def, rows) {
+  const base = (1.0 + depthOf(i) * 0.5) * 18 / rows;
+  if (!def.walk) return base;
+  const lights = def.map.join("").split("o").length - 1;
+  const budget = 100 + 35 * lights;
+  const seconds = def.walk / 2 + 10;
+  return Math.min(base, (budget * 0.6) / seconds);
+}
+
+const idx = (x, y) => y * L.cols + x;
+function solidAt(x, y) {
+  if (x < 0 || y < 0 || x >= L.cols || y >= L.rows) return true;
+  const i = y * L.cols + x, t = L.tile[i];
+  return t === "#" || (t === "D" && L.door[i] <= 0) || (t === "G" && !L.gate.open);
+}
+
+// Distances the song travels from a point, flowing around corners but never through rock.
+let doneBuf = new Uint8Array(0), frontier = [];
+function soundMap(px, py, maxD, out) {
+  const n = L.n, dist = out || new Float32Array(n);
+  dist.fill(Infinity);
+  if (doneBuf.length !== n) doneBuf = new Uint8Array(n);
+  const done = doneBuf;
+  done.fill(0);
+  const sx = Math.floor(px), sy = Math.floor(py);
+  if (solidAt(sx, sy)) return dist;
+  const s0 = idx(sx, sy);
+  dist[s0] = Math.hypot(px - sx - 0.5, py - sy - 0.5);
+  frontier.length = 0;
+  frontier.push(s0);
+  while (frontier.length) {
+    let bk = 0;
+    for (let k = 1; k < frontier.length; k++) if (dist[frontier[k]] < dist[frontier[bk]]) bk = k;
+    const best = frontier[bk], bd = dist[best];
+    frontier[bk] = frontier[frontier.length - 1];
+    frontier.pop();
+    if (done[best]) continue;
+    if (bd > maxD) break;
+    done[best] = 1;
+    const x = best % L.cols, y = (best / L.cols) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy;
+      if (solidAt(nx, ny)) continue;
+      if (dx && dy && (solidAt(x + dx, y) || solidAt(x, y + dy))) continue;
+      const j = idx(nx, ny), nd = bd + (dx && dy ? 1.414 : 1);
+      if (nd < dist[j]) { dist[j] = nd; frontier.push(j); }
+    }
+  }
+  return dist;
+}
+
+// Call fn(neighbourIndex, isSide) for the rock around an open tile.
+function eachSolidNeighbour(i, fn) {
+  const x = i % L.cols, y = (i / L.cols) | 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= L.cols || ny >= L.rows) continue;
+    if (solidAt(nx, ny)) fn(idx(nx, ny), !(dx && dy));
+  }
+}
+
+// ---------- Actions ----------
+function ping() {
+  if (!L || L.ending || L.failing || L.pingCd > 0 || (screen !== "play" && !L.demo)) return;
+  if (L.songLimit && L.pings >= L.songLimit && !L.demo) {
+    setHint("No songs left. Remember the way!", 2.5);
+    buzz(15);
+    L.pingCd = 0.6;
+    return;
+  }
+  L.pingCd = 0.4;
+  if (!L.demo) L.pings++;
+  if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - (L.dark ? 1.5 : 2.5));  // dark caves need more songs
+  L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, WAVE_RANGE + 1), r: 0, prev: -1 });
+  L.lumi.sing = 0.45;
+  if (!L.demo) { sfx.ping(L.pings - 1); buzz(8); }
+  for (let k = 0; k < 14; k++) {
+    const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
+    spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "skin", 0.12);
+  }
+  if (L.def.hint === "first" && L.tut === 0 && !L.demo) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
+  updateHud();
+}
+
+const RUNE_RANGE = 2.6;
+function reveal(i, d = 0) {
+  L.lit[i] = 1;
+  for (const r of L.runes) {
+    if (r.i !== i || r.on) continue;
+    if (d <= RUNE_RANGE) wakeRune(r);
+    else {
+      r.far = 1;
+      if (!L.runeHinted && !L.demo) { L.runeHinted = true; setHint("The rune stone heard you, but faintly. Sing closer to it", 3.5); }
+    }
+  }
+  L.seen[i] = 1;
+  eachSolidNeighbour(i, (j, side) => {
+    L.lit[j] = 1;
+    L.seen[j] = 1;
+    if (side && L.tile[j] === "D") openDoor(j);
+  });
+  for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
+  for (const g of L.gloom) {
+    if (g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
+    g.hunt = 3.5;
+    sfx.gloomWake();
+  }
+}
+
+function wakeRune(r) {
+  r.on = 0.001;
+  sfx.rune();
+  buzz(15);
+  for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28; spark(r.x, r.y, Math.cos(a) * 1.4, Math.sin(a) * 1.4, 0.8, "green", 0.09); }
+  if (L.gate && L.runes.every(q => q.on)) {
+    L.gate.open = 1;
+    sfx.gate();
+    buzz([20, 30, 40]);
+    L.lit[L.gate.i] = 1;
+    eachSolidNeighbour(L.gate.i, j => { L.lit[j] = 1; L.seen[j] = 1; });
+    for (let k = 0; k < 24; k++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 2; spark(L.gate.x, L.gate.y, Math.cos(a) * s, Math.sin(a) * s, 1, "green", 0.1); }
+    if (!L.demo) setHint("The gate is open!", 2.5);
+  }
+}
+
+function openDoor(j) {
+  if (L.door[j] <= 0) sfx.door();
+  L.door[j] = DOOR_TIME;
+}
+
+function lightCrystal(c) {
+  c.on = 0.001;
+  const d = soundMap(c.x, c.y, 2.6);
+  c.cells = [];
+  for (let i = 0; i < L.n; i++) if (d[i] < 2.6) {
+    const v = 1 - d[i] / 2.8;
+    c.cells.push(i, v);
+    eachSolidNeighbour(i, j => c.cells.push(j, v * 0.95));
+  }
+  sfx.crystal();
+  for (let k = 0; k < 10; k++) {
+    const a = Math.random() * Math.PI * 2;
+    spark(c.x, c.y, Math.cos(a) * 1.2, Math.sin(a) * 1.2, 0.9, "violet", 0.1);
+  }
+}
+
+function spark(x, y, vx, vy, life, color, size) {
+  if (L.particles.length > 300) return;
+  L.particles.push({ x, y, vx, vy, life, max: life, color, size });
+}
+
+// ---------- Input ----------
+const pointers = new Map();
+let steer = null;
+const keys = {};
+
+canvas.addEventListener("pointerdown", e => {
+  audio();
+  if (screen === "title") return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false });
+  if (steer == null) steer = e.pointerId;
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+});
+canvas.addEventListener("pointermove", e => {
+  const p = pointers.get(e.pointerId);
+  if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (Math.hypot(p.x - p.sx, p.y - p.sy) > 8) p.moved = true;
+  // If the thumb slides past the edge of the stick, drag the stick along so turning back is instant.
+  const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
+  if (d > STICK_R) { p.ax = p.x - dx / d * STICK_R; p.ay = p.y - dy / d * STICK_R; }
+});
+function pointerEnd(e) {
+  const p = pointers.get(e.pointerId);
+  if (!p) return;
+  pointers.delete(e.pointerId);
+  if (!p.moved && performance.now() - p.t < 260 && e.type === "pointerup") ping();
+  if (steer === e.pointerId) steer = pointers.size ? pointers.keys().next().value : null;
+}
+canvas.addEventListener("pointerup", pointerEnd);
+canvas.addEventListener("pointercancel", pointerEnd);
+
+window.addEventListener("keydown", e => {
+  audio();
+  keys[e.key.toLowerCase()] = true;
+  if (screen === "play") {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) ping(); }
+    if (e.key === "Escape" || e.key.toLowerCase() === "p") pause();
+  } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
+});
+window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+
+// ---------- Update ----------
+function update(dt) {
+  L.time += dt;
+  moveCamera(dt);
+  L.pingCd -= dt;
+  L.bumpCd -= dt;
+  const lumi = L.lumi;
+
+  // Steering: the floating stick or the keyboard sets the speed Lumi wants to swim at.
+  let wx = 0, wy = 0;
+  const ctl = !L.ending && !L.failing && !L.demo;
+  const p = steer != null ? pointers.get(steer) : null;
+  if (L.demo) {
+    // Title screen: Lumi floats in place and sings now and then.
+    lumi.vy = Math.sin(L.time * 1.4) * 0.12;
+    if ((L.demoT -= dt) <= 0) { L.demoT = 3.2; ping(); }
+  }
+  if (p && p.moved && ctl) {
+    const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
+    if (d > STICK_DEAD) {
+      const k = SWIM_MAX * Math.min(1, (d - STICK_DEAD) / (STICK_R - STICK_DEAD)) / d;
+      wx = dx * k; wy = dy * k;
+    }
+  }
+  if (ctl) {
+    const kx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
+    const ky = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+    if (kx || ky) { const m = Math.hypot(kx, ky); wx = kx / m * SWIM_MAX; wy = ky / m * SWIM_MAX; }
+  }
+  const steering = wx || wy;
+  if (steering) {
+    L.moved += dt;
+    if (L.def.hint === "first" && L.tut === 1 && L.moved > 0.6) { L.tut = 2; setHint("Find the golden light, then the portal ✦", 6); }
+    // Lane assist: when heading into an open tunnel, ease Lumi toward its middle so corners don't catch.
+    // If the way straight ahead is rock but the tunnel opens just beside it, slide over to it.
+    const cx = Math.floor(lumi.x), cy = Math.floor(lumi.y);
+    // open(d): the tile d steps sideways is open, and so is the tile ahead of it.
+    const lane = (pos, center, open, narrow) => {
+      if (open(0)) return narrow ? (center - pos) * 6 : 0;
+      const pref = pos < center ? -1 : 1;
+      for (const sd of [pref, -pref]) if (open(sd)) return sd * SWIM_MAX * 0.9;
+      return 0;
+    };
+    if (Math.abs(wx) > Math.abs(wy) * 1.2) {
+      const ax = Math.sign(wx);
+      wy += lane(lumi.y, cy + 0.5, d => !solidAt(cx, cy + d) && !solidAt(cx + ax, cy + d), solidAt(cx + ax, cy - 1) && solidAt(cx + ax, cy + 1));
+    } else if (Math.abs(wy) > Math.abs(wx) * 1.2) {
+      const ay = Math.sign(wy);
+      wx += lane(lumi.x, cx + 0.5, d => !solidAt(cx + d, cy) && !solidAt(cx + d, cy + ay), solidAt(cx - 1, cy + ay) && solidAt(cx + 1, cy + ay));
+    }
+  }
+
+  // Lumi eases toward the wanted speed: quick to start, quick to stop.
+  const grip = 1 - Math.exp(-(steering ? SWIM_GRIP : SWIM_GRIP * 0.75) * dt);
+  lumi.vx += (wx - lumi.vx) * grip;
+  lumi.vy += (wy - lumi.vy) * grip;
+
+  // Water currents push you along.
+  const ti = idx(Math.floor(lumi.x), Math.floor(lumi.y));
+  const f = L.flow[ti];
+  if (f) { lumi.vx += f[0] * CURRENT_ACC * dt; lumi.vy += f[1] * CURRENT_ACC * dt; }
+  const sp = Math.hypot(lumi.vx, lumi.vy), maxSp = SWIM_MAX * (f ? 1.4 : 1.15);
+  if (sp > maxSp) { lumi.vx *= maxSp / sp; lumi.vy *= maxSp / sp; }
+  if (sp > 0.25) lumi.look = Math.atan2(lumi.vy, lumi.vx);
+
+  if (!L.ending && !L.failing) {
+    const steps = 3;
+    for (let s = 0; s < steps; s++) {
+      lumi.x += lumi.vx * dt / steps;
+      lumi.y += lumi.vy * dt / steps;
+      collide(lumi);
+    }
+  }
+  lumi.sing = Math.max(0, lumi.sing - dt);
+  lumi.squash = Math.max(0, lumi.squash - dt * 4);
+  lumi.blink -= dt;
+  if (lumi.blink < -0.12) lumi.blink = 2 + Math.random() * 3;
+  if (Math.random() < dt * 14 && sp > 0.5) spark(lumi.x - lumi.vx * 0.05, lumi.y - lumi.vy * 0.05, -lumi.vx * 0.15, -lumi.vy * 0.15, 0.5, "skin", 0.06);
+
+  // Doors close again after a while (never on top of Lumi).
+  for (let i = 0; i < L.n; i++) {
+    if (L.tile[i] !== "D") continue;
+    if (L.door[i] > 0) {
+      L.door[i] -= dt;
+      if (L.door[i] <= 0) {
+        const x = i % L.cols, y = (i / L.cols) | 0;
+        const nx = Math.max(x, Math.min(lumi.x, x + 1)), ny = Math.max(y, Math.min(lumi.y, y + 1));
+        if (Math.hypot(lumi.x - nx, lumi.y - ny) < LUMI_R + 0.02) L.door[i] = 0.15;
+        else { L.door[i] = 0; sfx.doorClose(); L.lit[i] = Math.max(L.lit[i], 0.6); }
+      }
+    }
+    L.doorAnim[i] += ((L.door[i] > 0 ? 1 : 0) - L.doorAnim[i]) * Math.min(1, dt * 8);
+  }
+
+  // Song waves spread through the cave.
+  for (let k = L.waves.length - 1; k >= 0; k--) {
+    const w = L.waves[k];
+    w.r += WAVE_SPEED * dt;
+    for (let i = 0; i < L.n; i++) {
+      const d = w.dist[i];
+      if (d > w.prev && d <= w.r && d <= WAVE_RANGE) reveal(i, d);
+    }
+    w.prev = w.r;
+    if (w.r > WAVE_RANGE + 1.5) L.waves.splice(k, 1);
+  }
+
+  // Light: song fades, Lumi, moths and crystals glow.
+  for (let i = 0; i < L.n; i++) { L.lit[i] = Math.max(0, L.lit[i] - dt * 0.42); L.glowT[i] = 0; }
+  const followers = L.moths.filter(m => m.following).length;
+  const R = (1.5 + followers * 0.75) * (L.useEnergy ? 0.55 + 0.45 * Math.min(1, L.energy / 40) : 1);
+  const near = soundMap(lumi.x, lumi.y, R, L.nearBuf || (L.nearBuf = new Float32Array(L.n)));
+  for (let i = 0; i < L.n; i++) if (near[i] < R) {
+    const v = 1 - near[i] / R;
+    if (v > L.glowT[i]) L.glowT[i] = v;
+    eachSolidNeighbour(i, j => { const vv = v * 0.9; if (vv > L.glowT[j]) L.glowT[j] = vv; if (vv > 0.35) L.seen[j] = 1; });
+  }
+  for (const c of L.crystals) {
+    if (!c.on) continue;
+    c.on = Math.min(1, c.on + dt * 1.5);
+    for (let q = 0; q < c.cells.length; q += 2) {
+      const v = c.cells[q + 1] * c.on * 0.85, j = c.cells[q];
+      if (v > L.glowT[j]) L.glowT[j] = v;
+      L.seen[j] = 1;
+    }
+  }
+  const blend = Math.min(1, dt * 7);
+  for (let i = 0; i < L.n; i++) L.glow[i] += (L.glowT[i] - L.glow[i]) * blend;
+
+  // Lost lights.
+  for (const o of L.lights) {
+    if (o.got || L.demo || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
+    o.got = true;
+    L.got++;
+    if (L.useEnergy) L.energy = Math.min(100, L.energy + 35);
+    music.layers = 3;
+    sfx.light();
+    buzz(20);
+    for (let k = 0; k < 24; k++) {
+      const a = Math.random() * Math.PI * 2, s = 0.6 + Math.random() * 2;
+      spark(o.x, o.y, Math.cos(a) * s, Math.sin(a) * s, 0.9, "gold", 0.1);
+    }
+    updateHud();
+    if (L.got === L.lights.length && L.lights.length > 1) setHint("All lights found! Now find the portal", 3.5);
+  }
+
+  // Glow-moths.
+  let fi = 0;
+  for (const m of L.moths) {
+    m.ph += dt;
+    if (!m.following && !L.demo && Math.hypot(m.x - lumi.x, m.y - lumi.y) < 0.7) {
+      m.following = true;
+      L.mothsMet = (L.mothsMet || 0) + 1;
+      if (L.useEnergy) L.energy = Math.min(100, L.energy + 15);
+      sfx.moth();
+      buzz(10);
+    }
+    let tx, ty;
+    if (m.following) {
+      const a = L.time * 1.6 + fi * (Math.PI * 2 / Math.max(1, followers));
+      tx = lumi.x + Math.cos(a) * 0.6; ty = lumi.y + Math.sin(a) * 0.45 - 0.15;
+      fi++;
+    } else {
+      tx = m.hx + Math.sin(m.ph * 1.3) * 0.12; ty = m.hy + Math.cos(m.ph * 0.9) * 0.1;
+    }
+    m.x += (tx - m.x) * Math.min(1, dt * 4);
+    m.y += (ty - m.y) * Math.min(1, dt * 4);
+  }
+
+  // Snoozles push you away if you bump them.
+  for (const c of L.critters) {
+    c.ph += dt;
+    c.awake = Math.max(0, c.awake - dt);
+    const dx = lumi.x - c.x, dy = lumi.y - c.y, d = Math.hypot(dx, dy);
+    if (d < LUMI_R + CRITTER_R && !L.ending && !L.failing && !L.demo) {
+      const nx = d > 0.001 ? dx / d : 0, ny = d > 0.001 ? dy / d : 1;
+      lumi.x = c.x + nx * (LUMI_R + CRITTER_R + 0.01);
+      lumi.y = c.y + ny * (LUMI_R + CRITTER_R + 0.01);
+      lumi.vx = nx * 4.5; lumi.vy = ny * 4.5;
+      collide(lumi);
+      lumi.squash = 1;
+      if (c.awake < 1) { sfx.grumble(); buzz(35); }
+      c.awake = 1.8;
+      L.lit[c.i] = 1;
+      eachSolidNeighbour(c.i, j => { L.lit[j] = Math.max(L.lit[j], 0.8); L.seen[j] = 1; });
+    }
+    const wob = c.awake > 0 ? Math.sin(c.ph * 30) * 0.03 * c.awake : 0;
+    c.x = c.hx + wob;
+  }
+
+  // Gloomlings drift at home, then chase you for a while after hearing a song.
+  // They're shadows, so rock doesn't stop them. Touching one costs light.
+  for (const g of L.gloom) {
+    g.ph += dt;
+    if (g.gone > 0) { g.gone -= dt; if (g.gone <= 0) { g.x = g.hx; g.y = g.hy; } continue; }
+    // After a touch, a Gloomling rests at home for a while before a song can wake it again.
+    g.calm = Math.max(0, (g.calm || 0) - dt);
+    g.hunt = Math.max(0, g.hunt - dt);
+    const hunting = g.hunt > 0 && ctl;
+    const tx = hunting ? lumi.x : g.hx + Math.sin(g.ph * 0.7) * 0.3;
+    const ty = hunting ? lumi.y : g.hy + Math.cos(g.ph * 0.5) * 0.3;
+    const spd = hunting ? 1.25 + depthOf(levelIndex) * 0.35 : 0.6;
+    const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
+    if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
+    if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + 0.28) {
+      const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
+      lumi.vx = nx * 4; lumi.vy = ny * 4;
+      lumi.squash = 1;
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - 20);
+      L.hits++;
+      g.gone = 8;
+      g.calm = 6;
+      sfx.hurt();
+      buzz(50);
+      for (let k = 0; k < 16; k++) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5, 0.7, "violet", 0.1); }
+    }
+  }
+
+  // Light energy: drains slowly, crystals recharge it, and running out ends the try.
+  if (L.useEnergy && ctl) {
+    L.energy -= dt * L.drain;
+    for (const c of L.crystals) if (c.on && Math.hypot(c.x - lumi.x, c.y - lumi.y) < 1.4) L.energy += dt * 22;
+    L.energy = Math.min(100, L.energy);
+    if (L.energy < 25 && (L.lowCd -= dt) <= 0) { sfx.lowEnergy(); L.lowCd = 1.5; }
+    if (L.energy <= 0) {
+      L.energy = 0;
+      L.failing = 0.001;
+      L.failWhy = "energy";
+      musicStop();
+      sfx.fail();
+      buzz([40, 60, 40]);
+      setHint("", 0);
+    }
+  }
+  if (L.failing) {
+    L.failing += dt;
+    if (L.failing > 1.5 && !L.done) { L.done = true; failLevel(); }
+  }
+
+  // The lost baby moth waits to be found, then stays close to Lumi.
+  const baby = L.baby;
+  if (baby) {
+    baby.ph += dt;
+    if (!baby.following && ctl && Math.hypot(baby.x - lumi.x, baby.y - lumi.y) < 0.7) {
+      baby.following = true;
+      sfx.moth();
+      sfx.light();
+      buzz(20);
+      setHint("Found it! Now bring the baby moth to the portal", 3);
+    }
+    const tx = baby.following ? lumi.x - Math.cos(lumi.look) * 0.55 : baby.hx + Math.sin(baby.ph * 2) * 0.1;
+    const ty = baby.following ? lumi.y - Math.sin(lumi.look) * 0.55 - 0.1 : baby.hy + Math.cos(baby.ph * 1.6) * 0.08;
+    baby.x += (tx - baby.x) * Math.min(1, dt * 5);
+    baby.y += (ty - baby.y) * Math.min(1, dt * 5);
+  }
+  // Race caves count down; running out of time ends the try.
+  if (L.timeLeft > 0 && ctl) {
+    L.timeLeft -= dt;
+    if (Math.ceil(L.timeLeft) !== L.shownTime) { L.shownTime = Math.ceil(L.timeLeft); updateHud(); if (L.timeLeft < 10 && L.timeLeft > 0) sfx.tick(); }
+    if (L.timeLeft <= 0) {
+      L.timeLeft = 0;
+      L.failing = 0.001;
+      L.failWhy = "time";
+      musicStop();
+      sfx.fail();
+      buzz([40, 60, 40]);
+      setHint("", 0);
+    }
+  }
+  for (const r of L.runes) { if (r.on) r.on = Math.min(1, r.on + dt * 2); r.far = Math.max(0, r.far - dt * 1.5); }
+  if (L.gate && L.gate.open) L.gate.open = Math.min(2, L.gate.open + dt);
+  L.portalHintCd -= dt;
+
+  // Cave sounds now and then.
+  if (!L.demo && (L.ambT -= dt) <= 0) { L.ambT = 3 + Math.random() * 5; sfx.ambient(); }
+  L.flash = Math.max(0, L.flash - dt * 1.6);
+
+  // Portal.
+  const portalLocked = L.goal === "rescue" && L.baby && !L.baby.following;
+  if (ctl && portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.6 && L.portalHintCd <= 0) {
+    L.portalHintCd = 3;
+    setHint("The portal is asleep. Bring the lost baby moth here first", 3);
+  }
+  if (ctl && !portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
+    L.ending = 0.001;
+    L.flash = 1;
+    musicStop();
+    sfx.win();
+    buzz([20, 40, 20]);
+    setHint("", 0);
+    for (let k = 0; k < 40; k++) {
+      const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 3;
+      spark(L.exit.x, L.exit.y, Math.cos(a) * s, Math.sin(a) * s, 1.2, ["skin", "violet", "gold"][k % 3], 0.1);
+    }
+  }
+  if (L.ending) {
+    L.ending += dt;
+    lumi.x += (L.exit.x - lumi.x) * Math.min(1, dt * 6);
+    lumi.y += (L.exit.y - lumi.y) * Math.min(1, dt * 6);
+    if (L.ending > 1.1 && !L.done) { L.done = true; finish(); }
+  }
+
+  for (let k = L.particles.length - 1; k >= 0; k--) {
+    const q = L.particles[k];
+    q.life -= dt;
+    if (q.life <= 0) { L.particles.splice(k, 1); continue; }
+    q.x += q.vx * dt; q.y += q.vy * dt;
+    q.vx *= 0.96; q.vy *= 0.96;
+  }
+
+  updateHint(dt);
+}
+
+function collide(e) {
+  let bump = 0;
+  const r = LUMI_R;
+  const x0 = Math.floor(e.x - r), x1 = Math.floor(e.x + r), y0 = Math.floor(e.y - r), y1 = Math.floor(e.y + r);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    if (!solidAt(tx, ty)) continue;
+    // Corners of rock that stick out are rounded, like the painted rock, so Lumi glides
+    // around them instead of catching on an invisible square edge.
+    const RC = 0.35;
+    const cxs = e.x < tx + RC ? -1 : e.x > tx + 1 - RC ? 1 : 0, cys = e.y < ty + RC ? -1 : e.y > ty + 1 - RC ? 1 : 0;
+    const round = cxs && cys && !solidAt(tx + cxs, ty) && !solidAt(tx, ty + cys);
+    const nx = round ? tx + (cxs < 0 ? RC : 1 - RC) : Math.max(tx, Math.min(e.x, tx + 1));
+    const ny = round ? ty + (cys < 0 ? RC : 1 - RC) : Math.max(ty, Math.min(e.y, ty + 1));
+    const reach = round ? r + RC : r;
+    let dx = e.x - nx, dy = e.y - ny, d = Math.hypot(dx, dy);
+    if (d >= reach) continue;
+    if (d < 1e-6) { dx = e.x - (tx + 0.5); dy = e.y - (ty + 0.5); d = Math.hypot(dx, dy) || 1; e.x += dx / d * 0.05; e.y += dy / d * 0.05; continue; }
+    dx /= d; dy /= d;
+    e.x += dx * (reach - d); e.y += dy * (reach - d);
+    const vn = e.vx * dx + e.vy * dy;
+    if (vn < 0) { e.vx -= vn * dx * 1.25; e.vy -= vn * dy * 1.25; bump = Math.max(bump, -vn); }
+    if (-vn > 1.5) {
+      const j = idx(tx, ty);
+      L.lit[j] = Math.max(L.lit[j], 0.7);
+      L.seen[j] = 1;
+    }
+  }
+  if (bump > 1.8 && L.bumpCd <= 0) {
+    L.bumpCd = 0.25;
+    L.bumps++;
+    e.squash = Math.min(1, bump / 3);
+    sfx.bump();
+    buzz(12);
+    for (let k = 0; k < 6; k++) spark(e.x, e.y, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0.4, "cyan", 0.05);
+  }
+}
