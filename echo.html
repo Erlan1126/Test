@@ -300,7 +300,7 @@
   @keyframes blink { 50% { opacity: 0.45; } }
 
   /* Toasts */
-  #toasts { position: fixed; bottom: calc(24px + var(--bottom)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
+  #toasts { position: fixed; bottom: calc(110px + var(--bottom)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
   .toast { padding: 10px 16px; border-radius: 16px; background: rgba(14, 20, 44, 0.94); border: 1px solid rgba(255, 211, 110, 0.45); color: var(--ink); font-size: 15px; box-shadow: 0 6px 30px rgba(0,0,0,0.5); animation: toast 2.6s ease forwards; max-width: 100%; }
   .toast b { color: var(--gold); font-weight: 600; }
   @keyframes toast { 0% { opacity: 0; transform: translateY(10px); } 10%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(6px); } }
@@ -336,6 +336,14 @@
   .seg { display: flex; border-radius: 99px; border: 1px solid var(--line); overflow: hidden; flex: none; }
   .seg button { padding: 7px 11px; font-size: 14px; color: var(--dim); }
   .seg button[aria-pressed=true] { background: rgba(126, 232, 255, 0.2); color: var(--ink); }
+  [hidden] { display: none !important; }
+  .story-num { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--world, var(--cyan)); }
+  .story-name { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: 0.08em; margin: 8px 0 18px; text-wrap: balance; }
+  .story-text { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 22px; line-height: 1.45; color: #d4def0; max-width: 30ch; margin: 0 auto 28px; text-wrap: pretty; }
+  .backup { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
+  .backup textarea { width: 100%; min-height: 64px; resize: vertical; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.3); color: var(--ink); font: 12px ui-monospace, Menlo, monospace; padding: 8px; touch-action: auto; user-select: text; -webkit-user-select: text; }
+  .backup .row { width: 100%; }
+  .backup .row .btn { font-size: 15px; padding: 10px 6px; }
   .danger { color: #ff9fb8; border-color: rgba(255, 159, 184, 0.45); background: rgba(255, 159, 184, 0.08); font-size: 16px; margin-top: 16px; }
 </style>
 </head>
@@ -415,7 +423,7 @@
     <ul class="goals">
       <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
       <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
-      <li id="goal3"><span>Sing par or less</span><span id="g3v"></span></li>
+      <li id="goal3"><span>Sing few times</span><span id="g3v"></span></li>
     </ul>
     <button class="btn main" id="nextBtn">Next cave</button>
     <div class="row">
@@ -425,9 +433,16 @@
   </div>
 </div>
 
+<div class="screen dim-bg" id="storyScreen">
+  <div class="story-num" id="storyNum"></div>
+  <h2 class="story-name" id="storyName"></h2>
+  <p class="story-text" id="storyText"></p>
+  <button class="btn main" id="storyGo">Begin</button>
+</div>
+
 <div class="screen dim-bg" id="failScreen">
   <div class="panel">
-    <h2>Lumi's light faded</h2>
+    <h2 id="failTitle">Lumi's light faded</h2>
     <p class="sub" id="failSub">Lost lights, crystals and glow-moths all help Lumi stay bright.</p>
     <div style="height:20px"></div>
     <button class="btn main" id="failRetry">Try again</button>
@@ -455,13 +470,20 @@
 
 <div class="screen dim-bg" id="settingsScreen">
   <div class="panel tall">
-    <h2>Settings</h2>
+    <h2 id="settingsTitle">Settings</h2>
     <div class="scroll">
       <div class="set"><label for="setMusic">Music</label><input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
       <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
       <div class="set"><label>Vibration<small>On phones that support it</small></label><button class="toggle" id="setVibrate" aria-label="Vibration"></button></div>
       <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
+      <div class="set"><label>Relaxed mode<small>No light energy, Gloomlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
+      <div class="set" id="testRow" hidden><label>Unlock all levels<small>For testing. Stars still count normally</small></label><button class="toggle" id="setUnlockAll" aria-label="Unlock all levels"></button></div>
+      <div class="backup">
+        <label for="saveCode">Back up progress<small>Copy this code somewhere safe. Paste it here on any phone to bring your stars back.</small></label>
+        <textarea id="saveCode" spellcheck="false" autocomplete="off"></textarea>
+        <div class="row"><button class="btn" id="copyCode">Copy code</button><button class="btn" id="restoreCode">Restore</button></div>
+      </div>
       <button class="btn danger" id="setReset">Erase all progress</button>
     </div>
     <button class="btn" id="settingsBack">Done</button>
@@ -692,10 +714,21 @@
     { name: "Golden Mines",    floor: [40, 32, 20], floor2: [34, 30, 40], rock: [116, 92, 54],   deep: [26, 20, 12], rim: [240, 190, 90] },
     { name: "Starlight Abyss", floor: [16, 16, 40], floor2: [30, 18, 52], rock: [52, 52, 100],   deep: [8, 8, 22],   rim: [255, 150, 220] },
   ];
+  const STORY = [
+    "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way.",
+    "Soft moss hums back whenever Lumi sings. The cave is alive, and it seems to be listening.",
+    "Purple crystals ring like little bells. Lumi feels braver now, and every song travels further.",
+    "Warm air rises from glowing cracks in the rock. The lost lights down here burn brighter than ever.",
+    "Everything is quiet and cold. Each song echoes for a long, long time before it fades.",
+    "An old underground sea. Tiny creatures glow in the water, and some of them want to be friends.",
+    "Someone lived here long ago. Their lanterns are gone, but the tunnels still remember their songs.",
+    "The deepest place of all. Far above, Lumi can almost hear the stars singing back.",
+  ];
   const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
   const DAILY = -1;
   const worldOf = i => Math.floor(i / PER_WORLD);
-  const dayNumber = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000); };
+  // The daily cave changes at midnight UTC, so everyone in the world gets the same one.
+  const dayNumber = () => Math.floor(Date.now() / 86400000);
   const dayKey = (n = dayNumber()) => new Date(n * 86400000).toISOString().slice(0, 10);
   const themeIndex = i => (i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
   const themeOf = i => THEMES[themeIndex(i)];
@@ -732,11 +765,18 @@
   const isFinale = n => n % PER_WORLD === PER_WORLD - 1;
 
   function generateLevel(n, opts = {}) {
-    const C = 11, R = 18, D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    let hard = opts.hard != null ? opts.hard : Math.min(1, (n - 10) / 400);
-    if (opts.hard == null && isBreather(n)) hard *= 0.4;
-    if (opts.hard == null && isFinale(n)) hard = Math.min(1, hard + 0.25);
-    const gloomFrom = opts.hard != null ? 0 : 40;
+    const daily = opts.hard != null;
+    let hard = daily ? opts.hard : Math.min(1, (n - 10) / 400);
+    if (!daily && isBreather(n)) hard *= 0.4;
+    if (!daily && isFinale(n)) hard = Math.min(1, hard + 0.25);
+    const gloomFrom = daily ? 0 : 40;
+    // Size and darkness are decided once per level. From level 31 some caves are taller than
+    // the screen and scroll; from level 61 some are fully dark, with no glow to guide you.
+    const pre = seeded(n * 131 + 7);
+    const tallChance = daily || n >= 30 ? Math.min(0.55, 0.2 + hard * 0.5) : 0;
+    const C = 11, R = !daily && isBreather(n) ? 18 : pre() < tallChance ? (pre() < 0.55 ? 26 : 34) : 18;
+    const dark = (daily || n >= 60) && pre() < 0.22 + hard * 0.15;
+    const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], big = R / 18;
     for (let attempt = 0; ; attempt++) {
       const r = seeded(n * 7919 + attempt * 104729 + 17);
       const pick = a => a[Math.floor(r() * a.length)];
@@ -777,11 +817,11 @@
         }
         const keep = new Set(best.map(p => p + ""));
         for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) if (!keep.has(x + "," + y)) g[y][x] = "#";
-        if (best.length < 55) continue;
+        if (best.length < 55 * big) continue;
       } else if (style === "chambers") {
         // A string of rooms joined by tunnels.
         const rooms = [];
-        for (let k = 0, tries = 0; rooms.length < 5 && tries < 60; tries++) {
+        for (let k = 0, tries = 0; rooms.length < Math.round(5 * big) && tries < 90; tries++) {
           const w = 2 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 2);
           const x = 1 + Math.floor(r() * (C - 1 - w)), y = 1 + Math.floor(r() * (R - 2 - h));
           if (rooms.some(o => x < o.x + o.w + 1 && o.x < x + w + 1 && y < o.y + o.h + 1 && o.y < y + h + 1)) continue;
@@ -799,7 +839,7 @@
             g[y][x] = ".";
           }
         }
-        if (rooms.length < 4) continue;
+        if (rooms.length < Math.round(4 * big)) continue;
       }
       if (style === "maze" || style === "winding") {
         // Maze over cells at odd coordinates.
@@ -821,7 +861,7 @@
           stack.push([nx, ny]);
         }
         // Loops so there's more than one way around (winding caves get very few).
-        const loops = style === "winding" ? 1 : 3 + Math.floor(r() * 5);
+        const loops = Math.round((style === "winding" ? 1 : 3 + Math.floor(r() * 5)) * big);
         for (let k = 0, tries = 0; k < loops && tries < 200; tries++) {
           const x = 1 + Math.floor(r() * (C - 2)), y = 1 + Math.floor(r() * (R - 3));
           if (g[y][x] !== "#") continue;
@@ -829,7 +869,7 @@
               (open(x, y - 1) && open(x, y + 1) && !open(x - 1, y) && !open(x + 1, y))) { g[y][x] = "."; k++; }
         }
         // Open chambers.
-        const rooms = style === "winding" ? 0 : 1 + Math.floor(r() * 3);
+        const rooms = style === "winding" ? 0 : Math.round((1 + Math.floor(r() * 3)) * big);
         for (let k = 0; k < rooms; k++) {
           const w = 2 + Math.floor(r() * 2), h = 2 + Math.floor(r() * 2);
           const rx = 1 + Math.floor(r() * (C - 1 - w)), ry = 1 + Math.floor(r() * (R - 2 - h));
@@ -862,7 +902,7 @@
       let { d, par } = bfs(S[0], S[1]);
       let E = S, far = 0;
       for (const [x, y] of floor) if (d[y][x] > far || (d[y][x] === far && y < E[1])) { far = d[y][x]; E = [x, y]; }
-      if (far < (style === "caverns" ? 9 : 12)) continue;
+      if (far < (style === "caverns" ? 9 : 12) * big) continue;
       g[E[1]][E[0]] = "E";
 
       // Main route from start to portal.
@@ -897,8 +937,30 @@
           doors++;
         }
       }
+      // Rune puzzle: a stone gate on the route that opens for good once every rune stone has
+      // heard a song sung close by. The runes are always reachable without passing the gate.
+      const runes = [];
+      let gate = null;
+      if ((daily || n >= 24) && r() < 0.3 + hard * 0.25) {
+        // Only where the gate really blocks the way to the portal, so it can't be skipped.
+        const spots = route.slice(Math.floor(route.length * 0.45), -3).filter(([x, y]) => free(x, y) &&
+          ((!open(x - 1, y) && !open(x + 1, y)) || (!open(x, y - 1) && !open(x, y + 1))) &&
+          bfs(S[0], S[1], new Set([x + "," + y])).d[E[1]][E[0]] < 0);
+        if (spots.length) {
+          gate = pick(spots);
+          const before = bfs(S[0], S[1], new Set([gate + ""])).d;
+          const cand = floor.filter(([x, y]) => free(x, y) && before[y][x] >= 4 && Math.abs(x - gate[0]) + Math.abs(y - gate[1]) >= 3);
+          const want = 1 + (r() < 0.4 + hard * 0.3 ? 1 : 0);
+          for (let k = 0; k < want && cand.length; k++) {
+            const [x, y] = cand.splice(Math.floor(r() * cand.length), 1)[0];
+            g[y][x] = "r";
+            runes.push([x, y]);
+          }
+          if (runes.length) g[gate[1]][gate[0]] = "G"; else gate = null;
+        }
+      }
       // Lights, mostly hidden in dead ends.
-      const lightCount = Math.min(4, 1 + Math.floor(r() * 2 + hard * 2.5) + (opts.hard == null && isFinale(n) ? 1 : 0));
+      const lightCount = Math.min(5, 1 + Math.floor(r() * 2 + hard * 2.5) + (!daily && isFinale(n) ? 1 : 0) + (R > 18 ? 1 : 0));
       const ends = floor.filter(([x, y]) => free(x, y) && D4.filter(([dx, dy]) => open(x + dx, y + dy)).length === 1);
       const others = floor.filter(([x, y]) => free(x, y) && !onRoute.has(x + "," + y));
       const lights = [];
@@ -933,7 +995,8 @@
           if (crowded) continue;
           const blocked = new Set(Object.keys(critterSpots(g)).concat([x + "," + y]));
           const t = bfs(S[0], S[1], blocked).d;
-          if (goals.every(([gx, gy]) => t[gy][gx] >= 0)) { g[y][x] = "z"; k++; }
+          const tg = gate ? bfs(S[0], S[1], new Set([...blocked, gate + ""])).d : t;
+          if (goals.every(([gx, gy]) => t[gy][gx] >= 0) && runes.every(([gx, gy]) => tg[gy][gx] >= 0)) { g[y][x] = "z"; k++; }
         }
       }
 
@@ -946,10 +1009,22 @@
         }
       }
 
-      // Par: route length past every light, plus a little room for doors.
+      // Level goal. Most caves are about exploring; some ask for something different.
+      let goal = "explore", baby = null;
+      if (daily || n >= 12) {
+        const q = r();
+        goal = q < 0.15 ? "quiet" : q < 0.3 ? "rescue" : q < 0.42 && (daily || n >= 30) ? "race" : "explore";
+      }
+      if (goal === "rescue") {
+        ({ d } = bfs(S[0], S[1]));
+        const spots = floor.filter(([x, y]) => free(x, y) && d[y][x] >= 8 * big);
+        if (spots.length) { baby = pick(spots); g[baby[1]][baby[0]] = "m"; } else goal = "explore";
+      }
+
+      // Par: route length past every light (and the lost moth), plus a little room for doors and runes.
       ({ d } = bfs(S[0], S[1]));
       let pos = S, walk = 0;
-      const left = lights.slice();
+      const left = lights.concat(baby ? [baby] : [], runes);
       while (left.length) {
         const dd = bfs(pos[0], pos[1]).d;
         left.sort((a, b) => dd[a[1]][a[0]] - dd[b[1]][b[0]]);
@@ -957,8 +1032,12 @@
         pos = left.shift();
       }
       walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
-      const parPings = Math.ceil(walk / 5.5) + 1 + doors + (lights.length >= 3 ? 1 : 0);
-      return { name: opts.name || worldName(worldOf(n)), par: parPings, map: g.map(row => row.join("")), style };
+      const parPings = Math.ceil(walk / 5.5) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0);
+      return {
+        name: opts.name || worldName(worldOf(n)), par: parPings, map: g.map(row => row.join("")), style, dark, goal,
+        songs: goal === "quiet" ? parPings + 2 : 0,
+        time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3) : 0,
+      };
     }
   }
   function critterSpots(g) {
@@ -994,12 +1073,12 @@
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && Array.isArray(s.stars)) {
       for (const k of ["settings", "stats", "daily"]) save[k] = Object.assign(save[k], s[k] || {});
-      for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "looksViewed", "ach"]) if (s[k] != null) save[k] = s[k];
+      for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "looksViewed", "ach", "story"]) if (s[k] != null) save[k] = s[k];
     }
   } catch (e) {}
   function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
   STICK_R = STICK_SIZES[save.settings.stick] || 46;
-  const unlocked = i => i < 0 || i === 0 || (save.stars[i - 1] || 0) > 0;
+  const unlocked = i => i < 0 || i === 0 || save.settings.unlockAll || (save.stars[i - 1] || 0) > 0;
   const totalStars = () => save.stars.reduce((a, b) => a + (b || 0), 0);
 
   // ---------- Audio ----------
@@ -1130,6 +1209,9 @@
       note(pitch(0, -1), { dur: 1.8, vol: 0.08, type: "triangle" });
     },
     star(i) { note(pitch([7, 9, 11][i], 0), { dur: 0.5, vol: 0.08 }); },
+    rune() { [0, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.05, dur: 1.2, vol: 0.06, type: "triangle", echo: 0.9 })); },
+    gate() { note(pitch(0, -2), { dur: 1.6, vol: 0.14, type: "sawtooth", lowpass: 500, attack: 0.2, echo: 0.6 }); [0, 4, 7, 12].forEach((d, i) => note(pitch(d, 0), { at: 0.2 + i * 0.09, dur: 1.2, vol: 0.06 })); },
+    tick() { note(1400, { dur: 0.05, vol: 0.05, type: "square", lowpass: 2500, echo: 0 }); },
     unlock() { [0, 4, 7, 9, 14].forEach((d, i) => note(pitch(d, 0), { at: i * 0.08, dur: 0.8, vol: 0.07 })); },
     ambient() {
       const a = mood.ambient, r = Math.random();
@@ -1144,7 +1226,9 @@
   // ---------- Canvas ----------
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
-  let W = 0, H = 0, DPR = 1, TS = 32, OX = 0, OY = 0, bgGrad = null, vignette = null;
+  // If a phone can't keep up, frames are drawn at a lower resolution (see frame()).
+  let qualityCap = 2, slowFrames = 0, frameCount = 0;
+  let SDPR = 1, W = 0, H = 0, DPR = 1, TS = 32, OX = 0, OY = 0, bgGrad = null, vignette = null;
   const $ = id => document.getElementById(id);
 
   function makeGlow(r, g, b) {
@@ -1198,13 +1282,16 @@
   }
 
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    DPR = Math.min(window.devicePixelRatio || 1, qualityCap);
     W = window.innerWidth;
     H = window.innerHeight;
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
-    scene.width = canvas.width;
-    scene.height = canvas.height;
+    // The lit cave is blended at a lower resolution than the screen and scaled up: the rock is
+    // soft anyway, and this is the most expensive step of every frame.
+    SDPR = Math.min(DPR, 1.25);
+    scene.width = Math.round(W * SDPR);
+    scene.height = Math.round(H * SDPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     bgGrad = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.8);
     bgGrad.addColorStop(0, "#080b22");
@@ -1214,19 +1301,33 @@
     vignette.addColorStop(1, "rgba(0,0,0,0.6)");
     layout();
   }
+  // Caves up to 18 rows fit the screen. Taller caves keep the same tile size and the
+  // camera follows Lumi up and down.
+  const VIEW = { top: 0, bottom: 0 };
   function layout() {
     if (!L) return;
-    const top = 62 + safeInset("top");
-    const bottom = 16 + safeInset("bottom");
-    TS = Math.floor(Math.min((W - 16) / L.cols, (H - top - bottom) / L.rows));
+    VIEW.top = 62 + safeInset("top");
+    VIEW.bottom = H - 16 - safeInset("bottom");
+    const avail = VIEW.bottom - VIEW.top;
+    TS = Math.max(8, Math.floor(Math.min((W - 16) / L.cols, avail / Math.min(L.rows, 18))));
     OX = Math.round((W - TS * L.cols) / 2);
-    OY = Math.round(top + (H - top - bottom - TS * L.rows) / 2);
-    // The light map covers the whole screen, in tiles, with the cave somewhere inside it.
+    L.scroll = L.rows * TS > avail + 1;
+    OY = L.scroll ? cameraTarget() : Math.round(VIEW.top + (avail - TS * L.rows) / 2);
+    // The painted rock and the light map cover the cave plus enough margin for anything on screen.
     LM.mx = Math.ceil(OX / TS) + 1;
-    LM.my = Math.ceil(OY / TS) + 1;
-    lightCanvas.width = (L.cols + LM.mx * 2 + 1) * LPT;
-    lightCanvas.height = (L.rows + LM.my + Math.ceil((H - OY - L.rows * TS) / TS) + 2) * LPT;
+    LM.my = L.scroll
+      ? Math.ceil((Math.max(VIEW.top, H - VIEW.bottom) + TS * 0.4) / TS) + 1
+      : Math.ceil(Math.max(OY, H - OY - L.rows * TS) / TS) + 1;
+    lightCanvas.width = (L.cols + LM.mx * 2) * LPT;
+    lightCanvas.height = (L.rows + LM.my * 2) * LPT;
     buildArt();
+  }
+  function cameraTarget() {
+    const want = (VIEW.top + VIEW.bottom) / 2 - L.lumi.y * TS;
+    return Math.max(VIEW.bottom - L.rows * TS - TS * 0.3, Math.min(VIEW.top + TS * 0.3, want));
+  }
+  function moveCamera(dt) {
+    if (L.scroll) OY += (cameraTarget() - OY) * Math.min(1, dt * 5);
   }
 
   // ---------- Painted cave ----------
@@ -1269,8 +1370,8 @@
   const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
   function buildArt() {
-    const sc = Math.min(DPR, 1.5);
-    const w = Math.max(1, Math.round(W * sc)), h = Math.max(1, Math.round(H * sc));
+    const sc = Math.min(DPR, L.rows > 18 ? 1 : 1.25);
+    const w = Math.max(1, Math.round((L.cols + LM.mx * 2) * TS * sc)), h = Math.max(1, Math.round((L.rows + LM.my * 2) * TS * sc));
     art.width = w; art.height = h;
     const { cols, rows } = L, SUB = 2, PAD = 3;
 
@@ -1301,7 +1402,7 @@
 
     const seed = levelIndex * 37.1 + 5;
     const th = themeOf(levelIndex);
-    const inv = 1 / (TS * sc), ox = OX / TS, oy = OY / TS;
+    const inv = 1 / (TS * sc), ox = LM.mx, oy = LM.my;
     const f = new Float32Array(w * h);
     for (let py = 0; py < h; py++) {
       const ty = (py + 0.5) * inv - oy, iy = Math.floor(ty);
@@ -1386,7 +1487,9 @@
       glowT: new Float32Array(n),
       glow: new Float32Array(n),
       seen: new Uint8Array(n),
-      lights: [], crystals: [], critters: [], moths: [], gloom: [],
+      lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
+      goal: def.goal || "explore", dark: !!def.dark, songLimit: def.songs || 0,
+      timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
       exit: null,
       lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
       waves: [], particles: [],
@@ -1395,12 +1498,12 @@
       ending: 0, done: false,
       tut: 0, moved: 0,
       demo, demoT: 1.2, flash: 0, bumps: 0, hits: 0, failing: 0, lowCd: 0, ambT: 2,
-      useEnergy: i >= 10 || i === DAILY, energy: 100, drain: 1.0 + depthOf(i) * 0.5,
+      useEnergy: (i >= 10 || i === DAILY) && !save.settings.relaxed, energy: 100, drain: 1.0 + depthOf(i) * 0.5,
     };
     const dirs = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] };
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
       const ch = def.map[y][x], i2 = y * cols + x;
-      L.tile[i2] = ch === "#" ? "#" : ch === "D" ? "D" : ".";
+      L.tile[i2] = ch === "#" ? "#" : ch === "D" ? "D" : ch === "G" ? "G" : ".";
       const cx = x + 0.5, cy = y + 0.5;
       if (dirs[ch]) L.flow[i2] = dirs[ch];
       if (ch === "S") { L.lumi.x = cx; L.lumi.y = cy; }
@@ -1409,7 +1512,10 @@
       if (ch === "c") L.crystals.push({ x: cx, y: cy, i: i2, on: 0, cells: null });
       if (ch === "z") L.critters.push({ x: cx, y: cy, hx: cx, hy: cy, i: i2, awake: 0, ph: Math.random() * 6 });
       if (ch === "b") L.moths.push({ x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6, idx: 0 });
-      if (ch === "g") L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
+      if (ch === "r") L.runes.push({ x: cx, y: cy, i: i2, on: 0, far: 0 });
+      if (ch === "G") L.gate = { x: cx, y: cy, i: i2, open: 0 };
+      if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
+      if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
     }
     let seed = ((i + 1000003) * 9973) % 2147483647 || 1;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -1442,6 +1548,14 @@
     else if (i === 40) intro = "Gloomlings live here. They come looking when they hear you sing";
     else if (i > 0 && isFinale(i)) intro = "World finale: a bigger cave with an extra light";
     else if (i === DAILY) intro = "Today's cave is the same for everyone. Good luck!";
+    const goalText = {
+      quiet: `Quiet cave: you only have ${L.songLimit} songs, so make them count`,
+      rescue: "A lost baby moth is hiding in here. Find it and bring it to the portal",
+      race: `Race: reach the portal within ${L.timeLeft} seconds`,
+    }[L.goal];
+    if (goalText && !(L.goal === "race" && !L.timeLeft)) intro = goalText;
+    else if (L.dark && !intro) intro = "A fully dark cave. Nothing glows until your song finds it";
+    else if (L.runes.length && !intro) intro = "A stone gate blocks the way. Sing close to each rune stone to open it";
     setHint(def.hint === "first" ? "Tap anywhere to sing 🎵" : def.hint || intro, def.hint === "first" ? 0 : 5);
   }
 
@@ -1449,19 +1563,31 @@
   function solidAt(x, y) {
     if (x < 0 || y < 0 || x >= L.cols || y >= L.rows) return true;
     const i = y * L.cols + x, t = L.tile[i];
-    return t === "#" || (t === "D" && L.door[i] <= 0);
+    return t === "#" || (t === "D" && L.door[i] <= 0) || (t === "G" && !L.gate.open);
   }
 
   // Distances the song travels from a point, flowing around corners but never through rock.
-  function soundMap(px, py, maxD) {
-    const n = L.n, dist = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
+  let doneBuf = new Uint8Array(0), frontier = [];
+  function soundMap(px, py, maxD, out) {
+    const n = L.n, dist = out || new Float32Array(n);
+    dist.fill(Infinity);
+    if (doneBuf.length !== n) doneBuf = new Uint8Array(n);
+    const done = doneBuf;
+    done.fill(0);
     const sx = Math.floor(px), sy = Math.floor(py);
     if (solidAt(sx, sy)) return dist;
-    dist[idx(sx, sy)] = Math.hypot(px - sx - 0.5, py - sy - 0.5);
-    for (;;) {
-      let best = -1, bd = Infinity;
-      for (let i = 0; i < n; i++) if (!done[i] && dist[i] < bd) { bd = dist[i]; best = i; }
-      if (best < 0 || bd > maxD) break;
+    const s0 = idx(sx, sy);
+    dist[s0] = Math.hypot(px - sx - 0.5, py - sy - 0.5);
+    frontier.length = 0;
+    frontier.push(s0);
+    while (frontier.length) {
+      let bk = 0;
+      for (let k = 1; k < frontier.length; k++) if (dist[frontier[k]] < dist[frontier[bk]]) bk = k;
+      const best = frontier[bk], bd = dist[best];
+      frontier[bk] = frontier[frontier.length - 1];
+      frontier.pop();
+      if (done[best]) continue;
+      if (bd > maxD) break;
       done[best] = 1;
       const x = best % L.cols, y = (best / L.cols) | 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -1470,7 +1596,7 @@
         if (solidAt(nx, ny)) continue;
         if (dx && dy && (solidAt(x + dx, y) || solidAt(x, y + dy))) continue;
         const j = idx(nx, ny), nd = bd + (dx && dy ? 1.414 : 1);
-        if (nd < dist[j]) dist[j] = nd;
+        if (nd < dist[j]) { dist[j] = nd; frontier.push(j); }
       }
     }
     return dist;
@@ -1490,6 +1616,12 @@
   // ---------- Actions ----------
   function ping() {
     if (!L || L.ending || L.failing || L.pingCd > 0 || (screen !== "play" && !L.demo)) return;
+    if (L.songLimit && L.pings >= L.songLimit && !L.demo) {
+      setHint("No songs left. Remember the way!", 2.5);
+      buzz(15);
+      L.pingCd = 0.6;
+      return;
+    }
     L.pingCd = 0.4;
     if (!L.demo) L.pings++;
     if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - 2.5);
@@ -1504,8 +1636,17 @@
     updateHud();
   }
 
-  function reveal(i) {
+  const RUNE_RANGE = 2.6;
+  function reveal(i, d = 0) {
     L.lit[i] = 1;
+    for (const r of L.runes) {
+      if (r.i !== i || r.on) continue;
+      if (d <= RUNE_RANGE) wakeRune(r);
+      else {
+        r.far = 1;
+        if (!L.runeHinted && !L.demo) { L.runeHinted = true; setHint("The rune stone heard you, but faintly. Sing closer to it", 3.5); }
+      }
+    }
     L.seen[i] = 1;
     eachSolidNeighbour(i, (j, side) => {
       L.lit[j] = 1;
@@ -1517,6 +1658,22 @@
       if (g.gone > 0 || g.hunt > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
       g.hunt = 4.5;
       sfx.gloomWake();
+    }
+  }
+
+  function wakeRune(r) {
+    r.on = 0.001;
+    sfx.rune();
+    buzz(15);
+    for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28; spark(r.x, r.y, Math.cos(a) * 1.4, Math.sin(a) * 1.4, 0.8, "green", 0.09); }
+    if (L.gate && L.runes.every(q => q.on)) {
+      L.gate.open = 1;
+      sfx.gate();
+      buzz([20, 30, 40]);
+      L.lit[L.gate.i] = 1;
+      eachSolidNeighbour(L.gate.i, j => { L.lit[j] = 1; L.seen[j] = 1; });
+      for (let k = 0; k < 24; k++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 2; spark(L.gate.x, L.gate.y, Math.cos(a) * s, Math.sin(a) * s, 1, "green", 0.1); }
+      if (!L.demo) setHint("The gate is open!", 2.5);
     }
   }
 
@@ -1590,6 +1747,7 @@
   // ---------- Update ----------
   function update(dt) {
     L.time += dt;
+    moveCamera(dt);
     L.pingCd -= dt;
     L.bumpCd -= dt;
     const lumi = L.lumi;
@@ -1686,7 +1844,7 @@
       w.r += WAVE_SPEED * dt;
       for (let i = 0; i < L.n; i++) {
         const d = w.dist[i];
-        if (d > w.prev && d <= w.r && d <= WAVE_RANGE) reveal(i);
+        if (d > w.prev && d <= w.r && d <= WAVE_RANGE) reveal(i, d);
       }
       w.prev = w.r;
       if (w.r > WAVE_RANGE + 1.5) L.waves.splice(k, 1);
@@ -1696,7 +1854,7 @@
     for (let i = 0; i < L.n; i++) { L.lit[i] = Math.max(0, L.lit[i] - dt * 0.42); L.glowT[i] = 0; }
     const followers = L.moths.filter(m => m.following).length;
     const R = (1.5 + followers * 0.75) * (L.useEnergy ? 0.55 + 0.45 * Math.min(1, L.energy / 40) : 1);
-    const near = soundMap(lumi.x, lumi.y, R);
+    const near = soundMap(lumi.x, lumi.y, R, L.nearBuf || (L.nearBuf = new Float32Array(L.n)));
     for (let i = 0; i < L.n; i++) if (near[i] < R) {
       const v = 1 - near[i] / R;
       if (v > L.glowT[i]) L.glowT[i] = v;
@@ -1809,6 +1967,7 @@
       if (L.energy <= 0) {
         L.energy = 0;
         L.failing = 0.001;
+        L.failWhy = "energy";
         musicStop();
         sfx.fail();
         buzz([40, 60, 40]);
@@ -1820,12 +1979,51 @@
       if (L.failing > 1.5 && !L.done) { L.done = true; failLevel(); }
     }
 
+    // The lost baby moth waits to be found, then stays close to Lumi.
+    const baby = L.baby;
+    if (baby) {
+      baby.ph += dt;
+      if (!baby.following && ctl && Math.hypot(baby.x - lumi.x, baby.y - lumi.y) < 0.7) {
+        baby.following = true;
+        sfx.moth();
+        sfx.light();
+        buzz(20);
+        setHint("Found it! Now bring the baby moth to the portal", 3);
+      }
+      const tx = baby.following ? lumi.x - Math.cos(lumi.look) * 0.55 : baby.hx + Math.sin(baby.ph * 2) * 0.1;
+      const ty = baby.following ? lumi.y - Math.sin(lumi.look) * 0.55 - 0.1 : baby.hy + Math.cos(baby.ph * 1.6) * 0.08;
+      baby.x += (tx - baby.x) * Math.min(1, dt * 5);
+      baby.y += (ty - baby.y) * Math.min(1, dt * 5);
+    }
+    // Race caves count down; running out of time ends the try.
+    if (L.timeLeft > 0 && ctl) {
+      L.timeLeft -= dt;
+      if (Math.ceil(L.timeLeft) !== L.shownTime) { L.shownTime = Math.ceil(L.timeLeft); updateHud(); if (L.timeLeft < 10 && L.timeLeft > 0) sfx.tick(); }
+      if (L.timeLeft <= 0) {
+        L.timeLeft = 0;
+        L.failing = 0.001;
+        L.failWhy = "time";
+        musicStop();
+        sfx.fail();
+        buzz([40, 60, 40]);
+        setHint("", 0);
+      }
+    }
+    for (const r of L.runes) { if (r.on) r.on = Math.min(1, r.on + dt * 2); r.far = Math.max(0, r.far - dt * 1.5); }
+    if (L.gate && L.gate.open) L.gate.open = Math.min(2, L.gate.open + dt);
+    L.portalHintCd -= dt;
+
     // Cave sounds now and then.
     if (!L.demo && (L.ambT -= dt) <= 0) { L.ambT = 3 + Math.random() * 5; sfx.ambient(); }
     L.flash = Math.max(0, L.flash - dt * 1.6);
 
     // Portal.
-    if (ctl && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
+    const portalLocked = L.goal === "rescue" && L.baby && !L.baby.following;
+    if (ctl && portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.6 && L.portalHintCd <= 0) {
+      L.portalHintCd = 3;
+      setHint("The portal is asleep. Bring the lost baby moth here first", 3);
+    }
+    if (ctl && !portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
       L.ending = 0.001;
       L.flash = 1;
       musicStop();
@@ -1861,12 +2059,19 @@
     const x0 = Math.floor(e.x - r), x1 = Math.floor(e.x + r), y0 = Math.floor(e.y - r), y1 = Math.floor(e.y + r);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       if (!solidAt(tx, ty)) continue;
-      const nx = Math.max(tx, Math.min(e.x, tx + 1)), ny = Math.max(ty, Math.min(e.y, ty + 1));
+      // Corners of rock that stick out are rounded, like the painted rock, so Lumi glides
+      // around them instead of catching on an invisible square edge.
+      const RC = 0.35;
+      const cxs = e.x < tx + RC ? -1 : e.x > tx + 1 - RC ? 1 : 0, cys = e.y < ty + RC ? -1 : e.y > ty + 1 - RC ? 1 : 0;
+      const round = cxs && cys && !solidAt(tx + cxs, ty) && !solidAt(tx, ty + cys);
+      const nx = round ? tx + (cxs < 0 ? RC : 1 - RC) : Math.max(tx, Math.min(e.x, tx + 1));
+      const ny = round ? ty + (cys < 0 ? RC : 1 - RC) : Math.max(ty, Math.min(e.y, ty + 1));
+      const reach = round ? r + RC : r;
       let dx = e.x - nx, dy = e.y - ny, d = Math.hypot(dx, dy);
-      if (d >= r) continue;
+      if (d >= reach) continue;
       if (d < 1e-6) { dx = e.x - (tx + 0.5); dy = e.y - (ty + 0.5); d = Math.hypot(dx, dy) || 1; e.x += dx / d * 0.05; e.y += dy / d * 0.05; continue; }
       dx /= d; dy /= d;
-      e.x += dx * (r - d); e.y += dy * (r - d);
+      e.x += dx * (reach - d); e.y += dy * (reach - d);
       const vn = e.vx * dx + e.vy * dy;
       if (vn < 0) { e.vx -= vn * dx * 1.25; e.vy -= vn * dy * 1.25; bump = Math.max(bump, -vn); }
       if (-vn > 1.5) {
@@ -1926,22 +2131,26 @@
     const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
     blob(L.lumi.x, L.lumi.y, 1.15, 0.85 * shrink + L.lumi.sing * 0.5);
     for (const c of L.crystals) if (c.on) blob(c.x, c.y, 1.3, c.on * 0.6);
-    for (const o of L.lights) if (!o.got) blob(o.x, o.y, 0.7, 0.3);
+    for (const o of L.lights) if (!o.got && (!L.dark || L.seen[o.i])) blob(o.x, o.y, 0.7, 0.3);
+    for (const r of L.runes) if (r.on) blob(r.x, r.y, 1.1, r.on * 0.5);
+    if (L.baby) blob(L.baby.x, L.baby.y, 0.7, 0.4);
     for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4);
-    blob(L.exit.x, L.exit.y, 0.9, 0.3);
+    if (!L.dark || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
     lctx.globalAlpha = 1;
 
     // Scene: the painted cave, kept only where light falls.
     sctx.setTransform(1, 0, 0, 1, 0, 0);
     sctx.globalCompositeOperation = "source-over";
     sctx.clearRect(0, 0, scene.width, scene.height);
-    sctx.drawImage(art, 0, 0, scene.width, scene.height);
+    const ax = Math.round((OX - mx * TS) * SDPR), ay = Math.round((OY - my * TS) * SDPR);
+    const aw = (L.cols + mx * 2) * TS * SDPR, ah = (L.rows + my * 2) * TS * SDPR;
+    sctx.drawImage(art, ax, ay, aw, ah);
     sctx.globalCompositeOperation = "destination-in";
-    sctx.drawImage(lightCanvas, (OX - mx * TS) * DPR, (OY - my * TS) * DPR, lightCanvas.width / P * TS * DPR, lightCanvas.height / P * TS * DPR);
+    sctx.drawImage(lightCanvas, ax, ay, aw, ah);
     sctx.globalCompositeOperation = "source-over";
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(scene, 0, 0);
+    ctx.drawImage(scene, 0, 0, canvas.width, canvas.height);
     ctx.restore();
 
     ctx.globalCompositeOperation = "lighter";
@@ -2057,7 +2266,8 @@
     // Portal: a slow vortex, always faintly visible so there's a goal.
     {
       const e = L.exit, X = sx(e.x), Y = sy(e.y);
-      const a = Math.max(0.35, vis(e.i));
+      const asleep = L.goal === "rescue" && L.baby && !L.baby.following;
+      const a = (L.dark ? vis(e.i) : Math.max(0.35, vis(e.i))) * (asleep ? 0.45 : 1);
       glow(GLOW.violet, X, Y, T * 1.5, a * 0.5);
       glow(GLOW.white, X, Y, T * 0.35, a * 0.6);
       for (let k = 0; k < 18; k++) {
@@ -2073,7 +2283,7 @@
       if (o.got) continue;
       const X = sx(o.x), Y = sy(o.y + Math.sin(clock * 2 + o.ph) * 0.06);
       const hc = save.settings.contrast;
-      const a = Math.max(hc ? 0.7 : 0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
+      const a = L.dark && !L.seen[o.i] ? vis(o.i) : Math.max(hc ? 0.7 : 0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
       glow(GLOW.gold, X, Y, T * (hc ? 1.4 : 1.1), a * 0.8);
       glow(GLOW.white, X, Y, T * 0.28, a);
       if (hc) {
@@ -2133,6 +2343,63 @@
         ctx.fillText("z", X + r * 0.7 + zt * T * 0.2, Y - r - zt * T * 0.35);
         ctx.globalAlpha = 1;
       }
+    }
+
+    // Rune stones: a carved ring that lights up green once it hears a song from close by.
+    for (const r of L.runes) {
+      const X = sx(r.x), Y = sy(r.y), a = Math.max(vis(r.i), r.on, 0.12 + r.far * 0.5), rr = TS * 0.3;
+      ctx.globalCompositeOperation = "lighter";
+      if (r.on) glow(GLOW.green, X, Y, TS * 1.4, 0.45 * r.on);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = `rgba(40,58,70,${Math.min(1, a + 0.2)})`;
+      ctx.beginPath(); ctx.arc(X, Y, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = r.on ? `rgba(150,255,190,${0.6 + 0.4 * r.on})` : `rgba(170,200,220,${a})`;
+      ctx.lineWidth = Math.max(1.5, TS * 0.05);
+      // A listening mark: a dot with sound waves on both sides.
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath(); ctx.arc(X, Y, rr * 0.16, 0, Math.PI * 2); ctx.fill();
+      for (const k of [0.42, 0.72]) for (const side of [0, Math.PI]) {
+        ctx.beginPath(); ctx.arc(X, Y, rr * k, side - 0.75, side + 0.75); ctx.stroke();
+      }
+      if (!r.on && (r.far > 0 || save.settings.contrast)) {
+        // A dotted ring shows how close you need to be when singing.
+        ctx.setLineDash([3, 6]);
+        ctx.strokeStyle = `rgba(150,255,190,${save.settings.contrast ? 0.5 : r.far * 0.6})`;
+        ctx.beginPath(); ctx.arc(X, Y, RUNE_RANGE * TS, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    // Stone gate: a carved slab that sinks into the ground when every rune is awake.
+    if (L.gate) {
+      const gt = L.gate, X = sx(gt.x - 0.5), Y = sy(gt.y - 0.5), sink = Math.min(1, gt.open);
+      const a = Math.max(vis(gt.i), save.settings.contrast ? 0.7 : 0.1) * (1 - sink);
+      if (a > 0.01) {
+        ctx.fillStyle = `rgba(58,70,86,${a})`;
+        ctx.fillRect(X + TS * 0.06, Y + TS * (0.04 + sink * 0.9), TS * 0.88, TS * 0.92 * (1 - sink));
+        ctx.strokeStyle = `rgba(150,255,190,${a * 0.8})`;
+        ctx.lineWidth = Math.max(1.2, TS * 0.04);
+        ctx.strokeRect(X + TS * 0.14, Y + TS * (0.12 + sink * 0.9), TS * 0.72, TS * 0.76 * (1 - sink));
+        ctx.beginPath();
+        const on = L.runes.filter(q => q.on).length;
+        for (let k = 0; k < L.runes.length; k++) {
+          ctx.fillStyle = k < on ? "rgba(150,255,190,0.95)" : `rgba(150,170,190,${a * 0.6})`;
+          ctx.beginPath();
+          ctx.arc(X + TS * (0.5 + (k - (L.runes.length - 1) / 2) * 0.24), Y + TS * 0.5, TS * 0.07, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    // The lost baby moth: small, pale pink, and visible from afar so you know it's there.
+    if (L.baby) {
+      const b = L.baby, X = sx(b.x), Y = sy(b.y), flap = Math.abs(Math.sin(b.ph * 16)), T2 = TS * 0.8;
+      ctx.globalCompositeOperation = "lighter";
+      glow(GLOW.pink, X, Y, TS * 0.9, b.following ? 0.6 : 0.4 + Math.sin(b.ph * 3) * 0.15);
+      ctx.fillStyle = "rgba(255,225,240,0.95)";
+      ctx.beginPath();
+      ctx.ellipse(X - T2 * 0.1, Y, T2 * 0.12 * (0.3 + flap * 0.7), T2 * 0.14, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(X + T2 * 0.1, Y, T2 * 0.12 * (0.3 + flap * 0.7), T2 * 0.14, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
     }
 
     // Gloomlings.
@@ -2288,8 +2555,16 @@
   // ---------- Loop ----------
   let last = performance.now();
   function frame(now) {
-    const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000));
+    const raw = (now - last) / 1000;
+    const dt = Math.max(0, Math.min(1 / 30, raw));
     last = now;
+    if (screen === "play" && raw < 0.25) {
+      if (raw > 0.024) slowFrames++;
+      if (++frameCount >= 120) {
+        if (slowFrames > 70 && qualityCap > 1) { qualityCap = Math.max(1, qualityCap - 0.5); resize(); }
+        frameCount = slowFrames = 0;
+      }
+    }
     clock += dt;
     if (L && (screen === "play" || (screen === "title" && L.demo))) update(dt);
     drawBackground(dt);
@@ -2306,7 +2581,7 @@
   // ---------- UI ----------
   const screens = {
     title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-    fail: $("failScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+    fail: $("failScreen"), story: $("storyScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
   };
   let backTo = "title";
   function show(name) {
@@ -2365,17 +2640,45 @@
   function updateHud() {
     if (!L) return;
     $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
-    $("pingsPill").innerHTML = `♪ ${L.pings} <small>/ ${L.def.par}</small>`;
-    $("pingsPill").style.color = L.pings > L.def.par ? "#ff9fb8" : "";
-    $("levelName").innerHTML = levelIndex === DAILY ? `<b>Daily Cave</b>` : `<b>${levelIndex + 1}.</b> ${L.def.name}`;
+    const pill = $("pingsPill");
+    pill.hidden = levelIndex >= 0 && levelIndex < 10;
+    if (L.songLimit) {
+      const left = Math.max(0, L.songLimit - L.pings);
+      pill.innerHTML = `♪ ${left} <small>left</small>`;
+      pill.style.color = left <= 1 ? "#ff9fb8" : "";
+    } else {
+      pill.innerHTML = `♪ ${L.pings} <small>/ ${L.def.par}</small>`;
+      pill.style.color = L.pings > L.def.par ? "#ff9fb8" : "";
+    }
+    const name = levelIndex === DAILY ? `<b>Daily Cave</b>` : `<b>${levelIndex + 1}.</b> ${L.def.name}`;
+    if (L.timeLeft > 0 || L.failWhy === "time") {
+      const t = Math.ceil(L.timeLeft);
+      $("levelName").innerHTML = `<b style="color:${t <= 10 ? "#ff9fb8" : "inherit"}">⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}</b>`;
+    } else $("levelName").innerHTML = name;
   }
   function updateMute() {
     $("muteBtn").textContent = muted ? "🔇" : "🔊";
     applyVolumes();
   }
 
-  function startLevel(i) {
+  let pendingLevel = 0;
+  function startLevel(i, skipStory) {
     audio();
+    const w = worldOf(i);
+    save.story = save.story || {};
+    if (!skipStory && i >= 0 && i % PER_WORLD === 0 && !save.story[w]) {
+      save.story[w] = 1;
+      persist();
+      pendingLevel = i;
+      const th = THEMES[w % THEMES.length];
+      $("storyScreen").style.setProperty("--world", `rgb(${th.rim.join(",")})`);
+      $("storyNum").textContent = `World ${w + 1}`;
+      $("storyName").textContent = worldName(w);
+      $("storyText").textContent = (w >= THEMES.length ? "The caves twist and change, but Lumi keeps singing. " : "") + STORY[w % STORY.length];
+      $("storyGo").textContent = w === 0 ? "Begin" : "Continue";
+      show("story");
+      return;
+    }
     loadLevel(i);
     energyShown = -1;
     show("play");
@@ -2407,6 +2710,8 @@
     { id: "smooth",  ico: "🫧", name: "Smooth Swimmer",     desc: "Finish 5 caves without bumping a wall",      goal: 5,   val: () => save.stats.clean },
     { id: "moths",   ico: "🦋", name: "Moth Whisperer",     desc: "Make friends with 10 glow-moths",            goal: 10,  val: () => save.stats.moths },
     { id: "brave",   ico: "🛡️", name: "Brave Little Light", desc: "Finish 5 caves that have Gloomlings",        goal: 5,   val: () => save.stats.gloom },
+    { id: "rescue",  ico: "🪽", name: "Moth Rescuer",       desc: "Bring 5 lost baby moths home",               goal: 5,   val: () => save.stats.rescues || 0 },
+    { id: "runes",   ico: "🗝️", name: "Gatekeeper",         desc: "Open 5 rune gates",                          goal: 5,   val: () => save.stats.gates || 0 },
     { id: "daily",   ico: "📅", name: "Daily Habit",        desc: "Play the daily cave 3 days in a row",        goal: 3,   val: () => save.daily.best },
   ];
   function checkRewards() {
@@ -2436,6 +2741,8 @@
     if (L.bumps === 0 && levelIndex !== 0) st.clean++;
     if (L.pings <= 2 && levelIndex >= 1) st.quiet++;
     if (L.gloom.length) st.gloom++;
+    if (L.goal === "rescue") st.rescues = (st.rescues || 0) + 1;
+    if (L.gate && L.gate.open) st.gates = (st.gates || 0) + 1;
 
     let newBest = "", streakMsg = "";
     if (levelIndex === DAILY) {
@@ -2462,10 +2769,13 @@
     $("resultTitle").textContent = ["", "Cave cleared!", "Lovely singing!", "Perfect echo!"][stars];
     $("resultSub").textContent = `${levelLabel(levelIndex)} · ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
     $("newBest").textContent = streakMsg || newBest;
-    $("unlockMsg").textContent = look ? `New look unlocked: ${look}` : "";
+    const worldDone = levelIndex >= 0 && isFinale(levelIndex);
+    $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : ""].filter(Boolean).join(" · ");
     $("g1v").textContent = "✓";
     $("g2v").textContent = `${L.got}/${L.lights.length}`;
     $("g3v").textContent = `${L.pings} / ${L.def.par}`;
+    $("goal1").firstElementChild.textContent = L.goal === "rescue" ? "Bring the lost moth home" : L.goal === "race" ? "Beat the clock" : "Reach the portal";
+    $("goal3").firstElementChild.textContent = `Sing ${L.def.par} times or fewer`;
     $("goal1").className = "ok";
     $("goal2").className = allLights ? "ok" : "";
     $("goal3").className = underPar ? "ok" : "";
@@ -2481,7 +2791,10 @@
     }
   }
   function failLevel() {
-    $("failSub").textContent = L.hits
+    $("failTitle").textContent = L.failWhy === "time" ? "Out of time" : "Lumi's light faded";
+    $("failSub").textContent = L.failWhy === "time"
+      ? "The cave closed before Lumi reached the portal. Sing early to plan your route."
+      : L.hits
       ? "Gloomlings took some of Lumi's light. Sing less near them, or swim away fast."
       : "Lost lights, crystals and glow-moths all help Lumi stay bright.";
     show("fail");
@@ -2603,11 +2916,17 @@
     $("setSfx").value = st.sfx;
     $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
     $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
+    $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
+    $("setUnlockAll").setAttribute("aria-pressed", String(!!st.unlockAll));
+    $("testRow").hidden = !st.unlockAll && !testTaps.shown;
+    $("saveCode").value = "";
     [...$("setStick").children].forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === st.stick)));
     $("setReset").textContent = "Erase all progress";
     resetArmed = false;
   }
   let resetArmed = false;
+  const testTaps = { n: 0, t: 0, shown: false };
+  const saveCode = () => "ECHO1:" + btoa(unescape(encodeURIComponent(JSON.stringify(save))));
 
   async function shareGame() {
     const url = "https://erlan1126.github.io/Test/echo.html";
@@ -2647,6 +2966,7 @@
   tap("retryBtn", () => startLevel(levelIndex));
   tap("resultLevels", openMap);
   tap("failRetry", () => startLevel(levelIndex));
+  tap("storyGo", () => startLevel(pendingLevel, true));
   tap("failMap", () => (levelIndex === DAILY ? showTitle() : openMap()));
   tap("nextBtn", () => {
     if (levelIndex === DAILY) showTitle();
@@ -2658,6 +2978,39 @@
   $("setSfx").addEventListener("change", () => sfx.light());
   tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
   tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
+  tap("setRelaxed", () => { save.settings.relaxed = !save.settings.relaxed; persist(); renderSettings(); toast(save.settings.relaxed ? "Relaxed mode on. It starts with your next cave" : "Relaxed mode off"); });
+  tap("setUnlockAll", () => { save.settings.unlockAll = !save.settings.unlockAll; persist(); renderSettings(); });
+  // Tapping the Settings title five times shows the testing switch.
+  tap("settingsTitle", () => {
+    const now = performance.now();
+    testTaps.n = now - testTaps.t < 600 ? testTaps.n + 1 : 1;
+    testTaps.t = now;
+    if (testTaps.n >= 5 && !testTaps.shown) { testTaps.shown = true; renderSettings(); toast("Testing options shown"); }
+  });
+  tap("copyCode", async () => {
+    const code = saveCode(), box = $("saveCode");
+    box.value = code;
+    try { await navigator.clipboard.writeText(code); toast("Save code copied"); }
+    catch (e) { box.focus(); box.select(); toast("Select the code above and copy it"); }
+  });
+  tap("restoreCode", () => {
+    const raw = $("saveCode").value.trim();
+    try {
+      if (!raw.startsWith("ECHO1:")) throw new Error("not a save code");
+      const data = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6)))));
+      if (!data || !Array.isArray(data.stars)) throw new Error("no stars");
+      for (const k of ["settings", "stats", "daily"]) Object.assign(save[k], data[k] || {});
+      for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "looksViewed", "ach", "story"]) if (data[k] != null) save[k] = data[k];
+      persist();
+      STICK_R = STICK_SIZES[save.settings.stick] || 46;
+      muted = !!save.muted;
+      updateMute();
+      renderSettings();
+      toast(`Progress restored: <b>★ ${totalStars()}</b>`);
+    } catch (e) {
+      toast("That code didn't work. Paste the whole code, starting with ECHO1:");
+    }
+  });
   [...$("setStick").children].forEach(b => b.addEventListener("click", () => {
     save.settings.stick = +b.dataset.v;
     STICK_R = STICK_SIZES[save.settings.stick];
@@ -2671,7 +3024,7 @@
       setTimeout(() => { if (resetArmed) renderSettings(); }, 3500);
       return;
     }
-    save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.looksViewed = 1; save.ach = {};
+    save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.looksViewed = 1; save.ach = {}; save.story = {};
     save.stats = { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 };
     save.daily = { last: "", streak: 0, best: 0, stars: {} };
     persist();

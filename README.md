@@ -43,13 +43,14 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Tap** anywhere to sing (or press Space).
 - **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
 
-**Goal and stars:** find the golden lost lights, then swim into the portal. You get one star for reaching the portal, one for finding every light, and one for singing no more times than the level's par.
+**Goal and stars:** find the golden lost lights, then swim into the portal. You get one star for reaching the portal, one for finding every light, and one for singing no more than the number of times the level suggests. Each new world opens with a short story card.
 
 **Levels**
 
 - 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
 - The first 10 levels are handmade and teach one idea at a time. The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Every generated level is checked so all lights and the portal can be reached.
-- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels.
+- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. From level 31 some caves are taller than the screen and the camera follows Lumi. From level 61 some caves are fully dark: lights and the portal don't glow until your song finds them.
+- Some levels have a special goal: **Quiet caves** give you a limited number of songs, **Rescue caves** hide a lost baby moth you must bring to the portal, and **Race caves** (from level 31) have a timer.
 - Every few levels there's an easier breather level, and the last level of each world is a bigger finale with an extra light.
 - Worlds rotate through eight cave styles, each with its own colours, music key and background sounds: Moonlit Grotto, Mossy Hollow, Amethyst Deep, Ember Caverns, Frost Tunnels, Coral Depths, Golden Mines and Starlight Abyss.
 
@@ -61,15 +62,18 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Glow-moths** follow you and make your light bigger.
 - **Snoozles** push you away if you bump into them.
 - **Light energy** (from level 11): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again.
+- **Rune stones and gates** (from level 25): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
 - **Gloomlings** (from level 41): shadow creatures that drift through rock. When your song reaches them they chase you for a few seconds, and touching one costs light.
 
 **Rewards**
 
 - **Daily cave:** a new cave each day, the same for everyone, with a streak counter.
 - **Lumi's looks:** eight colours, unlocked by collecting stars.
-- **Awards:** twelve achievements, such as finishing a cave without bumping a wall or singing only twice.
+- **Awards:** fourteen achievements, such as finishing a cave without bumping a wall, rescuing baby moths or opening rune gates.
 
-**Settings:** music and sound volume, vibration, joystick size, a high-contrast mode (star-shaped lights and outlined creatures), and erasing progress. Background music builds as you find lights.
+**Settings:** music and sound volume, vibration, joystick size, **Relaxed mode** (no light energy, Gloomlings or race timers, for young players), a high-contrast mode (star-shaped lights and outlined creatures), a **save code** to back up progress or move it to another phone, and erasing progress. Tapping the Settings title five times shows a testing switch that unlocks every level. Background music builds as you find lights.
+
+The daily cave changes at midnight UTC, so it's the same cave for everyone in the world. If a phone struggles to keep up, the game lowers its drawing resolution automatically.
 
 Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button).
 
