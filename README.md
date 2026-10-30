@@ -21,6 +21,8 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | File | What it is |
 | --- | --- |
 | `index.html` | The Skyrise game (the site's home page) |
+| `echo.html` | Echo, a cave-exploring game where you see with sound |
+| `echo.webmanifest`, `echo-icon*.png`, `echo-icon.svg`, `echo-apple-touch-icon.png` | Lets phones install Echo as its own app, with its own icon |
 | `star-defender.html` | Star Defender, an earlier arcade space shooter |
 | `manifest.webmanifest` | Lets phones install the game to the home screen, full screen like an app |
 | `sw.js` | Saves the game for offline play after the first visit |
@@ -29,6 +31,20 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
 
 If you rename the repository, update the site address in the `og:url`, `og:image` and `twitter:image` tags at the top of `index.html`.
+
+## Echo
+
+A little light, lost in the dark. Play it at https://erlan1126.github.io/Test/echo.html.
+
+You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you can sing: each song spreads through the cave like a wave, flowing around corners, and lights up the walls for a moment before they fade back to black.
+
+- **Tap** anywhere to sing (or press Space). **Hold and drag** to swim toward your finger (or use the arrow keys / WASD).
+- **Goal:** find the golden lost lights, then swim into the portal.
+- **Stars:** one for reaching the portal, one for finding every light, and one for using no more songs than the cave's par.
+- **Things you meet:** crystals that keep glowing once your song touches them, purple sound doors that open for a few seconds when your song reaches them, underground currents that carry you along, glow-moths that follow you and make your light bigger, and sleepy Snoozles that push you away if you bump into them.
+- The cave keeps a faint memory of every wall you've seen, so the map slowly fills in.
+
+There are 10 caves, and each one unlocks when you finish the one before. Stars and best scores are saved in the browser. Sounds are generated in the browser, with an echo effect (there's a mute button), and phones that support it give a small vibration when you bump a wall.
 
 ## Star Defender
 

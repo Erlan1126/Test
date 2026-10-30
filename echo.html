@@ -1,0 +1,1469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Echo</title>
+<meta name="description" content="A little light lost in a dark cave. Tap to sing, and your echo shows you the way.">
+<meta name="theme-color" content="#05060f">
+<link rel="manifest" href="echo.webmanifest">
+<link rel="icon" href="echo-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="echo-apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Echo">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #e9f3ff;
+    --dim: #8ea3c8;
+    --cyan: #7ee8ff;
+    --gold: #ffd36e;
+    --violet: #b48cff;
+    --panel: rgba(14, 20, 44, 0.82);
+    --line: rgba(126, 232, 255, 0.22);
+    --top: env(safe-area-inset-top, 0px);
+    --bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #05060f;
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: none;
+    font-family: "Fredoka", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  button {
+    font: inherit;
+    color: inherit;
+    border: 0;
+    cursor: pointer;
+    background: none;
+  }
+
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: calc(24px + var(--top)) 16px calc(24px + var(--bottom));
+    text-align: center;
+  }
+  .screen.on { display: flex; }
+  .dim-bg { background: rgba(3, 4, 12, 0.6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+
+  .logo {
+    font-size: clamp(64px, 22vw, 112px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0;
+    color: #f2fbff;
+    text-shadow: 0 0 18px rgba(126, 232, 255, 0.9), 0 0 48px rgba(126, 232, 255, 0.5), 0 0 90px rgba(180, 140, 255, 0.45);
+  }
+  .tagline { color: var(--dim); font-size: 18px; margin: 14px 0 36px; }
+  .btn {
+    display: block;
+    width: min(280px, 100%);
+    padding: 14px 20px;
+    margin: 6px auto;
+    border-radius: 999px;
+    font-size: 20px;
+    font-weight: 600;
+    background: rgba(126, 232, 255, 0.1);
+    border: 1.5px solid rgba(126, 232, 255, 0.45);
+    box-shadow: 0 0 22px rgba(126, 232, 255, 0.15) inset;
+    transition: transform 0.12s, background 0.2s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.main {
+    background: linear-gradient(180deg, #8ff0ff, #4fc4ee);
+    color: #062033;
+    border-color: transparent;
+    box-shadow: 0 0 28px rgba(126, 232, 255, 0.55);
+  }
+  .row { display: flex; gap: 10px; justify-content: center; width: min(340px, 100%); }
+  .row .btn { margin: 6px 0; font-size: 17px; padding: 12px 10px; }
+  .howto { color: var(--dim); font-size: 15px; margin-top: 28px; line-height: 1.6; }
+  .howto b { color: var(--ink); font-weight: 500; }
+  .total { color: var(--gold); font-size: 16px; margin-top: 10px; min-height: 20px; }
+
+  /* Level select */
+  .levels-title { font-size: 30px; font-weight: 600; margin: 0 0 4px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: min(380px, 100%);
+    margin: 18px 0;
+  }
+  .card {
+    padding: 12px 10px;
+    border-radius: 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: transform 0.12s;
+  }
+  .card:active { transform: scale(0.96); }
+  .card .num { font-size: 13px; color: var(--dim); }
+  .card .name { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .st { font-size: 15px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.18); }
+  .card .st i { font-style: normal; color: var(--gold); text-shadow: 0 0 8px rgba(255, 211, 110, 0.7); }
+  .card.locked { opacity: 0.38; }
+  .card.locked .name::before { content: "🔒 "; }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: calc(10px + var(--top)) 12px 8px;
+    pointer-events: none;
+  }
+  #hud.on { display: flex; }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(10, 14, 32, 0.72);
+    border: 1px solid var(--line);
+    font-size: 16px;
+    white-space: nowrap;
+  }
+  .icon-btn { width: 38px; justify-content: center; padding: 0; pointer-events: auto; font-size: 17px; }
+  #hud .mid { flex: 1; min-width: 0; text-align: center; font-size: 15px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #hud .mid b { color: var(--ink); font-weight: 500; }
+  #lightsPill { color: var(--gold); }
+  #pingsPill small { color: var(--dim); font-size: 13px; }
+
+  #hint {
+    position: fixed;
+    left: 50%;
+    bottom: calc(22px + var(--bottom));
+    transform: translateX(-50%) translateY(10px);
+    max-width: calc(100% - 32px);
+    padding: 10px 18px;
+    border-radius: 20px;
+    background: rgba(10, 14, 32, 0.8);
+    border: 1px solid var(--line);
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.4s, transform 0.4s;
+    pointer-events: none;
+    text-align: center;
+  }
+  #hint.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Result */
+  .panel {
+    width: min(340px, 100%);
+    padding: 26px 20px 18px;
+    border-radius: 26px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: 0 0 60px rgba(126, 232, 255, 0.12);
+  }
+  .panel h2 { margin: 0; font-size: 28px; font-weight: 600; }
+  .panel .sub { color: var(--dim); margin: 4px 0 0; font-size: 15px; }
+  .stars { display: flex; justify-content: center; gap: 10px; margin: 18px 0 8px; font-size: 46px; }
+  .stars span { color: rgba(255, 255, 255, 0.12); transform: scale(0.4); opacity: 0; transition: transform 0.35s cubic-bezier(.3,1.8,.5,1), opacity 0.3s; }
+  .stars span.show { transform: scale(1); opacity: 1; }
+  .stars span.got { color: var(--gold); text-shadow: 0 0 16px rgba(255, 211, 110, 0.85); }
+  .goals { list-style: none; padding: 0; margin: 6px 0 16px; text-align: left; font-size: 15px; }
+  .goals li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 4px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); color: var(--dim); }
+  .goals li.ok { color: var(--ink); }
+  .goals li span:first-child::before { content: "☆ "; color: rgba(255,255,255,0.3); }
+  .goals li.ok span:first-child::before { content: "★ "; color: var(--gold); }
+  .newbest { color: var(--cyan); font-size: 14px; min-height: 18px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <button class="pill icon-btn" id="pauseBtn" aria-label="Pause">❚❚</button>
+  <div class="pill" id="lightsPill">✦ 0/0</div>
+  <div class="mid" id="levelName"></div>
+  <div class="pill" id="pingsPill">♪ 0 <small>/ 0</small></div>
+  <button class="pill icon-btn" id="muteBtn" aria-label="Mute">🔊</button>
+</div>
+<div id="hint"></div>
+
+<div class="screen on" id="titleScreen">
+  <h1 class="logo">Echo</h1>
+  <p class="tagline">A little light, lost in the dark.</p>
+  <button class="btn main" id="playBtn">Play</button>
+  <button class="btn" id="levelsBtn">Caves</button>
+  <div class="total" id="totalStars"></div>
+  <p class="howto"><b>Tap</b> to sing and see the cave<br><b>Hold &amp; drag</b> to swim</p>
+</div>
+
+<div class="screen dim-bg" id="levelScreen">
+  <h2 class="levels-title">Caves</h2>
+  <div class="total" id="levelsTotal"></div>
+  <div class="grid" id="levelGrid"></div>
+  <button class="btn" id="levelsBack">Back</button>
+</div>
+
+<div class="screen dim-bg" id="pauseScreen">
+  <div class="panel">
+    <h2>Paused</h2>
+    <p class="sub" id="pauseSub"></p>
+    <div style="height:18px"></div>
+    <button class="btn main" id="resumeBtn">Resume</button>
+    <button class="btn" id="restartBtn">Restart cave</button>
+    <button class="btn" id="quitBtn">All caves</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="resultScreen">
+  <div class="panel">
+    <h2 id="resultTitle">Cave cleared!</h2>
+    <p class="sub" id="resultSub"></p>
+    <div class="stars" id="resultStars"><span>★</span><span>★</span><span>★</span></div>
+    <div class="newbest" id="newBest"></div>
+    <ul class="goals">
+      <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
+      <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
+      <li id="goal3"><span>Sing par or less</span><span id="g3v"></span></li>
+    </ul>
+    <button class="btn main" id="nextBtn">Next cave</button>
+    <div class="row">
+      <button class="btn" id="retryBtn">Retry</button>
+      <button class="btn" id="resultLevels">Caves</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- Caves ----------
+  // # rock   . open   S start   E portal   o lost light   c crystal
+  // D sound door   b glow-moth   z sleepy Snoozle   > < ^ v water current
+  const LEVELS = [
+    { name: "First Song", par: 4, hint: "first", map: [
+      "###########",
+      "###########",
+      "####.E.####",
+      "####...####",
+      "#####.#####",
+      "##.......##",
+      "##.#####.##",
+      "##.#...#.##",
+      "##.#.o.#.##",
+      "##.#...#.##",
+      "##.##.##.##",
+      "##.......##",
+      "#####.#####",
+      "####...####",
+      "####.S.####",
+      "####...####",
+      "###########",
+      "###########",
+    ]},
+    { name: "Crystal Path", par: 6, hint: "Crystals keep glowing once your song touches them", map: [
+      "###########",
+      "####.E.####",
+      "####...####",
+      "#####.#####",
+      "#c....#####",
+      "#.###....c#",
+      "#.###.##..#",
+      "#...#.##.##",
+      "###.#.o#.##",
+      "#o..#..#.##",
+      "#####.##..#",
+      "#.......#.#",
+      "#.#####.#.#",
+      "#.#c..#...#",
+      "#.#.#.#####",
+      "#...#.S.###",
+      "#####...###",
+      "###########",
+    ]},
+    { name: "Three Lights", par: 7, hint: "Three lights are hiding in here. Can you find them all?", map: [
+      "###########",
+      "###..E..###",
+      "###.....###",
+      "####.#.####",
+      "#..o.#....#",
+      "#.##.#.##.#",
+      "#.#..#..#.#",
+      "#.#.###.#c#",
+      "#...#o#...#",
+      "###.#.#.###",
+      "#c..#.#..o#",
+      "#.###.###.#",
+      "#.....#...#",
+      "###.#.#.#.#",
+      "#...#...#.#",
+      "#.#.#.#.#.#",
+      "#...#S#...#",
+      "###########",
+    ]},
+    { name: "Sound Doors", par: 7, hint: "Purple doors open when your song reaches them, but only for a moment", map: [
+      "###########",
+      "####.E.####",
+      "####...####",
+      "#####D#####",
+      "##.......##",
+      "##.#####.##",
+      "##.#.o.#.##",
+      "##.#...#.##",
+      "##.##D##.##",
+      "##.......##",
+      "#####.#####",
+      "#o..#.#..c#",
+      "#.#.#.#.#.#",
+      "#.#.D.D.#.#",
+      "#.#.#.#.#.#",
+      "#...#S#...#",
+      "###########",
+      "###########",
+    ]},
+    { name: "The Current", par: 6, hint: "Underground rivers carry you along. Go with the flow!", map: [
+      "###########",
+      "#####E#####",
+      "####...####",
+      "####.#.####",
+      "#>>>>>>>v.#",
+      "#^#####.v.#",
+      "#^#.o.#.v.#",
+      "#^#.#.#.v.#",
+      "#^#...#.v.#",
+      "#^###.#.v.#",
+      "#^....#.v.#",
+      "#^#####.v.#",
+      "#^<<<<<<<.#",
+      "#.#######.#",
+      "#...o.....#",
+      "#####.#####",
+      "#####S#####",
+      "###########",
+    ]},
+    { name: "Glow Friends", par: 7, hint: "Glow-moths follow you and make your light bigger", map: [
+      "###########",
+      "#E..#.....#",
+      "###.#.###.#",
+      "#b..#.#o..#",
+      "#.###.#.###",
+      "#...#...#b#",
+      "###.#.#.#.#",
+      "#o#...#...#",
+      "#.###.#####",
+      "#.....#..o#",
+      "#.#####.#.#",
+      "#...b.#.#.#",
+      "###.#.#.#.#",
+      "#...#...#.#",
+      "#.#######.#",
+      "#....S....#",
+      "###########",
+      "###########",
+    ]},
+    { name: "Sleepy Hollow", par: 6, hint: "Shh… don't bump the sleepy Snoozles", map: [
+      "###########",
+      "####.E.####",
+      "####...####",
+      "###.....###",
+      "###.z.z.###",
+      "###.....###",
+      "#####.#####",
+      "#o....#...#",
+      "#.###.#.#.#",
+      "#.#.....#.#",
+      "#.#.z.z.#.#",
+      "#.#.....#.#",
+      "#.###.###.#",
+      "#...#.#..o#",
+      "###.....###",
+      "###.z.z.###",
+      "###..S..###",
+      "###########",
+    ]},
+    { name: "Echo Maze", par: 9, hint: "Remember what you hear. The cave keeps a faint map of it", map: [
+      "###########",
+      "#E....#...#",
+      "#####.#.#.#",
+      "#o..#...#.#",
+      "#.#.#####.#",
+      "#.#...c...#",
+      "#.#####.###",
+      "#...#...#o#",
+      "###.#.###.#",
+      "#c#.#.....#",
+      "#.#.#####.#",
+      "#...#...#.#",
+      "#.###.#.#.#",
+      "#.....#.#.#",
+      "#######.#.#",
+      "#o......#.#",
+      "#####S....#",
+      "###########",
+    ]},
+    { name: "Undertow", par: 9, map: [
+      "###########",
+      "#....E....#",
+      "#.#######.#",
+      "#.#c.o..#.#",
+      "#.#.###.#.#",
+      "#...###...#",
+      "###D###D###",
+      "#<<<<<<<<<#",
+      "#.#######.#",
+      "#o#.....#.#",
+      "#.#.###.#.#",
+      "#.#.#o#.#.#",
+      "#...#.#...#",
+      "#.###.###.#",
+      "#>>>>.<<<<#",
+      "#.#######.#",
+      "#....S...o#",
+      "###########",
+    ]},
+    { name: "Heart of the Cave", par: 10, hint: "The last cave. Everything you've learned, all at once", map: [
+      "###########",
+      "#...#E#...#",
+      "#.#.#D#.#.#",
+      "#.#.....#.#",
+      "#b#.z.z.#c#",
+      "#.#.....#.#",
+      "#.###.###.#",
+      "#.....#o..#",
+      "#####.#.###",
+      "#o.D..#...#",
+      "#.#.###>>v#",
+      "#.#.....#v#",
+      "#.#z#.#.#v#",
+      "#...#.#.<<#",
+      "###.#.#####",
+      "#c..#.....#",
+      "#####S#..o#",
+      "###########",
+    ]},
+  ];
+
+  const WAVE_SPEED = 8.5;   // tiles per second
+  const WAVE_RANGE = 7.5;   // tiles the song travels
+  const MEMORY = 0.11;      // how bright remembered walls stay
+  const SWIM_ACC = 13;
+  const SWIM_MAX = 3.4;
+  const CURRENT_ACC = 8;
+  const DOOR_TIME = 5;
+  const LUMI_R = 0.3;
+  const CRITTER_R = 0.32;
+
+  // ---------- Save ----------
+  const SAVE_KEY = "echo-save-v1";
+  let save = { stars: [], best: [], muted: false };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s && Array.isArray(s.stars)) save = Object.assign(save, s);
+  } catch (e) {}
+  function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+  const unlocked = i => i === 0 || (save.stars[i - 1] || 0) > 0;
+  const totalStars = () => save.stars.reduce((a, b) => a + (b || 0), 0);
+
+  // ---------- Audio ----------
+  let AC = null, master = null, echoBus = null, muted = !!save.muted;
+  const SCALE = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 783.99, 659.25];
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        master = AC.createGain();
+        master.gain.value = muted ? 0 : 0.7;
+        master.connect(AC.destination);
+        // A feedback delay gives every sound a cave echo.
+        echoBus = AC.createGain();
+        const delay = AC.createDelay(1);
+        delay.delayTime.value = 0.27;
+        const fb = AC.createGain();
+        fb.gain.value = 0.4;
+        const lp = AC.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 2000;
+        echoBus.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(master);
+        startDrone();
+      } catch (e) { AC = null; }
+    }
+    if (AC && AC.state === "suspended") AC.resume();
+  }
+  function note(freq, o = {}) {
+    if (!AC) return;
+    const t = AC.currentTime + (o.at || 0);
+    const dur = o.dur || 0.5, vol = o.vol || 0.15;
+    const osc = AC.createOscillator(), g = AC.createGain();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(freq, t);
+    if (o.glide) osc.frequency.exponentialRampToValueAtTime(o.glide, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + (o.attack || 0.008));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let out = g;
+    if (o.lowpass) {
+      const f = AC.createBiquadFilter();
+      f.type = "lowpass"; f.frequency.value = o.lowpass;
+      g.connect(f); out = f;
+    }
+    osc.connect(g);
+    out.connect(master);
+    if (o.echo !== 0) {
+      const s = AC.createGain();
+      s.gain.value = o.echo == null ? 0.6 : o.echo;
+      out.connect(s); s.connect(echoBus);
+    }
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  }
+  function startDrone() {
+    const g = AC.createGain();
+    g.gain.value = 0.022;
+    g.connect(master);
+    [55, 82.41, 110.3].forEach((f, i) => {
+      const o = AC.createOscillator();
+      o.frequency.value = f;
+      const lfo = AC.createOscillator(), lg = AC.createGain();
+      lfo.frequency.value = 0.07 + i * 0.05;
+      lg.gain.value = 0.5;
+      const vg = AC.createGain();
+      vg.gain.value = 0.6;
+      lfo.connect(lg); lg.connect(vg.gain);
+      o.connect(vg); vg.connect(g);
+      o.start(); lfo.start();
+    });
+  }
+  const sfx = {
+    ping(n) {
+      const f = SCALE[n % SCALE.length];
+      note(f, { dur: 0.9, vol: 0.17, echo: 0.8 });
+      note(f * 2, { dur: 0.5, vol: 0.035, type: "triangle", echo: 0.5 });
+    },
+    bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
+    crystal() { note(1567.98, { dur: 1.2, vol: 0.06, echo: 0.9 }); note(2093, { at: 0.06, dur: 0.9, vol: 0.03, echo: 0.9 }); },
+    light() { [783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => note(f, { at: i * 0.07, dur: 0.6, vol: 0.1 })); },
+    door() { note(196, { dur: 0.7, vol: 0.12, type: "sawtooth", lowpass: 600, attack: 0.08, glide: 294 }); },
+    doorClose() { note(220, { dur: 0.4, vol: 0.06, type: "sawtooth", lowpass: 400, glide: 140, echo: 0.2 }); },
+    moth() { note(1318.5, { dur: 0.25, vol: 0.06 }); note(1760, { at: 0.08, dur: 0.35, vol: 0.06 }); },
+    grumble() { note(210, { dur: 0.45, vol: 0.13, type: "sawtooth", lowpass: 700, glide: 85, echo: 0.3 }); },
+    win() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, { at: i * 0.11, dur: 1.4, vol: 0.09 }));
+      note(261.63, { dur: 1.8, vol: 0.08, type: "triangle" });
+    },
+    star(i) { note([1046.5, 1318.5, 1567.98][i], { dur: 0.5, vol: 0.08 }); },
+  };
+  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+  // ---------- Canvas ----------
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, DPR = 1, TS = 32, OX = 0, OY = 0, bgGrad = null, vignette = null;
+  const $ = id => document.getElementById(id);
+
+  function makeGlow(r, g, b) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const x = c.getContext("2d");
+    const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, `rgba(${r},${g},${b},1)`);
+    gr.addColorStop(0.25, `rgba(${r},${g},${b},0.55)`);
+    gr.addColorStop(0.6, `rgba(${r},${g},${b},0.14)`);
+    gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 128, 128);
+    return c;
+  }
+  const GLOW = {
+    cyan: makeGlow(126, 232, 255),
+    gold: makeGlow(255, 205, 100),
+    violet: makeGlow(180, 130, 255),
+    pink: makeGlow(255, 140, 200),
+    green: makeGlow(150, 255, 190),
+    white: makeGlow(255, 255, 255),
+  };
+  function glow(sprite, x, y, radius, alpha) {
+    if (alpha <= 0.003) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+    ctx.globalAlpha = 1;
+  }
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    bgGrad = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.8);
+    bgGrad.addColorStop(0, "#0b1030");
+    bgGrad.addColorStop(1, "#03040b");
+    vignette = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.6)");
+    layout();
+  }
+  function layout() {
+    if (!L) return;
+    const top = 62 + safeInset("top");
+    const bottom = 16 + safeInset("bottom");
+    TS = Math.floor(Math.min((W - 16) / L.cols, (H - top - bottom) / L.rows));
+    OX = Math.round((W - TS * L.cols) / 2);
+    OY = Math.round(top + (H - top - bottom - TS * L.rows) / 2);
+  }
+  const insetProbe = document.createElement("div");
+  insetProbe.style.cssText = "position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)";
+  document.body.appendChild(insetProbe);
+  function safeInset(side) { return parseFloat(getComputedStyle(insetProbe)["padding" + (side === "top" ? "Top" : "Bottom")]) || 0; }
+
+  // ---------- Level state ----------
+  let L = null;          // the cave being played
+  let levelIndex = 0;
+  let screen = "title";  // title | levels | play | pause | result
+
+  function loadLevel(i) {
+    levelIndex = i;
+    const def = LEVELS[i];
+    const rows = def.map.length, cols = def.map[0].length, n = rows * cols;
+    L = {
+      def, rows, cols, n,
+      tile: new Array(n),       // "#", "D" or "."
+      flow: new Array(n).fill(null),
+      door: new Float32Array(n),   // seconds a door stays open
+      doorAnim: new Float32Array(n),
+      lit: new Float32Array(n),
+      glowT: new Float32Array(n),
+      glow: new Float32Array(n),
+      seen: new Uint8Array(n),
+      lights: [], crystals: [], critters: [], moths: [],
+      exit: null,
+      lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
+      waves: [], particles: [],
+      pings: 0, time: 0, got: 0,
+      pingCd: 0, bumpCd: 0,
+      ending: 0, done: false,
+      tut: 0, moved: 0,
+    };
+    const dirs = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] };
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const ch = def.map[y][x], i2 = y * cols + x;
+      L.tile[i2] = ch === "#" ? "#" : ch === "D" ? "D" : ".";
+      const cx = x + 0.5, cy = y + 0.5;
+      if (dirs[ch]) L.flow[i2] = dirs[ch];
+      if (ch === "S") { L.lumi.x = cx; L.lumi.y = cy; }
+      if (ch === "E") L.exit = { x: cx, y: cy, i: i2 };
+      if (ch === "o") L.lights.push({ x: cx, y: cy, i: i2, got: false, ph: Math.random() * 6 });
+      if (ch === "c") L.crystals.push({ x: cx, y: cy, i: i2, on: 0, cells: null });
+      if (ch === "z") L.critters.push({ x: cx, y: cy, hx: cx, hy: cy, i: i2, awake: 0, ph: Math.random() * 6 });
+      if (ch === "b") L.moths.push({ x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6, idx: 0 });
+    }
+    layout();
+    updateHud();
+    setHint(def.hint === "first" ? "Tap anywhere to sing 🎵" : def.hint || "", def.hint === "first" ? 0 : 5);
+  }
+
+  const idx = (x, y) => y * L.cols + x;
+  function solidAt(x, y) {
+    if (x < 0 || y < 0 || x >= L.cols || y >= L.rows) return true;
+    const i = y * L.cols + x, t = L.tile[i];
+    return t === "#" || (t === "D" && L.door[i] <= 0);
+  }
+
+  // Distances the song travels from a point, flowing around corners but never through rock.
+  function soundMap(px, py, maxD) {
+    const n = L.n, dist = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
+    const sx = Math.floor(px), sy = Math.floor(py);
+    if (solidAt(sx, sy)) return dist;
+    dist[idx(sx, sy)] = Math.hypot(px - sx - 0.5, py - sy - 0.5);
+    for (;;) {
+      let best = -1, bd = Infinity;
+      for (let i = 0; i < n; i++) if (!done[i] && dist[i] < bd) { bd = dist[i]; best = i; }
+      if (best < 0 || bd > maxD) break;
+      done[best] = 1;
+      const x = best % L.cols, y = (best / L.cols) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx, ny = y + dy;
+        if (solidAt(nx, ny)) continue;
+        if (dx && dy && (solidAt(x + dx, y) || solidAt(x, y + dy))) continue;
+        const j = idx(nx, ny), nd = bd + (dx && dy ? 1.414 : 1);
+        if (nd < dist[j]) dist[j] = nd;
+      }
+    }
+    return dist;
+  }
+
+  // Call fn(neighbourIndex, isSide) for the rock around an open tile.
+  function eachSolidNeighbour(i, fn) {
+    const x = i % L.cols, y = (i / L.cols) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= L.cols || ny >= L.rows) continue;
+      if (solidAt(nx, ny)) fn(idx(nx, ny), !(dx && dy));
+    }
+  }
+
+  // ---------- Actions ----------
+  function ping() {
+    if (screen !== "play" || !L || L.ending || L.pingCd > 0) return;
+    L.pingCd = 0.4;
+    L.pings++;
+    L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, WAVE_RANGE + 1), r: 0, prev: -1 });
+    L.lumi.sing = 0.45;
+    sfx.ping(L.pings - 1);
+    buzz(8);
+    for (let k = 0; k < 14; k++) {
+      const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
+      spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "cyan", 0.12);
+    }
+    if (L.def.hint === "first" && L.tut === 0) { L.tut = 1; setHint("Now hold and drag to swim", 0); }
+    updateHud();
+  }
+
+  function reveal(i) {
+    L.lit[i] = 1;
+    L.seen[i] = 1;
+    eachSolidNeighbour(i, (j, side) => {
+      L.lit[j] = 1;
+      L.seen[j] = 1;
+      if (side && L.tile[j] === "D") openDoor(j);
+    });
+    for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
+  }
+
+  function openDoor(j) {
+    if (L.door[j] <= 0) sfx.door();
+    L.door[j] = DOOR_TIME;
+  }
+
+  function lightCrystal(c) {
+    c.on = 0.001;
+    const d = soundMap(c.x, c.y, 2.6);
+    c.cells = [];
+    for (let i = 0; i < L.n; i++) if (d[i] < 2.6) {
+      const v = 1 - d[i] / 2.8;
+      c.cells.push(i, v);
+      eachSolidNeighbour(i, j => c.cells.push(j, v * 0.95));
+    }
+    sfx.crystal();
+    for (let k = 0; k < 10; k++) {
+      const a = Math.random() * Math.PI * 2;
+      spark(c.x, c.y, Math.cos(a) * 1.2, Math.sin(a) * 1.2, 0.9, "violet", 0.1);
+    }
+  }
+
+  function spark(x, y, vx, vy, life, color, size) {
+    if (L.particles.length > 300) return;
+    L.particles.push({ x, y, vx, vy, life, max: life, color, size });
+  }
+
+  // ---------- Input ----------
+  const pointers = new Map();
+  let steer = null;
+  const keys = {};
+
+  canvas.addEventListener("pointerdown", e => {
+    audio();
+    if (screen === "title") return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
+    if (steer == null) steer = e.pointerId;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  canvas.addEventListener("pointermove", e => {
+    const p = pointers.get(e.pointerId);
+    if (!p) return;
+    p.x = e.clientX; p.y = e.clientY;
+    if (Math.hypot(p.x - p.sx, p.y - p.sy) > 14) p.moved = true;
+  });
+  function pointerEnd(e) {
+    const p = pointers.get(e.pointerId);
+    if (!p) return;
+    pointers.delete(e.pointerId);
+    if (!p.moved && performance.now() - p.t < 260 && e.type === "pointerup") ping();
+    if (steer === e.pointerId) steer = pointers.size ? pointers.keys().next().value : null;
+  }
+  canvas.addEventListener("pointerup", pointerEnd);
+  canvas.addEventListener("pointercancel", pointerEnd);
+
+  window.addEventListener("keydown", e => {
+    audio();
+    keys[e.key.toLowerCase()] = true;
+    if (screen === "play") {
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) ping(); }
+      if (e.key === "Escape" || e.key.toLowerCase() === "p") pause();
+    } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
+  });
+  window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+
+  // ---------- Update ----------
+  function update(dt) {
+    L.time += dt;
+    L.pingCd -= dt;
+    L.bumpCd -= dt;
+    const lumi = L.lumi;
+
+    // Steering: finger target or keyboard.
+    let ax = 0, ay = 0;
+    const p = steer != null ? pointers.get(steer) : null;
+    if (p && !L.ending && (p.moved || performance.now() - p.t > 150)) {
+      const tx = (p.x - OX) / TS, ty = (p.y - OY) / TS;
+      const dx = tx - lumi.x, dy = ty - lumi.y, d = Math.hypot(dx, dy);
+      if (d > 0.08) {
+        const k = SWIM_ACC * Math.min(1, d / 0.7) / d;
+        ax += dx * k; ay += dy * k;
+      }
+    }
+    if (!L.ending) {
+      const kx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
+      const ky = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+      if (kx || ky) { const m = Math.hypot(kx, ky); ax += kx / m * SWIM_ACC; ay += ky / m * SWIM_ACC; }
+    }
+    if (ax || ay) {
+      L.moved += dt;
+      if (L.def.hint === "first" && L.tut === 1 && L.moved > 0.6) { L.tut = 2; setHint("Find the golden light, then the portal ✦", 6); }
+    }
+
+    // Water currents push you along.
+    const ti = idx(Math.floor(lumi.x), Math.floor(lumi.y));
+    const f = L.flow[ti];
+    if (f) { ax += f[0] * CURRENT_ACC; ay += f[1] * CURRENT_ACC; }
+
+    lumi.vx += ax * dt; lumi.vy += ay * dt;
+    const damp = Math.exp(-(ax || ay ? 2.2 : 3.5) * dt);
+    lumi.vx *= damp; lumi.vy *= damp;
+    const sp = Math.hypot(lumi.vx, lumi.vy), maxSp = SWIM_MAX * (f ? 1.35 : 1);
+    if (sp > maxSp) { lumi.vx *= maxSp / sp; lumi.vy *= maxSp / sp; }
+    if (sp > 0.25) lumi.look = Math.atan2(lumi.vy, lumi.vx);
+
+    if (!L.ending) {
+      const steps = 2;
+      for (let s = 0; s < steps; s++) {
+        lumi.x += lumi.vx * dt / steps;
+        lumi.y += lumi.vy * dt / steps;
+        collide(lumi);
+      }
+    }
+    lumi.sing = Math.max(0, lumi.sing - dt);
+    lumi.squash = Math.max(0, lumi.squash - dt * 4);
+    lumi.blink -= dt;
+    if (lumi.blink < -0.12) lumi.blink = 2 + Math.random() * 3;
+    if (Math.random() < dt * 14 && sp > 0.5) spark(lumi.x - lumi.vx * 0.05, lumi.y - lumi.vy * 0.05, -lumi.vx * 0.15, -lumi.vy * 0.15, 0.5, "cyan", 0.06);
+
+    // Doors close again after a while (never on top of Lumi).
+    for (let i = 0; i < L.n; i++) {
+      if (L.tile[i] !== "D") continue;
+      if (L.door[i] > 0) {
+        L.door[i] -= dt;
+        if (L.door[i] <= 0) {
+          const x = i % L.cols, y = (i / L.cols) | 0;
+          const nx = Math.max(x, Math.min(lumi.x, x + 1)), ny = Math.max(y, Math.min(lumi.y, y + 1));
+          if (Math.hypot(lumi.x - nx, lumi.y - ny) < LUMI_R + 0.02) L.door[i] = 0.15;
+          else { L.door[i] = 0; sfx.doorClose(); L.lit[i] = Math.max(L.lit[i], 0.6); }
+        }
+      }
+      L.doorAnim[i] += ((L.door[i] > 0 ? 1 : 0) - L.doorAnim[i]) * Math.min(1, dt * 8);
+    }
+
+    // Song waves spread through the cave.
+    for (let k = L.waves.length - 1; k >= 0; k--) {
+      const w = L.waves[k];
+      w.r += WAVE_SPEED * dt;
+      for (let i = 0; i < L.n; i++) {
+        const d = w.dist[i];
+        if (d > w.prev && d <= w.r && d <= WAVE_RANGE) reveal(i);
+      }
+      w.prev = w.r;
+      if (w.r > WAVE_RANGE + 1.5) L.waves.splice(k, 1);
+    }
+
+    // Light: song fades, Lumi, moths and crystals glow.
+    for (let i = 0; i < L.n; i++) { L.lit[i] = Math.max(0, L.lit[i] - dt * 0.42); L.glowT[i] = 0; }
+    const followers = L.moths.filter(m => m.following).length;
+    const R = 1.5 + followers * 0.75;
+    const near = soundMap(lumi.x, lumi.y, R);
+    for (let i = 0; i < L.n; i++) if (near[i] < R) {
+      const v = 1 - near[i] / R;
+      if (v > L.glowT[i]) L.glowT[i] = v;
+      eachSolidNeighbour(i, j => { const vv = v * 0.9; if (vv > L.glowT[j]) L.glowT[j] = vv; if (vv > 0.35) L.seen[j] = 1; });
+    }
+    for (const c of L.crystals) {
+      if (!c.on) continue;
+      c.on = Math.min(1, c.on + dt * 1.5);
+      for (let q = 0; q < c.cells.length; q += 2) {
+        const v = c.cells[q + 1] * c.on * 0.85, j = c.cells[q];
+        if (v > L.glowT[j]) L.glowT[j] = v;
+        L.seen[j] = 1;
+      }
+    }
+    const blend = Math.min(1, dt * 7);
+    for (let i = 0; i < L.n; i++) L.glow[i] += (L.glowT[i] - L.glow[i]) * blend;
+
+    // Lost lights.
+    for (const o of L.lights) {
+      if (o.got || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
+      o.got = true;
+      L.got++;
+      sfx.light();
+      buzz(20);
+      for (let k = 0; k < 24; k++) {
+        const a = Math.random() * Math.PI * 2, s = 0.6 + Math.random() * 2;
+        spark(o.x, o.y, Math.cos(a) * s, Math.sin(a) * s, 0.9, "gold", 0.1);
+      }
+      updateHud();
+      if (L.got === L.lights.length && L.lights.length > 1) setHint("All lights found! Now find the portal", 3.5);
+    }
+
+    // Glow-moths.
+    let fi = 0;
+    for (const m of L.moths) {
+      m.ph += dt;
+      if (!m.following && Math.hypot(m.x - lumi.x, m.y - lumi.y) < 0.7) {
+        m.following = true;
+        sfx.moth();
+        buzz(10);
+      }
+      let tx, ty;
+      if (m.following) {
+        const a = L.time * 1.6 + fi * (Math.PI * 2 / Math.max(1, followers));
+        tx = lumi.x + Math.cos(a) * 0.6; ty = lumi.y + Math.sin(a) * 0.45 - 0.15;
+        fi++;
+      } else {
+        tx = m.hx + Math.sin(m.ph * 1.3) * 0.12; ty = m.hy + Math.cos(m.ph * 0.9) * 0.1;
+      }
+      m.x += (tx - m.x) * Math.min(1, dt * 4);
+      m.y += (ty - m.y) * Math.min(1, dt * 4);
+    }
+
+    // Snoozles push you away if you bump them.
+    for (const c of L.critters) {
+      c.ph += dt;
+      c.awake = Math.max(0, c.awake - dt);
+      const dx = lumi.x - c.x, dy = lumi.y - c.y, d = Math.hypot(dx, dy);
+      if (d < LUMI_R + CRITTER_R && !L.ending) {
+        const nx = d > 0.001 ? dx / d : 0, ny = d > 0.001 ? dy / d : 1;
+        lumi.x = c.x + nx * (LUMI_R + CRITTER_R + 0.01);
+        lumi.y = c.y + ny * (LUMI_R + CRITTER_R + 0.01);
+        lumi.vx = nx * 4.5; lumi.vy = ny * 4.5;
+        collide(lumi);
+        lumi.squash = 1;
+        if (c.awake < 1) { sfx.grumble(); buzz(35); }
+        c.awake = 1.8;
+        L.lit[c.i] = 1;
+        eachSolidNeighbour(c.i, j => { L.lit[j] = Math.max(L.lit[j], 0.8); L.seen[j] = 1; });
+      }
+      const wob = c.awake > 0 ? Math.sin(c.ph * 30) * 0.03 * c.awake : 0;
+      c.x = c.hx + wob;
+    }
+
+    // Portal.
+    if (!L.ending && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
+      L.ending = 0.001;
+      sfx.win();
+      buzz([20, 40, 20]);
+      setHint("", 0);
+    }
+    if (L.ending) {
+      L.ending += dt;
+      lumi.x += (L.exit.x - lumi.x) * Math.min(1, dt * 6);
+      lumi.y += (L.exit.y - lumi.y) * Math.min(1, dt * 6);
+      if (L.ending > 1.1 && !L.done) { L.done = true; finish(); }
+    }
+
+    for (let k = L.particles.length - 1; k >= 0; k--) {
+      const q = L.particles[k];
+      q.life -= dt;
+      if (q.life <= 0) { L.particles.splice(k, 1); continue; }
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      q.vx *= 0.96; q.vy *= 0.96;
+    }
+
+    updateHint(dt);
+  }
+
+  function collide(e) {
+    let bump = 0;
+    const r = LUMI_R;
+    const x0 = Math.floor(e.x - r), x1 = Math.floor(e.x + r), y0 = Math.floor(e.y - r), y1 = Math.floor(e.y + r);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (!solidAt(tx, ty)) continue;
+      const nx = Math.max(tx, Math.min(e.x, tx + 1)), ny = Math.max(ty, Math.min(e.y, ty + 1));
+      let dx = e.x - nx, dy = e.y - ny, d = Math.hypot(dx, dy);
+      if (d >= r) continue;
+      if (d < 1e-6) { dx = e.x - (tx + 0.5); dy = e.y - (ty + 0.5); d = Math.hypot(dx, dy) || 1; e.x += dx / d * 0.05; e.y += dy / d * 0.05; continue; }
+      dx /= d; dy /= d;
+      e.x += dx * (r - d); e.y += dy * (r - d);
+      const vn = e.vx * dx + e.vy * dy;
+      if (vn < 0) { e.vx -= vn * dx * 1.25; e.vy -= vn * dy * 1.25; bump = Math.max(bump, -vn); }
+      if (-vn > 1.1) {
+        const j = idx(tx, ty);
+        L.lit[j] = Math.max(L.lit[j], 0.7);
+        L.seen[j] = 1;
+      }
+    }
+    if (bump > 1.1 && L.bumpCd <= 0) {
+      L.bumpCd = 0.25;
+      e.squash = Math.min(1, bump / 3);
+      sfx.bump();
+      buzz(12);
+      for (let k = 0; k < 6; k++) spark(e.x, e.y, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0.4, "cyan", 0.05);
+    }
+  }
+
+  // ---------- Draw ----------
+  const motes = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), s: 0.5 + Math.random() * 1.6, v: 0.004 + Math.random() * 0.01, ph: Math.random() * 6 }));
+  let clock = 0;
+  const titleRipples = [];
+
+  function drawBackground(dt) {
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#9fd8ff";
+    for (const m of motes) {
+      m.y -= m.v * dt;
+      if (m.y < -0.02) { m.y = 1.02; m.x = Math.random(); }
+      ctx.globalAlpha = 0.12 + Math.sin(clock * 0.8 + m.ph) * 0.07;
+      ctx.beginPath();
+      ctx.arc(m.x * W + Math.sin(clock * 0.3 + m.ph) * 8, m.y * H, m.s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const vis = i => Math.max(L.lit[i], L.glow[i], L.seen[i] * MEMORY);
+  const sx = x => OX + x * TS, sy = y => OY + y * TS;
+
+  function drawCave() {
+    const { cols, rows } = L;
+    // Floor tint where light reaches.
+    for (let i = 0; i < L.n; i++) {
+      if (L.tile[i] === "#") continue;
+      const a = Math.max(L.lit[i], L.glow[i]);
+      if (a < 0.02) continue;
+      ctx.fillStyle = `rgba(60,110,200,${a * 0.1})`;
+      ctx.fillRect(sx(i % cols), sy((i / cols) | 0), TS, TS);
+    }
+
+    // Currents: drifting streaks.
+    ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(1.5, TS * 0.06);
+    for (let i = 0; i < L.n; i++) {
+      const f = L.flow[i];
+      if (!f) continue;
+      const a = 0.16 + Math.max(L.lit[i], L.glow[i]) * 0.5;
+      const x = i % cols, y = (i / cols) | 0;
+      for (let k = 0; k < 3; k++) {
+        const t = ((clock * 0.9 + k / 3 + (x * 0.37 + y * 0.61)) % 1);
+        const off = (k - 1) * 0.28;
+        const cx = x + 0.5 + f[0] * (t - 0.5) + f[1] * off;
+        const cy = y + 0.5 + f[1] * (t - 0.5) + f[0] * off;
+        ctx.strokeStyle = `rgba(120,220,255,${a * Math.sin(t * Math.PI)})`;
+        ctx.beginPath();
+        ctx.moveTo(sx(cx - f[0] * 0.18), sy(cy - f[1] * 0.18));
+        ctx.lineTo(sx(cx + f[0] * 0.18), sy(cy + f[1] * 0.18));
+        ctx.stroke();
+      }
+    }
+
+    // Rock: fill plus glowing outlines, batched by brightness.
+    const BUCKETS = 10;
+    const paths = Array.from({ length: BUCKETS }, () => new Path2D());
+    const open = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && !solidAt(x, y);
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const i = y * cols + x;
+      if (L.tile[i] !== "#") continue;
+      const a = vis(i);
+      if (a < 0.015) continue;
+      ctx.fillStyle = `rgba(22,40,88,${a * 0.38})`;
+      ctx.fillRect(sx(x), sy(y), TS + 0.5, TS + 0.5);
+      const p = paths[Math.min(BUCKETS - 1, Math.floor(a * BUCKETS))];
+      const X = sx(x), Y = sy(y);
+      if (open(x, y - 1)) { p.moveTo(X, Y); p.lineTo(X + TS, Y); }
+      if (open(x, y + 1)) { p.moveTo(X, Y + TS); p.lineTo(X + TS, Y + TS); }
+      if (open(x - 1, y)) { p.moveTo(X, Y); p.lineTo(X, Y + TS); }
+      if (open(x + 1, y)) { p.moveTo(X + TS, Y); p.lineTo(X + TS, Y + TS); }
+    }
+    ctx.globalCompositeOperation = "lighter";
+    for (let b = 0; b < BUCKETS; b++) {
+      const a = (b + 0.5) / BUCKETS;
+      ctx.lineWidth = Math.max(4, TS * 0.26);
+      ctx.strokeStyle = `rgba(70,180,255,${a * 0.16})`;
+      ctx.stroke(paths[b]);
+      ctx.lineWidth = Math.max(1.5, TS * 0.07);
+      ctx.strokeStyle = `rgba(150,235,255,${Math.min(1, a * 1.05)})`;
+      ctx.stroke(paths[b]);
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    // Sound doors.
+    for (let i = 0; i < L.n; i++) {
+      if (L.tile[i] !== "D") continue;
+      const a = Math.max(vis(i), 0.06 + Math.sin(clock * 2 + i) * 0.03);
+      const x = sx(i % cols), y = sy((i / cols) | 0), o = L.doorAnim[i];
+      ctx.fillStyle = `rgba(150,100,255,${a * 0.3 * (1 - o)})`;
+      ctx.fillRect(x, y, TS, TS);
+      ctx.fillStyle = `rgba(200,160,255,${a * (1 - o * 0.75)})`;
+      const bh = Math.max(2, TS * 0.1);
+      for (let k = 0; k < 3; k++) {
+        const by = y + TS * (0.25 + k * 0.25) - bh / 2;
+        const half = TS * 0.42 * (1 - o);
+        ctx.fillRect(x + TS / 2 - half, by, half * 2, bh);
+      }
+      if (L.door[i] > 0) {
+        ctx.strokeStyle = `rgba(200,160,255,${0.55 * o})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x + TS / 2, y + TS / 2, TS * 0.38, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (L.door[i] / DOOR_TIME));
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawThings() {
+    const T = TS;
+    ctx.globalCompositeOperation = "lighter";
+    // Crystals.
+    for (const c of L.crystals) {
+      const a = Math.max(c.on, vis(c.i) * 0.8, 0.05);
+      const X = sx(c.x), Y = sy(c.y);
+      if (c.on) glow(GLOW.violet, X, Y, T * 2.2, 0.35 * c.on + Math.sin(clock * 2 + c.x) * 0.05);
+      ctx.fillStyle = `rgba(210,180,255,${a})`;
+      ctx.beginPath();
+      ctx.moveTo(X, Y - T * 0.34); ctx.lineTo(X + T * 0.18, Y); ctx.lineTo(X, Y + T * 0.3); ctx.lineTo(X - T * 0.18, Y);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;
+      ctx.beginPath();
+      ctx.moveTo(X, Y - T * 0.2); ctx.lineTo(X + T * 0.07, Y); ctx.lineTo(X, Y + T * 0.12); ctx.lineTo(X - T * 0.07, Y);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Portal: always faintly visible so there's a goal.
+    {
+      const e = L.exit, X = sx(e.x), Y = sy(e.y);
+      const a = Math.max(0.3, vis(e.i));
+      glow(GLOW.violet, X, Y, T * 1.6, a * 0.55);
+      glow(GLOW.cyan, X, Y, T * 0.9, a * 0.4);
+      ctx.lineWidth = Math.max(1.5, T * 0.06);
+      for (let k = 0; k < 3; k++) {
+        const rot = clock * (1.2 + k * 0.5) * (k % 2 ? -1 : 1);
+        ctx.strokeStyle = k === 1 ? `rgba(126,232,255,${a})` : `rgba(200,160,255,${a})`;
+        ctx.beginPath();
+        ctx.arc(X, Y, T * (0.18 + k * 0.1), rot, rot + Math.PI * 1.2);
+        ctx.stroke();
+      }
+    }
+
+    // Lost lights: a faint twinkle always, bright when lit.
+    for (const o of L.lights) {
+      if (o.got) continue;
+      const X = sx(o.x), Y = sy(o.y + Math.sin(clock * 2 + o.ph) * 0.06);
+      const a = Math.max(0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
+      glow(GLOW.gold, X, Y, T * 1.1, a * 0.8);
+      glow(GLOW.white, X, Y, T * 0.28, a);
+    }
+
+    // Glow-moths.
+    for (const m of L.moths) {
+      const X = sx(m.x), Y = sy(m.y), a = m.following ? 0.9 : 0.55;
+      const flap = Math.abs(Math.sin(m.ph * 14));
+      glow(GLOW.green, X, Y, T * 0.8, a * 0.6);
+      ctx.fillStyle = `rgba(200,255,220,${a})`;
+      ctx.beginPath();
+      ctx.ellipse(X - T * 0.1, Y, T * 0.12 * (0.3 + flap * 0.7), T * 0.14, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(X + T * 0.1, Y, T * 0.12 * (0.3 + flap * 0.7), T * 0.14, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    // Snoozles.
+    for (const c of L.critters) {
+      const a = Math.max(vis(c.i), 0.12);
+      const X = sx(c.x), Y = sy(c.y), r = CRITTER_R * T;
+      const breathe = 1 + Math.sin(c.ph * (c.awake ? 8 : 1.6)) * 0.05;
+      const angry = Math.min(1, c.awake);
+      ctx.fillStyle = `rgba(${150 + angry * 90},${110 - angry * 40},${220 - angry * 120},${a * 0.9})`;
+      ctx.beginPath();
+      ctx.ellipse(X, Y + r * 0.1, r * breathe * 1.1, r * 0.9 / breathe, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(20,10,40,${a})`;
+      ctx.lineWidth = Math.max(1.5, T * 0.05);
+      ctx.beginPath();
+      if (angry > 0.05) {
+        ctx.moveTo(X - r * 0.55, Y - r * 0.2); ctx.lineTo(X - r * 0.2, Y);
+        ctx.moveTo(X + r * 0.55, Y - r * 0.2); ctx.lineTo(X + r * 0.2, Y);
+      } else {
+        ctx.arc(X - r * 0.35, Y, r * 0.16, 0.2, Math.PI - 0.2);
+        ctx.moveTo(X + r * 0.51, Y);
+        ctx.arc(X + r * 0.35, Y, r * 0.16, 0.2, Math.PI - 0.2);
+      }
+      ctx.stroke();
+      if (!c.awake) {
+        ctx.fillStyle = `rgba(200,180,255,${Math.max(a, 0.25) * 0.8})`;
+        ctx.font = `600 ${Math.round(T * 0.28)}px Fredoka, sans-serif`;
+        const zt = (c.ph * 0.5) % 1;
+        ctx.globalAlpha = Math.sin(zt * Math.PI);
+        ctx.fillText("z", X + r * 0.7 + zt * T * 0.2, Y - r - zt * T * 0.35);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Song wavefronts.
+    ctx.globalCompositeOperation = "lighter";
+    for (const w of L.waves) {
+      const fade = Math.max(0, 1 - w.r / (WAVE_RANGE + 1.5));
+      for (let i = 0; i < L.n; i++) {
+        const d = w.dist[i];
+        if (d > WAVE_RANGE + 0.5) continue;
+        const k = 1 - Math.abs(d - w.r) / 0.9;
+        if (k <= 0) continue;
+        glow(GLOW.cyan, sx((i % L.cols) + 0.5), sy(((i / L.cols) | 0) + 0.5), TS * 0.85, k * fade * 0.55);
+      }
+    }
+
+    // Particles.
+    for (const q of L.particles) {
+      const t = q.life / q.max;
+      glow(GLOW[q.color], sx(q.x), sy(q.y), TS * q.size * 3, t * 0.9);
+    }
+
+    // Lumi.
+    const lumi = L.lumi;
+    const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
+    const X = sx(lumi.x), Y = sy(lumi.y), R = LUMI_R * TS * shrink;
+    const followers = L.moths.filter(m => m.following).length;
+    glow(GLOW.cyan, X, Y, TS * (1.3 + followers * 0.4) * Math.max(shrink, 0.2), 0.5 + lumi.sing);
+    ctx.globalCompositeOperation = "source-over";
+    if (R > 0.5) {
+      const sq = lumi.squash * 0.18;
+      ctx.save();
+      ctx.translate(X, Y);
+      const g = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.6, "#c9f6ff");
+      g.addColorStop(1, "#6fd9ff");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, R * (1 + sq), R * (1 - sq), 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Eyes look where Lumi swims.
+      const lx = Math.cos(lumi.look) * R * 0.22, ly = Math.sin(lumi.look) * R * 0.18;
+      ctx.fillStyle = "#123049";
+      const eh = lumi.blink < 0 ? R * 0.04 : R * 0.17;
+      ctx.beginPath();
+      ctx.ellipse(-R * 0.32 + lx, -R * 0.08 + ly, R * 0.12, eh, 0, 0, Math.PI * 2);
+      ctx.ellipse(R * 0.32 + lx, -R * 0.08 + ly, R * 0.12, eh, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (lumi.sing > 0) {
+        ctx.beginPath();
+        ctx.ellipse(lx * 0.8, R * 0.35 + ly, R * 0.12, R * 0.15 * Math.min(1, lumi.sing * 4), 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = "#123049";
+        ctx.lineWidth = Math.max(1, R * 0.08);
+        ctx.beginPath();
+        ctx.arc(lx * 0.8, R * 0.22 + ly, R * 0.16, 0.3, Math.PI - 0.3);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(255,150,190,0.45)";
+      ctx.beginPath();
+      ctx.arc(-R * 0.58 + lx, R * 0.18 + ly, R * 0.12, 0, Math.PI * 2);
+      ctx.arc(R * 0.58 + lx, R * 0.18 + ly, R * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawTitle(dt) {
+    if (Math.random() < dt * 0.9 || titleRipples.length === 0) {
+      titleRipples.push({ x: W * (0.2 + Math.random() * 0.6), y: H * (0.15 + Math.random() * 0.7), r: 0 });
+    }
+    ctx.globalCompositeOperation = "lighter";
+    for (let k = titleRipples.length - 1; k >= 0; k--) {
+      const rp = titleRipples[k];
+      rp.r += dt * 90;
+      const a = Math.max(0, 1 - rp.r / 260);
+      if (a <= 0) { titleRipples.splice(k, 1); continue; }
+      ctx.strokeStyle = `rgba(126,232,255,${a * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+      ctx.stroke();
+      glow(GLOW.cyan, rp.x, rp.y, 40, a * 0.3);
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  // ---------- Loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000));
+    last = now;
+    clock += dt;
+    if (screen === "play" && L) update(dt);
+    drawBackground(dt);
+    if (L && screen !== "title") { drawCave(); drawThings(); }
+    else drawTitle(dt);
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, W, H);
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- UI ----------
+  const screens = { title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen") };
+  function show(name) {
+    screen = name;
+    for (const k in screens) screens[k].classList.toggle("on", k === name);
+    $("hud").classList.toggle("on", name === "play" || name === "pause");
+    if (name !== "play") { pointers.clear(); steer = null; }
+    if (name !== "play" && name !== "pause") setHint("", 0);
+  }
+
+  let hintTimer = 0;
+  function setHint(text, seconds) {
+    const el = $("hint");
+    if (text) { el.textContent = text; el.classList.add("on"); }
+    else el.classList.remove("on");
+    hintTimer = seconds || 0;
+  }
+  function updateHint(dt) {
+    if (hintTimer > 0) { hintTimer -= dt; if (hintTimer <= 0) $("hint").classList.remove("on"); }
+  }
+
+  function updateHud() {
+    if (!L) return;
+    $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
+    $("pingsPill").innerHTML = `♪ ${L.pings} <small>/ ${L.def.par}</small>`;
+    $("pingsPill").style.color = L.pings > L.def.par ? "#ff9fb8" : "";
+    $("levelName").innerHTML = `<b>${levelIndex + 1}.</b> ${L.def.name}`;
+  }
+  function updateMute() {
+    $("muteBtn").textContent = muted ? "🔇" : "🔊";
+    if (master) master.gain.value = muted ? 0 : 0.7;
+  }
+
+  function startLevel(i) {
+    audio();
+    loadLevel(i);
+    show("play");
+  }
+  function pause() { if (screen !== "play") return; $("pauseSub").textContent = `${levelIndex + 1}. ${L.def.name}`; show("pause"); }
+  function resume() { show("play"); last = performance.now(); }
+
+  function finish() {
+    const allLights = L.got === L.lights.length;
+    const underPar = L.pings <= L.def.par;
+    const stars = 1 + (allLights ? 1 : 0) + (underPar ? 1 : 0);
+    const prev = save.stars[levelIndex] || 0;
+    save.stars[levelIndex] = Math.max(prev, stars);
+    const best = save.best[levelIndex];
+    let newBest = "";
+    if (!best || L.pings < best.pings || (L.pings === best.pings && L.time < best.time)) {
+      if (best) newBest = "New personal best!";
+      save.best[levelIndex] = { pings: L.pings, time: Math.round(L.time * 10) / 10 };
+    }
+    persist();
+
+    const t = L.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
+    $("resultTitle").textContent = ["", "Cave cleared!", "Lovely singing!", "Perfect echo!"][stars];
+    $("resultSub").textContent = `${levelIndex + 1}. ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
+    $("newBest").textContent = newBest;
+    $("g1v").textContent = "✓";
+    $("g2v").textContent = `${L.got}/${L.lights.length}`;
+    $("g3v").textContent = `${L.pings} / ${L.def.par}`;
+    $("goal1").className = "ok";
+    $("goal2").className = allLights ? "ok" : "";
+    $("goal3").className = underPar ? "ok" : "";
+    const last = levelIndex === LEVELS.length - 1;
+    $("nextBtn").textContent = last ? "All caves" : "Next cave";
+    const spans = $("resultStars").children;
+    for (let k = 0; k < 3; k++) spans[k].className = "";
+    show("result");
+    for (let k = 0; k < 3; k++) {
+      setTimeout(() => {
+        spans[k].className = "show" + (k < stars ? " got" : "");
+        if (k < stars) sfx.star(k);
+      }, 250 + k * 280);
+    }
+  }
+
+  function renderLevels() {
+    const grid = $("levelGrid");
+    grid.innerHTML = "";
+    LEVELS.forEach((lv, i) => {
+      const b = document.createElement("button");
+      const open = unlocked(i), st = save.stars[i] || 0;
+      b.className = "card" + (open ? "" : " locked");
+      b.innerHTML = `<span class="num">Cave ${i + 1}</span><span class="name"></span>` +
+        `<span class="st">${"<i>★</i>".repeat(st)}${"★".repeat(3 - st)}</span>`;
+      b.querySelector(".name").textContent = lv.name;
+      b.addEventListener("click", () => { if (open) startLevel(i); else note(220, { dur: 0.2, vol: 0.08 }); });
+      grid.appendChild(b);
+    });
+    $("levelsTotal").textContent = `★ ${totalStars()} / ${LEVELS.length * 3}`;
+  }
+  function renderTitle() {
+    const t = totalStars();
+    $("totalStars").textContent = t ? `★ ${t} / ${LEVELS.length * 3}` : "";
+    $("playBtn").textContent = save.stars.some(s => s) ? "Continue" : "Play";
+  }
+  function nextUnplayed() {
+    for (let i = 0; i < LEVELS.length; i++) if (!save.stars[i]) return unlocked(i) ? i : Math.max(0, i - 1);
+    return LEVELS.length - 1;
+  }
+
+  const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(); });
+  tap("playBtn", () => startLevel(nextUnplayed()));
+  tap("levelsBtn", () => { renderLevels(); show("levels"); });
+  tap("levelsBack", () => { renderTitle(); L = null; show("title"); });
+  tap("pauseBtn", pause);
+  tap("muteBtn", () => { muted = !muted; save.muted = muted; persist(); updateMute(); });
+  tap("resumeBtn", resume);
+  tap("restartBtn", () => startLevel(levelIndex));
+  tap("quitBtn", () => { renderLevels(); show("levels"); });
+  tap("retryBtn", () => startLevel(levelIndex));
+  tap("resultLevels", () => { renderLevels(); show("levels"); });
+  tap("nextBtn", () => {
+    if (levelIndex < LEVELS.length - 1) startLevel(levelIndex + 1);
+    else { renderLevels(); show("levels"); }
+  });
+  ["pauseBtn", "muteBtn"].forEach(id => $(id).addEventListener("pointerdown", e => e.stopPropagation()));
+
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+  window.addEventListener("resize", resize);
+
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  window.__echo = { LEVELS, get L() { return L; }, startLevel, ping };
+
+  resize();
+  updateMute();
+  renderTitle();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
