@@ -257,6 +257,15 @@ const SIM = `
       save.cards = {}; startLevel(40, { story: true }); out.card = screen === "card";
       document.getElementById("cardGo").click(); out.cardLeadsToLevel = screen === "play" && L.def.name === "Listening Stones";
       pause(); out.pauseShowsGoal = screen === "pause" && document.getElementById("pauseGoal").textContent.length > 5;
+      resume();
+      return out;
+    });
+    // The phone's Back button pauses, then goes to the map, then to the title.
+    const backs = [];
+    for (let k = 0; k < 3; k++) { await page.goBack(); await page.waitForTimeout(150); backs.push(await page.evaluate(() => screen)); }
+    s.backButtonStaysInGame = backs.join(",") === "pause,levels,title";
+    Object.assign(s, await page.evaluate(() => {
+      const out = {};
       // Back up and restore.
       save.stars[0] = 3; save.stars[1] = 2;
       const code = saveCode();
@@ -268,7 +277,7 @@ const SIM = `
       document.getElementById("restoreCode").click();
       out.badCodeIsHarmless = save.stars[0] === 3;
       return out;
-    });
+    }));
     for (const [k, v] of Object.entries(s)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     for (const size of [{ width: 360, height: 640 }, { width: 430, height: 932 }, { width: 820, height: 1180 }]) {
       const { page: p2, errors: e2 } = await openGame(browser, size);

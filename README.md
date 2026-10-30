@@ -53,7 +53,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 - 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
 - The first 10 levels are handmade and teach the basics. Each later idea is introduced by its own handmade level with a picture card: light energy (level 11), lost baby moths (21), rune stones (41), Gloomlings (61), quiet caves (65), dark caves (81), long climbs (85) and races (101).
-- The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. A level only uses ideas that have already been introduced, and never more than three big ones at once.
+- The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Each one has its own name in its world's style, like "Whispering Fernway" or "Glimmering Geode", and each world ends with a "Heart of …" finale. A level only uses ideas that have already been introduced, and never more than three big ones at once.
 - Each world leans on its own ideas: Mossy Hollow on rescues, Amethyst Deep on rune gates, Ember Caverns on Gloomlings and quiet caves, Frost Tunnels on dark caves and long climbs, Coral Depths on races and currents, Golden Mines on gates, curtains and climbs, and Starlight Abyss on Gloomlings, darkness and races.
 - Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. **Long climbs** are taller than the screen and the camera follows Lumi. In **dark caves** lights and the portal don't glow until your song finds them.
 - Some levels have a special goal: **Quiet caves** give you a limited number of songs, **Rescue caves** hide a lost baby moth you must bring to the portal, and **Races** have a timer.
@@ -81,7 +81,9 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 The daily cave changes at midnight UTC, so it's the same cave for everyone in the world. If a phone struggles to keep up, the game lowers its drawing resolution automatically.
 
-Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button). The pause menu shows the current cave's goal.
+Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button). The pause menu shows the current cave's goal. On phones, the Back button pauses a level, then goes to the map, then to the title, instead of leaving the game.
+
+Each cave fades in with its name. Lumi has a swaying antenna, a soft light trail and a little squash and stretch when swimming; spores drift through the light, a faint far-away cave layer drifts behind the rock, and songs sparkle along their leading edge.
 
 **Testing Echo**
 
