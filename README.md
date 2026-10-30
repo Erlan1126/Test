@@ -38,7 +38,7 @@ A little light, lost in the dark. Play it at https://erlan1126.github.io/Test/ec
 
 You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you can sing: each song spreads through the cave like a wave, flowing around corners, and softly lights up the rock for a moment before it fades back into darkness.
 
-- **Tap** anywhere to sing (or press Space). **Hold and drag** to swim toward your finger (or use the arrow keys / WASD).
+- **Tap** anywhere to sing (or press Space). **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
 - **Goal:** find the golden lost lights, then swim into the portal.
 - **Stars:** one for reaching the portal, one for finding every light, and one for using no more songs than the cave's par.
 - **Things you meet:** crystals that keep glowing once your song touches them, purple sound doors that open for a few seconds when your song reaches them, underground currents that carry you along, glow-moths that follow you and make your light bigger, and sleepy Snoozles that push you away if you bump into them.

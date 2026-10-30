@@ -230,7 +230,7 @@
   <button class="btn main" id="playBtn">Play</button>
   <button class="btn" id="levelsBtn">Level map</button>
   <div class="total" id="totalStars"></div>
-  <p class="howto"><b>Tap</b> to sing and see the cave<br><b>Hold &amp; drag</b> to swim</p>
+  <p class="howto"><b>Tap</b> to sing and see the cave<br><b>Slide your thumb</b> anywhere to swim</p>
 </div>
 
 <div class="screen dim-bg" id="levelScreen">
@@ -692,9 +692,11 @@
   const WAVE_RANGE = 7.5;   // tiles the song travels
   const MEMORY = 0.13;      // how bright remembered walls stay
   const TH = 0.55;          // where rock begins in the cave's shape field
-  const SWIM_ACC = 13;
-  const SWIM_MAX = 3.4;
-  const CURRENT_ACC = 8;
+  const SWIM_MAX = 4.2;     // tiles per second at full stick
+  const SWIM_GRIP = 14;     // how quickly Lumi reaches the speed you ask for
+  const CURRENT_ACC = 14;
+  const STICK_R = 46;       // px the thumb travels for full speed
+  const STICK_DEAD = 5;
   const DOOR_TIME = 5;
   const LUMI_R = 0.3;
   const CRITTER_R = 0.32;
@@ -1127,7 +1129,7 @@
       const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
       spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "cyan", 0.12);
     }
-    if (L.def.hint === "first" && L.tut === 0) { L.tut = 1; setHint("Now hold and drag to swim", 0); }
+    if (L.def.hint === "first" && L.tut === 0) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
     updateHud();
   }
 
@@ -1176,7 +1178,7 @@
   canvas.addEventListener("pointerdown", e => {
     audio();
     if (screen === "title") return;
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, ax: e.clientX, ay: e.clientY, t: performance.now(), moved: false });
     if (steer == null) steer = e.pointerId;
     try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
   });
@@ -1184,7 +1186,10 @@
     const p = pointers.get(e.pointerId);
     if (!p) return;
     p.x = e.clientX; p.y = e.clientY;
-    if (Math.hypot(p.x - p.sx, p.y - p.sy) > 14) p.moved = true;
+    if (Math.hypot(p.x - p.sx, p.y - p.sy) > 8) p.moved = true;
+    // If the thumb slides past the edge of the stick, drag the stick along so turning back is instant.
+    const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
+    if (d > STICK_R) { p.ax = p.x - dx / d * STICK_R; p.ay = p.y - dy / d * STICK_R; }
   });
   function pointerEnd(e) {
     const p = pointers.get(e.pointerId);
@@ -1213,41 +1218,59 @@
     L.bumpCd -= dt;
     const lumi = L.lumi;
 
-    // Steering: finger target or keyboard.
-    let ax = 0, ay = 0;
+    // Steering: the floating stick or the keyboard sets the speed Lumi wants to swim at.
+    let wx = 0, wy = 0;
     const p = steer != null ? pointers.get(steer) : null;
-    if (p && !L.ending && (p.moved || performance.now() - p.t > 150)) {
-      const tx = (p.x - OX) / TS, ty = (p.y - OY) / TS;
-      const dx = tx - lumi.x, dy = ty - lumi.y, d = Math.hypot(dx, dy);
-      if (d > 0.08) {
-        const k = SWIM_ACC * Math.min(1, d / 0.7) / d;
-        ax += dx * k; ay += dy * k;
+    if (p && p.moved && !L.ending) {
+      const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
+      if (d > STICK_DEAD) {
+        const k = SWIM_MAX * Math.min(1, (d - STICK_DEAD) / (STICK_R - STICK_DEAD)) / d;
+        wx = dx * k; wy = dy * k;
       }
     }
     if (!L.ending) {
       const kx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
       const ky = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
-      if (kx || ky) { const m = Math.hypot(kx, ky); ax += kx / m * SWIM_ACC; ay += ky / m * SWIM_ACC; }
+      if (kx || ky) { const m = Math.hypot(kx, ky); wx = kx / m * SWIM_MAX; wy = ky / m * SWIM_MAX; }
     }
-    if (ax || ay) {
+    const steering = wx || wy;
+    if (steering) {
       L.moved += dt;
       if (L.def.hint === "first" && L.tut === 1 && L.moved > 0.6) { L.tut = 2; setHint("Find the golden light, then the portal ✦", 6); }
+      // Lane assist: when heading into an open tunnel, ease Lumi toward its middle so corners don't catch.
+      // If the way straight ahead is rock but the tunnel opens just beside it, slide over to it.
+      const cx = Math.floor(lumi.x), cy = Math.floor(lumi.y);
+      // open(d): the tile d steps sideways is open, and so is the tile ahead of it.
+      const lane = (pos, center, open, narrow) => {
+        if (open(0)) return narrow ? (center - pos) * 6 : 0;
+        const pref = pos < center ? -1 : 1;
+        for (const sd of [pref, -pref]) if (open(sd)) return sd * SWIM_MAX * 0.9;
+        return 0;
+      };
+      if (Math.abs(wx) > Math.abs(wy) * 1.2) {
+        const ax = Math.sign(wx);
+        wy += lane(lumi.y, cy + 0.5, d => !solidAt(cx, cy + d) && !solidAt(cx + ax, cy + d), solidAt(cx + ax, cy - 1) && solidAt(cx + ax, cy + 1));
+      } else if (Math.abs(wy) > Math.abs(wx) * 1.2) {
+        const ay = Math.sign(wy);
+        wx += lane(lumi.x, cx + 0.5, d => !solidAt(cx + d, cy) && !solidAt(cx + d, cy + ay), solidAt(cx - 1, cy + ay) && solidAt(cx + 1, cy + ay));
+      }
     }
+
+    // Lumi eases toward the wanted speed: quick to start, quick to stop.
+    const grip = 1 - Math.exp(-(steering ? SWIM_GRIP : SWIM_GRIP * 0.75) * dt);
+    lumi.vx += (wx - lumi.vx) * grip;
+    lumi.vy += (wy - lumi.vy) * grip;
 
     // Water currents push you along.
     const ti = idx(Math.floor(lumi.x), Math.floor(lumi.y));
     const f = L.flow[ti];
-    if (f) { ax += f[0] * CURRENT_ACC; ay += f[1] * CURRENT_ACC; }
-
-    lumi.vx += ax * dt; lumi.vy += ay * dt;
-    const damp = Math.exp(-(ax || ay ? 2.2 : 3.5) * dt);
-    lumi.vx *= damp; lumi.vy *= damp;
-    const sp = Math.hypot(lumi.vx, lumi.vy), maxSp = SWIM_MAX * (f ? 1.35 : 1);
+    if (f) { lumi.vx += f[0] * CURRENT_ACC * dt; lumi.vy += f[1] * CURRENT_ACC * dt; }
+    const sp = Math.hypot(lumi.vx, lumi.vy), maxSp = SWIM_MAX * (f ? 1.4 : 1.15);
     if (sp > maxSp) { lumi.vx *= maxSp / sp; lumi.vy *= maxSp / sp; }
     if (sp > 0.25) lumi.look = Math.atan2(lumi.vy, lumi.vx);
 
     if (!L.ending) {
-      const steps = 2;
+      const steps = 3;
       for (let s = 0; s < steps; s++) {
         lumi.x += lumi.vx * dt / steps;
         lumi.y += lumi.vy * dt / steps;
@@ -1405,13 +1428,13 @@
       e.x += dx * (r - d); e.y += dy * (r - d);
       const vn = e.vx * dx + e.vy * dy;
       if (vn < 0) { e.vx -= vn * dx * 1.25; e.vy -= vn * dy * 1.25; bump = Math.max(bump, -vn); }
-      if (-vn > 1.1) {
+      if (-vn > 1.5) {
         const j = idx(tx, ty);
         L.lit[j] = Math.max(L.lit[j], 0.7);
         L.seen[j] = 1;
       }
     }
-    if (bump > 1.1 && L.bumpCd <= 0) {
+    if (bump > 1.8 && L.bumpCd <= 0) {
       L.bumpCd = 0.25;
       e.squash = Math.min(1, bump / 3);
       sfx.bump();
@@ -1723,6 +1746,23 @@
     }
   }
 
+  function drawStick() {
+    const p = steer != null ? pointers.get(steer) : null;
+    if (!p || !p.moved || screen !== "play") return;
+    const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1;
+    ctx.strokeStyle = "rgba(200,240,255,0.22)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(p.ax, p.ay, STICK_R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(200,240,255,0.06)";
+    ctx.fill();
+    ctx.fillStyle = "rgba(220,248,255,0.35)";
+    ctx.beginPath();
+    ctx.arc(p.ax + dx * k, p.ay + dy * k, 20, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   function drawTitle(dt) {
     if (Math.random() < dt * 0.9 || titleRipples.length === 0) {
       titleRipples.push({ x: W * (0.2 + Math.random() * 0.6), y: H * (0.15 + Math.random() * 0.7), r: 0 });
@@ -1755,6 +1795,7 @@
     else drawTitle(dt);
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, W, H);
+    drawStick();
     requestAnimationFrame(frame);
   }
 
