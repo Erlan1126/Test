@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Echo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@1,500&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #e9f3ff;
@@ -64,34 +64,43 @@
   .dim-bg { background: rgba(3, 4, 12, 0.6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 
   .logo {
-    font-size: clamp(64px, 22vw, 112px);
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+    font-size: clamp(50px, 16vw, 84px);
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    margin: 0 -0.32em 0 0;
     line-height: 1;
-    margin: 0;
-    color: #f2fbff;
-    text-shadow: 0 0 18px rgba(126, 232, 255, 0.9), 0 0 48px rgba(126, 232, 255, 0.5), 0 0 90px rgba(180, 140, 255, 0.45);
+    color: #eef8ff;
+    text-shadow: 0 0 28px rgba(126, 232, 255, 0.35), 0 2px 18px rgba(0, 0, 0, 0.6);
   }
-  .tagline { color: var(--dim); font-size: 18px; margin: 14px 0 36px; }
+  .tagline {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 21px;
+    color: #b4c4e0;
+    margin: 0;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7);
+  }
   .btn {
     display: block;
     width: min(280px, 100%);
     padding: 14px 20px;
     margin: 6px auto;
-    border-radius: 999px;
-    font-size: 20px;
-    font-weight: 600;
-    background: rgba(126, 232, 255, 0.1);
-    border: 1.5px solid rgba(126, 232, 255, 0.45);
-    box-shadow: 0 0 22px rgba(126, 232, 255, 0.15) inset;
+    border-radius: 18px;
+    font-size: 19px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     transition: transform 0.12s, background 0.2s;
   }
-  .btn:active { transform: scale(0.96); }
+  .btn:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.1); }
   .btn.main {
-    background: linear-gradient(180deg, #8ff0ff, #4fc4ee);
-    color: #062033;
+    background: linear-gradient(180deg, #ffffff, #d9f1ff);
+    color: #0a1a2e;
+    font-weight: 600;
     border-color: transparent;
-    box-shadow: 0 0 28px rgba(126, 232, 255, 0.55);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 36px rgba(126, 232, 255, 0.22);
   }
   .row { display: flex; gap: 10px; justify-content: center; width: min(340px, 100%); }
   .row .btn { margin: 6px 0; font-size: 17px; padding: 12px 10px; }
@@ -212,11 +221,62 @@
   .unlock:empty { display: none; }
 
   /* Title extras */
-  #titleScreen { background: linear-gradient(rgba(3, 4, 12, 0.35), rgba(3, 4, 12, 0.35)), radial-gradient(ellipse 75% 50% at 50% 45%, rgba(3, 4, 12, 0.7), rgba(3, 4, 12, 0) 80%); }
-  .row.small .btn { font-size: 15px; padding: 10px 6px; font-weight: 500; }
-  .row.small .btn b { display: block; font-size: 12px; font-weight: 400; color: var(--dim); }
-  .links { display: flex; gap: 22px; justify-content: center; margin-top: 14px; }
-  .link { color: var(--dim); font-size: 15px; padding: 6px 2px; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(142, 163, 200, 0.4); }
+  /* Title: logo at the top, Lumi in the cave below it, play and a menu dock at the bottom. */
+  #titleScreen {
+    justify-content: space-between;
+    padding-top: calc(14px + var(--top));
+    padding-bottom: calc(18px + var(--bottom));
+    background:
+      linear-gradient(rgba(3, 4, 12, 0.78), rgba(3, 4, 12, 0) 34%, rgba(3, 4, 12, 0) 58%, rgba(3, 4, 12, 0.85));
+  }
+  .title-bar { display: flex; justify-content: space-between; align-items: center; width: min(420px, 100%); }
+  .glass {
+    background: rgba(12, 18, 40, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .round { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; }
+  .round svg { width: 20px; height: 20px; }
+  .chip { height: 42px; padding: 0 16px; border-radius: 99px; display: flex; align-items: center; gap: 6px; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .chip .st { color: var(--gold); }
+  .hero { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 4vh; animation: rise 1.2s cubic-bezier(.2,.7,.2,1) both; }
+  .logo-wrap { position: relative; display: grid; place-items: center; padding: 18px 0; }
+  .ripple { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 1px solid rgba(126, 232, 255, 0.35); opacity: 0; animation: ripple 5.4s ease-out infinite; pointer-events: none; }
+  .ripple:nth-child(2) { animation-delay: 1.8s; }
+  .ripple:nth-child(3) { animation-delay: 3.6s; }
+  @keyframes ripple { 0% { transform: scale(0.4); opacity: 0.7; } 100% { transform: scale(3.4); opacity: 0; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .divider { display: flex; align-items: center; gap: 10px; color: rgba(126, 232, 255, 0.6); }
+  .divider::before, .divider::after { content: ""; width: 44px; height: 1px; background: linear-gradient(90deg, transparent, rgba(126, 232, 255, 0.5)); }
+  .divider::after { transform: scaleX(-1); }
+  .divider i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .title-actions { display: flex; flex-direction: column; align-items: center; gap: 16px; width: min(420px, 100%); animation: rise 1.2s 0.25s cubic-bezier(.2,.7,.2,1) both; }
+  .play {
+    width: min(300px, 100%);
+    padding: 14px 20px 13px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #ffffff, #d9f1ff);
+    color: #0a1a2e;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), 0 0 44px rgba(126, 232, 255, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: transform 0.12s;
+  }
+  .play:active { transform: scale(0.97); }
+  .play-label { font-size: 24px; font-weight: 600; letter-spacing: 0.02em; }
+  .play-sub { font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #4a6585; }
+  .dock { display: flex; width: 100%; justify-content: space-between; padding: 8px 6px; border-radius: 24px; }
+  .dock button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0; font-size: 12px; color: #c3d2ea; position: relative; border-radius: 16px; }
+  .dock button:active { background: rgba(255, 255, 255, 0.08); }
+  .dock svg { width: 24px; height: 24px; }
+  .dock .dot { position: absolute; top: 4px; right: calc(50% - 18px); width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .dock .dot[hidden] { display: none; }
+  .title-meta { font-size: 13px; color: var(--dim); letter-spacing: 0.04em; min-height: 16px; }
+  @media (prefers-reduced-motion: reduce) { .hero, .title-actions, .ripple { animation: none; } .ripple { display: none; } }
+  .dock button:focus-visible, .play:focus-visible, .round:focus-visible, .chip:focus-visible,
   .link:focus-visible, .btn:focus-visible, .node:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
   /* Energy */
@@ -294,19 +354,28 @@
 <div id="toasts" aria-live="polite"></div>
 
 <div class="screen on" id="titleScreen">
-  <h1 class="logo">Echo</h1>
-  <p class="tagline">A little light, lost in the dark.</p>
-  <button class="btn main" id="playBtn">Play</button>
-  <button class="btn" id="levelsBtn">Level map</button>
-  <div class="row small">
-    <button class="btn" id="dailyBtn">Daily<b id="dailySub">New cave</b></button>
-    <button class="btn" id="looksBtn">Looks<b id="looksSub">1 of 8</b></button>
-    <button class="btn" id="awardsBtn">Awards<b id="awardsSub">0 of 12</b></button>
+  <div class="title-bar">
+    <button class="round glass" id="shareBtn" aria-label="Share Echo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
+    <div class="chip glass" id="starChip" aria-label="Stars collected"><span class="st">★</span><span id="starCount">0</span></div>
   </div>
-  <div class="total" id="totalStars"></div>
-  <div class="links">
-    <button class="link" id="settingsBtn">Settings</button>
-    <button class="link" id="shareBtn">Share</button>
+  <div class="hero">
+    <div class="logo-wrap">
+      <span class="ripple"></span><span class="ripple"></span><span class="ripple"></span>
+      <h1 class="logo">Echo</h1>
+    </div>
+    <div class="divider"><i></i></div>
+    <p class="tagline">A little light, lost in the dark</p>
+  </div>
+  <div class="title-actions">
+    <div class="title-meta" id="titleMeta"></div>
+    <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
+    <nav class="dock glass" aria-label="Menu">
+      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
+      <button id="dailyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>Daily<i class="dot" id="dailyDot" hidden></i></button>
+      <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
+      <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
+      <button id="settingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</button>
+    </nav>
   </div>
 </div>
 
@@ -925,7 +994,7 @@
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && Array.isArray(s.stars)) {
       for (const k of ["settings", "stats", "daily"]) save[k] = Object.assign(save[k], s[k] || {});
-      for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "ach"]) if (s[k] != null) save[k] = s[k];
+      for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "looksViewed", "ach"]) if (s[k] != null) save[k] = s[k];
     }
   } catch (e) {}
   function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
@@ -1431,7 +1500,7 @@
       const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
       spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "skin", 0.12);
     }
-    if (L.def.hint === "first" && L.tut === 0) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
+    if (L.def.hint === "first" && L.tut === 0 && !L.demo) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
     updateHud();
   }
 
@@ -1647,7 +1716,7 @@
 
     // Lost lights.
     for (const o of L.lights) {
-      if (o.got || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
+      if (o.got || L.demo || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
       o.got = true;
       L.got++;
       if (L.useEnergy) L.energy = Math.min(100, L.energy + 35);
@@ -1666,7 +1735,7 @@
     let fi = 0;
     for (const m of L.moths) {
       m.ph += dt;
-      if (!m.following && Math.hypot(m.x - lumi.x, m.y - lumi.y) < 0.7) {
+      if (!m.following && !L.demo && Math.hypot(m.x - lumi.x, m.y - lumi.y) < 0.7) {
         m.following = true;
         L.mothsMet = (L.mothsMet || 0) + 1;
         if (L.useEnergy) L.energy = Math.min(100, L.energy + 15);
@@ -2248,8 +2317,17 @@
     if (name !== "play" && name !== "pause") setHint("", 0);
   }
   function showTitle() {
-    // A live cave sits behind the title: Lumi floats there and sings now and then.
-    loadLevel(1, true);
+    // The cave behind the title is the next one you'll play, in your current world's colours.
+    // Lumi floats near the middle of it and sings now and then.
+    loadLevel(nextUnplayed(), true);
+    let best = null, bd = Infinity;
+    for (let y = 1; y < L.rows - 1; y++) for (let x = 1; x < L.cols - 1; x++) {
+      if (L.def.map[y][x] !== ".") continue;
+      const d = Math.hypot(x - (L.cols - 1) / 2, (y - L.rows * 0.6) * 1.2);
+      if (d < bd) { bd = d; best = [x + 0.5, y + 0.5]; }
+    }
+    if (best) { L.lumi.x = best[0]; L.lumi.y = best[1]; }
+    L.seen.fill(1);
     renderTitle();
     show("title");
   }
@@ -2464,13 +2542,15 @@
 
   // ---------- Title, looks, awards, settings ----------
   function renderTitle() {
-    const t = totalStars();
-    $("totalStars").textContent = t ? `★ ${t} stars · ${TOTAL} levels` : `${TOTAL} levels to explore`;
-    $("playBtn").textContent = save.stars.some(x => x) ? "Continue" : "Play";
+    const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
+    $("starCount").textContent = t;
+    $("playLabel").textContent = started ? "Continue" : "Play";
+    $("playSub").textContent = `Level ${next + 1} · ${next < LEVELS.length ? LEVELS[next].name : worldName(worldOf(next))}`;
     const doneToday = save.daily.last === dayKey();
-    $("dailySub").textContent = doneToday ? `Done · ${save.daily.streak} day streak` : save.daily.streak && save.daily.last === dayKey(dayNumber() - 1) ? `Keep your ${save.daily.streak} day streak` : "New cave today";
-    $("looksSub").textContent = `${SKINS.filter((k, i) => skinUnlocked(i)).length} of ${SKINS.length}`;
-    $("awardsSub").textContent = `${ACHS.filter(a => save.ach[a.id]).length} of ${ACHS.length}`;
+    $("dailyDot").hidden = doneToday;
+    $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
+    $("titleMeta").textContent = save.daily.streak && (doneToday || save.daily.last === dayKey(dayNumber() - 1))
+      ? `Daily streak · ${save.daily.streak} day${save.daily.streak === 1 ? "" : "s"}` : "";
   }
   function renderLooks() {
     const grid = $("looksGrid");
@@ -2548,7 +2628,7 @@
   tap("playBtn", () => startLevel(nextUnplayed()));
   tap("levelsBtn", openMap);
   tap("dailyBtn", () => startLevel(DAILY));
-  tap("looksBtn", () => { renderLooks(); show("looks"); });
+  tap("looksBtn", () => { save.looksViewed = SKINS.filter((k, i) => skinUnlocked(i)).length; persist(); renderLooks(); show("looks"); });
   tap("awardsBtn", () => { renderAwards(); show("awards"); });
   tap("settingsBtn", () => { backTo = "title"; renderSettings(); show("settings"); });
   tap("pauseSettings", () => { backTo = "pause"; renderSettings(); show("settings"); });
@@ -2591,7 +2671,7 @@
       setTimeout(() => { if (resetArmed) renderSettings(); }, 3500);
       return;
     }
-    save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.ach = {};
+    save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.looksViewed = 1; save.ach = {};
     save.stats = { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 };
     save.daily = { last: "", streak: 0, best: 0, stars: {} };
     persist();
