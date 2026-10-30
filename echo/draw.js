@@ -577,6 +577,10 @@ function drawResultMap() {
   m.strokeStyle = "#b48cff";
   m.beginPath(); m.arc(L.exit.x * scale, L.exit.y * scale, Math.max(3, scale * 0.3), 0, Math.PI * 2); m.stroke();
   if (L.path.length) { m.fillStyle = "#ffffff"; m.beginPath(); m.arc(L.path[0][0] * scale, L.path[0][1] * scale, 2.5, 0, Math.PI * 2); m.fill(); }
+  // Shown as a picture so it can be pressed and held to save on phones.
+  const img = $("resultMapImg");
+  img.src = c.toDataURL("image/png");
+  img.style.width = w + "px"; img.style.height = h + "px";
 }
 
 let energyShown = -1;

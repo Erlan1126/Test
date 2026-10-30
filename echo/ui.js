@@ -536,11 +536,7 @@ async function shareMap() {
       await navigator.share({ files: [file], title: "Echo", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
       return;
     }
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "echo-cave-map.png";
-    a.click();
-    toast("Map saved");
+    toast("Press and hold the map to save or share it");
   } catch (e) {
     if (e && e.name === "AbortError") return;
     toast("Sharing pictures isn't available here");

@@ -357,7 +357,7 @@
   .ch-name { font-family: "Cinzel", Georgia, serif; font-size: 19px; }
   .ch-info { font-size: 14px; color: var(--dim); }
   .map-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 8px; }
-  #resultMap { border-radius: 10px; background: rgba(0, 0, 0, 0.25); max-width: 100%; }
+  #resultMapImg { border-radius: 10px; background: rgba(0, 0, 0, 0.25); max-width: 100%; -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
   .tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
   .tabs button { padding: 8px 18px; border-radius: 99px; font-size: 17px; color: var(--dim); border: 1px solid transparent; }
   .tabs button[aria-selected=true] { color: var(--ink); background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
@@ -463,7 +463,7 @@
     <div class="stars" id="resultStars"><span>★</span><span>★</span><span>★</span></div>
     <div class="newbest" id="newBest"></div>
     <div class="unlock" id="unlockMsg"></div>
-    <div class="map-wrap"><canvas id="resultMap" aria-label="Map of the route Lumi swam"></canvas><button class="link" id="shareMapBtn">Share map</button></div>
+    <div class="map-wrap"><canvas id="resultMap" hidden></canvas><img id="resultMapImg" alt="Map of the route Lumi swam"><button class="link" id="shareMapBtn">Share map</button></div>
     <ul class="goals">
       <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
       <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
