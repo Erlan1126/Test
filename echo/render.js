@@ -99,6 +99,7 @@ function layout() {
   lightCanvas.width = (L.cols + LM.mx * 2) * LPT;
   lightCanvas.height = (L.rows + LM.my * 2) * LPT;
   buildArt();
+  buildBackdrop();
 }
 function cameraTarget() {
   const want = (VIEW.top + VIEW.bottom) / 2 - L.lumi.y * TS;
@@ -145,6 +146,36 @@ function vnoise(x, y) {
   const c = RND[PERM[X + PERM[Y + 1]]], d = RND[PERM[X + 1 + PERM[Y + 1]]];
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
+let fieldBuf = new Float32Array(0);
+// A faint, far-away layer of cave mist and specks behind the cave, in the world's colours.
+const backdrop = document.createElement("canvas"), bctx = backdrop.getContext("2d");
+function buildBackdrop() {
+  const w = Math.max(1, Math.round(W / 2)), h = Math.max(1, Math.round(H * 0.8));
+  backdrop.width = w; backdrop.height = h;
+  const th = themeOf(levelIndex), r = seeded(levelIndex * 977 + 3);
+  // The dark background colour is painted in here too, so each frame draws one image
+  // instead of a full-screen gradient plus an image.
+  const bg = bctx.createRadialGradient(w / 2, h * 0.47, 0, w / 2, h * 0.47, Math.max(w, h) * 0.75);
+  bg.addColorStop(0, "#080b22");
+  bg.addColorStop(1, "#03040b");
+  bctx.fillStyle = bg;
+  bctx.fillRect(0, 0, w, h);
+  for (let k = 0; k < 26; k++) {
+    const x = r() * w, y = r() * h, rad = (0.15 + r() * 0.35) * w;
+    const g = bctx.createRadialGradient(x, y, 0, x, y, rad);
+    const c = k % 3 ? th.floor2 : th.rim;
+    g.addColorStop(0, `rgba(${c.join(",")},${k % 3 ? 0.16 : 0.05})`);
+    g.addColorStop(1, `rgba(${c.join(",")},0)`);
+    bctx.fillStyle = g;
+    bctx.fillRect(0, 0, w, h);
+  }
+  for (let k = 0; k < 40; k++) {
+    bctx.fillStyle = `rgba(${th.rim.join(",")},${0.15 + r() * 0.25})`;
+    bctx.beginPath();
+    bctx.arc(r() * w, r() * h, 0.4 + r() * 0.9, 0, Math.PI * 2);
+    bctx.fill();
+  }
+}
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 function buildArt() {
@@ -181,12 +212,17 @@ function buildArt() {
   const seed = levelIndex * 37.1 + 5;
   const th = themeOf(levelIndex);
   const inv = 1 / (TS * sc), ox = LM.mx, oy = LM.my;
-  const f = new Float32Array(w * h);
+  if (fieldBuf.length < w * h) fieldBuf = new Float32Array(w * h);
+  const f = fieldBuf;
   for (let py = 0; py < h; py++) {
     const ty = (py + 0.5) * inv - oy, iy = Math.floor(ty);
     for (let px = 0; px < w; px++) {
       const tx = (px + 0.5) * inv - ox, ix = Math.floor(tx);
-      let v = sample(tx, ty) + (vnoise(tx * 1.7 + seed, ty * 1.7) - 0.5) * 0.24 + (vnoise(tx * 4.3, ty * 4.3 + seed) - 0.5) * 0.08;
+      let v = sample(tx, ty);
+      // The shape noise moves the field by at most 0.16, and rock shading stops changing 0.3
+      // above the edge, so deep enough inside solid rock the noise can't change any pixel.
+      if (v > TH + 0.47) { f[py * w + px] = TH + 0.5; continue; }
+      v += (vnoise(tx * 1.7 + seed, ty * 1.7) - 0.5) * 0.24 + (vnoise(tx * 4.3, ty * 4.3 + seed) - 0.5) * 0.08;
       if (ix >= 0 && iy >= 0 && ix < cols && iy < rows) {
         const sp = L.spikes[iy * cols + ix];
         if (sp) for (const s of sp) {
@@ -201,21 +237,30 @@ function buildArt() {
   }
 
   const img = actx.createImageData(w, h), D = img.data;
+  const hasWater = L.flow.some(Boolean);
+  let patch = 0;
   for (let py = 0; py < h; py++) {
     const ty = (py + 0.5) * inv - oy;
     for (let px = 0; px < w; px++) {
       const i = py * w + px, v = f[i], tx = (px + 0.5) * inv - ox;
       const tex = vnoise(tx * 7 + 3, ty * 7) * 0.6 + vnoise(tx * 19, ty * 19 + 7) * 0.4;
       const t = 0.78 + tex * 0.44;
+      const k4 = i * 4;
+      if (v > TH + 0.3) {
+        // Deep rock: just its darkest colour with stone texture.
+        D[k4] = th.deep[0] * t; D[k4 + 1] = th.deep[1] * t; D[k4 + 2] = th.deep[2] * t; D[k4 + 3] = 255;
+        continue;
+      }
       const cover = smooth(TH - 0.025, TH + 0.025, v);
 
       // Open cave: deep blue with teal and violet patches, darker where it meets rock.
-      const patch = vnoise(tx * 0.45 + seed, ty * 0.45 - seed);
+      // Colour patches are a couple of tiles across, so every fourth pixel is plenty.
+      if ((px & 3) === 0) patch = vnoise(tx * 0.45 + seed, ty * 0.45 - seed);
       const ao = smooth(TH - 0.32, TH, v);
       let fr = th.floor[0] + (th.floor2[0] - th.floor[0]) * patch;
       let fg = th.floor[1] + (th.floor2[1] - th.floor[1]) * patch;
       let fb = th.floor[2] + (th.floor2[2] - th.floor[2]) * patch;
-      const wt = water(tx, ty);
+      const wt = hasWater ? water(tx, ty) : 0;
       if (wt > 0) { fr += (14 - fr) * wt * 0.8; fg += (62 - fg) * wt * 0.8; fb += (96 - fb) * wt * 0.8; }
       const fk = t * (1 - ao * 0.6);
       fr *= fk; fg *= fk; fb *= fk;

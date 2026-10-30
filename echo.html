@@ -60,7 +60,11 @@
     padding: calc(24px + var(--top)) 16px calc(24px + var(--bottom));
     text-align: center;
   }
-  .screen.on { display: flex; }
+  .screen.on { display: flex; animation: screenIn 0.35s ease both; }
+  .screen.on > .panel, .screen.on > .grid, .screen.on > .map { animation: panelIn 0.45s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes screenIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .screen.on, .screen.on > * { animation: none !important; } }
   .dim-bg { background: rgba(3, 4, 12, 0.6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 
   .logo {
@@ -107,7 +111,8 @@
   .total { color: var(--gold); font-size: 16px; margin-top: 10px; min-height: 20px; }
 
   /* Level select */
-  .levels-title { font-size: 30px; font-weight: 600; margin: 0 0 4px; }
+  .levels-title { font-family: "Cinzel", Georgia, serif; font-size: 28px; font-weight: 500; letter-spacing: 0.06em; margin: 2px 0 4px; }
+  #levelScreen { background: radial-gradient(ellipse 90% 60% at 50% 55%, color-mix(in srgb, var(--world, #7ee8ff) 14%, transparent), transparent 70%), rgba(3, 4, 12, 0.72); }
   .world-head { display: flex; align-items: center; gap: 12px; width: min(380px, 100%); }
   .world-head .icon-btn { width: 44px; height: 44px; font-size: 24px; flex: none; }
   .world-head .icon-btn:disabled { opacity: 0.25; }
@@ -167,10 +172,13 @@
     height: 38px;
     padding: 0 12px;
     border-radius: 999px;
-    background: rgba(10, 14, 32, 0.72);
-    border: 1px solid var(--line);
+    background: rgba(12, 18, 40, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     font-size: 16px;
     white-space: nowrap;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
   }
   .icon-btn { width: 38px; justify-content: center; padding: 0; pointer-events: auto; font-size: 17px; }
   #hud .mid { flex: 1; min-width: 0; text-align: center; font-size: 15px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -205,7 +213,7 @@
     border: 1px solid var(--line);
     box-shadow: 0 0 60px rgba(126, 232, 255, 0.12);
   }
-  .panel h2 { margin: 0; font-size: 28px; font-weight: 600; }
+  .panel h2 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: 26px; font-weight: 500; letter-spacing: 0.04em; text-wrap: balance; }
   .panel .sub { color: var(--dim); margin: 4px 0 0; font-size: 15px; }
   .stars { display: flex; justify-content: center; gap: 10px; margin: 18px 0 8px; font-size: 46px; }
   .stars span { color: rgba(255, 255, 255, 0.12); transform: scale(0.4); opacity: 0; transition: transform 0.35s cubic-bezier(.3,1.8,.5,1), opacity 0.3s; }
@@ -337,6 +345,13 @@
   .seg button { padding: 7px 11px; font-size: 14px; color: var(--dim); }
   .seg button[aria-pressed=true] { background: rgba(126, 232, 255, 0.2); color: var(--ink); }
   [hidden] { display: none !important; }
+  /* The level's name, shown for a moment as each cave fades in. */
+  #levelCard { position: fixed; left: 0; right: 0; top: 38%; text-align: center; pointer-events: none; opacity: 0; padding: 0 16px; }
+  #levelCard.on { animation: levelCard 2.4s ease both; }
+  .lc-num { font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--world, var(--cyan)); text-shadow: 0 1px 10px rgba(0,0,0,0.8); }
+  .lc-name { font-family: "Cinzel", Georgia, serif; font-size: clamp(26px, 8vw, 38px); letter-spacing: 0.08em; margin-top: 6px; color: #eef8ff; text-shadow: 0 0 24px rgba(126, 232, 255, 0.35), 0 2px 14px rgba(0, 0, 0, 0.8); }
+  @keyframes levelCard { 0% { opacity: 0; transform: translateY(8px); } 18%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+  @media (prefers-reduced-motion: reduce) { #levelCard.on { animation-duration: 1.6s; } }
   .card-art svg { width: min(240px, 70vw); height: auto; display: block; margin: -6px auto 10px; }
   .card-text { font-size: 16px; line-height: 1.5; margin: 10px 0 20px; color: #c3d2ea; }
   #cardTitle { font-size: 26px; margin-top: 6px; }
@@ -363,6 +378,7 @@
 </div>
 <div id="energy" aria-hidden="true"><i></i></div>
 <div id="hint"></div>
+<div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
 
 <div class="screen on" id="titleScreen">

@@ -7,8 +7,13 @@ let clock = 0;
 const titleRipples = [];
 
 function drawBackground(dt) {
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
+  if (L && backdrop.width > 1) {
+    const drift = L.scroll ? Math.max(-H * 0.3, Math.min(H * 0.3, (OY - VIEW.top) * 0.25)) : 0;
+    ctx.drawImage(backdrop, 0, -H * 0.3 + drift, W, H * 1.6);
+  } else {
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
   ctx.fillStyle = "#9fd8ff";
   for (const m of motes) {
     m.y -= m.v * dt;
@@ -352,7 +357,13 @@ function drawThings() {
       if (d > WAVE_RANGE + 0.5) continue;
       const k = 1 - Math.abs(d - w.r) / 1.1;
       if (k <= 0) continue;
-      glow(GLOW.cyan, sx((i % L.cols) + 0.5), sy(((i / L.cols) | 0) + 0.5), TS * 1.15, k * k * fade * 0.32);
+      const cx = sx((i % L.cols) + 0.5), cy = sy(((i / L.cols) | 0) + 0.5);
+      glow(GLOW.cyan, cx, cy, TS * 1.15, k * k * fade * 0.32);
+      if (k > 0.55) {
+        // Bright sparkles ride the front of the wave, scattered a little within each tile.
+        const h = (i * 7919 + Math.floor(w.r * 3)) % 97 / 97, h2 = (i * 104729) % 89 / 89;
+        glow(GLOW.white, cx + (h - 0.5) * TS * 0.7, cy + (h2 - 0.5) * TS * 0.7, TS * 0.16, (k - 0.55) * 2 * fade);
+      }
     }
   }
 
@@ -360,6 +371,21 @@ function drawThings() {
   for (const q of L.particles) {
     const t = q.life / q.max;
     glow(q.color === "skin" ? lumiLook().glow : GLOW[q.color], sx(q.x), sy(q.y), TS * q.size * 3, t * 0.9);
+  }
+
+  // Spores drifting up through the light, and Lumi's soft trail.
+  ctx.globalCompositeOperation = "lighter";
+  for (const s of L.spores) {
+    const ti = Math.floor(s.y) * L.cols + Math.floor(s.x);
+    const a = (ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0) * Math.sin(Math.PI * s.life / s.max);
+    glow(GLOW.white, sx(s.x), sy(s.y), TS * 0.09, a * 0.7);
+  }
+  {
+    const look0 = lumiLook(), tr = L.trail;
+    for (let k = 0; k < tr.length; k++) {
+      const q = (k + 1) / tr.length;
+      glow(look0.glow, sx(tr[k][0]), sy(tr[k][1]), TS * 0.32 * q, 0.22 * q * (L.useEnergy ? 0.5 + 0.5 * Math.min(1, L.energy / 40) : 1));
+    }
   }
 
   // Lumi.
@@ -374,15 +400,31 @@ function drawThings() {
   if (R > 0.5) {
     ctx.globalAlpha = 0.35 + 0.65 * bright;
     const sq = lumi.squash * 0.18;
+    const speed = Math.hypot(lumi.vx, lumi.vy), st = Math.min(0.12, speed * 0.028);
     ctx.save();
     ctx.translate(X, Y);
+    // Antenna with a glowing tip that sways and trails behind when swimming.
+    const sway = Math.sin(clock * 3.1) * R * 0.22 - lumi.vx * R * 0.12;
+    const tipX = sway, tipY = -R * 1.72 + Math.abs(lumi.vy) * R * 0.05;
+    ctx.strokeStyle = look.body[2];
+    ctx.lineWidth = Math.max(1.2, R * 0.13);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, -R * 0.8);
+    ctx.quadraticCurveTo(sway * 0.2, -R * 1.35, tipX, tipY);
+    ctx.stroke();
+    ctx.globalCompositeOperation = "lighter";
+    glow(look.glow, tipX, tipY, R * 1.1, 0.7 * bright + lumi.sing);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = look.body[0];
+    ctx.beginPath(); ctx.arc(tipX, tipY, R * 0.2, 0, Math.PI * 2); ctx.fill();
     const g = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
     g.addColorStop(0, look.body[0]);
     g.addColorStop(0.6, look.body[1]);
     g.addColorStop(1, look.body[2]);
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(0, 0, R * (1 + sq), R * (1 - sq), 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, R * (1 + sq + st), R * (1 - sq - st * 0.7), speed > 0.3 ? lumi.look : 0, 0, Math.PI * 2);
     ctx.fill();
     // Eyes look where Lumi swims.
     const lx = Math.cos(lumi.look) * R * 0.22, ly = Math.sin(lumi.look) * R * 0.18;
@@ -392,6 +434,15 @@ function drawThings() {
     ctx.ellipse(-R * 0.32 + lx, -R * 0.08 + ly, R * 0.12, eh, 0, 0, Math.PI * 2);
     ctx.ellipse(R * 0.32 + lx, -R * 0.08 + ly, R * 0.12, eh, 0, 0, Math.PI * 2);
     ctx.fill();
+    if (lumi.blink >= 0) {
+      // A tiny sparkle in each eye.
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath();
+      ctx.arc(-R * 0.29 + lx, -R * 0.15 + ly, R * 0.045, 0, Math.PI * 2);
+      ctx.arc(R * 0.35 + lx, -R * 0.15 + ly, R * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#123049";
+    }
     if (lumi.sing > 0) {
       ctx.beginPath();
       ctx.ellipse(lx * 0.8, R * 0.35 + ly, R * 0.12, R * 0.15 * Math.min(1, lumi.sing * 4), 0, 0, Math.PI * 2);
@@ -484,6 +535,12 @@ function frame(now) {
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
   if (L && L.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${L.flash * 0.45})`; ctx.fillRect(0, 0, W, H); }
+  if (L && L.fade > 0) {
+    // Each cave fades in from black.
+    ctx.fillStyle = `rgba(3,4,11,${L.fade})`;
+    ctx.fillRect(0, 0, W, H);
+    L.fade = Math.max(0, L.fade - dt * 1.8);
+  }
   drawStick();
   drawEnergy();
   requestAnimationFrame(frame);

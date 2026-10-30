@@ -12,8 +12,26 @@ function show(name) {
   for (const k in screens) screens[k].classList.toggle("on", k === name);
   $("hud").classList.toggle("on", name === "play" || name === "pause");
   if (name !== "play") { pointers.clear(); steer = null; }
-  if (name !== "play" && name !== "pause") setHint("", 0);
+  if (name !== "play" && name !== "pause") { setHint("", 0); $("levelCard").classList.remove("on"); }
+  // Away from the title, keep one history entry so the phone's Back button stays in the game.
+  if (name !== "title" && !backArmed) {
+    try { history.pushState({ echo: 1 }, ""); backArmed = true; } catch (e) {}
+  }
 }
+
+// The phone's Back button: pause a level, leave the pause menu for the map, and go from any
+// other screen back to the title. Only on the title does Back leave the game.
+let backArmed = false;
+window.addEventListener("popstate", () => {
+  backArmed = false;
+  if (screen === "play") pause();
+  else if (screen === "pause") (levelIndex === DAILY ? showTitle() : openMap());
+  else if (screen === "settings" && backTo === "pause") show("pause");
+  else if (screen !== "title") showTitle();
+  if (screen !== "title" && !backArmed) {
+    try { history.pushState({ echo: 1 }, ""); backArmed = true; } catch (e) {}
+  }
+});
 function showTitle() {
   // The cave behind the title is the next one you'll play, in your current world's colours.
   // Lumi floats near the middle of it and sings now and then.
@@ -140,12 +158,24 @@ function startLevel(i, skip = false) {
   }
   loadLevel(i);
   energyShown = -1;
+  L.fade = 1;
   show("play");
+  showLevelCard(i);
 }
+function showLevelCard(i) {
+  const card = $("levelCard"), th = themeOf(i);
+  card.style.setProperty("--world", `rgb(${th.rim.join(",")})`);
+  $("lcNum").textContent = i === DAILY ? "Daily cave" : `Level ${i + 1}`;
+  $("lcName").textContent = i === DAILY ? dayKey() : L.def.name;
+  card.classList.remove("on");
+  void card.offsetWidth;  // restart the animation
+  card.classList.add("on");
+}
+
 function pause() {
   if (screen !== "play") return;
   $("pauseSub").textContent = levelIndex === DAILY ? "Daily Cave" : `Level ${levelIndex + 1} · ${L.def.name}`;
-  $("pauseGoal").textContent = goalLine();
+  $("pauseGoal").textContent = goalLine() || "Find every light, then swim into the portal";
   show("pause");
 }
 function resume() { audio(); show("play"); last = performance.now(); }
@@ -322,7 +352,7 @@ function renderTitle() {
   const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
   $("starCount").textContent = t;
   $("playLabel").textContent = started ? "Continue" : "Play";
-  $("playSub").textContent = `Level ${next + 1} · ${next < LEVELS.length ? LEVELS[next].name : worldName(worldOf(next))}`;
+  $("playSub").textContent = `Level ${next + 1} · ${getLevel(next).name}`;
   const doneToday = save.daily.last === dayKey();
   $("dailyDot").hidden = doneToday;
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);

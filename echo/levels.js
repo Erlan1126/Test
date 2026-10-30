@@ -418,6 +418,28 @@ const INTRO = {
 // Level numbers (from 1) where each world's handmade introductions sit, for the README and tests.
 const INTRO_LEVELS = Object.keys(INTRO).map(Number);
 
+// Every generated cave gets its own name in its world's style.
+const NAME_ADJ = ["Whispering", "Hidden", "Silent", "Glimmering", "Winding", "Sleeping", "Forgotten", "Echoing", "Misty", "Gentle",
+  "Ancient", "Shimmering", "Quiet", "Lonely", "Tangled", "Drowsy", "Velvet", "Secret", "Distant", "Humming"];
+const NAME_NOUN = [
+  ["Grotto", "Moonpool", "Burrow", "Nook", "Passage", "Chamber", "Basin", "Hollow"],
+  ["Fernway", "Mossbank", "Thicket", "Rootway", "Glade", "Dell", "Burrow", "Hollow"],
+  ["Geode", "Spire", "Vault", "Crystalway", "Prism", "Hall", "Gallery", "Grotto"],
+  ["Forge", "Hearth", "Cinderway", "Furnace", "Kiln", "Vent", "Crucible", "Hall"],
+  ["Icefall", "Glacier", "Rimeway", "Snowdrift", "Floe", "Frost Hall", "Hollow", "Passage"],
+  ["Reef", "Lagoon", "Tidepool", "Shoal", "Undertow", "Kelpway", "Grotto", "Shell Cave"],
+  ["Mine", "Shaft", "Vein", "Tunnel", "Lantern Hall", "Seam", "Quarry", "Gallery"],
+  ["Abyss", "Rift", "Starwell", "Chasm", "Skyway", "Comet Hall", "Deep", "Hollow"],
+];
+function caveName(n) {
+  const t = worldOf(n) % THEMES.length, r = seeded(n * 389 + 11);
+  if (isFinale(n)) return "Heart of the " + THEMES[t].name.split(" ")[1];
+  const noun = NAME_NOUN[t][Math.floor(r() * 8)];
+  let adj = NAME_ADJ[Math.floor(r() * NAME_ADJ.length)];
+  if (noun.includes(adj) || adj === noun) adj = "Hidden";
+  return `${adj} ${noun}`;
+}
+
 const levelCache = new Map();
 function getLevel(i) {
   if (i === DAILY) {
@@ -746,7 +768,7 @@ function generateLevel(n, opts = {}) {
     walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
     const parPings = Math.ceil(walk / 5.5) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0);
     return {
-      name: opts.name || worldName(worldOf(n)), par: parPings, map: g.map(row => row.join("")), style, dark, goal, walk,
+      name: opts.name || caveName(n), par: parPings, map: g.map(row => row.join("")), style, dark, goal, walk,
       songs: goal === "quiet" ? parPings + 2 : 0,
       time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3) : 0,
     };

@@ -25,7 +25,7 @@ function loadLevel(i, demo = false) {
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
-    waves: [], particles: [],
+    waves: [], particles: [], spores: [], trail: [],
     pings: 0, time: 0, got: 0,
     pingCd: 0, bumpCd: 0,
     ending: 0, done: false,
@@ -60,13 +60,13 @@ function loadLevel(i, demo = false) {
     if (L.tile[i2] !== ".") continue;
     const sp = [];
     if (rock(x, y - 1)) {
-      if (rnd() < 0.45) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y, dir: 1, len: 0.22 + rnd() * 0.1, w: 0.1 + rnd() * 0.05 });
+      if (rnd() < 0.4) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y, dir: 1, len: 0.24 + rnd() * 0.08, w: 0.15 + rnd() * 0.07 });
     }
     if (rock(x, y + 1)) {
-      if (rnd() < 0.2) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y + 1, dir: -1, len: 0.14 + rnd() * 0.06, w: 0.1 + rnd() * 0.04 });
-      else if (rnd() < 0.4) {
-        const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.2 + rnd() * 0.5;
-        for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.17, y: y + 1.06, s: q ? 0.07 + rnd() * 0.03 : 0.1 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
+      if (rnd() < 0.18) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y + 1, dir: -1, len: 0.16 + rnd() * 0.06, w: 0.14 + rnd() * 0.05 });
+      else if (rnd() < 0.32) {
+        const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.25 + rnd() * 0.4;
+        for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.22, y: y + 1.06, s: q ? 0.09 + rnd() * 0.03 : 0.13 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
       }
     }
     if (sp.length) L.spikes[i2] = sp;
@@ -91,7 +91,7 @@ function goalLine() {
   if (i === DAILY) return "Today's cave is the same for everyone";
   if (i > 0 && isFinale(i)) return "World finale: one extra light to find";
   if (i > 0 && i % PER_WORLD === 0) return `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}`;
-  return "Find the lights, then the portal";
+  return "";
 }
 
 // How fast Lumi's light fades. It gets a little faster deeper in, but never so fast that a
@@ -590,6 +590,21 @@ function update(dt) {
     lumi.y += (L.exit.y - lumi.y) * Math.min(1, dt * 6);
     if (L.ending > 1.1 && !L.done) { L.done = true; finish(); }
   }
+
+  // Spores drift up through lit parts of the cave; Lumi leaves a short trail of light.
+  if (Math.random() < dt * 7) {
+    const a = Math.random() * Math.PI * 2, d = 0.5 + Math.random() * 2.5;
+    L.spores.push({ x: lumi.x + Math.cos(a) * d, y: lumi.y + Math.sin(a) * d, vx: (Math.random() - 0.5) * 0.15, life: 0, max: 3 + Math.random() * 3 });
+  }
+  for (let k = L.spores.length - 1; k >= 0; k--) {
+    const s = L.spores[k];
+    s.life += dt;
+    if (s.life >= s.max) { L.spores.splice(k, 1); continue; }
+    s.x += (s.vx + Math.sin(s.life * 1.3 + k) * 0.05) * dt;
+    s.y -= 0.12 * dt;
+  }
+  L.trail.push([lumi.x, lumi.y]);
+  if (L.trail.length > 14) L.trail.shift();
 
   for (let k = L.particles.length - 1; k >= 0; k--) {
     const q = L.particles[k];
