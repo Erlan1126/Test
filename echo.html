@@ -467,7 +467,8 @@
 
   const WAVE_SPEED = 8.5;   // tiles per second
   const WAVE_RANGE = 7.5;   // tiles the song travels
-  const MEMORY = 0.11;      // how bright remembered walls stay
+  const MEMORY = 0.13;      // how bright remembered walls stay
+  const TH = 0.55;          // where rock begins in the cave's shape field
   const SWIM_ACC = 13;
   const SWIM_MAX = 3.4;
   const CURRENT_ACC = 8;
@@ -616,9 +617,11 @@
     H = window.innerHeight;
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
+    scene.width = canvas.width;
+    scene.height = canvas.height;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     bgGrad = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.8);
-    bgGrad.addColorStop(0, "#0b1030");
+    bgGrad.addColorStop(0, "#080b22");
     bgGrad.addColorStop(1, "#03040b");
     vignette = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
     vignette.addColorStop(0, "rgba(0,0,0,0)");
@@ -632,6 +635,143 @@
     TS = Math.floor(Math.min((W - 16) / L.cols, (H - top - bottom) / L.rows));
     OX = Math.round((W - TS * L.cols) / 2);
     OY = Math.round(top + (H - top - bottom - TS * L.rows) / 2);
+    // The light map covers the whole screen, in tiles, with the cave somewhere inside it.
+    LM.mx = Math.ceil(OX / TS) + 1;
+    LM.my = Math.ceil(OY / TS) + 1;
+    lightCanvas.width = (L.cols + LM.mx * 2 + 1) * LPT;
+    lightCanvas.height = (L.rows + LM.my + Math.ceil((H - OY - L.rows * TS) / TS) + 2) * LPT;
+    buildArt();
+  }
+
+  // ---------- Painted cave ----------
+  // The cave is painted once per level: smooth rock shaped from the tile map, roughened with
+  // noise, with stalactites, stone texture and lit rims. Light then decides what you can see.
+  const scene = document.createElement("canvas"), sctx = scene.getContext("2d");
+  const art = document.createElement("canvas"), actx = art.getContext("2d");
+  const lightCanvas = document.createElement("canvas"), lctx = lightCanvas.getContext("2d");
+  const LPT = 8;            // light-map pixels per tile
+  const LM = { mx: 0, my: 0 };
+  const LIGHT = (() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(0.45, "rgba(255,255,255,0.75)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g;
+    x.fillRect(0, 0, 64, 64);
+    return c;
+  })();
+
+  const PERM = new Uint8Array(512), RND = new Float32Array(256);
+  (() => {
+    let seed = 1337;
+    const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const p = Array.from({ length: 256 }, (_, i) => i);
+    for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+    for (let i = 0; i < 512; i++) PERM[i] = p[i & 255];
+    for (let i = 0; i < 256; i++) RND[i] = r();
+  })();
+  function vnoise(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const X = xi & 255, Y = yi & 255;
+    const a = RND[PERM[X + PERM[Y]]], b = RND[PERM[X + 1 + PERM[Y]]];
+    const c = RND[PERM[X + PERM[Y + 1]]], d = RND[PERM[X + 1 + PERM[Y + 1]]];
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+  const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  function buildArt() {
+    const sc = Math.min(DPR, 1.5);
+    const w = Math.max(1, Math.round(W * sc)), h = Math.max(1, Math.round(H * sc));
+    art.width = w; art.height = h;
+    const { cols, rows } = L, SUB = 2, PAD = 3;
+
+    // Rock occupancy at two samples per tile, blurred once so corners round off
+    // while tile edges stay where the collisions are.
+    const gw = (cols + PAD * 2) * SUB, gh = (rows + PAD * 2) * SUB;
+    const g = new Float32Array(gw * gh), tmp = new Float32Array(gw * gh);
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+      const tx = Math.floor(gx / SUB) - PAD, ty = Math.floor(gy / SUB) - PAD;
+      g[gy * gw + gx] = tx < 0 || ty < 0 || tx >= cols || ty >= rows || L.tile[ty * cols + tx] === "#" ? 1 : 0;
+    }
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++)
+      tmp[y * gw + x] = (g[y * gw + Math.max(0, x - 1)] + 2 * g[y * gw + x] + g[y * gw + Math.min(gw - 1, x + 1)]) / 4;
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++)
+      g[y * gw + x] = (tmp[Math.max(0, y - 1) * gw + x] + 2 * tmp[y * gw + x] + tmp[Math.min(gh - 1, y + 1) * gw + x]) / 4;
+    const sample = (tx, ty) => {
+      const fx = (tx + PAD) * SUB - 0.5, fy = (ty + PAD) * SUB - 0.5;
+      if (fx < 0 || fy < 0 || fx >= gw - 1 || fy >= gh - 1) return 1;
+      const x0 = fx | 0, y0 = fy | 0, ax = fx - x0, ay = fy - y0, k = y0 * gw + x0;
+      return (g[k] + (g[k + 1] - g[k]) * ax) * (1 - ay) + (g[k + gw] + (g[k + gw + 1] - g[k + gw]) * ax) * ay;
+    };
+    // Water tint, blended between tile centres so rivers have soft banks.
+    const water = (tx, ty) => {
+      const fx = tx - 0.5, fy = ty - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0;
+      const at = (x, y) => (x >= 0 && y >= 0 && x < cols && y < rows && L.flow[y * cols + x] ? 1 : 0);
+      return (at(x0, y0) * (1 - ax) + at(x0 + 1, y0) * ax) * (1 - ay) + (at(x0, y0 + 1) * (1 - ax) + at(x0 + 1, y0 + 1) * ax) * ay;
+    };
+
+    const seed = levelIndex * 37.1 + 5;
+    const inv = 1 / (TS * sc), ox = OX / TS, oy = OY / TS;
+    const f = new Float32Array(w * h);
+    for (let py = 0; py < h; py++) {
+      const ty = (py + 0.5) * inv - oy, iy = Math.floor(ty);
+      for (let px = 0; px < w; px++) {
+        const tx = (px + 0.5) * inv - ox, ix = Math.floor(tx);
+        let v = sample(tx, ty) + (vnoise(tx * 1.7 + seed, ty * 1.7) - 0.5) * 0.24 + (vnoise(tx * 4.3, ty * 4.3 + seed) - 0.5) * 0.08;
+        if (ix >= 0 && iy >= 0 && ix < cols && iy < rows) {
+          const sp = L.spikes[iy * cols + ix];
+          if (sp) for (const s of sp) {
+            const dy = (ty - s.base) * s.dir;
+            if (dy < -0.1 || dy > s.len) continue;
+            const hw = s.w * Math.min(1, 1 - dy / s.len + 0.15), dx = Math.abs(tx - s.x);
+            if (dx < hw) v = Math.max(v, TH - 0.03 + 0.3 * (1 - dx / hw));
+          }
+        }
+        f[py * w + px] = v;
+      }
+    }
+
+    const img = actx.createImageData(w, h), D = img.data;
+    for (let py = 0; py < h; py++) {
+      const ty = (py + 0.5) * inv - oy;
+      for (let px = 0; px < w; px++) {
+        const i = py * w + px, v = f[i], tx = (px + 0.5) * inv - ox;
+        const tex = vnoise(tx * 7 + 3, ty * 7) * 0.6 + vnoise(tx * 19, ty * 19 + 7) * 0.4;
+        const t = 0.78 + tex * 0.44;
+        const cover = smooth(TH - 0.025, TH + 0.025, v);
+
+        // Open cave: deep blue with teal and violet patches, darker where it meets rock.
+        const patch = vnoise(tx * 0.45 + seed, ty * 0.45 - seed);
+        const ao = smooth(TH - 0.32, TH, v);
+        let fr = 18 + patch * 12, fg = 30 + (1 - patch) * 16, fb = 58 + patch * 14;
+        const wt = water(tx, ty);
+        if (wt > 0) { fr += (14 - fr) * wt * 0.8; fg += (62 - fg) * wt * 0.8; fb += (96 - fb) * wt * 0.8; }
+        const fk = t * (1 - ao * 0.6);
+        fr *= fk; fg *= fk; fb *= fk;
+
+        // Rock: lighter near its surface, catching light on faces that look up and left.
+        const gx = f[i + (px < w - 1 ? 1 : 0)] - f[i - (px > 0 ? 1 : 0)];
+        const gy = f[i + (py < h - 1 ? w : 0)] - f[i - (py > 0 ? w : 0)];
+        const m = Math.hypot(gx, gy) + 1e-6;
+        const facing = Math.max(0, (gy / m) * 0.8 - (gx / m) * 0.35);
+        const depth = Math.min(1, Math.max(0, (v - TH) / 0.3));
+        const rim = 1 - smooth(TH, TH + 0.12, v);
+        const hl = rim * (0.35 + 0.65 * facing);
+        let rr = (62 - depth * 48) * t + 80 * hl;
+        let rg = (82 - depth * 64) * t + 160 * hl;
+        let rb = (128 - depth * 96) * t + 200 * hl;
+
+        const k = i * 4;
+        D[k] = fr + (rr - fr) * cover;
+        D[k + 1] = fg + (rg - fg) * cover;
+        D[k + 2] = fb + (rb - fb) * cover;
+        D[k + 3] = 255;
+      }
+    }
+    actx.putImageData(img, 0, 0);
   }
   const insetProbe = document.createElement("div");
   insetProbe.style.cssText = "position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)";
@@ -678,6 +818,27 @@
       if (ch === "c") L.crystals.push({ x: cx, y: cy, i: i2, on: 0, cells: null });
       if (ch === "z") L.critters.push({ x: cx, y: cy, hx: cx, hy: cy, i: i2, awake: 0, ph: Math.random() * 6 });
       if (ch === "b") L.moths.push({ x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6, idx: 0 });
+    }
+    let seed = (i + 1) * 9973;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    L.spikes = new Array(n).fill(null);
+    L.shrooms = [];
+    const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const i2 = y * cols + x;
+      if (L.tile[i2] !== ".") continue;
+      const sp = [];
+      if (rock(x, y - 1)) {
+        if (rnd() < 0.45) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y, dir: 1, len: 0.22 + rnd() * 0.1, w: 0.1 + rnd() * 0.05 });
+      }
+      if (rock(x, y + 1)) {
+        if (rnd() < 0.2) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y + 1, dir: -1, len: 0.14 + rnd() * 0.06, w: 0.1 + rnd() * 0.04 });
+        else if (rnd() < 0.4) {
+          const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.2 + rnd() * 0.5;
+          for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.17, y: y + 1.06, s: q ? 0.07 + rnd() * 0.03 : 0.1 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
+        }
+      }
+      if (sp.length) L.spikes[i2] = sp;
     }
     layout();
     updateHud();
@@ -1056,89 +1217,131 @@
   const sx = x => OX + x * TS, sy = y => OY + y * TS;
 
   function drawCave() {
-    const { cols, rows } = L;
-    // Floor tint where light reaches.
-    for (let i = 0; i < L.n; i++) {
-      if (L.tile[i] === "#") continue;
-      const a = Math.max(L.lit[i], L.glow[i]);
-      if (a < 0.02) continue;
-      ctx.fillStyle = `rgba(60,110,200,${a * 0.1})`;
-      ctx.fillRect(sx(i % cols), sy((i / cols) | 0), TS, TS);
-    }
+    const { cols } = L, P = LPT, mx = LM.mx, my = LM.my;
 
-    // Currents: drifting streaks.
+    // Light map: a soft blob per tile, plus smooth lights that follow moving things.
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.globalCompositeOperation = "source-over";
+    lctx.globalAlpha = 1;
+    lctx.clearRect(0, 0, lightCanvas.width, lightCanvas.height);
+    lctx.globalCompositeOperation = "lighter";
+    const blob = (x, y, r, a) => {
+      if (a <= 0.004) return;
+      lctx.globalAlpha = Math.min(1, a);
+      lctx.drawImage(LIGHT, (x + mx - r) * P, (y + my - r) * P, r * 2 * P, r * 2 * P);
+    };
+    for (let i = 0; i < L.n; i++) blob((i % cols) + 0.5, ((i / cols) | 0) + 0.5, 0.95, vis(i));
+    const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
+    blob(L.lumi.x, L.lumi.y, 1.15, 0.85 * shrink + L.lumi.sing * 0.5);
+    for (const c of L.crystals) if (c.on) blob(c.x, c.y, 1.3, c.on * 0.6);
+    for (const o of L.lights) if (!o.got) blob(o.x, o.y, 0.7, 0.3);
+    for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4);
+    blob(L.exit.x, L.exit.y, 0.9, 0.3);
+    lctx.globalAlpha = 1;
+
+    // Scene: the painted cave, kept only where light falls.
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.globalCompositeOperation = "source-over";
+    sctx.clearRect(0, 0, scene.width, scene.height);
+    sctx.drawImage(art, 0, 0, scene.width, scene.height);
+    sctx.globalCompositeOperation = "destination-in";
+    sctx.drawImage(lightCanvas, (OX - mx * TS) * DPR, (OY - my * TS) * DPR, lightCanvas.width / P * TS * DPR, lightCanvas.height / P * TS * DPR);
+    sctx.globalCompositeOperation = "source-over";
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(scene, 0, 0);
+    ctx.restore();
+
+    ctx.globalCompositeOperation = "lighter";
+    // Currents: slow ribbons of mist drifting downstream.
     ctx.lineCap = "round";
-    ctx.lineWidth = Math.max(1.5, TS * 0.06);
+    ctx.lineWidth = Math.max(1.5, TS * 0.05);
     for (let i = 0; i < L.n; i++) {
       const f = L.flow[i];
       if (!f) continue;
-      const a = 0.16 + Math.max(L.lit[i], L.glow[i]) * 0.5;
+      const a = 0.06 + Math.max(L.lit[i], L.glow[i]) * 0.35;
       const x = i % cols, y = (i / cols) | 0;
-      for (let k = 0; k < 3; k++) {
-        const t = ((clock * 0.9 + k / 3 + (x * 0.37 + y * 0.61)) % 1);
-        const off = (k - 1) * 0.28;
+      for (let k = 0; k < 2; k++) {
+        const t = (clock * 0.55 + k / 2 + (x * 0.37 + y * 0.61)) % 1;
+        const off = (k - 0.5) * 0.4 + Math.sin(clock * 1.3 + x + y + k) * 0.06;
         const cx = x + 0.5 + f[0] * (t - 0.5) + f[1] * off;
         const cy = y + 0.5 + f[1] * (t - 0.5) + f[0] * off;
-        ctx.strokeStyle = `rgba(120,220,255,${a * Math.sin(t * Math.PI)})`;
+        ctx.strokeStyle = `rgba(140,225,255,${a * Math.sin(t * Math.PI)})`;
         ctx.beginPath();
-        ctx.moveTo(sx(cx - f[0] * 0.18), sy(cy - f[1] * 0.18));
-        ctx.lineTo(sx(cx + f[0] * 0.18), sy(cy + f[1] * 0.18));
+        ctx.moveTo(sx(cx - f[0] * 0.3), sy(cy - f[1] * 0.3));
+        ctx.lineTo(sx(cx + f[0] * 0.3), sy(cy + f[1] * 0.3));
         ctx.stroke();
       }
     }
 
-    // Rock: fill plus glowing outlines, batched by brightness.
-    const BUCKETS = 10;
-    const paths = Array.from({ length: BUCKETS }, () => new Path2D());
-    const open = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && !solidAt(x, y);
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      const i = y * cols + x;
-      if (L.tile[i] !== "#") continue;
-      const a = vis(i);
-      if (a < 0.015) continue;
-      ctx.fillStyle = `rgba(22,40,88,${a * 0.38})`;
-      ctx.fillRect(sx(x), sy(y), TS + 0.5, TS + 0.5);
-      const p = paths[Math.min(BUCKETS - 1, Math.floor(a * BUCKETS))];
-      const X = sx(x), Y = sy(y);
-      if (open(x, y - 1)) { p.moveTo(X, Y); p.lineTo(X + TS, Y); }
-      if (open(x, y + 1)) { p.moveTo(X, Y + TS); p.lineTo(X + TS, Y + TS); }
-      if (open(x - 1, y)) { p.moveTo(X, Y); p.lineTo(X, Y + TS); }
-      if (open(x + 1, y)) { p.moveTo(X + TS, Y); p.lineTo(X + TS, Y + TS); }
-    }
-    ctx.globalCompositeOperation = "lighter";
-    for (let b = 0; b < BUCKETS; b++) {
-      const a = (b + 0.5) / BUCKETS;
-      ctx.lineWidth = Math.max(4, TS * 0.26);
-      ctx.strokeStyle = `rgba(70,180,255,${a * 0.16})`;
-      ctx.stroke(paths[b]);
-      ctx.lineWidth = Math.max(1.5, TS * 0.07);
-      ctx.strokeStyle = `rgba(150,235,255,${Math.min(1, a * 1.05)})`;
-      ctx.stroke(paths[b]);
+    // Glowing mushrooms, seen only when light reaches them.
+    for (const m of L.shrooms) {
+      const a = vis(m.i);
+      if (a < 0.03) continue;
+      const X = sx(m.x), Y = sy(m.y), r = m.s * TS;
+      glow(m.pink ? GLOW.pink : GLOW.green, X, Y - r * 1.7, r * 4.5, a * (0.35 + Math.sin(clock * 1.5 + m.ph) * 0.1));
     }
     ctx.globalCompositeOperation = "source-over";
+    for (const m of L.shrooms) {
+      const a = vis(m.i);
+      if (a < 0.03) continue;
+      const X = sx(m.x), Y = sy(m.y), r = m.s * TS;
+      const sway = Math.sin(clock * 0.9 + m.ph) * r * 0.08;
+      ctx.fillStyle = `rgba(200,222,240,${a * 0.8})`;
+      ctx.beginPath();
+      ctx.moveTo(X - r * 0.3, Y);
+      ctx.quadraticCurveTo(X - r * 0.12, Y - r * 0.8, X - r * 0.18 + sway, Y - r * 1.3);
+      ctx.lineTo(X + r * 0.18 + sway, Y - r * 1.3);
+      ctx.quadraticCurveTo(X + r * 0.12, Y - r * 0.8, X + r * 0.3, Y);
+      ctx.fill();
+      ctx.fillStyle = m.pink ? `rgba(255,140,200,${a})` : `rgba(110,240,210,${a})`;
+      ctx.beginPath();
+      ctx.moveTo(X - r + sway, Y - r * 1.2);
+      ctx.bezierCurveTo(X - r * 0.95 + sway, Y - r * 2.4, X + r * 0.95 + sway, Y - r * 2.4, X + r + sway, Y - r * 1.2);
+      ctx.quadraticCurveTo(X + sway, Y - r * 1.45, X - r + sway, Y - r * 1.2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${a * 0.55})`;
+      ctx.beginPath();
+      ctx.arc(X - r * 0.35 + sway, Y - r * 1.75, r * 0.14, 0, Math.PI * 2);
+      ctx.arc(X + r * 0.25 + sway, Y - r * 1.9, r * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // Sound doors.
+    // Sound curtains: shimmering strands across the passage that part when the song arrives.
+    ctx.globalCompositeOperation = "lighter";
     for (let i = 0; i < L.n; i++) {
       if (L.tile[i] !== "D") continue;
-      const a = Math.max(vis(i), 0.06 + Math.sin(clock * 2 + i) * 0.03);
-      const x = sx(i % cols), y = sy((i / cols) | 0), o = L.doorAnim[i];
-      ctx.fillStyle = `rgba(150,100,255,${a * 0.3 * (1 - o)})`;
-      ctx.fillRect(x, y, TS, TS);
-      ctx.fillStyle = `rgba(200,160,255,${a * (1 - o * 0.75)})`;
-      const bh = Math.max(2, TS * 0.1);
-      for (let k = 0; k < 3; k++) {
-        const by = y + TS * (0.25 + k * 0.25) - bh / 2;
-        const half = TS * 0.42 * (1 - o);
-        ctx.fillRect(x + TS / 2 - half, by, half * 2, bh);
+      const x = i % cols, y = (i / cols) | 0, o = L.doorAnim[i];
+      const a = Math.max(vis(i), 0.1 + Math.sin(clock * 2 + i) * 0.04) * (1 - o * 0.85);
+      const across = !solidAt(x, y - 1) || !solidAt(x, y + 1);  // passage runs up-down, so strands run left-right
+      const cx = sx(x + 0.5), cy = sy(y + 0.5);
+      glow(GLOW.violet, cx, cy, TS * 0.9, a * 0.45);
+      ctx.lineWidth = Math.max(1.2, TS * 0.04);
+      for (let k = 0; k < 4; k++) {
+        const off = (k - 1.5) * 0.14;
+        ctx.strokeStyle = `rgba(205,170,255,${a * (0.9 - Math.abs(k - 1.5) * 0.2)})`;
+        ctx.beginPath();
+        for (const side of [-1, 1]) {
+          const len = 0.5 * (1 - o);
+          for (let q = 0; q <= 8; q++) {
+            const u = side * (0.5 - len * (q / 8));
+            const wav = Math.sin(clock * 4 + q * 1.1 + k * 1.7) * 0.04;
+            const px = across ? cx + u * TS : cx + (off + wav) * TS;
+            const py = across ? cy + (off + wav) * TS : cy + u * TS;
+            if (q === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+        }
+        ctx.stroke();
       }
       if (L.door[i] > 0) {
-        ctx.strokeStyle = `rgba(200,160,255,${0.55 * o})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(205,170,255,${0.4 * o})`;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(x + TS / 2, y + TS / 2, TS * 0.38, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (L.door[i] / DOOR_TIME));
+        ctx.arc(cx, cy, TS * 0.42, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (L.door[i] / DOOR_TIME));
         ctx.stroke();
       }
     }
+    ctx.globalCompositeOperation = "source-over";
   }
 
   function drawThings() {
@@ -1159,19 +1362,17 @@
       ctx.closePath(); ctx.fill();
     }
 
-    // Portal: always faintly visible so there's a goal.
+    // Portal: a slow vortex, always faintly visible so there's a goal.
     {
       const e = L.exit, X = sx(e.x), Y = sy(e.y);
-      const a = Math.max(0.3, vis(e.i));
-      glow(GLOW.violet, X, Y, T * 1.6, a * 0.55);
-      glow(GLOW.cyan, X, Y, T * 0.9, a * 0.4);
-      ctx.lineWidth = Math.max(1.5, T * 0.06);
-      for (let k = 0; k < 3; k++) {
-        const rot = clock * (1.2 + k * 0.5) * (k % 2 ? -1 : 1);
-        ctx.strokeStyle = k === 1 ? `rgba(126,232,255,${a})` : `rgba(200,160,255,${a})`;
-        ctx.beginPath();
-        ctx.arc(X, Y, T * (0.18 + k * 0.1), rot, rot + Math.PI * 1.2);
-        ctx.stroke();
+      const a = Math.max(0.35, vis(e.i));
+      glow(GLOW.violet, X, Y, T * 1.5, a * 0.5);
+      glow(GLOW.white, X, Y, T * 0.35, a * 0.6);
+      for (let k = 0; k < 18; k++) {
+        const p = (k / 18 + clock * 0.3) % 1;
+        const ang = k * 2.4 - p * 5;
+        const rad = T * 0.5 * (1 - p);
+        glow(k % 3 ? GLOW.violet : GLOW.cyan, X + Math.cos(ang) * rad, Y + Math.sin(ang) * rad * 0.85, T * 0.14, a * Math.sin(p * Math.PI));
       }
     }
 
@@ -1236,9 +1437,9 @@
       for (let i = 0; i < L.n; i++) {
         const d = w.dist[i];
         if (d > WAVE_RANGE + 0.5) continue;
-        const k = 1 - Math.abs(d - w.r) / 0.9;
+        const k = 1 - Math.abs(d - w.r) / 1.1;
         if (k <= 0) continue;
-        glow(GLOW.cyan, sx((i % L.cols) + 0.5), sy(((i / L.cols) | 0) + 0.5), TS * 0.85, k * fade * 0.55);
+        glow(GLOW.cyan, sx((i % L.cols) + 0.5), sy(((i / L.cols) | 0) + 0.5), TS * 1.15, k * k * fade * 0.32);
       }
     }
 
@@ -1451,7 +1652,8 @@
   ["pauseBtn", "muteBtn"].forEach(id => $(id).addEventListener("pointerdown", e => e.stopPropagation()));
 
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
-  window.addEventListener("resize", resize);
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 120); });
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(() => {});
