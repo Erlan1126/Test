@@ -21,7 +21,11 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | File | What it is |
 | --- | --- |
 | `index.html` | The Skyrise game (the site's home page) |
-| `echo.html` | Echo, a cave-exploring game where you see with sound |
+| `echo.html` | Echo, a cave-exploring game where you see with sound: the page, its styles and screens |
+| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `game.js` (gameplay), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
+| `tests/run.js`, `package.json` | Automated tests for Echo (see below) |
+| `tools/bundle-echo.js` | Builds a single-file copy of Echo with all its code inlined |
+| `PLAYTEST.md` | A checklist for testing Echo on real phones with friends |
 | `echo.webmanifest`, `echo-icon*.png`, `echo-icon.svg`, `echo-apple-touch-icon.png` | Lets phones install Echo as its own app, with its own icon |
 | `star-defender.html` | Star Defender, an earlier arcade space shooter |
 | `manifest.webmanifest` | Lets phones install the game to the home screen, full screen like an app |
@@ -48,9 +52,11 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 **Levels**
 
 - 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
-- The first 10 levels are handmade and teach one idea at a time. The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Every generated level is checked so all lights and the portal can be reached.
-- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. From level 31 some caves are taller than the screen and the camera follows Lumi. From level 61 some caves are fully dark: lights and the portal don't glow until your song finds them.
-- Some levels have a special goal: **Quiet caves** give you a limited number of songs, **Rescue caves** hide a lost baby moth you must bring to the portal, and **Race caves** (from level 31) have a timer.
+- The first 10 levels are handmade and teach the basics. Each later idea is introduced by its own handmade level with a picture card: light energy (level 11), lost baby moths (21), rune stones (41), Gloomlings (61), quiet caves (65), dark caves (81), long climbs (85) and races (101).
+- The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. A level only uses ideas that have already been introduced, and never more than three big ones at once.
+- Each world leans on its own ideas: Mossy Hollow on rescues, Amethyst Deep on rune gates, Ember Caverns on Gloomlings and quiet caves, Frost Tunnels on dark caves and long climbs, Coral Depths on races and currents, Golden Mines on gates, curtains and climbs, and Starlight Abyss on Gloomlings, darkness and races.
+- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. **Long climbs** are taller than the screen and the camera follows Lumi. In **dark caves** lights and the portal don't glow until your song finds them.
+- Some levels have a special goal: **Quiet caves** give you a limited number of songs, **Rescue caves** hide a lost baby moth you must bring to the portal, and **Races** have a timer.
 - Every few levels there's an easier breather level, and the last level of each world is a bigger finale with an extra light.
 - Worlds rotate through eight cave styles, each with its own colours, music key and background sounds: Moonlit Grotto, Mossy Hollow, Amethyst Deep, Ember Caverns, Frost Tunnels, Coral Depths, Golden Mines and Starlight Abyss.
 
@@ -61,9 +67,9 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Currents** carry you along.
 - **Glow-moths** follow you and make your light bigger.
 - **Snoozles** push you away if you bump into them.
-- **Light energy** (from level 11): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again.
-- **Rune stones and gates** (from level 25): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
-- **Gloomlings** (from level 41): shadow creatures that drift through rock. When your song reaches them they chase you for a few seconds, and touching one costs light.
+- **Light energy** (from level 11): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again. The fade rate is matched to each cave's length, so a careful player always has enough.
+- **Rune stones and gates** (from level 41): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
+- **Gloomlings** (from level 61): shadow creatures that drift through rock. When your song reaches them they chase you for a few seconds, and touching one costs light. Afterwards they rest for a while before they can be woken again.
 
 **Rewards**
 
@@ -71,11 +77,21 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Lumi's looks:** eight colours, unlocked by collecting stars.
 - **Awards:** fourteen achievements, such as finishing a cave without bumping a wall, rescuing baby moths or opening rune gates.
 
-**Settings:** music and sound volume, vibration, joystick size, **Relaxed mode** (no light energy, Gloomlings or race timers, for young players), a high-contrast mode (star-shaped lights and outlined creatures), a **save code** to back up progress or move it to another phone, and erasing progress. Tapping the Settings title five times shows a testing switch that unlocks every level. Background music builds as you find lights.
+**Settings:** music and sound volume, vibration, joystick size, **Relaxed mode** (no light energy, Gloomlings or race timers, for young players), **Guiding glow** (lights and the portal always glow a little, even in dark caves), a high-contrast mode (star-shaped lights and outlined creatures), a **save code** to back up progress or move it to another phone, and erasing progress. Tapping the Settings title five times shows a testing switch that unlocks every level. Background music builds as you find lights.
 
 The daily cave changes at midnight UTC, so it's the same cave for everyone in the world. If a phone struggles to keep up, the game lowers its drawing resolution automatically.
 
-Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button).
+Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button). The pause menu shows the current cave's goal.
+
+**Testing Echo**
+
+`npm install` once (it installs [Playwright](https://playwright.dev)), then:
+
+- `npm test` checks every level's layout, the gameplay, each mechanic and mode, every screen at several phone sizes, a robot play-through of about 100 levels, and random "chaos" input, then reports speed. It takes about a minute.
+- `npm test -- --all` has the robot play all 1,000 levels and the daily cave (about five minutes).
+- `npm run test:quick` skips the robot and chaos sections.
+
+For testing on real phones with people, see [PLAYTEST.md](PLAYTEST.md).
 
 ## Star Defender
 

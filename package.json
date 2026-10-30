@@ -1,0 +1,12 @@
+{
+  "name": "skyrise-and-echo",
+  "private": true,
+  "description": "Browser games for phones: Skyrise and Echo.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "test:quick": "node tests/run.js --quick"
+  },
+  "devDependencies": {
+    "playwright": "1.48.2"
+  }
+}
