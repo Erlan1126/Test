@@ -95,8 +95,6 @@
   }
   .row { display: flex; gap: 10px; justify-content: center; width: min(340px, 100%); }
   .row .btn { margin: 6px 0; font-size: 17px; padding: 12px 10px; }
-  .howto { color: var(--dim); font-size: 15px; margin-top: 28px; line-height: 1.6; }
-  .howto b { color: var(--ink); font-weight: 500; }
   .total { color: var(--gold); font-size: 16px; margin-top: 10px; min-height: 20px; }
 
   /* Level select */
@@ -210,6 +208,75 @@
   .goals li span:first-child::before { content: "☆ "; color: rgba(255,255,255,0.3); }
   .goals li.ok span:first-child::before { content: "★ "; color: var(--gold); }
   .newbest { color: var(--cyan); font-size: 14px; min-height: 18px; margin-bottom: 4px; }
+  .unlock { color: var(--gold); font-size: 15px; margin: -4px 0 12px; }
+  .unlock:empty { display: none; }
+
+  /* Title extras */
+  #titleScreen { background: linear-gradient(rgba(3, 4, 12, 0.35), rgba(3, 4, 12, 0.35)), radial-gradient(ellipse 75% 50% at 50% 45%, rgba(3, 4, 12, 0.7), rgba(3, 4, 12, 0) 80%); }
+  .row.small .btn { font-size: 15px; padding: 10px 6px; font-weight: 500; }
+  .row.small .btn b { display: block; font-size: 12px; font-weight: 400; color: var(--dim); }
+  .links { display: flex; gap: 22px; justify-content: center; margin-top: 14px; }
+  .link { color: var(--dim); font-size: 15px; padding: 6px 2px; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(142, 163, 200, 0.4); }
+  .link:focus-visible, .btn:focus-visible, .node:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+  /* Energy */
+  #energy {
+    position: fixed;
+    top: calc(56px + var(--top));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(180px, 46vw);
+    height: 7px;
+    border-radius: 99px;
+    background: rgba(10, 14, 32, 0.75);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    display: none;
+    pointer-events: none;
+  }
+  #energy.on { display: block; }
+  #energy i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #6fd9ff, #c9f6ff); box-shadow: 0 0 10px #7ee8ff; transition: width 0.25s; }
+  #energy.low i { background: linear-gradient(90deg, #ff6f8f, #ffb3c4); box-shadow: 0 0 10px #ff6f8f; animation: blink 0.8s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: 0.45; } }
+
+  /* Toasts */
+  #toasts { position: fixed; bottom: calc(24px + var(--bottom)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
+  .toast { padding: 10px 16px; border-radius: 16px; background: rgba(14, 20, 44, 0.94); border: 1px solid rgba(255, 211, 110, 0.45); color: var(--ink); font-size: 15px; box-shadow: 0 6px 30px rgba(0,0,0,0.5); animation: toast 2.6s ease forwards; max-width: 100%; }
+  .toast b { color: var(--gold); font-weight: 600; }
+  @keyframes toast { 0% { opacity: 0; transform: translateY(10px); } 10%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(6px); } }
+
+  /* Lists in panels */
+  .panel.tall { max-height: calc(100vh - 48px - var(--top) - var(--bottom)); display: flex; flex-direction: column; }
+  .scroll { overflow-y: auto; margin: 14px -6px 14px; padding: 0 6px; overscroll-behavior: contain; touch-action: pan-y; }
+  .looks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 8px; }
+  .look { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--dim); padding: 6px 0; border-radius: 14px; }
+  .look .ball { width: 46px; height: 46px; border-radius: 50%; position: relative; box-shadow: 0 0 18px var(--glow); }
+  .look .ball::before, .look .ball::after { content: ""; position: absolute; top: 40%; width: 5px; height: 8px; border-radius: 50%; background: #123049; }
+  .look .ball::before { left: 31%; }
+  .look .ball::after { right: 31%; }
+  .look.on { background: rgba(126, 232, 255, 0.12); color: var(--ink); outline: 1.5px solid rgba(126, 232, 255, 0.5); }
+  .look.locked .ball { filter: grayscale(1) brightness(0.45); box-shadow: none; }
+  .look.locked { color: rgba(142, 163, 200, 0.6); }
+  .awards { list-style: none; padding: 0; margin: 0; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+  .award { display: grid; grid-template-columns: 34px 1fr; gap: 4px 10px; align-items: center; padding: 10px; border-radius: 14px; background: rgba(126, 232, 255, 0.05); }
+  .award .ico { grid-row: span 2; font-size: 24px; text-align: center; filter: grayscale(1) opacity(0.4); }
+  .award.done .ico { filter: none; }
+  .award .nm { font-weight: 500; }
+  .award .ds { font-size: 13px; color: var(--dim); }
+  .award .bar { grid-column: 2; height: 5px; border-radius: 9px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .award .bar i { display: block; height: 100%; background: var(--gold); }
+  .set { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
+  .set label { font-size: 16px; }
+  .set small { display: block; color: var(--dim); font-size: 13px; }
+  .set input[type=range] { width: 46%; accent-color: #7ee8ff; }
+  .toggle { width: 52px; height: 30px; border-radius: 99px; background: rgba(255,255,255,0.12); position: relative; flex: none; transition: background 0.2s; }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+  .toggle[aria-pressed=true] { background: #4fc4ee; }
+  .toggle[aria-pressed=true]::after { transform: translateX(22px); }
+  .seg { display: flex; border-radius: 99px; border: 1px solid var(--line); overflow: hidden; flex: none; }
+  .seg button { padding: 7px 11px; font-size: 14px; color: var(--dim); }
+  .seg button[aria-pressed=true] { background: rgba(126, 232, 255, 0.2); color: var(--ink); }
+  .danger { color: #ff9fb8; border-color: rgba(255, 159, 184, 0.45); background: rgba(255, 159, 184, 0.08); font-size: 16px; margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -222,15 +289,25 @@
   <div class="pill" id="pingsPill">♪ 0 <small>/ 0</small></div>
   <button class="pill icon-btn" id="muteBtn" aria-label="Mute">🔊</button>
 </div>
+<div id="energy" aria-hidden="true"><i></i></div>
 <div id="hint"></div>
+<div id="toasts" aria-live="polite"></div>
 
 <div class="screen on" id="titleScreen">
   <h1 class="logo">Echo</h1>
   <p class="tagline">A little light, lost in the dark.</p>
   <button class="btn main" id="playBtn">Play</button>
   <button class="btn" id="levelsBtn">Level map</button>
+  <div class="row small">
+    <button class="btn" id="dailyBtn">Daily<b id="dailySub">New cave</b></button>
+    <button class="btn" id="looksBtn">Looks<b id="looksSub">1 of 8</b></button>
+    <button class="btn" id="awardsBtn">Awards<b id="awardsSub">0 of 12</b></button>
+  </div>
   <div class="total" id="totalStars"></div>
-  <p class="howto"><b>Tap</b> to sing and see the cave<br><b>Slide your thumb</b> anywhere to swim</p>
+  <div class="links">
+    <button class="link" id="settingsBtn">Settings</button>
+    <button class="link" id="shareBtn">Share</button>
+  </div>
 </div>
 
 <div class="screen dim-bg" id="levelScreen">
@@ -254,6 +331,7 @@
     <div style="height:18px"></div>
     <button class="btn main" id="resumeBtn">Resume</button>
     <button class="btn" id="restartBtn">Restart cave</button>
+    <button class="btn" id="pauseSettings">Settings</button>
     <button class="btn" id="quitBtn">Level map</button>
   </div>
 </div>
@@ -264,6 +342,7 @@
     <p class="sub" id="resultSub"></p>
     <div class="stars" id="resultStars"><span>★</span><span>★</span><span>★</span></div>
     <div class="newbest" id="newBest"></div>
+    <div class="unlock" id="unlockMsg"></div>
     <ul class="goals">
       <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
       <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
@@ -274,6 +353,49 @@
       <button class="btn" id="retryBtn">Retry</button>
       <button class="btn" id="resultLevels">Map</button>
     </div>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="failScreen">
+  <div class="panel">
+    <h2>Lumi's light faded</h2>
+    <p class="sub" id="failSub">Lost lights, crystals and glow-moths all help Lumi stay bright.</p>
+    <div style="height:20px"></div>
+    <button class="btn main" id="failRetry">Try again</button>
+    <button class="btn" id="failMap">Level map</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="looksScreen">
+  <div class="panel tall">
+    <h2>Lumi's looks</h2>
+    <p class="sub">Collect stars to unlock new colours.</p>
+    <div class="scroll"><div class="looks" id="looksGrid"></div></div>
+    <button class="btn" id="looksBack">Done</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="awardsScreen">
+  <div class="panel tall">
+    <h2>Awards</h2>
+    <p class="sub" id="awardsCount"></p>
+    <div class="scroll"><ul class="awards" id="awardsList"></ul></div>
+    <button class="btn" id="awardsBack">Done</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="settingsScreen">
+  <div class="panel tall">
+    <h2>Settings</h2>
+    <div class="scroll">
+      <div class="set"><label for="setMusic">Music</label><input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
+      <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
+      <div class="set"><label>Vibration<small>On phones that support it</small></label><button class="toggle" id="setVibrate" aria-label="Vibration"></button></div>
+      <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
+      <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
+      <button class="btn danger" id="setReset">Erase all progress</button>
+    </div>
+    <button class="btn" id="settingsBack">Done</button>
   </div>
 </div>
 
@@ -502,12 +624,23 @@
     { name: "Starlight Abyss", floor: [16, 16, 40], floor2: [30, 18, 52], rock: [52, 52, 100],   deep: [8, 8, 22],   rim: [255, 150, 220] },
   ];
   const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
+  const DAILY = -1;
   const worldOf = i => Math.floor(i / PER_WORLD);
-  const themeOf = i => THEMES[worldOf(i) % THEMES.length];
+  const dayNumber = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000); };
+  const dayKey = (n = dayNumber()) => new Date(n * 86400000).toISOString().slice(0, 10);
+  const themeIndex = i => (i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
+  const themeOf = i => THEMES[themeIndex(i)];
+  // Energy and Gloomlings get gently harder with depth; the daily cave sits in the middle.
+  const depthOf = i => (i < 0 ? 0.5 : Math.min(1, Math.max(0, (i - 10) / 400)));
   const worldName = w => THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)];
 
   const levelCache = new Map();
   function getLevel(i) {
+    if (i === DAILY) {
+      const day = dayNumber(), key = "daily" + day;
+      if (!levelCache.has(key)) levelCache.set(key, generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }));
+      return levelCache.get(key);
+    }
     if (i < LEVELS.length) return LEVELS[i];
     if (!levelCache.has(i)) levelCache.set(i, generateLevel(i));
     return levelCache.get(i);
@@ -524,47 +657,115 @@
 
   // Builds a cave: a winding maze with extra loops and open chambers, then places the start,
   // the portal far away, lights in dead ends, and features that grow with the level number.
-  function generateLevel(n) {
+  // Difficulty climbs slowly, with an easy "breather" every fifth level and a bigger
+  // finale at the end of each world.
+  const isBreather = n => n % 5 === 3 && n % PER_WORLD !== PER_WORLD - 1;
+  const isFinale = n => n % PER_WORLD === PER_WORLD - 1;
+
+  function generateLevel(n, opts = {}) {
     const C = 11, R = 18, D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    const hard = Math.min(1, (n - 10) / 400);
+    let hard = opts.hard != null ? opts.hard : Math.min(1, (n - 10) / 400);
+    if (opts.hard == null && isBreather(n)) hard *= 0.4;
+    if (opts.hard == null && isFinale(n)) hard = Math.min(1, hard + 0.25);
+    const gloomFrom = opts.hard != null ? 0 : 40;
     for (let attempt = 0; ; attempt++) {
       const r = seeded(n * 7919 + attempt * 104729 + 17);
       const pick = a => a[Math.floor(r() * a.length)];
       const g = Array.from({ length: R }, () => Array(C).fill("#"));
       const open = (x, y) => x > 0 && y > 0 && x < C - 1 && y < R - 1 && g[y][x] !== "#";
+      const inside = (x, y) => x > 0 && y > 0 && x < C - 1 && y < R - 2;
 
-      // Maze over cells at odd coordinates.
-      const cells = [];
-      for (let y = 1; y < R - 1; y += 2) for (let x = 1; x < C - 1; x += 2) cells.push([x, y]);
-      const visited = new Set();
-      const stack = [pick(cells)];
-      visited.add(stack[0] + "");
-      g[stack[0][1]][stack[0][0]] = ".";
-      while (stack.length) {
-        const [x, y] = stack[stack.length - 1];
-        const nb = D4.map(([dx, dy]) => [x + dx * 2, y + dy * 2, dx, dy])
-          .filter(([nx, ny]) => nx > 0 && ny > 0 && nx < C - 1 && ny < R - 2 && !visited.has(nx + "," + ny));
-        if (!nb.length) { stack.pop(); continue; }
-        const [nx, ny, dx, dy] = pick(nb);
-        g[y + dy][x + dx] = ".";
-        g[ny][nx] = ".";
-        visited.add(nx + "," + ny);
-        stack.push([nx, ny]);
+      // Each cave gets one of four shapes so levels don't all feel the same.
+      const style = attempt > 12 ? "maze" : pick(["maze", "maze", "caverns", "chambers", "winding"]);
+      if (style === "caverns") {
+        // Cellular caves: random rock that settles into blobby open caverns.
+        for (let y = 1; y < R - 2; y++) for (let x = 1; x < C - 1; x++) g[y][x] = r() < 0.42 ? "#" : ".";
+        for (let k = 0; k < 4; k++) {
+          const next = g.map(row => row.slice());
+          for (let y = 1; y < R - 2; y++) for (let x = 1; x < C - 1; x++) {
+            let walls = 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (g[y + dy][x + dx] === "#") walls++;
+            next[y][x] = walls >= 5 ? "#" : ".";
+          }
+          for (let y = 0; y < R; y++) g[y] = next[y];
+        }
+        // Keep only the biggest connected cavern.
+        const seen = new Set();
+        let best = [];
+        for (let y = 1; y < R - 2; y++) for (let x = 1; x < C - 1; x++) {
+          if (g[y][x] !== "." || seen.has(x + "," + y)) continue;
+          const part = [], q = [[x, y]];
+          seen.add(x + "," + y);
+          while (q.length) {
+            const [cx, cy] = q.pop();
+            part.push([cx, cy]);
+            for (const [dx, dy] of D4) {
+              const nx = cx + dx, ny = cy + dy;
+              if (inside(nx, ny) && g[ny][nx] === "." && !seen.has(nx + "," + ny)) { seen.add(nx + "," + ny); q.push([nx, ny]); }
+            }
+          }
+          if (part.length > best.length) best = part;
+        }
+        const keep = new Set(best.map(p => p + ""));
+        for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) if (!keep.has(x + "," + y)) g[y][x] = "#";
+        if (best.length < 55) continue;
+      } else if (style === "chambers") {
+        // A string of rooms joined by tunnels.
+        const rooms = [];
+        for (let k = 0, tries = 0; rooms.length < 5 && tries < 60; tries++) {
+          const w = 2 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 2);
+          const x = 1 + Math.floor(r() * (C - 1 - w)), y = 1 + Math.floor(r() * (R - 2 - h));
+          if (rooms.some(o => x < o.x + o.w + 1 && o.x < x + w + 1 && y < o.y + o.h + 1 && o.y < y + h + 1)) continue;
+          rooms.push({ x, y, w, h });
+        }
+        rooms.sort((a, b) => b.y - a.y);
+        for (const o of rooms) for (let y = o.y; y < o.y + o.h; y++) for (let x = o.x; x < o.x + o.w; x++) g[y][x] = ".";
+        for (let k = 1; k < rooms.length; k++) {
+          const a = rooms[k - 1], b = rooms[k];
+          let x = a.x + Math.floor(r() * a.w), y = a.y + Math.floor(r() * a.h);
+          const tx = b.x + Math.floor(r() * b.w), ty = b.y + Math.floor(r() * b.h);
+          const horizFirst = r() < 0.5;
+          while (x !== tx || y !== ty) {
+            if ((horizFirst && x !== tx) || y === ty) x += Math.sign(tx - x); else y += Math.sign(ty - y);
+            g[y][x] = ".";
+          }
+        }
+        if (rooms.length < 4) continue;
       }
-      // Loops so there's more than one way around.
-      const loops = 3 + Math.floor(r() * 5);
-      for (let k = 0, tries = 0; k < loops && tries < 200; tries++) {
-        const x = 1 + Math.floor(r() * (C - 2)), y = 1 + Math.floor(r() * (R - 3));
-        if (g[y][x] !== "#") continue;
-        if ((open(x - 1, y) && open(x + 1, y) && !open(x, y - 1) && !open(x, y + 1)) ||
-            (open(x, y - 1) && open(x, y + 1) && !open(x - 1, y) && !open(x + 1, y))) { g[y][x] = "."; k++; }
-      }
-      // Open chambers.
-      const rooms = 1 + Math.floor(r() * 3);
-      for (let k = 0; k < rooms; k++) {
-        const w = 2 + Math.floor(r() * 2), h = 2 + Math.floor(r() * 2);
-        const rx = 1 + Math.floor(r() * (C - 1 - w)), ry = 1 + Math.floor(r() * (R - 2 - h));
-        for (let y = ry; y < ry + h; y++) for (let x = rx; x < rx + w; x++) g[y][x] = ".";
+      if (style === "maze" || style === "winding") {
+        // Maze over cells at odd coordinates.
+        const cells = [];
+        for (let y = 1; y < R - 1; y += 2) for (let x = 1; x < C - 1; x += 2) cells.push([x, y]);
+        const visited = new Set();
+        const stack = [pick(cells)];
+        visited.add(stack[0] + "");
+        g[stack[0][1]][stack[0][0]] = ".";
+        while (stack.length) {
+          const [x, y] = stack[stack.length - 1];
+          const nb = D4.map(([dx, dy]) => [x + dx * 2, y + dy * 2, dx, dy])
+            .filter(([nx, ny]) => nx > 0 && ny > 0 && nx < C - 1 && ny < R - 2 && !visited.has(nx + "," + ny));
+          if (!nb.length) { stack.pop(); continue; }
+          const [nx, ny, dx, dy] = pick(nb);
+          g[y + dy][x + dx] = ".";
+          g[ny][nx] = ".";
+          visited.add(nx + "," + ny);
+          stack.push([nx, ny]);
+        }
+        // Loops so there's more than one way around (winding caves get very few).
+        const loops = style === "winding" ? 1 : 3 + Math.floor(r() * 5);
+        for (let k = 0, tries = 0; k < loops && tries < 200; tries++) {
+          const x = 1 + Math.floor(r() * (C - 2)), y = 1 + Math.floor(r() * (R - 3));
+          if (g[y][x] !== "#") continue;
+          if ((open(x - 1, y) && open(x + 1, y) && !open(x, y - 1) && !open(x, y + 1)) ||
+              (open(x, y - 1) && open(x, y + 1) && !open(x - 1, y) && !open(x + 1, y))) { g[y][x] = "."; k++; }
+        }
+        // Open chambers.
+        const rooms = style === "winding" ? 0 : 1 + Math.floor(r() * 3);
+        for (let k = 0; k < rooms; k++) {
+          const w = 2 + Math.floor(r() * 2), h = 2 + Math.floor(r() * 2);
+          const rx = 1 + Math.floor(r() * (C - 1 - w)), ry = 1 + Math.floor(r() * (R - 2 - h));
+          for (let y = ry; y < ry + h; y++) for (let x = rx; x < rx + w; x++) g[y][x] = ".";
+        }
       }
 
       const bfs = (sx, sy, blocked) => {
@@ -592,7 +793,7 @@
       let { d, par } = bfs(S[0], S[1]);
       let E = S, far = 0;
       for (const [x, y] of floor) if (d[y][x] > far || (d[y][x] === far && y < E[1])) { far = d[y][x]; E = [x, y]; }
-      if (far < 12) continue;
+      if (far < (style === "caverns" ? 9 : 12)) continue;
       g[E[1]][E[0]] = "E";
 
       // Main route from start to portal.
@@ -628,7 +829,7 @@
         }
       }
       // Lights, mostly hidden in dead ends.
-      const lightCount = Math.min(4, 1 + Math.floor(r() * 2 + hard * 2.5));
+      const lightCount = Math.min(4, 1 + Math.floor(r() * 2 + hard * 2.5) + (opts.hard == null && isFinale(n) ? 1 : 0));
       const ends = floor.filter(([x, y]) => free(x, y) && D4.filter(([dx, dy]) => open(x + dx, y + dy)).length === 1);
       const others = floor.filter(([x, y]) => free(x, y) && !onRoute.has(x + "," + y));
       const lights = [];
@@ -667,6 +868,15 @@
         }
       }
 
+      // Gloomlings: shadows that come looking when they hear you sing.
+      if (n >= gloomFrom && r() < 0.25 + hard * 0.45) {
+        const want = 1 + Math.floor(r() * (1 + hard * 2));
+        for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
+          const [x, y] = pick(floor);
+          if (free(x, y) && Math.abs(x - S[0]) + Math.abs(y - S[1]) >= 6) { g[y][x] = "g"; k++; }
+        }
+      }
+
       // Par: route length past every light, plus a little room for doors.
       ({ d } = bfs(S[0], S[1]));
       let pos = S, walk = 0;
@@ -678,8 +888,8 @@
         pos = left.shift();
       }
       walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
-      const parPings = Math.ceil(walk / 6) + 1 + doors;
-      return { name: worldName(worldOf(n)), par: parPings, map: g.map(row => row.join("")) };
+      const parPings = Math.ceil(walk / 5.5) + 1 + doors + (lights.length >= 3 ? 1 : 0);
+      return { name: opts.name || worldName(worldOf(n)), par: parPings, map: g.map(row => row.join("")), style };
     }
   }
   function critterSpots(g) {
@@ -695,7 +905,8 @@
   const SWIM_MAX = 4.2;     // tiles per second at full stick
   const SWIM_GRIP = 14;     // how quickly Lumi reaches the speed you ask for
   const CURRENT_ACC = 14;
-  const STICK_R = 46;       // px the thumb travels for full speed
+  const STICK_SIZES = [36, 46, 60];
+  let STICK_R = 46;         // px the thumb travels for full speed (set from settings once loaded)
   const STICK_DEAD = 5;
   const DOOR_TIME = 5;
   const LUMI_R = 0.3;
@@ -703,25 +914,53 @@
 
   // ---------- Save ----------
   const SAVE_KEY = "echo-save-v1";
-  let save = { stars: [], best: [], muted: false };
+  let save = {
+    stars: [], best: [], muted: false, skin: 0, skinsSeen: 1,
+    settings: { music: 0.6, sfx: 0.9, vibrate: true, stick: 1, contrast: false },
+    stats: { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 },
+    daily: { last: "", streak: 0, best: 0, stars: {} },
+    ach: {},
+  };
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && Array.isArray(s.stars)) save = Object.assign(save, s);
+    if (s && Array.isArray(s.stars)) {
+      for (const k of ["settings", "stats", "daily"]) save[k] = Object.assign(save[k], s[k] || {});
+      for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "ach"]) if (s[k] != null) save[k] = s[k];
+    }
   } catch (e) {}
   function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
-  const unlocked = i => i === 0 || (save.stars[i - 1] || 0) > 0;
+  STICK_R = STICK_SIZES[save.settings.stick] || 46;
+  const unlocked = i => i < 0 || i === 0 || (save.stars[i - 1] || 0) > 0;
   const totalStars = () => save.stars.reduce((a, b) => a + (b || 0), 0);
 
   // ---------- Audio ----------
-  let AC = null, master = null, echoBus = null, muted = !!save.muted;
-  const SCALE = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 783.99, 659.25];
+  let AC = null, master = null, sfxBus = null, musicBus = null, echoBus = null, muted = !!save.muted;
+  // Each world has its own key, scale and background sound.
+  const MOODS = [
+    { root: 220.0,  scale: [0, 3, 5, 7, 10], ambient: "drip" },
+    { root: 196.0,  scale: [0, 2, 4, 7, 9],  ambient: "bubble" },
+    { root: 174.61, scale: [0, 2, 3, 7, 8],  ambient: "chime" },
+    { root: 146.83, scale: [0, 3, 5, 7, 10], ambient: "crackle" },
+    { root: 246.94, scale: [0, 2, 4, 7, 11], ambient: "chime" },
+    { root: 164.81, scale: [0, 2, 4, 7, 9],  ambient: "bubble" },
+    { root: 207.65, scale: [0, 2, 4, 7, 9],  ambient: "drip" },
+    { root: 185.0,  scale: [0, 3, 5, 7, 10], ambient: "chime" },
+  ];
+  let mood = MOODS[0];
+  const pitch = (deg, oct = 0) => {
+    const n = mood.scale.length, d = ((deg % n) + n) % n;
+    return mood.root * Math.pow(2, (mood.scale[d] + 12 * (oct + Math.floor(deg / n))) / 12);
+  };
   function audio() {
     if (!AC) {
       try {
         AC = new (window.AudioContext || window.webkitAudioContext)();
         master = AC.createGain();
-        master.gain.value = muted ? 0 : 0.7;
         master.connect(AC.destination);
+        sfxBus = AC.createGain();
+        musicBus = AC.createGain();
+        sfxBus.connect(master);
+        musicBus.connect(master);
         // A feedback delay gives every sound a cave echo.
         echoBus = AC.createGain();
         const delay = AC.createDelay(1);
@@ -732,14 +971,21 @@
         lp.type = "lowpass";
         lp.frequency.value = 2000;
         echoBus.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(master);
-        startDrone();
+        applyVolumes();
+        setInterval(musicTick, 60);
       } catch (e) { AC = null; }
     }
     if (AC && AC.state === "suspended") AC.resume();
   }
+  function applyVolumes() {
+    if (!AC) return;
+    master.gain.value = muted ? 0 : 1;
+    sfxBus.gain.value = save.settings.sfx * 0.75;
+    musicBus.gain.value = save.settings.music * 0.6;
+  }
   function note(freq, o = {}) {
     if (!AC) return;
-    const t = AC.currentTime + (o.at || 0);
+    const t = Math.max(AC.currentTime, o.time || AC.currentTime + (o.at || 0));
     const dur = o.dur || 0.5, vol = o.vol || 0.15;
     const osc = AC.createOscillator(), g = AC.createGain();
     osc.type = o.type || "sine";
@@ -755,52 +1001,76 @@
       g.connect(f); out = f;
     }
     osc.connect(g);
-    out.connect(master);
+    const bus = o.music ? musicBus : sfxBus;
+    out.connect(bus);
     if (o.echo !== 0) {
       const s = AC.createGain();
-      s.gain.value = o.echo == null ? 0.6 : o.echo;
+      s.gain.value = (o.echo == null ? 0.6 : o.echo) * (o.music ? save.settings.music * 0.6 : save.settings.sfx * 0.75);
       out.connect(s); s.connect(echoBus);
     }
     osc.start(t);
     osc.stop(t + dur + 0.05);
   }
-  function startDrone() {
-    const g = AC.createGain();
-    g.gain.value = 0.022;
-    g.connect(master);
-    [55, 82.41, 110.3].forEach((f, i) => {
-      const o = AC.createOscillator();
-      o.frequency.value = f;
-      const lfo = AC.createOscillator(), lg = AC.createGain();
-      lfo.frequency.value = 0.07 + i * 0.05;
-      lg.gain.value = 0.5;
-      const vg = AC.createGain();
-      vg.gain.value = 0.6;
-      lfo.connect(lg); lg.connect(vg.gain);
-      o.connect(vg); vg.connect(g);
-      o.start(); lfo.start();
-    });
+
+  // Background music: a soft pad, a slow bass and a quiet arpeggio, then a melody that
+  // joins in once you find a light. Patterns come from the level's seed, so each cave has its own tune.
+  const music = { on: false, layers: 0, step: 0, next: 0, arp: [], mel: [], bass: [] };
+  function musicStart(seed, layers) {
+    const r = seeded(seed * 31 + 7);
+    music.arp = Array.from({ length: 16 }, (_, k) => (k % 2 && r() < 0.35 ? -1 : Math.floor(r() * 7)));
+    music.mel = Array.from({ length: 32 }, () => (r() < 0.45 ? -1 : 2 + Math.floor(r() * 6)));
+    music.bass = Array.from({ length: 4 }, (_, k) => (k ? [0, 3, 4, 2, 5][Math.floor(r() * 5)] : 0));
+    music.layers = layers;
+    if (!music.on && AC) { music.step = 0; music.next = AC.currentTime + 0.15; }
+    music.on = true;
   }
+  function musicStop() { music.on = false; }
+  function musicTick() {
+    if (!AC || !music.on || muted || AC.state !== "running") { if (AC) music.next = AC.currentTime + 0.1; return; }
+    const beat = 60 / 84 / 2;
+    while (music.next < AC.currentTime + 0.3) {
+      const k = music.step, t = music.next;
+      if (k % 16 === 0) [0, 2, 4].forEach((d, q) => note(pitch(d + music.bass[(k / 16) % 4], -1), { time: t + q * 0.05, dur: beat * 17, vol: 0.045, attack: 1.2, echo: 0.2, music: true }));
+      if (music.layers >= 1 && k % 4 === 0) note(pitch(music.bass[Math.floor(k / 16) % 4], -2), { time: t, dur: beat * 3, vol: 0.07, type: "triangle", echo: 0, music: true });
+      if (music.layers >= 2 && music.arp[k % 16] >= 0) note(pitch(music.arp[k % 16], 0), { time: t, dur: beat * 1.6, vol: music.layers >= 3 ? 0.03 : 0.02, echo: 0.6, music: true });
+      if (music.layers >= 3 && k % 2 === 0 && music.mel[(k / 2) % 32] >= 0) note(pitch(music.mel[(k / 2) % 32], 1), { time: t, dur: beat * 3, vol: 0.026, echo: 0.9, music: true });
+      music.step++;
+      music.next += beat;
+    }
+  }
+
   const sfx = {
     ping(n) {
-      const f = SCALE[n % SCALE.length];
+      const f = pitch(n % 7, 1);
       note(f, { dur: 0.9, vol: 0.17, echo: 0.8 });
       note(f * 2, { dur: 0.5, vol: 0.035, type: "triangle", echo: 0.5 });
     },
     bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
-    crystal() { note(1567.98, { dur: 1.2, vol: 0.06, echo: 0.9 }); note(2093, { at: 0.06, dur: 0.9, vol: 0.03, echo: 0.9 }); },
-    light() { [783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => note(f, { at: i * 0.07, dur: 0.6, vol: 0.1 })); },
+    crystal() { note(pitch(4, 2), { dur: 1.2, vol: 0.06, echo: 0.9 }); note(pitch(6, 2), { at: 0.06, dur: 0.9, vol: 0.03, echo: 0.9 }); },
+    light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.6, vol: 0.1 })); },
     door() { note(196, { dur: 0.7, vol: 0.12, type: "sawtooth", lowpass: 600, attack: 0.08, glide: 294 }); },
     doorClose() { note(220, { dur: 0.4, vol: 0.06, type: "sawtooth", lowpass: 400, glide: 140, echo: 0.2 }); },
     moth() { note(1318.5, { dur: 0.25, vol: 0.06 }); note(1760, { at: 0.08, dur: 0.35, vol: 0.06 }); },
     grumble() { note(210, { dur: 0.45, vol: 0.13, type: "sawtooth", lowpass: 700, glide: 85, echo: 0.3 }); },
+    gloomWake() { note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
+    hurt() { note(330, { dur: 0.35, vol: 0.12, type: "square", lowpass: 900, glide: 120, echo: 0.3 }); },
+    lowEnergy() { note(98, { dur: 0.18, vol: 0.12, echo: 0 }); note(98, { at: 0.22, dur: 0.18, vol: 0.09, echo: 0 }); },
+    fail() { [4, 3, 2, 0].forEach((d, i) => note(pitch(d, 0), { at: i * 0.18, dur: 0.7, vol: 0.09, type: "triangle" })); },
     win() {
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, { at: i * 0.11, dur: 1.4, vol: 0.09 }));
-      note(261.63, { dur: 1.8, vol: 0.08, type: "triangle" });
+      [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.11, dur: 1.4, vol: 0.09 }));
+      note(pitch(0, -1), { dur: 1.8, vol: 0.08, type: "triangle" });
     },
-    star(i) { note([1046.5, 1318.5, 1567.98][i], { dur: 0.5, vol: 0.08 }); },
+    star(i) { note(pitch([7, 9, 11][i], 0), { dur: 0.5, vol: 0.08 }); },
+    unlock() { [0, 4, 7, 9, 14].forEach((d, i) => note(pitch(d, 0), { at: i * 0.08, dur: 0.8, vol: 0.07 })); },
+    ambient() {
+      const a = mood.ambient, r = Math.random();
+      if (a === "drip") note(1500 + r * 900, { dur: 0.14, vol: 0.035, glide: 700 + r * 300, echo: 1 });
+      else if (a === "bubble") { note(500 + r * 300, { dur: 0.1, vol: 0.03, glide: 900 + r * 400, echo: 0.6 }); note(650 + r * 300, { at: 0.12, dur: 0.08, vol: 0.02, glide: 1100, echo: 0.6 }); }
+      else if (a === "chime") note(pitch(Math.floor(r * 5), 3), { dur: 1.4, vol: 0.018, echo: 1 });
+      else for (let k = 0; k < 3; k++) note(90 + Math.random() * 60, { at: k * 0.05 + Math.random() * 0.04, dur: 0.04, vol: 0.03, type: "square", lowpass: 1200, echo: 0.2 });
+    },
   };
-  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+  function buzz(ms) { try { if (save.settings.vibrate && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
   // ---------- Canvas ----------
   const canvas = document.getElementById("game");
@@ -829,6 +1099,28 @@
     green: makeGlow(150, 255, 190),
     white: makeGlow(255, 255, 255),
   };
+  // Looks for Lumi, unlocked by collecting stars.
+  const SKINS = [
+    { name: "Moonbeam",  need: 0,   c: [126, 232, 255], body: ["#ffffff", "#c9f6ff", "#6fd9ff"] },
+    { name: "Rosy",      need: 12,  c: [255, 140, 200], body: ["#ffffff", "#ffd1ea", "#ff8cc8"] },
+    { name: "Minty",     need: 30,  c: [130, 255, 190], body: ["#ffffff", "#d2ffe6", "#6fe8a8"] },
+    { name: "Sunny",     need: 60,  c: [255, 205, 100], body: ["#ffffff", "#fff0c2", "#ffc94d"] },
+    { name: "Lilac",     need: 100, c: [185, 140, 255], body: ["#ffffff", "#e6d9ff", "#a98bff"] },
+    { name: "Ember",     need: 150, c: [255, 150, 90],  body: ["#fff6ee", "#ffd2b0", "#ff8a4d"] },
+    { name: "Frosty",    need: 225, c: [210, 235, 255], body: ["#ffffff", "#f0f8ff", "#b8dcff"] },
+    { name: "Starlight", need: 300, c: null, body: null },
+  ];
+  const RAINBOW = [[255, 120, 160], [255, 200, 110], [150, 255, 160], [110, 220, 255], [170, 140, 255], [255, 140, 230]];
+  const skinGlows = SKINS.map(k => (k.c ? makeGlow(...k.c) : null));
+  const rainbowGlows = RAINBOW.map(c => makeGlow(...c));
+  const skinUnlocked = k => totalStars() >= SKINS[k].need;
+  function lumiLook() {
+    const k = SKINS[save.skin] && skinUnlocked(save.skin) ? save.skin : 0, sk = SKINS[k];
+    if (sk.c) return { glow: skinGlows[k], body: sk.body };
+    const q = Math.floor(clock * 2) % RAINBOW.length, c = RAINBOW[q];
+    return { glow: rainbowGlows[q], body: ["#ffffff", `rgb(${c.map(v => Math.round(v * 0.5 + 127)).join(",")})`, `rgb(${c.join(",")})`] };
+  }
+
   function glow(sprite, x, y, radius, alpha) {
     if (alpha <= 0.003) return;
     ctx.globalAlpha = Math.min(1, alpha);
@@ -1011,7 +1303,7 @@
   let levelIndex = 0;
   let screen = "title";  // title | levels | play | pause | result
 
-  function loadLevel(i) {
+  function loadLevel(i, demo = false) {
     levelIndex = i;
     const def = getLevel(i);
     const rows = def.map.length, cols = def.map[0].length, n = rows * cols;
@@ -1025,7 +1317,7 @@
       glowT: new Float32Array(n),
       glow: new Float32Array(n),
       seen: new Uint8Array(n),
-      lights: [], crystals: [], critters: [], moths: [],
+      lights: [], crystals: [], critters: [], moths: [], gloom: [],
       exit: null,
       lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
       waves: [], particles: [],
@@ -1033,6 +1325,8 @@
       pingCd: 0, bumpCd: 0,
       ending: 0, done: false,
       tut: 0, moved: 0,
+      demo, demoT: 1.2, flash: 0, bumps: 0, hits: 0, failing: 0, lowCd: 0, ambT: 2,
+      useEnergy: i >= 10 || i === DAILY, energy: 100, drain: 1.0 + depthOf(i) * 0.5,
     };
     const dirs = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] };
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
@@ -1046,8 +1340,9 @@
       if (ch === "c") L.crystals.push({ x: cx, y: cy, i: i2, on: 0, cells: null });
       if (ch === "z") L.critters.push({ x: cx, y: cy, hx: cx, hy: cy, i: i2, awake: 0, ph: Math.random() * 6 });
       if (ch === "b") L.moths.push({ x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6, idx: 0 });
+      if (ch === "g") L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
     }
-    let seed = (i + 1) * 9973;
+    let seed = ((i + 1000003) * 9973) % 2147483647 || 1;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     L.spikes = new Array(n).fill(null);
     L.shrooms = [];
@@ -1068,9 +1363,16 @@
       }
       if (sp.length) L.spikes[i2] = sp;
     }
+    mood = MOODS[themeIndex(i)];
+    musicStart(i < 0 ? dayNumber() : i, demo ? 0 : 2);
     layout();
     updateHud();
-    const intro = i % PER_WORLD === 0 && i > 0 ? `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}` : "";
+    if (demo) return;
+    let intro = i % PER_WORLD === 0 && i > 0 ? `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}` : "";
+    if (i === 10) intro = "From here on, Lumi's light slowly fades. Find lights and crystals to stay bright";
+    else if (i === 40) intro = "Gloomlings live here. They come looking when they hear you sing";
+    else if (i > 0 && isFinale(i)) intro = "World finale: a bigger cave with an extra light";
+    else if (i === DAILY) intro = "Today's cave is the same for everyone. Good luck!";
     setHint(def.hint === "first" ? "Tap anywhere to sing 🎵" : def.hint || intro, def.hint === "first" ? 0 : 5);
   }
 
@@ -1118,16 +1420,16 @@
 
   // ---------- Actions ----------
   function ping() {
-    if (screen !== "play" || !L || L.ending || L.pingCd > 0) return;
+    if (!L || L.ending || L.failing || L.pingCd > 0 || (screen !== "play" && !L.demo)) return;
     L.pingCd = 0.4;
-    L.pings++;
+    if (!L.demo) L.pings++;
+    if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - 2.5);
     L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, WAVE_RANGE + 1), r: 0, prev: -1 });
     L.lumi.sing = 0.45;
-    sfx.ping(L.pings - 1);
-    buzz(8);
+    if (!L.demo) { sfx.ping(L.pings - 1); buzz(8); }
     for (let k = 0; k < 14; k++) {
       const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
-      spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "cyan", 0.12);
+      spark(L.lumi.x, L.lumi.y, Math.cos(a) * s, Math.sin(a) * s, 0.6, "skin", 0.12);
     }
     if (L.def.hint === "first" && L.tut === 0) { L.tut = 1; setHint("Now put your thumb down anywhere and slide it to swim", 0); }
     updateHud();
@@ -1142,6 +1444,11 @@
       if (side && L.tile[j] === "D") openDoor(j);
     });
     for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
+    for (const g of L.gloom) {
+      if (g.gone > 0 || g.hunt > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
+      g.hunt = 4.5;
+      sfx.gloomWake();
+    }
   }
 
   function openDoor(j) {
@@ -1220,15 +1527,21 @@
 
     // Steering: the floating stick or the keyboard sets the speed Lumi wants to swim at.
     let wx = 0, wy = 0;
+    const ctl = !L.ending && !L.failing && !L.demo;
     const p = steer != null ? pointers.get(steer) : null;
-    if (p && p.moved && !L.ending) {
+    if (L.demo) {
+      // Title screen: Lumi floats in place and sings now and then.
+      lumi.vy = Math.sin(L.time * 1.4) * 0.12;
+      if ((L.demoT -= dt) <= 0) { L.demoT = 3.2; ping(); }
+    }
+    if (p && p.moved && ctl) {
       const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
       if (d > STICK_DEAD) {
         const k = SWIM_MAX * Math.min(1, (d - STICK_DEAD) / (STICK_R - STICK_DEAD)) / d;
         wx = dx * k; wy = dy * k;
       }
     }
-    if (!L.ending) {
+    if (ctl) {
       const kx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
       const ky = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
       if (kx || ky) { const m = Math.hypot(kx, ky); wx = kx / m * SWIM_MAX; wy = ky / m * SWIM_MAX; }
@@ -1269,7 +1582,7 @@
     if (sp > maxSp) { lumi.vx *= maxSp / sp; lumi.vy *= maxSp / sp; }
     if (sp > 0.25) lumi.look = Math.atan2(lumi.vy, lumi.vx);
 
-    if (!L.ending) {
+    if (!L.ending && !L.failing) {
       const steps = 3;
       for (let s = 0; s < steps; s++) {
         lumi.x += lumi.vx * dt / steps;
@@ -1281,7 +1594,7 @@
     lumi.squash = Math.max(0, lumi.squash - dt * 4);
     lumi.blink -= dt;
     if (lumi.blink < -0.12) lumi.blink = 2 + Math.random() * 3;
-    if (Math.random() < dt * 14 && sp > 0.5) spark(lumi.x - lumi.vx * 0.05, lumi.y - lumi.vy * 0.05, -lumi.vx * 0.15, -lumi.vy * 0.15, 0.5, "cyan", 0.06);
+    if (Math.random() < dt * 14 && sp > 0.5) spark(lumi.x - lumi.vx * 0.05, lumi.y - lumi.vy * 0.05, -lumi.vx * 0.15, -lumi.vy * 0.15, 0.5, "skin", 0.06);
 
     // Doors close again after a while (never on top of Lumi).
     for (let i = 0; i < L.n; i++) {
@@ -1313,7 +1626,7 @@
     // Light: song fades, Lumi, moths and crystals glow.
     for (let i = 0; i < L.n; i++) { L.lit[i] = Math.max(0, L.lit[i] - dt * 0.42); L.glowT[i] = 0; }
     const followers = L.moths.filter(m => m.following).length;
-    const R = 1.5 + followers * 0.75;
+    const R = (1.5 + followers * 0.75) * (L.useEnergy ? 0.55 + 0.45 * Math.min(1, L.energy / 40) : 1);
     const near = soundMap(lumi.x, lumi.y, R);
     for (let i = 0; i < L.n; i++) if (near[i] < R) {
       const v = 1 - near[i] / R;
@@ -1337,6 +1650,8 @@
       if (o.got || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
       o.got = true;
       L.got++;
+      if (L.useEnergy) L.energy = Math.min(100, L.energy + 35);
+      music.layers = 3;
       sfx.light();
       buzz(20);
       for (let k = 0; k < 24; k++) {
@@ -1353,6 +1668,8 @@
       m.ph += dt;
       if (!m.following && Math.hypot(m.x - lumi.x, m.y - lumi.y) < 0.7) {
         m.following = true;
+        L.mothsMet = (L.mothsMet || 0) + 1;
+        if (L.useEnergy) L.energy = Math.min(100, L.energy + 15);
         sfx.moth();
         buzz(10);
       }
@@ -1373,7 +1690,7 @@
       c.ph += dt;
       c.awake = Math.max(0, c.awake - dt);
       const dx = lumi.x - c.x, dy = lumi.y - c.y, d = Math.hypot(dx, dy);
-      if (d < LUMI_R + CRITTER_R && !L.ending) {
+      if (d < LUMI_R + CRITTER_R && !L.ending && !L.failing && !L.demo) {
         const nx = d > 0.001 ? dx / d : 0, ny = d > 0.001 ? dy / d : 1;
         lumi.x = c.x + nx * (LUMI_R + CRITTER_R + 0.01);
         lumi.y = c.y + ny * (LUMI_R + CRITTER_R + 0.01);
@@ -1389,12 +1706,67 @@
       c.x = c.hx + wob;
     }
 
+    // Gloomlings drift at home, then chase you for a while after hearing a song.
+    // They're shadows, so rock doesn't stop them. Touching one costs light.
+    for (const g of L.gloom) {
+      g.ph += dt;
+      if (g.gone > 0) { g.gone -= dt; if (g.gone <= 0) { g.x = g.hx; g.y = g.hy; } continue; }
+      g.hunt = Math.max(0, g.hunt - dt);
+      const hunting = g.hunt > 0 && ctl;
+      const tx = hunting ? lumi.x : g.hx + Math.sin(g.ph * 0.7) * 0.3;
+      const ty = hunting ? lumi.y : g.hy + Math.cos(g.ph * 0.5) * 0.3;
+      const spd = hunting ? 1.3 + depthOf(levelIndex) * 0.6 : 0.6;
+      const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
+      if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
+      if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + 0.28) {
+        const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
+        lumi.vx = nx * 4; lumi.vy = ny * 4;
+        lumi.squash = 1;
+        if (L.useEnergy) L.energy = Math.max(0, L.energy - 25);
+        L.hits++;
+        g.gone = 5;
+        sfx.hurt();
+        buzz(50);
+        for (let k = 0; k < 16; k++) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5, 0.7, "violet", 0.1); }
+      }
+    }
+
+    // Light energy: drains slowly, crystals recharge it, and running out ends the try.
+    if (L.useEnergy && ctl) {
+      L.energy -= dt * L.drain;
+      for (const c of L.crystals) if (c.on && Math.hypot(c.x - lumi.x, c.y - lumi.y) < 1.4) L.energy += dt * 22;
+      L.energy = Math.min(100, L.energy);
+      if (L.energy < 25 && (L.lowCd -= dt) <= 0) { sfx.lowEnergy(); L.lowCd = 1.5; }
+      if (L.energy <= 0) {
+        L.energy = 0;
+        L.failing = 0.001;
+        musicStop();
+        sfx.fail();
+        buzz([40, 60, 40]);
+        setHint("", 0);
+      }
+    }
+    if (L.failing) {
+      L.failing += dt;
+      if (L.failing > 1.5 && !L.done) { L.done = true; failLevel(); }
+    }
+
+    // Cave sounds now and then.
+    if (!L.demo && (L.ambT -= dt) <= 0) { L.ambT = 3 + Math.random() * 5; sfx.ambient(); }
+    L.flash = Math.max(0, L.flash - dt * 1.6);
+
     // Portal.
-    if (!L.ending && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
+    if (ctl && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
       L.ending = 0.001;
+      L.flash = 1;
+      musicStop();
       sfx.win();
       buzz([20, 40, 20]);
       setHint("", 0);
+      for (let k = 0; k < 40; k++) {
+        const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 3;
+        spark(L.exit.x, L.exit.y, Math.cos(a) * s, Math.sin(a) * s, 1.2, ["skin", "violet", "gold"][k % 3], 0.1);
+      }
     }
     if (L.ending) {
       L.ending += dt;
@@ -1436,6 +1808,7 @@
     }
     if (bump > 1.8 && L.bumpCd <= 0) {
       L.bumpCd = 0.25;
+      L.bumps++;
       e.squash = Math.min(1, bump / 3);
       sfx.bump();
       buzz(12);
@@ -1562,7 +1935,7 @@
     for (let i = 0; i < L.n; i++) {
       if (L.tile[i] !== "D") continue;
       const x = i % cols, y = (i / cols) | 0, o = L.doorAnim[i];
-      const a = Math.max(vis(i), 0.1 + Math.sin(clock * 2 + i) * 0.04) * (1 - o * 0.85);
+      const a = Math.max(vis(i), save.settings.contrast ? 0.6 : 0.1 + Math.sin(clock * 2 + i) * 0.04) * (1 - o * 0.85);
       const across = !solidAt(x, y - 1) || !solidAt(x, y + 1);  // passage runs up-down, so strands run left-right
       const cx = sx(x + 0.5), cy = sy(y + 0.5);
       glow(GLOW.violet, cx, cy, TS * 0.9, a * 0.45);
@@ -1630,9 +2003,21 @@
     for (const o of L.lights) {
       if (o.got) continue;
       const X = sx(o.x), Y = sy(o.y + Math.sin(clock * 2 + o.ph) * 0.06);
-      const a = Math.max(0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
-      glow(GLOW.gold, X, Y, T * 1.1, a * 0.8);
+      const hc = save.settings.contrast;
+      const a = Math.max(hc ? 0.7 : 0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
+      glow(GLOW.gold, X, Y, T * (hc ? 1.4 : 1.1), a * 0.8);
       glow(GLOW.white, X, Y, T * 0.28, a);
+      if (hc) {
+        // High contrast: a crisp star shape so lights read without relying on colour.
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const rr = k % 2 ? T * 0.1 : T * 0.3, ang = k * Math.PI / 4 + clock;
+          ctx.lineTo(X + Math.cos(ang) * rr, Y + Math.sin(ang) * rr);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     // Glow-moths.
@@ -1658,6 +2043,7 @@
       ctx.beginPath();
       ctx.ellipse(X, Y + r * 0.1, r * breathe * 1.1, r * 0.9 / breathe, 0, 0, Math.PI * 2);
       ctx.fill();
+      if (save.settings.contrast) { ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2; ctx.stroke(); }
       ctx.strokeStyle = `rgba(20,10,40,${a})`;
       ctx.lineWidth = Math.max(1.5, T * 0.05);
       ctx.beginPath();
@@ -1680,6 +2066,36 @@
       }
     }
 
+    // Gloomlings.
+    for (const g of L.gloom) {
+      if (g.gone > 0) continue;
+      const X = sx(g.x), Y = sy(g.y), r = TS * 0.3, hunting = g.hunt > 0;
+      ctx.globalCompositeOperation = "lighter";
+      glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.18);
+      ctx.globalCompositeOperation = "source-over";
+      for (let k = 0; k < 5; k++) {
+        const a = g.ph * 1.7 + k * 1.26;
+        ctx.fillStyle = `rgba(${hunting ? 40 : 22},${hunting ? 10 : 12},${hunting ? 50 : 38},0.55)`;
+        ctx.beginPath();
+        ctx.arc(X + Math.cos(a) * r * 0.35, Y + Math.sin(a) * r * 0.3, r * (0.7 + 0.15 * Math.sin(g.ph * 3 + k)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (save.settings.contrast) {
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(X, Y, r * 1.05, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = "lighter";
+      const eye = hunting ? GLOW.pink : GLOW.violet, ea = hunting ? 0.95 : 0.55;
+      glow(eye, X - r * 0.32, Y - r * 0.1, r * 0.5, ea);
+      glow(eye, X + r * 0.32, Y - r * 0.1, r * 0.5, ea);
+      glow(GLOW.white, X - r * 0.32, Y - r * 0.1, r * 0.14, ea);
+      glow(GLOW.white, X + r * 0.32, Y - r * 0.1, r * 0.14, ea);
+      ctx.globalCompositeOperation = "source-over";
+    }
+
     // Song wavefronts.
     ctx.globalCompositeOperation = "lighter";
     for (const w of L.waves) {
@@ -1696,7 +2112,7 @@
     // Particles.
     for (const q of L.particles) {
       const t = q.life / q.max;
-      glow(GLOW[q.color], sx(q.x), sy(q.y), TS * q.size * 3, t * 0.9);
+      glow(q.color === "skin" ? lumiLook().glow : GLOW[q.color], sx(q.x), sy(q.y), TS * q.size * 3, t * 0.9);
     }
 
     // Lumi.
@@ -1704,16 +2120,19 @@
     const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
     const X = sx(lumi.x), Y = sy(lumi.y), R = LUMI_R * TS * shrink;
     const followers = L.moths.filter(m => m.following).length;
-    glow(GLOW.cyan, X, Y, TS * (1.3 + followers * 0.4) * Math.max(shrink, 0.2), 0.5 + lumi.sing);
+    const look = lumiLook();
+    const bright = L.failing ? Math.max(0, 1 - L.failing / 1.2) * (0.5 + 0.5 * Math.sin(L.failing * 30)) : L.useEnergy ? 0.45 + 0.55 * Math.min(1, L.energy / 40) : 1;
+    glow(look.glow, X, Y, TS * (1.3 + followers * 0.4) * Math.max(shrink, 0.2), (0.5 + lumi.sing) * bright);
     ctx.globalCompositeOperation = "source-over";
     if (R > 0.5) {
+      ctx.globalAlpha = 0.35 + 0.65 * bright;
       const sq = lumi.squash * 0.18;
       ctx.save();
       ctx.translate(X, Y);
       const g = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
-      g.addColorStop(0, "#ffffff");
-      g.addColorStop(0.6, "#c9f6ff");
-      g.addColorStop(1, "#6fd9ff");
+      g.addColorStop(0, look.body[0]);
+      g.addColorStop(0.6, look.body[1]);
+      g.addColorStop(1, look.body[2]);
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.ellipse(0, 0, R * (1 + sq), R * (1 - sq), 0, 0, Math.PI * 2);
@@ -1743,7 +2162,21 @@
       ctx.arc(R * 0.58 + lx, R * 0.18 + ly, R * 0.12, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+      ctx.globalAlpha = 1;
     }
+  }
+
+  let energyShown = -1;
+  function drawEnergy() {
+    const on = !!(L && L.useEnergy && !L.demo && (screen === "play" || screen === "pause"));
+    const box = $("energy");
+    box.classList.toggle("on", on);
+    if (!on) return;
+    const v = Math.round(L.energy);
+    if (v === energyShown) return;
+    energyShown = v;
+    box.firstElementChild.style.width = v + "%";
+    box.classList.toggle("low", v < 25);
   }
 
   function drawStick() {
@@ -1789,24 +2222,36 @@
     const dt = Math.max(0, Math.min(1 / 30, (now - last) / 1000));
     last = now;
     clock += dt;
-    if (screen === "play" && L) update(dt);
+    if (L && (screen === "play" || (screen === "title" && L.demo))) update(dt);
     drawBackground(dt);
-    if (L && screen !== "title") { drawCave(); drawThings(); }
+    if (L) { drawCave(); drawThings(); }
     else drawTitle(dt);
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, W, H);
+    if (L && L.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${L.flash * 0.45})`; ctx.fillRect(0, 0, W, H); }
     drawStick();
+    drawEnergy();
     requestAnimationFrame(frame);
   }
 
   // ---------- UI ----------
-  const screens = { title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen") };
+  const screens = {
+    title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
+    fail: $("failScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  };
+  let backTo = "title";
   function show(name) {
     screen = name;
     for (const k in screens) screens[k].classList.toggle("on", k === name);
     $("hud").classList.toggle("on", name === "play" || name === "pause");
     if (name !== "play") { pointers.clear(); steer = null; }
     if (name !== "play" && name !== "pause") setHint("", 0);
+  }
+  function showTitle() {
+    // A live cave sits behind the title: Lumi floats there and sings now and then.
+    loadLevel(1, true);
+    renderTitle();
+    show("title");
   }
 
   let hintTimer = 0;
@@ -1819,53 +2264,134 @@
   function updateHint(dt) {
     if (hintTimer > 0) { hintTimer -= dt; if (hintTimer <= 0) $("hint").classList.remove("on"); }
   }
+  // Messages show one at a time so several unlocks never pile up over the screen.
+  const toastQueue = [];
+  let toastBusy = false;
+  function toast(html, sound) {
+    toastQueue.push([html, sound]);
+    if (!toastBusy) nextToast();
+  }
+  function nextToast() {
+    const item = toastQueue.shift();
+    if (!item) { toastBusy = false; return; }
+    toastBusy = true;
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = item[0];
+    $("toasts").appendChild(el);
+    if (item[1]) sfx.unlock();
+    setTimeout(() => { el.remove(); nextToast(); }, 2650);
+  }
 
+  const levelLabel = i => (i === DAILY ? "Daily Cave" : `Level ${i + 1}`);
   function updateHud() {
     if (!L) return;
     $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
     $("pingsPill").innerHTML = `♪ ${L.pings} <small>/ ${L.def.par}</small>`;
     $("pingsPill").style.color = L.pings > L.def.par ? "#ff9fb8" : "";
-    $("levelName").innerHTML = `<b>${levelIndex + 1}.</b> ${L.def.name}`;
+    $("levelName").innerHTML = levelIndex === DAILY ? `<b>Daily Cave</b>` : `<b>${levelIndex + 1}.</b> ${L.def.name}`;
   }
   function updateMute() {
     $("muteBtn").textContent = muted ? "🔇" : "🔊";
-    if (master) master.gain.value = muted ? 0 : 0.7;
+    applyVolumes();
   }
 
   function startLevel(i) {
     audio();
     loadLevel(i);
+    energyShown = -1;
     show("play");
   }
-  function pause() { if (screen !== "play") return; $("pauseSub").textContent = `${levelIndex + 1}. ${L.def.name}`; show("pause"); }
-  function resume() { show("play"); last = performance.now(); }
+  function pause() { if (screen !== "play") return; $("pauseSub").textContent = levelIndex === DAILY ? "Daily Cave" : `${levelIndex + 1}. ${L.def.name}`; show("pause"); }
+  function resume() { audio(); show("play"); last = performance.now(); }
+
+  // ---------- Rewards ----------
+  const levelsDone = () => save.stars.filter(x => x > 0).length;
+  const perfects = () => save.stars.filter(x => x === 3).length;
+  function worldsDone() {
+    let n = 0;
+    for (let w = 0; w < WORLDS; w++) {
+      let all = true;
+      for (let k = 0; k < PER_WORLD; k++) if (!save.stars[w * PER_WORLD + k]) { all = false; break; }
+      if (all) n++; else if (w * PER_WORLD > save.stars.length) break;
+    }
+    return n;
+  }
+  const ACHS = [
+    { id: "first",   ico: "🎵", name: "First Song",         desc: "Finish your first cave",                     goal: 1,   val: levelsDone },
+    { id: "explore", ico: "🧭", name: "Explorer",           desc: "Finish 20 levels",                           goal: 20,  val: levelsDone },
+    { id: "diver",   ico: "🌊", name: "Cave Diver",         desc: "Finish 100 levels",                          goal: 100, val: levelsDone },
+    { id: "world",   ico: "🗺️", name: "World Traveller",    desc: "Finish every level in a world",              goal: 1,   val: worldsDone },
+    { id: "lights",  ico: "✨", name: "Light Collector",    desc: "Find 100 lost lights",                       goal: 100, val: () => save.stats.lights },
+    { id: "perfect", ico: "⭐", name: "Perfect Echo",       desc: "Get 3 stars on 10 levels",                   goal: 10,  val: perfects },
+    { id: "stars",   ico: "🌟", name: "Star Gazer",         desc: "Collect 100 stars",                          goal: 100, val: totalStars },
+    { id: "quiet",   ico: "🤫", name: "Quiet Voice",        desc: "Finish a cave singing 2 times or fewer",     goal: 1,   val: () => save.stats.quiet },
+    { id: "smooth",  ico: "🫧", name: "Smooth Swimmer",     desc: "Finish 5 caves without bumping a wall",      goal: 5,   val: () => save.stats.clean },
+    { id: "moths",   ico: "🦋", name: "Moth Whisperer",     desc: "Make friends with 10 glow-moths",            goal: 10,  val: () => save.stats.moths },
+    { id: "brave",   ico: "🛡️", name: "Brave Little Light", desc: "Finish 5 caves that have Gloomlings",        goal: 5,   val: () => save.stats.gloom },
+    { id: "daily",   ico: "📅", name: "Daily Habit",        desc: "Play the daily cave 3 days in a row",        goal: 3,   val: () => save.daily.best },
+  ];
+  function checkRewards() {
+    const news = [];
+    for (const a of ACHS) {
+      if (save.ach[a.id] || a.val() < a.goal) continue;
+      save.ach[a.id] = Date.now();
+      news.push(`🏆 Award: <b>${a.name}</b>`);
+    }
+    const open = SKINS.filter((k, i) => skinUnlocked(i)).length;
+    let look = "";
+    for (let i = save.skinsSeen; i < open; i++) { news.push(`✨ New look for Lumi: <b>${SKINS[i].name}</b>`); look = SKINS[i].name; }
+    save.skinsSeen = Math.max(save.skinsSeen, open);
+    persist();
+    if (news.length) setTimeout(() => news.forEach(h => toast(h, true)), 900);
+    return look;
+  }
 
   function finish() {
     const allLights = L.got === L.lights.length;
     const underPar = L.pings <= L.def.par;
     const stars = 1 + (allLights ? 1 : 0) + (underPar ? 1 : 0);
-    const prev = save.stars[levelIndex] || 0;
-    save.stars[levelIndex] = Math.max(prev, stars);
-    const best = save.best[levelIndex];
-    let newBest = "";
-    if (!best || L.pings < best.pings || (L.pings === best.pings && L.time < best.time)) {
-      if (best) newBest = "New personal best!";
-      save.best[levelIndex] = { pings: L.pings, time: Math.round(L.time * 10) / 10 };
+    const st = save.stats;
+    st.lights += L.got;
+    st.moths += L.mothsMet || 0;
+    st.songs += L.pings;
+    if (L.bumps === 0 && levelIndex !== 0) st.clean++;
+    if (L.pings <= 2 && levelIndex >= 1) st.quiet++;
+    if (L.gloom.length) st.gloom++;
+
+    let newBest = "", streakMsg = "";
+    if (levelIndex === DAILY) {
+      const d = save.daily, today = dayKey(), yesterday = dayKey(dayNumber() - 1);
+      if (d.last !== today) {
+        d.streak = d.last === yesterday ? d.streak + 1 : 1;
+        d.last = today;
+        d.best = Math.max(d.best, d.streak);
+      }
+      d.stars[today] = Math.max(d.stars[today] || 0, stars);
+      streakMsg = `Daily streak: ${d.streak} day${d.streak === 1 ? "" : "s"}`;
+    } else {
+      save.stars[levelIndex] = Math.max(save.stars[levelIndex] || 0, stars);
+      const best = save.best[levelIndex];
+      if (!best || L.pings < best.pings || (L.pings === best.pings && L.time < best.time)) {
+        if (best) newBest = "New personal best!";
+        save.best[levelIndex] = { pings: L.pings, time: Math.round(L.time * 10) / 10 };
+      }
     }
     persist();
+    const look = checkRewards();
 
     const t = L.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
     $("resultTitle").textContent = ["", "Cave cleared!", "Lovely singing!", "Perfect echo!"][stars];
-    $("resultSub").textContent = `Level ${levelIndex + 1} · ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
-    $("newBest").textContent = newBest;
+    $("resultSub").textContent = `${levelLabel(levelIndex)} · ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
+    $("newBest").textContent = streakMsg || newBest;
+    $("unlockMsg").textContent = look ? `New look unlocked: ${look}` : "";
     $("g1v").textContent = "✓";
     $("g2v").textContent = `${L.got}/${L.lights.length}`;
     $("g3v").textContent = `${L.pings} / ${L.def.par}`;
     $("goal1").className = "ok";
     $("goal2").className = allLights ? "ok" : "";
     $("goal3").className = underPar ? "ok" : "";
-    const last = levelIndex === TOTAL - 1;
-    $("nextBtn").textContent = last ? "Level map" : "Next level";
+    $("nextBtn").textContent = levelIndex === DAILY ? "Done" : levelIndex === TOTAL - 1 ? "Level map" : "Next level";
     const spans = $("resultStars").children;
     for (let k = 0; k < 3; k++) spans[k].className = "";
     show("result");
@@ -1876,13 +2402,19 @@
       }, 250 + k * 280);
     }
   }
+  function failLevel() {
+    $("failSub").textContent = L.hits
+      ? "Gloomlings took some of Lumi's light. Sing less near them, or swim away fast."
+      : "Lost lights, crystals and glow-moths all help Lumi stay bright.";
+    show("fail");
+  }
 
+  // ---------- Level map ----------
   let mapWorld = 0;
   function renderLevels(world) {
-    if (world != null) mapWorld = world;
+    if (world != null) mapWorld = Math.max(0, Math.min(WORLDS - 1, world));
     const th = THEMES[mapWorld % THEMES.length];
-    const color = `rgb(${th.rim.join(",")})`;
-    $("levelScreen").style.setProperty("--world", color);
+    $("levelScreen").style.setProperty("--world", `rgb(${th.rim.join(",")})`);
     $("worldNum").textContent = `World ${mapWorld + 1} of ${WORLDS}`;
     $("worldName").textContent = worldName(mapWorld);
     $("worldPrev").disabled = mapWorld === 0;
@@ -1920,37 +2452,157 @@
     }
     svg.innerHTML = `<path d="${d}" fill="none" stroke="var(--world)" stroke-opacity="0.35" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`;
   }
-  const openMap = () => { renderLevels(worldOf(screen === "title" ? nextUnplayed() : levelIndex)); show("levels"); requestAnimationFrame(drawMapPath); };
-  function renderTitle() {
-    const t = totalStars();
-    $("totalStars").textContent = t ? `★ ${t} stars · ${TOTAL} levels` : `${TOTAL} levels to explore`;
-    $("playBtn").textContent = save.stars.some(s => s) ? "Continue" : "Play";
-  }
+  const openMap = () => {
+    renderLevels(worldOf(screen === "title" || levelIndex < 0 ? nextUnplayed() : levelIndex));
+    show("levels");
+    requestAnimationFrame(drawMapPath);
+  };
   function nextUnplayed() {
     for (let i = 0; i < TOTAL; i++) if (!save.stars[i]) return unlocked(i) ? i : Math.max(0, i - 1);
     return TOTAL - 1;
   }
 
-  const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(); });
+  // ---------- Title, looks, awards, settings ----------
+  function renderTitle() {
+    const t = totalStars();
+    $("totalStars").textContent = t ? `★ ${t} stars · ${TOTAL} levels` : `${TOTAL} levels to explore`;
+    $("playBtn").textContent = save.stars.some(x => x) ? "Continue" : "Play";
+    const doneToday = save.daily.last === dayKey();
+    $("dailySub").textContent = doneToday ? `Done · ${save.daily.streak} day streak` : save.daily.streak && save.daily.last === dayKey(dayNumber() - 1) ? `Keep your ${save.daily.streak} day streak` : "New cave today";
+    $("looksSub").textContent = `${SKINS.filter((k, i) => skinUnlocked(i)).length} of ${SKINS.length}`;
+    $("awardsSub").textContent = `${ACHS.filter(a => save.ach[a.id]).length} of ${ACHS.length}`;
+  }
+  function renderLooks() {
+    const grid = $("looksGrid");
+    grid.innerHTML = "";
+    SKINS.forEach((k, i) => {
+      const open = skinUnlocked(i), b = document.createElement("button");
+      b.className = "look" + (save.skin === i ? " on" : "") + (open ? "" : " locked");
+      const ball = document.createElement("span");
+      ball.className = "ball";
+      if (k.body) {
+        ball.style.background = `radial-gradient(circle at 38% 34%, ${k.body[0]}, ${k.body[1]} 55%, ${k.body[2]})`;
+        ball.style.setProperty("--glow", `rgba(${k.c.join(",")},0.7)`);
+      } else {
+        ball.style.background = "conic-gradient(from 30deg, #ff7aa0, #ffc86e, #96ffa0, #6edcff, #aa8cff, #ff8ce6, #ff7aa0)";
+        ball.style.setProperty("--glow", "rgba(255,255,255,0.6)");
+      }
+      b.appendChild(ball);
+      b.appendChild(document.createTextNode(open ? k.name : `★ ${k.need}`));
+      b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : `${k.name}, needs ${k.need} stars`);
+      b.addEventListener("click", () => {
+        if (!open) { toast(`Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`); return; }
+        save.skin = i;
+        persist();
+        sfx.moth();
+        renderLooks();
+      });
+      grid.appendChild(b);
+    });
+  }
+  function renderAwards() {
+    const list = $("awardsList");
+    list.innerHTML = "";
+    let got = 0;
+    for (const a of ACHS) {
+      const done = !!save.ach[a.id], v = Math.min(a.goal, a.val());
+      if (done) got++;
+      const li = document.createElement("li");
+      li.className = "award" + (done ? " done" : "");
+      li.innerHTML = `<span class="ico">${a.ico}</span><span><span class="nm"></span><br><span class="ds"></span></span>` +
+        (a.goal > 1 && !done ? `<span class="bar"><i style="width:${(v / a.goal) * 100}%"></i></span>` : "");
+      li.querySelector(".nm").textContent = a.name + (a.goal > 1 && !done ? `  ${v}/${a.goal}` : done ? "  ✓" : "");
+      li.querySelector(".ds").textContent = a.desc;
+      list.appendChild(li);
+    }
+    $("awardsCount").textContent = `${got} of ${ACHS.length} earned`;
+  }
+  function renderSettings() {
+    const st = save.settings;
+    $("setMusic").value = st.music;
+    $("setSfx").value = st.sfx;
+    $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
+    $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
+    [...$("setStick").children].forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === st.stick)));
+    $("setReset").textContent = "Erase all progress";
+    resetArmed = false;
+  }
+  let resetArmed = false;
+
+  async function shareGame() {
+    const url = "https://erlan1126.github.io/Test/echo.html";
+    const t = totalStars();
+    const text = t ? `I've collected ${t} stars in Echo, a game about finding your way through dark caves with sound. Can you beat me?` : "Echo: find your way through dark caves using only sound.";
+    try {
+      if (navigator.share) { await navigator.share({ title: "Echo", text, url }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      toast("Link copied. Paste it to a friend!");
+    } catch (e) {
+      toast(`Share this link: <b>${url}</b>`);
+    }
+  }
+
+  const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
   tap("playBtn", () => startLevel(nextUnplayed()));
   tap("levelsBtn", openMap);
-  tap("worldPrev", () => renderLevels(Math.max(0, mapWorld - 1)));
-  tap("worldNext", () => renderLevels(Math.min(WORLDS - 1, mapWorld + 1)));
-  tap("levelsBack", () => { renderTitle(); L = null; show("title"); });
+  tap("dailyBtn", () => startLevel(DAILY));
+  tap("looksBtn", () => { renderLooks(); show("looks"); });
+  tap("awardsBtn", () => { renderAwards(); show("awards"); });
+  tap("settingsBtn", () => { backTo = "title"; renderSettings(); show("settings"); });
+  tap("pauseSettings", () => { backTo = "pause"; renderSettings(); show("settings"); });
+  tap("shareBtn", shareGame);
+  tap("looksBack", showTitle);
+  tap("awardsBack", showTitle);
+  tap("settingsBack", () => (backTo === "pause" ? show("pause") : showTitle()));
+  tap("worldPrev", () => renderLevels(mapWorld - 1));
+  tap("worldNext", () => renderLevels(mapWorld + 1));
+  tap("levelsBack", showTitle);
   tap("pauseBtn", pause);
   tap("muteBtn", () => { muted = !muted; save.muted = muted; persist(); updateMute(); });
   tap("resumeBtn", resume);
   tap("restartBtn", () => startLevel(levelIndex));
-  tap("quitBtn", openMap);
+  tap("quitBtn", () => (levelIndex === DAILY ? showTitle() : openMap()));
   tap("retryBtn", () => startLevel(levelIndex));
   tap("resultLevels", openMap);
+  tap("failRetry", () => startLevel(levelIndex));
+  tap("failMap", () => (levelIndex === DAILY ? showTitle() : openMap()));
   tap("nextBtn", () => {
-    if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
+    if (levelIndex === DAILY) showTitle();
+    else if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
     else openMap();
+  });
+  $("setMusic").addEventListener("input", e => { save.settings.music = +e.target.value; applyVolumes(); persist(); });
+  $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value; applyVolumes(); persist(); });
+  $("setSfx").addEventListener("change", () => sfx.light());
+  tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
+  tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
+  [...$("setStick").children].forEach(b => b.addEventListener("click", () => {
+    save.settings.stick = +b.dataset.v;
+    STICK_R = STICK_SIZES[save.settings.stick];
+    persist();
+    renderSettings();
+  }));
+  tap("setReset", () => {
+    if (!resetArmed) {
+      resetArmed = true;
+      $("setReset").textContent = "Tap again to erase everything";
+      setTimeout(() => { if (resetArmed) renderSettings(); }, 3500);
+      return;
+    }
+    save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.ach = {};
+    save.stats = { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 };
+    save.daily = { last: "", streak: 0, best: 0, stars: {} };
+    persist();
+    toast("Progress erased");
+    renderSettings();
   });
   ["pauseBtn", "muteBtn"].forEach(id => $(id).addEventListener("pointerdown", e => e.stopPropagation()));
 
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+  // Releasing keys or fingers outside the page shouldn't leave Lumi swimming on its own.
+  window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; pointers.clear(); steer = null; });
   let resizeTimer = 0;
   window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { resize(); if (screen === "levels") drawMapPath(); }, 120); });
 
@@ -1958,11 +2610,11 @@
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
-  window.__echo = { LEVELS, TOTAL, getLevel, get L() { return L; }, startLevel, ping };
+  window.__echo = { LEVELS, TOTAL, DAILY, getLevel, get L() { return L; }, get screen() { return screen; }, save, startLevel, ping, finish };
 
   resize();
   updateMute();
-  renderTitle();
+  showTitle();
   requestAnimationFrame(frame);
 })();
 </script>

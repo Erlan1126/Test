@@ -38,13 +38,40 @@ A little light, lost in the dark. Play it at https://erlan1126.github.io/Test/ec
 
 You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you can sing: each song spreads through the cave like a wave, flowing around corners, and softly lights up the rock for a moment before it fades back into darkness.
 
-- **Tap** anywhere to sing (or press Space). **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
-- **Goal:** find the golden lost lights, then swim into the portal.
-- **Stars:** one for reaching the portal, one for finding every light, and one for using no more songs than the cave's par.
-- **Things you meet:** crystals that keep glowing once your song touches them, purple sound doors that open for a few seconds when your song reaches them, underground currents that carry you along, glow-moths that follow you and make your light bigger, and sleepy Snoozles that push you away if you bump into them.
-- The cave keeps a faint memory of every wall you've seen, so the map slowly fills in.
+**Controls**
 
-There are 1,000 levels in 50 worlds of 20, shown on a winding level map. The first 10 levels are handmade and teach each idea one at a time. The rest are built by a level generator from the level number, so a given level is the same cave for every player, and each one is checked to make sure every light and the portal can be reached. Later levels bring more lights, doors, currents and Snoozles. Worlds rotate through eight cave styles: Moonlit Grotto, Mossy Hollow, Amethyst Deep, Ember Caverns, Frost Tunnels, Coral Depths, Golden Mines and Starlight Abyss. Each level unlocks when you finish the one before. Stars and best scores are saved in the browser. Sounds are generated in the browser, with an echo effect (there's a mute button), and phones that support it give a small vibration when you bump a wall.
+- **Tap** anywhere to sing (or press Space).
+- **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
+
+**Goal and stars:** find the golden lost lights, then swim into the portal. You get one star for reaching the portal, one for finding every light, and one for singing no more times than the level's par.
+
+**Levels**
+
+- 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
+- The first 10 levels are handmade and teach one idea at a time. The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Every generated level is checked so all lights and the portal can be reached.
+- Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels.
+- Every few levels there's an easier breather level, and the last level of each world is a bigger finale with an extra light.
+- Worlds rotate through eight cave styles, each with its own colours, music key and background sounds: Moonlit Grotto, Mossy Hollow, Amethyst Deep, Ember Caverns, Frost Tunnels, Coral Depths, Golden Mines and Starlight Abyss.
+
+**What's in the caves**
+
+- **Crystals** keep glowing once your song touches them, and recharge Lumi's light when you stay close.
+- **Sound curtains** part for a few seconds when your song reaches them.
+- **Currents** carry you along.
+- **Glow-moths** follow you and make your light bigger.
+- **Snoozles** push you away if you bump into them.
+- **Light energy** (from level 11): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again.
+- **Gloomlings** (from level 41): shadow creatures that drift through rock. When your song reaches them they chase you for a few seconds, and touching one costs light.
+
+**Rewards**
+
+- **Daily cave:** a new cave each day, the same for everyone, with a streak counter.
+- **Lumi's looks:** eight colours, unlocked by collecting stars.
+- **Awards:** twelve achievements, such as finishing a cave without bumping a wall or singing only twice.
+
+**Settings:** music and sound volume, vibration, joystick size, a high-contrast mode (star-shaped lights and outlined creatures), and erasing progress. Background music builds as you find lights.
+
+Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button).
 
 ## Star Defender
 
