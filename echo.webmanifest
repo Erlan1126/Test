@@ -1,0 +1,18 @@
+{
+  "name": "Echo",
+  "short_name": "Echo",
+  "description": "A little light lost in a dark cave. Tap to sing, and your echo shows you the way.",
+  "start_url": "./echo.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#05060f",
+  "theme_color": "#05060f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "echo-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "echo-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "echo-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "echo-icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
