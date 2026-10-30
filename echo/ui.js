@@ -13,7 +13,8 @@ function applyLayoutPrefs() {
 }
 function show(name) {
   screen = name;
-  $("singBtn").hidden = name !== "play" || save.settings.controls !== "tap";
+  $("singBtn").hidden = name !== "play" || controlMode() === "stick";
+  document.body.classList.toggle("sing-on", !$("singBtn").hidden);
   for (const k in screens) screens[k].classList.toggle("on", k === name);
   $("hud").classList.toggle("on", name === "play" || name === "pause");
   if (name !== "play") { pointers.clear(); steer = null; }
@@ -125,6 +126,8 @@ const CARDS = {
     art: `<rect x="10" y="10" width="140" height="90" rx="14" fill="#03040b"/><g fill="none" stroke="#7ee8ff" stroke-width="1.5"><circle cx="80" cy="56" r="22" stroke-opacity=".5"/><circle cx="80" cy="56" r="36" stroke-opacity=".25"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
   tall: { title: "Big caves", text: "Some caves are bigger than your screen. The view follows Lumi, so sing often to see what's ahead.",
     art: `<rect x="56" y="8" width="48" height="94" rx="8" fill="none" stroke="#8ea3c8" stroke-width="2"/><rect x="62" y="40" width="36" height="40" rx="4" fill="rgba(126,232,255,.12)" stroke="#7ee8ff"/><g transform="translate(80 64)">${LUMI_SVG}</g><path d="M124 80V30m-8 8 8-8 8 8" stroke="#e9f3ff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  thorns: { title: "Thornlings", text: "Spiky creatures patrol the tunnels. They hide in the dark, so sing to see them, or listen for their rattle. Touching one costs light.",
+    art: `<path d="M20 60h120" stroke="#3a4656" stroke-width="22" stroke-linecap="round"/><g transform="translate(92 60)"><circle r="9" fill="#5a1d2a"/><g stroke="#ff7a6a" stroke-width="2.5" stroke-linecap="round">${[0, 1, 2, 3, 4, 5, 6, 7].map(k => `<path d="M${(Math.cos(k * 0.785) * 9).toFixed(1)} ${(Math.sin(k * 0.785) * 9).toFixed(1)}L${(Math.cos(k * 0.785) * 15).toFixed(1)} ${(Math.sin(k * 0.785) * 15).toFixed(1)}"/>`).join("")}</g></g><path d="M74 60h-14M110 60h14" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 4"/><g transform="translate(36 60) scale(.8)">${LUMI_SVG}</g>` },
   long: { title: "Long songs", text: "Hold your finger still to charge a long, low song. It travels much further, but uses more of Lumi's light. Tap for a quick song as before.",
     art: `<g fill="none" stroke-linecap="round"><circle cx="80" cy="56" r="20" stroke="rgba(255,255,255,.15)" stroke-width="4"/><path d="M80 36a20 20 0 1 1-19 26" stroke="#ffe6a0" stroke-width="4"/><circle cx="80" cy="56" r="40" stroke="#7ee8ff" stroke-opacity=".35" stroke-width="2"/><circle cx="80" cy="56" r="52" stroke="#7ee8ff" stroke-opacity=".18" stroke-width="2"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
   echo: { title: "Echo crystals", text: "Violet crystals in the rock catch your song and sing it onward, carrying it around corners and into far tunnels.",
@@ -140,7 +143,7 @@ const CARDS = {
 // The picture card a level should show first: its own, or one for the first new thing in it.
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [def.card, i >= 30 && "long", m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
+  const wants = [def.card, i >= 8 && "long", def.map.join("").includes("t") && "thorns", m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
     def.map[0].length > 11 && "tall"];
   return wants.find(k => k && CARDS[k] && !seen[k]) || null;
 }
@@ -512,9 +515,9 @@ function renderSettings() {
   $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
   $("setGlow").setAttribute("aria-pressed", String(!!st.glow));
   $("setBigText").setAttribute("aria-pressed", String(!!st.bigText));
-  [...$("setControls").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (st.controls || "stick"))));
+  [...$("setControls").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === controlMode())));
   [...$("setHand").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (st.hand || "right"))));
-  $("handRow").hidden = st.controls !== "tap";
+  $("handRow").hidden = controlMode() === "stick";
   applyLayoutPrefs();
   $("setUnlockAll").setAttribute("aria-pressed", String(!!st.unlockAll));
   $("testRow").hidden = !st.unlockAll && !testTaps.shown;

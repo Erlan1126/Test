@@ -318,6 +318,32 @@ function drawThings() {
     ctx.globalCompositeOperation = "source-over";
   }
 
+  // Thornlings: dark spiky urchins. Barely visible unless light reaches them.
+  for (const t of L.thorns) {
+    const ti = Math.floor(t.y) * L.cols + Math.floor(t.x);
+    const a = Math.max(ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0, save.settings.contrast ? 0.7 : 0.07);
+    const X = sx(t.x), Y = sy(t.y), r = TS * 0.17, spin = t.ph * 0.6;
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.ember, X, Y, TS * 0.7, a * 0.35);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = Math.min(1, a * 1.3);
+    ctx.strokeStyle = "#ff7a6a";
+    ctx.lineWidth = Math.max(1.5, TS * 0.045);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const ang = spin + k * Math.PI / 5;
+      ctx.moveTo(X + Math.cos(ang) * r, Y + Math.sin(ang) * r);
+      ctx.lineTo(X + Math.cos(ang) * r * 1.9, Y + Math.sin(ang) * r * 1.9);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "#5a1d2a";
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffb3a8";
+    ctx.beginPath(); ctx.arc(X - r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.arc(X + r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   // One of Lumi's little lights: a tiny pink Lumi, bobbing and peeking out of the dark.
   if (L.family && !L.family.got) {
     const f = L.family, X = sx(f.x), Y = sy(f.y + Math.sin(f.ph * 2) * 0.06), r = TS * 0.17;
@@ -463,7 +489,7 @@ function drawThings() {
   glow(look.glow, X, Y, TS * (1.3 + followers * 0.4) * Math.max(shrink, 0.2), (0.5 + lumi.sing) * bright);
   ctx.globalCompositeOperation = "source-over";
   if (R > 0.5) {
-    ctx.globalAlpha = 0.35 + 0.65 * bright;
+    ctx.globalAlpha = (0.35 + 0.65 * bright) * (L.invuln > 0 ? 0.55 + 0.45 * Math.sin(L.invuln * 40) : 1);
     const sq = lumi.squash * 0.18;
     const speed = Math.hypot(lumi.vx, lumi.vy), st = Math.min(0.12, speed * 0.028);
     ctx.save();

@@ -44,8 +44,9 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 **Controls**
 
-- **Tap** anywhere to sing (or press Space). **Hold still** for a moment to charge a **long song** that travels much further but uses more light (Shift+Space on a keyboard).
-- Or switch to **Tap to move** in Settings: tap where Lumi should go and it finds the way, and a Sing button (left or right) does the singing.
+- **Swim** with one thumb: put it down anywhere and slide. **Sing** with the Sing button under the other thumb (or tap anywhere); **hold** the button to charge a **long song** that travels much further but uses more light (Space and Shift+Space on a keyboard).
+- Settings also offer **Slide** (no button; tap to sing, hold still for a long song) and **Tap to move** (tap where Lumi should go and it finds the way). The Sing button can sit on the left or right.
+- The camera stays close, about 8 tiles across, and follows Lumi with a little look-ahead, so every cave has to be explored.
 - **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
 
 **Goal and stars:** find the golden lost lights, then swim into the portal. You get one star for reaching the portal, one for finding every light, and one for singing no more than the number of times the level suggests. Each new world opens with a short story card.
@@ -53,9 +54,9 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 **Levels**
 
 - 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
-- The first 10 levels are handmade and teach the basics. Each later idea is introduced by its own handmade level with a picture card: light energy (level 11), lost baby moths (21), rune stones (41), Gloomlings (61), quiet caves (65), dark caves (81), long climbs (85) and races (101).
+- The first 19 levels are handmade, with only a two-level tutorial. After that something new arrives every level or two, each with a picture card: light energy (level 3), Thornlings (5), Gloomlings (7), long songs (9), lost baby moths (9), quiet caves (11), rune stones (13), dark caves (15), big caves (17) and races (19). Echo crystals appear from level 25.
 - The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Each one has its own name in its world's style, like "Whispering Fernway" or "Glimmering Geode", and each world ends with a "Heart of …" finale. A level only uses ideas that have already been introduced, and never more than three big ones at once.
-- Each world leans on its own ideas: Mossy Hollow on rescues, Amethyst Deep on rune gates, Ember Caverns on Gloomlings and quiet caves, Frost Tunnels on dark caves and long climbs, Coral Depths on races and currents, Golden Mines on gates, curtains and climbs, and Starlight Abyss on Gloomlings, darkness and races.
+- Each world leans on its own ideas: Moonlit Grotto on Thornlings and Gloomlings, Mossy Hollow on rescues, Amethyst Deep on rune gates, Ember Caverns on Gloomlings and quiet caves, Frost Tunnels on dark caves and long climbs, Coral Depths on races and currents, Golden Mines on gates, curtains and climbs, and Starlight Abyss on Gloomlings, darkness and races.
 - Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. **Big caves** are taller or (from level 101) wider than the screen, and the camera follows Lumi. In **dark caves** lights and the portal don't glow until your song finds them, and from World 3 lights stop glowing through the dark in every cave (Guiding glow brings that back).
 - Some levels have a special goal: **Quiet caves** give you a limited number of songs, **Rescue caves** hide a lost baby moth you must bring to the portal, and **Races** have a timer.
 - Every few levels there's an easier breather level, and the last level of each world is a bigger finale with an extra light.
@@ -68,12 +69,13 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Currents** carry you along.
 - **Glow-moths** follow you and make your light bigger.
 - **Snoozles** push you away if you bump into them. While asleep they snore little pulses of sound that light up the walls around them.
-- **Echo crystals** (from level 45): violet crystals in the rock that catch a song and sing it onward, around corners.
+- **Echo crystals** (from level 25): violet crystals in the rock that catch a song and sing it onward, around corners.
 - **The Great Gloom**: a huge, slow Gloomling that guards world finales from World 4.
 - **Lumi's family**: one of Lumi's little lights hides in one level of every world.
-- **Light energy** (from level 11): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again. The fade rate is matched to each cave's length, so a careful player always has enough.
-- **Rune stones and gates** (from level 41): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
-- **Gloomlings** (from level 61): shadow creatures that drift through rock. When your song reaches them they chase you for a few seconds, and touching one costs light. Afterwards they rest for a while before they can be woken again.
+- **Thornlings** (from level 5): spiky creatures that patrol tunnels back and forth. They're nearly invisible in the dark, so sing to see them or listen for their rattle; touching one costs light. Their patrols never cross the start.
+- **Light energy** (from level 3): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again. The fade rate is matched to each cave's length, so a careful player always has enough.
+- **Rune stones and gates** (from level 13): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
+- **Gloomlings** (from level 7): shadow creatures that drift through rock. When a song reaches one nearby it chases you for a few seconds, and touching one costs light. Afterwards they rest for a while before they can be woken again. A cave has at most three (one beside the Great Gloom).
 
 **Rewards**
 
@@ -88,7 +90,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 The daily cave changes at midnight UTC, so it's the same cave for everyone in the world. If a phone struggles to keep up, the game lowers its drawing resolution automatically.
 
-Progress is saved in the browser. Sounds and music are generated in the browser (there's a mute button). The pause menu shows the current cave's goal. On phones, the Back button pauses a level, then goes to the map, then to the title, instead of leaving the game.
+Progress is saved in the browser. Sounds and music are generated in the browser, with a cave reverb, bell-like songs and warm pads (there's a mute button). The pause menu shows the current cave's goal. On phones, the Back button pauses a level, then goes to the map, then to the title, instead of leaving the game.
 
 Each world has its own floating particles: snow in Frost Tunnels, embers in Ember Caverns, bubbles in Coral Depths and so on. Lumi's face shows its mood: scared near hunting Gloomlings, happy after a find, sleepy when its light is low. Sounds from the left or right come from that side. Each cave fades in with its name. Lumi has a swaying antenna, a soft light trail and a little squash and stretch when swimming; spores drift through the light, a faint far-away cave layer drifts behind the rock, and songs sparkle along their leading edge.
 

@@ -23,17 +23,17 @@ function loadLevel(i, demo = false) {
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
   // From World 3 lights stop glowing through the dark: you have to sing to find them.
-  hideLights: (!!def.dark || i >= 40) && !save.settings.glow,
+  hideLights: (!!def.dark || i >= 11) && !save.settings.glow,
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
-    waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [],
+    waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0,
     pings: 0, time: 0, got: 0,
     pingCd: 0, bumpCd: 0,
     ending: 0, done: false,
     tut: 0, moved: 0,
     demo, demoT: 1.2, flash: 0, bumps: 0, hits: 0, failing: 0, lowCd: 0, ambT: 2,
-    useEnergy: (i >= 10 || isChallenge(i)) && !save.settings.relaxed, energy: 100, drain: fairDrain(i, def, rows),
+    useEnergy: (i >= 2 || isChallenge(i)) && !save.settings.relaxed, energy: 100, drain: fairDrain(i, def, rows),
   };
   const dirs = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] };
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
@@ -53,7 +53,21 @@ function loadLevel(i, demo = false) {
     if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
     if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
     if (ch === "B" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6, big: true });
+    if (ch === "t") L.thorns.push({ x: cx, y: cy, i: i2, ph: Math.random() * Math.PI * 2, rattle: Math.random() });
     if (ch === "f") L.family = { x: cx, y: cy, i: i2, got: false, ph: Math.random() * 6, w: worldOf(i) };
+  }
+  // Each Thornling patrols the longer of its row or column of open tiles, end to end.
+  for (const t of L.thorns) {
+    const tx = Math.floor(t.x), ty = Math.floor(t.y), open = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && L.tile[y * cols + x] === ".";
+    let l = tx, r = tx, u = ty, d = ty;
+    while (open(l - 1, ty)) l--;
+    while (open(r + 1, ty)) r++;
+    while (open(tx, u - 1)) u--;
+    while (open(tx, d + 1)) d++;
+    const across = r - l >= d - u;
+    t.a = across ? [l + 0.5, ty + 0.5] : [tx + 0.5, u + 0.5];
+    t.b = across ? [r + 0.5, ty + 0.5] : [tx + 0.5, d + 0.5];
+    t.len = Math.max(0.01, Math.hypot(t.b[0] - t.a[0], t.b[1] - t.a[1]));
   }
   let seed = ((i + 1000003) * 9973) % 2147483647 || 1;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -92,7 +106,7 @@ function goalLine() {
   if (L.goal === "race" && L.timeLeft) return `Reach the portal in ${Math.ceil(L.timeLeft)} seconds`;
   if (L.dark) return "Total darkness. Only your song shows the way";
   if (L.runes.length) return "Sing close to each rune stone to open the gate";
-  if (i === 10) return "Lights and crystals refill Lumi's glow";
+  if (i === 2) return "Lights and crystals refill Lumi's glow";
   if (i === DAILY) return "Today's cave is the same for everyone";
   if (i === WEEKLY) return "This week's cave: harder, and the same for everyone";
   if (i > 0 && isFinale(i)) return "World finale: one extra light to find";
@@ -105,7 +119,7 @@ function goalLine() {
 function fairDrain(i, def, rows) {
   const base = (1.0 + depthOf(i) * 0.5) * 18 / rows;
   if (!def.walk) return base;
-  const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length;
+  const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length + (flat.split("t").length - 1) * 0.6;
   // Light gained from lights, minus what songs (about one every five tiles) and a couple of
   // Gloomling touches cost, spread over the time a careful swim takes.
   const songs = (def.walk / 5) * 2.5 * (def.dark ? 0.6 : 1);
@@ -228,7 +242,9 @@ function reveal(i, d = 0, w = null) {
   for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
   for (const g of L.gloom) {
     if (snore || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
-    g.hunt = g.big ? 6 : 3.5;
+    // Only a song heard fairly close by wakes a Gloomling, not a faint echo from far away.
+    if (Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : 6)) continue;
+    g.hunt = g.big ? 5 : 2.8;
     sfx.gloomWake(g.x - L.lumi.x, g.big);
   }
 }
@@ -306,6 +322,9 @@ canvas.addEventListener("pointermove", e => {
   const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
   if (d > STICK_R) { p.ax = p.x - dx / d * STICK_R; p.ay = p.y - dy / d * STICK_R; }
 });
+// Controls: "dual" (slide to swim, Sing button for the other thumb; the default), "stick"
+// (slide to swim, tap to sing, hold still for a long song) or "tap" (tap where to go).
+const controlMode = () => save.settings.controls || "dual";
 const LONG_HOLD = 380;  // ms of holding still before a long song starts charging
 
 // Tap-to-move: Lumi finds its own way to the tapped spot along open tiles.
@@ -358,7 +377,7 @@ function pointerEnd(e) {
   pointers.delete(e.pointerId);
   const held = performance.now() - p.t;
   if (!p.moved && e.type === "pointerup" && L) {
-    if (save.settings.controls === "tap") { if (held < LONG_HOLD) travelTo(p.x, p.y); }
+    if (controlMode() === "tap") { if (held < LONG_HOLD) travelTo(p.x, p.y); }
     else if (held < LONG_HOLD) ping();
     else if (L.charge >= 1) ping(true);
   }
@@ -390,7 +409,7 @@ function update(dt) {
   {
     const hp = steer != null ? pointers.get(steer) : null;
     const held = singHold ? performance.now() - singHold - LONG_HOLD
-      : hp && !hp.moved && save.settings.controls !== "tap" ? performance.now() - hp.t - LONG_HOLD : -1;
+      : hp && !hp.moved && controlMode() === "stick" ? performance.now() - hp.t - LONG_HOLD : -1;
     const before = L.charge;
     L.charge = held > 0 && !L.ending && !L.failing ? Math.min(1, held / 550) : 0;
     if (before < 1 && L.charge >= 1) { buzz(12); sfx.charged(); }
@@ -610,14 +629,14 @@ function update(dt) {
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? lumi.x : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? lumi.y : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = g.big ? (hunting ? 0.9 : 0.35) : hunting ? 1.25 + depthOf(levelIndex) * 0.35 : 0.6;
+    const spd = g.big ? (hunting ? 0.85 : 0.35) : hunting ? 1.15 + depthOf(levelIndex) * 0.3 : 0.6;
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
     if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
       const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 30 : 20));
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 26 : 16));
       L.hits++;
       g.gone = g.big ? 10 : 8;
       g.calm = g.big ? 8 : 6;
@@ -681,6 +700,30 @@ function update(dt) {
   for (const r of L.runes) { if (r.on) r.on = Math.min(1, r.on + dt * 2); r.far = Math.max(0, r.far - dt * 1.5); }
   if (L.gate && L.gate.open) L.gate.open = Math.min(2, L.gate.open + dt);
   L.portalHintCd -= dt;
+
+  // Thornlings glide back and forth along their tunnels. They're hard to see in the dark, but
+  // they rattle when close; touching one costs light and bounces Lumi back.
+  L.invuln = Math.max(0, L.invuln - dt);
+  for (const t of L.thorns) {
+    t.ph += dt * (1.4 + depthOf(levelIndex) * 0.8) * Math.PI / t.len;
+    const k = (1 - Math.cos(t.ph)) / 2;
+    t.x = t.a[0] + (t.b[0] - t.a[0]) * k;
+    t.y = t.a[1] + (t.b[1] - t.a[1]) * k;
+    const dx = lumi.x - t.x, dy = lumi.y - t.y, d = Math.hypot(dx, dy);
+    if (d < 3.5 && !L.demo && (t.rattle -= dt * (1.6 - d * 0.3)) <= 0) { t.rattle = 0.7; sfx.rattle(t.x - lumi.x, 1 - d / 3.5); }
+    if (ctl && L.invuln <= 0 && d < LUMI_R + 0.27) {
+      const nx = d > 0.01 ? dx / d : 0, ny = d > 0.01 ? dy / d : 1;
+      lumi.vx = nx * 5; lumi.vy = ny * 5;
+      lumi.squash = 1;
+      L.invuln = 1.2;
+      L.hits++;
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - 15);
+      sfx.hurt();
+      buzz([30, 30, 30]);
+      L.lit[t.i] = 1;
+      for (let q = 0; q < 12; q++) { const a = Math.random() * 6.28; spark(lumi.x, lumi.y, Math.cos(a) * 2, Math.sin(a) * 2, 0.5, "ember", 0.08); }
+    }
+  }
 
   // Lumi's mood: scared when a Gloomling hunts nearby, happy after a find, sleepy when dim.
   L.happy = Math.max(0, (L.happy || 0) - dt);

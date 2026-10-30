@@ -348,6 +348,8 @@
   #singBtn { position: fixed; bottom: calc(26px + var(--bottom)); right: calc(22px + env(safe-area-inset-right, 0px)); width: 76px; height: 76px; border-radius: 50%;
     font-size: 32px; color: #0a1a2e; background: radial-gradient(circle at 40% 35%, #ffffff, #bfeaff 70%); box-shadow: 0 8px 26px rgba(0,0,0,0.45), 0 0 30px rgba(126,232,255,0.35); touch-action: none; z-index: 5; }
   #singBtn:active { transform: scale(0.94); }
+  body.sing-on #hint { max-width: calc(100% - 150px); left: calc(50% - 46px); }
+  body.sing-on.left-hand #hint { left: calc(50% + 46px); }
   body.left-hand #singBtn { right: auto; left: calc(22px + env(safe-area-inset-left, 0px)); }
   body.big-text .panel, body.big-text #hint, body.big-text .title-actions, body.big-text .hero, body.big-text #levelCard, body.big-text .challenge-list { zoom: 1.15; }
   body.big-text #hud { zoom: 1.1; }
@@ -545,7 +547,7 @@
       <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
       <div class="set"><label>Vibration<small>On phones that support it</small></label><button class="toggle" id="setVibrate" aria-label="Vibration"></button></div>
       <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
-      <div class="set"><label>Controls<small>Slide to swim, or tap where Lumi should go</small></label><div class="seg" id="setControls"><button data-v="stick">Slide</button><button data-v="tap">Tap</button></div></div>
+      <div class="set"><label>Controls<small>Swim with a thumb and sing with the button, slide only, or tap where to go</small></label><div class="seg" id="setControls"><button data-v="dual">Button</button><button data-v="stick">Slide</button><button data-v="tap">Tap</button></div></div>
       <div class="set" id="handRow"><label>Sing button</label><div class="seg" id="setHand"><button data-v="left">Left</button><button data-v="right">Right</button></div></div>
       <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>Relaxed mode<small>No light energy, Gloomlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>

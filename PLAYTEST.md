@@ -22,7 +22,8 @@ Watch them play without explaining anything. Where they get confused is the most
 ## What to check
 
 ### First five minutes (levels 1–10)
-- [ ] Do they understand "tap to sing" and "slide to swim" without help?
+- [ ] Do they understand "slide to swim" and the Sing button without help?
+- [ ] Is it challenging by level 5? Too hard for younger players (try Relaxed mode)?
 - [ ] Does swimming feel quick and easy? Does Lumi ever catch on walls?
 - [ ] Is the music and sound pleasant? Too loud or too quiet?
 - [ ] Do they understand the 3 stars on the results screen?
@@ -32,14 +33,15 @@ Play the first level of each idea and note whether the picture card made it clea
 
 | Level | Idea | Check |
 | --- | --- | --- |
-| 11 | Light energy | Do they notice the bar and understand that lights refill it? |
-| 21 | Lost baby moths | Do they find the moth and understand that the portal is asleep until then? |
-| 41 | Rune stones | Do they realise they have to sing close to the stones? |
-| 61 | Gloomlings | Scary or fun? Fair? Can they escape? |
-| 65 | Quiet caves | Is the song limit clear? Too strict? |
-| 81 | Dark caves | Too hard? Would they use Guiding glow? |
-| 85 | Long climbs | Does the scrolling feel smooth? |
-| 101 | Races | Is the timer fair? Too tight or too loose? |
+| 3 | Light energy | Do they notice the bar and understand that lights refill it? |
+| 5 | Thornlings | Do they hear the rattle and sing to spot them? Is dodging fun or frustrating? |
+| 7 | Gloomlings | Scary or fun? Fair? Can they escape? |
+| 9 | Lost baby moths and long songs | Do they find the moth? Do they discover holding the Sing button? |
+| 11 | Quiet caves | Is the song limit clear? Too strict? |
+| 13 | Rune stones | Do they realise they have to sing close to the stones? |
+| 15 | Dark caves | Too hard? Would they use Guiding glow? |
+| 17 | Big caves | Does the scrolling feel smooth? |
+| 19 | Races | Is the timer fair? Too tight or too loose? |
 
 ### Difficulty
 For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), write down:

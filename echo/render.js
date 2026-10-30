@@ -130,8 +130,9 @@ function layout() {
   VIEW.top = 62 + safeInset("top");
   VIEW.bottom = H - 16 - safeInset("bottom");
   const avail = VIEW.bottom - VIEW.top;
-  // Tiles are sized for an 11 by 18 cave; bigger caves keep that size and the camera follows Lumi.
-  TS = Math.max(8, Math.floor(Math.min((W - 16) / Math.min(L.cols, 11), avail / Math.min(L.rows, 18))));
+  // The camera sits close: about 8 tiles across and 13 down are on screen, and it follows Lumi,
+  // so caves have to be explored rather than seen all at once.
+  TS = Math.max(8, Math.floor(Math.min((W - 16) / Math.min(L.cols, VIEW_COLS), avail / Math.min(L.rows, VIEW_ROWS))));
   L.scrollX = L.cols * TS > W - 16 + 1;
   OX = L.scrollX ? cameraTargetX() : Math.round((W - TS * L.cols) / 2);
   L.scroll = L.rows * TS > avail + 1;
@@ -146,12 +147,13 @@ function layout() {
   buildArt();
   buildBackdrop();
 }
+const VIEW_COLS = 8, VIEW_ROWS = 13;
 function cameraTarget() {
-  const want = (VIEW.top + VIEW.bottom) / 2 - L.lumi.y * TS;
+  const want = (VIEW.top + VIEW.bottom) / 2 - (L.lumi.y + L.lumi.vy * 0.3) * TS;
   return Math.max(VIEW.bottom - L.rows * TS - TS * 0.3, Math.min(VIEW.top + TS * 0.3, want));
 }
 function cameraTargetX() {
-  const want = W / 2 - L.lumi.x * TS;
+  const want = W / 2 - (L.lumi.x + L.lumi.vx * 0.3) * TS;
   return Math.max(W - 8 - L.cols * TS - TS * 0.3, Math.min(8 + TS * 0.3, want));
 }
 function moveCamera(dt) {
@@ -229,7 +231,8 @@ function buildBackdrop() {
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 function buildArt() {
-  const sc = Math.min(DPR, L.rows > 18 ? 1 : 1.25);
+  // Big tiles are painted a little below screen resolution; the rock is soft, so it doesn't show.
+  const sc = Math.min(DPR, TS > 40 ? 0.72 : 1);
   const w = Math.max(1, Math.round((L.cols + LM.mx * 2) * TS * sc)), h = Math.max(1, Math.round((L.rows + LM.my * 2) * TS * sc));
   art.width = w; art.height = h;
   const { cols, rows } = L, SUB = 2, PAD = 3;
