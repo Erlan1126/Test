@@ -36,7 +36,7 @@ If you rename the repository, update the site address in the `og:url`, `og:image
 
 A little light, lost in the dark. Play it at https://erlan1126.github.io/Test/echo.html.
 
-You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you can sing: each song spreads through the cave like a wave, flowing around corners, and lights up the walls for a moment before they fade back to black.
+You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you can sing: each song spreads through the cave like a wave, flowing around corners, and softly lights up the rock for a moment before it fades back into darkness.
 
 - **Tap** anywhere to sing (or press Space). **Hold and drag** to swim toward your finger (or use the arrow keys / WASD).
 - **Goal:** find the golden lost lights, then swim into the portal.
@@ -44,7 +44,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Things you meet:** crystals that keep glowing once your song touches them, purple sound doors that open for a few seconds when your song reaches them, underground currents that carry you along, glow-moths that follow you and make your light bigger, and sleepy Snoozles that push you away if you bump into them.
 - The cave keeps a faint memory of every wall you've seen, so the map slowly fills in.
 
-There are 10 caves, and each one unlocks when you finish the one before. Stars and best scores are saved in the browser. Sounds are generated in the browser, with an echo effect (there's a mute button), and phones that support it give a small vibration when you bump a wall.
+There are 1,000 levels in 50 worlds of 20, shown on a winding level map. The first 10 levels are handmade and teach each idea one at a time. The rest are built by a level generator from the level number, so a given level is the same cave for every player, and each one is checked to make sure every light and the portal can be reached. Later levels bring more lights, doors, currents and Snoozles. Worlds rotate through eight cave styles: Moonlit Grotto, Mossy Hollow, Amethyst Deep, Ember Caverns, Frost Tunnels, Coral Depths, Golden Mines and Starlight Abyss. Each level unlocks when you finish the one before. Stars and best scores are saved in the browser. Sounds are generated in the browser, with an echo effect (there's a mute button), and phones that support it give a small vibration when you bump a wall.
 
 ## Star Defender
 

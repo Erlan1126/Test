@@ -101,31 +101,46 @@
 
   /* Level select */
   .levels-title { font-size: 30px; font-weight: 600; margin: 0 0 4px; }
+  .world-head { display: flex; align-items: center; gap: 12px; width: min(380px, 100%); }
+  .world-head .icon-btn { width: 44px; height: 44px; font-size: 24px; flex: none; }
+  .world-head .icon-btn:disabled { opacity: 0.25; }
+  .world-title { flex: 1; min-width: 0; }
+  .world-num { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--world, var(--cyan)); }
+  .levels-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-wrap: balance; }
+  .map { position: relative; width: min(340px, 100%); margin: 14px 0 18px; }
+  #mapPath { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
   .grid {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    width: min(380px, 100%);
-    margin: 18px 0;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(5, auto);
+    row-gap: 14px;
+    justify-items: center;
   }
-  .card {
-    padding: 12px 10px;
-    border-radius: 16px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    text-align: left;
+  .node {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    font-size: 21px;
+    font-weight: 600;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.22), rgba(14, 20, 44, 0.95) 70%);
+    border: 2px solid var(--world, var(--cyan));
+    box-shadow: 0 0 14px color-mix(in srgb, var(--world, #7ee8ff) 45%, transparent);
     transition: transform 0.12s;
+    position: relative;
   }
-  .card:active { transform: scale(0.96); }
-  .card .num { font-size: 13px; color: var(--dim); }
-  .card .name { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card .st { font-size: 15px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.18); }
-  .card .st i { font-style: normal; color: var(--gold); text-shadow: 0 0 8px rgba(255, 211, 110, 0.7); }
-  .card.locked { opacity: 0.38; }
-  .card.locked .name::before { content: "🔒 "; }
+  .node:active { transform: scale(0.92); }
+  .node .st { position: absolute; bottom: -9px; font-size: 12px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.2); line-height: 1; }
+  .node .st i { font-style: normal; color: var(--gold); text-shadow: 0 0 6px rgba(255, 211, 110, 0.8); }
+  .node.locked { background: #0b1024; border-color: rgba(255,255,255,0.14); box-shadow: none; font-size: 15px; }
+  .node.locked span.lock { opacity: 0.35; }
+  .node.current { animation: beat 1.6s ease-in-out infinite; background: radial-gradient(circle at 35% 30%, #ffffff, var(--world, #7ee8ff) 75%); color: #081428; }
+  @keyframes beat { 50% { transform: scale(1.08); box-shadow: 0 0 28px var(--world, #7ee8ff); } }
+  @media (prefers-reduced-motion: reduce) { .node.current { animation: none; } }
 
   /* HUD */
   #hud {
@@ -213,15 +228,22 @@
   <h1 class="logo">Echo</h1>
   <p class="tagline">A little light, lost in the dark.</p>
   <button class="btn main" id="playBtn">Play</button>
-  <button class="btn" id="levelsBtn">Caves</button>
+  <button class="btn" id="levelsBtn">Level map</button>
   <div class="total" id="totalStars"></div>
   <p class="howto"><b>Tap</b> to sing and see the cave<br><b>Hold &amp; drag</b> to swim</p>
 </div>
 
 <div class="screen dim-bg" id="levelScreen">
-  <h2 class="levels-title">Caves</h2>
+  <div class="world-head">
+    <button class="pill icon-btn" id="worldPrev" aria-label="Previous world">‹</button>
+    <div class="world-title">
+      <div class="world-num" id="worldNum"></div>
+      <h2 class="levels-title" id="worldName"></h2>
+    </div>
+    <button class="pill icon-btn" id="worldNext" aria-label="Next world">›</button>
+  </div>
   <div class="total" id="levelsTotal"></div>
-  <div class="grid" id="levelGrid"></div>
+  <div class="map" id="levelMap"><svg id="mapPath" aria-hidden="true"></svg><div class="grid" id="levelGrid"></div></div>
   <button class="btn" id="levelsBack">Back</button>
 </div>
 
@@ -232,7 +254,7 @@
     <div style="height:18px"></div>
     <button class="btn main" id="resumeBtn">Resume</button>
     <button class="btn" id="restartBtn">Restart cave</button>
-    <button class="btn" id="quitBtn">All caves</button>
+    <button class="btn" id="quitBtn">Level map</button>
   </div>
 </div>
 
@@ -250,7 +272,7 @@
     <button class="btn main" id="nextBtn">Next cave</button>
     <div class="row">
       <button class="btn" id="retryBtn">Retry</button>
-      <button class="btn" id="resultLevels">Caves</button>
+      <button class="btn" id="resultLevels">Map</button>
     </div>
   </div>
 </div>
@@ -464,6 +486,207 @@
       "###########",
     ]},
   ];
+
+  // ---------- Worlds ----------
+  // 50 worlds of 20 levels. The first 10 levels are handmade; the rest are built from a seed,
+  // so every player gets the same cave for the same level number.
+  const PER_WORLD = 20, WORLDS = 50, TOTAL = PER_WORLD * WORLDS;
+  const THEMES = [
+    { name: "Moonlit Grotto",  floor: [18, 46, 58], floor2: [30, 30, 72], rock: [62, 82, 128],   deep: [14, 18, 32], rim: [80, 160, 200] },
+    { name: "Mossy Hollow",    floor: [16, 44, 36], floor2: [28, 40, 34], rock: [56, 92, 70],    deep: [12, 22, 18], rim: [110, 200, 140] },
+    { name: "Amethyst Deep",   floor: [30, 22, 56], floor2: [46, 24, 72], rock: [92, 70, 140],   deep: [18, 12, 34], rim: [170, 120, 230] },
+    { name: "Ember Caverns",   floor: [44, 20, 26], floor2: [54, 28, 20], rock: [120, 62, 52],   deep: [28, 12, 12], rim: [230, 130, 80] },
+    { name: "Frost Tunnels",   floor: [28, 48, 70], floor2: [40, 54, 84], rock: [116, 146, 180], deep: [24, 32, 48], rim: [180, 225, 255] },
+    { name: "Coral Depths",    floor: [14, 48, 56], floor2: [50, 28, 58], rock: [70, 110, 120],  deep: [12, 24, 30], rim: [255, 140, 170] },
+    { name: "Golden Mines",    floor: [40, 32, 20], floor2: [34, 30, 40], rock: [116, 92, 54],   deep: [26, 20, 12], rim: [240, 190, 90] },
+    { name: "Starlight Abyss", floor: [16, 16, 40], floor2: [30, 18, 52], rock: [52, 52, 100],   deep: [8, 8, 22],   rim: [255, 150, 220] },
+  ];
+  const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
+  const worldOf = i => Math.floor(i / PER_WORLD);
+  const themeOf = i => THEMES[worldOf(i) % THEMES.length];
+  const worldName = w => THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)];
+
+  const levelCache = new Map();
+  function getLevel(i) {
+    if (i < LEVELS.length) return LEVELS[i];
+    if (!levelCache.has(i)) levelCache.set(i, generateLevel(i));
+    return levelCache.get(i);
+  }
+
+  function seeded(a) {
+    return () => {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Builds a cave: a winding maze with extra loops and open chambers, then places the start,
+  // the portal far away, lights in dead ends, and features that grow with the level number.
+  function generateLevel(n) {
+    const C = 11, R = 18, D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const hard = Math.min(1, (n - 10) / 400);
+    for (let attempt = 0; ; attempt++) {
+      const r = seeded(n * 7919 + attempt * 104729 + 17);
+      const pick = a => a[Math.floor(r() * a.length)];
+      const g = Array.from({ length: R }, () => Array(C).fill("#"));
+      const open = (x, y) => x > 0 && y > 0 && x < C - 1 && y < R - 1 && g[y][x] !== "#";
+
+      // Maze over cells at odd coordinates.
+      const cells = [];
+      for (let y = 1; y < R - 1; y += 2) for (let x = 1; x < C - 1; x += 2) cells.push([x, y]);
+      const visited = new Set();
+      const stack = [pick(cells)];
+      visited.add(stack[0] + "");
+      g[stack[0][1]][stack[0][0]] = ".";
+      while (stack.length) {
+        const [x, y] = stack[stack.length - 1];
+        const nb = D4.map(([dx, dy]) => [x + dx * 2, y + dy * 2, dx, dy])
+          .filter(([nx, ny]) => nx > 0 && ny > 0 && nx < C - 1 && ny < R - 2 && !visited.has(nx + "," + ny));
+        if (!nb.length) { stack.pop(); continue; }
+        const [nx, ny, dx, dy] = pick(nb);
+        g[y + dy][x + dx] = ".";
+        g[ny][nx] = ".";
+        visited.add(nx + "," + ny);
+        stack.push([nx, ny]);
+      }
+      // Loops so there's more than one way around.
+      const loops = 3 + Math.floor(r() * 5);
+      for (let k = 0, tries = 0; k < loops && tries < 200; tries++) {
+        const x = 1 + Math.floor(r() * (C - 2)), y = 1 + Math.floor(r() * (R - 3));
+        if (g[y][x] !== "#") continue;
+        if ((open(x - 1, y) && open(x + 1, y) && !open(x, y - 1) && !open(x, y + 1)) ||
+            (open(x, y - 1) && open(x, y + 1) && !open(x - 1, y) && !open(x + 1, y))) { g[y][x] = "."; k++; }
+      }
+      // Open chambers.
+      const rooms = 1 + Math.floor(r() * 3);
+      for (let k = 0; k < rooms; k++) {
+        const w = 2 + Math.floor(r() * 2), h = 2 + Math.floor(r() * 2);
+        const rx = 1 + Math.floor(r() * (C - 1 - w)), ry = 1 + Math.floor(r() * (R - 2 - h));
+        for (let y = ry; y < ry + h; y++) for (let x = rx; x < rx + w; x++) g[y][x] = ".";
+      }
+
+      const bfs = (sx, sy, blocked) => {
+        const d = Array.from({ length: R }, () => Array(C).fill(-1)), par = {};
+        d[sy][sx] = 0;
+        const q = [[sx, sy]];
+        while (q.length) {
+          const [x, y] = q.shift();
+          for (const [dx, dy] of D4) {
+            const nx = x + dx, ny = y + dy;
+            if (!open(nx, ny) || d[ny][nx] >= 0 || (blocked && blocked.has(nx + "," + ny))) continue;
+            d[ny][nx] = d[y][x] + 1;
+            par[nx + "," + ny] = [x, y];
+            q.push([nx, ny]);
+          }
+        }
+        return { d, par };
+      };
+
+      const floor = [];
+      for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) if (g[y][x] === ".") floor.push([x, y]);
+      const low = floor.filter(([, y]) => y >= R - 5);
+      const S = pick(low.length ? low : floor);
+      g[S[1]][S[0]] = "S";
+      let { d, par } = bfs(S[0], S[1]);
+      let E = S, far = 0;
+      for (const [x, y] of floor) if (d[y][x] > far || (d[y][x] === far && y < E[1])) { far = d[y][x]; E = [x, y]; }
+      if (far < 12) continue;
+      g[E[1]][E[0]] = "E";
+
+      // Main route from start to portal.
+      const route = [];
+      for (let p = E; p; p = par[p + ""]) route.unshift(p);
+      const onRoute = new Set(route.map(p => p + ""));
+      const free = (x, y) => g[y][x] === "." && Math.abs(x - S[0]) + Math.abs(y - S[1]) > 1 && Math.abs(x - E[0]) + Math.abs(y - E[1]) > 1;
+
+      // Currents along a straight stretch of the route.
+      let doors = 0;
+      if (n >= 4 && r() < 0.35 + hard * 0.3) {
+        for (let k = 1; k < route.length - 4; k++) {
+          const dx = route[k + 1][0] - route[k][0], dy = route[k + 1][1] - route[k][1];
+          let len = 0;
+          while (k + len + 1 < route.length - 1 && route[k + len + 1][0] - route[k + len][0] === dx && route[k + len + 1][1] - route[k + len][1] === dy) len++;
+          if (len >= 3 && r() < 0.6) {
+            const against = r() < 0.15 + hard * 0.2;
+            const ch = { "1,0": ">", "-1,0": "<", "0,1": "v", "0,-1": "^" }[(against ? -dx : dx) + "," + (against ? -dy : dy)];
+            for (let q = 0; q < len; q++) { const [x, y] = route[k + q]; if (g[y][x] === ".") g[y][x] = ch; }
+            break;
+          }
+        }
+      }
+      // Sound doors in narrow spots on the route.
+      if (n >= 3 && r() < 0.4 + hard * 0.3) {
+        const want = 1 + (r() < hard ? 1 : 0);
+        const spots = route.slice(3, -2).filter(([x, y]) => free(x, y) &&
+          ((!open(x - 1, y) && !open(x + 1, y)) || (!open(x, y - 1) && !open(x, y + 1))));
+        for (let k = 0; k < want && spots.length; k++) {
+          const [x, y] = spots.splice(Math.floor(r() * spots.length), 1)[0];
+          g[y][x] = "D";
+          doors++;
+        }
+      }
+      // Lights, mostly hidden in dead ends.
+      const lightCount = Math.min(4, 1 + Math.floor(r() * 2 + hard * 2.5));
+      const ends = floor.filter(([x, y]) => free(x, y) && D4.filter(([dx, dy]) => open(x + dx, y + dy)).length === 1);
+      const others = floor.filter(([x, y]) => free(x, y) && !onRoute.has(x + "," + y));
+      const lights = [];
+      for (let k = 0; k < lightCount; k++) {
+        const pool = (ends.length ? ends : others).filter(([x, y]) => free(x, y));
+        if (!pool.length) break;
+        const [x, y] = pick(pool);
+        g[y][x] = "o";
+        lights.push([x, y]);
+      }
+      if (!lights.length) continue;
+      const placeSome = (ch, count, ok) => {
+        for (let k = 0, tries = 0; k < count && tries < 60; tries++) {
+          const [x, y] = pick(floor);
+          if (free(x, y) && (!ok || ok(x, y))) { g[y][x] = ch; k++; }
+        }
+      };
+      if (r() < 0.5) placeSome("c", 1 + Math.floor(r() * 2));
+      if (n >= 5 && r() < 0.3) placeSome("b", 1 + Math.floor(r() * 2));
+      // Snoozles only where you can get around them.
+      if (n >= 6 && r() < 0.35 + hard * 0.35) {
+        const want = 1 + Math.floor(r() * (1 + hard * 3));
+        const goals = [E, ...lights];
+        for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
+          const [x, y] = pick(floor);
+          if (!free(x, y)) continue;
+          let around = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && open(x + dx, y + dy)) around++;
+          if (around < 4) continue;
+          let crowded = false;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (g[y + dy][x + dx] === "z") crowded = true;
+          if (crowded) continue;
+          const blocked = new Set(Object.keys(critterSpots(g)).concat([x + "," + y]));
+          const t = bfs(S[0], S[1], blocked).d;
+          if (goals.every(([gx, gy]) => t[gy][gx] >= 0)) { g[y][x] = "z"; k++; }
+        }
+      }
+
+      // Par: route length past every light, plus a little room for doors.
+      ({ d } = bfs(S[0], S[1]));
+      let pos = S, walk = 0;
+      const left = lights.slice();
+      while (left.length) {
+        const dd = bfs(pos[0], pos[1]).d;
+        left.sort((a, b) => dd[a[1]][a[0]] - dd[b[1]][b[0]]);
+        walk += Math.max(0, dd[left[0][1]][left[0][0]]);
+        pos = left.shift();
+      }
+      walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
+      const parPings = Math.ceil(walk / 6) + 1 + doors;
+      return { name: worldName(worldOf(n)), par: parPings, map: g.map(row => row.join("")) };
+    }
+  }
+  function critterSpots(g) {
+    const out = {};
+    g.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "z") out[x + "," + y] = 1; }));
+    return out;
+  }
 
   const WAVE_SPEED = 8.5;   // tiles per second
   const WAVE_RANGE = 7.5;   // tiles the song travels
@@ -714,6 +937,7 @@
     };
 
     const seed = levelIndex * 37.1 + 5;
+    const th = themeOf(levelIndex);
     const inv = 1 / (TS * sc), ox = OX / TS, oy = OY / TS;
     const f = new Float32Array(w * h);
     for (let py = 0; py < h; py++) {
@@ -746,7 +970,9 @@
         // Open cave: deep blue with teal and violet patches, darker where it meets rock.
         const patch = vnoise(tx * 0.45 + seed, ty * 0.45 - seed);
         const ao = smooth(TH - 0.32, TH, v);
-        let fr = 18 + patch * 12, fg = 30 + (1 - patch) * 16, fb = 58 + patch * 14;
+        let fr = th.floor[0] + (th.floor2[0] - th.floor[0]) * patch;
+        let fg = th.floor[1] + (th.floor2[1] - th.floor[1]) * patch;
+        let fb = th.floor[2] + (th.floor2[2] - th.floor[2]) * patch;
         const wt = water(tx, ty);
         if (wt > 0) { fr += (14 - fr) * wt * 0.8; fg += (62 - fg) * wt * 0.8; fb += (96 - fb) * wt * 0.8; }
         const fk = t * (1 - ao * 0.6);
@@ -760,9 +986,9 @@
         const depth = Math.min(1, Math.max(0, (v - TH) / 0.3));
         const rim = 1 - smooth(TH, TH + 0.12, v);
         const hl = rim * (0.35 + 0.65 * facing);
-        let rr = (62 - depth * 48) * t + 80 * hl;
-        let rg = (82 - depth * 64) * t + 160 * hl;
-        let rb = (128 - depth * 96) * t + 200 * hl;
+        let rr = (th.rock[0] + (th.deep[0] - th.rock[0]) * depth) * t + th.rim[0] * hl;
+        let rg = (th.rock[1] + (th.deep[1] - th.rock[1]) * depth) * t + th.rim[1] * hl;
+        let rb = (th.rock[2] + (th.deep[2] - th.rock[2]) * depth) * t + th.rim[2] * hl;
 
         const k = i * 4;
         D[k] = fr + (rr - fr) * cover;
@@ -785,7 +1011,7 @@
 
   function loadLevel(i) {
     levelIndex = i;
-    const def = LEVELS[i];
+    const def = getLevel(i);
     const rows = def.map.length, cols = def.map[0].length, n = rows * cols;
     L = {
       def, rows, cols, n,
@@ -842,7 +1068,8 @@
     }
     layout();
     updateHud();
-    setHint(def.hint === "first" ? "Tap anywhere to sing 🎵" : def.hint || "", def.hint === "first" ? 0 : 5);
+    const intro = i % PER_WORLD === 0 && i > 0 ? `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}` : "";
+    setHint(def.hint === "first" ? "Tap anywhere to sing 🎵" : def.hint || intro, def.hint === "first" ? 0 : 5);
   }
 
   const idx = (x, y) => y * L.cols + x;
@@ -1588,7 +1815,7 @@
 
     const t = L.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
     $("resultTitle").textContent = ["", "Cave cleared!", "Lovely singing!", "Perfect echo!"][stars];
-    $("resultSub").textContent = `${levelIndex + 1}. ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
+    $("resultSub").textContent = `Level ${levelIndex + 1} · ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
     $("newBest").textContent = newBest;
     $("g1v").textContent = "✓";
     $("g2v").textContent = `${L.got}/${L.lights.length}`;
@@ -1596,8 +1823,8 @@
     $("goal1").className = "ok";
     $("goal2").className = allLights ? "ok" : "";
     $("goal3").className = underPar ? "ok" : "";
-    const last = levelIndex === LEVELS.length - 1;
-    $("nextBtn").textContent = last ? "All caves" : "Next cave";
+    const last = levelIndex === TOTAL - 1;
+    $("nextBtn").textContent = last ? "Level map" : "Next level";
     const spans = $("resultStars").children;
     for (let k = 0; k < 3; k++) spans[k].className = "";
     show("result");
@@ -1609,57 +1836,88 @@
     }
   }
 
-  function renderLevels() {
+  let mapWorld = 0;
+  function renderLevels(world) {
+    if (world != null) mapWorld = world;
+    const th = THEMES[mapWorld % THEMES.length];
+    const color = `rgb(${th.rim.join(",")})`;
+    $("levelScreen").style.setProperty("--world", color);
+    $("worldNum").textContent = `World ${mapWorld + 1} of ${WORLDS}`;
+    $("worldName").textContent = worldName(mapWorld);
+    $("worldPrev").disabled = mapWorld === 0;
+    $("worldNext").disabled = mapWorld === WORLDS - 1;
     const grid = $("levelGrid");
     grid.innerHTML = "";
-    LEVELS.forEach((lv, i) => {
+    const cur = nextUnplayed();
+    // Levels wind upward from the bottom, snaking left and right like a trail.
+    for (let k = 0; k < PER_WORLD; k++) {
+      const i = mapWorld * PER_WORLD + k, row = Math.floor(k / 4), col = k % 4;
       const b = document.createElement("button");
       const open = unlocked(i), st = save.stars[i] || 0;
-      b.className = "card" + (open ? "" : " locked");
-      b.innerHTML = `<span class="num">Cave ${i + 1}</span><span class="name"></span>` +
-        `<span class="st">${"<i>★</i>".repeat(st)}${"★".repeat(3 - st)}</span>`;
-      b.querySelector(".name").textContent = lv.name;
+      b.className = "node" + (open ? "" : " locked") + (i === cur && !st ? " current" : "");
+      b.style.gridRow = String(5 - row);
+      b.style.gridColumn = String(row % 2 ? 4 - col : col + 1);
+      b.innerHTML = open ? `${i + 1}<span class="st">${"<i>★</i>".repeat(st)}${"★".repeat(3 - st)}</span>` : `<span class="lock">🔒</span>`;
+      b.setAttribute("aria-label", `Level ${i + 1}${open ? `, ${st} stars` : ", locked"}`);
       b.addEventListener("click", () => { if (open) startLevel(i); else note(220, { dur: 0.2, vol: 0.08 }); });
       grid.appendChild(b);
-    });
-    $("levelsTotal").textContent = `★ ${totalStars()} / ${LEVELS.length * 3}`;
+    }
+    $("levelsTotal").textContent = `★ ${totalStars()} stars collected`;
+    requestAnimationFrame(drawMapPath);
   }
+  function drawMapPath() {
+    const svg = $("mapPath"), box = $("levelMap").getBoundingClientRect();
+    const pts = [...$("levelGrid").children]
+      .map(n => ({ k: [...n.parentNode.children].indexOf(n), r: n.getBoundingClientRect() }))
+      .sort((a, b) => a.k - b.k)
+      .map(({ r }) => [r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top]);
+    if (!pts.length) return;
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let k = 1; k < pts.length; k++) {
+      const [x0, y0] = pts[k - 1], [x1, y1] = pts[k];
+      d += y0 === y1 ? ` L${x1},${y1}` : ` C${x0 + (x0 > box.width / 2 ? 40 : -40)},${y0} ${x1 + (x1 > box.width / 2 ? 40 : -40)},${y1} ${x1},${y1}`;
+    }
+    svg.innerHTML = `<path d="${d}" fill="none" stroke="var(--world)" stroke-opacity="0.35" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`;
+  }
+  const openMap = () => { renderLevels(worldOf(screen === "title" ? nextUnplayed() : levelIndex)); show("levels"); requestAnimationFrame(drawMapPath); };
   function renderTitle() {
     const t = totalStars();
-    $("totalStars").textContent = t ? `★ ${t} / ${LEVELS.length * 3}` : "";
+    $("totalStars").textContent = t ? `★ ${t} stars · ${TOTAL} levels` : `${TOTAL} levels to explore`;
     $("playBtn").textContent = save.stars.some(s => s) ? "Continue" : "Play";
   }
   function nextUnplayed() {
-    for (let i = 0; i < LEVELS.length; i++) if (!save.stars[i]) return unlocked(i) ? i : Math.max(0, i - 1);
-    return LEVELS.length - 1;
+    for (let i = 0; i < TOTAL; i++) if (!save.stars[i]) return unlocked(i) ? i : Math.max(0, i - 1);
+    return TOTAL - 1;
   }
 
   const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(); });
   tap("playBtn", () => startLevel(nextUnplayed()));
-  tap("levelsBtn", () => { renderLevels(); show("levels"); });
+  tap("levelsBtn", openMap);
+  tap("worldPrev", () => renderLevels(Math.max(0, mapWorld - 1)));
+  tap("worldNext", () => renderLevels(Math.min(WORLDS - 1, mapWorld + 1)));
   tap("levelsBack", () => { renderTitle(); L = null; show("title"); });
   tap("pauseBtn", pause);
   tap("muteBtn", () => { muted = !muted; save.muted = muted; persist(); updateMute(); });
   tap("resumeBtn", resume);
   tap("restartBtn", () => startLevel(levelIndex));
-  tap("quitBtn", () => { renderLevels(); show("levels"); });
+  tap("quitBtn", openMap);
   tap("retryBtn", () => startLevel(levelIndex));
-  tap("resultLevels", () => { renderLevels(); show("levels"); });
+  tap("resultLevels", openMap);
   tap("nextBtn", () => {
-    if (levelIndex < LEVELS.length - 1) startLevel(levelIndex + 1);
-    else { renderLevels(); show("levels"); }
+    if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
+    else openMap();
   });
   ["pauseBtn", "muteBtn"].forEach(id => $(id).addEventListener("pointerdown", e => e.stopPropagation()));
 
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   let resizeTimer = 0;
-  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 120); });
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { resize(); if (screen === "levels") drawMapPath(); }, 120); });
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
-  window.__echo = { LEVELS, get L() { return L; }, startLevel, ping };
+  window.__echo = { LEVELS, TOTAL, getLevel, get L() { return L; }, startLevel, ping };
 
   resize();
   updateMute();
