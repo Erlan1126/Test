@@ -200,6 +200,8 @@ const PARTICLES = [
   { glow: "gold", vy: 0.08, wob: 0.04, rate: 6 },
   { glow: "pink", vy: 0, wob: 0.02, rate: 6, twinkle: true },
 ];
+// How far away a Hushling hears a song: closer early on, further deeper in.
+const hushEar = () => 5 + depthOf(levelIndex) * 1.5;
 function ping(long = false) {
   if (!L || L.ending || L.failing || L.pingCd > 0 || (screen !== "play" && !L.demo)) return;
   if (L.songLimit && L.pings >= L.songLimit && !L.demo) {
@@ -221,9 +223,9 @@ function ping(long = false) {
     if (king && Math.hypot(king.x - L.lumi.x, king.y - L.lumi.y) < 4.5) singToTheHush(king);
   }
   if (!L.demo) for (const g of L.gloom) {
-    if (g.final || g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 8 : 6.5) * (long ? 1.25 : 1)) continue;
+    if (g.final || g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : hushEar()) * (long ? 1.25 : 1)) continue;
     if (g.hunt <= 0) sfx.gloomWake(g.x - L.lumi.x, g.big);
-    g.hunt = g.big ? 6 : 4.5;
+    g.hunt = g.big ? 5 : 3.5;
     g.lx = L.lumi.x; g.ly = L.lumi.y;
   }
   if (!L.demo) { long ? sfx.longSong(L.pings - 1) : sfx.ping(L.pings - 1); buzz(long ? [10, 30, 20] : 8); }
@@ -261,7 +263,7 @@ function reveal(i, d = 0, w = null) {
     if (snore || g.final || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
     // Only a song heard fairly close by wakes a Hushling, not a faint echo from far away.
     if (Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : 6)) continue;
-    g.hunt = g.big ? 6 : 4.5;
+    g.hunt = g.big ? 5 : 3.5;
     g.lx = L.lumi.x; g.ly = L.lumi.y;
     sfx.gloomWake(g.x - L.lumi.x, g.big);
   }
@@ -681,24 +683,24 @@ function update(dt) {
       }
       continue;
     }
-    if (ctl && g.calm <= 0 && gap < (g.big ? 3.2 : 2.4)) {
+    if (ctl && g.calm <= 0 && gap < (g.big ? 2.6 : 1.8)) {
       if (g.hunt <= 0) sfx.gloomWake(g.x - lumi.x, g.big);
       g.hunt = Math.max(g.hunt, g.big ? 3 : 2.2);
     }
     const sees = g.hunt > 0 && (gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
-    if (sees) { g.hunt = Math.max(g.hunt, g.big ? 2.5 : 2); g.lx = lumi.x; g.ly = lumi.y; }
+    if (sees) { g.hunt = Math.max(g.hunt, g.big ? 2 : 1.5); g.lx = lumi.x; g.ly = lumi.y; }
     if (was && g.hunt <= 0 && ctl) { sfx.grumble(); questEvent("escape"); }
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? (sees ? lumi.x : g.lx ?? lumi.x) : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? (sees ? lumi.y : g.ly ?? lumi.y) : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = (g.big ? (hunting ? 1.9 : 0.4) : hunting ? 2.5 + depthOf(levelIndex) * 0.4 : 0.6) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
+    const spd = (g.big ? (hunting ? 1.6 : 0.4) : hunting ? 1.9 + depthOf(levelIndex) * 0.9 : 0.6) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
     if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
       const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 22 : 12));
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 18 : 10));
       L.hits++;
       g.gone = g.big ? 10 : 8;
       g.hunt = 0;

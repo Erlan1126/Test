@@ -205,7 +205,7 @@ const SIM = `
       L.gloom = [L.gloom[0]];  // just one, so no other Hushling can get there first
       const g = L.gloom[0]; g.hunt = 4; Object.assign(L.lumi, { x: g.x + 1.2, y: g.y });
       const e0 = L.energy; __sim(1.5);
-      out.gloomlingCostsLight = L.hits === 1 && L.energy < e0 - 11;
+      out.gloomlingCostsLight = L.hits === 1 && L.energy < e0 - 9;
       startLevel(cardLevel("runes"), true);
       out.gateStartsClosed = solidAt(Math.floor(L.gate.x), Math.floor(L.gate.y));
       const far = L.runes[0]; Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y + 3 }); L.pingCd = 0; ping(); __sim(1.2);
