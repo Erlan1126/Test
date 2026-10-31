@@ -327,6 +327,28 @@
   #energy.low i { background: linear-gradient(90deg, #ff6f8f, #ffb3c4); box-shadow: 0 0 10px #ff6f8f; animation: blink 0.8s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: 0.45; } }
 
+  /* Today's daily cave, on the title screen */
+  .today { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 12px; border-radius: 20px; text-align: left; color: var(--ink); border: 1px solid rgba(255, 211, 110, 0.35); }
+  .today.done { border-color: var(--line); opacity: 0.85; }
+  .today-ico { font-size: 26px; }
+  .today-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .today-main b { font-weight: 600; font-size: 15px; }
+  .today-main small, .today-side small { font-size: 12px; color: var(--dim); }
+  .today-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; }
+  .today-side b { color: var(--gold); font-weight: 600; }
+  .share-result { margin: 4px 0 10px; border-color: rgba(255, 211, 110, 0.45); }
+  /* Lumi's home */
+  .home-scene svg { width: 100%; height: auto; border-radius: 18px; display: block; border: 1px solid var(--line); }
+  .wallet { margin: 10px 0 4px; color: var(--dim); font-size: 14px; }
+  .wallet b { color: var(--gold); }
+  .quests { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 14px; }
+  .quests li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+  .quests li.done { color: var(--dim); }
+  .shop { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .shop-item { display: flex; justify-content: space-between; gap: 6px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); color: var(--ink); font-size: 13px; text-align: left; }
+  .shop-item span:last-child { color: var(--gold); white-space: nowrap; }
+  .shop-item.owned { opacity: 0.6; }
+
   /* Toasts */
   #toasts { position: fixed; top: calc(64px + var(--top)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
   .toast { padding: 10px 16px; border-radius: 16px; background: rgba(14, 20, 44, 0.94); border: 1px solid rgba(255, 211, 110, 0.45); color: var(--ink); font-size: 15px; box-shadow: 0 6px 30px rgba(0,0,0,0.5); animation: toast 2.6s ease forwards; max-width: 100%; }
@@ -442,10 +464,12 @@
   </div>
   <div class="title-actions">
     <div class="title-meta" id="titleMeta"></div>
+    <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
     <nav class="dock glass" aria-label="Menu">
       <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
       <button id="dailyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>Daily<i class="dot" id="dailyDot" hidden></i></button>
+      <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
       <button id="settingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</button>
@@ -487,6 +511,7 @@
     <div class="newbest" id="newBest"></div>
     <div class="unlock" id="unlockMsg"></div>
     <div class="map-wrap"><canvas id="resultMap" hidden></canvas><img id="resultMapImg" alt="Map of the route Lumi swam"><button class="link" id="shareMapBtn">Share map</button></div>
+    <button class="btn share-result" id="shareResultBtn" hidden>Share result · challenge a friend</button>
     <ul class="goals">
       <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
       <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
@@ -536,6 +561,32 @@
     <div style="height:20px"></div>
     <button class="btn main" id="failRetry">Try again</button>
     <button class="btn" id="failMap">Level map</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="homeScreen">
+  <div class="panel tall">
+    <h2>Lumi's home</h2>
+    <p class="sub" id="homeSub"></p>
+    <div class="scroll">
+      <div class="home-scene" id="homeScene"></div>
+      <p class="wallet" id="homeWallet"></p>
+      <h3 class="looks-head">Today's quests</h3>
+      <ul class="quests" id="homeQuests"></ul>
+      <h3 class="looks-head">Make it cosy</h3>
+      <div class="shop" id="homeShop"></div>
+    </div>
+    <button class="btn" id="homeBack">Done</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="installScreen">
+  <div class="panel">
+    <div class="story-num">Keep Lumi close</div>
+    <h2>Add Echo to your home screen</h2>
+    <p class="sub card-text" id="installText"></p>
+    <button class="btn main" id="installGo">Add Echo</button>
+    <button class="btn" id="installLater">Maybe later</button>
   </div>
 </div>
 
@@ -596,6 +647,7 @@
 <script src="echo/game.js"></script>
 <script src="echo/mobs.js"></script>
 <script src="echo/draw.js"></script>
+<script src="echo/meta.js"></script>
 <script src="echo/ui.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 // ---------- UI ----------
 const screens = {
   title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  challenges: $("challengeScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  challenges: $("challengeScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
 };
 let backTo = "title";
 function applyLayoutPrefs() {
@@ -52,6 +52,7 @@ function showTitle() {
   L.seen.fill(1);
   renderTitle();
   show("title");
+  maybeAskInstall();
 }
 
 let hintTimer = 0;
@@ -187,8 +188,12 @@ function meetCreatures(dt) {
   for (const t of L.thorns) if (near(t.x, t.y)) met.push("thorns");
   for (const g of L.gloom) if (!g.gone && near(g.x, g.y)) met.push(g.big ? "boss" : "gloom");
   for (const m of L.mobs) if (!(m.kind === "w" && m.cd > 0) && near(m.x, m.y)) met.push("mob" + m.kind);
+  if (encounterTimer > 0.5) return;
+  const rare = L.gloom.find(g => g.variant && !g.gone && near(g.x, g.y) && !(save.variants || {})[g.variant]);
+  if (rare && spotVariant(rare)) { encounterTimer = 3.6; return; }
   const key = met.find(k => !save.cards[k]);
-  if (!key || encounterTimer > 0.5) return;
+  if (!key) return;
+  $("encounter").querySelector("small").textContent = "Something's here…";
   save.cards[key] = 1;
   persist();
   $("encounterName").textContent = CREATURE_MEET[key][0];
@@ -292,15 +297,22 @@ function checkRewards() {
     save.ach[a.id] = Date.now();
     news.push(`🏆 Award: <b>${a.name}</b>`);
   }
-  const open = SKINS.filter((k, i) => skinUnlocked(i)).length;
+  // Looks unlock by stars or by daily streaks, so remember each one that's been announced.
+  if (!save.lookSeen) { save.lookSeen = {}; SKINS.slice(0, save.skinsSeen || 1).forEach(k => (save.lookSeen[k.name] = 1)); }
   let look = "";
-  for (let i = save.skinsSeen; i < open; i++) { news.push(`✨ New look for Lumi: <b>${SKINS[i].name}</b>`); look = SKINS[i].name; }
-  save.skinsSeen = Math.max(save.skinsSeen, open);
+  SKINS.forEach((k, i) => {
+    if (!skinUnlocked(i) || save.lookSeen[k.name]) return;
+    save.lookSeen[k.name] = 1;
+    news.push(`✨ New look for Lumi: <b>${k.name}</b>`);
+    look = k.name;
+  });
+  save.skinsSeen = SKINS.filter((k, i) => skinUnlocked(i)).length;
   persist();
   if (news.length) setTimeout(() => news.forEach(h => toast(h, true)), 900);
   return look;
 }
 
+let lastStars = 0;
 function finish() {
   const allLights = L.got === L.lights.length;
   const underPar = L.pings <= L.def.par;
@@ -326,14 +338,7 @@ function finish() {
     save.weekly[wk] = Math.max(prev, stars);
     streakMsg = prev ? `Best this week: ${"★".repeat(save.weekly[wk])}` : "This week's cave, cleared!";
   } else if (levelIndex === DAILY) {
-    const d = save.daily, today = dayKey(), yesterday = dayKey(dayNumber() - 1);
-    if (d.last !== today) {
-      d.streak = d.last === yesterday ? d.streak + 1 : 1;
-      d.last = today;
-      d.best = Math.max(d.best, d.streak);
-    }
-    d.stars[today] = Math.max(d.stars[today] || 0, stars);
-    streakMsg = `Daily streak: ${d.streak} day${d.streak === 1 ? "" : "s"}`;
+    streakMsg = [dailyCleared(stars), friendVerdict()].filter(Boolean).join(" · ");
   } else {
     save.stars[levelIndex] = Math.max(save.stars[levelIndex] || 0, stars);
     const best = save.best[levelIndex];
@@ -343,12 +348,17 @@ function finish() {
       save.best[levelIndex] = { pings: L.pings, time: Math.round(L.time * 10) / 10 };
     }
   }
+  earnGlow(L.got + stars);
   persist();
+  questsOnFinish(stars);
+  lastStars = stars;
+  $("shareResultBtn").hidden = levelIndex !== DAILY;
   const look = checkRewards();
 
   const t = L.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
   $("resultTitle").textContent = ["", "Cave cleared!", "Lovely singing!", "Perfect echo!"][stars];
-  $("resultSub").textContent = `${levelLabel(levelIndex)} · ${L.def.name} · ${mm}:${String(ss).padStart(2, "0")}`;
+  const caveName = levelIndex === DAILY ? `Daily #${dailyNumber()} · ${twistFor().name}` : `${levelLabel(levelIndex)} · ${L.def.name}`;
+  $("resultSub").textContent = `${caveName} · ${mm}:${String(ss).padStart(2, "0")}`;
   $("newBest").textContent = streakMsg || newBest;
   const worldDone = levelIndex >= 0 && isFinale(levelIndex);
   $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : ""].filter(Boolean).join(" · ");
@@ -446,8 +456,9 @@ function renderTitle() {
   const doneToday = save.daily.last === dayKey();
   $("dailyDot").hidden = doneToday;
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
-  $("titleMeta").textContent = save.daily.streak && (doneToday || save.daily.last === dayKey(dayNumber() - 1))
-    ? `Daily streak · ${save.daily.streak} day${save.daily.streak === 1 ? "" : "s"}` : "";
+  $("titleMeta").textContent = "";
+  renderToday();
+  $("homeDot").hidden = !HOME_ITEMS.some(it => !(save.home || {})[it.id] && glowNow() >= it.cost);
 }
 function renderChallenges() {
   const d = save.daily, today = save.daily.last === dayKey(), wk = (save.weekly || {})[weekNumber()] || 0;
@@ -472,10 +483,10 @@ function renderLooks() {
       ball.style.setProperty("--glow", "rgba(255,255,255,0.6)");
     }
     b.appendChild(ball);
-    b.appendChild(document.createTextNode(open ? k.name : `★ ${k.need}`));
-    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : `${k.name}, needs ${k.need} stars`);
+    b.appendChild(document.createTextNode(open ? k.name : k.streak ? `🔥 ${k.streak}` : `★ ${k.need}`));
+    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : k.streak ? `${k.name}, needs a ${k.streak} day daily streak` : `${k.name}, needs ${k.need} stars`);
     b.addEventListener("click", () => {
-      if (!open) { toast(`Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`); return; }
+      if (!open) { toast(k.streak ? `Play the daily cave <b>${k.streak} days in a row</b> to unlock ${k.name}` : `Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`); return; }
       save.skin = i;
       persist();
       sfx.moth();
@@ -514,6 +525,10 @@ function renderJournal() {
     const seen = save.found && save.found[k];
     html += `<li class="award${seen ? " done" : ""}"><span class="ico">${seen ? ico : "❔"}</span><span><span class="nm">${seen ? name : "Not found yet"}</span><br><span class="ds">${seen ? desc : "Keep exploring"}</span></span></li>`;
   }
+  const vs = save.variants || {};
+  html += `</ul><h3 class="journal-h">Rare Hushlings</h3><ul class="awards">`;
+  for (const [k, v] of Object.entries(VARIANTS))
+    html += `<li class="award${vs[k] ? " done" : ""}"><span class="ico">${vs[k] ? "👀" : "❔"}</span><span><span class="nm">${vs[k] ? v.name : "Not spotted yet"}</span><br><span class="ds">${vs[k] ? v.tip : "About one cave in twenty hides a rare one"}</span></span></li>`;
   $("journal").innerHTML = html + "</ul>";
 }
 function awardsTab(journal) {
@@ -537,9 +552,9 @@ function renderHats() {
     cx.fillStyle = "#c9f6ff"; cx.beginPath(); cx.arc(0, 0, 12, 0, Math.PI * 2); cx.fill();
     if (open) drawHat(k, 12, cx);
     b.appendChild(c);
-    b.appendChild(document.createTextNode(open ? h.name : `🏆 ${h.need}`));
+    b.appendChild(document.createTextNode(open ? h.name : h.streak ? `🔥 ${h.streak}` : `🏆 ${h.need}`));
     b.addEventListener("click", () => {
-      if (!open) { toast(`Earn <b>${h.need - awardsEarned()}</b> more awards to unlock the ${h.name.toLowerCase()}`); return; }
+      if (!open) { toast(h.streak ? `Play the daily cave <b>${h.streak} days in a row</b> to unlock the ${h.name.toLowerCase()}` : `Earn <b>${h.need - awardsEarned()}</b> more awards to unlock the ${h.name.toLowerCase()}`); return; }
       save.hat = k; persist(); sfx.moth(); renderHats();
     });
     grid.appendChild(b);
@@ -624,6 +639,12 @@ tap("playBtn", () => startLevel(nextUnplayed()));
 tap("levelsBtn", openMap);
 tap("dailyBtn", () => { renderChallenges(); show("challenges"); });
 tap("playDaily", () => startLevel(DAILY));
+tap("todayCard", () => startLevel(DAILY));
+tap("homeBtn", () => { renderHome(); show("home"); });
+tap("homeBack", () => showTitle());
+tap("shareResultBtn", () => shareDaily(lastStars));
+tap("installGo", () => { if (installEvent) { installEvent.prompt(); installEvent = null; } showTitle(); });
+tap("installLater", () => showTitle());
 tap("playWeekly", () => startLevel(WEEKLY));
 tap("challengesBack", showTitle);
 tap("tabAwards", () => awardsTab(false));
@@ -688,7 +709,7 @@ tap("restoreCode", () => {
     const data = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6)))));
     if (!data || !Array.isArray(data.stars)) throw new Error("no stars");
     for (const k of ["settings", "stats", "daily"]) Object.assign(save[k], data[k] || {});
-    for (const k of ["stars", "best", "muted", "skin", "skinsSeen", "looksViewed", "ach", "story", "cards"]) if (data[k] != null) save[k] = data[k];
+    for (const k of SAVE_KEYS) if (data[k] != null) save[k] = data[k];
     persist();
     STICK_R = STICK_SIZES[save.settings.stick] || 46;
     muted = !!save.muted;
@@ -715,6 +736,7 @@ tap("setReset", () => {
   save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.looksViewed = 1; save.ach = {}; save.story = {}; save.cards = {};
   save.stats = { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 };
   save.daily = { last: "", streak: 0, best: 0, stars: {} };
+  for (const k of ["found", "family", "hat", "weekly", "glow", "home", "quests", "variants", "vs", "lookSeen"]) delete save[k];
   persist();
   toast("Progress erased");
   renderSettings();

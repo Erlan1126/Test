@@ -75,6 +75,9 @@ For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), wr
 - [ ] If the game feels slow, turn off lighting in Settings. Does it get smoother?
 
 ### Daily cave and rewards
+- [ ] Does today's cave card on the title screen make you want to play it? Is the twist clear?
+- [ ] Are the daily quests fun, and is glow worth earning for Lumi's home?
+- [ ] Share a daily result with a friend. Does their game show your score to beat?
 - [ ] Play the daily cave on two different days. Does the streak count up?
 - [ ] Do new looks and awards feel worth chasing?
 

@@ -452,10 +452,11 @@ function drawThings() {
   // wears a crown of shadow spikes and has a second, smaller pair of eyes.
   for (const g of L.gloom) {
     if (g.gone > 0) continue;
-    const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : 0.3), hunting = g.hunt > 0, t = g.ph;
+    const v = g.variant && VARIANTS[g.variant];
+    const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : g.variant === "tiny" ? 0.22 : 0.3), hunting = g.hunt > 0, t = g.ph;
     if (X < -r * 4 || Y < -r * 4 || X > W + r * 4 || Y > H + r * 4) continue;
     // Shadows in the dark: only seen where light falls on them.
-    const seenA = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0);
+    const seenA = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0) * (g.variant === "pale" ? 0.7 : 1);
     if (seenA < 0.02) continue;
     drawLit(X, Y, r * 2.8, 1, seenA, () => {
       ctx.globalCompositeOperation = "lighter";
@@ -473,7 +474,8 @@ function drawThings() {
       }
       // Hooded body with two ear tufts, darkest at the rim.
       const body = ctx.createRadialGradient(X - r * 0.2, Y - r * 0.35, r * 0.1, X, Y, r * 1.1);
-      body.addColorStop(0, hunting ? "#3a1a4e" : "#2a1840"); body.addColorStop(0.7, "#140a22"); body.addColorStop(1, "#08040e");
+      const bc = v ? v.body : [hunting ? "#3a1a4e" : "#2a1840", "#140a22", "#08040e"];
+      body.addColorStop(0, bc[0]); body.addColorStop(0.7, bc[1]); body.addColorStop(1, bc[2]);
       ctx.fillStyle = body;
       const ear = Math.sin(t * 1.5) * r * 0.06;
       ctx.beginPath();
@@ -503,18 +505,18 @@ function drawThings() {
       }
       // Eyes: almond shapes looking toward Lumi; narrowed and slanted when hunting.
       const look = Math.atan2(L.lumi.y - g.y, L.lumi.x - g.x), lx = Math.cos(look) * r * 0.07, ly = Math.sin(look) * r * 0.05;
-      const blink = (t * 0.37) % 4 < 0.08 ? 0.15 : 1, eh = r * (hunting ? 0.1 : 0.17) * blink;
+      const blink = (t * 0.37) % 4 < 0.08 ? 0.15 : 1, eh = r * (hunting ? 0.1 : 0.17) * blink * (g.variant === "sleepy" ? 0.45 : 1);
       const eyes = [[-0.36, -0.25, 1], [0.36, -0.25, -1]];
       if (g.big) eyes.push([-0.18, 0.08, 0.6], [0.18, 0.08, -0.6]);
       ctx.globalCompositeOperation = "lighter";
-      for (const [ox, oy] of eyes) glow(hunting ? GLOW.pink : GLOW.violet, X + ox * r, Y + oy * r, r * 0.55, hunting ? 0.7 : 0.4);
+      for (const [ox, oy] of eyes) glow(v ? GLOW[v.glow] || GLOW.violet : hunting ? GLOW.pink : GLOW.violet, X + ox * r, Y + oy * r, r * 0.55, hunting ? 0.7 : 0.4);
       ctx.globalCompositeOperation = "source-over";
       for (const [ox, oy, s] of eyes) {
         const small = Math.abs(s) < 1 ? 0.65 : 1, ex = X + ox * r, ey = Y + oy * r, ew = r * 0.2 * small;
         ctx.save();
         ctx.translate(ex, ey);
         ctx.rotate(hunting ? s * 0.35 : 0);
-        ctx.fillStyle = hunting ? "#ff9ad0" : "#c9a8ff";
+        ctx.fillStyle = v ? v.eye : hunting ? "#ff9ad0" : "#c9a8ff";
         ctx.beginPath(); ctx.ellipse(0, 0, ew, eh * small, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#fff";
         ctx.beginPath(); ctx.ellipse(lx, ly, ew * 0.32, eh * 0.55 * small, 0, 0, Math.PI * 2); ctx.fill();

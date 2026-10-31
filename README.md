@@ -14,6 +14,17 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Coming back every day
+
+- **Today's cave** sits on the title screen: Daily #N, the day's twist, time left, your streak and quest progress. Twists (the same for everyone): Quiet Waters, Hushling Night (extra Hushlings), Silent Day (few songs), Deep Dark, Star Shower (extra lights) and Swift Current (a timer). Daily caves stay one screen tall, a minute or two each.
+- **Streaks** pay out: a night cap at 3 days, the Dawn look at 7, a halo at 14, Golden Lumi at 30. Every 7 days earns a **streak shield** (up to 2) that covers a missed day.
+- **Three daily quests** (escape Hushlings, collect lights, finish quietly...) pay **glow**, as do lights and stars in every cave. All three in a day pays a bonus.
+- **Lumi's home**: the family members you rescue live there, and glow buys decorations (mushrooms, a lantern, a moss rug, crystals, a glow-moth jar, a waterfall, a star mobile, a hammock).
+- **Rare Hushlings**: about one cave in eighteen has a Golden, Sleepy, Tiny or Pale Hushling. Spotting one is a little event (+20 glow) and they're collected in the journal.
+- **Share result**: after the daily cave, a spoiler-free result (stars, songs, time, streak) with a link; a friend who opens it sees your score to beat on their daily card and is told who won.
+- After three levels, a one-time nudge to add Echo to the home screen.
+- Daily reminder notifications need a push server, which a static GitHub Pages site doesn't have; they're the next step if Echo moves to an app store or gets a small backend.
+
 ## The website
 
 The site is hosted for free on GitHub Pages, straight from the `main` branch. Everything is plain HTML, CSS and JavaScript, with no build step.
@@ -22,7 +33,7 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | --- | --- |
 | `index.html` | The Skyrise game (the site's home page) |
 | `echo.html` | Echo, a cave-exploring game where you see with sound: the page, its styles and screens |
-| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `gl.js` (lights and shadows on the rock, using the phone's graphics chip), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
+| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `gl.js` (lights and shadows on the rock, using the phone's graphics chip), `meta.js` (the daily ritual: twists, streaks, quests, Lumi's home, rare Hushlings, sharing), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
 | `tests/run.js`, `package.json` | Automated tests for Echo (see below) |
 | `tools/bundle-echo.js` | Builds a single-file copy of Echo with all its code inlined |
 | `PLAYTEST.md` | A checklist for testing Echo on real phones with friends |

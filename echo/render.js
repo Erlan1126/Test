@@ -41,9 +41,11 @@ const HATS = [
   { name: "Crown", need: 6 },
   { name: "Star", need: 8 },
   { name: "Flower", need: 10 },
+  { name: "Night cap", streak: 3 },
+  { name: "Halo", streak: 14 },
 ];
 const awardsEarned = () => Object.keys(save.ach || {}).length;
-const hatUnlocked = k => awardsEarned() >= HATS[k].need;
+const hatUnlocked = k => (HATS[k].streak ? (save.daily.best || 0) >= HATS[k].streak : awardsEarned() >= HATS[k].need);
 // Draws an accessory on Lumi's head; (0, 0) is the middle of Lumi and R its radius.
 function drawHat(k, R, ctx = mainCtx) {
   if (!k || !hatUnlocked(k)) return;
@@ -72,6 +74,13 @@ function drawHat(k, R, ctx = mainCtx) {
     ctx.fillStyle = "#ffffff";
     for (let q = 0; q < 5; q++) { const a = q * Math.PI * 2 / 5; ctx.beginPath(); ctx.arc(R * 0.55 + Math.cos(a) * R * 0.17, -R * 0.75 + Math.sin(a) * R * 0.17, R * 0.13, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = "#ffd36e"; ctx.beginPath(); ctx.arc(R * 0.55, -R * 0.75, R * 0.1, 0, Math.PI * 2); ctx.fill();
+  } else if (k === 6) { // a sleepy night cap with a pom-pom
+    ctx.fillStyle = "#6f7fd8";
+    ctx.beginPath(); ctx.moveTo(-R * 0.7, -R * 0.62); ctx.quadraticCurveTo(0, -R * 1.25, R * 0.75, -R * 0.6); ctx.quadraticCurveTo(R * 0.9, -R * 1.25, R * 1.25, -R * 1.0); ctx.lineTo(R * 0.55, -R * 0.45); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(R * 1.25, -R * 1.0, R * 0.16, 0, Math.PI * 2); ctx.fill();
+  } else if (k === 7) { // a floating halo
+    ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = Math.max(1.5, R * 0.12);
+    ctx.beginPath(); ctx.ellipse(0, -R * 1.3, R * 0.6, R * 0.18, 0, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }
@@ -85,11 +94,13 @@ const SKINS = [
   { name: "Ember",     need: 150, c: [255, 150, 90],  body: ["#fff6ee", "#ffd2b0", "#ff8a4d"] },
   { name: "Frosty",    need: 225, c: [210, 235, 255], body: ["#ffffff", "#f0f8ff", "#b8dcff"] },
   { name: "Starlight", need: 300, c: null, body: null },
+  { name: "Dawn",      streak: 7,  c: [255, 170, 150], body: ["#ffffff", "#ffe0d6", "#ff9e8a"] },
+  { name: "Golden",    streak: 30, c: [255, 215, 110], body: ["#fffbe8", "#ffe28a", "#e8a820"] },
 ];
 const RAINBOW = [[255, 120, 160], [255, 200, 110], [150, 255, 160], [110, 220, 255], [170, 140, 255], [255, 140, 230]];
 const skinGlows = SKINS.map(k => (k.c ? makeGlow(...k.c) : null));
 const rainbowGlows = RAINBOW.map(c => makeGlow(...c));
-const skinUnlocked = k => totalStars() >= SKINS[k].need;
+const skinUnlocked = k => (SKINS[k].streak ? (save.daily.best || 0) >= SKINS[k].streak : totalStars() >= SKINS[k].need);
 function lumiLook() {
   const k = SKINS[save.skin] && skinUnlocked(save.skin) ? save.skin : 0, sk = SKINS[k];
   if (sk.c) return { glow: skinGlows[k], body: sk.body };

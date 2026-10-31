@@ -481,7 +481,7 @@ function getLevel(i) {
   }
   if (i === DAILY) {
     const day = dayNumber(), key = "daily" + day;
-    if (!levelCache.has(key)) levelCache.set(key, generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }));
+    if (!levelCache.has(key)) levelCache.set(key, applyTwist(generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }), day));
     return levelCache.get(key);
   }
   if (INTRO[i]) return INTRO[i];
@@ -529,7 +529,8 @@ const WORLD_MOB = ["t", "n", "a", "k", "w", "j", "k", "a"];
 const MOB_UNLOCK = { t: 4, n: 20, a: 40, k: 60, w: 80, j: 100 };
 function planLevel(n, daily, hard, pre) {
   const w = daily ? dayNumber() % THEMES.length : worldOf(n), sig = SIGNATURE[w % SIGNATURE.length];
-  const open = Object.keys(UNLOCK).filter(k => daily || n >= UNLOCK[k]);
+  // The daily cave stays one screen tall, so it fits a coffee break.
+  const open = Object.keys(UNLOCK).filter(k => (daily ? k !== "tall" : n >= UNLOCK[k]));
   const plan = new Set();
   for (const k of open) {
     const signature = sig.includes(k);

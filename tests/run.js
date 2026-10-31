@@ -311,8 +311,21 @@ const SIM = `
       renderAwards(); show("awards"); out.awards = document.querySelectorAll("#awardsList .award").length === ACHS.length;
       renderSettings(); show("settings"); out.settings = on("settingsScreen");
       renderChallenges(); show("challenges"); out.challenges = on("challengeScreen") && document.getElementById("weeklyInfo").textContent.length > 5;
-      renderAwards(); awardsTab(true); show("awards"); out.journal = !document.getElementById("journal").hidden && document.querySelectorAll("#journal .award").length === JOURNAL.length;
+      renderAwards(); awardsTab(true); show("awards"); out.journal = !document.getElementById("journal").hidden && document.querySelectorAll("#journal .award").length === JOURNAL.length + Object.keys(VARIANTS).length;
       renderHats(); out.accessories = document.querySelectorAll("#hatsGrid .look").length === HATS.length;
+      // Daily ritual: today's card, its twist, quests, Lumi's home and the shared result.
+      renderTitle(); out.todayCardShowsTheTwist = document.getElementById("todayName").textContent.includes(twistFor().name);
+      out.dailyCaveHasTodaysTwist = getLevel(DAILY).twist === twistFor().id && getLevel(DAILY).map.length === 18;
+      out.threeDistinctQuestsToday = new Set(todayQuests().map(q => q.id)).size === 3;
+      save.glow = 100; renderHome(); show("home");
+      out.homeShows = on("homeScreen") && document.querySelectorAll("#homeShop .shop-item").length === HOME_ITEMS.length && document.querySelectorAll("#homeQuests li").length === 3;
+      document.querySelector("#homeShop .shop-item").click();
+      out.buyingDecorSpendsGlow = save.glow === 80 && save.home.shrooms === 1 && document.getElementById("homeScene").innerHTML.includes("translate(46 150)");
+      const d0 = save.daily; save.daily = { last: dayKey(dayNumber() - 3), streak: 9, best: 9, stars: {}, shields: 2 };
+      dailyCleared(2); out.streakShieldsCoverMissedDays = save.daily.streak === 10 && save.daily.shields === 0;
+      save.daily = { last: dayKey(dayNumber() - 3), streak: 9, best: 9, stars: {}, shields: 1 };
+      dailyCleared(2); out.missingTooManyDaysResetsTheStreak = save.daily.streak === 1;
+      save.daily = d0;
       save.story = {}; startLevel(0); out.story = screen === "story";
       document.getElementById("storyGo").click(); out.storyLeadsToLevel = screen === "play";
       save.cards = {}; startLevel(cardLevel("runes"), { story: true }); out.card = screen === "card";

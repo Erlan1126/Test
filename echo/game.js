@@ -88,6 +88,7 @@ function loadLevel(i, demo = false) {
     const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.25 + rnd() * 0.4;
     for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.22, y: y + 1.06, s: q ? 0.09 + rnd() * 0.03 : 0.13 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
   }
+  if (!demo) assignVariant(i);
   planDecor();
   mood = MOODS[themeIndex(i)];
   musicStart(i === WEEKLY ? weekNumber() + 7 : i < 0 ? dayNumber() : i, demo ? 0 : 2);
@@ -269,6 +270,7 @@ function echoFrom(i, j, d, w) {
 
 function wakeRune(r) {
   r.on = 0.001;
+  questEvent("rune");
   sfx.rune();
   buzz(15);
   for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28; spark(r.x, r.y, Math.cos(a) * 1.4, Math.sin(a) * 1.4, 0.8, "green", 0.09); }
@@ -563,6 +565,7 @@ function update(dt) {
     if (o.got || L.demo || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
     o.got = true;
     L.got++;
+    questEvent("lights");
     L.happy = 1.5;
     if (L.useEnergy) L.energy = Math.min(100, L.energy + 35);
     music.layers = 3;
@@ -647,11 +650,11 @@ function update(dt) {
     }
     const sees = g.hunt > 0 && (gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
     if (sees) { g.hunt = Math.max(g.hunt, g.big ? 2.5 : 2); g.lx = lumi.x; g.ly = lumi.y; }
-    if (was && g.hunt <= 0 && ctl) sfx.grumble();
+    if (was && g.hunt <= 0 && ctl) { sfx.grumble(); questEvent("escape"); }
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? (sees ? lumi.x : g.lx ?? lumi.x) : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? (sees ? lumi.y : g.ly ?? lumi.y) : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = g.big ? (hunting ? 1.9 : 0.4) : hunting ? 2.5 + depthOf(levelIndex) * 0.4 : 0.6;
+    const spd = (g.big ? (hunting ? 1.9 : 0.4) : hunting ? 2.5 + depthOf(levelIndex) * 0.4 : 0.6) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
     if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
@@ -661,6 +664,7 @@ function update(dt) {
       if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 22 : 12));
       L.hits++;
       g.gone = g.big ? 10 : 8;
+      g.hunt = 0;
       g.calm = g.big ? 8 : 6;
       sfx.hurt();
       buzz(50);
