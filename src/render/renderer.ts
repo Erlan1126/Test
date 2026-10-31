@@ -1,5 +1,5 @@
 // Puts a frame together: camera, sky, island, tower, effects.
-import { lerp, rand } from "../core/util";
+import { clamp, lerp, rand } from "../core/util";
 import { BLOCK_SIZE, ISLAND } from "../data/constants";
 import type { IslandTheme } from "../data/islands";
 import type { Skin } from "../data/skins";
@@ -7,6 +7,7 @@ import type { TowerSim } from "../logic/sim";
 import { drawBlock, drawRoof, floorColor, lookFor } from "./buildings";
 import { drawGuide, drawLandingShadow, Effects } from "./effects";
 import { ISO_X, View, type Env, type Paint } from "./paint";
+import { PostFX } from "./post";
 import { nightAt, Scenery, skyAt } from "./scenery";
 
 /** What the screen is showing, which decides where the camera goes. */
@@ -22,7 +23,7 @@ export interface Frame {
   islandLevel: number;
   /** Beginner guide outline. */
   guide: boolean;
-  /** Smooth mode. */
+  /** Smooth mode: no shaders, fewer effects. */
   low: boolean;
   /** Bottom edge of the score display, in pixels. */
   hudBottom: number;
@@ -35,10 +36,30 @@ export class Renderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false };
   private readonly paint: Paint;
+  private readonly post: PostFX;
+  private postOn = false;
+  /** Eased center of the sharp tilt-shift band. */
+  private focus = 0.55;
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
+  constructor(private readonly canvas: HTMLCanvasElement, private readonly fxCanvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
     this.paint = { ctx: this.ctx, view: this.view, env: this.env };
+    this.post = new PostFX(fxCanvas);
+  }
+
+  /** The canvas that shows the finished frame (for the share picture). */
+  get output(): HTMLCanvasElement {
+    return this.postOn ? this.fxCanvas : this.canvas;
+  }
+
+  /** Shaders run in High and Auto graphics; Smooth mode and devices without WebGL skip them. */
+  private setPost(on: boolean): void {
+    on = on && this.post.ok;
+    if (on === this.postOn) return;
+    this.postOn = on;
+    // The 2D canvas stays on top (invisible) so it keeps receiving taps.
+    this.canvas.style.opacity = on ? "0" : "1";
+    this.fxCanvas.hidden = !on;
   }
 
   resize(low: boolean): void {
@@ -49,6 +70,7 @@ export class Renderer {
     this.canvas.width = Math.round(v.W * dpr);
     this.canvas.height = Math.round(v.H * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.post.resize(this.canvas.width, this.canvas.height);
     // A full floor is about 17.3 units wide on screen; size it to the smaller screen dimension.
     v.s = Math.min(v.W * 0.56, v.H * 0.36) / (BLOCK_SIZE * 2 * ISO_X);
     v.th = v.s * 1.3;
@@ -99,7 +121,7 @@ export class Renderer {
     ctx.save();
     if (fx.shake > 0) ctx.translate(rand(-1, 1) * 10 * fx.shake, rand(-1, 1) * 10 * fx.shake);
 
-    scenery.drawBack(p);
+    scenery.drawBack(p, n > 1 ? stack[1] : stack[0], n);
     scenery.drawBandClouds(p, false, null, dt);
     // A warm glow around the top of the tower during a perfect streak.
     if (sim.combo >= 5 && f.showMover) {
@@ -136,10 +158,36 @@ export class Renderer {
 
     scenery.drawWind(p, f.showMover && m ? sim.windFor(m.y) : 0, dt);
     fx.drawPopups(p, top, f.hudBottom);
-    scenery.drawVignette(p);
+    this.setPost(!f.low);
+    if (!this.postOn) scenery.drawVignette(p); // the shader has its own
     if (fx.whiteFlash > 0) {
       ctx.fillStyle = `rgba(255,248,220,${fx.whiteFlash * 0.5})`;
       ctx.fillRect(0, 0, view.W, view.H);
     }
+    if (this.postOn) this.finish(f, dt);
+  }
+
+  /** Runs the shader pass. The sharp band follows what matters in each shot. */
+  private finish(f: Frame, dt: number): void {
+    const { view, env } = this, n = f.sim.stack.length, H = view.H || 1;
+    let target: number, tilt: number, span: number;
+    if (f.shot === "menu") {
+      target = view.project(0, 0.5, 0)[1] / H; tilt = 0.85; span = 0.13;
+    } else if (f.shot === "over") {
+      target = view.project(0, f.sim.level / 2, 0)[1] / H; tilt = 0.6; span = 0.24;
+    } else {
+      target = view.project(0, f.sim.top.y + 1, 0)[1] / H; tilt = 0.4; span = 0.2;
+    }
+    this.focus = lerp(this.focus, clamp(target, 0.1, 0.9), Math.min(1, dt * 4));
+    const skin = f.skin;
+    this.post.render(this.canvas, {
+      time: env.time,
+      night: env.nf,
+      warm: clamp((n - 14) / 24, 0, 1) * (1 - env.nf * 0.8),
+      bloom: 0.4 + env.nf * 0.35 + (skin.neon || skin.alwaysLit ? 0.2 : 0),
+      tilt,
+      focus: this.focus,
+      span,
+    });
   }
 }

@@ -168,6 +168,16 @@ export function drawBlock(p: Paint, b: Box, y0: number, y1: number, c: RGB, look
     if (opts.lobby) walls.forEach(f => drawLobby(p, look, f));
     else for (let fy = y0; fy < y1 - 0.3; fy++) walls.forEach(f => drawStorey(p, fy, y1, look, f, alpha));
   }
+  // Contact shading where this block sits on the one below, so floors read as separate pieces.
+  if (!opts.plain && !opts.lobby && y1 - y0 <= 1.2) {
+    for (const f of [[D, C, Cb, Db], [B, C, Cb, Bb]] as Pt[][]) {
+      const [t0, t1, b1, b0] = f, k = 0.16;
+      const m0: Pt = [lerp(b0[0], t0[0], k), lerp(b0[1], t0[1], k)], m1: Pt = [lerp(b1[0], t1[0], k), lerp(b1[1], t1[1], k)];
+      ctx.globalAlpha = alpha * 0.28 * (1 - env.nf * 0.5);
+      poly(p, [m0, m1, b1, b0], "#0a1030");
+      ctx.globalAlpha = alpha;
+    }
+  }
 
   // Roof with a parapet rim
   poly(p, [A, B, C, D], rgb(c, 1.14 * d));

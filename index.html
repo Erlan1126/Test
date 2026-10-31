@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Lilita+One&family=Figtree:wght@500;600;700;800&display=swap">
 </head>
 <body>
+<canvas id="fx" hidden aria-hidden="true"></canvas>
 <canvas id="game" aria-label="Skyrise game. Tap or press Space to drop a floor."></canvas>
 
 <div id="hud" hidden>
@@ -60,7 +61,7 @@
 <button id="settings-btn" class="corner-btn" aria-label="Settings">
   <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.8c.1.6.1 1.3 0 1.9l2 1.8-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.8a6 6 0 0 1 0-1.9l-2-1.8L5.9 4.6l2.5.9c.5-.4 1.1-.7 1.7-.9L10.3 2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" transform="translate(0 1.5)"/></svg>
 </button>
-<div id="banner" hidden><small id="banner-eyebrow"></small><strong id="banner-title"></strong></div>
+<div id="banner" hidden role="status"><span class="banner-text"><small id="banner-eyebrow"></small><strong id="banner-title"></strong></span></div>
 
 <div id="menu">
   <div class="menu-top">
@@ -233,7 +234,7 @@
       <label class="setting"><span><b>Music</b><small>Builds up as your tower climbs</small></span><input type="checkbox" id="set-music" class="switch"></label>
       <label class="setting" id="vibrate-row"><span><b>Vibration</b><small>Buzz on drops (Android)</small></span><input type="checkbox" id="set-vibrate" class="switch"></label>
       <div class="setting">
-        <span><b>Graphics</b><small id="quality-note">Auto picks smooth mode on slower phones</small></span>
+        <span><b>Graphics</b><small id="quality-note">High adds glow and depth effects</small></span>
         <div class="seg" role="radiogroup" aria-label="Graphics quality">
           <button type="button" role="radio" data-q="auto">Auto</button>
           <button type="button" role="radio" data-q="high">High</button>

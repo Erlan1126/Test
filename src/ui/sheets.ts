@@ -310,7 +310,7 @@ export class Sheets {
     document.querySelectorAll<HTMLButtonElement>(".seg button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
     $("quality-note").textContent = st.quality === "auto" && st.autoLow
       ? "Auto switched to smooth mode on this device"
-      : "Auto picks smooth mode on slower phones";
+      : "High adds glow and depth effects. Auto turns them off on slower phones";
   }
 
   openSettings(): void {

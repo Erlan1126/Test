@@ -174,7 +174,7 @@ export class Effects {
     ctx.textAlign = "center";
     ctx.lineJoin = "round";
     for (const q of this.popups) {
-      const y = Math.max(view.project((top.x0 + top.x1) / 2, q.y, (top.z0 + top.z1) / 2)[1], minY + (q.big ? 40 : 30));
+      const y = Math.max(view.project((top.x0 + top.x1) / 2, q.y, (top.z0 + top.z1) / 2)[1], minY + (q.big ? 82 : 70));
       const pop = 1 + Math.max(0, q.life - 0.9) * 2;
       ctx.globalAlpha = clamp(q.life * 2, 0, 1);
       ctx.font = `${Math.round((q.big ? 40 : 28) * pop)}px ${NUM_FONT}`;

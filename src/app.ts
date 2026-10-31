@@ -67,6 +67,7 @@ export class App implements Host {
   private overTimer = 0;
   private overReady = false;
   private shareTimer = -1;
+  private captureShare = false;
   private shareBlob: Blob | null = null;
   private outcome: RunOutcome | null = null;
   private opened: Feature[] = [];
@@ -85,7 +86,7 @@ export class App implements Host {
     this.persist();
     this.tutorial = !this.save.tutorialDone;
     this.sound = new Sound(() => this.save.settings);
-    this.renderer = new Renderer(this.canvas);
+    this.renderer = new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
     this.sheets = new Sheets(this);
 
     $("app-logo").innerHTML = logoSvg;
@@ -504,9 +505,7 @@ export class App implements Host {
   private banner(eyebrow: string, title: string): void {
     $("banner-eyebrow").textContent = eyebrow;
     $("banner-title").textContent = title;
-    const b = $("banner"), hud = $("hud");
-    // Sit just under the score so the banner covers as little of the tower as possible.
-    b.style.top = hud.hidden ? "" : `${Math.round(hud.getBoundingClientRect().bottom + 6)}px`;
+    const b = $("banner");
     b.hidden = false;
     replay(b, "show");
     clearTimeout(this.bannerTimer);
@@ -766,12 +765,8 @@ export class App implements Host {
     }
     if (this.shareTimer > 0) {
       this.shareTimer -= dt;
-      if (this.shareTimer <= 0 && this.state === "over") {
-        const tag = this.mode === "daily" ? `Daily #${dayNumber()}` : "";
-        void makeShareImage(this.canvas, this.renderer.view, {
-          score: sim.score, meters: sim.meters, floors: sim.level, landmark: sim.lastLandmark, tag,
-        }).then(b => { this.shareBlob = b; });
-      }
+      // Captured right after the next frame is drawn, while the shader output is still there.
+      if (this.shareTimer <= 0 && this.state === "over") this.captureShare = true;
     }
     this.renderer.fx.update(dt);
   }
@@ -789,5 +784,12 @@ export class App implements Host {
       low: this.low,
       hudBottom: this.state === "playing" || this.state === "paused" ? $("hud").getBoundingClientRect().bottom : 0,
     });
+    if (this.captureShare) {
+      this.captureShare = false;
+      const sim = this.sim, tag = this.mode === "daily" ? `Daily #${dayNumber()}` : "";
+      void makeShareImage(this.renderer.output, this.renderer.view, {
+        score: sim.score, meters: sim.meters, floors: sim.level, landmark: sim.lastLandmark, tag,
+      }).then(b => { this.shareBlob = b; });
+    }
   }
 }

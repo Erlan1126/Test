@@ -275,12 +275,14 @@ export class Scenery {
     return p.view.project(0, 0, 0)[1] - ISLAND * p.view.s * p.view.zoom < p.view.H + 40;
   }
 
-  /** Everything on the island that sits behind the tower. */
-  drawBack(p: Paint): void {
+  /** Everything on the island that sits behind the tower. `base` is the tower's first
+   *  floor and `floors` its height, for the shadow it casts. */
+  drawBack(p: Paint, base: Box, floors: number): void {
     if (this.islandVisible(p)) {
       this.drawIsland(p);
       if (this.has(1)) this.drawPond(p);
       if (this.has(0)) this.drawFountain(p);
+      this.drawShadows(p, base, floors);
       for (const t of TREES) if (t.x + t.z < 0 && this.treeVisible(t)) this.drawTree(p, t);
       if (this.has(4)) this.drawFerrisWheel(p);
       for (const nb of NEIGHBORS) drawBlock(p, nb, 0, nb.h, nb.color, NEIGHBOR_LOOK);
@@ -323,6 +325,33 @@ export class Scenery {
     // Plaza around the tower
     poly(p, [P(-7.4, 0.02, -7.4), P(7.4, 0.02, -7.4), P(7.4, 0.02, 7.4), P(-7.4, 0.02, 7.4)], rgb(hexRgb(t.plaza), d));
     poly(p, [P(-6.8, 0.03, -6.8), P(6.8, 0.03, -6.8), P(6.8, 0.03, 6.8), P(-6.8, 0.03, 6.8)], rgb(hexRgb(t.plaza2), d));
+  }
+
+  /** Soft shadows cast away from the sun (top right of the screen, so toward +z) by the
+   *  tower and the neighbors, clipped to the island. */
+  private drawShadows(p: Paint, base: Box, floors: number): void {
+    const { ctx, view, env } = p;
+    const I = ISLAND, P = (x: number, z: number) => view.project(x, 0.04, z);
+    const strength = 0.24 * (1 - env.nf * 0.75);
+    if (strength <= 0.01) return;
+    ctx.save();
+    ctx.beginPath();
+    for (const [x, z] of [[-I, -I], [I, -I], [I, I], [-I, I]]) { const [sx, sy] = P(x, z); ctx.lineTo(sx, sy); }
+    ctx.closePath();
+    ctx.clip();
+    const cast = (b: Box, h: number) => {
+      const len = Math.min(18, 1.5 + h * 0.75), dx = -len * 0.35, dz = len;
+      const pts = [P(b.x0, b.z0), P(b.x1, b.z0), P(b.x1, b.z1), P(b.x1 + dx, b.z1 + dz), P(b.x0 + dx, b.z1 + dz), P(b.x0 + dx, b.z0 + dz)];
+      const [ax, ay] = P((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2), [bx, by] = P((b.x0 + b.x1) / 2 + dx, (b.z0 + b.z1) / 2 + dz);
+      const g = ctx.createLinearGradient(ax, ay, bx, by);
+      g.addColorStop(0, `rgba(12,18,48,${strength})`);
+      g.addColorStop(1, "rgba(12,18,48,0)");
+      poly(p, pts, g);
+    };
+    cast(base, floors);
+    for (const nb of NEIGHBORS) cast(nb, nb.h);
+    if (this.has(2)) for (const nb of EXTRA_NEIGHBORS) cast(nb, nb.h);
+    ctx.restore();
   }
 
   /** Trees make room for the upgrades that are built. */
