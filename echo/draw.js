@@ -669,6 +669,18 @@ function drawThings() {
     ctx.fill();
   }
 
+  // Flare: a burst of Lumi's light rolling outward.
+  if (L.flare > 0) {
+    const k = 1 - L.flare, rr = TS * (0.6 + k * FLARE_R), X0 = sx(L.lumi.x), Y0 = sy(L.lumi.y);
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.white, X0, Y0, rr * 1.3, L.flare * 0.9);
+    glow(GLOW.gold, X0, Y0, rr * 1.8, L.flare * 0.6);
+    ctx.strokeStyle = `rgba(255,246,214,${L.flare})`;
+    ctx.lineWidth = Math.max(2, TS * 0.08 * L.flare);
+    ctx.beginPath(); ctx.arc(X0, Y0, rr, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   // Lumi.
   const lumi = L.lumi;
   const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
@@ -844,23 +856,6 @@ function drawEnergy() {
   box.classList.toggle("low", v < 25);
 }
 
-function drawStick() {
-  const p = steer != null ? pointers.get(steer) : null;
-  if (!p || !p.moved || screen !== "play") return;
-  const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1;
-  ctx.strokeStyle = "rgba(200,240,255,0.22)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(p.ax, p.ay, STICK_R, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = "rgba(200,240,255,0.06)";
-  ctx.fill();
-  ctx.fillStyle = "rgba(220,248,255,0.35)";
-  ctx.beginPath();
-  ctx.arc(p.ax + dx * k, p.ay + dy * k, 20, 0, Math.PI * 2);
-  ctx.fill();
-}
-
 function drawTitle(dt) {
   if (Math.random() < dt * 0.9 || titleRipples.length === 0) {
     titleRipples.push({ x: W * (0.2 + Math.random() * 0.6), y: H * (0.15 + Math.random() * 0.7), r: 0 });
@@ -900,6 +895,8 @@ function frame(now) {
   drawBackground(dt);
   if (L) { drawCave(); drawThings(); }
   else drawTitle(dt);
+  // Bloom on the graphics chip, unless Lighting is off or the phone is struggling.
+  if (L && BLOOM && save.settings.lighting !== false && qualityCap >= 1.5) BLOOM.apply(canvas, ctx, W, H, 0.85);
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
   if (L && L.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${L.flash * 0.45})`; ctx.fillRect(0, 0, W, H); }
@@ -909,7 +906,6 @@ function frame(now) {
     ctx.fillRect(0, 0, W, H);
     L.fade = Math.max(0, L.fade - dt * 1.8);
   }
-  drawStick();
   drawEnergy();
   requestAnimationFrame(frame);
 }

@@ -402,6 +402,16 @@
   #singBtn:active { transform: scale(0.94); }
   body.sing-on #hint { max-width: calc(100% - 150px); left: calc(50% - 46px); }
   body.sing-on.left-hand #hint { left: calc(50% + 46px); }
+  /* The flare button sits above the Sing button (or in its place with slide controls) and fills
+     back up as it recharges. */
+  #flareBtn { position: fixed; bottom: calc(118px + var(--bottom)); right: calc(32px + env(safe-area-inset-right, 0px)); width: 56px; height: 56px; border-radius: 50%;
+    font-size: 26px; color: #fff6d6; z-index: 4; border: 1px solid rgba(255, 220, 140, 0.4);
+    background: conic-gradient(rgba(255, 211, 110, 0.18) calc((1 - var(--cd, 0)) * 360deg), rgba(10, 14, 32, 0.75) 0); }
+  #flareBtn.ready { box-shadow: 0 0 22px rgba(255, 211, 110, 0.55); border-color: rgba(255, 230, 160, 0.8); }
+  #flareBtn:active { transform: scale(0.92); }
+  body:not(.sing-on) #flareBtn { bottom: calc(30px + var(--bottom)); right: calc(26px + env(safe-area-inset-right, 0px)); width: 64px; height: 64px; }
+  body.left-hand #flareBtn { right: auto; left: calc(32px + env(safe-area-inset-left, 0px)); }
+  body.left-hand:not(.sing-on) #flareBtn { left: calc(26px + env(safe-area-inset-left, 0px)); }
   body.left-hand #singBtn { right: auto; left: calc(22px + env(safe-area-inset-left, 0px)); }
   body.big-text .panel, body.big-text #hint, body.big-text .title-actions, body.big-text .hero, body.big-text #levelCard, body.big-text .challenge-list { zoom: 1.15; }
   body.big-text #hud { zoom: 1.1; }
@@ -466,6 +476,7 @@
 <div id="hint"></div>
 <div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
 <button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
+<button id="flareBtn" aria-label="Flare: burst your light" hidden>✦</button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
 

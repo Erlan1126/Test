@@ -185,6 +185,7 @@ const sfx = {
   },
   snore(dx = 0) { note(150, { dur: 0.7, vol: 0.035, type: "triangle", lowpass: 500, attack: 0.25, glide: 110, echo: 0.3, pan: dx / 6 }); },
   gloomWake(dx = 0, big = false) { if (big) { note(70, { dur: 1.6, vol: 0.14, type: "sawtooth", lowpass: 260, attack: 0.4, glide: 52, echo: 0.8, pan: dx / 6 }); return; } note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
+  flare() { [0, 4, 7, 12].forEach((d, i) => note(pitch(d, 1), { at: i * 0.03, dur: 0.7, vol: 0.07, type: "triangle", echo: 0.7 })); note(220, { dur: 0.5, vol: 0.08, glide: 880, echo: 0.4 }); },
   hurt() { note(330, { dur: 0.35, vol: 0.12, type: "square", lowpass: 900, glide: 120, echo: 0.3 }); },
   lowEnergy() { note(98, { dur: 0.18, vol: 0.12, echo: 0 }); note(98, { at: 0.22, dur: 0.18, vol: 0.09, echo: 0 }); },
   fail() { [4, 3, 2, 0].forEach((d, i) => note(pitch(d, 0), { at: i * 0.18, dur: 0.7, vol: 0.09, type: "triangle" })); },

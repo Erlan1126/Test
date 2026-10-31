@@ -122,7 +122,7 @@ function goalLine() {
 // How fast Lumi's light fades. It gets a little faster deeper in, but never so fast that a
 // careful player swimming the whole route at a slow pace (and singing as they go) runs out.
 function fairDrain(i, def, rows) {
-  const base = (1.0 + depthOf(i) * 0.5) * 18 / rows;
+  const base = (0.8 + depthOf(i) * 0.45) * 18 / rows;
   if (!def.walk) return base;
   const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length + (flat.match(/[tnakwj]/g) || []).length * 0.9;
   // Light gained from lights, minus what songs (about one every five tiles) and a couple of
@@ -213,7 +213,7 @@ function ping(long = false) {
   L.pingCd = 0.4;
   if (!L.demo) L.pings++;
   // Dark caves need more songs, so each costs less there; a long song costs more.
-  if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - (L.dark ? 1.5 : 2.5) * (long ? 1.6 : 1));
+  if (L.useEnergy && !L.demo) L.energy = Math.max(0.5, L.energy - (L.dark ? 1.2 : 2) * (long ? 1.6 : 1));
   const range = long ? LONG_RANGE : WAVE_RANGE;
   L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, range + 1), r: 0, prev: -1, range, speed: long ? LONG_SPEED : WAVE_SPEED, echoed: new Set(), long });
   L.lumi.sing = long ? 0.9 : 0.45;
@@ -414,13 +414,57 @@ window.addEventListener("keydown", e => {
   if (screen === "play") {
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) ping(e.shiftKey); }
     if (e.key === "Escape" || e.key.toLowerCase() === "p") pause();
+    if (e.key.toLowerCase() === "f" && !e.repeat) flare();
   } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
 });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
 
+// ---------- Flare: Lumi's defense ----------
+// A burst of light: nearby Hushlings shrink back and stop chasing for a while, other creatures
+// are stunned, and Lumi is safe for a moment. It costs a little light and needs time to recharge.
+const FLARE_FROM = 5, FLARE_R = 3, FLARE_CD = 6, FLARE_COST = 3;
+const flareReady = () => L && !L.demo && (levelIndex < 0 || levelIndex >= FLARE_FROM);
+// The ✦ button: shows how far the flare has recharged.
+let flareShown = -1;
+function flareButton() {
+  const b = document.getElementById("flareBtn"), on = flareReady();
+  if (b.hidden === on) b.hidden = !on;
+  const v = Math.round((L.flareCd || 0) / FLARE_CD * 24);
+  if (v === flareShown) return;
+  flareShown = v;
+  b.style.setProperty("--cd", String(v / 24));
+  b.classList.toggle("ready", v === 0);
+}
+const flareBtn = document.getElementById("flareBtn");
+flareBtn.addEventListener("pointerdown", e => { e.stopPropagation(); audio(); flare(); });
+function flare() {
+  if (!flareReady() || L.ending || L.failing || screen !== "play" || (L.flareCd || 0) > 0) return;
+  const lumi = L.lumi;
+  L.flareCd = FLARE_CD;
+  L.flare = 1;
+  L.invuln = Math.max(L.invuln, 1.4);
+  if (L.useEnergy) L.energy = Math.max(0.5, L.energy - FLARE_COST);
+  for (const g of L.gloom) {
+    if (g.final || g.gone > 0 || Math.hypot(g.x - lumi.x, g.y - lumi.y) > FLARE_R + (g.big ? 1 : 0.5)) continue;
+    g.hunt = 0; g.calm = Math.max(g.calm || 0, g.big ? 3 : 5); g.flee = g.big ? 0.6 : 1.1;
+  }
+  for (const m of L.mobs) if (Math.hypot(m.x - lumi.x, m.y - lumi.y) < FLARE_R) m.stun = 2.4;
+  for (const t of L.thorns) if (Math.hypot(t.x - lumi.x, t.y - lumi.y) < FLARE_R) t.stun = 2.4;
+  // The burst lights up the cave around Lumi for a moment.
+  const cx = Math.floor(lumi.x), cy = Math.floor(lumi.y);
+  for (let y = cy - 3; y <= cy + 3; y++) for (let x = cx - 3; x <= cx + 3; x++)
+    if (x >= 0 && y >= 0 && x < L.cols && y < L.rows && Math.hypot(x - cx, y - cy) <= 3) { const i = y * L.cols + x; L.lit[i] = Math.max(L.lit[i], 0.9); L.seen[i] = 1; }
+  for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2; spark(lumi.x, lumi.y, Math.cos(a) * 5, Math.sin(a) * 5, 0.5, "gold", 0.1); }
+  sfx.flare();
+  buzz([15, 20, 30]);
+}
+
 // ---------- Update ----------
 function update(dt) {
   L.time += dt;
+  L.flare = Math.max(0, (L.flare || 0) - dt * 1.8);
+  if (L.flareCd > 0) L.flareCd = Math.max(0, L.flareCd - dt);
+  if (!L.demo && screen === "play") flareButton();
   moveCamera(dt);
   L.pingCd -= dt;
   L.bumpCd -= dt;
@@ -690,13 +734,20 @@ function update(dt) {
     const sees = g.hunt > 0 && (gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
     if (sees) { g.hunt = Math.max(g.hunt, g.big ? 2 : 1.5); g.lx = lumi.x; g.ly = lumi.y; }
     if (was && g.hunt <= 0 && ctl) { sfx.grumble(); questEvent("escape"); }
+    // Flared at: it shrinks back from the light for a moment.
+    if (g.flee > 0) {
+      g.flee -= dt;
+      const fd = gap || 1;
+      g.x += (g.x - lumi.x) / fd * 3.2 * dt; g.y += (g.y - lumi.y) / fd * 3.2 * dt;
+      continue;
+    }
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? (sees ? lumi.x : g.lx ?? lumi.x) : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? (sees ? lumi.y : g.ly ?? lumi.y) : g.hy + Math.cos(g.ph * 0.5) * 0.3;
     const spd = (g.big ? (hunting ? 1.6 : 0.4) : hunting ? 1.9 + depthOf(levelIndex) * 0.9 : 0.6) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
-    if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
+    if (ctl && L.invuln <= 0 && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
       const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
@@ -770,6 +821,7 @@ function update(dt) {
   // they rattle when close; touching one costs light and bounces Lumi back.
   L.invuln = Math.max(0, L.invuln - dt);
   for (const t of L.thorns) {
+    if (t.stun > 0) { t.stun -= dt; continue; }
     t.ph += dt * (1.4 + depthOf(levelIndex) * 0.8) * Math.PI / t.len;
     const k = (1 - Math.cos(t.ph)) / 2;
     t.x = t.a[0] + (t.b[0] - t.a[0]) * k;

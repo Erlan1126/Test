@@ -67,6 +67,7 @@ function updateMobs(dt, ctl) {
   L.slow = Math.max(0, (L.slow || 0) - dt);
   for (const m of L.mobs) {
     m.ph += dt;
+    if (m.stun > 0) { m.stun -= dt; continue; }  // dazzled by a flare
     m.cd = Math.max(0, m.cd - dt);
     const dl = Math.hypot(m.x - lumi.x, m.y - lumi.y);
     if (m.kind === "n") {

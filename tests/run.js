@@ -453,6 +453,9 @@ const SIM = `
           // Like a careful player, wait for a Thornling to pass instead of swimming into it.
           const hazards = L.thorns.concat(L.mobs.filter(mb => mb.kind !== "w" && (mb.kind !== "n" || mb.state !== "idle")));
           const danger = hazards.some(th => Math.hypot(th.x - (next[0] + 0.5), th.y - (next[1] + 0.5)) < 1.15 && Math.hypot(th.x - L.lumi.x, th.y - L.lumi.y) > 0.75);
+          // Like a player, flare when something dangerous is about to reach Lumi.
+          const close = hazards.concat(L.gloom.filter(gl => gl.hunt > 0 && !gl.gone)).some(th => Math.hypot(th.x - L.lumi.x, th.y - L.lumi.y) < 1.6);
+          if (close && !(L.flareCd > 0)) flare();
           const wait = danger && (L.waitFor = (L.waitFor || 0) + 1 / 60) < 4;
           if (!danger) L.waitFor = 0;
           keys.arrowright = !wait && dx > 0.15; keys.arrowleft = !wait && dx < -0.15; keys.arrowdown = !wait && dy > 0.15; keys.arrowup = !wait && dy < -0.15;
