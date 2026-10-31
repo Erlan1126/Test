@@ -5,7 +5,7 @@
 const SAVE_KEY = "echo-save-v1";
 // Everything kept as-is when loading or restoring (settings, stats and daily are merged).
 const SAVE_KEYS = ["stars", "best", "muted", "skin", "skinsSeen", "looksViewed", "ach", "story", "cards", "found", "family", "hat",
-  "weekly", "glow", "home", "quests", "variants", "vs", "installAsked", "lookSeen"];
+  "weekly", "glow", "home", "quests", "variants", "vs", "installAsked", "lookSeen", "ended", "endingDue"];
 let save = {
   stars: [], best: [], muted: false, skin: 0, skinsSeen: 1,
   settings: { music: 0.6, sfx: 0.9, vibrate: true, stick: 1, contrast: false },

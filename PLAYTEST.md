@@ -74,6 +74,10 @@ For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), wr
 - [ ] Do the creatures look like they belong in the cave (lit from Lumi's side, not like stickers)?
 - [ ] If the game feels slow, turn off lighting in Settings. Does it get smoother?
 
+### Story
+- [ ] Do the story pages and narration make you want to keep going? Is the narrator's voice OK on your phone?
+- [ ] Level 160: is singing to the Great Hush a good ending?
+
 ### Daily cave and rewards
 - [ ] Does today's cave card on the title screen make you want to play it? Is the twist clear?
 - [ ] Are the daily quests fun, and is glow worth earning for Lumi's home?

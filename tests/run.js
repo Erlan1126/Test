@@ -327,7 +327,9 @@ const SIM = `
       dailyCleared(2); out.missingTooManyDaysResetsTheStreak = save.daily.streak === 1;
       save.daily = d0;
       save.story = {}; startLevel(0); out.story = screen === "story";
-      document.getElementById("storyGo").click(); out.storyLeadsToLevel = screen === "play";
+      out.storyHasPicturesAndPages = !!document.querySelector("#storyArt svg") && document.querySelectorAll("#storyDots i").length === CHAPTERS[0].pages.length;
+      for (let k = 0; k < 10 && screen === "story"; k++) document.getElementById("storyGo").click();
+      out.storyLeadsToLevel = screen === "play";
       save.cards = {}; startLevel(cardLevel("runes"), { story: true }); out.card = screen === "card";
       document.getElementById("cardGo").click(); out.cardLeadsToLevel = screen === "play" && L.def.name === "Listening Stones";
       pause(); out.pauseShowsGoal = screen === "pause" && document.getElementById("pauseGoal").textContent.length > 5;
@@ -421,6 +423,7 @@ const SIM = `
           for (const r of L.runes) if (!r.on) list.push([r.x, r.y]);
           let bestT = null, bestLen = Infinity;
           for (const t of list) { const p = route(Math.floor(t[0]), Math.floor(t[1])); if (p && p.length < bestLen) { bestLen = p.length; bestT = t; } }
+          if (!bestT && L.finale && !L.healed) { const k = L.gloom.find(g => g.final); return [k.hx, k.hy]; }
           return bestT || [L.exit.x, L.exit.y];
         };
         const sing = t => { if (L.songLimit && L.pings >= L.songLimit - 1) return; L.pingCd = 0; ping(); lastSong = t; };

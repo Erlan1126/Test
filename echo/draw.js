@@ -60,6 +60,7 @@ function drawCave() {
   for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4 * sightAt(m.x, m.y));
   if (!L.hideLights || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
   for (const e of L.emitters || []) blob(e.x, e.y, e.r, e.a * (0.85 + 0.15 * Math.sin(clock * 2.3 + e.ph)) * knownAt(e.x, e.y));
+  for (const g of L.gloom) if (g.heal) blob(g.x, g.y, 1 + g.heal * 3, g.heal * 0.9);  // the Great Hush, healed, lights the cave
   for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35 * sightAt(m.x, m.y));  // Frostwisps glow
   lctx.globalAlpha = 1;
 
@@ -104,6 +105,7 @@ function sceneLights(mx, my) {
   out.push({ x: lumi.x + mx, y: lumi.y + my, r: (3.2 + L.moths.filter(m => m.following).length * 0.8) * bright * Math.max(shrink, 0.2), i: (1.25 + lumi.sing) * bright, c: look });
   const add = (x, y, r, i, c) => { if (Math.abs(x - lumi.x) < 9 && Math.abs(y - lumi.y) < 12) out.push({ x: x + mx, y: y + my, r, i, c, d: Math.hypot(x - lumi.x, y - lumi.y) }); };
   for (const e of L.emitters || []) { const k = knownAt(e.x, e.y); if (k > 0) add(e.x, e.y, e.r * 2.6, e.a * 2.4 * k, LIGHT_RGB[e.color]); }
+  for (const g of L.gloom) if (g.heal) add(g.x, g.y, 2 + g.heal * 4, g.heal * 1.4, LIGHT_RGB.gold);
   for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
   for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
   if (!L.hideLights || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
@@ -255,7 +257,7 @@ function drawThings() {
   // Portal: a slow vortex, always faintly visible so there's a goal.
   {
     const e = L.exit, X = sx(e.x), Y = sy(e.y);
-    const asleep = L.goal === "rescue" && L.baby && !L.baby.following;
+    const asleep = (L.goal === "rescue" && L.baby && !L.baby.following) || (L.finale && !L.healed);
     const a = (L.hideLights && !L.seen[e.i] ? vis(e.i) : Math.max(0.35, vis(e.i))) * (asleep ? 0.45 : 1);
     glow(GLOW.violet, X, Y, T * 1.5, a * 0.5);
     glow(GLOW.white, X, Y, T * 0.35, a * 0.6);
@@ -456,9 +458,17 @@ function drawThings() {
     const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : g.variant === "tiny" ? 0.22 : 0.3), hunting = g.hunt > 0, t = g.ph;
     if (X < -r * 4 || Y < -r * 4 || X > W + r * 4 || Y > H + r * 4) continue;
     // Shadows in the dark: only seen where light falls on them.
-    const seenA = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0) * (g.variant === "pale" ? 0.7 : 1);
+    const seenA = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0, g.heal || 0) * (g.variant === "pale" ? 0.7 : 1);
     if (seenA < 0.02) continue;
-    drawLit(X, Y, r * 2.8, 1, seenA, () => {
+    // The Great Hush remembering its song: the shadow thins and a warm light shines through.
+    const heal = g.heal || 0;
+    if (heal > 0) {
+      ctx.globalCompositeOperation = "lighter";
+      glow(GLOW.gold, X, Y, r * (2 + heal * 4), Math.min(1, heal * 1.1));
+      glow(GLOW.white, X, Y, r * (0.5 + heal * 1.2), heal * 0.8);
+      ctx.globalCompositeOperation = "source-over";
+    }
+    if (heal < 1) drawLit(X, Y, r * 2.8, 1, seenA * (1 - heal * 0.9), () => {
       ctx.globalCompositeOperation = "lighter";
       glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.16);
       ctx.globalCompositeOperation = "source-over";
@@ -530,6 +540,17 @@ function drawThings() {
         ctx.stroke();
       }
     });
+    if (heal > 0.55) {
+      const k = (heal - 0.55) / 0.45, fr = r * 0.85;
+      ctx.globalAlpha = k;
+      ctx.fillStyle = "#fff1c8";
+      ctx.beginPath(); ctx.arc(X, Y, fr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#5a3a10";
+      ctx.beginPath(); ctx.arc(X - fr * 0.3, Y - fr * 0.12, fr * 0.1, 0, Math.PI * 2); ctx.arc(X + fr * 0.3, Y - fr * 0.12, fr * 0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#5a3a10"; ctx.lineWidth = Math.max(1.5, fr * 0.08); ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(X, Y + fr * 0.1, fr * 0.28, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // Echo crystals: violet facets in the rock that flash when a song bounces off them.

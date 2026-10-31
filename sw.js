@@ -1,7 +1,7 @@
 // Offline support for Skyrise and Echo. Pages load from the network first so updates show up
 // right away, and fall back to the saved copy when there is no connection. Both games' files
 // are saved when the service worker installs, so they work offline after the first visit.
-const CACHE = "games-v4";
+const CACHE = "games-v5";
 const CORE = [
   "./",
   "index.html",
@@ -25,6 +25,7 @@ const CORE = [
   "echo/game.js",
   "echo/mobs.js",
   "echo/draw.js",
+  "echo/story.js",
   "echo/meta.js",
   "echo/ui.js",
 ];

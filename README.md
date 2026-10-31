@@ -14,6 +14,15 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## The story
+
+Long ago the caves were full of song, but one voice was always alone. Nobody ever sang back, so it became the **Hush** and swallowed every song in the deep. Lumi is the last small light left awake.
+
+- A chapter opens each of the first eight worlds: a few illustrated pages, read aloud by the phone's voice (**Story narration** in Settings, or the link under the story). Lumi learns the lullaby, meets the Great Hush, hears a far voice humming along, and finds out the Hush was the very first singer, who wrote the lullaby for anyone who would listen. Nobody ever came.
+- Each world's family member remembers one line of the **lullaby**; the journal collects them.
+- **The finale** is level 160, the last cave of the Starlight Abyss. The Great Hush won't hurt Lumi there and the portal won't open: you sing to it. Lumi sings the lines it knows, the Hush sings back, its shadow cracks open into a great warm light, every Hushling in the cave turns into a firefly, and the ending plays (it changes a little if you found all eight lines).
+- World 9 opens "The Long Echo": Lumi goes back down to bring the lost Hushlings home, which is why they're still in the deeper caves.
+
 ## Coming back every day
 
 - **Today's cave** sits on the title screen: Daily #N, the day's twist, time left, your streak and quest progress. Twists (the same for everyone): Quiet Waters, Hushling Night (extra Hushlings), Silent Day (few songs), Deep Dark, Star Shower (extra lights) and Swift Current (a timer). Daily caves stay one screen tall, a minute or two each.
@@ -33,7 +42,7 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | --- | --- |
 | `index.html` | The Skyrise game (the site's home page) |
 | `echo.html` | Echo, a cave-exploring game where you see with sound: the page, its styles and screens |
-| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `gl.js` (lights and shadows on the rock, using the phone's graphics chip), `meta.js` (the daily ritual: twists, streaks, quests, Lumi's home, rare Hushlings, sharing), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
+| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `gl.js` (lights and shadows on the rock, using the phone's graphics chip), `story.js` (the story: chapters, pictures, narration, the lullaby), `meta.js` (the daily ritual: twists, streaks, quests, Lumi's home, rare Hushlings, sharing), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
 | `tests/run.js`, `package.json` | Automated tests for Echo (see below) |
 | `tools/bundle-echo.js` | Builds a single-file copy of Echo with all its code inlined |
 | `PLAYTEST.md` | A checklist for testing Echo on real phones with friends |

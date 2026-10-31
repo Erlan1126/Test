@@ -89,6 +89,10 @@ function loadLevel(i, demo = false) {
     for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.22, y: y + 1.06, s: q ? 0.09 + rnd() * 0.03 : 0.13 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
   }
   if (!demo) assignVariant(i);
+  // The story's last cave: the Great Hush won't hurt Lumi here. It's waiting for its song.
+  const king = L.gloom.find(g => g.big);
+  L.finale = !demo && i === STORY_FINALE && !!king;
+  if (L.finale) king.final = true;
   planDecor();
   mood = MOODS[themeIndex(i)];
   musicStart(i === WEEKLY ? weekNumber() + 7 : i < 0 ? dayNumber() : i, demo ? 0 : 2);
@@ -101,6 +105,7 @@ function loadLevel(i, demo = false) {
 // One short line about what this cave asks of you, shown at the start and in the pause menu.
 function goalLine() {
   const i = levelIndex;
+  if (L.finale) return "Find the Great Hush. Don't run this time. Sing to it";
   if (L.goal === "quiet") return `Only ${L.songLimit} songs here. Make them count`;
   if (L.goal === "rescue") return "Find the lost baby moth and bring it home";
   if (L.goal === "race" && L.timeLeft) return `Reach the portal in ${Math.ceil(L.timeLeft)} seconds`;
@@ -211,8 +216,12 @@ function ping(long = false) {
   L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, range + 1), r: 0, prev: -1, range, speed: long ? LONG_SPEED : WAVE_SPEED, echoed: new Set(), long });
   L.lumi.sing = long ? 0.9 : 0.45;
   // Hushlings hear a song the moment it's sung, through rock, and come at once.
+  if (L.finale && !L.healing) {
+    const king = L.gloom.find(g => g.final);
+    if (king && Math.hypot(king.x - L.lumi.x, king.y - L.lumi.y) < 4.5) singToTheHush(king);
+  }
   if (!L.demo) for (const g of L.gloom) {
-    if (g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 8 : 6.5) * (long ? 1.25 : 1)) continue;
+    if (g.final || g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 8 : 6.5) * (long ? 1.25 : 1)) continue;
     if (g.hunt <= 0) sfx.gloomWake(g.x - L.lumi.x, g.big);
     g.hunt = g.big ? 6 : 4.5;
     g.lx = L.lumi.x; g.ly = L.lumi.y;
@@ -249,7 +258,7 @@ function reveal(i, d = 0, w = null) {
   for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
   if (!snore) wakeMobsAt(i);
   for (const g of L.gloom) {
-    if (snore || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
+    if (snore || g.final || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
     // Only a song heard fairly close by wakes a Hushling, not a faint echo from far away.
     if (Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : 6)) continue;
     g.hunt = g.big ? 6 : 4.5;
@@ -644,6 +653,24 @@ function update(dt) {
     // as Lumi swims, so you have to run. Break its line of sight behind rock and it hunts where
     // it last saw you, then gives up and drifts home.
     const gap = Math.hypot(lumi.x - g.x, lumi.y - g.y);
+    if (g.final) {
+      // The Great Hush in the last cave just drifts, listening; once healed it glows.
+      g.x += (g.hx + Math.sin(g.ph * 0.5) * 0.25 - g.x) * Math.min(1, dt * 2);
+      g.y += (g.hy + Math.cos(g.ph * 0.4) * 0.2 - g.y) * Math.min(1, dt * 2);
+      if (L.healing) {
+        L.healing += dt;
+        g.heal = Math.min(1, L.healing / 7);
+        if (Math.random() < dt * 20) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.4, Math.sin(a) * 1.4, 1.2, "gold", 0.12); }
+        if (g.heal >= 1 && !L.healed) {
+          L.healed = true;
+          // Every other Hushling in the cave turns into a firefly and floats away.
+          for (const o of L.gloom) if (!o.final) { for (let k = 0; k < 10; k++) spark(o.x, o.y, (Math.random() - 0.5) * 2, -Math.random() * 2, 1.4, "gold", 0.08); o.gone = 1e9; }
+          sfx.gate();
+          setHint("The Great Hush remembers its song. The portal is awake", 4);
+        }
+      }
+      continue;
+    }
     if (ctl && g.calm <= 0 && gap < (g.big ? 3.2 : 2.4)) {
       if (g.hunt <= 0) sfx.gloomWake(g.x - lumi.x, g.big);
       g.hunt = Math.max(g.hunt, g.big ? 3 : 2.2);
@@ -772,7 +799,7 @@ function update(dt) {
       sfx.unlock();
       buzz([20, 30, 20]);
       for (let k = 0; k < 30; k++) { const a = Math.random() * 6.28, s = 0.5 + Math.random() * 2.5; spark(fam.x, fam.y, Math.cos(a) * s, Math.sin(a) * s, 1.1, k % 2 ? "pink" : "gold", 0.1); }
-      setHint("One of Lumi's little lights! It joins Lumi's family", 3.5);
+      setHint(fam.w < LULLABY.length ? `One of Lumi's family! It remembers a line of the lullaby: “${LULLABY[fam.w]}”` : "One of Lumi's little lights! It joins Lumi's family", fam.w < LULLABY.length ? 6 : 3.5);
     }
   }
 
@@ -781,10 +808,10 @@ function update(dt) {
   L.flash = Math.max(0, L.flash - dt * 1.6);
 
   // Portal.
-  const portalLocked = L.goal === "rescue" && L.baby && !L.baby.following;
+  const portalLocked = (L.goal === "rescue" && L.baby && !L.baby.following) || (L.finale && !L.healed);
   if (ctl && portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.6 && L.portalHintCd <= 0) {
     L.portalHintCd = 3;
-    setHint("The portal is asleep. Bring the lost baby moth here first", 3);
+    setHint(L.finale ? "The portal won't wake while the Great Hush is sad. Sing to it" : "The portal is asleep. Bring the lost baby moth here first", 3);
   }
   if (ctl && !portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
     L.ending = 0.001;
@@ -869,4 +896,15 @@ function collide(e) {
     buzz(12);
     for (let k = 0; k < 6; k++) spark(e.x, e.y, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0.4, "cyan", 0.05);
   }
+}
+
+// Lumi sings the lullaby to the Great Hush, and it remembers.
+function singToTheHush(king) {
+  L.healing = 0.001;
+  king.hunt = 0;
+  musicStop();
+  playLullaby();
+  const lines = versesFound().filter(Boolean).length;
+  setHint(lines === LULLABY.length ? "Lumi sings the whole lullaby…" : `Lumi sings the ${lines} line${lines === 1 ? "" : "s"} it knows, and hums the rest…`, 5);
+  buzz([30, 60, 30]);
 }

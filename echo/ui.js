@@ -215,16 +215,10 @@ function startLevel(i, skip = false) {
   if (!skipStory && i >= 0 && i % PER_WORLD === 0 && !save.story[w]) {
     save.story[w] = 1;
     persist();
-    pendingLevel = i;
-    const th = THEMES[w % THEMES.length];
-    $("storyScreen").style.setProperty("--world", `rgb(${th.rim.join(",")})`);
-    $("storyNum").textContent = `World ${w + 1}`;
-    $("storyName").textContent = worldName(w);
-    $("storyText").textContent = w === THEMES.length
-      ? `Lumi's song finally reached the surface, and for the first time it saw the real stars. ${Object.keys(save.family || {}).length ? "Its little lights gathered close." : ""} But far below, the caves were still singing, and Lumi went back down to listen.`
-      : (w > THEMES.length ? "The caves twist and change, but Lumi keeps singing. " : "") + STORY[w % STORY.length];
-    $("storyGo").textContent = w === 0 ? "Begin" : "Continue";
-    show("story");
+    const ch = worldChapter(w);
+    const pages = ch ? ch.pages : [{ text: "The caves twist and change, but Lumi keeps singing. " + STORY[w % STORY.length], lumi: 1, notes: 1 }];
+    playStory(pages, { num: `World ${w + 1} · ${worldName(w)}`, name: ch ? ch.name : worldName(w), world: w, last: w === 0 ? "Begin" : "Continue",
+      done: () => startLevel(i, { story: true }) });
     return;
   }
   if (!skipCard && card && CARDS[card] && !save.cards[card]) {
@@ -349,6 +343,7 @@ function finish() {
     }
   }
   earnGlow(L.got + stars);
+  if (levelIndex === STORY_FINALE && !save.ended && L.healed) save.endingDue = 1;
   persist();
   questsOnFinish(stars);
   lastStars = stars;
@@ -525,6 +520,8 @@ function renderJournal() {
     const seen = save.found && save.found[k];
     html += `<li class="award${seen ? " done" : ""}"><span class="ico">${seen ? ico : "❔"}</span><span><span class="nm">${seen ? name : "Not found yet"}</span><br><span class="ds">${seen ? desc : "Keep exploring"}</span></span></li>`;
   }
+  const verses = versesFound();
+  html += `</ul><h3 class="journal-h">The lullaby</h3><p class="journal-note">Each of Lumi's family remembers one line.</p><div class="lullaby">${LULLABY.map((l, w) => verses[w] ? `<p>${l}</p>` : `<p class="missing">· · · (World ${w + 1})</p>`).join("")}</div><ul class="awards">`;
   const vs = save.variants || {};
   html += `</ul><h3 class="journal-h">Rare Hushlings</h3><ul class="awards">`;
   for (const [k, v] of Object.entries(VARIANTS))
@@ -585,6 +582,7 @@ function renderSettings() {
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
   $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
+  $("setNarrate").setAttribute("aria-pressed", String(st.narrate !== false));
   $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
   $("setGlow").setAttribute("aria-pressed", String(!!st.glow));
   $("setBigText").setAttribute("aria-pressed", String(!!st.bigText));
@@ -669,10 +667,18 @@ tap("quitBtn", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("retryBtn", () => startLevel(levelIndex));
 tap("resultLevels", openMap);
 tap("failRetry", () => startLevel(levelIndex));
-tap("storyGo", () => startLevel(pendingLevel, { story: true }));
+tap("storyGo", () => storyNext());
+tap("storyVoice", () => { save.settings.narrate = !narrationOn(); persist(); if (!narrationOn()) stopNarration(); else if (story) narrate(story.pages[story.k].text); $("storyVoice").textContent = narrationOn() ? "🔊 Narration on" : "🔈 Narration off"; });
+tap("setNarrate", () => { save.settings.narrate = save.settings.narrate === false; persist(); renderSettings(); });
 tap("cardGo", () => startLevel(pendingLevel, { story: true, card: true }));
 tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {
+  // Clearing the Starlight Abyss for the first time plays the ending first.
+  if (save.endingDue) {
+    save.endingDue = 0; save.ended = 1; persist();
+    playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => startLevel(levelIndex + 1) });
+    return;
+  }
   if (isChallenge(levelIndex)) showTitle();
   else if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
   else openMap();

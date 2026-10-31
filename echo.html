@@ -424,7 +424,17 @@
   .pause-goal { margin: 12px 0 18px; padding: 10px 12px; border-radius: 14px; background: rgba(126, 232, 255, 0.07); color: var(--ink); font-size: 15px; }
   .story-num { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--world, var(--cyan)); }
   .story-name { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: 0.08em; margin: 8px 0 18px; text-wrap: balance; }
-  .story-text { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 22px; line-height: 1.45; color: #d4def0; max-width: 30ch; margin: 0 auto 28px; text-wrap: pretty; }
+  .story-text { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 21px; line-height: 1.42; color: #d4def0; max-width: 30ch; margin: 0 auto 14px; text-wrap: pretty; min-height: 4.2em; }
+  .story-art { width: min(340px, 100%); margin: 0 auto 16px; }
+  .story-art svg { width: 100%; height: auto; display: block; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 0 40px rgba(0, 0, 0, 0.5); }
+  .story-name { margin-bottom: 12px !important; }
+  .story-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+  .story-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+  .story-dots i.on { background: var(--world, var(--cyan)); }
+  .lullaby { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 17px; line-height: 1.35; color: #e9e2ff; margin: 8px 0 14px; }
+  .lullaby p { margin: 0 0 4px; }
+  .lullaby .missing { color: var(--dim); opacity: 0.6; }
+  #storyVoice { margin-top: 10px; color: var(--dim); font-size: 13px; }
   .backup { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
   .backup textarea { width: 100%; min-height: 64px; resize: vertical; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.3); color: var(--ink); font: 12px ui-monospace, Menlo, monospace; padding: 8px; touch-action: auto; user-select: text; -webkit-user-select: text; }
   .backup .row { width: 100%; }
@@ -528,8 +538,11 @@
 <div class="screen dim-bg" id="storyScreen">
   <div class="story-num" id="storyNum"></div>
   <h2 class="story-name" id="storyName"></h2>
+  <div class="story-art" id="storyArt"></div>
   <p class="story-text" id="storyText"></p>
+  <div class="story-dots" id="storyDots"></div>
   <button class="btn main" id="storyGo">Begin</button>
+  <button class="link" id="storyVoice"></button>
 </div>
 
 <div class="screen dim-bg" id="challengeScreen">
@@ -623,6 +636,7 @@
       <div class="set" id="handRow"><label>Sing button</label><div class="seg" id="setHand"><button data-v="left">Left</button><button data-v="right">Right</button></div></div>
       <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>Relaxed mode<small>No light energy, Hushlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
+      <div class="set"><label>Story narration<small>Read the story aloud between worlds</small></label><button class="toggle" id="setNarrate" aria-label="Story narration"></button></div>
       <div class="set"><label>Guiding glow<small>Lights, the portal and creatures show a little even before your song finds them</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
       <div class="set"><label>Lighting<small>Light and shadow on the rock. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
@@ -647,6 +661,7 @@
 <script src="echo/game.js"></script>
 <script src="echo/mobs.js"></script>
 <script src="echo/draw.js"></script>
+<script src="echo/story.js"></script>
 <script src="echo/meta.js"></script>
 <script src="echo/ui.js"></script>
 </body>
