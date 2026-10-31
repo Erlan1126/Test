@@ -175,6 +175,14 @@ const sfx = {
   rattle(dx = 0, near = 0.5) {
     for (let k = 0; k < 3; k++) note(900 + Math.random() * 500, { at: k * 0.045, dur: 0.035, vol: 0.02 + near * 0.05, type: "square", lowpass: 3000, echo: 0.1, pan: dx / 4 });
   },
+  mob(kind, dx = 0) {
+    const pan = dx / 5;
+    if (kind === "n0") note(300, { dur: 0.35, vol: 0.05, type: "sawtooth", lowpass: 900, glide: 520, echo: 0.2, pan });
+    else if (kind === "n") note(180, { dur: 0.12, vol: 0.12, type: "square", lowpass: 1400, glide: 90, echo: 0.3, pan });
+    else if (kind === "a") { note(2400, { dur: 0.12, vol: 0.05, glide: 3400, echo: 0.6, pan }); note(2800, { at: 0.1, dur: 0.1, vol: 0.04, glide: 3800, echo: 0.6, pan }); }
+    else if (kind === "k") note(1200 + Math.random() * 400, { dur: 0.03, vol: 0.025, type: "square", lowpass: 2500, echo: 0.1, pan });
+    else if (kind === "w") [0, 4, 7].forEach((d, q) => note(pitch(d, 2), { at: q * 0.04, dur: 0.8, vol: 0.04, fm: 3.5, echo: 1, pan }));
+  },
   snore(dx = 0) { note(150, { dur: 0.7, vol: 0.035, type: "triangle", lowpass: 500, attack: 0.25, glide: 110, echo: 0.3, pan: dx / 6 }); },
   gloomWake(dx = 0, big = false) { if (big) { note(70, { dur: 1.6, vol: 0.14, type: "sawtooth", lowpass: 260, attack: 0.4, glide: 52, echo: 0.8, pan: dx / 6 }); return; } note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
   hurt() { note(330, { dur: 0.35, vol: 0.12, type: "square", lowpass: 900, glide: 120, echo: 0.3 }); },

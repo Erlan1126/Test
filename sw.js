@@ -20,7 +20,9 @@ const CORE = [
   "echo/save.js",
   "echo/audio.js",
   "echo/render.js",
+  "echo/decor.js",
   "echo/game.js",
+  "echo/mobs.js",
   "echo/draw.js",
   "echo/ui.js",
 ];

@@ -27,7 +27,7 @@ function loadLevel(i, demo = false) {
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
-    waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0,
+    waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0, mobs: [], slow: 0,
     pings: 0, time: 0, got: 0,
     pingCd: 0, bumpCd: 0,
     ending: 0, done: false,
@@ -53,9 +53,18 @@ function loadLevel(i, demo = false) {
     if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
     if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
     if (ch === "B" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6, big: true });
+    if (MOB_KINDS.includes(ch) && !save.settings.relaxed) L.mobs.push(makeMob(ch, cx, cy, i2));
     if (ch === "t") L.thorns.push({ x: cx, y: cy, i: i2, ph: Math.random() * Math.PI * 2, rattle: Math.random() });
     if (ch === "f") L.family = { x: cx, y: cy, i: i2, got: false, ph: Math.random() * 6, w: worldOf(i) };
   }
+  // The open part of the cave, which the camera keeps to.
+  L.bounds = { x0: cols, x1: 0, y0: rows, y1: 0 };
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    if (L.tile[y * cols + x] === "#") continue;
+    L.bounds.x0 = Math.min(L.bounds.x0, x); L.bounds.x1 = Math.max(L.bounds.x1, x);
+    L.bounds.y0 = Math.min(L.bounds.y0, y); L.bounds.y1 = Math.max(L.bounds.y1, y);
+  }
+  initMobs();
   // Each Thornling patrols the longer of its row or column of open tiles, end to end.
   for (const t of L.thorns) {
     const tx = Math.floor(t.x), ty = Math.floor(t.y), open = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && L.tile[y * cols + x] === ".";
@@ -90,6 +99,7 @@ function loadLevel(i, demo = false) {
     }
     if (sp.length) L.spikes[i2] = sp;
   }
+  planDecor();
   mood = MOODS[themeIndex(i)];
   musicStart(i === WEEKLY ? weekNumber() + 7 : i < 0 ? dayNumber() : i, demo ? 0 : 2);
   layout();
@@ -119,7 +129,7 @@ function goalLine() {
 function fairDrain(i, def, rows) {
   const base = (1.0 + depthOf(i) * 0.5) * 18 / rows;
   if (!def.walk) return base;
-  const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length + (flat.split("t").length - 1) * 0.6;
+  const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length + (flat.match(/[tnakwj]/g) || []).length * 0.9;
   // Light gained from lights, minus what songs (about one every five tiles) and a couple of
   // Gloomling touches cost, spread over the time a careful swim takes.
   const songs = (def.walk / 5) * 2.5 * (def.dark ? 0.6 : 1);
@@ -240,6 +250,7 @@ function reveal(i, d = 0, w = null) {
     if (side && w && L.echoWalls.has(j) && !w.echoed.has(j) && L.waves.length < 10) echoFrom(i, j, d, w);
   });
   for (const c of L.crystals) if (c.i === i && !c.on) lightCrystal(c);
+  if (!snore) wakeMobsAt(i);
   for (const g of L.gloom) {
     if (snore || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
     // Only a song heard fairly close by wakes a Gloomling, not a faint echo from far away.
@@ -472,6 +483,8 @@ function update(dt) {
     }
   }
 
+  // A Frostwisp's touch leaves Lumi half frozen for a moment.
+  if (L.slow > 0) { wx *= 0.45; wy *= 0.45; }
   // Lumi eases toward the wanted speed: quick to start, quick to stop.
   const grip = 1 - Math.exp(-(steering ? SWIM_GRIP : SWIM_GRIP * 0.75) * dt);
   lumi.vx += (wx - lumi.vx) * grip;
@@ -717,13 +730,15 @@ function update(dt) {
       lumi.squash = 1;
       L.invuln = 1.2;
       L.hits++;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - 15);
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - 12);
       sfx.hurt();
       buzz([30, 30, 30]);
       L.lit[t.i] = 1;
       for (let q = 0; q < 12; q++) { const a = Math.random() * 6.28; spark(lumi.x, lumi.y, Math.cos(a) * 2, Math.sin(a) * 2, 0.5, "ember", 0.08); }
     }
   }
+
+  updateMobs(dt, ctl);
 
   // Lumi's mood: scared when a Gloomling hunts nearby, happy after a find, sleepy when dim.
   L.happy = Math.max(0, (L.happy || 0) - dt);

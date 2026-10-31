@@ -42,6 +42,16 @@ Play the first level of each idea and note whether the picture card made it clea
 | 15 | Dark caves | Too hard? Would they use Guiding glow? |
 | 17 | Big caves | Does the scrolling feel smooth? |
 | 19 | Races | Is the timer fair? Too tight or too loose? |
+| 21 | Snapvines | Do they notice the shiver before the lunge? |
+| 41 | Shardbats | Do they learn to sing, then move? |
+| 61 | Cinder Crabs | Is crossing during the pause satisfying? |
+| 81 | Frostwisps | Is being frozen fun or annoying? |
+| 101 | Jellyglows | Easy to read when they'll pass? |
+
+### Worlds and looks
+- [ ] Does each world feel different (decorations, creatures, colours, music)?
+- [ ] Does the cave look sharp up close on their phone, a second or two after a level starts?
+- [ ] Do they ever see past the edge of a cave?
 
 ### Difficulty
 For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), write down:

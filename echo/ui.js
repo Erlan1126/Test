@@ -128,6 +128,16 @@ const CARDS = {
     art: `<rect x="56" y="8" width="48" height="94" rx="8" fill="none" stroke="#8ea3c8" stroke-width="2"/><rect x="62" y="40" width="36" height="40" rx="4" fill="rgba(126,232,255,.12)" stroke="#7ee8ff"/><g transform="translate(80 64)">${LUMI_SVG}</g><path d="M124 80V30m-8 8 8-8 8 8" stroke="#e9f3ff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
   thorns: { title: "Thornlings", text: "Spiky creatures patrol the tunnels. They hide in the dark, so sing to see them, or listen for their rattle. Touching one costs light.",
     art: `<path d="M20 60h120" stroke="#3a4656" stroke-width="22" stroke-linecap="round"/><g transform="translate(92 60)"><circle r="9" fill="#5a1d2a"/><g stroke="#ff7a6a" stroke-width="2.5" stroke-linecap="round">${[0, 1, 2, 3, 4, 5, 6, 7].map(k => `<path d="M${(Math.cos(k * 0.785) * 9).toFixed(1)} ${(Math.sin(k * 0.785) * 9).toFixed(1)}L${(Math.cos(k * 0.785) * 15).toFixed(1)} ${(Math.sin(k * 0.785) * 15).toFixed(1)}"/>`).join("")}</g></g><path d="M74 60h-14M110 60h14" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 4"/><g transform="translate(36 60) scale(.8)">${LUMI_SVG}</g>` },
+  mobn: { title: "Snapvines", text: "Hungry plants grow from the walls of Mossy Hollow. Swim close and one shivers, then lunges. Watch for the shiver and dart past.",
+    art: `<path d="M24 20v70" stroke="#3a4656" stroke-width="16"/><path d="M32 56q20-6 40 0" stroke="#3f8f4f" stroke-width="5" fill="none"/><ellipse cx="82" cy="56" rx="16" ry="10" fill="#4caf5c"/><ellipse cx="86" cy="56" rx="9" ry="5" fill="#ff6f9a"/><g transform="translate(130 60) scale(.8)">${LUMI_SVG}</g>` },
+  moba: { title: "Shardbats", text: "Crystal bats roost on the ceilings of Amethyst Deep. A song nearby wakes one, and it swoops at where it heard you. Sing, then move.",
+    art: `<g transform="translate(80 40)"><path d="M-8 0L-44 -14L-30 10Z" fill="#a77bff"/><path d="M8 0L44 -14L30 10Z" fill="#a77bff"/><circle r="12" fill="#2e1f52"/><circle cx="-4" r="3.5" fill="#fff"/><circle cx="4" r="3.5" fill="#fff"/><circle cx="-4" cy="1" r="2" fill="#ff4fa0"/><circle cx="4" cy="1" r="2" fill="#ff4fa0"/></g><path d="M80 56q0 16 -30 30" stroke="#b48cff" stroke-dasharray="3 5" stroke-width="2" fill="none"/><g transform="translate(46 86) scale(.7)">${LUMI_SVG}</g>` },
+  mobk: { title: "Cinder Crabs", text: "Fiery crabs scuttle along the floors of Ember Caverns, pausing at each end. Cross while they pause.",
+    art: `<path d="M16 82h128" stroke="#3a2a28" stroke-width="10"/><g transform="translate(80 66)"><ellipse rx="22" ry="14" fill="#e0502c"/><circle cx="-28" cy="-8" r="8" fill="#ff6a3d"/><circle cx="28" cy="-8" r="8" fill="#ff6a3d"/><circle cx="-6" cy="-24" r="4" fill="#fff"/><circle cx="6" cy="-24" r="4" fill="#fff"/><circle cx="-6" cy="-23" r="2" fill="#1b1030"/><circle cx="6" cy="-23" r="2" fill="#1b1030"/></g><path d="M118 66h18m-6-5 6 5-6 5" stroke="#ffd36e" stroke-width="2" fill="none"/>` },
+  mobw: { title: "Frostwisps", text: "Little ghosts of ice drift toward Lumi whenever they can see it. A touch costs light and leaves Lumi half frozen for a moment. Break their line of sight.",
+    art: `<g transform="translate(96 54)"><circle r="26" fill="url(#cardGlow)"/><path d="M0-26C14-10 14 12 0 12S-14-10 0-26Z" fill="#bfeaff"/><path d="M-6 0h4M-4-2v4M4 0h4M6-2v4" stroke="#1d4a7a" stroke-width="1.5"/></g><g transform="translate(44 64) scale(.8)">${LUMI_SVG}</g><path d="M70 60h-8" stroke="#bfeaff" stroke-dasharray="2 3" stroke-width="2"/>` },
+  mobj: { title: "Jellyglows", text: "Glowing jellies bob up and down the shafts of Coral Depths. Their sting costs light. Time your way past.",
+    art: `<path d="M80 10v92" stroke="#ff9fcf" stroke-dasharray="3 6" stroke-width="2"/><g transform="translate(80 48)"><path d="M-18 0A18 18 0 0 1 18 0Q0 8 -18 0" fill="#ffb3dc"/><path d="M-10 4v18M0 6v20M10 4v18" stroke="#ffb3dc" stroke-width="2.5"/><circle cx="-5" cy="-6" r="3" fill="#fff"/><circle cx="5" cy="-6" r="3" fill="#fff"/></g><g transform="translate(36 80) scale(.7)">${LUMI_SVG}</g>` },
   long: { title: "Long songs", text: "Hold your finger still to charge a long, low song. It travels much further, but uses more of Lumi's light. Tap for a quick song as before.",
     art: `<g fill="none" stroke-linecap="round"><circle cx="80" cy="56" r="20" stroke="rgba(255,255,255,.15)" stroke-width="4"/><path d="M80 36a20 20 0 1 1-19 26" stroke="#ffe6a0" stroke-width="4"/><circle cx="80" cy="56" r="40" stroke="#7ee8ff" stroke-opacity=".35" stroke-width="2"/><circle cx="80" cy="56" r="52" stroke="#7ee8ff" stroke-opacity=".18" stroke-width="2"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
   echo: { title: "Echo crystals", text: "Violet crystals in the rock catch your song and sing it onward, carrying it around corners and into far tunnels.",
@@ -143,7 +153,7 @@ const CARDS = {
 // The picture card a level should show first: its own, or one for the first new thing in it.
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [def.card, i >= 8 && "long", def.map.join("").includes("t") && "thorns", m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
+  const wants = [def.card, i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
     def.map[0].length > 11 && "tall"];
   return wants.find(k => k && CARDS[k] && !seen[k]) || null;
 }
@@ -435,7 +445,7 @@ function renderLooks() {
 }
 // What the journal lists, and which map letters mean you've met it.
 const FIND = { crystals: ["c"], curtains: ["D"], currents: [">", "<", "^", "v"], moths: ["b"], snoozles: ["z"], runes: ["r"],
-  echo: ["W"], babies: ["m"], gloom: ["g"], boss: ["B"] };
+  echo: ["W"], babies: ["m"], gloom: ["g"], boss: ["B"], thorns: ["t"], snapvines: ["n"], bats: ["a"], crabs: ["k"], wisps: ["w"], jellies: ["j"] };
 const JOURNAL = [
   ["crystals", "💎", "Crystals", "Keep glowing once your song touches them, and refill Lumi's light."],
   ["curtains", "🎐", "Sound curtains", "Part for a few seconds when a song reaches them."],
@@ -445,6 +455,12 @@ const JOURNAL = [
   ["runes", "🪨", "Rune stones", "Open stone gates when they hear a song from close by."],
   ["echo", "🔮", "Echo crystals", "Catch a song and sing it onward around corners."],
   ["babies", "🪽", "Baby moths", "Lost little moths that need help finding the portal."],
+  ["thorns", "🌰", "Thornlings", "Spiky patrollers that hide in the dark and rattle when near."],
+  ["snapvines", "🌿", "Snapvines", "Wall plants that shiver, then lunge at anything close."],
+  ["bats", "🦇", "Shardbats", "Crystal bats that swoop at songs they hear."],
+  ["crabs", "🦀", "Cinder Crabs", "Fiery crabs that dash along floors and pause at the ends."],
+  ["wisps", "❄️", "Frostwisps", "Ice ghosts that drift toward Lumi and freeze it on touch."],
+  ["jellies", "🪼", "Jellyglows", "Glowing jellies that bob through shafts and sting."],
   ["gloom", "👀", "Gloomlings", "Shadows that drift through rock and chase songs."],
   ["boss", "🌑", "The Great Gloom", "A huge, slow shadow that guards the end of some worlds."],
 ];

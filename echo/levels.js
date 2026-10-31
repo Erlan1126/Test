@@ -524,6 +524,9 @@ const SIGNATURE = [
 // Where each idea is first introduced (by a handmade level in INTRO).
 const UNLOCK = { doors: 3, thorns: 4, currents: 5, gloom: 6, snoozles: 7, rescue: 8, quiet: 10, runes: 12, dark: 14, tall: 16, race: 18, echo: 24 };
 const GOALS = ["rescue", "quiet", "race"];
+// Each world's signature creature, and where each creature first appears.
+const WORLD_MOB = ["t", "n", "a", "k", "w", "j", "k", "a"];
+const MOB_UNLOCK = { t: 4, n: 20, a: 40, k: 60, w: 80, j: 100 };
 function planLevel(n, daily, hard, pre) {
   const w = daily ? dayNumber() % THEMES.length : worldOf(n), sig = SIGNATURE[w % SIGNATURE.length];
   const open = Object.keys(UNLOCK).filter(k => daily || n >= UNLOCK[k]);
@@ -781,7 +784,9 @@ function generateLevel(n, opts = {}) {
     // Gloomlings: shadows that come looking when they hear you sing.
     if (plan.has("gloom")) {
       // Finales with the Great Gloom get at most one ordinary Gloomling besides.
-      const want = Math.min(!daily && isFinale(n) ? 1 : 3, 1 + Math.floor(r() * (1 + hard * 2)));
+      // Gloomlings count toward the cap of five creatures per cave (six in a big one).
+      const others = g.flat().filter(c => "tnakwj".includes(c)).length, room = Math.max(0, (R * C > 198 ? 6 : 5) - others);
+      const want = Math.min(room, !daily && isFinale(n) ? 1 : 3, 1 + Math.floor(r() * (1 + hard * 2)));
       for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
         const [x, y] = pick(floor);
         if (free(x, y) && Math.abs(x - S[0]) + Math.abs(y - S[1]) >= 6) { g[y][x] = "g"; k++; }
@@ -789,22 +794,46 @@ function generateLevel(n, opts = {}) {
     }
 
     // Thornlings patrol straight tunnels on the way to the portal.
+    // A patrol lane never passes close to the start, so nothing hits Lumi before it can look.
+    const laneNearStart = (x, y) => {
+      let l = x, rr = x, u = y, dd = y;
+      while (open(l - 1, y) && g[y][l - 1] !== "D") l--;
+      while (open(rr + 1, y) && g[y][rr + 1] !== "D") rr++;
+      while (open(x, u - 1) && g[u - 1][x] !== "D") u--;
+      while (open(x, dd + 1) && g[dd + 1][x] !== "D") dd++;
+      return rr - l >= dd - u ? Math.abs(y - S[1]) <= 1 && S[0] >= l - 1 && S[0] <= rr + 1 : Math.abs(x - S[0]) <= 1 && S[1] >= u - 1 && S[1] <= dd + 1;
+    };
     if (plan.has("thorns")) {
       const want = Math.min(3, 1 + Math.floor(r() * (1.5 + hard * 2)));
-      // A patrol lane never passes close to the start, so nothing hits Lumi before it can look.
-      const laneNearStart = (x, y) => {
-        let l = x, rr = x, u = y, dd = y;
-        while (open(l - 1, y) && g[y][l - 1] !== "D") l--;
-        while (open(rr + 1, y) && g[y][rr + 1] !== "D") rr++;
-        while (open(x, u - 1) && g[u - 1][x] !== "D") u--;
-        while (open(x, dd + 1) && g[dd + 1][x] !== "D") dd++;
-        return rr - l >= dd - u ? Math.abs(y - S[1]) <= 1 && S[0] >= l - 1 && S[0] <= rr + 1 : Math.abs(x - S[0]) <= 1 && S[1] >= u - 1 && S[1] <= dd + 1;
-      };
       const spots = route.slice(3, -3).filter(([x, y]) => g[y][x] === "." &&
         ((open(x - 1, y) && open(x + 1, y) && (open(x - 2, y) || open(x + 2, y))) || (open(x, y - 1) && open(x, y + 1) && (open(x, y - 2) || open(x, y + 2)))));
       for (let k = 0; k < want && spots.length; k++) {
         const [x, y] = spots.splice(Math.floor(r() * spots.length), 1)[0];
         if (Math.abs(x - S[0]) + Math.abs(y - S[1]) > 3 && !laneNearStart(x, y)) g[y][x] = "t";
+      }
+    }
+
+    // Every cave beyond the handmade ones has creatures, more the deeper you go: mostly the
+    // world's own, plus ones met in earlier worlds.
+    {
+      const w = (daily ? dayNumber() : worldOf(n)) % WORLD_MOB.length, own = WORLD_MOB[w];
+      const met = Object.keys(MOB_UNLOCK).filter(k => daily || n >= MOB_UNLOCK[k]);
+      const count = Math.max(1, Math.min(6, 1 + Math.floor(hard * 3.5) + (r() < 0.5 ? 1 : 0) + (R * C > 198 ? 1 : 0) - (!daily && isBreather(n) ? 1 : 0)));
+      const fits = (kind, x, y) => {
+        if (!free(x, y) || Math.abs(x - S[0]) + Math.abs(y - S[1]) < 5) return false;
+        if (kind === "t") return ((open(x - 1, y) && open(x + 1, y)) || (open(x, y - 1) && open(x, y + 1))) && !laneNearStart(x, y);
+        if (kind === "n") return D4.filter(([dx, dy]) => !open(x + dx, y + dy)).length === 1;
+        if (kind === "a") return !open(x, y - 1) && open(x, y + 1);
+        if (kind === "k") return !open(x, y + 1) && open(x - 1, y) && open(x + 1, y) && (open(x - 2, y) || open(x + 2, y)) && Math.abs(y - S[1]) > 1;
+        if (kind === "j") return open(x, y - 1) && open(x, y + 1) && (open(x, y - 2) || open(x, y + 2)) && Math.abs(x - S[0]) > 1;
+        return true;
+      };
+      // Never more than five creatures in a cave (six in a big one), counting Thornlings and Gloomlings.
+      const already = g.flat().filter(c => "tgB".includes(c)).length, cap = (R * C > 198 ? 6 : 5) - already;
+      for (let k = 0; k < Math.min(count, cap) && met.length; k++) {
+        const kind = met.includes(own) && r() < 0.6 ? own : pick(met);
+        const spots = floor.filter(([x, y]) => fits(kind, x, y));
+        if (spots.length) { const [x, y] = pick(spots); g[y][x] = kind; }
       }
     }
 
@@ -860,7 +889,7 @@ function generateLevel(n, opts = {}) {
     return {
       name: opts.name || caveName(n), par: parPings, map: g.map(row => row.join("")), style, dark, goal, walk,
       songs: goal === "quiet" ? parPings + 2 : 0,
-      time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3) : 0,
+      time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3 + g.flat().filter(c => "tnakwjgB".includes(c)).length * 2.5) : 0,
     };
   }
 }

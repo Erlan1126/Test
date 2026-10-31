@@ -52,6 +52,8 @@ function drawCave() {
   if (L.baby) blob(L.baby.x, L.baby.y, 0.7, 0.4);
   for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4);
   if (!L.dark || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
+  for (const e of L.emitters || []) blob(e.x, e.y, e.r, e.a * (0.85 + 0.15 * Math.sin(clock * 2.3 + e.ph)));
+  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35);  // Frostwisps glow
   lctx.globalAlpha = 1;
 
   // Scene: the painted cave, kept only where light falls.
@@ -261,6 +263,15 @@ function drawThings() {
     }
   }
 
+  // Glowing decorations (crystals, lava, lanterns...) shimmer a little.
+  ctx.globalCompositeOperation = "lighter";
+  for (const e of L.emitters || []) {
+    if (sx(e.x) < -TS * 2 || sx(e.x) > W + TS * 2 || sy(e.y) < -TS * 2 || sy(e.y) > H + TS * 2) continue;
+    const fl = e.color === "gold" ? 0.75 + 0.25 * Math.sin(clock * 9 + e.ph) * Math.sin(clock * 3.1 + e.ph) : 0.8 + 0.2 * Math.sin(clock * 1.7 + e.ph);
+    glow(GLOW[e.color], sx(e.x), sy(e.y), TS * e.r * 0.9, e.a * 0.55 * fl);
+  }
+  ctx.globalCompositeOperation = "source-over";
+
   // Rune stones: a carved ring that lights up green once it hears a song from close by.
   for (const r of L.runes) {
     const X = sx(r.x), Y = sy(r.y), a = Math.max(vis(r.i), r.on, 0.12 + r.far * 0.5), rr = TS * 0.3;
@@ -320,9 +331,10 @@ function drawThings() {
 
   // Thornlings: dark spiky urchins. Barely visible unless light reaches them.
   for (const t of L.thorns) {
+    if (sx(t.x) < -TS * 2 || sx(t.x) > W + TS * 2 || sy(t.y) < -TS * 2 || sy(t.y) > H + TS * 2) continue;
     const ti = Math.floor(t.y) * L.cols + Math.floor(t.x);
     const a = Math.max(ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0, save.settings.contrast ? 0.7 : 0.07);
-    const X = sx(t.x), Y = sy(t.y), r = TS * 0.17, spin = t.ph * 0.6;
+    const X = sx(t.x), Y = sy(t.y), r = TS * 0.2, spin = t.ph * 0.6;
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.ember, X, Y, TS * 0.7, a * 0.35);
     ctx.globalCompositeOperation = "source-over";
@@ -343,6 +355,8 @@ function drawThings() {
     ctx.beginPath(); ctx.arc(X - r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.arc(X + r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
+
+  drawMobs();
 
   // One of Lumi's little lights: a tiny pink Lumi, bobbing and peeking out of the dark.
   if (L.family && !L.family.got) {
@@ -674,6 +688,7 @@ function frame(now) {
   }
   clock += dt;
   if (L && (screen === "play" || (screen === "title" && L.demo))) update(dt);
+  if (L) stepArtJob(screen === "play" ? 5 : 10);
   drawBackground(dt);
   if (L) { drawCave(); drawThings(); }
   else drawTitle(dt);

@@ -22,7 +22,7 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | --- | --- |
 | `index.html` | The Skyrise game (the site's home page) |
 | `echo.html` | Echo, a cave-exploring game where you see with sound: the page, its styles and screens |
-| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `game.js` (gameplay), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
+| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
 | `tests/run.js`, `package.json` | Automated tests for Echo (see below) |
 | `tools/bundle-echo.js` | Builds a single-file copy of Echo with all its code inlined |
 | `PLAYTEST.md` | A checklist for testing Echo on real phones with friends |
@@ -46,7 +46,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 - **Swim** with one thumb: put it down anywhere and slide. **Sing** with the Sing button under the other thumb (or tap anywhere); **hold** the button to charge a **long song** that travels much further but uses more light (Space and Shift+Space on a keyboard).
 - Settings also offer **Slide** (no button; tap to sing, hold still for a long song) and **Tap to move** (tap where Lumi should go and it finds the way). The Sing button can sit on the left or right.
-- The camera stays close, about 8 tiles across, and follows Lumi with a little look-ahead, so every cave has to be explored.
+- The camera stays close, about 8 tiles across, and follows Lumi with a little look-ahead, so every cave has to be explored. It keeps to the cave and never shows past its edges.
 - **Put your thumb down anywhere and slide it** to swim: a joystick appears under your thumb, and the further you slide, the faster Lumi goes (or use the arrow keys / WASD). Lumi eases into tunnel openings so corners don't catch.
 
 **Goal and stars:** find the golden lost lights, then swim into the portal. You get one star for reaching the portal, one for finding every light, and one for singing no more than the number of times the level suggests. Each new world opens with a short story card.
@@ -72,6 +72,13 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 - **Echo crystals** (from level 25): violet crystals in the rock that catch a song and sing it onward, around corners.
 - **The Great Gloom**: a huge, slow Gloomling that guards world finales from World 4.
 - **Lumi's family**: one of Lumi's little lights hides in one level of every world.
+- **Every world has its own creature**, and every level after the handmade ones has creatures, more the deeper you go (up to five, or six in big caves):
+  - **Snapvines** (Mossy Hollow): wall plants that shiver, then lunge when Lumi swims close.
+  - **Shardbats** (Amethyst Deep): crystal bats that roost on ceilings and swoop at songs they hear.
+  - **Cinder Crabs** (Ember Caverns): fiery crabs that dash along floors and pause at each end.
+  - **Frostwisps** (Frost Tunnels): ice ghosts that drift toward Lumi when they can see it; a touch freezes Lumi for a moment.
+  - **Jellyglows** (Coral Depths): glowing jellies that bob up and down shafts.
+  Later worlds mix them. Each has a picture card the first time it appears, and a journal entry.
 - **Thornlings** (from level 5): spiky creatures that patrol tunnels back and forth. They're nearly invisible in the dark, so sing to see them or listen for their rattle; touching one costs light. Their patrols never cross the start.
 - **Light energy** (from level 3): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again. The fade rate is matched to each cave's length, so a careful player always has enough.
 - **Rune stones and gates** (from level 13): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.
@@ -92,14 +99,14 @@ The daily cave changes at midnight UTC, so it's the same cave for everyone in th
 
 Progress is saved in the browser. Sounds and music are generated in the browser, with a cave reverb, bell-like songs and warm pads (there's a mute button). The pause menu shows the current cave's goal. On phones, the Back button pauses a level, then goes to the map, then to the title, instead of leaving the game.
 
-Each world has its own floating particles: snow in Frost Tunnels, embers in Ember Caverns, bubbles in Coral Depths and so on. Lumi's face shows its mood: scared near hunting Gloomlings, happy after a find, sleepy when its light is low. Sounds from the left or right come from that side. Each cave fades in with its name. Lumi has a swaying antenna, a soft light trail and a little squash and stretch when swimming; spores drift through the light, a faint far-away cave layer drifts behind the rock, and songs sparkle along their leading edge.
+The cave art is painted twice: a quick soft pass so a level starts at once, then a sharp pass at full screen resolution a few milliseconds per frame, swapped in when done. Rock has layers, cracks and grain. Each world has its own decorations, more of them deeper in: moon pools and roots, moss and ferns, crystal clusters, glowing lava veins and vents, icicles and snowdrifts, coral and seaweed, mine supports and lanterns, star crystals and constellations; the glowing ones light the cave around them. Each world has its own floating particles: snow in Frost Tunnels, embers in Ember Caverns, bubbles in Coral Depths and so on. Lumi's face shows its mood: scared near hunting Gloomlings, happy after a find, sleepy when its light is low. Sounds from the left or right come from that side. Each cave fades in with its name. Lumi has a swaying antenna, a soft light trail and a little squash and stretch when swimming; spores drift through the light, a faint far-away cave layer drifts behind the rock, and songs sparkle along their leading edge.
 
 **Testing Echo**
 
 `npm install` once (it installs [Playwright](https://playwright.dev)), then:
 
 - `npm test` checks every level's layout, the gameplay, each mechanic and mode, every screen at several phone sizes, a robot play-through of about 100 levels, and random "chaos" input, then reports speed. It takes about a minute.
-- `npm test -- --all` has the robot play all 1,000 levels and the daily cave (about five minutes).
+- `npm test -- --all` has the robot play all 1,000 levels and the daily cave (about four minutes). The robot is a simple player, so the check passes if it finishes at least 99% and lists the caves it lost as the hardest ones.
 - `npm run test:quick` skips the robot and chaos sections.
 
 For testing on real phones with people, see [PLAYTEST.md](PLAYTEST.md).

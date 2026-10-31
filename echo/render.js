@@ -110,7 +110,7 @@ function resize() {
   canvas.height = Math.round(H * DPR);
   // The lit cave is blended at a lower resolution than the screen and scaled up: the rock is
   // soft anyway, and this is the most expensive step of every frame.
-  SDPR = Math.min(DPR, 1.25);
+  SDPR = Math.min(DPR, qualityCap >= 2 ? 2 : 1.25);
   scene.width = Math.round(W * SDPR);
   scene.height = Math.round(H * SDPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -133,39 +133,46 @@ function layout() {
   // The camera sits close: about 8 tiles across and 13 down are on screen, and it follows Lumi,
   // so caves have to be explored rather than seen all at once.
   TS = Math.max(8, Math.floor(Math.min((W - 16) / Math.min(L.cols, VIEW_COLS), avail / Math.min(L.rows, VIEW_ROWS))));
-  L.scrollX = L.cols * TS > W - 16 + 1;
-  OX = L.scrollX ? cameraTargetX() : Math.round((W - TS * L.cols) / 2);
-  L.scroll = L.rows * TS > avail + 1;
-  OY = L.scroll ? cameraTarget() : Math.round(VIEW.top + (avail - TS * L.rows) / 2);
+  const b = L.bounds;
+  L.scrollX = (b.x1 - b.x0 + 2) * TS > W - 16 + 1;
+  L.scroll = (b.y1 - b.y0 + 2) * TS > avail + 1;
+  OX = Math.round(cameraTargetX());
+  OY = Math.round(cameraTarget());
   // The painted rock and the light map cover the cave plus enough margin for anything on screen.
-  LM.mx = L.scrollX ? Math.ceil((8 + TS * 0.4) / TS) + 2 : Math.ceil(OX / TS) + 1;
-  LM.my = L.scroll
-    ? Math.ceil((Math.max(VIEW.top, H - VIEW.bottom) + TS * 0.4) / TS) + 1
-    : Math.ceil(Math.max(OY, H - OY - L.rows * TS) / TS) + 1;
+  LM.mx = Math.max(2, Math.ceil(Math.max(OX, W - OX - L.cols * TS) / TS) + 1);
+  LM.my = Math.max(2, Math.ceil(Math.max(VIEW.top, H - VIEW.bottom, OY, H - OY - L.rows * TS) / TS) + 1);
   lightCanvas.width = (L.cols + LM.mx * 2) * LPT;
   lightCanvas.height = (L.rows + LM.my * 2) * LPT;
   buildArt();
   buildBackdrop();
 }
 const VIEW_COLS = 8, VIEW_ROWS = 13;
+// The camera keeps to the cave itself: at most a sliver of its outer rock shows at the edges,
+// never the dark beyond. When the cave is smaller than the view, it's centred.
+function camRange(lo, hi, from, to, at) {
+  const span = (hi - lo) * TS, room = to - from;
+  if (span <= room) return from + (room - span) / 2 - lo * TS;
+  const want = (from + to) / 2 - at * TS;
+  return Math.max(to - hi * TS, Math.min(from - lo * TS, want));
+}
 function cameraTarget() {
-  const want = (VIEW.top + VIEW.bottom) / 2 - (L.lumi.y + L.lumi.vy * 0.3) * TS;
-  return Math.max(VIEW.bottom - L.rows * TS - TS * 0.3, Math.min(VIEW.top + TS * 0.3, want));
+  const b = L.bounds;
+  return camRange(b.y0 - 0.5, b.y1 + 1.5, VIEW.top, VIEW.bottom, L.lumi.y + L.lumi.vy * 0.3);
 }
 function cameraTargetX() {
-  const want = W / 2 - (L.lumi.x + L.lumi.vx * 0.3) * TS;
-  return Math.max(W - 8 - L.cols * TS - TS * 0.3, Math.min(8 + TS * 0.3, want));
+  const b = L.bounds;
+  return camRange(b.x0 - 0.5, b.x1 + 1.5, 8, W - 8, L.lumi.x + L.lumi.vx * 0.3);
 }
 function moveCamera(dt) {
-  if (L.scroll) OY += (cameraTarget() - OY) * Math.min(1, dt * 5);
-  if (L.scrollX) OX += (cameraTargetX() - OX) * Math.min(1, dt * 5);
+  OY += (cameraTarget() - OY) * Math.min(1, dt * 5);
+  OX += (cameraTargetX() - OX) * Math.min(1, dt * 5);
 }
 
 // ---------- Painted cave ----------
 // The cave is painted once per level: smooth rock shaped from the tile map, roughened with
 // noise, with stalactites, stone texture and lit rims. Light then decides what you can see.
 const scene = document.createElement("canvas"), sctx = scene.getContext("2d");
-const art = document.createElement("canvas"), actx = art.getContext("2d");
+let art = document.createElement("canvas"), actx = art.getContext("2d");
 const lightCanvas = document.createElement("canvas"), lctx = lightCanvas.getContext("2d");
 const LPT = 8;            // light-map pixels per tile
 const LM = { mx: 0, my: 0 };
@@ -198,7 +205,6 @@ function vnoise(x, y) {
   const c = RND[PERM[X + PERM[Y + 1]]], d = RND[PERM[X + 1 + PERM[Y + 1]]];
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
-let fieldBuf = new Float32Array(0);
 // A faint, far-away layer of cave mist and specks behind the cave, in the world's colours.
 const backdrop = document.createElement("canvas"), bctx = backdrop.getContext("2d");
 function buildBackdrop() {
@@ -230,11 +236,39 @@ function buildBackdrop() {
 }
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
+// The cave is painted twice: a quick, soft pass so the level starts at once, then a sharp pass
+// at full screen resolution a few milliseconds per frame, swapped in when it's done.
+let artJob = null;
 function buildArt() {
-  // Big tiles are painted a little below screen resolution; the rock is soft, so it doesn't show.
-  const sc = Math.min(DPR, TS > 40 ? 0.72 : 1);
+  artJob = null;
+  const quick = paintArt(art, Math.min(DPR, TS > 40 ? 0.55 : 0.8));
+  while (!quick.next().done);
+  paintDecor(actx, art.width / ((L.cols + LM.mx * 2) * TS));
+  const sharp = Math.min(DPR, qualityCap >= 2 ? 1.6 : 1);
+  if (sharp > art.width / ((L.cols + LM.mx * 2) * TS) + 0.1) {
+    const canvas = document.createElement("canvas");
+    artJob = { canvas, steps: paintArt(canvas, sharp), level: L, sc: sharp };
+  }
+}
+function stepArtJob(budgetMs) {
+  if (!artJob) return;
+  if (artJob.level !== L) { artJob = null; return; }
+  const until = performance.now() + budgetMs;
+  while (performance.now() < until) {
+    if (artJob.steps.next().done) {
+      paintDecor(artJob.canvas.getContext("2d"), artJob.sc);
+      art = artJob.canvas;
+      actx = art.getContext("2d");
+      artJob = null;
+      return;
+    }
+  }
+}
+
+function* paintArt(target, sc) {
   const w = Math.max(1, Math.round((L.cols + LM.mx * 2) * TS * sc)), h = Math.max(1, Math.round((L.rows + LM.my * 2) * TS * sc));
-  art.width = w; art.height = h;
+  target.width = w; target.height = h;
+  const tctx = target.getContext("2d");
   const { cols, rows } = L, SUB = 2, PAD = 3;
 
   // Rock occupancy at two samples per tile, blurred once so corners round off
@@ -265,8 +299,7 @@ function buildArt() {
   const seed = levelIndex * 37.1 + 5;
   const th = themeOf(levelIndex);
   const inv = 1 / (TS * sc), ox = LM.mx, oy = LM.my;
-  if (fieldBuf.length < w * h) fieldBuf = new Float32Array(w * h);
-  const f = fieldBuf;
+  const f = new Float32Array(w * h);
   for (let py = 0; py < h; py++) {
     const ty = (py + 0.5) * inv - oy, iy = Math.floor(ty);
     for (let px = 0; px < w; px++) {
@@ -287,9 +320,10 @@ function buildArt() {
       }
       f[py * w + px] = v;
     }
+    if ((py & 15) === 15) yield;
   }
 
-  const img = actx.createImageData(w, h), D = img.data;
+  const img = tctx.createImageData(w, h), D = img.data;
   const hasWater = L.flow.some(Boolean);
   let patch = 0;
   for (let py = 0; py < h; py++) {
@@ -326,9 +360,16 @@ function buildArt() {
       const depth = Math.min(1, Math.max(0, (v - TH) / 0.3));
       const rim = 1 - smooth(TH, TH + 0.12, v);
       const hl = rim * (0.35 + 0.65 * facing);
-      let rr = (th.rock[0] + (th.deep[0] - th.rock[0]) * depth) * t + th.rim[0] * hl;
-      let rg = (th.rock[1] + (th.deep[1] - th.rock[1]) * depth) * t + th.rim[1] * hl;
-      let rb = (th.rock[2] + (th.deep[2] - th.rock[2]) * depth) * t + th.rim[2] * hl;
+      // Stone detail: wavy layers, fine cracks and grain, so the rock holds up close.
+      let detail = 1;
+      if (cover > 0) {
+        const strata = 0.9 + 0.1 * Math.sin(ty * 5.3 + vnoise(tx * 0.8, ty * 0.8 + seed) * 6);
+        const cn = vnoise(tx * 2.6 + seed, ty * 2.6), crack = smooth(0.9, 0.985, 1 - Math.abs(cn * 2 - 1));
+        detail = strata * (1 - crack * 0.45 * (1 - rim)) * (0.92 + vnoise(tx * 41, ty * 41) * 0.16);
+      }
+      let rr = ((th.rock[0] + (th.deep[0] - th.rock[0]) * depth) * t * detail) + th.rim[0] * hl;
+      let rg = ((th.rock[1] + (th.deep[1] - th.rock[1]) * depth) * t * detail) + th.rim[1] * hl;
+      let rb = ((th.rock[2] + (th.deep[2] - th.rock[2]) * depth) * t * detail) + th.rim[2] * hl;
 
       const k = i * 4;
       D[k] = fr + (rr - fr) * cover;
@@ -336,9 +377,11 @@ function buildArt() {
       D[k + 2] = fb + (rb - fb) * cover;
       D[k + 3] = 255;
     }
+    if ((py & 7) === 7) yield;
   }
-  actx.putImageData(img, 0, 0);
+  tctx.putImageData(img, 0, 0);
 }
+
 const insetProbe = document.createElement("div");
 insetProbe.style.cssText = "position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)";
 document.body.appendChild(insetProbe);
