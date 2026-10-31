@@ -89,7 +89,6 @@ export class App implements Host {
     this.renderer = new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
     this.sheets = new Sheets(this);
 
-    $("app-logo").innerHTML = logoSvg;
     preloadLogo(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`);
     try { this.friendScore = clamp(parseInt(new URLSearchParams(location.search).get("beat") ?? "", 10) || 0, 0, 999999); } catch { /* no query */ }
 
@@ -403,6 +402,8 @@ export class App implements Host {
       fx.punch = Math.max(fx.punch, out.combo >= 5 ? 1 : 0.45);
       fx.flash = 1;
       fx.flashGold = f.kind === "gold";
+      const view = this.renderer.view, [rx, ry] = view.project((f.x0 + f.x1) / 2, f.y + 1, (f.z0 + f.z1) / 2);
+      fx.startRipple(rx / view.W, ry / view.H, f.kind === "gold" ? 1 : out.combo >= 5 ? 0.75 : 0.45);
       const gold = f.kind === "gold";
       fx.sparkle(f, gold ? 46 : 22, gold ? GOLD : f.kind === "ice" ? "#d8f4ff" : f.kind === "garden" ? "#b8f5a0" : "#ffffff");
       fx.popup(gold ? `PENTHOUSE +${out.points}` : out.combo > 1 ? `PERFECT x${out.combo}` : "PERFECT", gold ? "" : `+${out.points}`, f.y + 1, gold ? GOLD : "#ffffff");

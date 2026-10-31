@@ -8,7 +8,8 @@ import { drawBlock, drawRoof, floorColor, lookFor } from "./buildings";
 import { drawGuide, drawLandingShadow, Effects } from "./effects";
 import { ISO_X, View, type Env, type Paint } from "./paint";
 import { PostFX } from "./post";
-import { nightAt, Scenery, skyAt } from "./scenery";
+import { nightAt, Scenery, skyAt, sunAt } from "./scenery";
+import { SkyTraffic } from "./sky";
 
 /** What the screen is showing, which decides where the camera goes. */
 export type Shot = "menu" | "play" | "over";
@@ -33,6 +34,7 @@ export class Renderer {
   readonly view = new View();
   readonly fx = new Effects();
   readonly scenery = new Scenery();
+  readonly traffic = new SkyTraffic();
   private readonly ctx: CanvasRenderingContext2D;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false };
   private readonly paint: Paint;
@@ -123,6 +125,9 @@ export class Renderer {
 
     scenery.drawBack(p, n > 1 ? stack[1] : stack[0], n);
     scenery.drawBandClouds(p, false, null, dt);
+    scenery.life.update(dt);
+    this.traffic.update(p, dt);
+    this.traffic.draw(p);
     // A warm glow around the top of the tower during a perfect streak.
     if (sim.combo >= 5 && f.showMover) {
       const [gx, gy] = view.project((top.x0 + top.x1) / 2, top.y + 0.5, (top.z0 + top.z1) / 2);
@@ -184,6 +189,12 @@ export class Renderer {
       time: env.time,
       night: env.nf,
       warm: clamp((n - 14) / 24, 0, 1) * (1 - env.nf * 0.8),
+      sun: (() => { const s = sunAt(n, view.W, H); return { x: s.x / view.W, y: s.y / H, amount: (1 - s.t) * (1 - env.nf) * 0.55 }; })(),
+      fog: env.skyBot,
+      // Haze below you grows as the tower climbs, which sells the height.
+      fogAmount: f.shot === "play" ? clamp(f.sim.level / 60, 0, 1) * 0.22 : 0.05,
+      ripple: this.fx.ripple,
+      aspect: view.W / H,
       bloom: 0.4 + env.nf * 0.35 + (skin.neon || skin.alwaysLit ? 0.2 : 0),
       tilt,
       focus: this.focus,

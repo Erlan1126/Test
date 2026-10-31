@@ -4,7 +4,7 @@ import { GOLD } from "../data/constants";
 import { SPECIAL_COLORS, type Look, type Skin } from "../data/skins";
 import type { Box } from "../logic/rules";
 import type { FloorKind } from "../logic/sim";
-import { face, glow, poly, type Paint, type Pt } from "./paint";
+import { face, glow, ISO_X, ISO_Y, poly, type Paint, type Pt } from "./paint";
 
 /** Icy floors: pale, frosted glass. */
 const ICE_LOOK: Look = { kind: "ribbon", glass: "#e6f8ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.1, lit: ["#e6f8ff", "#ffffff"] };
@@ -43,6 +43,31 @@ function glassColor(p: Paint, look: Look, sh: number): string {
   return rgb(mixRgb(day, [14, 20, 42], p.env.nf * 0.88), sh);
 }
 
+/** Glass that reflects the sky: bright at the top, deepening toward the bottom corner. */
+function glassGradient(p: Paint, look: Look, sh: number, q: Pt[]): CanvasGradient {
+  const base = mixRgb(mixRgb(hexRgb(look.glass), p.env.skyBot, 0.22), [14, 20, 42], p.env.nf * 0.88);
+  const sky = mixRgb(p.env.skyTop, [255, 255, 255], 0.35 * (1 - p.env.nf));
+  const g = p.ctx.createLinearGradient(q[0][0], q[0][1], q[2][0], q[2][1]);
+  g.addColorStop(0, rgb(mixRgb(base, sky, 0.45 * (1 - p.env.nf * 0.7)), sh));
+  g.addColorStop(0.55, rgb(base, sh));
+  g.addColorStop(1, rgb(base, sh * 0.78));
+  return g;
+}
+
+/** Warm room light with a darker ceiling band, some rooms with blinds or a TV's cool glow. */
+function litWindow(p: Paint, f: Wall, u0: number, u1: number, ya: number, yb: number, color: string, r: number, alpha: number): void {
+  const ctx = p.ctx;
+  const tv = Math.floor(r * 1013) % 9 === 0;
+  poly(p, wallQuad(p, f, u0, u1, ya, yb), tv ? "#bcd6ff" : color);
+  ctx.globalAlpha = alpha * 0.22;
+  poly(p, wallQuad(p, f, u0, u1, yb - (yb - ya) * 0.32, yb), "#3a2a20");
+  if (Math.floor(r * 577) % 6 === 0) {
+    // Blinds half drawn
+    poly(p, wallQuad(p, f, u0, u1, yb - (yb - ya) * 0.55, yb), "#5a4636");
+  }
+  ctx.globalAlpha = alpha;
+}
+
 /** One storey of facade on one wall: floor slab, windows, lights and reflections. */
 function drawStorey(p: Paint, fy: number, top: number, look: Look, f: Wall, alpha: number): void {
   const { ctx, view, env } = p;
@@ -62,7 +87,8 @@ function drawStorey(p: Paint, fy: number, top: number, look: Look, f: Wall, alph
   if (look.kind === "ribbon") {
     const u0 = f.lo + 0.22, u1 = f.hi - 0.22;
     if (u1 <= u0) return;
-    poly(p, wallQuad(p, f, u0, u1, ya, yb), glassColor(p, look, f.sh));
+    const band = wallQuad(p, f, u0, u1, ya, yb);
+    poly(p, band, glassGradient(p, look, f.sh, band));
     const step = 1.3;
     for (let k = Math.floor(u0 / step); k * step < u1; k++) {
       const p0 = Math.max(u0, k * step) + 0.05, p1 = Math.min(u1, (k + 1) * step) - 0.05;
@@ -70,7 +96,8 @@ function drawStorey(p: Paint, fy: number, top: number, look: Look, f: Wall, alph
       const r = hash(Math.round(fy), f.id, k);
       if (lit(r)) {
         const c = look.lit[Math.floor(r * 97) % look.lit.length];
-        poly(p, wallQuad(p, f, p0, p1, ya, yb), c);
+        if (look.alwaysLit || look.neon) poly(p, wallQuad(p, f, p0, p1, ya, yb), c);
+        else litWindow(p, f, p0, p1, ya, yb, c, r, alpha);
         if (glows) glow(p, wallQuad(p, f, p0 - 0.25, p1 + 0.25, ya - 0.2, yb + 0.2), c);
       } else if (((k + Math.round(fy)) % 5 + 5) % 5 === 0 && nf < 0.9) {
         // Diagonal sky reflections running across the glass
@@ -79,6 +106,10 @@ function drawStorey(p: Paint, fy: number, top: number, look: Look, f: Wall, alph
         ctx.globalAlpha = alpha;
       }
     }
+    // Shadow under the slab above, which gives the glass some depth
+    ctx.globalAlpha = alpha * 0.3;
+    poly(p, wallQuad(p, f, u0, u1, yb - 0.08, yb), "#0a1030");
+    ctx.globalAlpha = alpha;
     if (view.zoom > 0.3) {
       ctx.strokeStyle = rgb(hexRgb(look.frame), f.sh * (1 - nf * 0.6), 0.8);
       ctx.lineWidth = Math.max(0.8, 1.4 * view.zoom);
@@ -100,7 +131,8 @@ function drawStorey(p: Paint, fy: number, top: number, look: Look, f: Wall, alph
       const q = wallQuad(p, f, c - half, c + half, ya, yb);
       if (lit(r)) {
         const lc = look.lit[Math.floor(r * 97) % look.lit.length];
-        poly(p, q, lc);
+        if (look.alwaysLit) poly(p, q, lc);
+        else litWindow(p, f, c - half, c + half, ya, yb, lc, r, alpha);
         if (glows) glow(p, wallQuad(p, f, c - half - 0.3, c + half + 0.3, ya - 0.25, yb + 0.25), lc);
       } else {
         poly(p, q, glassColor(p, look, f.sh));
@@ -109,6 +141,10 @@ function drawStorey(p: Paint, fy: number, top: number, look: Look, f: Wall, alph
           poly(p, wallQuad(p, f, c - half, c, ya, yb), "#ffffff");
           ctx.globalAlpha = alpha;
         }
+        // Recessed window: the frame casts a shadow along the top
+        ctx.globalAlpha = alpha * 0.35;
+        poly(p, wallQuad(p, f, c - half, c + half, yb - 0.09, yb), "#0a1030");
+        ctx.globalAlpha = alpha;
       }
     }
   }
@@ -167,6 +203,12 @@ export function drawBlock(p: Paint, b: Box, y0: number, y1: number, c: RGB, look
     ];
     if (opts.lobby) walls.forEach(f => drawLobby(p, look, f));
     else for (let fy = y0; fy < y1 - 0.3; fy++) walls.forEach(f => drawStorey(p, fy, y1, look, f, alpha));
+    // Structural columns at the front corner, like a real tower's frame
+    if (!opts.lobby && view.zoom > 0.3) {
+      const cw = Math.min(0.32, (b.x1 - b.x0) / 8, (b.z1 - b.z0) / 8);
+      poly(p, wallQuad(p, walls[0], b.x1 - cw, b.x1, y0, y1), rgb(c, 1.06 * d));
+      poly(p, wallQuad(p, walls[1], b.z1 - cw, b.z1, y0, y1), rgb(c, 0.84 * d));
+    }
   }
   // Contact shading where this block sits on the one below, so floors read as separate pieces.
   if (!opts.plain && !opts.lobby && y1 - y0 <= 1.2) {
@@ -224,25 +266,77 @@ function drawPlanters(p: Paint, b: Box, y: number, d: number): void {
   }
 }
 
-/** A rooftop and blinking antenna, so the finished tower looks like a real skyscraper. */
+/** Rooftop equipment so the finished tower looks like a real skyscraper: a machine room
+ *  with an antenna, a water tank, air-conditioning units and, on big roofs, a helipad. */
 export function drawRoof(p: Paint, t: Box & { y: number }, look: Look): void {
   const { ctx, view, env } = p;
-  const cx = (t.x0 + t.x1) / 2, cz = (t.z0 + t.z1) / 2;
-  const hw = Math.min(1.8, (t.x1 - t.x0) / 3), hd = Math.min(1.8, (t.z1 - t.z0) / 3);
-  drawBlock(p, { x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd }, t.y + 1, t.y + 1.7, [190, 198, 210], look, { plain: true });
-  const [bx, by] = view.project(cx, t.y + 1.7, cz), [tx, ty] = view.project(cx, t.y + 4.6, cz);
+  const w = t.x1 - t.x0, dd = t.z1 - t.z0, y = t.y + 1;
+  const grey: RGB = [190, 198, 210], d = 1 - env.nf * 0.5;
+  const P = (x: number, z: number, yy = y + 0.01) => view.project(x, yy, z);
+  // Helipad first (it's painted on the roof)
+  if (w >= 5.5 && dd >= 5.5) {
+    const cx = t.x0 + w * 0.62, cz = t.z0 + dd * 0.62, r = Math.min(w, dd) * 0.22;
+    const [hx, hy] = P(cx, cz), rx = r * Math.SQRT2 * ISO_X * view.s * view.zoom, ry = r * Math.SQRT2 * ISO_Y * view.s * view.zoom;
+    ctx.fillStyle = rgb([70, 78, 96], d);
+    ctx.beginPath(); ctx.ellipse(hx, hy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgb([255, 210, 63], d);
+    ctx.lineWidth = Math.max(1, 1.6 * view.zoom);
+    ctx.beginPath(); ctx.ellipse(hx, hy, rx * 0.82, ry * 0.82, 0, 0, Math.PI * 2); ctx.stroke();
+    // An "H" laid flat on the pad
+    ctx.strokeStyle = rgb([255, 255, 255], d);
+    ctx.lineWidth = Math.max(1, 2 * view.zoom);
+    const L = (x0: number, z0: number, x1: number, z1: number) => { const a = P(cx + x0 * r, cz + z0 * r), b = P(cx + x1 * r, cz + z1 * r); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); };
+    ctx.beginPath(); L(-0.35, -0.4, -0.35, 0.4); L(0.35, -0.4, 0.35, 0.4); L(-0.35, 0, 0.35, 0); ctx.stroke();
+    if (env.nf > 0.3) {
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2, [lx, ly] = P(cx + Math.cos(a) * r, cz + Math.sin(a) * r);
+        ctx.fillStyle = Math.floor(env.time * 2 + k) % 8 === 0 ? "#ffffff" : "#7cf58a";
+        ctx.beginPath(); ctx.arc(lx, ly, Math.max(1, 1.6 * view.zoom), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  // Machine room toward the back corner
+  const mx = t.x0 + w * 0.3, mz = t.z0 + dd * 0.3, hw = Math.min(1.5, w / 5), hd = Math.min(1.5, dd / 5);
+  drawBlock(p, { x0: mx - hw, x1: mx + hw, z0: mz - hd, z1: mz + hd }, y, y + 0.7, grey, look, { plain: true });
+  // Air-conditioning units
+  for (const k of [0, 1]) {
+    const ax = t.x0 + 0.9 + k * 1.3, az = t.z1 - 1;
+    if (ax + 0.5 > t.x1 || az - 0.4 < t.z0) continue;
+    drawBlock(p, { x0: ax - 0.45, x1: ax + 0.45, z0: az - 0.4, z1: az + 0.4 }, y, y + 0.3, [170, 178, 190], look, { plain: true });
+  }
+  // Water tank on legs
+  const tx = t.x1 - Math.min(1.3, w * 0.2), tz = t.z0 + Math.min(1.3, dd * 0.2), tr = Math.min(0.7, w / 9);
+  const [bx, by] = view.project(tx, y, tz), [ux, uy] = view.project(tx, y + 0.45, tz), [vx, vy] = view.project(tx, y + 1.25, tz);
+  const trx = tr * Math.SQRT2 * ISO_X * view.s * view.zoom, try_ = tr * Math.SQRT2 * ISO_Y * view.s * view.zoom;
+  ctx.strokeStyle = rgb([90, 70, 55], d);
+  ctx.lineWidth = Math.max(1, 1.3 * view.zoom);
+  ctx.beginPath(); ctx.moveTo(bx - trx * 0.7, by); ctx.lineTo(ux - trx * 0.7, uy); ctx.moveTo(bx + trx * 0.7, by); ctx.lineTo(ux + trx * 0.7, uy); ctx.stroke();
+  ctx.fillStyle = rgb([150, 105, 70], d);
+  ctx.fillRect(ux - trx, vy, trx * 2, uy - vy);
+  ctx.beginPath(); ctx.ellipse(ux, uy, trx, try_, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = rgb([175, 125, 85], d);
+  ctx.beginPath(); ctx.ellipse(vx, vy, trx, try_, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = rgb([120, 85, 60], d);
+  ctx.beginPath(); ctx.moveTo(vx - trx, vy); ctx.lineTo(vx, vy - try_ * 2.2); ctx.lineTo(vx + trx, vy); ctx.fill();
+
+  // Antenna mast with a blinking aviation light
+  const [ax, ay] = view.project(mx, y + 0.7, mz), [tx2, ty2] = view.project(mx, y + 4.6, mz);
   ctx.strokeStyle = "#e9ecef";
   ctx.lineWidth = Math.max(1.5, 3 * view.zoom);
-  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(tx2, ty2); ctx.stroke();
+  ctx.lineWidth = Math.max(0.8, 1.2 * view.zoom);
+  ctx.beginPath();
+  for (let k = 1; k < 4; k++) { const yy = ay + (ty2 - ay) * (k / 4), sp = (1 - k / 4) * 4 * view.zoom + 1; ctx.moveTo(ax - sp, yy); ctx.lineTo(ax + sp, yy); }
+  ctx.stroke();
   const on = Math.floor(env.time / 0.6) % 2 === 0;
   const r = Math.max(2.5, 5 * view.zoom);
   if (on) {
-    const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, r * 5);
+    const g = ctx.createRadialGradient(tx2, ty2, 0, tx2, ty2, r * 5);
     g.addColorStop(0, "rgba(255,70,70,0.7)");
     g.addColorStop(1, "rgba(255,70,70,0)");
     ctx.fillStyle = g;
-    ctx.fillRect(tx - r * 5, ty - r * 5, r * 10, r * 10);
+    ctx.fillRect(tx2 - r * 5, ty2 - r * 5, r * 10, r * 10);
   }
   ctx.fillStyle = on ? "#ff4646" : "#7a1f1f";
-  ctx.beginPath(); ctx.arc(tx, ty, r, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(tx2, ty2, r, 0, Math.PI * 2); ctx.fill();
 }

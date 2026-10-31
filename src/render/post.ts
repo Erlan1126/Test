@@ -54,20 +54,56 @@ uniform float uBloom;
 uniform float uTilt;
 uniform float uFocus;
 uniform float uSpan;
+uniform vec2 uSun;
+uniform float uSunAmt;
+uniform vec3 uFog;
+uniform float uFogAmt;
+uniform vec4 uRipple;
+uniform float uAspect;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
 void main() {
-  vec3 c = texture2D(uScene, v).rgb;
+  // Shockwave from a perfect drop: the image ripples outward from where the floor landed.
+  vec2 uv = v;
+  if (uRipple.w > 0.0 && uRipple.z < 1.2) {
+    vec2 dv = (v - uRipple.xy) * vec2(uAspect, 1.0);
+    float dist = length(dv), front = uRipple.z * 0.9;
+    float ring = exp(-pow((dist - front) * 18.0, 2.0)) * (1.0 - uRipple.z / 1.2);
+    uv -= normalize(dv + 1e-5) / vec2(uAspect, 1.0) * ring * 0.012 * uRipple.w;
+  }
+
+  // Subtle lens fringing toward the edges.
+  vec2 off = (uv - 0.5) * 0.0028;
+  vec3 c = vec3(texture2D(uScene, uv + off).r, texture2D(uScene, uv).g, texture2D(uScene, uv - off).b);
+  vec3 soft = texture2D(uSoft, uv).rgb;
 
   // Tilt-shift: away from the band in focus, fade into the blurred copy. It makes the
-  // island read as a tiny model city.
-  float d = abs(v.y - uFocus);
-  c = mix(c, texture2D(uSoft, v).rgb, smoothstep(uSpan, uSpan + 0.32, d) * uTilt);
+  // island read as a tiny model city. Inside the band, extra local contrast keeps it crisp.
+  float blurAmt = smoothstep(uSpan, uSpan + 0.32, abs(uv.y - uFocus)) * uTilt;
+  c += (c - soft) * 0.28 * (1.0 - blurAmt);
+  c = mix(c, soft, blurAmt);
 
   // Bloom: lit windows, neon trim and the sun spill soft light.
-  vec3 glow = texture2D(uGlow, v).rgb;
+  vec3 glow = texture2D(uGlow, uv).rgb;
   c += glow * uBloom;
+
+  // Sun rays: march from each pixel toward the sun through the bright layer.
+  if (uSunAmt > 0.01) {
+    vec2 stp = (uSun - uv) / 12.0;
+    vec2 p = uv;
+    float decay = 1.0, rays = 0.0;
+    for (int i = 0; i < 12; i++) {
+      p += stp;
+      vec3 s = texture2D(uGlow, p).rgb;
+      rays += dot(s, vec3(0.333)) * decay;
+      decay *= 0.88;
+    }
+    c += vec3(1.0, 0.85, 0.62) * rays * 0.06 * uSunAmt;
+  }
+
+  // Altitude haze: the far-below part of the picture fades into the sky.
+  c = mix(c, uFog, smoothstep(0.32, 0.0, uv.y) * uFogAmt);
 
   // Color grading: warm and golden toward sunset, cool and deep at night.
   c *= mix(vec3(1.0), vec3(1.07, 1.0, 0.9), uWarm);
@@ -107,6 +143,14 @@ export interface PostParams {
   focus: number;
   /** Half-height of the sharp band. */
   span: number;
+  /** Sun position (0-1 screen, y down) and how strongly it casts rays. */
+  sun: { x: number; y: number; amount: number };
+  /** Haze color (0-255) and amount, for the depth below the tower. */
+  fog: [number, number, number];
+  fogAmount: number;
+  ripple: { x: number; y: number; age: number; strength: number };
+  /** Screen width / height. */
+  aspect: number;
 }
 
 export class PostFX {
@@ -152,7 +196,9 @@ export class PostFX {
   private init(gl: WebGLRenderingContext): void {
     try {
       this.progs = { down: this.compile(gl, DOWN), blur: this.compile(gl, BLUR), final: this.compile(gl, FINAL) };
-    } catch {
+    } catch (e) {
+      // Keep playing without effects, but leave a note for debugging.
+      console.warn("Skyrise: shader effects are off.", e);
       this.progs = null;
       return;
     }
@@ -249,6 +295,12 @@ export class PostFX {
     gl.uniform1f(u("uTilt"), p.tilt);
     gl.uniform1f(u("uFocus"), 1 - p.focus); // GL's y runs bottom to top
     gl.uniform1f(u("uSpan"), p.span);
+    gl.uniform2f(u("uSun"), p.sun.x, 1 - p.sun.y);
+    gl.uniform1f(u("uSunAmt"), p.sun.amount);
+    gl.uniform3f(u("uFog"), p.fog[0] / 255, p.fog[1] / 255, p.fog[2] / 255);
+    gl.uniform1f(u("uFogAmt"), p.fogAmount);
+    gl.uniform4f(u("uRipple"), p.ripple.x, 1 - p.ripple.y, p.ripple.age, p.ripple.strength);
+    gl.uniform1f(u("uAspect"), p.aspect);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     gl.activeTexture(gl.TEXTURE0);
   }

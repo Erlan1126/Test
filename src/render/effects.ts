@@ -50,6 +50,12 @@ export class Effects {
   /** A small camera push-in on good drops. */
   punch = 0;
   whiteFlash = 0;
+  /** A shockwave on perfect drops, drawn by the shader: center (0-1 screen), age in seconds, strength. */
+  ripple = { x: 0.5, y: 0.5, age: 9, strength: 0 };
+
+  startRipple(x: number, y: number, strength: number): void {
+    this.ripple = { x, y, age: 0, strength };
+  }
 
   clear(): void {
     this.particles = [];
@@ -98,6 +104,7 @@ export class Effects {
     this.shake = Math.max(0, this.shake - dt * 1.8);
     this.punch = Math.max(0, this.punch - dt * 2.5);
     this.whiteFlash = Math.max(0, this.whiteFlash - dt * 2);
+    this.ripple.age += dt;
     for (const d of this.debris) {
       d.vy += 26 * dt;
       d.y -= d.vy * dt;

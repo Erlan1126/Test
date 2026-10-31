@@ -5,6 +5,7 @@ import type { IslandTheme } from "../data/islands";
 import { NEIGHBOR_LOOK } from "../data/skins";
 import type { Box } from "../logic/rules";
 import { drawBlock } from "./buildings";
+import { IslandLife } from "./details";
 import { face, ISO_X, ISO_Y, poly, type Paint } from "./paint";
 
 /** A soft cloud sprite, drawn once and reused. */
@@ -32,6 +33,12 @@ export function skyAt(n: number): [RGB, RGB] {
   return [mixRgb(hexRgb(a.top), hexRgb(b.top), t), mixRgb(hexRgb(a.bottom), hexRgb(b.bottom), t)];
 }
 export const nightAt = (n: number): number => clamp((n - 45) / 35, 0, 1);
+
+/** Where the sun sits on screen: it sinks toward the horizon as the tower climbs. */
+export function sunAt(n: number, W: number, H: number): { x: number; y: number; t: number } {
+  const t = clamp(n / 50, 0, 1);
+  return { x: W * 0.8, y: lerp(H * 0.16, H * 1.05, t * t), t };
+}
 
 type Neighbor = Box & { h: number; color: RGB };
 const NEIGHBORS: Neighbor[] = [
@@ -116,6 +123,8 @@ export class Scenery {
   private vigKey = "";
   /** Island level (how many upgrades are built), set each frame. */
   islandNow = 0;
+  /** People, benches, birds and other small details. */
+  readonly life = new IslandLife();
   theme!: IslandTheme;
 
   private has(i: number): boolean { return this.islandNow > i; }
@@ -278,11 +287,15 @@ export class Scenery {
   /** Everything on the island that sits behind the tower. `base` is the tower's first
    *  floor and `floors` its height, for the shadow it casts. */
   drawBack(p: Paint, base: Box, floors: number): void {
+    this.life.has = i => this.has(i);
+    this.life.theme = this.theme;
     if (this.islandVisible(p)) {
+      this.life.drawRocks(p, true);
       this.drawIsland(p);
       if (this.has(1)) this.drawPond(p);
       if (this.has(0)) this.drawFountain(p);
       this.drawShadows(p, base, floors);
+      this.life.drawBack(p);
       for (const t of TREES) if (t.x + t.z < 0 && this.treeVisible(t)) this.drawTree(p, t);
       if (this.has(4)) this.drawFerrisWheel(p);
       for (const nb of NEIGHBORS) drawBlock(p, nb, 0, nb.h, nb.color, NEIGHBOR_LOOK);
@@ -294,8 +307,10 @@ export class Scenery {
   /** Everything on the island in front of the tower. */
   drawFront(p: Paint): void {
     if (this.islandVisible(p)) {
+      this.life.drawFront(p);
       for (const t of TREES) if (t.x + t.z >= 0 && this.treeVisible(t)) this.drawTree(p, t);
       if (this.has(3)) this.drawLampsAndCars(p);
+      this.life.drawRocks(p, false);
     }
     if (this.has(5)) for (const b of BALLOONS) if (b.x + b.z >= 0) this.drawBalloon(p, b);
   }
