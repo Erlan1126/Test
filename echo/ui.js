@@ -4,11 +4,17 @@
 // ---------- UI ----------
 const screens = {
   title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  challenges: $("challengeScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
 };
 let backTo = "title";
+function applyLayoutPrefs() {
+  document.body.classList.toggle("big-text", !!save.settings.bigText);
+  document.body.classList.toggle("left-hand", save.settings.hand === "left");
+}
 function show(name) {
   screen = name;
+  $("singBtn").hidden = name !== "play" || controlMode() === "stick";
+  document.body.classList.toggle("sing-on", !$("singBtn").hidden);
   for (const k in screens) screens[k].classList.toggle("on", k === name);
   $("hud").classList.toggle("on", name === "play" || name === "pause");
   if (name !== "play") { pointers.clear(); steer = null; }
@@ -25,7 +31,7 @@ let backArmed = false;
 window.addEventListener("popstate", () => {
   backArmed = false;
   if (screen === "play") pause();
-  else if (screen === "pause") (levelIndex === DAILY ? showTitle() : openMap());
+  else if (screen === "pause") (isChallenge(levelIndex) ? showTitle() : openMap());
   else if (screen === "settings" && backTo === "pause") show("pause");
   else if (screen !== "title") showTitle();
   if (screen !== "title" && !backArmed) {
@@ -77,7 +83,7 @@ function nextToast() {
   setTimeout(() => { el.remove(); nextToast(); }, 2650);
 }
 
-const levelLabel = i => (i === DAILY ? "Daily Cave" : `Level ${i + 1}`);
+const levelLabel = i => (i === DAILY ? "Daily Cave" : i === WEEKLY ? "Weekly Cave" : `Level ${i + 1}`);
 function updateHud() {
   if (!L) return;
   $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
@@ -91,7 +97,7 @@ function updateHud() {
     pill.innerHTML = `♪ ${L.pings} <small>/ ${L.def.par}</small>`;
     pill.style.color = L.pings > L.def.par ? "#ff9fb8" : "";
   }
-  const name = levelIndex === DAILY ? `<b>Daily Cave</b>` : `<b>${levelIndex + 1}.</b> ${L.def.name}`;
+  const name = isChallenge(levelIndex) ? `<b>${levelLabel(levelIndex)}</b>` : `<b>${levelIndex + 1}.</b> ${L.def.name}`;
   if (L.timeLeft > 0 || L.failWhy === "time") {
     const t = Math.ceil(L.timeLeft);
     $("levelName").innerHTML = `<b style="color:${t <= 10 ? "#ff9fb8" : "inherit"}">⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}</b>`;
@@ -118,11 +124,39 @@ const CARDS = {
     art: `<g transform="translate(52 56)">${LUMI_SVG}</g><g fill="#e9f3ff"><path d="M98 30v34a8 6 0 1 1-4-5V34l26-6v30a8 6 0 1 1-4-5V36z"/></g><text x="128" y="92" fill="#ff9fb8" font-size="18" font-family="Fredoka, sans-serif" font-weight="600">3 left</text>` },
   dark: { title: "Dark caves", text: "Nothing glows here, not even the lights or the portal, until your song finds them. If it's too hard, turn on Guiding glow in Settings.",
     art: `<rect x="10" y="10" width="140" height="90" rx="14" fill="#03040b"/><g fill="none" stroke="#7ee8ff" stroke-width="1.5"><circle cx="80" cy="56" r="22" stroke-opacity=".5"/><circle cx="80" cy="56" r="36" stroke-opacity=".25"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
-  tall: { title: "Long climbs", text: "Some caves are taller than your screen. The view follows Lumi, so sing often to see what's ahead.",
+  tall: { title: "Big caves", text: "Some caves are bigger than your screen. The view follows Lumi, so sing often to see what's ahead.",
     art: `<rect x="56" y="8" width="48" height="94" rx="8" fill="none" stroke="#8ea3c8" stroke-width="2"/><rect x="62" y="40" width="36" height="40" rx="4" fill="rgba(126,232,255,.12)" stroke="#7ee8ff"/><g transform="translate(80 64)">${LUMI_SVG}</g><path d="M124 80V30m-8 8 8-8 8 8" stroke="#e9f3ff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  thorns: { title: "Thornlings", text: "Spiky creatures patrol the tunnels. They hide in the dark, so sing to see them, or listen for their rattle. Touching one costs light.",
+    art: `<path d="M20 60h120" stroke="#3a4656" stroke-width="22" stroke-linecap="round"/><g transform="translate(92 60)"><circle r="9" fill="#5a1d2a"/><g stroke="#ff7a6a" stroke-width="2.5" stroke-linecap="round">${[0, 1, 2, 3, 4, 5, 6, 7].map(k => `<path d="M${(Math.cos(k * 0.785) * 9).toFixed(1)} ${(Math.sin(k * 0.785) * 9).toFixed(1)}L${(Math.cos(k * 0.785) * 15).toFixed(1)} ${(Math.sin(k * 0.785) * 15).toFixed(1)}"/>`).join("")}</g></g><path d="M74 60h-14M110 60h14" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 4"/><g transform="translate(36 60) scale(.8)">${LUMI_SVG}</g>` },
+  mobn: { title: "Snapvines", text: "Hungry plants grow from the walls of Mossy Hollow. Swim close and one shivers, then lunges. Watch for the shiver and dart past.",
+    art: `<path d="M24 20v70" stroke="#3a4656" stroke-width="16"/><path d="M32 56q20-6 40 0" stroke="#3f8f4f" stroke-width="5" fill="none"/><ellipse cx="82" cy="56" rx="16" ry="10" fill="#4caf5c"/><ellipse cx="86" cy="56" rx="9" ry="5" fill="#ff6f9a"/><g transform="translate(130 60) scale(.8)">${LUMI_SVG}</g>` },
+  moba: { title: "Shardbats", text: "Crystal bats roost on the ceilings of Amethyst Deep. A song nearby wakes one, and it swoops at where it heard you. Sing, then move.",
+    art: `<g transform="translate(80 40)"><path d="M-8 0L-44 -14L-30 10Z" fill="#a77bff"/><path d="M8 0L44 -14L30 10Z" fill="#a77bff"/><circle r="12" fill="#2e1f52"/><circle cx="-4" r="3.5" fill="#fff"/><circle cx="4" r="3.5" fill="#fff"/><circle cx="-4" cy="1" r="2" fill="#ff4fa0"/><circle cx="4" cy="1" r="2" fill="#ff4fa0"/></g><path d="M80 56q0 16 -30 30" stroke="#b48cff" stroke-dasharray="3 5" stroke-width="2" fill="none"/><g transform="translate(46 86) scale(.7)">${LUMI_SVG}</g>` },
+  mobk: { title: "Cinder Crabs", text: "Fiery crabs scuttle along the floors of Ember Caverns, pausing at each end. Cross while they pause.",
+    art: `<path d="M16 82h128" stroke="#3a2a28" stroke-width="10"/><g transform="translate(80 66)"><ellipse rx="22" ry="14" fill="#e0502c"/><circle cx="-28" cy="-8" r="8" fill="#ff6a3d"/><circle cx="28" cy="-8" r="8" fill="#ff6a3d"/><circle cx="-6" cy="-24" r="4" fill="#fff"/><circle cx="6" cy="-24" r="4" fill="#fff"/><circle cx="-6" cy="-23" r="2" fill="#1b1030"/><circle cx="6" cy="-23" r="2" fill="#1b1030"/></g><path d="M118 66h18m-6-5 6 5-6 5" stroke="#ffd36e" stroke-width="2" fill="none"/>` },
+  mobw: { title: "Frostwisps", text: "Little ghosts of ice drift toward Lumi whenever they can see it. A touch costs light and leaves Lumi half frozen for a moment. Break their line of sight.",
+    art: `<g transform="translate(96 54)"><circle r="26" fill="url(#cardGlow)"/><path d="M0-26C14-10 14 12 0 12S-14-10 0-26Z" fill="#bfeaff"/><path d="M-6 0h4M-4-2v4M4 0h4M6-2v4" stroke="#1d4a7a" stroke-width="1.5"/></g><g transform="translate(44 64) scale(.8)">${LUMI_SVG}</g><path d="M70 60h-8" stroke="#bfeaff" stroke-dasharray="2 3" stroke-width="2"/>` },
+  mobj: { title: "Jellyglows", text: "Glowing jellies bob up and down the shafts of Coral Depths. Their sting costs light. Time your way past.",
+    art: `<path d="M80 10v92" stroke="#ff9fcf" stroke-dasharray="3 6" stroke-width="2"/><g transform="translate(80 48)"><path d="M-18 0A18 18 0 0 1 18 0Q0 8 -18 0" fill="#ffb3dc"/><path d="M-10 4v18M0 6v20M10 4v18" stroke="#ffb3dc" stroke-width="2.5"/><circle cx="-5" cy="-6" r="3" fill="#fff"/><circle cx="5" cy="-6" r="3" fill="#fff"/></g><g transform="translate(36 80) scale(.7)">${LUMI_SVG}</g>` },
+  long: { title: "Long songs", text: "Hold your finger still to charge a long, low song. It travels much further, but uses more of Lumi's light. Tap for a quick song as before.",
+    art: `<g fill="none" stroke-linecap="round"><circle cx="80" cy="56" r="20" stroke="rgba(255,255,255,.15)" stroke-width="4"/><path d="M80 36a20 20 0 1 1-19 26" stroke="#ffe6a0" stroke-width="4"/><circle cx="80" cy="56" r="40" stroke="#7ee8ff" stroke-opacity=".35" stroke-width="2"/><circle cx="80" cy="56" r="52" stroke="#7ee8ff" stroke-opacity=".18" stroke-width="2"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
+  echo: { title: "Echo crystals", text: "Violet crystals in the rock catch your song and sing it onward, carrying it around corners and into far tunnels.",
+    art: `<path d="M20 30h70v50" fill="none" stroke="#3a4656" stroke-width="18"/><g fill="#d6beff"><path d="M98 66l6 10-6 12-6-12z"/><path d="M110 60l5 9-5 10-5-10z"/></g><g transform="translate(40 56)">${LUMI_SVG}</g><g fill="none" stroke-width="2" stroke-linecap="round"><path d="M58 50a12 12 0 0 1 0 14" stroke="#7ee8ff"/><path d="M120 70a14 14 0 0 1 10 14" stroke="#b48cff"/><path d="M124 62a22 22 0 0 1 16 24" stroke="#b48cff" stroke-opacity=".6"/></g>` },
+  boss: { title: "The Great Gloom", text: "At the end of some worlds a huge, slow Gloomling waits. It hunts anything that sings nearby, and a touch costs a lot of light. Sing far from it.",
+    art: `<g fill="#120a20"><circle cx="100" cy="56" r="34"/><circle cx="122" cy="40" r="22"/><circle cx="78" cy="70" r="22"/></g><circle cx="90" cy="50" r="5" fill="#ff8cc8"/><circle cx="112" cy="50" r="5" fill="#ff8cc8"/><g transform="translate(32 70) scale(.8)">${LUMI_SVG}</g>` },
+  family: { title: "Lumi's family", text: "Somewhere in this world, one of Lumi's little lights is hiding. Find it and it joins Lumi's journal for good.",
+    art: `<g transform="translate(64 56)">${LUMI_SVG}</g><g transform="translate(104 60) scale(.6)"><circle r="17" fill="url(#cardGlow)"/><circle r="9" fill="#ffd1ea"/><circle cx="-3" cy="-1.5" r="1.4" fill="#123049"/><circle cx="3" cy="-1.5" r="1.4" fill="#123049"/></g><path d="M80 40c6-10 18-10 22 0" stroke="#ff9fb8" stroke-width="2" fill="none"/>` },
   race: { title: "Races", text: "Reach the portal before the clock runs out. Currents can help you, and in Relaxed mode there's no timer at all.",
     art: `<circle cx="64" cy="56" r="30" fill="none" stroke="#e9f3ff" stroke-width="3"/><path d="M64 56V36M64 56l13 8" stroke="#ffd36e" stroke-width="3" stroke-linecap="round"/><rect x="57" y="20" width="14" height="6" rx="2" fill="#e9f3ff"/><g stroke="#7ee8ff" stroke-width="2.5" fill="none" stroke-linecap="round"><path d="M108 44h30m-8-6 8 6-8 6"/><path d="M108 62h22m-8-6 8 6-8 6"/></g>` },
 };
+
+// The picture card a level should show first: its own, or one for the first new thing in it.
+function cardFor(i) {
+  const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
+  const wants = [def.card, i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
+    def.map[0].length > 11 && "tall"];
+  return wants.find(k => k && CARDS[k] && !seen[k]) || null;
+}
 
 let pendingLevel = 0;
 function startLevel(i, skip = false) {
@@ -131,7 +165,7 @@ function startLevel(i, skip = false) {
   const w = worldOf(i);
   save.story = save.story || {};
   save.cards = save.cards || {};
-  const card = i >= 0 && getLevel(i).card;
+  const card = i >= 0 && cardFor(i);
   if (!skipStory && i >= 0 && i % PER_WORLD === 0 && !save.story[w]) {
     save.story[w] = 1;
     persist();
@@ -140,7 +174,9 @@ function startLevel(i, skip = false) {
     $("storyScreen").style.setProperty("--world", `rgb(${th.rim.join(",")})`);
     $("storyNum").textContent = `World ${w + 1}`;
     $("storyName").textContent = worldName(w);
-    $("storyText").textContent = (w >= THEMES.length ? "The caves twist and change, but Lumi keeps singing. " : "") + STORY[w % STORY.length];
+    $("storyText").textContent = w === THEMES.length
+      ? `Lumi's song finally reached the surface, and for the first time it saw the real stars. ${Object.keys(save.family || {}).length ? "Its little lights gathered close." : ""} But far below, the caves were still singing, and Lumi went back down to listen.`
+      : (w > THEMES.length ? "The caves twist and change, but Lumi keeps singing. " : "") + STORY[w % STORY.length];
     $("storyGo").textContent = w === 0 ? "Begin" : "Continue";
     show("story");
     return;
@@ -165,8 +201,8 @@ function startLevel(i, skip = false) {
 function showLevelCard(i) {
   const card = $("levelCard"), th = themeOf(i);
   card.style.setProperty("--world", `rgb(${th.rim.join(",")})`);
-  $("lcNum").textContent = i === DAILY ? "Daily cave" : `Level ${i + 1}`;
-  $("lcName").textContent = i === DAILY ? dayKey() : L.def.name;
+  $("lcNum").textContent = isChallenge(i) ? levelLabel(i) : `Level ${i + 1}`;
+  $("lcName").textContent = i === DAILY ? dayKey() : i === WEEKLY ? `Week of ${dayKey(weekNumber() * 7 - 3)}` : L.def.name;
   card.classList.remove("on");
   void card.offsetWidth;  // restart the animation
   card.classList.add("on");
@@ -174,7 +210,7 @@ function showLevelCard(i) {
 
 function pause() {
   if (screen !== "play") return;
-  $("pauseSub").textContent = levelIndex === DAILY ? "Daily Cave" : `Level ${levelIndex + 1} · ${L.def.name}`;
+  $("pauseSub").textContent = isChallenge(levelIndex) ? levelLabel(levelIndex) : `Level ${levelIndex + 1} · ${L.def.name}`;
   $("pauseGoal").textContent = goalLine() || "Find every light, then swim into the portal";
   show("pause");
 }
@@ -237,9 +273,18 @@ function finish() {
   if (L.gloom.length) st.gloom++;
   if (L.goal === "rescue") st.rescues = (st.rescues || 0) + 1;
   if (L.gate && L.gate.open) st.gates = (st.gates || 0) + 1;
+  // Remember what's been met, for the journal.
+  save.found = save.found || {};
+  const flat = L.def.map.join("");
+  for (const [k, ch] of Object.entries(FIND)) if (ch.some(c => flat.includes(c))) save.found[k] = 1;
 
-  let newBest = "", streakMsg = "";
-  if (levelIndex === DAILY) {
+  let newBest = "", streakMsg = "", hadBest = false;
+  if (levelIndex === WEEKLY) {
+    save.weekly = save.weekly || {};
+    const wk = weekNumber(), prev = save.weekly[wk] || 0;
+    save.weekly[wk] = Math.max(prev, stars);
+    streakMsg = prev ? `Best this week: ${"★".repeat(save.weekly[wk])}` : "This week's cave, cleared!";
+  } else if (levelIndex === DAILY) {
     const d = save.daily, today = dayKey(), yesterday = dayKey(dayNumber() - 1);
     if (d.last !== today) {
       d.streak = d.last === yesterday ? d.streak + 1 : 1;
@@ -251,6 +296,7 @@ function finish() {
   } else {
     save.stars[levelIndex] = Math.max(save.stars[levelIndex] || 0, stars);
     const best = save.best[levelIndex];
+    hadBest = !!best;
     if (!best || L.pings < best.pings || (L.pings === best.pings && L.time < best.time)) {
       if (best) newBest = "New personal best!";
       save.best[levelIndex] = { pings: L.pings, time: Math.round(L.time * 10) / 10 };
@@ -273,10 +319,13 @@ function finish() {
   $("goal1").className = "ok";
   $("goal2").className = allLights ? "ok" : "";
   $("goal3").className = underPar ? "ok" : "";
-  $("nextBtn").textContent = levelIndex === DAILY ? "Done" : levelIndex === TOTAL - 1 ? "Level map" : "Next level";
+  $("nextBtn").textContent = isChallenge(levelIndex) ? "Done" : levelIndex === TOTAL - 1 ? "Level map" : "Next level";
+  const best = levelIndex >= 0 && save.best[levelIndex];
+  if (best && hadBest && !newBest && !streakMsg) $("newBest").textContent = `Best: ${best.pings} songs · ${Math.floor(best.time / 60)}:${String(Math.floor(best.time % 60)).padStart(2, "0")}`;
   const spans = $("resultStars").children;
   for (let k = 0; k < 3; k++) spans[k].className = "";
   show("result");
+  drawResultMap();
   for (let k = 0; k < 3; k++) {
     setTimeout(() => {
       spans[k].className = "show" + (k < stars ? " got" : "");
@@ -359,6 +408,13 @@ function renderTitle() {
   $("titleMeta").textContent = save.daily.streak && (doneToday || save.daily.last === dayKey(dayNumber() - 1))
     ? `Daily streak · ${save.daily.streak} day${save.daily.streak === 1 ? "" : "s"}` : "";
 }
+function renderChallenges() {
+  const d = save.daily, today = save.daily.last === dayKey(), wk = (save.weekly || {})[weekNumber()] || 0;
+  const daysLeft = 7 - ((dayNumber() + 3) % 7);
+  $("dailyInfo").textContent = today ? `Done today · ${d.streak} day streak` : d.streak && d.last === dayKey(dayNumber() - 1) ? `Keep your ${d.streak} day streak going` : "A new cave every day";
+  $("weeklyInfo").textContent = (wk ? `Best: ${"★".repeat(wk)} · ` : "Harder, with more to find · ") + `new cave in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+}
+
 function renderLooks() {
   const grid = $("looksGrid");
   grid.innerHTML = "";
@@ -387,6 +443,68 @@ function renderLooks() {
     grid.appendChild(b);
   });
 }
+// What the journal lists, and which map letters mean you've met it.
+const FIND = { crystals: ["c"], curtains: ["D"], currents: [">", "<", "^", "v"], moths: ["b"], snoozles: ["z"], runes: ["r"],
+  echo: ["W"], babies: ["m"], gloom: ["g"], boss: ["B"], thorns: ["t"], snapvines: ["n"], bats: ["a"], crabs: ["k"], wisps: ["w"], jellies: ["j"] };
+const JOURNAL = [
+  ["crystals", "💎", "Crystals", "Keep glowing once your song touches them, and refill Lumi's light."],
+  ["curtains", "🎐", "Sound curtains", "Part for a few seconds when a song reaches them."],
+  ["currents", "🌊", "Currents", "Underground rivers that carry Lumi along."],
+  ["moths", "🦋", "Glow-moths", "Follow Lumi and make its light bigger."],
+  ["snoozles", "😴", "Snoozles", "Sleepy blobs. Their snores light up the walls nearby."],
+  ["runes", "🪨", "Rune stones", "Open stone gates when they hear a song from close by."],
+  ["echo", "🔮", "Echo crystals", "Catch a song and sing it onward around corners."],
+  ["babies", "🪽", "Baby moths", "Lost little moths that need help finding the portal."],
+  ["thorns", "🌰", "Thornlings", "Spiky patrollers that hide in the dark and rattle when near."],
+  ["snapvines", "🌿", "Snapvines", "Wall plants that shiver, then lunge at anything close."],
+  ["bats", "🦇", "Shardbats", "Crystal bats that swoop at songs they hear."],
+  ["crabs", "🦀", "Cinder Crabs", "Fiery crabs that dash along floors and pause at the ends."],
+  ["wisps", "❄️", "Frostwisps", "Ice ghosts that drift toward Lumi and freeze it on touch."],
+  ["jellies", "🪼", "Jellyglows", "Glowing jellies that bob through shafts and sting."],
+  ["gloom", "👀", "Gloomlings", "Shadows that drift through rock and chase songs."],
+  ["boss", "🌑", "The Great Gloom", "A huge, slow shadow that guards the end of some worlds."],
+];
+function renderJournal() {
+  const fam = save.family || {}, got = Object.keys(fam).length;
+  let html = `<h3 class="journal-h">Lumi's family</h3><div class="family">`;
+  for (let w = 0; w < 8; w++) html += `<span class="${fam[w] ? "got" : ""}" title="World ${w + 1}"></span>`;
+  html += `</div><p class="journal-note">${got} of ${WORLDS} little lights found. One hides in every world, often off the main path.</p><h3 class="journal-h">Discoveries</h3><ul class="awards">`;
+  for (const [k, ico, name, desc] of JOURNAL) {
+    const seen = save.found && save.found[k];
+    html += `<li class="award${seen ? " done" : ""}"><span class="ico">${seen ? ico : "❔"}</span><span><span class="nm">${seen ? name : "Not found yet"}</span><br><span class="ds">${seen ? desc : "Keep exploring"}</span></span></li>`;
+  }
+  $("journal").innerHTML = html + "</ul>";
+}
+function awardsTab(journal) {
+  $("tabAwards").setAttribute("aria-selected", String(!journal));
+  $("tabJournal").setAttribute("aria-selected", String(journal));
+  $("awardsList").hidden = journal;
+  $("journal").hidden = !journal;
+  $("awardsCount").hidden = journal;
+  if (journal) renderJournal();
+}
+function renderHats() {
+  const grid = $("hatsGrid");
+  grid.innerHTML = "";
+  HATS.forEach((h, k) => {
+    const open = hatUnlocked(k), b = document.createElement("button");
+    b.className = "look" + ((save.hat || 0) === k ? " on" : "") + (open ? "" : " locked");
+    const c = document.createElement("canvas");
+    c.width = c.height = 92; c.style.width = c.style.height = "46px";
+    const cx = c.getContext("2d");
+    cx.translate(46, 54); cx.scale(2, 2);
+    cx.fillStyle = "#c9f6ff"; cx.beginPath(); cx.arc(0, 0, 12, 0, Math.PI * 2); cx.fill();
+    if (open) drawHat(k, 12, cx);
+    b.appendChild(c);
+    b.appendChild(document.createTextNode(open ? h.name : `🏆 ${h.need}`));
+    b.addEventListener("click", () => {
+      if (!open) { toast(`Earn <b>${h.need - awardsEarned()}</b> more awards to unlock the ${h.name.toLowerCase()}`); return; }
+      save.hat = k; persist(); sfx.moth(); renderHats();
+    });
+    grid.appendChild(b);
+  });
+}
+
 function renderAwards() {
   const list = $("awardsList");
   list.innerHTML = "";
@@ -410,8 +528,14 @@ function renderSettings() {
   $("setSfx").value = st.sfx;
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
+  $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
   $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
   $("setGlow").setAttribute("aria-pressed", String(!!st.glow));
+  $("setBigText").setAttribute("aria-pressed", String(!!st.bigText));
+  [...$("setControls").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === controlMode())));
+  [...$("setHand").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (st.hand || "right"))));
+  $("handRow").hidden = controlMode() === "stick";
+  applyLayoutPrefs();
   $("setUnlockAll").setAttribute("aria-pressed", String(!!st.unlockAll));
   $("testRow").hidden = !st.unlockAll && !testTaps.shown;
   $("saveCode").value = "";
@@ -422,6 +546,22 @@ function renderSettings() {
 let resetArmed = false;
 const testTaps = { n: 0, t: 0, shown: false };
 const saveCode = () => "ECHO1:" + btoa(unescape(encodeURIComponent(JSON.stringify(save))));
+
+async function shareMap() {
+  const c = $("resultMap");
+  try {
+    const blob = await new Promise(res => c.toBlob(res, "image/png"));
+    const file = new File([blob], "echo-cave-map.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Echo", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
+      return;
+    }
+    toast("Press and hold the map to save or share it");
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+    toast("Sharing pictures isn't available here");
+  }
+}
 
 async function shareGame() {
   const url = "https://erlan1126.github.io/Test/echo.html";
@@ -441,9 +581,15 @@ async function shareGame() {
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
 tap("playBtn", () => startLevel(nextUnplayed()));
 tap("levelsBtn", openMap);
-tap("dailyBtn", () => startLevel(DAILY));
-tap("looksBtn", () => { save.looksViewed = SKINS.filter((k, i) => skinUnlocked(i)).length; persist(); renderLooks(); show("looks"); });
-tap("awardsBtn", () => { renderAwards(); show("awards"); });
+tap("dailyBtn", () => { renderChallenges(); show("challenges"); });
+tap("playDaily", () => startLevel(DAILY));
+tap("playWeekly", () => startLevel(WEEKLY));
+tap("challengesBack", showTitle);
+tap("tabAwards", () => awardsTab(false));
+tap("tabJournal", () => awardsTab(true));
+tap("shareMapBtn", shareMap);
+tap("looksBtn", () => { save.looksViewed = SKINS.filter((k, i) => skinUnlocked(i)).length; persist(); renderLooks(); renderHats(); show("looks"); });
+tap("awardsBtn", () => { renderAwards(); awardsTab(false); show("awards"); });
 tap("settingsBtn", () => { backTo = "title"; renderSettings(); show("settings"); });
 tap("pauseSettings", () => { backTo = "pause"; renderSettings(); show("settings"); });
 tap("shareBtn", shareGame);
@@ -457,15 +603,15 @@ tap("pauseBtn", pause);
 tap("muteBtn", () => { muted = !muted; save.muted = muted; persist(); updateMute(); });
 tap("resumeBtn", resume);
 tap("restartBtn", () => startLevel(levelIndex));
-tap("quitBtn", () => (levelIndex === DAILY ? showTitle() : openMap()));
+tap("quitBtn", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("retryBtn", () => startLevel(levelIndex));
 tap("resultLevels", openMap);
 tap("failRetry", () => startLevel(levelIndex));
 tap("storyGo", () => startLevel(pendingLevel, { story: true }));
 tap("cardGo", () => startLevel(pendingLevel, { story: true, card: true }));
-tap("failMap", () => (levelIndex === DAILY ? showTitle() : openMap()));
+tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {
-  if (levelIndex === DAILY) showTitle();
+  if (isChallenge(levelIndex)) showTitle();
   else if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
   else openMap();
 });
@@ -473,8 +619,12 @@ $("setMusic").addEventListener("input", e => { save.settings.music = +e.target.v
 $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value; applyVolumes(); persist(); });
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
+tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); });
 tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
 tap("setRelaxed", () => { save.settings.relaxed = !save.settings.relaxed; persist(); renderSettings(); toast(save.settings.relaxed ? "Relaxed mode on. It starts with your next cave" : "Relaxed mode off"); });
+[...$("setControls").children].forEach(b => b.addEventListener("click", () => { save.settings.controls = b.dataset.v; persist(); renderSettings(); }));
+[...$("setHand").children].forEach(b => b.addEventListener("click", () => { save.settings.hand = b.dataset.v; persist(); renderSettings(); }));
+tap("setBigText", () => { save.settings.bigText = !save.settings.bigText; persist(); renderSettings(); });
 tap("setGlow", () => { save.settings.glow = !save.settings.glow; persist(); renderSettings(); });
 tap("setUnlockAll", () => { save.settings.unlockAll = !save.settings.unlockAll; persist(); renderSettings(); });
 // Tapping the Settings title five times shows the testing switch.
@@ -540,9 +690,10 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-window.__echo = { LEVELS, TOTAL, DAILY, getLevel, get L() { return L; }, get screen() { return screen; }, save, startLevel, ping, finish };
+window.__echo = { LEVELS, TOTAL, DAILY, WEEKLY, getLevel, get L() { return L; }, get screen() { return screen; }, save, startLevel, ping, finish };
 
 resize();
+applyLayoutPrefs();
 updateMute();
 showTitle();
 requestAnimationFrame(frame);

@@ -47,14 +47,29 @@ function drawCave() {
   const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
   blob(L.lumi.x, L.lumi.y, 1.15, 0.85 * shrink + L.lumi.sing * 0.5);
   for (const c of L.crystals) if (c.on) blob(c.x, c.y, 1.3, c.on * 0.6);
-  for (const o of L.lights) if (!o.got && (!L.dark || L.seen[o.i])) blob(o.x, o.y, 0.7, 0.3);
+  for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) blob(o.x, o.y, 0.7, 0.3);
   for (const r of L.runes) if (r.on) blob(r.x, r.y, 1.1, r.on * 0.5);
   if (L.baby) blob(L.baby.x, L.baby.y, 0.7, 0.4);
   for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4);
   if (!L.dark || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
+  for (const e of L.emitters || []) blob(e.x, e.y, e.r, e.a * (0.85 + 0.15 * Math.sin(clock * 2.3 + e.ph)));
+  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35);  // Frostwisps glow
   lctx.globalAlpha = 1;
 
-  // Scene: the painted cave, kept only where light falls.
+  // Scene: the painted cave, lit by nearby lights on the graphics chip where possible.
+  if (GLR && GLR.ok && save.settings.lighting !== false) {
+    const sdpr = Math.min(DPR, qualityCap >= 2 ? 2 : 1.25);
+    const ax = (OX - mx * TS) * sdpr, ay = (OY - my * TS) * sdpr;
+    const aw = (L.cols + mx * 2) * TS * sdpr, ah = (L.rows + my * 2) * TS * sdpr;
+    if (GLR.render(Math.round(W * sdpr), Math.round(H * sdpr), [ax, ay, aw, ah], [L.cols + mx * 2, L.rows + my * 2], sceneLights(mx, my), 0.62)) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(GLR.canvas, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      drawCaveDetails();
+      return;
+    }
+  }
   sctx.setTransform(1, 0, 0, 1, 0, 0);
   sctx.globalCompositeOperation = "source-over";
   sctx.clearRect(0, 0, scene.width, scene.height);
@@ -68,6 +83,31 @@ function drawCave() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(scene, 0, 0, canvas.width, canvas.height);
   ctx.restore();
+  drawCaveDetails();
+}
+
+// The lights that shade the cave this frame, nearest Lumi first: Lumi itself, then glowing
+// decorations, crystals, lights, the portal and glowing creatures. Positions are in art tiles.
+const LIGHT_RGB = { cyan: [0.55, 0.9, 1], gold: [1, 0.82, 0.5], violet: [0.75, 0.55, 1], pink: [1, 0.6, 0.85], green: [0.6, 1, 0.75], white: [1, 1, 1], ember: [1, 0.55, 0.3] };
+function sceneLights(mx, my) {
+  const out = [], lumi = L.lumi;
+  const look = SKINS[save.skin] && SKINS[save.skin].c ? SKINS[save.skin].c.map(v => v / 255) : [0.6, 0.92, 1];
+  const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
+  const bright = L.useEnergy ? 0.5 + 0.5 * Math.min(1, L.energy / 40) : 1;
+  out.push({ x: lumi.x + mx, y: lumi.y + my, r: (3.2 + L.moths.filter(m => m.following).length * 0.8) * bright * Math.max(shrink, 0.2), i: (1.25 + lumi.sing) * bright, c: look });
+  const add = (x, y, r, i, c) => { if (Math.abs(x - lumi.x) < 9 && Math.abs(y - lumi.y) < 12) out.push({ x: x + mx, y: y + my, r, i, c, d: Math.hypot(x - lumi.x, y - lumi.y) }); };
+  for (const e of L.emitters || []) add(e.x, e.y, e.r * 2.6, e.a * 2.4, LIGHT_RGB[e.color]);
+  for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
+  for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
+  if (!L.dark || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
+  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) add(m.x, m.y, 2, 0.6, LIGHT_RGB.cyan);
+  for (const m of L.moths) add(m.x, m.y, 1.6, 0.5, LIGHT_RGB.green);
+  out.sort((a, b) => (a.d || 0) - (b.d || 0));
+  return out;
+}
+
+function drawCaveDetails() {
+  const { cols } = L;
 
   ctx.globalCompositeOperation = "lighter";
   // Currents: slow ribbons of mist drifting downstream.
@@ -96,32 +136,48 @@ function drawCave() {
     const a = vis(m.i);
     if (a < 0.03) continue;
     const X = sx(m.x), Y = sy(m.y), r = m.s * TS;
-    glow(m.pink ? GLOW.pink : GLOW.green, X, Y - r * 1.7, r * 4.5, a * (0.35 + Math.sin(clock * 1.5 + m.ph) * 0.1));
+    glow(m.pink ? GLOW.pink : GLOW.green, X, Y - r * 1.7, r * 3.5, a * (0.22 + Math.sin(clock * 1.5 + m.ph) * 0.06));
   }
   ctx.globalCompositeOperation = "source-over";
   for (const m of L.shrooms) {
     const a = vis(m.i);
     if (a < 0.03) continue;
     const X = sx(m.x), Y = sy(m.y), r = m.s * TS;
-    const sway = Math.sin(clock * 0.9 + m.ph) * r * 0.08;
-    ctx.fillStyle = `rgba(200,222,240,${a * 0.8})`;
-    ctx.beginPath();
-    ctx.moveTo(X - r * 0.3, Y);
-    ctx.quadraticCurveTo(X - r * 0.12, Y - r * 0.8, X - r * 0.18 + sway, Y - r * 1.3);
-    ctx.lineTo(X + r * 0.18 + sway, Y - r * 1.3);
-    ctx.quadraticCurveTo(X + r * 0.12, Y - r * 0.8, X + r * 0.3, Y);
-    ctx.fill();
-    ctx.fillStyle = m.pink ? `rgba(255,140,200,${a})` : `rgba(110,240,210,${a})`;
-    ctx.beginPath();
-    ctx.moveTo(X - r + sway, Y - r * 1.2);
-    ctx.bezierCurveTo(X - r * 0.95 + sway, Y - r * 2.4, X + r * 0.95 + sway, Y - r * 2.4, X + r + sway, Y - r * 1.2);
-    ctx.quadraticCurveTo(X + sway, Y - r * 1.45, X - r + sway, Y - r * 1.2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${a * 0.55})`;
-    ctx.beginPath();
-    ctx.arc(X - r * 0.35 + sway, Y - r * 1.75, r * 0.14, 0, Math.PI * 2);
-    ctx.arc(X + r * 0.25 + sway, Y - r * 1.9, r * 0.1, 0, Math.PI * 2);
-    ctx.fill();
+    const sway = Math.sin(clock * 0.9 + m.ph) * r * 0.08, lean = (m.ph % 1 - 0.5) * r * 0.3;
+    // A soft dark spot where the stem meets the rock.
+    ctx.fillStyle = `rgba(0,0,0,${a * 0.35})`;
+    ctx.beginPath(); ctx.ellipse(X, Y + r * 0.05, r * 0.7, r * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    drawLit(X, Y - r * 1.2, r * 2.6, Math.min(1, a * 1.2), a, () => {
+      const tx = X + lean + sway, ty = Y - r * 1.3;
+      // Stem: pale, slightly curved and fibrous, darker at the base.
+      const sg = ctx.createLinearGradient(X, Y, tx, ty);
+      sg.addColorStop(0, "#5d5a52"); sg.addColorStop(1, "#d7d0bd");
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.moveTo(X - r * 0.26, Y + r * 0.04);
+      ctx.quadraticCurveTo(X - r * 0.1 + lean * 0.3, Y - r * 0.7, tx - r * 0.15, ty);
+      ctx.lineTo(tx + r * 0.15, ty);
+      ctx.quadraticCurveTo(X + r * 0.14 + lean * 0.3, Y - r * 0.7, X + r * 0.26, Y + r * 0.04);
+      ctx.fill();
+      // Gills under the cap.
+      ctx.fillStyle = m.pink ? "#4a2236" : "#1f3b36";
+      ctx.beginPath(); ctx.ellipse(tx, ty + r * 0.05, r * 0.92, r * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+      // Cap: a dome shaded from a lit crown to a dark rim.
+      const cg = ctx.createRadialGradient(tx - r * 0.3, ty - r * 0.75, r * 0.1, tx, ty - r * 0.3, r * 1.1);
+      if (m.pink) { cg.addColorStop(0, "#e7a1c2"); cg.addColorStop(0.55, "#a8507a"); cg.addColorStop(1, "#4d1e36"); }
+      else { cg.addColorStop(0, "#9fd8c4"); cg.addColorStop(0.55, "#3f8f7d"); cg.addColorStop(1, "#173d36"); }
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.moveTo(tx - r, ty);
+      ctx.bezierCurveTo(tx - r * 0.95, ty - r * 1.2, tx + r * 0.95, ty - r * 1.2, tx + r, ty);
+      ctx.quadraticCurveTo(tx, ty - r * 0.18, tx - r, ty);
+      ctx.fill();
+      // Glowing freckles.
+      ctx.fillStyle = m.pink ? "rgba(255,200,230,0.9)" : "rgba(200,255,235,0.9)";
+      for (const [ox, oy, s] of [[-0.42, -0.42, 0.09], [0.12, -0.7, 0.07], [0.5, -0.35, 0.06], [-0.1, -0.3, 0.05]]) {
+        ctx.beginPath(); ctx.arc(tx + ox * r, ty + oy * r, r * s, 0, Math.PI * 2); ctx.fill();
+      }
+    });
   }
 
   // Sound curtains: shimmering strands across the passage that part when the song arrives.
@@ -169,14 +225,23 @@ function drawThings() {
     const a = Math.max(c.on, vis(c.i) * 0.8, 0.05);
     const X = sx(c.x), Y = sy(c.y);
     if (c.on) glow(GLOW.violet, X, Y, T * 2.2, 0.35 * c.on + Math.sin(clock * 2 + c.x) * 0.05);
-    ctx.fillStyle = `rgba(210,180,255,${a})`;
-    ctx.beginPath();
-    ctx.moveTo(X, Y - T * 0.34); ctx.lineTo(X + T * 0.18, Y); ctx.lineTo(X, Y + T * 0.3); ctx.lineTo(X - T * 0.18, Y);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;
-    ctx.beginPath();
-    ctx.moveTo(X, Y - T * 0.2); ctx.lineTo(X + T * 0.07, Y); ctx.lineTo(X, Y + T * 0.12); ctx.lineTo(X - T * 0.07, Y);
-    ctx.closePath(); ctx.fill();
+    // A cut gem hovering and slowly turning: facets catch the light as it spins.
+    ctx.globalCompositeOperation = "source-over";
+    const bob = Math.sin(clock * 1.6 + c.x * 3) * T * 0.04, spin = Math.cos(clock * 0.9 + c.y * 2);
+    const top = Y - T * 0.34 + bob, mid = Y - T * 0.06 + bob, bot = Y + T * 0.3 + bob, w = T * 0.2;
+    const xs = [-1, -0.35, 0.35, 1].map(k => X + w * Math.sin(Math.asin(k) + spin * 0.6));
+    const faces = [[0, 1, "#4a2a86", "#2a1550"], [1, 2, "#d8c2ff", "#7a52c8"], [2, 3, "#8e68d8", "#3b2170"]];
+    for (const [i0, i1, cTop, cBot] of faces) {
+      if (xs[i1] <= xs[i0]) continue;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = cTop; ctx.beginPath(); ctx.moveTo(X, top); ctx.lineTo(xs[i0], mid); ctx.lineTo(xs[i1], mid); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = cBot; ctx.beginPath(); ctx.moveTo(xs[i0], mid); ctx.lineTo(X, bot); ctx.lineTo(xs[i1], mid); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(245,235,255,0.7)"; ctx.lineWidth = Math.max(1, T * 0.012);
+    ctx.beginPath(); ctx.moveTo(xs[0], mid); ctx.lineTo(xs[3], mid); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.white, xs[2] - w * 0.2, mid - T * 0.08, T * 0.12, a * (0.4 + 0.3 * Math.max(0, spin)));
   }
 
   // Portal: a slow vortex, always faintly visible so there's a goal.
@@ -199,7 +264,7 @@ function drawThings() {
     if (o.got) continue;
     const X = sx(o.x), Y = sy(o.y + Math.sin(clock * 2 + o.ph) * 0.06);
     const hc = save.settings.contrast;
-    const a = L.dark && !L.seen[o.i] ? vis(o.i) : Math.max(hc ? 0.7 : 0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
+    const a = L.hideLights && !L.seen[o.i] ? vis(o.i) : Math.max(hc ? 0.7 : 0.22 + Math.sin(clock * 3 + o.ph) * 0.1, vis(o.i));
     glow(GLOW.gold, X, Y, T * (hc ? 1.4 : 1.1), a * 0.8);
     glow(GLOW.white, X, Y, T * 0.28, a);
     if (hc) {
@@ -261,6 +326,15 @@ function drawThings() {
     }
   }
 
+  // Glowing decorations (crystals, lava, lanterns...) shimmer a little.
+  ctx.globalCompositeOperation = "lighter";
+  for (const e of L.emitters || []) {
+    if (sx(e.x) < -TS * 2 || sx(e.x) > W + TS * 2 || sy(e.y) < -TS * 2 || sy(e.y) > H + TS * 2) continue;
+    const fl = e.color === "gold" ? 0.75 + 0.25 * Math.sin(clock * 9 + e.ph) * Math.sin(clock * 3.1 + e.ph) : 0.8 + 0.2 * Math.sin(clock * 1.7 + e.ph);
+    glow(GLOW[e.color], sx(e.x), sy(e.y), TS * e.r * 0.9, e.a * 0.55 * fl);
+  }
+  ctx.globalCompositeOperation = "source-over";
+
   // Rune stones: a carved ring that lights up green once it hears a song from close by.
   for (const r of L.runes) {
     const X = sx(r.x), Y = sy(r.y), a = Math.max(vis(r.i), r.on, 0.12 + r.far * 0.5), rr = TS * 0.3;
@@ -318,10 +392,54 @@ function drawThings() {
     ctx.globalCompositeOperation = "source-over";
   }
 
+  // Thornlings: dark spiky urchins. Barely visible unless light reaches them.
+  for (const t of L.thorns) {
+    if (sx(t.x) < -TS * 2 || sx(t.x) > W + TS * 2 || sy(t.y) < -TS * 2 || sy(t.y) > H + TS * 2) continue;
+    const ti = Math.floor(t.y) * L.cols + Math.floor(t.x);
+    const a = Math.max(ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0, save.settings.contrast ? 0.7 : 0.07);
+    const X = sx(t.x), Y = sy(t.y), r = TS * 0.2, spin = t.ph * 0.6;
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.ember, X, Y, TS * 0.7, a * 0.35);
+    ctx.globalCompositeOperation = "source-over";
+    drawLit(X, Y, TS * 0.7, Math.min(1, a * 1.4 + 0.15), Math.min(1, a * 1.3), () => {
+    ctx.strokeStyle = "#ff7a6a";
+    ctx.lineWidth = Math.max(1.5, TS * 0.045);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const ang = spin + k * Math.PI / 5;
+      ctx.moveTo(X + Math.cos(ang) * r, Y + Math.sin(ang) * r);
+      ctx.lineTo(X + Math.cos(ang) * r * 1.9, Y + Math.sin(ang) * r * 1.9);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "#5a1d2a";
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffb3a8";
+    ctx.beginPath(); ctx.arc(X - r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.arc(X + r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  drawMobs();
+
+  // One of Lumi's little lights: a tiny pink Lumi, bobbing and peeking out of the dark.
+  if (L.family && !L.family.got) {
+    const f = L.family, X = sx(f.x), Y = sy(f.y + Math.sin(f.ph * 2) * 0.06), r = TS * 0.17;
+    const a = L.hideLights && !L.seen[f.i] ? vis(f.i) : Math.max(0.4, vis(f.i));
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.pink, X, Y, TS * 0.9, a * 0.6);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = Math.min(1, a + 0.2);
+    ctx.fillStyle = "#ffe3f1";
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#123049";
+    ctx.beginPath(); ctx.arc(X - r * 0.35, Y - r * 0.1, r * 0.13, 0, Math.PI * 2); ctx.arc(X + r * 0.35, Y - r * 0.1, r * 0.13, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   // Gloomlings.
   for (const g of L.gloom) {
     if (g.gone > 0) continue;
-    const X = sx(g.x), Y = sy(g.y), r = TS * 0.3, hunting = g.hunt > 0;
+    const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : 0.3), hunting = g.hunt > 0;
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.18);
     ctx.globalCompositeOperation = "source-over";
@@ -348,17 +466,48 @@ function drawThings() {
     ctx.globalCompositeOperation = "source-over";
   }
 
+  // Echo crystals: violet facets in the rock that flash when a song bounces off them.
+  for (const j of L.echoWalls) {
+    const a = Math.max(vis(j), save.settings.contrast ? 0.6 : 0);
+    const fl = L.echoFlash ? L.echoFlash.get(j) || 0 : 0;
+    if (a < 0.03 && fl <= 0) continue;
+    const X = sx((j % L.cols) + 0.5), Y = sy(((j / L.cols) | 0) + 0.5);
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.violet, X, Y, TS * (0.8 + fl), a * 0.35 + fl * 0.8);
+    ctx.globalCompositeOperation = "source-over";
+    // A cluster of shards growing out of a dark socket in the rock, each with a lit face, a
+    // shadowed face and a bright ridge.
+    drawLit(X, Y, TS * 0.6, Math.min(1, a + fl), Math.min(1, a * 1.1 + fl), () => {
+      ctx.fillStyle = "rgba(14,8,26,0.75)";
+      ctx.beginPath(); ctx.ellipse(X, Y + TS * 0.2, TS * 0.36, TS * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [ox, ang, len, wd] of [[-0.17, -0.45, 0.42, 0.09], [0.15, 0.4, 0.36, 0.08], [0, -0.05, 0.55, 0.11], [0.26, 0.85, 0.22, 0.06], [-0.28, -0.95, 0.24, 0.06]]) {
+        const bx = X + ox * TS, by = Y + TS * 0.2, dx = Math.sin(ang), dy = -Math.cos(ang);
+        const tx = bx + dx * len * TS, ty = by + dy * len * TS, nx = -dy * wd * TS, ny = dx * wd * TS;
+        const px = tx + dx * wd * 1.3 * TS, py = ty + dy * wd * 1.3 * TS;
+        for (const [s, c0, c1] of [[1, "#2c1650", "#cdb2ff"], [-1, "#160a2c", "#7a55c4"]]) {
+          const g = ctx.createLinearGradient(bx, by, px, py);
+          g.addColorStop(0, c0); g.addColorStop(1, c1);
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + nx * s, by + ny * s); ctx.lineTo(tx + nx * s * 0.8, ty + ny * s * 0.8); ctx.lineTo(px, py); ctx.closePath(); ctx.fill();
+        }
+        ctx.strokeStyle = `rgba(245,235,255,${0.5 + fl * 0.5})`; ctx.lineWidth = Math.max(1, TS * 0.012);
+        ctx.beginPath(); ctx.moveTo(bx + (tx - bx) * 0.3, by + (ty - by) * 0.3); ctx.lineTo(px, py); ctx.stroke();
+      }
+    });
+    if (fl > 0) L.echoFlash.set(j, Math.max(0, fl - 1 / 40));
+  }
+
   // Song wavefronts.
   ctx.globalCompositeOperation = "lighter";
   for (const w of L.waves) {
-    const fade = Math.max(0, 1 - w.r / (WAVE_RANGE + 1.5));
+    const fade = Math.max(0, 1 - w.r / (w.range + 1.5));
     for (let i = 0; i < L.n; i++) {
       const d = w.dist[i];
-      if (d > WAVE_RANGE + 0.5) continue;
+      if (d > w.range + 0.5) continue;
       const k = 1 - Math.abs(d - w.r) / 1.1;
       if (k <= 0) continue;
       const cx = sx((i % L.cols) + 0.5), cy = sy(((i / L.cols) | 0) + 0.5);
-      glow(GLOW.cyan, cx, cy, TS * 1.15, k * k * fade * 0.32);
+      glow(w.echo ? GLOW.violet : GLOW.cyan, cx, cy, TS * (w.long ? 1.4 : 1.15), k * k * fade * 0.32);
       if (k > 0.55) {
         // Bright sparkles ride the front of the wave, scattered a little within each tile.
         const h = (i * 7919 + Math.floor(w.r * 3)) % 97 / 97, h2 = (i * 104729) % 89 / 89;
@@ -375,10 +524,16 @@ function drawThings() {
 
   // Spores drifting up through the light, and Lumi's soft trail.
   ctx.globalCompositeOperation = "lighter";
+  const pt = PARTICLES[themeIndex(levelIndex)];
   for (const s of L.spores) {
     const ti = Math.floor(s.y) * L.cols + Math.floor(s.x);
-    const a = (ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0) * Math.sin(Math.PI * s.life / s.max);
-    glow(GLOW.white, sx(s.x), sy(s.y), TS * 0.09, a * 0.7);
+    let a = (ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0) * Math.sin(Math.PI * s.life / s.max);
+    if (pt.twinkle) a *= 0.5 + 0.5 * Math.sin(s.life * 7 + s.ph);
+    if (pt.bubble) {
+      ctx.strokeStyle = `rgba(190,240,255,${a * 0.6})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(sx(s.x), sy(s.y), TS * 0.06, 0, Math.PI * 2); ctx.stroke();
+    } else glow(GLOW[pt.glow], sx(s.x), sy(s.y), TS * 0.09, a * 0.7);
   }
   {
     const look0 = lumiLook(), tr = L.trail;
@@ -386,6 +541,28 @@ function drawThings() {
       const q = (k + 1) / tr.length;
       glow(look0.glow, sx(tr[k][0]), sy(tr[k][1]), TS * 0.32 * q, 0.22 * q * (L.useEnergy ? 0.5 + 0.5 * Math.min(1, L.energy / 40) : 1));
     }
+  }
+
+  // Where the player tapped, in tap-to-move mode.
+  if (L.tapMark && L.tapMark.t > 0) {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = `rgba(200,240,255,${L.tapMark.t * 0.7})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(sx(L.tapMark.x), sy(L.tapMark.y), TS * (0.45 - L.tapMark.t * 0.15), 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // Charging a long song: a ring that fills around Lumi.
+  if (L.charge > 0) {
+    const cx = sx(L.lumi.x), cy = sy(L.lumi.y), rr = TS * 0.62;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.lineWidth = Math.max(2, TS * 0.07);
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = L.charge >= 1 ? "rgba(255,230,160,0.95)" : "rgba(200,240,255,0.85)";
+    ctx.beginPath(); ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * L.charge); ctx.stroke();
+    ctx.globalCompositeOperation = "lighter";
+    if (L.charge >= 1) glow(GLOW.gold, cx, cy, rr * 1.6, 0.25 + Math.sin(clock * 10) * 0.1);
   }
 
   // Lumi.
@@ -398,7 +575,7 @@ function drawThings() {
   glow(look.glow, X, Y, TS * (1.3 + followers * 0.4) * Math.max(shrink, 0.2), (0.5 + lumi.sing) * bright);
   ctx.globalCompositeOperation = "source-over";
   if (R > 0.5) {
-    ctx.globalAlpha = 0.35 + 0.65 * bright;
+    ctx.globalAlpha = (0.35 + 0.65 * bright) * (L.invuln > 0 ? 0.55 + 0.45 * Math.sin(L.invuln * 40) : 1);
     const sq = lumi.squash * 0.18;
     const speed = Math.hypot(lumi.vx, lumi.vy), st = Math.min(0.12, speed * 0.028);
     ctx.save();
@@ -426,15 +603,29 @@ function drawThings() {
     ctx.beginPath();
     ctx.ellipse(0, 0, R * (1 + sq + st), R * (1 - sq - st * 0.7), speed > 0.3 ? lumi.look : 0, 0, Math.PI * 2);
     ctx.fill();
-    // Eyes look where Lumi swims.
+    // Eyes look where Lumi swims, and show its mood.
     const lx = Math.cos(lumi.look) * R * 0.22, ly = Math.sin(lumi.look) * R * 0.18;
+    const mood = L.mood || "";
     ctx.fillStyle = "#123049";
-    const eh = lumi.blink < 0 ? R * 0.04 : R * 0.17;
-    ctx.beginPath();
-    ctx.ellipse(-R * 0.32 + lx, -R * 0.08 + ly, R * 0.12, eh, 0, 0, Math.PI * 2);
-    ctx.ellipse(R * 0.32 + lx, -R * 0.08 + ly, R * 0.12, eh, 0, 0, Math.PI * 2);
-    ctx.fill();
-    if (lumi.blink >= 0) {
+    ctx.strokeStyle = "#123049";
+    ctx.lineWidth = Math.max(1, R * 0.09);
+    ctx.lineCap = "round";
+    if (mood === "happy") {
+      // Happy: eyes closed in little upside-down smiles.
+      ctx.beginPath();
+      ctx.arc(-R * 0.32 + lx, -R * 0.02 + ly, R * 0.12, Math.PI + 0.3, -0.3);
+      ctx.moveTo(R * 0.32 + lx + R * 0.115, -R * 0.06 + ly);
+      ctx.arc(R * 0.32 + lx, -R * 0.02 + ly, R * 0.12, Math.PI + 0.3, -0.3);
+      ctx.stroke();
+    } else {
+      const ew = mood === "scared" ? R * 0.15 : R * 0.12;
+      const eh = lumi.blink < 0 ? R * 0.04 : mood === "sleepy" ? R * 0.06 : mood === "scared" ? R * 0.2 : R * 0.17;
+      ctx.beginPath();
+      ctx.ellipse(-R * 0.32 + lx, -R * 0.08 + ly, ew, eh, 0, 0, Math.PI * 2);
+      ctx.ellipse(R * 0.32 + lx, -R * 0.08 + ly, ew, eh, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (lumi.blink >= 0 && mood !== "happy" && mood !== "sleepy") {
       // A tiny sparkle in each eye.
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.beginPath();
@@ -443,10 +634,14 @@ function drawThings() {
       ctx.fill();
       ctx.fillStyle = "#123049";
     }
-    if (lumi.sing > 0) {
+    if (lumi.sing > 0 || mood === "scared") {
       ctx.beginPath();
-      ctx.ellipse(lx * 0.8, R * 0.35 + ly, R * 0.12, R * 0.15 * Math.min(1, lumi.sing * 4), 0, 0, Math.PI * 2);
+      ctx.ellipse(lx * 0.8, R * 0.35 + ly, R * 0.12, R * 0.15 * (mood === "scared" ? 0.8 : Math.min(1, lumi.sing * 4)), 0, 0, Math.PI * 2);
       ctx.fill();
+    } else if (mood === "happy") {
+      ctx.beginPath();
+      ctx.arc(lx * 0.8, R * 0.18 + ly, R * 0.22, 0.2, Math.PI - 0.2);
+      ctx.stroke();
     } else {
       ctx.strokeStyle = "#123049";
       ctx.lineWidth = Math.max(1, R * 0.08);
@@ -459,9 +654,77 @@ function drawThings() {
     ctx.arc(-R * 0.58 + lx, R * 0.18 + ly, R * 0.12, 0, Math.PI * 2);
     ctx.arc(R * 0.58 + lx, R * 0.18 + ly, R * 0.12, 0, Math.PI * 2);
     ctx.fill();
+    drawHat(save.hat || 0, R);
     ctx.restore();
     ctx.globalAlpha = 1;
   }
+}
+
+// Creatures are drawn into a small side canvas first, then lit like the rock: the side facing
+// Lumi catches a warm highlight, the far side falls into shadow, and they dim where it's dark.
+const litBuf = document.createElement("canvas"), litCtx = litBuf.getContext("2d");
+function drawLit(X, Y, size, light, alpha, draw) {
+  const d = Math.min(DPR, 2), px = Math.ceil(size * 2 * d);
+  if (litBuf.width < px || litBuf.height < px) litBuf.width = litBuf.height = Math.max(px, 64);
+  litCtx.setTransform(1, 0, 0, 1, 0, 0);
+  litCtx.globalCompositeOperation = "source-over";
+  litCtx.globalAlpha = 1;
+  litCtx.clearRect(0, 0, px, px);
+  litCtx.setTransform(d, 0, 0, d, (size - X) * d, (size - Y) * d);
+  ctx = litCtx;
+  try { draw(); } finally { ctx = mainCtx; }
+  litCtx.setTransform(d, 0, 0, d, (size - X) * d, (size - Y) * d);
+  litCtx.globalAlpha = 1;
+  litCtx.globalCompositeOperation = "source-atop";
+  const ang = Math.atan2(sy(L.lumi.y) - Y, sx(L.lumi.x) - X), gx = Math.cos(ang) * size * 0.8, gy = Math.sin(ang) * size * 0.8;
+  const g = litCtx.createLinearGradient(X + gx, Y + gy, X - gx, Y - gy);
+  g.addColorStop(0, "rgba(255,244,226,0.28)");
+  g.addColorStop(0.42, "rgba(0,0,0,0)");
+  g.addColorStop(1, "rgba(4,5,16,0.68)");
+  litCtx.fillStyle = g;
+  litCtx.fillRect(X - size, Y - size, size * 2, size * 2);
+  litCtx.fillStyle = `rgba(4,5,14,${Math.max(0, 1 - light) * 0.6})`;
+  litCtx.fillRect(X - size, Y - size, size * 2, size * 2);
+  litCtx.globalCompositeOperation = "source-over";
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(litBuf, 0, 0, px, px, X - size, Y - size, size * 2, size * 2);
+  ctx.restore();
+}
+
+// The map on the results screen: rock you've seen, Lumi's route, and the lights.
+function drawResultMap() {
+  const c = $("resultMap"), th = themeOf(levelIndex);
+  const scale = Math.min(240 / L.cols, 120 / L.rows), w = L.cols * scale, h = L.rows * scale, d = Math.min(DPR, 2);
+  c.width = Math.round(w * d); c.height = Math.round(h * d);
+  c.style.width = w + "px"; c.style.height = h + "px";
+  const m = c.getContext("2d");
+  m.setTransform(d, 0, 0, d, 0, 0);
+  m.clearRect(0, 0, w, h);
+  for (let i = 0; i < L.n; i++) {
+    if (!L.seen[i]) continue;
+    const x = (i % L.cols) * scale, y = ((i / L.cols) | 0) * scale;
+    m.fillStyle = L.tile[i] === "#" ? `rgba(${th.rim.join(",")},0.35)` : "rgba(255,255,255,0.05)";
+    m.fillRect(x, y, scale + 0.5, scale + 0.5);
+  }
+  m.strokeStyle = "rgba(200,240,255,0.9)";
+  m.lineWidth = 2;
+  m.lineJoin = m.lineCap = "round";
+  m.beginPath();
+  L.path.forEach(([x, y], k) => (k ? m.lineTo(x * scale, y * scale) : m.moveTo(x * scale, y * scale)));
+  m.lineTo(L.exit.x * scale, L.exit.y * scale);
+  m.stroke();
+  for (const o of L.lights) {
+    m.fillStyle = o.got ? "#ffd36e" : "rgba(255,211,110,0.35)";
+    m.beginPath(); m.arc(o.x * scale, o.y * scale, Math.max(2.5, scale * 0.25), 0, Math.PI * 2); m.fill();
+  }
+  m.strokeStyle = "#b48cff";
+  m.beginPath(); m.arc(L.exit.x * scale, L.exit.y * scale, Math.max(3, scale * 0.3), 0, Math.PI * 2); m.stroke();
+  if (L.path.length) { m.fillStyle = "#ffffff"; m.beginPath(); m.arc(L.path[0][0] * scale, L.path[0][1] * scale, 2.5, 0, Math.PI * 2); m.fill(); }
+  // Shown as a picture so it can be pressed and held to save on phones.
+  const img = $("resultMapImg");
+  img.src = c.toDataURL("image/png");
+  img.style.width = w + "px"; img.style.height = h + "px";
 }
 
 let energyShown = -1;
@@ -529,6 +792,7 @@ function frame(now) {
   }
   clock += dt;
   if (L && (screen === "play" || (screen === "title" && L.demo))) update(dt);
+  if (L) stepArtJob(screen === "play" ? 5 : 10);
   drawBackground(dt);
   if (L) { drawCave(); drawThings(); }
   else drawTitle(dt);

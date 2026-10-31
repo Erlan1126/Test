@@ -39,6 +39,23 @@ function audio() {
       lp.type = "lowpass";
       lp.frequency.value = 2000;
       echoBus.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(master);
+      fb.gain.value = 0.28;
+      // A cave reverb: a long, darkening tail made from decaying noise.
+      const verb = AC.createConvolver(), len = Math.floor(AC.sampleRate * 2.8);
+      const ir = AC.createBuffer(2, len, AC.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        let lpState = 0;
+        for (let k = 0; k < len; k++) {
+          const p = k / len;
+          lpState += (Math.random() * 2 - 1 - lpState) * (0.55 - p * 0.45);  // darker as it fades
+          d[k] = lpState * Math.pow(1 - p, 2.6);
+        }
+      }
+      verb.buffer = ir;
+      const verbGain = AC.createGain();
+      verbGain.gain.value = 0.55;
+      echoBus.connect(verb); verb.connect(verbGain); verbGain.connect(master);
       applyVolumes();
       setInterval(musicTick, 60);
     } catch (e) { AC = null; }
@@ -59,6 +76,25 @@ function note(freq, o = {}) {
   osc.type = o.type || "sine";
   osc.frequency.setValueAtTime(freq, t);
   if (o.glide) osc.frequency.exponentialRampToValueAtTime(o.glide, t + dur);
+  // Bell tone: a second oscillator bends the first one's pitch, brightly at first, then fades.
+  if (o.fm) {
+    const mod = AC.createOscillator(), mg = AC.createGain();
+    mod.frequency.value = freq * o.fm;
+    mg.gain.setValueAtTime(freq * (o.fmDepth || 1.2), t);
+    mg.gain.exponentialRampToValueAtTime(1, t + dur * 0.7);
+    mod.connect(mg); mg.connect(osc.frequency);
+    mod.start(t); mod.stop(t + dur + 0.05);
+  }
+  // Chorus: a slightly detuned twin makes pads warm and wide.
+  if (o.chorus) {
+    const twin = AC.createOscillator();
+    twin.type = osc.type;
+    twin.frequency.value = freq;
+    twin.detune.value = o.chorus;
+    osc.detune.value = -o.chorus;
+    twin.connect(g);
+    twin.start(t); twin.stop(t + dur + 0.05);
+  }
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(vol, t + (o.attack || 0.008));
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -70,6 +106,13 @@ function note(freq, o = {}) {
   }
   osc.connect(g);
   const bus = o.music ? musicBus : sfxBus;
+  // Sounds from things to Lumi's left or right come from that side (best with headphones).
+  if (o.pan && AC.createStereoPanner) {
+    const p = AC.createStereoPanner();
+    p.pan.value = Math.max(-0.9, Math.min(0.9, o.pan));
+    out.connect(p);
+    out = p;
+  }
   out.connect(bus);
   if (o.echo !== 0) {
     const s = AC.createGain();
@@ -98,10 +141,11 @@ function musicTick() {
   const beat = 60 / 84 / 2;
   while (music.next < AC.currentTime + 0.3) {
     const k = music.step, t = music.next;
-    if (k % 16 === 0) [0, 2, 4].forEach((d, q) => note(pitch(d + music.bass[(k / 16) % 4], -1), { time: t + q * 0.05, dur: beat * 17, vol: 0.045, attack: 1.2, echo: 0.2, music: true }));
-    if (music.layers >= 1 && k % 4 === 0) note(pitch(music.bass[Math.floor(k / 16) % 4], -2), { time: t, dur: beat * 3, vol: 0.07, type: "triangle", echo: 0, music: true });
-    if (music.layers >= 2 && music.arp[k % 16] >= 0) note(pitch(music.arp[k % 16], 0), { time: t, dur: beat * 1.6, vol: music.layers >= 3 ? 0.03 : 0.02, echo: 0.6, music: true });
-    if (music.layers >= 3 && k % 2 === 0 && music.mel[(k / 2) % 32] >= 0) note(pitch(music.mel[(k / 2) % 32], 1), { time: t, dur: beat * 3, vol: 0.026, echo: 0.9, music: true });
+    // Warm pad chords swell in slowly; a soft bass; bell-like arpeggio and melody on top.
+    if (k % 16 === 0) [0, 2, 4].forEach((d, q) => note(pitch(d + music.bass[(k / 16) % 4], -1), { time: t + q * 0.07, dur: beat * 18, vol: 0.03, attack: 2, type: "sawtooth", chorus: 9, lowpass: 650, echo: 0.5, music: true }));
+    if (music.layers >= 1 && k % 4 === 0) note(pitch(music.bass[Math.floor(k / 16) % 4], -2), { time: t, dur: beat * 3.5, vol: 0.08, type: "triangle", lowpass: 400, attack: 0.03, echo: 0.1, music: true });
+    if (music.layers >= 2 && music.arp[k % 16] >= 0) note(pitch(music.arp[k % 16], 0), { time: t, dur: beat * 2.4, vol: music.layers >= 3 ? 0.028 : 0.018, fm: 2.01, fmDepth: 0.9, echo: 0.8, music: true });
+    if (music.layers >= 3 && k % 2 === 0 && music.mel[(k / 2) % 32] >= 0) note(pitch(music.mel[(k / 2) % 32], 1), { time: t, dur: beat * 4, vol: 0.024, fm: 3.5, fmDepth: 0.6, echo: 1, music: true });
     music.step++;
     music.next += beat;
   }
@@ -110,17 +154,37 @@ function musicTick() {
 const sfx = {
   ping(n) {
     const f = pitch(n % 7, 1);
-    note(f, { dur: 0.9, vol: 0.17, echo: 0.8 });
-    note(f * 2, { dur: 0.5, vol: 0.035, type: "triangle", echo: 0.5 });
+    note(f, { dur: 1.2, vol: 0.15, fm: 2.01, fmDepth: 1.4, echo: 0.9 });
+    note(f * 2, { dur: 0.6, vol: 0.03, type: "triangle", echo: 0.6 });
   },
+  longSong(n) {
+    const f = pitch(n % 5, 0);
+    note(f, { dur: 1.8, vol: 0.18, attack: 0.05, echo: 0.9 });
+    note(f * 1.5, { dur: 1.4, vol: 0.06, type: "triangle", attack: 0.08, echo: 0.8 });
+    note(f / 2, { dur: 1.6, vol: 0.07, attack: 0.1, echo: 0.5 });
+  },
+  echo(dx = 0) { note(pitch(4, 2), { dur: 0.8, vol: 0.04, type: "triangle", echo: 1, pan: dx / 6 }); },
+  charged() { note(pitch(7, 1), { dur: 0.25, vol: 0.05, echo: 0.3 }); },
   bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
   crystal() { note(pitch(4, 2), { dur: 1.2, vol: 0.06, echo: 0.9 }); note(pitch(6, 2), { at: 0.06, dur: 0.9, vol: 0.03, echo: 0.9 }); },
-  light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.6, vol: 0.1 })); },
+  light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.9, vol: 0.09, fm: 3.5, fmDepth: 0.8, echo: 0.8 })); },
   door() { note(196, { dur: 0.7, vol: 0.12, type: "sawtooth", lowpass: 600, attack: 0.08, glide: 294 }); },
   doorClose() { note(220, { dur: 0.4, vol: 0.06, type: "sawtooth", lowpass: 400, glide: 140, echo: 0.2 }); },
   moth() { note(1318.5, { dur: 0.25, vol: 0.06 }); note(1760, { at: 0.08, dur: 0.35, vol: 0.06 }); },
   grumble() { note(210, { dur: 0.45, vol: 0.13, type: "sawtooth", lowpass: 700, glide: 85, echo: 0.3 }); },
-  gloomWake() { note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
+  rattle(dx = 0, near = 0.5) {
+    for (let k = 0; k < 3; k++) note(900 + Math.random() * 500, { at: k * 0.045, dur: 0.035, vol: 0.02 + near * 0.05, type: "square", lowpass: 3000, echo: 0.1, pan: dx / 4 });
+  },
+  mob(kind, dx = 0) {
+    const pan = dx / 5;
+    if (kind === "n0") note(300, { dur: 0.35, vol: 0.05, type: "sawtooth", lowpass: 900, glide: 520, echo: 0.2, pan });
+    else if (kind === "n") note(180, { dur: 0.12, vol: 0.12, type: "square", lowpass: 1400, glide: 90, echo: 0.3, pan });
+    else if (kind === "a") { note(2400, { dur: 0.12, vol: 0.05, glide: 3400, echo: 0.6, pan }); note(2800, { at: 0.1, dur: 0.1, vol: 0.04, glide: 3800, echo: 0.6, pan }); }
+    else if (kind === "k") note(1200 + Math.random() * 400, { dur: 0.03, vol: 0.025, type: "square", lowpass: 2500, echo: 0.1, pan });
+    else if (kind === "w") [0, 4, 7].forEach((d, q) => note(pitch(d, 2), { at: q * 0.04, dur: 0.8, vol: 0.04, fm: 3.5, echo: 1, pan }));
+  },
+  snore(dx = 0) { note(150, { dur: 0.7, vol: 0.035, type: "triangle", lowpass: 500, attack: 0.25, glide: 110, echo: 0.3, pan: dx / 6 }); },
+  gloomWake(dx = 0, big = false) { if (big) { note(70, { dur: 1.6, vol: 0.14, type: "sawtooth", lowpass: 260, attack: 0.4, glide: 52, echo: 0.8, pan: dx / 6 }); return; } note(110, { dur: 0.9, vol: 0.09, type: "sawtooth", lowpass: 380, attack: 0.25, glide: 82, echo: 0.6 }); },
   hurt() { note(330, { dur: 0.35, vol: 0.12, type: "square", lowpass: 900, glide: 120, echo: 0.3 }); },
   lowEnergy() { note(98, { dur: 0.18, vol: 0.12, echo: 0 }); note(98, { at: 0.22, dur: 0.18, vol: 0.09, echo: 0 }); },
   fail() { [4, 3, 2, 0].forEach((d, i) => note(pitch(d, 0), { at: i * 0.18, dur: 0.7, vol: 0.09, type: "triangle" })); },
