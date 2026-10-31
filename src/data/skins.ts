@@ -19,7 +19,9 @@ export type SkinUnlock =
   /** Free once your best tower passes MILESTONES[at]. */
   | { at: number }
   /** Bought in the shop with stars. */
-  | { price: number };
+  | { price: number }
+  /** Earned by keeping a play streak this many days. */
+  | { streak: number };
 
 export interface Skin extends Look {
   id: string;
@@ -64,6 +66,15 @@ export const SKINS: Skin[] = [
   { id: "diamond", name: "Diamond Spire", unlock: { at: 8 }, kind: "ribbon",
     floors: ["#e4ebf5", "#cfdcef", "#f2f6fb", "#d9e4f3"],
     glass: "#9cc4ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.12, lit: ["#ffffff", "#e3f0ff"] },
+  // Streak skins, earned by playing day after day.
+  { id: "ember", name: "Ember", unlock: { streak: 7 }, kind: "ribbon",
+    floors: ["#5a1a12", "#6e2214", "#4a150f"],
+    glass: "#2a0d08", frame: "#ff7a3d", slab: "#3a100a", slabH: 0.1, neon: true,
+    lit: ["#ff7a3d", "#ffb13b", "#ff4f4f"], alwaysLit: true, swatch: ["#5a1a12", "#ff7a3d", "#ffb13b"] },
+  { id: "gilded", name: "Gilded", unlock: { streak: 30 }, kind: "punched",
+    floors: ["#f2c94c", "#e8b923", "#f7d774"],
+    glass: "#3b2a05", frame: "#fff3c4", slab: "#c99a14", slabH: 0.16, lit: ["#fff1b0", "#ffffff"],
+    swatch: ["#f2c94c", "#fff3c4", "#c99a14"] },
   // Shop skins, bought with stars.
   { id: "starlight", name: "Starlight", unlock: { price: 10 }, kind: "ribbon",
     floors: ["#1b2a5e", "#22336e", "#182553"],

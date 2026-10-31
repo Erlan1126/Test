@@ -9,6 +9,8 @@ Build the tallest skyscraper in the world, one tap at a time. Drop each floor so
 - **Weekly events:** a different twist each week, such as Golden Week, Ice Age or Calm Skies.
 - **Progress:** builder levels, missions, trophies, a growing island, island themes, 13 tower skins and a daily gift streak.
 - **Star shop:** spend stars on shop skins and one-tower boosts (extra rewind, double XP, gold rush). Stars are only earned by playing; there are no real-money purchases.
+- **Every day:** a 🔥 play streak with weekly freezes and milestone rewards (including two streak-only skins), three new missions each day with a chest for finishing them all, rent from your tower that fills up over 12 hours, coins to build your city (café, windmill, lighthouse, rocket pad and more), and a weekly league from Bronze to Legend.
+- **Leaderboards:** on the shared claude.ai page, everyone the game is shared with (as Contributors) shows up on today's Daily, weekly and all-time boards, with a rival to chase on the main menu. Elsewhere the leaderboard is hidden.
 - **Gentle start:** new players see only the Start button. Skins, missions, the daily tower, challenges, the shop and Zen open over the first few towers, each with a "New" badge.
 - **Your progress:** saved on the device. Settings → *Move your progress* gives a save code to load on another phone or browser. Your profile lists your 10 best towers.
 

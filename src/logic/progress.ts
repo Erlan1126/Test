@@ -4,11 +4,14 @@ import { fmt, listNames } from "../core/util";
 import { challengeById, CHALLENGES } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
 import { ISLAND_THEMES, ISLAND_UPGRADES, type IslandTheme } from "../data/islands";
-import { MISSION_KEYS, MISSION_TYPES, missionText } from "../data/missions";
+import { MISSION_TYPES, missionText } from "../data/missions";
 import { SKINS, type Skin } from "../data/skins";
 import { TROPHIES, type TrophyContext } from "../data/trophies";
 import { addXp, dayKey, dayNumber, landmarkIndex, runXp, xpNeeded } from "./rules";
+import { addLeague, allMissionsDone, dealMissions, refreshMissions, startRent, tickStreak } from "./daily";
 import { HISTORY_SIZE, type SaveData } from "./save";
+
+export { dealMissions };
 import type { Reward, RunSummary } from "./types";
 
 // ---------- Unlock checks ----------
@@ -16,6 +19,7 @@ import type { Reward, RunSummary } from "./types";
 export function isSkinUnlocked(save: SaveData, skin: Skin): boolean {
   if (!skin.unlock) return true;
   if ("price" in skin.unlock) return save.ownedSkins.includes(skin.id);
+  if ("streak" in skin.unlock) return save.streak.best >= skin.unlock.streak;
   return save.bestMeters > MILESTONES[skin.unlock.at].m;
 }
 
@@ -24,6 +28,7 @@ export const unlockedSkinCount = (save: SaveData): number => SKINS.filter(s => i
 export function skinUnlockText(skin: Skin): string {
   if (!skin.unlock) return "";
   if ("price" in skin.unlock) return `Buy it in the shop for ${skin.unlock.price} ★`;
+  if ("streak" in skin.unlock) return `Play ${skin.unlock.streak} days in a row`;
   const ms = MILESTONES[skin.unlock.at];
   return `Build taller than ${ms.name} (${ms.m} m)`;
 }
@@ -49,26 +54,15 @@ export function addStars(save: SaveData, n: number): void {
 
 // ---------- Missions ----------
 
-/** Fills empty mission slots. Missions get harder after every three finished. */
-export function dealMissions(save: SaveData, rng: () => number = Math.random): void {
-  while (save.missions.slots.length < 3) {
-    const taken = save.missions.slots.map(m => m.t);
-    const pool = MISSION_KEYS.filter(t => !taken.includes(t));
-    const t = pool[Math.floor(rng() * pool.length)];
-    const tier = Math.min(2, Math.floor(save.missions.done / 3));
-    save.missions.slots.push({ t, n: MISSION_TYPES[t].tiers[tier], r: tier + 1, p: 0 });
-  }
-}
-
 /** Swaps one mission for a new one, once per day. Returns false if already used today. */
 export function swapMission(save: SaveData, index: number, now = Date.now(), rng: () => number = Math.random): boolean {
-  if (save.profile.swapDay === dayKey(0, now) || !save.missions.slots[index]) return false;
+  if (save.profile.swapDay === dayKey(0, now) || !save.missions.slots[index] || save.missions.slots[index].d) return false;
   const old = save.missions.slots[index].t;
   save.missions.slots.splice(index, 1);
   // Deal until the replacement differs from the one swapped out (when possible).
   for (let tries = 0; tries < 8; tries++) {
     dealMissions(save, rng);
-    if (save.missions.slots[2].t !== old) break;
+    if (save.missions.slots[save.missions.slots.length - 1].t !== old) break;
     save.missions.slots.pop();
   }
   dealMissions(save, rng);
@@ -118,18 +112,26 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
       perfects: run.perfects, streak: run.bestStreak, height: run.meters, people: run.score, wind: run.windFloors,
       penthouse: run.penthouses, towers: 1, floors: run.floors, daily: run.mode === "daily" ? 1 : 0,
     };
-    const finished = save.missions.slots.filter(m => {
+    refreshMissions(save, now, rng);
+    for (const m of save.missions.slots) {
+      if (m.d) continue;
       m.p = MISSION_TYPES[m.t].game ? Math.max(m.p, got[m.t]) : m.p + got[m.t];
-      return m.p >= m.n;
-    });
-    save.missions.slots = save.missions.slots.filter(m => !finished.includes(m));
-    for (const m of finished) {
+      if (m.p < m.n) continue;
+      m.d = true;
       save.missions.done++;
       addStars(save, m.r);
       rewards.push({ kind: "star", text: `Mission complete: ${missionText(m)} (+${m.r} ★)` });
     }
-    dealMissions(save, rng);
+    if (allMissionsDone(save) && save.missions.chest !== dayKey(0, now)) {
+      rewards.push({ kind: "star", text: "All of today's missions done! Open your chest on the main menu" });
+    }
+    const tier = addLeague(save, run, now);
+    if (tier) rewards.push({ kind: "star", text: `You moved up to the ${tier} league this week!` });
   }
+
+  // Streak and rent: every tower counts, Zen too.
+  rewards.unshift(...tickStreak(save, now));
+  startRent(save, now);
 
   // Challenge, paid the first time it's won
   if (run.mode === "challenge" && run.challengeWon && run.challengeId && !save.challenges.includes(run.challengeId)) {
@@ -222,7 +224,7 @@ export function nearMiss(save: SaveData, run: RunSummary, newBest: boolean): str
   }
   const next = MILESTONES[landmarkIndex(run.meters) + 1];
   if (next && next.m - run.meters < 30) return `Just ${next.m - run.meters + 1} m short of ${next.name}!`;
-  const close = save.missions.slots.find(m => MISSION_TYPES[m.t].game && m.p / m.n >= 0.6 && m.p < m.n);
+  const close = save.missions.slots.find(m => !m.d && MISSION_TYPES[m.t].game && m.p / m.n >= 0.6 && m.p < m.n);
   if (close) return `Almost there: ${missionText(close)} (${fmt(close.p)} of ${fmt(close.n)})`;
   return "";
 }

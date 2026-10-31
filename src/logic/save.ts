@@ -4,6 +4,7 @@ import { MISSION_KEYS, type Mission } from "../data/missions";
 import { SKINS } from "../data/skins";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES } from "../data/islands";
+import { CITY } from "../data/daily";
 import type { Mode } from "./types";
 
 export interface Settings {
@@ -37,7 +38,7 @@ export interface SaveData {
   /** Skins bought in the shop. */
   ownedSkins: string[];
   boosts: Record<BoostId, number>;
-  missions: { slots: Mission[]; done: number; seen: number };
+  missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
     xp: number;
     level: number;
@@ -60,6 +61,15 @@ export interface SaveData {
   tutorialDone: boolean;
   /** Features whose "New" badge has been seen. */
   seenFeatures: string[];
+  /** Days in a row with at least one tower. */
+  streak: { count: number; best: number; last: string; freezes: number; freezeWeek: number; claimed: number[] };
+  /** Coins from island rent, spent on city buildings. */
+  coins: number;
+  rent: { last: number };
+  city: string[];
+  league: { week: number; points: number; lastWeek: number; lastPoints: number; rewarded: number };
+  /** A name shown on the leaderboard, chosen by the player. */
+  nickname: string;
 }
 
 export const SAVE_KEY = "skyrise.save.v2";
@@ -76,7 +86,7 @@ export function defaultSave(): SaveData {
     island: "meadow",
     ownedSkins: [],
     boosts: { rewind: 0, xp: 0, gold: 0 },
-    missions: { slots: [], done: 0, seen: 0 },
+    missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
       xp: 0, level: 1, towers: 0, floors: 0, perfects: 0, penthouses: 0, bestStreak: 0,
       dailyDays: [], trophies: [], gift: { last: "", streak: 0 }, swapDay: "",
@@ -87,6 +97,12 @@ export function defaultSave(): SaveData {
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false },
     tutorialDone: false,
     seenFeatures: [],
+    streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
+    coins: 0,
+    rent: { last: 0 },
+    city: [],
+    league: { week: 0, points: 0, lastWeek: 0, lastPoints: 0, rewarded: 0 },
+    nickname: "",
   };
 }
 
@@ -108,9 +124,14 @@ export function normalize(raw: unknown): SaveData {
   const r = obj(raw);
   const p = obj(r.profile), m = obj(r.missions), set = obj(r.settings), dl = obj(r.daily), b = obj(r.boosts), gift = obj(p.gift);
   const skinIds = SKINS.map(s => s.id), themeIds = ISLAND_THEMES.map(t => t.id);
+  const st = obj(r.streak), lg = obj(r.league);
   const slots: Mission[] = Array.isArray(m.slots)
     ? m.slots.map(obj).filter(s => MISSION_KEYS.includes(s.t as never))
-        .map(s => ({ t: s.t as Mission["t"], n: int(s.n, 1, 1), r: int(s.r, 1, 1, 3), p: num(s.p, 0) }))
+        .map(s => {
+          const ms: Mission = { t: s.t as Mission["t"], n: int(s.n, 1, 1), r: int(s.r, 1, 1, 3), p: num(s.p, 0) };
+          if (s.d === true) ms.d = true;
+          return ms;
+        })
         .slice(0, 3)
     : [];
   const history: RunRecord[] = Array.isArray(r.history)
@@ -130,7 +151,7 @@ export function normalize(raw: unknown): SaveData {
     island: themeIds.includes(r.island as string) ? (r.island as string) : d.island,
     ownedSkins: strList(r.ownedSkins, skinIds),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
-    missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0) },
+    missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {
       xp: num(p.xp, 0), level: int(p.level, 1, 1, 999), towers: int(p.towers, 0), floors: int(p.floors, 0),
       perfects: int(p.perfects, 0), penthouses: int(p.penthouses, 0), bestStreak: int(p.bestStreak, 0),
@@ -149,6 +170,20 @@ export function normalize(raw: unknown): SaveData {
     },
     tutorialDone: bool(r.tutorialDone, false),
     seenFeatures: strList(r.seenFeatures),
+    streak: {
+      count: int(st.count, 0), best: int(st.best, 0), last: str(st.last, ""),
+      freezes: int(st.freezes, 0, 0, 9), freezeWeek: int(st.freezeWeek, -1, -1),
+      claimed: Array.isArray(st.claimed) ? [...new Set(st.claimed.filter((x): x is number => Number.isInteger(x)))] : [],
+    },
+    coins: int(r.coins, 0),
+    rent: { last: num(obj(r.rent).last, 0) },
+    city: strList(r.city, CITY.map(c => c.id)),
+    league: {
+      week: int(lg.week, 0, -1e6), points: int(lg.points, 0), lastWeek: int(lg.lastWeek, 0, -1e6),
+      lastPoints: int(lg.lastPoints, 0), rewarded: int(lg.rewarded, 0, -1e6),
+    },
+    // Letters, digits, spaces and a little punctuation, up to 16 characters.
+    nickname: str(r.nickname, "", 64).replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 16),
   };
 }
 

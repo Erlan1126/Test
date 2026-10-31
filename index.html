@@ -51,6 +51,10 @@
   <span class="lv-bar"><i id="level-bar"></i></span>
   <span class="new-dot" hidden></span>
 </button>
+<button id="streak-btn" class="corner-btn streak-btn" hidden aria-label="Your play streak">
+  <span class="flame" aria-hidden="true">🔥</span><b id="streak-num">0</b>
+  <span class="new-dot" hidden></span>
+</button>
 <button id="stars-btn" class="corner-btn stars-btn" hidden aria-label="Stars and shop">
   <span class="star-ico" aria-hidden="true">★</span><b id="stars-num">0</b>
   <span class="new-dot" hidden></span>
@@ -75,8 +79,15 @@
   </div>
   <div class="menu-bottom">
     <div class="challenge-chip" id="menu-challenge" hidden></div>
-    <button type="button" class="gift-chip" id="gift-chip" hidden>Daily gift ready! Tap to claim</button>
+    <div class="chips" id="claim-chips">
+      <button type="button" class="gift-chip" id="gift-chip" hidden>🎁 Daily gift</button>
+      <button type="button" class="claim-chip" id="rent-chip" hidden></button>
+      <button type="button" class="claim-chip" id="chest-chip" hidden>🧰 Open today's chest</button>
+      <button type="button" class="claim-chip" id="league-chip" hidden></button>
+    </div>
     <button type="button" class="install-chip" id="install-chip" hidden>Install Skyrise as an app</button>
+    <button type="button" class="streak-line" id="streak-line" hidden></button>
+    <button type="button" class="rival-line" id="rival-line" hidden></button>
     <div class="chips">
       <div class="best-chip" id="menu-best" hidden></div>
       <div class="event-chip" id="event-chip" hidden></div>
@@ -90,21 +101,29 @@
       </button>
       <button type="button" class="tile" id="challenges-btn" hidden>
         <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
-        <b>Challenges</b><small id="challenges-sub"></small><span class="badge" hidden>New</span>
+        <b>Landmarks</b><small id="challenges-sub"></small><span class="badge" hidden>New</span>
       </button>
       <button type="button" class="tile" id="zen-btn" hidden>
         <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor"/></svg></span>
         <b>Zen</b><small>No failing</small><span class="badge" hidden>New</span>
       </button>
+      <button type="button" class="tile" id="ranks-btn" hidden>
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V12h4v8M10 20V6h4v14M16 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <b>Ranks</b><small id="ranks-sub"></small><span class="badge" hidden>New</span>
+      </button>
     </div>
     <div class="tiles" id="meta-tiles">
-      <button type="button" class="tile" id="skins-btn" hidden>
-        <span class="tile-ico swatch" id="skins-swatch" aria-hidden="true"></span>
-        <b>Skins</b><small id="skins-sub"></small><span class="badge" hidden>New</span>
-      </button>
       <button type="button" class="tile" id="missions-btn" hidden>
         <span class="tile-ico star" aria-hidden="true">★</span>
         <b>Missions</b><small id="missions-sub"></small><span class="badge" hidden>New</span><span class="dot" id="missions-dot" hidden></span>
+      </button>
+      <button type="button" class="tile" id="city-btn" hidden>
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13M13 10h3M13 14h3M13 18h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
+        <b>City</b><small id="city-sub"></small><span class="badge" hidden>New</span><span class="dot" id="city-dot" hidden></span>
+      </button>
+      <button type="button" class="tile" id="skins-btn" hidden>
+        <span class="tile-ico swatch" id="skins-swatch" aria-hidden="true"></span>
+        <b>Skins</b><small id="skins-sub"></small><span class="badge" hidden>New</span>
       </button>
       <button type="button" class="tile" id="shop-btn" hidden>
         <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
@@ -221,8 +240,69 @@
       </div>
     </div>
     <div class="mission-list" id="mission-list"></div>
-    <h3 class="sheet-sub">Your island</h3>
+    <div class="chest-card" id="chest-card"></div>
+    <h3 class="sheet-sub">Weekly league</h3>
+    <div class="league-card" id="league-card"></div>
+  </div>
+</div>
+
+<div id="streak" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="streak-title">
+  <div class="sheet narrow">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="streak-title">Play streak</h2><p id="streak-sub"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="streak-hero"><span class="streak-flame" aria-hidden="true">🔥</span><b id="streak-big">0</b><small>days in a row</small></div>
+    <p class="sheet-note" id="streak-note"></p>
+    <h3 class="sheet-sub">Streak rewards</h3>
+    <div class="streak-track" id="streak-track"></div>
+    <div class="reminder" id="reminder" hidden>
+      <h3 class="sheet-sub">Daily reminder</h3>
+      <p class="sheet-note">Add a daily reminder to your phone's calendar so you never lose your streak.</p>
+      <div class="reminder-row"><label for="reminder-time">Remind me at</label><input type="time" id="reminder-time" value="19:00"></div>
+      <button type="button" class="btn btn-secondary wide" id="reminder-btn">Add to my calendar</button>
+    </div>
+  </div>
+</div>
+
+<div id="city" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="city-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="city-title">Your city</h2><p id="city-balance"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="rent-card" id="rent-card"></div>
+    <h3 class="sheet-sub">Build with coins</h3>
+    <div class="shop-list" id="build-list"></div>
+    <h3 class="sheet-sub">Island upgrades from tall towers</h3>
     <div class="island-list" id="island-list"></div>
+  </div>
+</div>
+
+<div id="ranks" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="ranks-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="ranks-title">Leaderboard</h2><p id="ranks-sub2">Everyone this game is shared with</p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="seg tabs" role="tablist" aria-label="Leaderboard">
+        <button type="button" role="tab" data-tab="daily" aria-selected="true">Today's Daily</button>
+        <button type="button" role="tab" data-tab="week" aria-selected="false">This week</button>
+        <button type="button" role="tab" data-tab="best" aria-selected="false">All time</button>
+      </div>
+    </div>
+    <div class="rank-list" id="rank-list"></div>
+    <p class="sheet-note" id="ranks-note"></p>
+    <h3 class="sheet-sub">Your name on the board</h3>
+    <div class="nick-row">
+      <input type="text" id="nick" maxlength="16" placeholder="Your account name" autocomplete="nickname" spellcheck="false" aria-label="Leaderboard name">
+      <button type="button" class="btn btn-secondary" id="nick-save">Save</button>
+    </div>
   </div>
 </div>
 

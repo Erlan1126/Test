@@ -43,7 +43,20 @@ function walkerPos(w: (typeof WALKERS)[number]): [number, number, number] {
   return [x, w.side, t < 9 ? 1 : -1];
 }
 
+/** Where each city building stands (world units) and how much room it clears of trees. */
+export const BUILD_SPOTS: Record<string, { x: number; z: number; r: number }> = {
+  cafe: { x: 5.6, z: -10.6, r: 2 },
+  playground: { x: -11.5, z: -4.6, r: 2 },
+  statue: { x: 4, z: 11, r: 1.6 },
+  windmill: { x: 2.5, z: -13.2, r: 1.8 },
+  observatory: { x: -3, z: -12.6, r: 2 },
+  lighthouse: { x: -15.3, z: -15.3, r: 1.6 },
+  rocket: { x: 14.6, z: 5.6, r: 2 },
+};
+
 export class IslandLife {
+  /** City buildings the player has built. */
+  city: string[] = [];
   /** Which island upgrades are built (index into ISLAND_UPGRADES). */
   has: (i: number) => boolean = () => false;
   theme!: IslandTheme;
@@ -74,11 +87,227 @@ export class IslandLife {
   }
 
   /** Ground details and anything behind the tower. */
+  /** City buildings behind (or in front of) the tower. */
+  private drawCity(p: Paint, back: boolean): void {
+    for (const id of this.city) {
+      const s = BUILD_SPOTS[id];
+      if (!s || (s.x + s.z < 0) !== back) continue;
+      switch (id) {
+        case "cafe": this.cafe(p, s.x, s.z); break;
+        case "playground": this.playground(p, s.x, s.z); break;
+        case "statue": this.statue(p, s.x, s.z); break;
+        case "windmill": this.windmill(p, s.x, s.z); break;
+        case "observatory": this.observatory(p, s.x, s.z); break;
+        case "lighthouse": this.lighthouse(p, s.x, s.z); break;
+        case "rocket": this.rocket(p, s.x, s.z); break;
+      }
+    }
+  }
+
+  private shade(p: Paint): number {
+    return 1 - p.env.nf * 0.55;
+  }
+
+  private cafe(p: Paint, x: number, z: number): void {
+    const { ctx, view, env } = p, d = this.shade(p);
+    drawBlock(p, { x0: x - 1.1, x1: x + 1.1, z0: z - 0.8, z1: z + 0.8 }, 0, 0.75, [246, 226, 200], NEIGHBOR_LOOK);
+    // Striped awning along the front
+    for (let k = 0; k < 6; k++) {
+      const u0 = x - 1.1 + k * (2.2 / 6), u1 = u0 + 2.2 / 6;
+      const pts = [view.project(u0, 0.62, z + 0.8), view.project(u1, 0.62, z + 0.8), view.project(u1, 0.45, z + 1.25), view.project(u0, 0.45, z + 1.25)];
+      poly(p, pts, rgb(k % 2 ? [255, 255, 255] : [255, 90, 120], d));
+    }
+    // Little tables with parasols
+    for (const dx of [-0.6, 0.6]) {
+      const [tx, ty] = view.project(x + dx, 0.05, z + 1.9), r = 0.35 * view.s * view.zoom;
+      ctx.fillStyle = rgb([120, 90, 60], d);
+      ctx.fillRect(tx - 0.6, ty - r * 1.6, 1.2, r * 1.6);
+      ctx.fillStyle = rgb(dx < 0 ? [77, 171, 247] : [255, 212, 59], d);
+      ctx.beginPath(); ctx.ellipse(tx, ty - r * 1.6, r, r * 0.45, 0, Math.PI, 0); ctx.fill();
+    }
+    if (env.nf > 0.3) {
+      const [gx, gy] = view.project(x, 0.3, z + 1);
+      ctx.fillStyle = `rgba(255,214,140,${0.35 * env.nf})`;
+      ctx.beginPath(); ctx.arc(gx, gy, 1.4 * view.s * view.zoom, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  private playground(p: Paint, x: number, z: number): void {
+    const { ctx, view } = p, d = this.shade(p), P = (a: number, y: number, b: number) => view.project(a, y, b);
+    const [cx, cy] = P(x, 0.03, z);
+    const rx = 1.7 * Math.SQRT2 * ISO_X * view.s * view.zoom, ry = 1.7 * Math.SQRT2 * ISO_Y * view.s * view.zoom;
+    ctx.fillStyle = rgb([236, 210, 150], d);
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(1, 1.6 * view.zoom);
+    ctx.lineCap = "round";
+    // Swing frame with a swinging seat
+    ctx.strokeStyle = rgb([77, 171, 247], d);
+    const [a0x, a0y] = P(x - 0.9, 0, z - 0.5), [a1x, a1y] = P(x - 0.9, 0, z + 0.5), [t0x, t0y] = P(x - 0.9, 0.9, z), [b0x, b0y] = P(x + 0.4, 0, z - 0.5), [b1x, b1y] = P(x + 0.4, 0, z + 0.5), [t1x, t1y] = P(x + 0.4, 0.9, z);
+    ctx.beginPath();
+    ctx.moveTo(a0x, a0y); ctx.lineTo(t0x, t0y); ctx.lineTo(a1x, a1y);
+    ctx.moveTo(b0x, b0y); ctx.lineTo(t1x, t1y); ctx.lineTo(b1x, b1y);
+    ctx.moveTo(t0x, t0y); ctx.lineTo(t1x, t1y);
+    ctx.stroke();
+    const sw = Math.sin(p.env.time * 2.2) * 0.25;
+    const [hx, hy] = P(x - 0.25, 0.9, z), [sx, sy] = P(x - 0.25, 0.3, z + sw);
+    ctx.strokeStyle = rgb([80, 80, 90], d);
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(sx, sy); ctx.stroke();
+    ctx.fillStyle = rgb([255, 107, 107], d);
+    ctx.fillRect(sx - 3 * view.zoom, sy - 1, 6 * view.zoom, 2.5 * view.zoom);
+    // Slide
+    const [l0x, l0y] = P(x + 0.9, 0, z + 0.9), [l1x, l1y] = P(x + 0.9, 0.7, z + 0.9), [s1x, s1y] = P(x + 0.9, 0, z - 0.6);
+    ctx.strokeStyle = rgb([255, 212, 59], d);
+    ctx.lineWidth = Math.max(1.5, 2.6 * view.zoom);
+    ctx.beginPath(); ctx.moveTo(l1x, l1y); ctx.lineTo(s1x, s1y); ctx.stroke();
+    ctx.strokeStyle = rgb([120, 130, 150], d);
+    ctx.lineWidth = Math.max(1, 1.4 * view.zoom);
+    ctx.beginPath(); ctx.moveTo(l0x, l0y); ctx.lineTo(l1x, l1y); ctx.stroke();
+  }
+
+  private statue(p: Paint, x: number, z: number): void {
+    const { ctx, view, env } = p, d = this.shade(p);
+    drawBlock(p, { x0: x - 0.55, x1: x + 0.55, z0: z - 0.55, z1: z + 0.55 }, 0, 0.45, [200, 205, 215], NEIGHBOR_LOOK, { plain: true });
+    const [bx, by] = view.project(x, 0.45, z), h = 1.1 * view.th * view.zoom, w = h * 0.22;
+    const g = ctx.createLinearGradient(bx - w, by - h, bx + w, by);
+    g.addColorStop(0, rgb([255, 240, 170], d));
+    g.addColorStop(0.5, rgb([255, 200, 60], d));
+    g.addColorStop(1, rgb([190, 130, 20], d));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(bx - w, by); ctx.lineTo(bx - w * 0.8, by - h * 0.7); ctx.lineTo(bx + w * 0.8, by - h * 0.7); ctx.lineTo(bx + w, by);
+    ctx.closePath(); ctx.fill();
+    // A raised arm holding a little golden floor
+    ctx.strokeStyle = rgb([230, 170, 40], d);
+    ctx.lineWidth = Math.max(1.2, w * 0.45);
+    ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(bx + w * 0.6, by - h * 0.62); ctx.lineTo(bx + w * 1.3, by - h * 1.02); ctx.stroke();
+    ctx.fillRect(bx + w * 0.7, by - h * 1.12, w * 1.3, w * 0.5);
+    ctx.beginPath(); ctx.arc(bx, by - h * 0.82, w * 0.6, 0, Math.PI * 2); ctx.fill();
+    if (env.nf > 0.3) {
+      ctx.fillStyle = `rgba(255,220,120,${0.25 * env.nf})`;
+      ctx.beginPath(); ctx.arc(bx, by - h * 0.5, h * 0.7, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  private windmill(p: Paint, x: number, z: number): void {
+    const { ctx, view, env } = p, d = this.shade(p);
+    drawBlock(p, { x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5 }, 0, 2, [236, 230, 220], NEIGHBOR_LOOK, { plain: true });
+    poly(p, [view.project(x - 0.55, 2, z + 0.55), view.project(x + 0.55, 2, z + 0.55), view.project(x + 0.55, 2, z - 0.55), view.project(x, 2.8, z)], rgb([180, 70, 60], d));
+    const [hx, hy] = view.project(x + 0.2, 1.9, z + 0.6), L = 1.5 * view.s * view.zoom, a0 = env.time * 1.1;
+    for (let k = 0; k < 4; k++) {
+      const a = a0 + (k * Math.PI) / 2, c = Math.cos(a), s = Math.sin(a);
+      ctx.strokeStyle = rgb([110, 80, 60], d);
+      ctx.lineWidth = Math.max(1, 1.4 * view.zoom);
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + c * L, hy + s * L); ctx.stroke();
+      ctx.fillStyle = rgb([250, 248, 240], d * 0.95);
+      const px = -s, py = c, w = L * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(hx + c * L * 0.3, hy + s * L * 0.3);
+      ctx.lineTo(hx + c * L, hy + s * L);
+      ctx.lineTo(hx + c * L + px * w, hy + s * L + py * w);
+      ctx.lineTo(hx + c * L * 0.3 + px * w, hy + s * L * 0.3 + py * w);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = rgb([90, 70, 55], d);
+    ctx.beginPath(); ctx.arc(hx, hy, Math.max(1.5, 2.5 * view.zoom), 0, Math.PI * 2); ctx.fill();
+  }
+
+  private observatory(p: Paint, x: number, z: number): void {
+    const { ctx, view, env } = p, d = this.shade(p);
+    drawBlock(p, { x0: x - 1, x1: x + 1, z0: z - 1, z1: z + 1 }, 0, 0.8, [210, 214, 224], NEIGHBOR_LOOK, { plain: true });
+    const [cx, cy] = view.project(x, 0.8, z), r = 1.15 * Math.SQRT2 * ISO_X * view.s * view.zoom;
+    const g = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy);
+    g.addColorStop(0, rgb([255, 255, 255], d));
+    g.addColorStop(1, rgb([160, 170, 190], d));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.95, 0, Math.PI, 0); ctx.fill();
+    // The slit, with the telescope peeking out
+    ctx.fillStyle = rgb([40, 50, 80], d);
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.12, cy - r * 0.2); ctx.lineTo(cx - r * 0.05, cy - r * 0.93); ctx.lineTo(cx + r * 0.12, cy - r * 0.93); ctx.lineTo(cx + r * 0.12, cy - r * 0.2); ctx.fill();
+    ctx.strokeStyle = rgb([60, 70, 100], d);
+    ctx.lineWidth = Math.max(1.5, 3 * view.zoom);
+    ctx.beginPath(); ctx.moveTo(cx, cy - r * 0.55); ctx.lineTo(cx + r * 0.45, cy - r * 1.15); ctx.stroke();
+    if (env.nf > 0.4) {
+      ctx.fillStyle = `rgba(160,190,255,${0.5 * env.nf})`;
+      ctx.beginPath(); ctx.arc(cx + r * 0.45, cy - r * 1.15, 2.5 * view.zoom + 1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  private lighthouse(p: Paint, x: number, z: number): void {
+    const { ctx, view, env } = p, d = this.shade(p), H = 3.4;
+    const [bx, by] = view.project(x, 0, z), [tx, ty] = view.project(x, H, z), w0 = 0.65 * view.s * view.zoom, w1 = 0.42 * view.s * view.zoom;
+    for (let k = 0; k < 5; k++) {
+      const a = k / 5, b = (k + 1) / 5;
+      const ya = by + (ty - by) * a, yb = by + (ty - by) * b, wa = w0 + (w1 - w0) * a, wb = w0 + (w1 - w0) * b;
+      ctx.fillStyle = rgb(k % 2 ? [255, 255, 255] : [230, 60, 70], d);
+      ctx.beginPath(); ctx.moveTo(bx - wa, ya); ctx.lineTo(bx + wa, ya); ctx.lineTo(bx + wb, yb); ctx.lineTo(bx - wb, yb); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = rgb([60, 70, 90], d);
+    ctx.fillRect(tx - w1 * 1.2, ty - w1 * 0.25, w1 * 2.4, w1 * 0.3);
+    ctx.fillStyle = env.nf > 0.2 ? "#fff3b0" : rgb([200, 230, 255], d);
+    ctx.fillRect(tx - w1 * 0.7, ty - w1 * 1.2, w1 * 1.4, w1 * 0.95);
+    ctx.fillStyle = rgb([230, 60, 70], d);
+    ctx.beginPath(); ctx.moveTo(tx - w1, ty - w1 * 1.2); ctx.lineTo(tx, ty - w1 * 2); ctx.lineTo(tx + w1, ty - w1 * 1.2); ctx.fill();
+    if (env.nf > 0.2) {
+      // The sweeping beam
+      const a = env.time * 0.8, len = view.W * 0.6, sw = 0.12;
+      const g = ctx.createRadialGradient(tx, ty - w1 * 0.7, 0, tx, ty - w1 * 0.7, len);
+      g.addColorStop(0, `rgba(255,243,176,${0.5 * env.nf})`);
+      g.addColorStop(1, "rgba(255,243,176,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty - w1 * 0.7);
+      ctx.lineTo(tx + Math.cos(a - sw) * len, ty - w1 * 0.7 + Math.sin(a - sw) * len * 0.35);
+      ctx.lineTo(tx + Math.cos(a + sw) * len, ty - w1 * 0.7 + Math.sin(a + sw) * len * 0.35);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  private rocket(p: Paint, x: number, z: number): void {
+    const { ctx, view, env } = p, d = this.shade(p);
+    const [cx, cy] = view.project(x, 0.03, z), rx = 1.5 * Math.SQRT2 * ISO_X * view.s * view.zoom, ry = rx * 0.5;
+    ctx.fillStyle = rgb([150, 158, 172], d);
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgb([255, 212, 59], d);
+    ctx.lineWidth = Math.max(1, 1.4 * view.zoom);
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.7, ry * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+    // Every 45 seconds the rocket launches, climbs out of sight, and a new one is rolled out.
+    const t = env.time % 45, flight = t > 36 ? t - 36 : 0;
+    const lift = flight * flight * 0.9;
+    const h = 1.9 * view.th * view.zoom, w = h * 0.2, by = cy - lift * view.th * view.zoom;
+    if (flight > 0) {
+      for (let k = 0; k < 6; k++) {
+        const ph = (env.time * 3 + k / 6) % 1;
+        ctx.fillStyle = `rgba(235,235,240,${0.5 * (1 - ph)})`;
+        ctx.beginPath(); ctx.arc(cx + (k - 2.5) * w * 0.5 * ph * 2, cy - ph * w, w * (0.6 + ph * 1.4), 0, Math.PI * 2); ctx.fill();
+      }
+      const fl = ctx.createLinearGradient(cx, by, cx, by + w * 3);
+      fl.addColorStop(0, "rgba(255,240,150,0.95)");
+      fl.addColorStop(1, "rgba(255,90,40,0)");
+      ctx.fillStyle = fl;
+      ctx.beginPath(); ctx.moveTo(cx - w * 0.5, by); ctx.lineTo(cx, by + w * (3 + Math.sin(env.time * 40) * 0.4)); ctx.lineTo(cx + w * 0.5, by); ctx.fill();
+    }
+    if (by < -h) return;
+    ctx.fillStyle = rgb([220, 60, 70], d);
+    ctx.beginPath(); ctx.moveTo(cx - w, by); ctx.lineTo(cx - w * 1.6, by + w * 0.2); ctx.lineTo(cx - w, by - h * 0.3); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + w, by); ctx.lineTo(cx + w * 1.6, by + w * 0.2); ctx.lineTo(cx + w, by - h * 0.3); ctx.fill();
+    const g = ctx.createLinearGradient(cx - w, 0, cx + w, 0);
+    g.addColorStop(0, rgb([255, 255, 255], d));
+    g.addColorStop(1, rgb([190, 196, 210], d));
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - w, by - h * 0.8, w * 2, h * 0.8);
+    ctx.fillStyle = rgb([220, 60, 70], d);
+    ctx.beginPath(); ctx.moveTo(cx - w, by - h * 0.8); ctx.quadraticCurveTo(cx, by - h * 1.25, cx + w, by - h * 0.8); ctx.fill();
+    ctx.fillStyle = rgb([77, 171, 247], d);
+    ctx.beginPath(); ctx.arc(cx, by - h * 0.55, w * 0.45, 0, Math.PI * 2); ctx.fill();
+  }
+
   drawBack(p: Paint): void {
     if (this.has(1)) this.drawWaterfall(p);
     for (const [x, z, i] of BEDS) this.drawBed(p, x, z, i);
     for (const b of BENCHES) if (b[0] + b[1] < 0) this.drawBench(p, b[0], b[1], b[2]);
     this.drawFlag(p);
+    this.drawCity(p, true);
     this.drawWalkers(p, true);
     this.drawBirds(p, true);
   }
@@ -86,6 +315,7 @@ export class IslandLife {
   drawFront(p: Paint): void {
     for (const b of BENCHES) if (b[0] + b[1] >= 0) this.drawBench(p, b[0], b[1], b[2]);
     this.drawCart(p);
+    this.drawCity(p, false);
     this.drawWalkers(p, false);
     this.drawBirds(p, false);
   }

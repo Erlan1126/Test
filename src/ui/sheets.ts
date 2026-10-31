@@ -1,14 +1,13 @@
-// The pop-up sheets: skins, star shop, challenges, profile, missions, settings and the daily gift.
+// The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
 import { fmt } from "../core/util";
 import { CHALLENGES } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
-import { ISLAND_THEMES, ISLAND_UPGRADES } from "../data/islands";
-import { MISSION_TYPES, missionText } from "../data/missions";
+import { ISLAND_THEMES } from "../data/islands";
 import { BOOSTS, MAX_BOOSTS } from "../data/shop";
 import { SKINS, type Skin } from "../data/skins";
 import { TROPHIES } from "../data/trophies";
 import { isOpen, markSeen, type Feature } from "../logic/features";
-import { addStars, awardStandingTrophies, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, skinUnlockText, swapMission, themeUnlocked, unlockedSkinCount } from "../logic/progress";
+import { addStars, awardStandingTrophies, challengeOpen, currentTheme, isSkinUnlocked, skinUnlockText, themeUnlocked, unlockedSkinCount } from "../logic/progress";
 import { dayKey, giftAmount, giftState, GIFTS, xpNeeded } from "../logic/rules";
 import { exportCode, importCode, type SaveData } from "../logic/save";
 import { buyBoost, buySkin } from "../logic/shop";
@@ -38,7 +37,7 @@ export class Sheets {
   private loadArmed = false;
 
   constructor(private readonly host: Host) {
-    for (const id of ["skins", "shop", "challenges", "profile", "missions"]) wireModal($(id));
+    for (const id of ["skins", "shop", "challenges", "profile"]) wireModal($(id));
     wireModal($("settings"), () => this.closeSettings());
     $("gift-claim").addEventListener("click", () => this.claimGift());
     $("gift-later").addEventListener("click", () => { $("gift").hidden = true; this.host.refresh(); });
@@ -75,7 +74,8 @@ export class Sheets {
     grid.innerHTML = "";
     for (const st of SKINS) {
       const open = isSkinUnlocked(save, st), on = save.skin === st.id;
-      const b = this.skinCard(st, open, on, on ? "Equipped" : open ? "Tap to use" : isShopSkin(st) ? `<span class="price">${priceOf(st)} ★ in the shop</span>` : `Over ${MILESTONES[(st.unlock as { at: number }).at].m} m`);
+      const b = this.skinCard(st, open, on, on ? "Equipped" : open ? "Tap to use" : isShopSkin(st) ? `<span class="price">${priceOf(st)} ★ in the shop</span>`
+        : st.unlock && "streak" in st.unlock ? `🔥 ${st.unlock.streak}-day streak` : `Over ${MILESTONES[(st.unlock as { at: number }).at].m} m`);
       b.setAttribute("aria-label", open ? `${st.name}${on ? ", equipped" : ""}` : `${st.name}, locked. ${skinUnlockText(st)}`);
       b.addEventListener("click", () => {
         if (!open) {
@@ -264,39 +264,6 @@ export class Sheets {
     const [y, m, d] = day.split("-").map(Number);
     if (!y || !m || !d) return "";
     return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  }
-
-  // ---------- Missions ----------
-
-  openMissions(): void {
-    this.click();
-    this.seen("missions");
-    const save = this.save, refresh = !$("missions").hidden;
-    save.missions.seen = save.missions.done;
-    this.host.persist();
-    $("missions-count").textContent = `${save.missions.done} done · ${save.stars} ★ to spend`;
-    const canSwap = save.profile.swapDay !== dayKey(0);
-    const list = $("mission-list");
-    list.innerHTML = save.missions.slots.map((m, i) => `
-      <div class="mission">
-        <b>${esc(missionText(m))}</b>
-        <span class="reward-tag">+${m.r} ★</span>
-        <div class="m-bar"><i style="width:${Math.min(100, m.p / m.n * 100)}%"></i></div>
-        <small>${MISSION_TYPES[m.t].game ? `Best so far: ${fmt(Math.min(m.p, m.n))} of ${fmt(m.n)}` : `${fmt(Math.min(m.p, m.n))} of ${fmt(m.n)}`}</small>
-        ${canSwap ? `<button type="button" class="swap" data-i="${i}">Swap for a new mission (1 a day)</button>` : ""}
-      </div>`).join("");
-    list.querySelectorAll<HTMLButtonElement>(".swap").forEach(b => b.addEventListener("click", () => {
-      if (swapMission(save, Number(b.dataset.i))) this.host.persist();
-      this.openMissions();
-    }));
-    const lvl = islandLevel(save);
-    $("island-list").innerHTML = ISLAND_UPGRADES.map((u, i) => `
-      <div class="row-item${i < lvl ? " done" : ""}">
-        <span><b>${esc(u.name)}</b><small>Build taller than ${esc(MILESTONES[u.at].name)}</small></span>
-        <span class="state">${i < lvl ? "Built" : `${MILESTONES[u.at].m + 1} m`}</span>
-      </div>`).join("");
-    this.host.refresh();
-    if (refresh) $("missions").querySelector<HTMLElement>(".close-btn")!.focus(); else openModal($("missions"));
   }
 
   // ---------- Settings ----------

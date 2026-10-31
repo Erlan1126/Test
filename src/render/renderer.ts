@@ -30,6 +30,8 @@ export interface Frame {
   hudBottom: number;
   /** Your tallest tower, in floors, marked on screen while you play (0 for none). */
   bestFloors: number;
+  /** City buildings on the island. */
+  city: string[];
 }
 
 export class Renderer {
@@ -140,6 +142,7 @@ export class Renderer {
     env.climb = view.level * view.th * view.zoom;
     scenery.theme = f.theme;
     scenery.islandNow = f.islandLevel;
+    scenery.life.city = f.city;
 
     scenery.drawSky(p, n, dt);
 

@@ -44,13 +44,16 @@ describe("finishing a tower", () => {
     expect(isSkinUnlocked(s, SKINS.find(x => x.id === "aurora")!)).toBe(false);
   });
 
-  it("completes missions, pays stars and deals new ones", () => {
+  it("completes missions and pays stars", () => {
     const s = defaultSave();
+    s.missions.day = dayKey(0);
     s.missions.slots = [{ t: "towers", n: 1, r: 2, p: 0 }, { t: "height", n: 50, r: 1, p: 0 }, { t: "streak", n: 10, r: 3, p: 0 }];
     const out = recordRun(s, run({ meters: 60, bestStreak: 4 }), Date.now(), seeded(4));
     expect(out.rewards.filter(r => r.text.startsWith("Mission complete"))).toHaveLength(2);
     expect(s.missions.done).toBe(2);
+    // Finished missions stay on today's list, ticked off.
     expect(s.missions.slots).toHaveLength(3);
+    expect(s.missions.slots.filter(m => m.d)).toHaveLength(2);
     expect(s.missions.slots.find(m => m.t === "streak")!.p).toBe(4); // best so far
   });
 

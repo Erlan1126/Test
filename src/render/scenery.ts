@@ -5,7 +5,7 @@ import type { IslandTheme } from "../data/islands";
 import { NEIGHBOR_LOOK } from "../data/skins";
 import type { Box } from "../logic/rules";
 import { drawBlock } from "./buildings";
-import { IslandLife } from "./details";
+import { BUILD_SPOTS, IslandLife } from "./details";
 import { face, ISO_X, ISO_Y, poly, type Paint } from "./paint";
 
 /** A soft cloud sprite, drawn once and reused. */
@@ -375,6 +375,7 @@ export class Scenery {
     if (this.has(0) && near(FOUNTAIN.x, FOUNTAIN.z, 2)) return false;
     if (this.has(1) && near(POND.x, POND.z, POND.r + 1)) return false;
     if (this.has(4) && near(WHEEL.x, WHEEL.z, 3)) return false;
+    if (this.life.city.some(id => { const s = BUILD_SPOTS[id]; return s && near(s.x, s.z, s.r + 0.6); })) return false;
     if (this.has(2) && EXTRA_NEIGHBORS.some(b => t.x > b.x0 - 1 && t.x < b.x1 + 1 && t.z > b.z0 - 1 && t.z < b.z1 + 1)) return false;
     return true;
   }

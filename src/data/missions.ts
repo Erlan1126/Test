@@ -25,6 +25,8 @@ export interface Mission {
   r: number;
   /** Progress. */
   p: number;
+  /** Done today (missions stay on the list, ticked, until tomorrow's set). */
+  d?: boolean;
 }
 
 export const missionText = (m: Mission): string => MISSION_TYPES[m.t].text(m.n);
