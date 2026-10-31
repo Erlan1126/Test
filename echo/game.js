@@ -80,24 +80,13 @@ function loadLevel(i, demo = false) {
   }
   let seed = ((i + 1000003) * 9973) % 2147483647 || 1;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  L.spikes = new Array(n).fill(null);
   L.shrooms = [];
   const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     const i2 = y * cols + x;
-    if (L.tile[i2] !== ".") continue;
-    const sp = [];
-    if (rock(x, y - 1)) {
-      if (rnd() < 0.4) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y, dir: 1, len: 0.24 + rnd() * 0.08, w: 0.15 + rnd() * 0.07 });
-    }
-    if (rock(x, y + 1)) {
-      if (rnd() < 0.18) sp.push({ x: x + 0.25 + rnd() * 0.5, base: y + 1, dir: -1, len: 0.16 + rnd() * 0.06, w: 0.14 + rnd() * 0.05 });
-      else if (rnd() < 0.32) {
-        const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.25 + rnd() * 0.4;
-        for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.22, y: y + 1.06, s: q ? 0.09 + rnd() * 0.03 : 0.13 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
-      }
-    }
-    if (sp.length) L.spikes[i2] = sp;
+    if (L.tile[i2] !== "." || !rock(x, y + 1) || rnd() >= 0.26) continue;
+    const k = 1 + Math.floor(rnd() * 2), x0 = x + 0.25 + rnd() * 0.4;
+    for (let q = 0; q < k; q++) L.shrooms.push({ x: x0 + q * 0.22, y: y + 1.06, s: q ? 0.09 + rnd() * 0.03 : 0.13 + rnd() * 0.04, pink: rnd() < 0.35, i: i2, ph: rnd() * 6 });
   }
   planDecor();
   mood = MOODS[themeIndex(i)];

@@ -265,20 +265,6 @@ function levelShape() {
   };
   const seed = levelIndex * 37.1 + 5;
   const bare = (tx, ty) => sample(tx, ty) + (vnoise(tx * 1.7 + seed, ty * 1.7) - 0.5) * 0.24 + (vnoise(tx * 4.3, ty * 4.3 + seed) - 0.5) * 0.08;
-  // Each spike starts where the painted rock really ends (which wanders from the tile edge,
-  // most of all near corners); a spike with no rock close behind it isn't grown at all.
-  for (let k = 0; k < L.spikes.length; k++) {
-    const sp = L.spikes[k];
-    if (!sp) continue;
-    const keep = sp.filter(s => {
-      for (let q = 0; q <= 45; q++) {
-        const yy = s.base + s.dir * 0.3 - s.dir * q * 0.02;
-        if (bare(s.x - s.w * 0.7, yy) >= TH && bare(s.x + s.w * 0.7, yy) >= TH) { s.base = yy + s.dir * 0.02; return true; }
-      }
-      return false;
-    });
-    L.spikes[k] = keep.length ? keep : null;
-  }
   const at = (tx, ty) => {
     let v = sample(tx, ty);
     // The shape noise moves the field by at most 0.16, and rock shading stops changing 0.3
@@ -290,17 +276,6 @@ function levelShape() {
     if (ix >= 0 && iy >= 0 && ix < cols && iy < rows && L.tile[iy * cols + ix] === "#") {
       const core = 1 - Math.hypot(tx - ix - 0.5, ty - iy - 0.5) / 0.4;
       if (core > 0) v = Math.max(v, TH - 0.06 + core * 0.3);
-    }
-    if (ix >= 0 && iy >= 0 && ix < cols && iy < rows) {
-      const sp = L.spikes[iy * cols + ix];
-      // Stalactites and stalagmites grow out of the rock: their roots reach back into it, so
-      // there's never a gap between a spike and the wall it hangs from.
-      if (sp) for (const s of sp) {
-        const dy = (ty - s.base) * s.dir;
-        if (dy < -0.4 || dy > s.len) continue;
-        const hw = s.w * (dy < 0 ? 1.2 : Math.pow(1 - dy / s.len, 0.75) + 0.1), dx = Math.abs(tx - s.x);
-        if (dx < hw) v = Math.max(v, TH - 0.03 + 0.3 * (1 - dx / hw));
-      }
     }
     return v;
   };
@@ -348,6 +323,18 @@ function stepArtJob(budgetMs) {
   }
 }
 
+// What grows on each world's rock: colour and strength on top of ledges, and under them.
+const SURFACES = [
+  { top: [70, 118, 150, 0.45], under: [40, 70, 100, 0.25] },   // Moonlit Grotto: wet, glinting stone
+  { top: [62, 128, 58, 0.95], under: [38, 92, 52, 0.6] },     // Mossy Hollow: thick moss, dripping moss below
+  { top: [118, 86, 170, 0.4], under: [70, 50, 110, 0.3] },    // Amethyst Deep: crystal dust
+  { top: [74, 62, 58, 0.6], under: [56, 30, 24, 0.35] },      // Ember Caverns: ash on ledges, scorched below
+  { top: [222, 236, 250, 0.95], under: [160, 200, 230, 0.5] },// Frost Tunnels: snow on top, frost below
+  { top: [52, 128, 112, 0.75], under: [120, 70, 110, 0.4] },  // Coral Depths: algae and sponge
+  { top: [128, 106, 70, 0.5], under: [80, 64, 42, 0.3] },     // Golden Mines: dust and grit
+  { top: [86, 70, 132, 0.45], under: [60, 40, 100, 0.35] },   // Starlight Abyss: violet frost
+];
+
 function* paintArt(target, sc, normTarget) {
   const w = Math.max(1, Math.round((L.cols + LM.mx * 2) * TS * sc)), h = Math.max(1, Math.round((L.rows + LM.my * 2) * TS * sc));
   target.width = w; target.height = h;
@@ -362,7 +349,7 @@ function* paintArt(target, sc, normTarget) {
   };
 
   const seed = levelIndex * 37.1 + 5;
-  const th = themeOf(levelIndex);
+  const th = themeOf(levelIndex), mat = SURFACES[themeIndex(levelIndex)];
   const inv = 1 / (TS * sc), ox = LM.mx, oy = LM.my;
   const f = new Float32Array(w * h);
   for (let py = 0; py < h; py++) {
@@ -434,6 +421,22 @@ function* paintArt(target, sc, normTarget) {
       let rr = ((th.rock[0] + (th.deep[0] - th.rock[0]) * depth) * t * detail) + th.rim[0] * hl;
       let rg = ((th.rock[1] + (th.deep[1] - th.rock[1]) * depth) * t * detail) + th.rim[1] * hl;
       let rb = ((th.rock[2] + (th.deep[2] - th.rock[2]) * depth) * t * detail) + th.rim[2] * hl;
+      // The world's own surface: moss, snow, ash... grows on the rock itself, thickest on
+      // ledges facing up, in clumps, so it always follows the stone exactly.
+      let fluff = 0;
+      if (mat && cover > 0) {
+        const up = (gy / m), clump = vnoise(tx * 1.4 + seed, ty * 1.4 - seed), edge = vnoise(tx * 6, ty * 6 + seed);
+        const band = 1 - smooth(TH + 0.04 + edge * 0.05, TH + 0.1 + edge * 0.1 + clump * 0.06, v);
+        const top = band * smooth(0.15, 0.6, up) * mat.top[3] * (0.55 + 0.45 * clump);
+        const under = band * smooth(0.2, 0.7, -up) * mat.under[3] * (0.4 + 0.6 * clump);
+        const side = band * (1 - Math.abs(up)) * mat.under[3] * 0.5 * smooth(0.45, 0.7, clump);
+        const grain = 0.75 + vnoise(tx * 23, ty * 23 + 3) * 0.5;
+        for (const [c, amt] of [[mat.top, top], [mat.under, under + side]]) {
+          if (amt <= 0) continue;
+          rr += (c[0] * grain * t - rr) * amt; rg += (c[1] * grain * t - rg) * amt; rb += (c[2] * grain * t - rb) * amt;
+        }
+        fluff = (top + under * 0.5) * (0.6 + grain * 0.4);
+      }
 
       const k = i * 4;
       D[k] = fr + (rr - fr) * cover;
@@ -441,7 +444,7 @@ function* paintArt(target, sc, normTarget) {
       D[k + 2] = fb + (rb - fb) * cover;
       D[k + 3] = 255;
       // Rock rises from its edge into a rounded, bumpy mass; the open cave behind is nearly flat.
-      hgt[i] = cover * (0.25 + 0.75 * depth) * (0.88 + (detail - 1) * 0.9) + tex * (0.02 + cover * 0.05);
+      hgt[i] = cover * (0.25 + 0.75 * depth) * (0.88 + (detail - 1) * 0.9) + tex * (0.02 + cover * 0.05) + fluff * 0.06;
       rk[i] = cover * 255;
     }
     if ((py & 7) === 7) yield;
