@@ -54,7 +54,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 **Levels**
 
 - 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
-- The first 19 levels are handmade, with only a two-level tutorial. After that something new arrives every level or two, each with a picture card: light energy (level 3), Thornlings (5), Hushlings (7), long songs (9), lost baby moths (9), quiet caves (11), rune stones (13), dark caves (15), big caves (17) and races (19). Echo crystals appear from level 25.
+- The first 19 levels are handmade, with only a two-level tutorial. After that something new arrives every level or two. New ideas get a picture card; new creatures are never announced (see below): light energy (level 3), Thornlings (5), Hushlings (7), long songs (9), lost baby moths (9), quiet caves (11), rune stones (13), dark caves (15), big caves (17) and races (19). Echo crystals appear from level 25.
 - The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Each one has its own name in its world's style, like "Whispering Fernway" or "Glimmering Geode", and each world ends with a "Heart of …" finale. A level only uses ideas that have already been introduced, and never more than three big ones at once.
 - Each world leans on its own ideas: Moonlit Grotto on Thornlings and Hushlings, Mossy Hollow on rescues, Amethyst Deep on rune gates, Ember Caverns on Hushlings and quiet caves, Frost Tunnels on dark caves and long climbs, Coral Depths on races and currents, Golden Mines on gates, curtains and climbs, and Starlight Abyss on Hushlings, darkness and races.
 - Generated caves come in four shapes: mazes, open caverns, chambers joined by tunnels, and long winding tunnels. **Big caves** are taller or (from level 101) wider than the screen, and the camera follows Lumi. In **dark caves** lights and the portal don't glow until your song finds them, and from World 3 lights stop glowing through the dark in every cave (Guiding glow brings that back).
@@ -78,7 +78,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
   - **Cinder Crabs** (Ember Caverns): fiery crabs that dash along floors and pause at each end.
   - **Frostwisps** (Frost Tunnels): ice ghosts that drift toward Lumi when they can see it; a touch freezes Lumi for a moment.
   - **Jellyglows** (Coral Depths): glowing jellies that bob up and down shafts.
-  Later worlds mix them. Each has a picture card the first time it appears, and a journal entry.
+  Later worlds mix them. Creatures are a surprise: there's no card beforehand. The first time Lumi comes face to face with one, its name and a one-line tip flash up mid-cave with a growl and a buzz, and it joins the journal.
 - **Thornlings** (from level 5): spiky creatures that patrol tunnels back and forth. They're nearly invisible in the dark, so sing to see them or listen for their rattle; touching one costs light. Their patrols never cross the start.
 - **Light energy** (from level 3): Lumi's light slowly fades, and singing uses a little. Lost lights, crystals and glow-moths refill it. If it runs out, you try the level again. The fade rate is matched to each cave's length, so a careful player always has enough.
 - **Rune stones and gates** (from level 13): a stone gate blocks the way until every rune stone has heard a song sung close by. A dotted ring shows how close you need to be.

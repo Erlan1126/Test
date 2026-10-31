@@ -151,11 +151,52 @@ const CARDS = {
 };
 
 // The picture card a level should show first: its own, or one for the first new thing in it.
+// Creatures are never announced: the first time Lumi comes face to face with one, its name
+// flashes up mid-cave (meetCreatures), and from then on it's in the journal.
+const CREATURES = { t: "thorns", g: "gloom", B: "boss", n: "mobn", a: "moba", k: "mobk", w: "mobw", j: "mobj" };
+const CREATURE_MEET = {  // name and a one-line tip
+  thorns: ["Thornling", "It patrols back and forth. Wait for a gap."],
+  gloom: ["Hushling", "It hunts songs. Sing less when it's near."],
+  boss: ["The Great Hush", "King of the Hushlings. Don't let it hear you."],
+  mobn: ["Snapvine", "It shivers before it snaps. Keep your distance."],
+  moba: ["Shardbat", "It swoops at songs it hears. Then it rests."],
+  mobk: ["Cinder Crab", "It dashes along the floor. Cross when it pauses."],
+  mobw: ["Frostwisp", "It drifts toward you. A touch freezes you."],
+  mobj: ["Jellyglow", "It bobs up and down its shaft. Time your swim."],
+};
+const CREATURE_CARDS = new Set(Object.values(CREATURES));
+
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
   const wants = [def.card, i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
     def.map[0].length > 11 && "tall"];
-  return wants.find(k => k && CARDS[k] && !seen[k]) || null;
+  return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
+}
+
+let encounterTimer = 0;
+function meetCreatures(dt) {
+  if (encounterTimer > 0 && (encounterTimer -= dt) <= 0) $("encounter").classList.remove("on");
+  if (L.demo || L.ending || L.failing || screen !== "play") return;
+  save.cards = save.cards || {};
+  // Met means close by and actually seen (in a dark cave, lit by a song or a light).
+  const near = (x, y) => {
+    const d = Math.hypot(x - L.lumi.x, y - L.lumi.y), i = Math.floor(y) * L.cols + Math.floor(x);
+    return d < 1.6 || (d < 3.4 && vis(i) > 0.3);
+  };
+  const met = [];
+  for (const t of L.thorns) if (near(t.x, t.y)) met.push("thorns");
+  for (const g of L.gloom) if (!g.gone && near(g.x, g.y)) met.push(g.big ? "boss" : "gloom");
+  for (const m of L.mobs) if (!(m.kind === "w" && m.cd > 0) && near(m.x, m.y)) met.push("mob" + m.kind);
+  const key = met.find(k => !save.cards[k]);
+  if (!key || encounterTimer > 0.5) return;
+  save.cards[key] = 1;
+  persist();
+  $("encounterName").textContent = CREATURE_MEET[key][0];
+  $("encounterTip").textContent = CREATURE_MEET[key][1];
+  $("encounter").classList.add("on");
+  encounterTimer = 3.6;
+  sfx.gloomWake(0, key === "boss");
+  buzz([40, 60, 40]);
 }
 
 let pendingLevel = 0;

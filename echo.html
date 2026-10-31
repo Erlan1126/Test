@@ -186,6 +186,26 @@
   #lightsPill { color: var(--gold); }
   #pingsPill small { color: var(--dim); font-size: 13px; }
 
+  /* The first time Lumi meets a creature: its name flashes up, unannounced. */
+  #encounter {
+    position: fixed;
+    left: 50%;
+    top: calc(118px + var(--top));
+    transform: translateX(-50%) scale(0.92);
+    width: max-content;
+    max-width: calc(100% - 32px);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s, transform 0.5s cubic-bezier(.2, 1.4, .4, 1);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+    z-index: 5;
+  }
+  #encounter.on { opacity: 1; transform: translateX(-50%) scale(1); }
+  #encounter small { display: block; font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: #ff9ad0; }
+  #encounter b { display: block; font-family: Cinzel, serif; font-weight: 600; font-size: 34px; color: var(--ink); margin: 2px 0 4px; }
+  #encounter span { display: block; font-size: 15px; color: var(--dim); }
+
   #hint {
     position: fixed;
     left: 50%;
@@ -402,6 +422,7 @@
 </div>
 <div id="energy" aria-hidden="true"><i></i></div>
 <div id="hint"></div>
+<div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
 <button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>

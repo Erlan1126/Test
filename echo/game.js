@@ -728,6 +728,7 @@ function update(dt) {
   }
 
   updateMobs(dt, ctl);
+  meetCreatures(dt);
 
   // Lumi's mood: scared when a Hushling hunts nearby, happy after a find, sleepy when dim.
   L.happy = Math.max(0, (L.happy || 0) - dt);
