@@ -21,7 +21,9 @@ export type SkinUnlock =
   /** Bought in the shop with stars. */
   | { price: number }
   /** Earned by keeping a play streak this many days. */
-  | { streak: number };
+  | { streak: number }
+  /** A premium skin, unlocked by buying the named product. */
+  | { product: string };
 
 export interface Skin extends Look {
   id: string;
@@ -75,6 +77,23 @@ export const SKINS: Skin[] = [
     floors: ["#f2c94c", "#e8b923", "#f7d774"],
     glass: "#3b2a05", frame: "#fff3c4", slab: "#c99a14", slabH: 0.16, lit: ["#fff1b0", "#ffffff"],
     swatch: ["#f2c94c", "#fff3c4", "#c99a14"] },
+  // Premium skins, bought with real money.
+  { id: "crystal", name: "Crystal Palace", unlock: { product: "skin_crystal" }, kind: "ribbon",
+    floors: ["#bfe9ff", "#d9f4ff", "#a8ddff", "#e8f9ff"],
+    glass: "#e6f9ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.1, lit: ["#e8fbff", "#b8f0ff", "#ffffff"], alwaysLit: true,
+    swatch: ["#bfe9ff", "#ffffff", "#7fd3ff"] },
+  { id: "sakura", name: "Sakura Spire", unlock: { product: "skin_sakura" }, kind: "punched",
+    floors: ["#f7b6cc", "#fbc8d8", "#f2a3bd", "#fdd6e2"],
+    glass: "#5a2a3a", frame: "#fff7fa", slab: "#c95f86", slabH: 0.14, lit: ["#ffd3a0", "#ffe7c4", "#ffb8c8"],
+    swatch: ["#f7b6cc", "#fff7fa", "#c95f86"] },
+  { id: "royal", name: "Royal Amethyst", unlock: { product: "skin_royal" }, kind: "punched",
+    floors: ["#4b2a7a", "#5a3290", "#42246c"],
+    glass: "#1e1236", frame: "#e7c25a", slab: "#e7c25a", slabH: 0.14, lit: ["#ffe08a", "#fff3c4"],
+    swatch: ["#4b2a7a", "#e7c25a", "#5a3290"] },
+  { id: "cyber", name: "Cyber City", unlock: { product: "skin_cyber" }, kind: "ribbon", neon: true,
+    floors: ["#0d0f1c", "#121528", "#0a0c16"],
+    glass: "#080a14", frame: "#1d2a4a", slab: "#05060c", slabH: 0.08,
+    lit: ["#00f0ff", "#ff2bd6", "#7cff4f"], alwaysLit: true, swatch: ["#0d0f1c", "#00f0ff", "#ff2bd6"] },
   // Shop skins, bought with stars.
   { id: "starlight", name: "Starlight", unlock: { price: 10 }, kind: "ribbon",
     floors: ["#1b2a5e", "#22336e", "#182553"],

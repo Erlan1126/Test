@@ -11,6 +11,9 @@ Build the tallest skyscraper in the world, one tap at a time. Drop each floor so
 - **Star shop:** spend stars on shop skins and one-tower boosts (extra rewind, double XP, gold rush). Stars are only earned by playing; there are no real-money purchases.
 - **Every day:** a 🔥 play streak with weekly freezes and milestone rewards (including two streak-only skins), three new missions each day with a chest for finishing them all, rent from your tower that fills up over 12 hours, coins to build your city (café, windmill, lighthouse, rocket pad and more), and a weekly league from Bronze to Legend.
 - **Leaderboards:** on the shared claude.ai page, everyone the game is shared with (as Contributors) shows up on today's Daily, weekly and all-time boards, with a rival to chase on the main menu. Elsewhere the leaderboard is hidden.
+- **Premium (real money):** cosmetic tower skins and islands plus a Founder's Pack, sold through Stripe Checkout via the small server in `server/` (see [server/README.md](server/README.md)). Until that server is set up, premium items show as "coming soon". Add `?testpay` to try the purchase flow without charging anything (it's disabled on a live site once real payments are on).
+- **World:** a large floating island that grows with your best tower, with houses, a farm, a lake, forests, waterfalls and crystals underneath; weather (rain with lightning, snow); planes, airships and satellites at their own altitudes; the next landmark's silhouette to race; and shader effects (bloom, light streaks, sun rays, tilt-shift, filmic color).
+- **Sound:** synthesized music that changes from day to night, ambience that follows your height (city and birds, crickets, wind), and a reverb room. No audio files.
 - **Gentle start:** new players see only the Start button. Skins, missions, the daily tower, challenges, the shop and Zen open over the first few towers, each with a "New" badge.
 - **Your progress:** saved on the device. Settings → *Move your progress* gives a save code to load on another phone or browser. Your profile lists your 10 best towers.
 
@@ -34,9 +37,12 @@ src/
   logic/     game rules with no DOM: the tower sim, saves, progression, shop, unlocks
   render/    canvas drawing: camera, sky and island, buildings, effects, previews
   ui/        DOM helpers and the pop-up sheets
+  payments.ts  premium purchases (test mode or Stripe through server/)
+  online.ts  leaderboards on the shared claude.ai page
   app.ts     the controller: screens, input and the frame loop
   sound.ts   synthesized sound effects and music (no audio files)
-tests/       Vitest tests for everything in logic/
+tests/       Vitest tests for everything in logic/ and the payment server
+server/      Cloudflare Worker for Stripe payments (deploy separately)
 public/      icons, manifest, link preview image, service worker
 ```
 

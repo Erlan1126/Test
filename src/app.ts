@@ -17,11 +17,15 @@ import { floorColor, lookFor } from "./render/buildings";
 import type { Debris } from "./render/effects";
 import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
+import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { $, closeModal, esc, openModalEl, replay, swatchHtml, toast, vibrate, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
+import { choosePayments, purchaseReturn } from "./payments";
+import { grantPurchase, newPlayerId, syncPurchases } from "./logic/premium";
+import { productById, type Product } from "./data/premium";
 import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
@@ -56,6 +60,7 @@ export class App implements DailyHost {
   save: SaveData;
   readonly sound: Sound;
   readonly online = new Online();
+  readonly payments = choosePayments();
   private readonly daily: DailySheets;
   private readonly storage = openStorage();
   private readonly canvas = $<HTMLCanvasElement>("game");
@@ -95,6 +100,7 @@ export class App implements DailyHost {
   constructor(logoSvg: string) {
     this.save = loadSave(this.storage);
     refreshMissions(this.save);
+    if (!this.save.playerId) this.save.playerId = newPlayerId();
     if (!isSkinUnlocked(this.save, skinById(this.save.skin))) this.save.skin = "glass";
     this.persist();
     this.tutorial = !this.save.tutorialDone;
@@ -103,6 +109,7 @@ export class App implements DailyHost {
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
+    void this.syncPurchases(purchaseReturn());
     // Leaderboards light up only where shared storage is available (the claude.ai page).
     void this.online.init().then(() => this.refresh());
 
@@ -133,6 +140,51 @@ export class App implements DailyHost {
   refresh(): void {
     if (this.state === "menu") this.renderMenu();
     else if (this.state === "over") this.renderCorners();
+  }
+
+  async buyPremium(product: Product): Promise<void> {
+    const pay = this.payments;
+    if (!pay) return;
+    this.sound.ensure();
+    const r = await pay.buy(product, this.save.playerId);
+    if (r === "ok" && !pay.live) {
+      // Test mode only: unlock right away. Real purchases unlock when the server confirms them.
+      grantPurchase(this.save, product.id);
+      this.persist();
+      this.sound.purchase();
+      toast(`Test purchase: ${product.name} unlocked. Nothing was charged.`);
+      this.refresh();
+    } else if (r === "error") {
+      toast("Couldn't open the checkout. Check your connection and try again.");
+    }
+  }
+
+  /** Asks the payment server what this player owns. After a checkout, Stripe's
+   *  confirmation can take a few seconds to arrive, so it checks a few times. */
+  private async syncPurchases(returned: "success" | "cancelled" | null): Promise<void> {
+    if (returned) {
+      // Tidy the address so a reload doesn't repeat this.
+      const u = new URL(location.href);
+      u.searchParams.delete("purchase");
+      history.replaceState(null, "", u.toString());
+      if (returned === "cancelled") toast("Purchase cancelled. You weren't charged.");
+      else toast("Thanks for supporting Skyrise! Unlocking your purchase…");
+    }
+    const pay = this.payments;
+    if (!pay?.live) return;
+    for (let attempt = 0; attempt < (returned === "success" ? 5 : 1); attempt++) {
+      if (attempt) await new Promise(r => setTimeout(r, 3000));
+      const owned = await pay.owned(this.save.playerId);
+      if (!owned) continue;
+      const added = syncPurchases(this.save, owned);
+      this.persist();
+      this.refresh();
+      if (added.length) {
+        this.sound.purchase();
+        toast(`Unlocked: ${added.map(id => productById(id)?.name ?? id).join(", ")}`);
+        return;
+      }
+    }
   }
 
   postScores(): void {
@@ -244,6 +296,9 @@ export class App implements DailyHost {
     document.addEventListener("visibilitychange", () => { if (document.hidden) this.pause(); });
     window.addEventListener("blur", () => this.pause());
     window.addEventListener("keydown", e => this.key(e));
+    window.addEventListener("skyrise:sheet", () => this.sound.whoosh());
+    this.renderer.weather.onThunder = () => this.sound.thunder();
+    window.addEventListener("skyrise:tab", () => this.sound.click());
 
     // Offer to install the game as an app (Chrome and Android). The chip appears once the
     // player has built a few towers.
@@ -338,6 +393,9 @@ export class App implements DailyHost {
       xpMultiplier: (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1),
     });
     this.renderer.fx.clear();
+    // Weather for this tower: snow on the snowy island, sometimes rain or snow elsewhere.
+    const r = Math.random(), snowy = currentTheme(this.save).id === "snow";
+    this.renderer.weather.set(snowy ? (r < 0.55 ? "snow" : "clear") : r < 0.16 ? "rain" : r < 0.22 ? "snow" : "clear");
     this.peek = false;
     $("unpeek").hidden = true;
     this.builtSkin = this.save.skin;
@@ -361,6 +419,7 @@ export class App implements DailyHost {
     this.sound.click();
     this.sound.duck(false);
     for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek"]) $(id).hidden = true;
+    this.renderer.weather.set("clear");
     this.peek = false;
     this.mode = "classic";
     this.challenge = null;
@@ -938,6 +997,9 @@ export class App implements DailyHost {
     }
     const active = this.state === "playing" || this.state === "paused" || this.state === "rescue";
     this.sound.intensity = active ? 1 + (sim.level >= 12 ? 1 : 0) + (sim.combo >= 5 ? 1 : 0) : 0;
+    // Ambience follows the camera: city and birds near the ground, wind higher up.
+    const lvl = this.state === "over" || this.state === "menu" ? 0 : sim.level;
+    this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(sim.stack.length), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
     const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" ? "over" : "play";
     this.renderer.camera(dt, shot, sim.level, this.peek);

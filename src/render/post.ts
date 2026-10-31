@@ -60,6 +60,8 @@ uniform vec3 uFog;
 uniform float uFogAmt;
 uniform vec4 uRipple;
 uniform float uAspect;
+uniform sampler2D uStreakTex;
+uniform float uStreak;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
@@ -87,6 +89,8 @@ void main() {
   // Bloom: lit windows, neon trim and the sun spill soft light.
   vec3 glow = texture2D(uGlow, uv).rgb;
   c += glow * uBloom;
+  // Wide horizontal streaks, like light through a camera lens.
+  c += texture2D(uStreakTex, uv).rgb * vec3(0.75, 0.85, 1.2) * uStreak;
 
   // Sun rays: march from each pixel toward the sun through the bright layer.
   if (uSunAmt > 0.01) {
@@ -110,8 +114,12 @@ void main() {
   c *= mix(vec3(1.0), vec3(0.9, 0.96, 1.1), uNight);
   float l = dot(c, vec3(0.299, 0.587, 0.114));
   c = mix(vec3(l), c, 1.12);            // a little more color
-  c = (c - 0.5) * 1.06 + 0.5;           // and contrast
-  c = c / (1.0 + max(c - 1.0, 0.0));    // soft roll-off instead of hard clipping
+  // Split toning: cool shadows, warm highlights.
+  c *= mix(vec3(0.95, 0.98, 1.07), vec3(1.04, 1.0, 0.95), smoothstep(0.15, 0.85, l));
+  // Filmic curve: gentle contrast in the mids and soft highlights instead of hard clipping.
+  vec3 x = max(c * 1.08, 0.0);
+  vec3 film = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
+  c = mix(c / (1.0 + max(c - 1.0, 0.0)), film, 0.55);
 
   // Vignette to focus the eye on the tower.
   vec2 q = (v - 0.5) * vec2(0.95, 1.15);
@@ -149,6 +157,8 @@ export interface PostParams {
   fog: [number, number, number];
   fogAmount: number;
   ripple: { x: number; y: number; age: number; strength: number };
+  /** Horizontal light streaks from bright lights (strongest at night). */
+  streak: number;
   /** Screen width / height. */
   aspect: number;
 }
@@ -278,6 +288,8 @@ export class PostFX {
     this.pass(progs.down, g0, this.scene!, u => { const [x, y] = texel(g0); gl.uniform2f(u("uTexel"), x, y); gl.uniform1f(u("uThresh"), thresh); });
     this.blur(g0, g1, 1);
     this.blur(g0, g1, 2.2);
+    // Streaks: the glow smeared sideways into the spare target.
+    this.pass(progs.blur, s1, g0.tex, u => gl.uniform2f(u("uDir"), 6 / g0.w, 0));
 
     const f = progs.final;
     gl.useProgram(f);
@@ -287,6 +299,8 @@ export class PostFX {
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.scene); gl.uniform1i(u("uScene"), 0);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, s0.tex); gl.uniform1i(u("uSoft"), 1);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, g0.tex); gl.uniform1i(u("uGlow"), 2);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, s1.tex); gl.uniform1i(u("uStreakTex"), 3);
+    gl.uniform1f(u("uStreak"), p.streak);
     gl.uniform2f(u("uRes"), this.canvas.width, this.canvas.height);
     gl.uniform1f(u("uTime"), p.time);
     gl.uniform1f(u("uNight"), p.night);

@@ -9,6 +9,7 @@ import { SKINS, type Skin } from "../data/skins";
 import { TROPHIES, type TrophyContext } from "../data/trophies";
 import { addXp, dayKey, dayNumber, landmarkIndex, runXp, xpNeeded } from "./rules";
 import { addLeague, allMissionsDone, dealMissions, refreshMissions, startRent, tickStreak } from "./daily";
+import { premiumGrants } from "./premium";
 import { HISTORY_SIZE, type SaveData } from "./save";
 
 export { dealMissions };
@@ -20,6 +21,7 @@ export function isSkinUnlocked(save: SaveData, skin: Skin): boolean {
   if (!skin.unlock) return true;
   if ("price" in skin.unlock) return save.ownedSkins.includes(skin.id);
   if ("streak" in skin.unlock) return save.streak.best >= skin.unlock.streak;
+  if ("product" in skin.unlock) return premiumGrants(save).skins.has(skin.id);
   return save.bestMeters > MILESTONES[skin.unlock.at].m;
 }
 
@@ -29,12 +31,14 @@ export function skinUnlockText(skin: Skin): string {
   if (!skin.unlock) return "";
   if ("price" in skin.unlock) return `Buy it in the shop for ${skin.unlock.price} ★`;
   if ("streak" in skin.unlock) return `Play ${skin.unlock.streak} days in a row`;
+  if ("product" in skin.unlock) return "Get it in the Premium shop";
   const ms = MILESTONES[skin.unlock.at];
   return `Build taller than ${ms.name} (${ms.m} m)`;
 }
 
 export const islandLevel = (save: SaveData): number => ISLAND_UPGRADES.filter(u => save.bestMeters > MILESTONES[u.at].m).length;
-export const themeUnlocked = (save: SaveData, t: IslandTheme): boolean => save.profile.level >= t.level;
+export const themeUnlocked = (save: SaveData, t: IslandTheme): boolean =>
+  t.product ? premiumGrants(save).themes.has(t.id) : save.profile.level >= t.level;
 export const currentTheme = (save: SaveData): IslandTheme =>
   ISLAND_THEMES.find(t => t.id === save.island && themeUnlocked(save, t)) ?? ISLAND_THEMES[0];
 

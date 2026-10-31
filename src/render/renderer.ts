@@ -10,6 +10,8 @@ import { ISO_X, View, type Env, type Paint } from "./paint";
 import { PostFX } from "./post";
 import { nightAt, Scenery, skyAt, sunAt } from "./scenery";
 import { SkyTraffic } from "./sky";
+import { drawAurora, drawLandmark, Weather } from "./atmosphere";
+import { landmarkIndex } from "../logic/rules";
 
 /** What the screen is showing, which decides where the camera goes. */
 export type Shot = "menu" | "play" | "over";
@@ -39,6 +41,7 @@ export class Renderer {
   readonly fx = new Effects();
   readonly scenery = new Scenery();
   readonly traffic = new SkyTraffic();
+  readonly weather = new Weather();
   private readonly ctx: CanvasRenderingContext2D;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };
   /** The finished floors, drawn once per landing instead of every frame. */
@@ -104,12 +107,14 @@ export class Renderer {
   camera(dt: number, shot: Shot, level: number, full = false): void {
     const v = this.view, { W, H, s, th } = v;
     let tZoom = 1, tLevel = Math.max(0, level - Math.floor(H * 0.2 / th)), tOrigin = H * 0.6, tCx = W / 2;
-    if (shot === "menu") { tZoom = 0.72; tOrigin = H * 0.56; tLevel = 0; }
+    if (shot === "menu") { tZoom = 0.64; tOrigin = H * 0.56; tLevel = 0; }
     if (shot === "over") {
       // Frame whichever reaches higher, the antenna or the island's back corner, down to the island's front.
       const above = Math.max((level + 4.8) * th, ISLAND * s);
       const room = v.wide || full ? H * 0.84 : H * 0.44;
-      tZoom = Math.min(1, room / (above + ISLAND * s + 3 * th));
+      // Fit the island's full width too (it's wider than it is tall on most phones).
+      const width = v.wide && !full ? W * 0.52 : W * 0.96;
+      tZoom = Math.min(1, room / (above + ISLAND * s + 3 * th), width / (4 * ISLAND * ISO_X * s));
       tLevel = 0;
       tOrigin = H * 0.08 + above * tZoom;
       if (v.wide && !full) tCx = W * 0.27;
@@ -145,6 +150,9 @@ export class Renderer {
     scenery.life.city = f.city;
 
     scenery.drawSky(p, n, dt);
+    drawAurora(p, n);
+    // The landmark you're racing, beside the tower at its real height.
+    if (f.shot === "play") drawLandmark(p, landmarkIndex(f.sim.meters) + 1, 1);
 
     ctx.save();
     if (fx.shake > 0 && !this.calm) ctx.translate(rand(-1, 1) * 10 * fx.shake, rand(-1, 1) * 10 * fx.shake);
@@ -182,6 +190,7 @@ export class Renderer {
     ctx.restore();
 
     scenery.drawWind(p, f.showMover && m ? sim.windFor(m.y) : 0, dt);
+    this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0);
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
     fx.drawPopups(p, top, f.hudBottom);
     this.setPost(!f.low);
@@ -280,6 +289,7 @@ export class Renderer {
       // Haze below you grows as the tower climbs, which sells the height.
       fogAmount: f.shot === "play" ? clamp(f.sim.level / 60, 0, 1) * 0.22 : 0.05,
       ripple: this.calm ? { ...this.fx.ripple, strength: 0 } : this.fx.ripple,
+      streak: 0.12 + env.nf * 0.45 + (skin.neon || skin.alwaysLit ? 0.12 : 0),
       aspect: view.W / H,
       bloom: 0.4 + env.nf * 0.35 + (skin.neon || skin.alwaysLit ? 0.2 : 0),
       tilt,

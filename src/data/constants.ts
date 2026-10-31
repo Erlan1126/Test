@@ -8,7 +8,7 @@ export const GROW = 0.6;            // how much a floor grows back during a perf
 export const METERS_PER_FLOOR = 5;
 export const PEOPLE_PER_AREA = 0.2; // a full 10 x 10 floor holds 20 people
 export const WIND_START = 25;       // floor where gusts begin
-export const ISLAND = 17;           // half-size of the floating island
+export const ISLAND = 22;           // half-size of the floating island
 
 export const GOLD = "#ffd23f";      // reserved for penthouse floors
 

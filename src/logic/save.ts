@@ -5,6 +5,7 @@ import { SKINS } from "../data/skins";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES } from "../data/islands";
 import { CITY } from "../data/daily";
+import { PRODUCTS } from "../data/premium";
 import type { Mode } from "./types";
 
 export interface Settings {
@@ -70,6 +71,12 @@ export interface SaveData {
   league: { week: number; points: number; lastWeek: number; lastPoints: number; rewarded: number };
   /** A name shown on the leaderboard, chosen by the player. */
   nickname: string;
+  /** Premium products bought with real money (kept in step with the payment server). */
+  purchases: string[];
+  /** Products whose one-off coins have been paid. */
+  coinsGranted: string[];
+  /** Random id the payment server knows this player by. Made on first launch. */
+  playerId: string;
 }
 
 export const SAVE_KEY = "skyrise.save.v2";
@@ -103,6 +110,9 @@ export function defaultSave(): SaveData {
     city: [],
     league: { week: 0, points: 0, lastWeek: 0, lastPoints: 0, rewarded: 0 },
     nickname: "",
+    purchases: [],
+    coinsGranted: [],
+    playerId: "",
   };
 }
 
@@ -184,6 +194,9 @@ export function normalize(raw: unknown): SaveData {
     },
     // Letters, digits, spaces and a little punctuation, up to 16 characters.
     nickname: str(r.nickname, "", 64).replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 16),
+    purchases: strList(r.purchases, PRODUCTS.map(x => x.id)),
+    coinsGranted: strList(r.coinsGranted, PRODUCTS.map(x => x.id)),
+    playerId: /^[A-Za-z0-9-]{8,64}$/.test(String(r.playerId ?? "")) ? String(r.playerId) : "",
   };
 }
 

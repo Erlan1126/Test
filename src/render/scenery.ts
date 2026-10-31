@@ -53,12 +53,15 @@ const EXTRA_NEIGHBORS: Neighbor[] = [
 const TREES = [
   [-8, 9], [-6.5, 12.5], [-3, 14.5], [8.5, 8.5], [12, 4], [14.5, 1], [4, 12], [-13, -5.5], [-11, -8.5],
   [2.5, -13], [-1, -15], [12.5, 11.5], [15.5, 7], [-14.5, -2.6],
+  // The forest along the right-hand edge, and a grove in the far corner
+  [18.6, -16], [20.2, -13.6], [18.4, -11], [20.4, -8.4], [18.8, -5.6], [20.6, -3], [18.6, 4.2], [20.4, 6.6], [18.9, 8.8],
+  [-20.4, -20.2], [-18.2, -20.6], [-20.6, -17.9], [16.5, -20.5], [-20.5, 9.5], [-18.6, 14.5], [6, 20.6], [9.5, 19.8],
 ].map(([x, z], i) => ({ x, z, size: 0.8 + hash(i, 3, 7) * 0.5, hue: hash(i, 9, 1) }));
 type Tree = (typeof TREES)[number];
 
 const FOUNTAIN = { x: -6.2, z: 6.2 }, POND = { x: 12, z: 12, r: 3.2 }, WHEEL = { x: -12, z: -12 };
 const LAMPS: [number, number][] = [];
-for (const u of [9, 12.5, 16]) for (const side of [-1.9, 1.9]) LAMPS.push([u, side], [side, u], [-u, side]);
+for (const u of [9, 12.5, 16, 19.5]) for (const side of [-1.9, 1.9]) LAMPS.push([u, side], [side, u], [-u, side]);
 const CARS = [
   { road: "x", lane: -0.65, speed: 2.6, off: 0, color: hexRgb("#ff6b6b") },
   { road: "x", lane: 0.65, speed: -2.1, off: 4, color: hexRgb("#f1f3f5") },
@@ -319,7 +322,7 @@ export class Scenery {
     const I = ISLAND, d = 1 - p.env.nf * 0.6, t = this.theme;
     const P = (x: number, y: number, z: number) => p.view.project(x, y, z);
     // Rocky underside tapering to a point
-    const apex = P(0, -17, 0);
+    const apex = P(0, -I, 0);
     poly(p, [P(I, -3, -I), P(I, -3, I), apex], rgb(hexRgb(t.rockR), d));
     poly(p, [P(-I, -3, I), P(I, -3, I), apex], rgb(hexRgb(t.rockL), d));
     // Dirt sides with a grassy (or snowy, or sandy) lip
@@ -327,7 +330,14 @@ export class Scenery {
     face(p, [P(I, 0, -I), P(I, 0, I), P(I, -3, I), P(I, -3, -I)], hexRgb(t.dirtR), d, 0.7 * d);
     poly(p, [P(-I, 0, I), P(I, 0, I), P(I, -0.45, I), P(-I, -0.45, I)], rgb(hexRgb(t.lip), d));
     poly(p, [P(I, 0, -I), P(I, 0, I), P(I, -0.45, I), P(I, -0.45, -I)], rgb(hexRgb(t.lipR), d));
+    this.drawCliffs(p);
     poly(p, [P(-I, 0, -I), P(I, 0, -I), P(I, 0, I), P(-I, 0, I)], rgb(hexRgb(t.lawn), d));
+    // Mown stripes across the lawn
+    for (let k = -I + 2; k < I; k += 4) {
+      p.ctx.globalAlpha = 0.06;
+      poly(p, [P(k, 0.005, -I), P(k + 2, 0.005, -I), P(k + 2, 0.005, I), P(k, 0.005, I)], "#ffffff");
+    }
+    p.ctx.globalAlpha = 1;
     // Roads leading off the island
     const road = rgb(hexRgb(t.road), d), line = rgb(hexRgb("#f1f3f5"), d);
     poly(p, [P(7, 0.01, -1.4), P(I, 0.01, -1.4), P(I, 0.01, 1.4), P(7, 0.01, 1.4)], road);
@@ -367,6 +377,57 @@ export class Scenery {
     for (const nb of NEIGHBORS) cast(nb, nb.h);
     if (this.has(2)) for (const nb of EXTRA_NEIGHBORS) cast(nb, nb.h);
     ctx.restore();
+  }
+
+  /** Rock layers in the cliffs, roots hanging below, and crystals that glow at night. */
+  private drawCliffs(p: Paint): void {
+    const { ctx, view, env } = p, I = ISLAND, d = 1 - env.nf * 0.6;
+    const P = (x: number, y: number, z: number) => view.project(x, y, z);
+    // Darker bands of rock in the dirt
+    ctx.globalAlpha = 0.18;
+    for (const y of [-1.3, -2.2]) {
+      poly(p, [P(-I, y, I), P(I, y, I), P(I, y - 0.25, I), P(-I, y - 0.25, I)], "#1a0f08");
+      poly(p, [P(I, y, -I), P(I, y, I), P(I, y - 0.25, I), P(I, y - 0.25, -I)], "#1a0f08");
+    }
+    ctx.globalAlpha = 1;
+    // Roots dangling from the bottom of the dirt
+    ctx.strokeStyle = rgb([92, 64, 40], d);
+    ctx.lineWidth = Math.max(1, 1.4 * view.zoom);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    for (let k = 0; k < 14; k++) {
+      const u = -I + 2 + (k / 13) * (I * 2 - 4), len = 0.8 + hash(k, 2, 9) * 2.2, sway = Math.sin(env.time * 0.8 + k) * 0.25;
+      const left = k % 2 === 0;
+      const [ax, ay] = left ? P(u, -3, I) : P(I, -3, u), [bx, by] = left ? P(u + sway, -3 - len, I) : P(I, -3 - len, u + sway);
+      ctx.moveTo(ax, ay);
+      ctx.quadraticCurveTo(ax + (bx - ax) * 0.5 + 4 * view.zoom, ay + (by - ay) * 0.6, bx, by);
+    }
+    ctx.stroke();
+    // Crystal clusters on the rocky underside
+    const A = P(-I, -3, I), B = P(I, -3, I), C = P(0, -I, 0), D = P(I, -3, -I);
+    const at = (u: number, v: number, right: boolean): [number, number] => {
+      const X = right ? D : A;
+      return [X[0] + (B[0] - X[0]) * u + (C[0] - X[0]) * v, X[1] + (B[1] - X[1]) * u + (C[1] - X[1]) * v];
+    };
+    const spots: [number, number, boolean, number][] = [[0.3, 0.35, false, 0], [0.62, 0.42, false, 1], [0.45, 0.6, false, 2], [0.35, 0.3, true, 3], [0.6, 0.5, true, 4]];
+    const colors: RGB[] = [[150, 110, 255], [90, 220, 255], [255, 120, 200]];
+    for (const [u, v, right, i] of spots) {
+      const [x, y] = at(u, v, right), c = colors[i % 3], sz = (5 + hash(i, 3, 3) * 5) * view.zoom * (view.s / 12);
+      if (env.nf > 0.2) {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, sz * 4);
+        g.addColorStop(0, rgb(c, 1, 0.45 * env.nf));
+        g.addColorStop(1, rgb(c, 1, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(x - sz * 4, y - sz * 4, sz * 8, sz * 8);
+      }
+      for (let k = -1; k <= 1; k++) {
+        const h = sz * (k === 0 ? 2.4 : 1.6), cx = x + k * sz * 0.6;
+        ctx.fillStyle = rgb(c, k === 0 ? 1 : 0.8);
+        ctx.beginPath(); ctx.moveTo(cx - sz * 0.35, y); ctx.lineTo(cx, y + h); ctx.lineTo(cx + sz * 0.35, y); ctx.lineTo(cx, y - sz * 0.3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.beginPath(); ctx.moveTo(cx - sz * 0.1, y); ctx.lineTo(cx, y + h * 0.8); ctx.lineTo(cx, y - sz * 0.2); ctx.closePath(); ctx.fill();
+      }
+    }
   }
 
   /** Trees make room for the upgrades that are built. */
@@ -473,7 +534,7 @@ export class Scenery {
     const { ctx, view, env } = p;
     const d = 1 - env.nf * 0.5;
     for (const c of CARS) {
-      const u = 7.8 + (((c.off + env.time * c.speed) % 8.8) + 8.8) % 8.8;
+      const span = ISLAND - 8.2, u = 7.8 + (((c.off + env.time * c.speed) % span) + span) % span;
       const body = c.road === "x"
         ? { x0: u - 0.8, x1: u + 0.8, z0: c.lane - 0.38, z1: c.lane + 0.38 }
         : { x0: c.lane - 0.38, x1: c.lane + 0.38, z0: u - 0.8, z1: u + 0.8 };

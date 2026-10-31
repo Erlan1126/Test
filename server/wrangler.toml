@@ -1,0 +1,24 @@
+name = "skyrise-pay"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# Create the namespace with:  npx wrangler kv namespace create ENTITLEMENTS
+# then paste the id it prints here.
+[[kv_namespaces]]
+binding = "ENTITLEMENTS"
+id = "PASTE_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+# Sites allowed to start a checkout (your game's address on itch.io or your own site).
+ALLOWED_ORIGINS = "https://YOURNAME.itch.io,https://html-classic.itch.zone"
+# Stripe price ids for each product (create the products in the Stripe dashboard).
+PRICE_skin_crystal = "price_..."
+PRICE_skin_sakura = "price_..."
+PRICE_skin_royal = "price_..."
+PRICE_skin_cyber = "price_..."
+PRICE_island_volcano = "price_..."
+PRICE_island_candy = "price_..."
+PRICE_founders = "price_..."
+# Secrets are NOT stored here. Set them with:
+#   npx wrangler secret put STRIPE_SECRET_KEY
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET

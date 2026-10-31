@@ -32,7 +32,10 @@ export function toast(msg: string): void {
 const openers = new Map<HTMLElement, Element | null>();
 
 export function openModal(el: HTMLElement, focusEl?: HTMLElement | null): void {
-  if (el.hidden) openers.set(el, document.activeElement);
+  if (el.hidden) {
+    openers.set(el, document.activeElement);
+    window.dispatchEvent(new Event("skyrise:sheet"));
+  }
   el.hidden = false;
   (focusEl ?? el.querySelector<HTMLElement>(".close-btn"))?.focus();
 }
@@ -67,7 +70,10 @@ export function vibrate(on: boolean, pattern: number | number[]): void {
 export function wireTabs(): void {
   document.querySelectorAll<HTMLElement>("[data-tabs]").forEach(bar => {
     const first = bar.querySelector<HTMLButtonElement>("[data-tab]")!.dataset.tab!;
-    bar.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(b => b.addEventListener("click", () => showTab(bar, b.dataset.tab!)));
+    bar.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(b => b.addEventListener("click", () => {
+      showTab(bar, b.dataset.tab!);
+      window.dispatchEvent(new Event("skyrise:tab"));
+    }));
     showTab(bar, first);
   });
 }

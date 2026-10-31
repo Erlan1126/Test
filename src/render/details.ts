@@ -23,13 +23,14 @@ const WALKERS = Array.from({ length: 14 }, (_, i) => ({
 const BENCHES = [[3.6, 7.95, "x"], [-3.6, 7.95, "x"], [7.95, 3.8, "z"], [7.95, -3.8, "z"], [-3.6, -7.95, "x"]] as const;
 const BEDS = [[-8.3, -4.2, 0], [4.3, -8.3, 1], [-4.6, 8.4, 2], [9.4, 5.6, 3], [-9, 4, 4]] as const;
 const ROCKS = [
-  { x: -23, z: 5, y: -4, r: 2.6, tree: true },
-  { x: 7, z: 24, y: -7, r: 2, tree: false },
-  { x: 24, z: -6, y: -3, r: 2.2, tree: true },
-  { x: -5, z: -24, y: -8, r: 1.8, tree: false },
-  { x: 19, z: 18, y: -12, r: 1.4, tree: false },
+  { x: -28, z: 5, y: -4, r: 2.8, tree: true },
+  { x: 7, z: 29, y: -7, r: 2.2, tree: false },
+  { x: 29, z: -6, y: -3, r: 2.4, tree: true },
+  { x: -5, z: -29, y: -8, r: 2, tree: false },
+  { x: 24, z: 23, y: -13, r: 1.6, tree: false },
+  { x: -25, z: -22, y: -10, r: 1.8, tree: true },
 ];
-const BIRDS = Array.from({ length: 7 }, (_, i) => ({ a: i * 0.35 + hash(i, 5, 5) * 0.4, r: 19 + hash(i, 8, 1) * 3, y: 5 + hash(i, 6, 6) * 2.5, flap: hash(i, 2, 8) * 6 }));
+const BIRDS = Array.from({ length: 7 }, (_, i) => ({ a: i * 0.35 + hash(i, 5, 5) * 0.4, r: 24 + hash(i, 8, 1) * 3, y: 5 + hash(i, 6, 6) * 2.5, flap: hash(i, 2, 8) * 6 }));
 
 /** Position on a walker's path, in world units. */
 function walkerPos(w: (typeof WALKERS)[number]): [number, number, number] {
@@ -39,7 +40,7 @@ function walkerPos(w: (typeof WALKERS)[number]): [number, number, number] {
     return [x, z, 1];
   }
   // Sidewalks along the road that runs off to the right (+x).
-  const t = ((w.t % 18) + 18) % 18, x = 7.6 + (t < 9 ? t : 18 - t);
+  const t = ((w.t % 26) + 26) % 26, x = 7.6 + (t < 13 ? t : 26 - t);
   return [x, w.side, t < 9 ? 1 : -1];
 }
 
@@ -50,9 +51,23 @@ export const BUILD_SPOTS: Record<string, { x: number; z: number; r: number }> = 
   statue: { x: 4, z: 11, r: 1.6 },
   windmill: { x: 2.5, z: -13.2, r: 1.8 },
   observatory: { x: -3, z: -12.6, r: 2 },
-  lighthouse: { x: -15.3, z: -15.3, r: 1.6 },
+  lighthouse: { x: -19.8, z: -19.8, r: 1.6 },
   rocket: { x: 14.6, z: 5.6, r: 2 },
 };
+
+/** Little houses with pitched roofs along the outer edges. */
+const HOUSES: [number, number, number][] = [[-19.8, -18, 0], [-19.8, -13.6, 1], [-19.8, -9.2, 2], [-19.8, -4.8, 3], [-17.4, 19.4, 4], [-13.2, 19.4, 5]];
+const HOUSE_WALLS: RGB[] = [[246, 231, 200], [207, 227, 242], [243, 209, 209], [217, 236, 210], [239, 224, 245], [251, 227, 196]];
+const HOUSE_ROOFS: RGB[] = [[181, 82, 59], [79, 109, 143], [138, 74, 58], [95, 127, 74], [122, 90, 160], [192, 106, 58]];
+const LAKE = { x: -6.6, z: 18.8, r: 2.4 };
+const FIREFLIES = Array.from({ length: 26 }, (_, i) => ({ x: (hash(i, 1, 4) * 2 - 1) * 19, z: (hash(i, 7, 2) * 2 - 1) * 19, ph: hash(i, 3, 8) * 9 }));
+const BUTTERFLIES = Array.from({ length: 7 }, (_, i) => ({ bed: i % 5, ph: hash(i, 4, 1) * 9, color: ["#ffd43b", "#ff8fab", "#74c0fc", "#ffffff", "#b197fc"][i % 5] }));
+const CLOUD_SHADOWS = [{ z: -10, r: 7, v: 0.6, off: 0 }, { z: 6, r: 5.5, v: 0.45, off: 20 }, { z: 15, r: 6.5, v: 0.5, off: 34 }];
+const LAVA: [number, number][][] = [
+  [[-21, -6], [-18.5, -5], [-17, -7.5], [-14.5, -7]],
+  [[12, -21], [11, -18.5], [13.5, -17], [12.5, -14.5]],
+  [[21, 16], [18.5, 15], [17.5, 17.5], [15, 17]],
+];
 
 export class IslandLife {
   /** City buildings the player has built. */
@@ -302,9 +317,193 @@ export class IslandLife {
     ctx.beginPath(); ctx.arc(cx, by - h * 0.55, w * 0.45, 0, Math.PI * 2); ctx.fill();
   }
 
+  /** A house: walls with windows, a pitched roof with the gable facing front, a chimney. */
+  private house(p: Paint, x: number, z: number, i: number): void {
+    const { view, env } = p, d = 1 - env.nf * 0.55;
+    const x0 = x - 1.2, x1 = x + 1.2, z0 = z - 1.4, z1 = z + 1.4, y1 = 0.7, yr = 1.25, xc = x;
+    drawBlock(p, { x0, x1, z0, z1 }, 0, y1, HOUSE_WALLS[i % 6], NEIGHBOR_LOOK);
+    const P = (a: number, y: number, b: number) => view.project(a, y, b), roof = HOUSE_ROOFS[i % 6];
+    // Chimney behind the ridge
+    drawBlock(p, { x0: x + 0.3, x1: x + 0.7, z0: z - 0.8, z1: z - 0.4 }, y1, yr + 0.35, [150, 90, 70], NEIGHBOR_LOOK, { plain: true });
+    poly(p, [P(x0 - 0.15, y1, z0 - 0.1), P(xc, yr, z0 - 0.1), P(xc, yr, z1 + 0.15), P(x0 - 0.15, y1, z1 + 0.15)], rgb(roof, 1.12 * d));
+    poly(p, [P(xc, yr, z0 - 0.1), P(x1 + 0.15, y1, z0 - 0.1), P(x1 + 0.15, y1, z1 + 0.15), P(xc, yr, z1 + 0.15)], rgb(roof, 0.82 * d));
+    poly(p, [P(x0, y1, z1), P(x1, y1, z1), P(xc, yr, z1)], rgb(HOUSE_WALLS[i % 6], 0.95 * d));
+    if (env.nf > 0.35) {
+      const [wx, wy] = P(xc, y1 + 0.18, z1);
+      p.ctx.fillStyle = `rgba(255,214,140,${env.nf})`;
+      p.ctx.fillRect(wx - 2 * view.zoom, wy - 2 * view.zoom, 4 * view.zoom, 4 * view.zoom);
+    }
+  }
+
+  /** Crop rows, a red barn, a silo and hay bales along the back edge. */
+  private farm(p: Paint): void {
+    const { ctx, view, env } = p, d = 1 - env.nf * 0.6, P = (a: number, y: number, b: number) => view.project(a, y, b);
+    poly(p, [P(2.6, 0.02, -21.2), P(14.4, 0.02, -21.2), P(14.4, 0.02, -17.2), P(2.6, 0.02, -17.2)], rgb([138, 98, 60], d));
+    for (let x = 3; x < 14.2; x += 0.8) {
+      const ripe = hash(Math.round(x * 10), 3, 1) > 0.5 ? [214, 188, 82] : [104, 170, 74];
+      poly(p, [P(x, 0.04, -21), P(x + 0.4, 0.04, -21), P(x + 0.4, 0.04, -17.4), P(x, 0.04, -17.4)], rgb(ripe as RGB, d));
+    }
+    const bx = 17.4, bz = -19.3;
+    drawBlock(p, { x0: bx - 1.5, x1: bx + 1.5, z0: bz - 1.3, z1: bz + 1.3 }, 0, 0.9, [178, 48, 40], NEIGHBOR_LOOK, { plain: true });
+    poly(p, [P(bx - 1.65, 0.9, bz - 1.4), P(bx, 1.6, bz - 1.4), P(bx, 1.6, bz + 1.45), P(bx - 1.65, 0.9, bz + 1.45)], rgb([90, 40, 34], 1.1 * d));
+    poly(p, [P(bx, 1.6, bz - 1.4), P(bx + 1.65, 0.9, bz - 1.4), P(bx + 1.65, 0.9, bz + 1.45), P(bx, 1.6, bz + 1.45)], rgb([70, 30, 26], d));
+    poly(p, [P(bx - 1.5, 0.9, bz + 1.3), P(bx + 1.5, 0.9, bz + 1.3), P(bx, 1.6, bz + 1.3)], rgb([178, 48, 40], 0.95 * d));
+    // White X on the barn door
+    ctx.strokeStyle = rgb([250, 246, 240], d);
+    ctx.lineWidth = Math.max(1, 1.4 * view.zoom);
+    const [a0x, a0y] = P(bx - 0.5, 0, bz + 1.31), [a1x, a1y] = P(bx + 0.5, 0.6, bz + 1.31), [b0x, b0y] = P(bx + 0.5, 0, bz + 1.31), [b1x, b1y] = P(bx - 0.5, 0.6, bz + 1.31);
+    ctx.beginPath(); ctx.moveTo(a0x, a0y); ctx.lineTo(a1x, a1y); ctx.moveTo(b0x, b0y); ctx.lineTo(b1x, b1y); ctx.stroke();
+    // Silo
+    const [sx, sy] = P(20.2, 0, -16.6), [, ty] = P(20.2, 1.8, -16.6), rx = 0.8 * Math.SQRT2 * ISO_X * view.s * view.zoom, ry = rx * 0.5;
+    const g = ctx.createLinearGradient(sx - rx, 0, sx + rx, 0);
+    g.addColorStop(0, rgb([214, 222, 232], d));
+    g.addColorStop(1, rgb([140, 152, 170], d));
+    ctx.fillStyle = g;
+    ctx.fillRect(sx - rx, ty, rx * 2, sy - ty);
+    ctx.beginPath(); ctx.ellipse(sx, sy, rx, ry, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = rgb([120, 132, 150], d);
+    ctx.beginPath(); ctx.ellipse(sx, ty, rx, rx * 0.9, 0, Math.PI, 0); ctx.fill();
+    // Hay bales
+    ctx.fillStyle = rgb([226, 190, 96], d);
+    for (const [hx, hz] of [[15.2, -16.2], [16.2, -15.8], [15.6, -15.2]]) {
+      const [cx, cy] = P(hx, 0.25, hz), r = 0.35 * view.s * view.zoom;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  /** A small lake with a pier and a rowing boat. */
+  private lake(p: Paint): void {
+    const { ctx, view, env } = p, d = 1 - env.nf * 0.6, L = LAKE;
+    const [cx, cy] = view.project(L.x, 0.03, L.z), k = Math.SQRT2 * view.s * view.zoom;
+    ctx.fillStyle = rgb([226, 206, 160], d);
+    ctx.beginPath(); ctx.ellipse(cx, cy, (L.r + 0.5) * k * ISO_X, (L.r + 0.5) * k * ISO_Y, 0, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(cx, cy - L.r * k * 0.2, 0, cx, cy, L.r * k * ISO_X);
+    g.addColorStop(0, rgb([110, 196, 240], d));
+    g.addColorStop(1, rgb([40, 120, 190], d));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(cx, cy, L.r * k * ISO_X, L.r * k * ISO_Y, 0, 0, Math.PI * 2); ctx.fill();
+    // Ripples
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 * d})`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const ph = (env.time * 0.3 + i / 3) % 1;
+      ctx.globalAlpha = 1 - ph;
+      ctx.beginPath(); ctx.ellipse(cx + (i - 1) * k * 0.6, cy + (i - 1) * k * 0.15, ph * k * 0.9, ph * k * 0.35, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // Pier
+    poly(p, [view.project(L.x + 1.4, 0.12, L.z - 0.35), view.project(L.x + 3.1, 0.12, L.z - 0.35), view.project(L.x + 3.1, 0.12, L.z + 0.35), view.project(L.x + 1.4, 0.12, L.z + 0.35)], rgb([160, 116, 74], d));
+    // Boat circling
+    const a = env.time * 0.25, [bx, by] = view.project(L.x + Math.cos(a) * 1.2, 0.1, L.z + Math.sin(a) * 1.2), r = 0.45 * view.s * view.zoom;
+    ctx.fillStyle = rgb([200, 90, 60], d);
+    ctx.beginPath(); ctx.ellipse(bx, by, r, r * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgb([255, 236, 200], d);
+    ctx.beginPath(); ctx.arc(bx, by - r * 0.45, r * 0.25, 0, Math.PI * 2); ctx.fill();
+  }
+
+  /** White picket fences along the two front edges, with gaps for the roads and river. */
+  private fences(p: Paint): void {
+    const { ctx, view, env } = p, I = ISLAND - 0.35, d = 1 - env.nf * 0.6;
+    ctx.strokeStyle = rgb([246, 244, 238], d);
+    ctx.lineWidth = Math.max(1, 1.2 * view.zoom);
+    ctx.beginPath();
+    const run = (from: number, to: number, along: "x" | "z") => {
+      for (let u = from; u < to - 0.6; u += 1.2) {
+        const q = (v: number, y: number) => (along === "x" ? view.project(v, y, I) : view.project(I, y, v));
+        const [ax, ay] = q(u, 0), [bx, by] = q(u, 0.32);
+        ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      }
+      for (const y of [0.12, 0.26]) {
+        const q = (v: number) => (along === "x" ? view.project(v, y, I) : view.project(I, y, v));
+        const [ax, ay] = q(from), [bx, by] = q(to - 0.6);
+        ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      }
+    };
+    run(-ISLAND + 0.6, -1.8, "x"); run(1.8, ISLAND - 0.2, "x");
+    run(-ISLAND + 0.6, -1.8, "z"); run(1.8, 11, "z"); run(13.2, ISLAND - 0.2, "z");
+    ctx.stroke();
+  }
+
+  /** Soft shadows of clouds drifting across the island by day. */
+  private cloudShadows(p: Paint): void {
+    const { ctx, view, env } = p;
+    const a = 0.09 * (1 - env.nf * 1.6);
+    if (a <= 0.01) return;
+    const I = ISLAND, P = (x: number, z: number) => view.project(x, 0.05, z), k = Math.SQRT2 * view.s * view.zoom;
+    ctx.save();
+    ctx.beginPath();
+    for (const [x, z] of [[-I, -I], [I, -I], [I, I], [-I, I]]) { const [sx, sy] = P(x, z); ctx.lineTo(sx, sy); }
+    ctx.closePath();
+    ctx.clip();
+    for (const c of CLOUD_SHADOWS) {
+      const x = ((env.time * c.v + c.off) % 70) - 35;
+      const [sx, sy] = P(x, c.z);
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, c.r * k * ISO_X);
+      g.addColorStop(0, `rgba(10,20,50,${a})`);
+      g.addColorStop(1, "rgba(10,20,50,0)");
+      ctx.fillStyle = g;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.scale(1, 0.55);
+      ctx.translate(-sx, -sy);
+      ctx.fillRect(sx - c.r * k, sy - c.r * k, c.r * k * 2, c.r * k * 2);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  /** Glowing lava cracks on the volcano island. */
+  private lava(p: Paint): void {
+    const { ctx, view, env } = p, pulse = 0.75 + Math.sin(env.time * 2) * 0.25;
+    for (const crack of LAVA) {
+      const pts = crack.map(([x, z]) => view.project(x, 0.03, z));
+      for (const [w, c] of [[7, `rgba(255,90,20,${0.25 * pulse})`], [3.5, `rgba(255,140,40,${0.8 * pulse})`], [1.4, "rgba(255,230,150,0.95)"]] as const) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(1, w * view.zoom);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        ctx.stroke();
+      }
+    }
+  }
+
+  private fireflies(p: Paint): void {
+    const { ctx, view, env } = p;
+    if (env.nf < 0.35) return;
+    for (const f of FIREFLIES) {
+      const t = env.time * 0.4 + f.ph;
+      const [x, y] = view.project(f.x + Math.sin(t) * 1.5, 0.6 + Math.sin(t * 1.7) * 0.4, f.z + Math.cos(t * 0.8) * 1.5);
+      const a = (0.5 + 0.5 * Math.sin(env.time * 3 + f.ph * 5)) * env.nf;
+      ctx.fillStyle = `rgba(210,255,120,${a * 0.35})`;
+      ctx.beginPath(); ctx.arc(x, y, 5 * view.zoom + 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(240,255,190,${a})`;
+      ctx.beginPath(); ctx.arc(x, y, 1.3 * view.zoom + 0.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  private butterflies(p: Paint): void {
+    const { ctx, view, env } = p;
+    if (env.nf > 0.4) return;
+    for (const b of BUTTERFLIES) {
+      const [bx, , bz] = BEDS[b.bed], t = env.time * 0.7 + b.ph;
+      const [x, y] = view.project(bx + Math.sin(t) * 1.4, 0.5 + Math.sin(t * 2.3) * 0.25, bz + Math.cos(t * 1.3) * 1.2);
+      const s = 2.2 * view.zoom + 1, flap = Math.abs(Math.sin(env.time * 14 + b.ph));
+      ctx.fillStyle = b.color;
+      ctx.beginPath(); ctx.ellipse(x - s * 0.6, y, s * flap + 0.4, s * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + s * 0.6, y, s * flap + 0.4, s * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   drawBack(p: Paint): void {
     if (this.has(1)) this.drawWaterfall(p);
+    this.lake(p);
+    this.farm(p);
+    if (this.theme.lava) this.lava(p);
     for (const [x, z, i] of BEDS) this.drawBed(p, x, z, i);
+    this.cloudShadows(p);
+    for (const [x, z, i] of HOUSES) if (x + z < 0) this.house(p, x, z, i);
     for (const b of BENCHES) if (b[0] + b[1] < 0) this.drawBench(p, b[0], b[1], b[2]);
     this.drawFlag(p);
     this.drawCity(p, true);
@@ -316,7 +515,11 @@ export class IslandLife {
     for (const b of BENCHES) if (b[0] + b[1] >= 0) this.drawBench(p, b[0], b[1], b[2]);
     this.drawCart(p);
     this.drawCity(p, false);
+    for (const [x, z, i] of HOUSES) if (x + z >= 0) this.house(p, x, z, i);
+    this.fences(p);
     this.drawWalkers(p, false);
+    this.butterflies(p);
+    this.fireflies(p);
     this.drawBirds(p, false);
   }
 

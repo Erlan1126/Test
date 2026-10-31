@@ -21,6 +21,10 @@ export interface IslandTheme {
   trunk: string;
   /** Gallery preview sky. */
   sky: [string, string];
+  /** A premium island, unlocked by buying this product instead of by level. */
+  product?: string;
+  /** Glowing cracks in the ground (the volcano). */
+  lava?: boolean;
 }
 
 export const ISLAND_THEMES: IslandTheme[] = [
@@ -36,6 +40,13 @@ export const ISLAND_THEMES: IslandTheme[] = [
   { id: "blossom", name: "Cherry Blossom", level: 10, tree: "round", lawn: "#a8d88a", lip: "#8cc56e", lipR: "#79b45d",
     dirtL: "#a07a52", dirtR: "#86643f", rockL: "#7a5b43", rockR: "#5a4334", plaza: "#e6d3dc", plaza2: "#f6e9ef",
     road: "#8a8296", leaf: ["#f48fb8", "#ffc8dd"], trunk: "#6e4a3a", sky: ["#8f8fe6", "#ffd6e6"] },
+  // Premium islands
+  { id: "volcano", name: "Volcano Island", level: 1, product: "island_volcano", tree: "palm", lava: true, lawn: "#3d3a3f", lip: "#2b2830", lipR: "#221f27",
+    dirtL: "#4a2f2a", dirtR: "#3a231f", rockL: "#2a1d1c", rockR: "#1d1414", plaza: "#55505a", plaza2: "#6b6570",
+    road: "#2f2c33", leaf: ["#2f8f4e", "#5fbf5a"], trunk: "#5a3a24", sky: ["#3a1f4a", "#ff7a4a"] },
+  { id: "candy", name: "Candy Island", level: 1, product: "island_candy", tree: "round", lawn: "#ffc8e4", lip: "#ffb0d6", lipR: "#f79ccb",
+    dirtL: "#c9a7ff", dirtR: "#b18ef0", rockL: "#9e7fe0", rockR: "#8569c9", plaza: "#fff1f8", plaza2: "#ffffff",
+    road: "#c6b8e8", leaf: ["#7ee8d0", "#ffd36e"], trunk: "#ff9cc4", sky: ["#9fd8ff", "#ffd6f0"] },
 ];
 
 /** Upgrades in build order; `at` is the landmark index your best tower must pass. */
