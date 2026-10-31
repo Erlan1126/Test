@@ -157,14 +157,21 @@ function drawMobs() {
     const a = Math.min(1, Math.max(lit * 1.2, save.settings.contrast ? 0.75 : m.kind === "w" ? 0.5 : 0.1));
     const X = sx(m.x), Y = sy(m.y), u = TS;
     if (X < -u * 2 || Y < -u * 2 || X > W + u * 2 || Y > H + u * 2) continue;
-    ctx.save();
-    ctx.globalAlpha = a;
-    if (m.kind === "n") drawSnapvine(m, X, Y, u);
-    else if (m.kind === "a") drawShardbat(m, X, Y, u);
-    else if (m.kind === "k") drawCrab(m, X, Y, u);
-    else if (m.kind === "w") { if (m.cd <= 0) drawWisp(m, X, Y, u); }
-    else if (m.kind === "j") drawJelly(m, X, Y, u);
-    ctx.restore();
+    if (m.kind === "w" && m.cd > 0) continue;
+    if (m.kind === "k") {
+      // A soft shadow where the crab meets the floor.
+      ctx.fillStyle = `rgba(0,0,0,${0.35 * a})`;
+      ctx.beginPath(); ctx.ellipse(X, Y + u * 0.3, u * 0.42, u * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    const light = Math.min(1, lit * 1.3 + (m.kind === "w" ? 0.6 : 0.15));
+    const reach = m.kind === "n" ? Math.max(u * 1.6, Math.hypot(sx(m.bx) - X, sy(m.by) - Y) + u * 0.6) : u * 1.2;
+    drawLit(X, Y, reach, light, a, () => {
+      if (m.kind === "n") drawSnapvine(m, X, Y, u);
+      else if (m.kind === "a") drawShardbat(m, X, Y, u);
+      else if (m.kind === "k") drawCrab(m, X, Y, u);
+      else if (m.kind === "w") drawWisp(m, X, Y, u);
+      else if (m.kind === "j") drawJelly(m, X, Y, u);
+    });
   }
 }
 function eyes(X, Y, r, look = 0, color = "#1b1030") {
@@ -187,10 +194,10 @@ function drawSnapvine(m, X, Y, u) {
   const ang = m.state === "idle" ? Math.atan2(L.lumi.y - m.y, L.lumi.x - m.x) : Math.atan2((m.ty || m.y) - m.hy, (m.tx || m.x) - m.hx);
   const hx = X + shake, hy = Y, r = u * 0.34;
   ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang);
-  ctx.fillStyle = "#ff6f9a";
+  ctx.fillStyle = "#b8466a";
   ctx.beginPath(); ctx.ellipse(r * 0.3, 0, r * 0.75, r * 0.5 * (0.3 + open), 0, 0, Math.PI * 2); ctx.fill();
   for (const s of [-1, 1]) {
-    ctx.fillStyle = "#4caf5c";
+    ctx.fillStyle = "#3d8549";
     ctx.beginPath();
     ctx.ellipse(r * 0.35, s * r * open * 0.6, r * 0.85, r * 0.42, s * open * 0.7, 0, Math.PI * 2);
     ctx.fill();
@@ -237,26 +244,26 @@ function drawCrab(m, X, Y, u) {
   ctx.globalCompositeOperation = "lighter";
   glow(GLOW.ember, X, Y, u * 0.55, 0.3);
   ctx.globalCompositeOperation = "source-over";
-  ctx.strokeStyle = "#b9442c"; ctx.lineWidth = Math.max(1.5, u * 0.04); ctx.lineCap = "round";
+  ctx.strokeStyle = "#6e2a1a"; ctx.lineWidth = Math.max(1.5, u * 0.04); ctx.lineCap = "round";
   for (const s of [-1, 1]) for (let q = 0; q < 3; q++) {
     const lx = X + s * r * (0.5 + q * 0.25);
     ctx.beginPath(); ctx.moveTo(lx, Y + r * 0.2); ctx.lineTo(lx + s * r * 0.35, Y + r * 0.55 + (q % 2 ? step : -step) * r * 0.15); ctx.stroke();
   }
   // Claws.
-  ctx.fillStyle = "#ff6a3d";
+  ctx.fillStyle = "#a8462a";
   for (const s of [-1, 1]) {
     ctx.beginPath(); ctx.arc(X + s * r * 1.35, Y - r * 0.45, r * 0.38, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#3a120c"; ctx.beginPath(); ctx.moveTo(X + s * r * 1.35, Y - r * 0.45); ctx.lineTo(X + s * r * 1.75, Y - r * 0.75); ctx.lineTo(X + s * r * 1.75, Y - r * 0.3); ctx.fill();
-    ctx.fillStyle = "#ff6a3d";
+    ctx.fillStyle = "#2a0d08"; ctx.beginPath(); ctx.moveTo(X + s * r * 1.35, Y - r * 0.45); ctx.lineTo(X + s * r * 1.75, Y - r * 0.75); ctx.lineTo(X + s * r * 1.75, Y - r * 0.3); ctx.fill();
+    ctx.fillStyle = "#a8462a";
   }
   const g = ctx.createRadialGradient(X - r * 0.3, Y - r * 0.4, r * 0.1, X, Y, r * 1.1);
-  g.addColorStop(0, "#ff8a55"); g.addColorStop(1, "#c2391f");
+  g.addColorStop(0, "#c96a42"); g.addColorStop(1, "#6a2214");
   ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(X, Y, r * 1.05, r * 0.72, 0, Math.PI, 0); ctx.ellipse(X, Y, r * 1.05, r * 0.3, 0, 0, Math.PI); ctx.fill();
   // Glowing cracks on its shell.
   ctx.strokeStyle = "rgba(255,210,120,0.9)"; ctx.lineWidth = Math.max(1, u * 0.018);
   ctx.beginPath(); ctx.moveTo(X - r * 0.5, Y - r * 0.2); ctx.lineTo(X - r * 0.1, Y - r * 0.45); ctx.lineTo(X + r * 0.3, Y - r * 0.15); ctx.stroke();
   // Eyes on stalks.
-  ctx.strokeStyle = "#c2391f"; ctx.lineWidth = Math.max(1.5, u * 0.03);
+  ctx.strokeStyle = "#6a2214"; ctx.lineWidth = Math.max(1.5, u * 0.03);
   for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(X + s * r * 0.3, Y - r * 0.6); ctx.lineTo(X + s * r * 0.35, Y - r * 1.05); ctx.stroke(); }
   eyes(X, Y - r * 1.1, r * 0.2, m.dir);
 }

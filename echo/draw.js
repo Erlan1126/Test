@@ -56,7 +56,20 @@ function drawCave() {
   for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35);  // Frostwisps glow
   lctx.globalAlpha = 1;
 
-  // Scene: the painted cave, kept only where light falls.
+  // Scene: the painted cave, lit by nearby lights on the graphics chip where possible.
+  if (GLR && GLR.ok && save.settings.lighting !== false) {
+    const sdpr = Math.min(DPR, qualityCap >= 2 ? 2 : 1.25);
+    const ax = (OX - mx * TS) * sdpr, ay = (OY - my * TS) * sdpr;
+    const aw = (L.cols + mx * 2) * TS * sdpr, ah = (L.rows + my * 2) * TS * sdpr;
+    if (GLR.render(Math.round(W * sdpr), Math.round(H * sdpr), [ax, ay, aw, ah], [L.cols + mx * 2, L.rows + my * 2], sceneLights(mx, my), 0.62)) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(GLR.canvas, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      drawCaveDetails();
+      return;
+    }
+  }
   sctx.setTransform(1, 0, 0, 1, 0, 0);
   sctx.globalCompositeOperation = "source-over";
   sctx.clearRect(0, 0, scene.width, scene.height);
@@ -70,6 +83,31 @@ function drawCave() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(scene, 0, 0, canvas.width, canvas.height);
   ctx.restore();
+  drawCaveDetails();
+}
+
+// The lights that shade the cave this frame, nearest Lumi first: Lumi itself, then glowing
+// decorations, crystals, lights, the portal and glowing creatures. Positions are in art tiles.
+const LIGHT_RGB = { cyan: [0.55, 0.9, 1], gold: [1, 0.82, 0.5], violet: [0.75, 0.55, 1], pink: [1, 0.6, 0.85], green: [0.6, 1, 0.75], white: [1, 1, 1], ember: [1, 0.55, 0.3] };
+function sceneLights(mx, my) {
+  const out = [], lumi = L.lumi;
+  const look = SKINS[save.skin] && SKINS[save.skin].c ? SKINS[save.skin].c.map(v => v / 255) : [0.6, 0.92, 1];
+  const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
+  const bright = L.useEnergy ? 0.5 + 0.5 * Math.min(1, L.energy / 40) : 1;
+  out.push({ x: lumi.x + mx, y: lumi.y + my, r: (3.2 + L.moths.filter(m => m.following).length * 0.8) * bright * Math.max(shrink, 0.2), i: (1.25 + lumi.sing) * bright, c: look });
+  const add = (x, y, r, i, c) => { if (Math.abs(x - lumi.x) < 9 && Math.abs(y - lumi.y) < 12) out.push({ x: x + mx, y: y + my, r, i, c, d: Math.hypot(x - lumi.x, y - lumi.y) }); };
+  for (const e of L.emitters || []) add(e.x, e.y, e.r * 2.6, e.a * 2.4, LIGHT_RGB[e.color]);
+  for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
+  for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
+  if (!L.dark || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
+  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) add(m.x, m.y, 2, 0.6, LIGHT_RGB.cyan);
+  for (const m of L.moths) add(m.x, m.y, 1.6, 0.5, LIGHT_RGB.green);
+  out.sort((a, b) => (a.d || 0) - (b.d || 0));
+  return out;
+}
+
+function drawCaveDetails() {
+  const { cols } = L;
 
   ctx.globalCompositeOperation = "lighter";
   // Currents: slow ribbons of mist drifting downstream.
@@ -338,7 +376,7 @@ function drawThings() {
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.ember, X, Y, TS * 0.7, a * 0.35);
     ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = Math.min(1, a * 1.3);
+    drawLit(X, Y, TS * 0.7, Math.min(1, a * 1.4 + 0.15), Math.min(1, a * 1.3), () => {
     ctx.strokeStyle = "#ff7a6a";
     ctx.lineWidth = Math.max(1.5, TS * 0.045);
     ctx.lineCap = "round";
@@ -353,7 +391,7 @@ function drawThings() {
     ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#ffb3a8";
     ctx.beginPath(); ctx.arc(X - r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.arc(X + r * 0.35, Y - r * 0.15, r * 0.18, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
+    });
   }
 
   drawMobs();
@@ -586,6 +624,38 @@ function drawThings() {
     ctx.restore();
     ctx.globalAlpha = 1;
   }
+}
+
+// Creatures are drawn into a small side canvas first, then lit like the rock: the side facing
+// Lumi catches a warm highlight, the far side falls into shadow, and they dim where it's dark.
+const litBuf = document.createElement("canvas"), litCtx = litBuf.getContext("2d");
+function drawLit(X, Y, size, light, alpha, draw) {
+  const d = Math.min(DPR, 2), px = Math.ceil(size * 2 * d);
+  if (litBuf.width < px || litBuf.height < px) litBuf.width = litBuf.height = Math.max(px, 64);
+  litCtx.setTransform(1, 0, 0, 1, 0, 0);
+  litCtx.globalCompositeOperation = "source-over";
+  litCtx.globalAlpha = 1;
+  litCtx.clearRect(0, 0, px, px);
+  litCtx.setTransform(d, 0, 0, d, (size - X) * d, (size - Y) * d);
+  ctx = litCtx;
+  try { draw(); } finally { ctx = mainCtx; }
+  litCtx.setTransform(d, 0, 0, d, (size - X) * d, (size - Y) * d);
+  litCtx.globalAlpha = 1;
+  litCtx.globalCompositeOperation = "source-atop";
+  const ang = Math.atan2(sy(L.lumi.y) - Y, sx(L.lumi.x) - X), gx = Math.cos(ang) * size * 0.8, gy = Math.sin(ang) * size * 0.8;
+  const g = litCtx.createLinearGradient(X + gx, Y + gy, X - gx, Y - gy);
+  g.addColorStop(0, "rgba(255,244,226,0.28)");
+  g.addColorStop(0.42, "rgba(0,0,0,0)");
+  g.addColorStop(1, "rgba(4,5,16,0.68)");
+  litCtx.fillStyle = g;
+  litCtx.fillRect(X - size, Y - size, size * 2, size * 2);
+  litCtx.fillStyle = `rgba(4,5,14,${Math.max(0, 1 - light) * 0.6})`;
+  litCtx.fillRect(X - size, Y - size, size * 2, size * 2);
+  litCtx.globalCompositeOperation = "source-over";
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(litBuf, 0, 0, px, px, X - size, Y - size, size * 2, size * 2);
+  ctx.restore();
 }
 
 // The map on the results screen: rock you've seen, Lumi's route, and the lights.

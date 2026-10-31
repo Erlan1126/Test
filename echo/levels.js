@@ -821,6 +821,9 @@ function generateLevel(n, opts = {}) {
       const count = Math.max(1, Math.min(6, 1 + Math.floor(hard * 3.5) + (r() < 0.5 ? 1 : 0) + (R * C > 198 ? 1 : 0) - (!daily && isBreather(n) ? 1 : 0)));
       const fits = (kind, x, y) => {
         if (!free(x, y) || Math.abs(x - S[0]) + Math.abs(y - S[1]) < 5) return false;
+        // Creatures keep their distance from each other, so no spot needs dodging two at once.
+        for (let yy = y - 2; yy <= y + 2; yy++) for (let xx = x - 2; xx <= x + 2; xx++)
+          if (Math.abs(xx - x) + Math.abs(yy - y) <= 2 && g[yy] && "tnakwjgB".includes(g[yy][xx])) return false;
         if (kind === "t") return ((open(x - 1, y) && open(x + 1, y)) || (open(x, y - 1) && open(x, y + 1))) && !laneNearStart(x, y);
         if (kind === "n") return D4.filter(([dx, dy]) => !open(x + dx, y + dy)).length === 1;
         if (kind === "a") return !open(x, y - 1) && open(x, y + 1);

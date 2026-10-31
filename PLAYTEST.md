@@ -68,6 +68,12 @@ For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), wr
 - [ ] Close the game in the middle of a level and reopen it. Is progress kept?
 - [ ] Copy the save code in Settings, erase progress, then restore it. Do the stars come back?
 
+### Lighting and looks
+- [ ] Does the rock look solid, with light falling on it from Lumi, crystals, lava and lanterns?
+- [ ] Do any plants, spikes, icicles or mushrooms float in the air instead of sitting on rock?
+- [ ] Do the creatures look like they belong in the cave (lit from Lumi's side, not like stickers)?
+- [ ] If the game feels slow, turn off lighting in Settings. Does it get smoother?
+
 ### Daily cave and rewards
 - [ ] Play the daily cave on two different days. Does the streak count up?
 - [ ] Do new looks and awards feel worth chasing?

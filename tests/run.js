@@ -376,15 +376,23 @@ const SIM = `
           return L.critters.some(c => Math.floor(c.hx) === x && Math.floor(c.hy) === y);
         };
         const route = (tx, ty) => {
-          const sx = Math.floor(L.lumi.x), sy = Math.floor(L.lumi.y), prev = new Map([[sx + "," + sy, null]]), q = [[sx, sy]];
+          // Shortest swim, where going straight up a current counts as several tiles, the way a
+          // player would rather go around if there's a reasonable way.
+          const sx = Math.floor(L.lumi.x), sy = Math.floor(L.lumi.y), prev = new Map([[sx + "," + sy, null]]);
+          const cost = new Map([[sx + "," + sy, 0]]), q = [[0, sx, sy]];
           while (q.length) {
-            const [x, y] = q.shift();
+            let m = 0;
+            for (let j = 1; j < q.length; j++) if (q[j][0] < q[m][0]) m = j;
+            const [c, x, y] = q.splice(m, 1)[0];
+            if (c > cost.get(x + "," + y)) continue;
             if (x === tx && y === ty) break;
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
               const k = (x + dx) + "," + (y + dy);
-              if (blocked(x + dx, y + dy) || prev.has(k)) continue;
-              prev.set(k, [x, y]);
-              q.push([x + dx, y + dy]);
+              if (blocked(x + dx, y + dy)) continue;
+              const fl = L.flow[(y + dy) * L.cols + x + dx], nc = c + (fl && fl[0] === -dx && fl[1] === -dy ? 4 : 1);
+              if (cost.has(k) && cost.get(k) <= nc) continue;
+              cost.set(k, nc); prev.set(k, [x, y]);
+              q.push([nc, x + dx, y + dy]);
             }
           }
           const p = [];

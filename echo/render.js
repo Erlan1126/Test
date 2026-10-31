@@ -3,7 +3,9 @@
 
 // ---------- Canvas ----------
 const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d"), mainCtx = ctx;
+// ctx is the screen; drawLit() (draw.js) briefly points it at a side canvas to light creatures.
+let ctx = canvas.getContext("2d");
+const mainCtx = ctx;
 // If a phone can't keep up, frames are drawn at a lower resolution (see frame()).
 let qualityCap = 2, slowFrames = 0, frameCount = 0;
 let SDPR = 1, W = 0, H = 0, DPR = 1, TS = 32, OX = 0, OY = 0, bgGrad = null, vignette = null;
@@ -173,6 +175,8 @@ function moveCamera(dt) {
 // noise, with stalactites, stone texture and lit rims. Light then decides what you can see.
 const scene = document.createElement("canvas"), sctx = scene.getContext("2d");
 let art = document.createElement("canvas"), actx = art.getContext("2d");
+// The bump map that goes with the art (which way each bit of rock faces), for gl.js.
+let normArt = document.createElement("canvas"), artVersion = 0;
 const lightCanvas = document.createElement("canvas"), lctx = lightCanvas.getContext("2d");
 const LPT = 8;            // light-map pixels per tile
 const LM = { mx: 0, my: 0 };
@@ -236,41 +240,11 @@ function buildBackdrop() {
 }
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-// The cave is painted twice: a quick, soft pass so the level starts at once, then a sharp pass
-// at full screen resolution a few milliseconds per frame, swapped in when it's done.
-let artJob = null;
-function buildArt() {
-  artJob = null;
-  const quick = paintArt(art, Math.min(DPR, TS > 40 ? 0.55 : 0.8));
-  while (!quick.next().done);
-  paintDecor(actx, art.width / ((L.cols + LM.mx * 2) * TS));
-  const sharp = Math.min(DPR, qualityCap >= 2 ? 1.6 : 1);
-  if (sharp > art.width / ((L.cols + LM.mx * 2) * TS) + 0.1) {
-    const canvas = document.createElement("canvas");
-    artJob = { canvas, steps: paintArt(canvas, sharp), level: L, sc: sharp };
-  }
-}
-function stepArtJob(budgetMs) {
-  if (!artJob) return;
-  if (artJob.level !== L) { artJob = null; return; }
-  const until = performance.now() + budgetMs;
-  while (performance.now() < until) {
-    if (artJob.steps.next().done) {
-      paintDecor(artJob.canvas.getContext("2d"), artJob.sc);
-      art = artJob.canvas;
-      actx = art.getContext("2d");
-      artJob = null;
-      return;
-    }
-  }
-}
-
-function* paintArt(target, sc) {
-  const w = Math.max(1, Math.round((L.cols + LM.mx * 2) * TS * sc)), h = Math.max(1, Math.round((L.rows + LM.my * 2) * TS * sc));
-  target.width = w; target.height = h;
-  const tctx = target.getContext("2d");
+// The cave's rock as a smooth field (above TH is rock), shared by the painter and the
+// decorations so that things sit exactly on the rock you see.
+function levelShape() {
+  if (L.shape) return L.shape;
   const { cols, rows } = L, SUB = 2, PAD = 3;
-
   // Rock occupancy at two samples per tile, blurred once so corners round off
   // while tile edges stay where the collisions are.
   const gw = (cols + PAD * 2) * SUB, gh = (rows + PAD * 2) * SUB;
@@ -289,6 +263,92 @@ function* paintArt(target, sc) {
     const x0 = fx | 0, y0 = fy | 0, ax = fx - x0, ay = fy - y0, k = y0 * gw + x0;
     return (g[k] + (g[k + 1] - g[k]) * ax) * (1 - ay) + (g[k + gw] + (g[k + gw + 1] - g[k + gw]) * ax) * ay;
   };
+  const seed = levelIndex * 37.1 + 5;
+  const bare = (tx, ty) => sample(tx, ty) + (vnoise(tx * 1.7 + seed, ty * 1.7) - 0.5) * 0.24 + (vnoise(tx * 4.3, ty * 4.3 + seed) - 0.5) * 0.08;
+  // Each spike starts where the painted rock really ends (which wanders from the tile edge,
+  // most of all near corners); a spike with no rock close behind it isn't grown at all.
+  for (let k = 0; k < L.spikes.length; k++) {
+    const sp = L.spikes[k];
+    if (!sp) continue;
+    const keep = sp.filter(s => {
+      for (let q = 0; q <= 45; q++) {
+        const yy = s.base + s.dir * 0.3 - s.dir * q * 0.02;
+        if (bare(s.x - s.w * 0.7, yy) >= TH && bare(s.x + s.w * 0.7, yy) >= TH) { s.base = yy + s.dir * 0.02; return true; }
+      }
+      return false;
+    });
+    L.spikes[k] = keep.length ? keep : null;
+  }
+  const at = (tx, ty) => {
+    let v = sample(tx, ty);
+    // The shape noise moves the field by at most 0.16, and rock shading stops changing 0.3
+    // above the edge, so deep enough inside solid rock the noise can't change anything.
+    if (v > TH + 0.47) return TH + 0.5;
+    v = bare(tx, ty);
+    const ix = Math.floor(tx), iy = Math.floor(ty);
+    if (ix >= 0 && iy >= 0 && ix < cols && iy < rows) {
+      const sp = L.spikes[iy * cols + ix];
+      // Stalactites and stalagmites grow out of the rock: their roots reach back into it, so
+      // there's never a gap between a spike and the wall it hangs from.
+      if (sp) for (const s of sp) {
+        const dy = (ty - s.base) * s.dir;
+        if (dy < -0.4 || dy > s.len) continue;
+        const hw = s.w * (dy < 0 ? 1.2 : Math.pow(1 - dy / s.len, 0.75) + 0.1), dx = Math.abs(tx - s.x);
+        if (dx < hw) v = Math.max(v, TH - 0.03 + 0.3 * (1 - dx / hw));
+      }
+    }
+    return v;
+  };
+  // Where the rock surface is, searching from (x, y) down (dir 1) or up (dir -1); null if
+  // there's no rock within reach.
+  const surface = (x, y, dir) => {
+    for (let k = 0; k <= 70; k++) {
+      const yy = y - dir * 0.5 + dir * k * 0.02;
+      if (at(x, yy) >= TH) return yy;
+    }
+    return null;
+  };
+  return (L.shape = { sample, at, surface });
+}
+
+// The cave is painted twice: a quick, soft pass so the level starts at once, then a sharp pass
+// at full screen resolution a few milliseconds per frame, swapped in when it's done.
+let artJob = null;
+function buildArt() {
+  artJob = null;
+  const quick = paintArt(art, Math.min(DPR, TS > 40 ? 0.55 : 0.8), normArt);
+  while (!quick.next().done);
+  paintDecor(actx, art.width / ((L.cols + LM.mx * 2) * TS));
+  artVersion++;
+  const sharp = Math.min(DPR, qualityCap >= 2 ? 1.6 : 1);
+  if (sharp > art.width / ((L.cols + LM.mx * 2) * TS) + 0.1) {
+    const canvas = document.createElement("canvas"), norm = document.createElement("canvas");
+    artJob = { canvas, norm, steps: paintArt(canvas, sharp, norm), level: L, sc: sharp };
+  }
+}
+function stepArtJob(budgetMs) {
+  if (!artJob) return;
+  if (artJob.level !== L) { artJob = null; return; }
+  const until = performance.now() + budgetMs;
+  while (performance.now() < until) {
+    if (artJob.steps.next().done) {
+      paintDecor(artJob.canvas.getContext("2d"), artJob.sc);
+      art = artJob.canvas;
+      actx = art.getContext("2d");
+      normArt = artJob.norm;
+      artVersion++;
+      artJob = null;
+      return;
+    }
+  }
+}
+
+function* paintArt(target, sc, normTarget) {
+  const w = Math.max(1, Math.round((L.cols + LM.mx * 2) * TS * sc)), h = Math.max(1, Math.round((L.rows + LM.my * 2) * TS * sc));
+  target.width = w; target.height = h;
+  const tctx = target.getContext("2d");
+  const { cols, rows } = L;
+  const shape = levelShape();
   // Water tint, blended between tile centres so rivers have soft banks.
   const water = (tx, ty) => {
     const fx = tx - 0.5, fy = ty - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0;
@@ -301,31 +361,15 @@ function* paintArt(target, sc) {
   const inv = 1 / (TS * sc), ox = LM.mx, oy = LM.my;
   const f = new Float32Array(w * h);
   for (let py = 0; py < h; py++) {
-    const ty = (py + 0.5) * inv - oy, iy = Math.floor(ty);
-    for (let px = 0; px < w; px++) {
-      const tx = (px + 0.5) * inv - ox, ix = Math.floor(tx);
-      let v = sample(tx, ty);
-      // The shape noise moves the field by at most 0.16, and rock shading stops changing 0.3
-      // above the edge, so deep enough inside solid rock the noise can't change any pixel.
-      if (v > TH + 0.47) { f[py * w + px] = TH + 0.5; continue; }
-      v += (vnoise(tx * 1.7 + seed, ty * 1.7) - 0.5) * 0.24 + (vnoise(tx * 4.3, ty * 4.3 + seed) - 0.5) * 0.08;
-      if (ix >= 0 && iy >= 0 && ix < cols && iy < rows) {
-        const sp = L.spikes[iy * cols + ix];
-        if (sp) for (const s of sp) {
-          const dy = (ty - s.base) * s.dir;
-          if (dy < -0.1 || dy > s.len) continue;
-          const hw = s.w * Math.min(1, 1 - dy / s.len + 0.15), dx = Math.abs(tx - s.x);
-          if (dx < hw) v = Math.max(v, TH - 0.03 + 0.3 * (1 - dx / hw));
-        }
-      }
-      f[py * w + px] = v;
-    }
+    const ty = (py + 0.5) * inv - oy;
+    for (let px = 0; px < w; px++) f[py * w + px] = shape.at((px + 0.5) * inv - ox, ty);
     if ((py & 15) === 15) yield;
   }
 
   const img = tctx.createImageData(w, h), D = img.data;
+  const hgt = new Float32Array(w * h), rk = new Uint8Array(w * h);  // height and "is rock", for the bump map
   const hasWater = L.flow.some(Boolean);
-  let patch = 0;
+  let patch = 0, far = 0, near = 0;
   for (let py = 0; py < h; py++) {
     const ty = (py + 0.5) * inv - oy;
     for (let px = 0; px < w; px++) {
@@ -336,6 +380,7 @@ function* paintArt(target, sc) {
       if (v > TH + 0.3) {
         // Deep rock: just its darkest colour with stone texture.
         D[k4] = th.deep[0] * t; D[k4 + 1] = th.deep[1] * t; D[k4 + 2] = th.deep[2] * t; D[k4 + 3] = 255;
+        hgt[i] = 1 + tex * 0.06; rk[i] = 255;
         continue;
       }
       const cover = smooth(TH - 0.025, TH + 0.025, v);
@@ -347,6 +392,20 @@ function* paintArt(target, sc) {
       let fr = th.floor[0] + (th.floor2[0] - th.floor[0]) * patch;
       let fg = th.floor[1] + (th.floor2[1] - th.floor[1]) * patch;
       let fb = th.floor[2] + (th.floor2[2] - th.floor[2]) * patch;
+      // Depth: two layers of far-off rock behind the open cave, hazy and soft-edged like
+      // stone seen through mist, the nearer one darker.
+      if ((px & 1) === 0) {
+        far = smooth(0.5, 0.6, vnoise(tx * 0.32 + seed, ty * 0.55 + 11));
+        near = smooth(0.58, 0.64, vnoise(tx * 0.62 - seed, ty * 0.95 + 3) + (ty - rows) * 0.004);
+      }
+      if (far > 0) {
+        const a = far * 0.32;
+        fr += (th.rock[0] * 0.75 + th.floor2[0] * 0.5 - fr) * a; fg += (th.rock[1] * 0.75 + th.floor2[1] * 0.5 - fg) * a; fb += (th.rock[2] * 0.75 + th.floor2[2] * 0.5 - fb) * a;
+      }
+      if (near > 0) {
+        const a = near * 0.55;
+        fr += (th.deep[0] * 0.8 - fr) * a; fg += (th.deep[1] * 0.8 - fg) * a; fb += (th.deep[2] * 0.8 - fb) * a;
+      }
       const wt = hasWater ? water(tx, ty) : 0;
       if (wt > 0) { fr += (14 - fr) * wt * 0.8; fg += (62 - fg) * wt * 0.8; fb += (96 - fb) * wt * 0.8; }
       const fk = t * (1 - ao * 0.6);
@@ -376,10 +435,33 @@ function* paintArt(target, sc) {
       D[k + 1] = fg + (rg - fg) * cover;
       D[k + 2] = fb + (rb - fb) * cover;
       D[k + 3] = 255;
+      // Rock rises from its edge into a rounded, bumpy mass; the open cave behind is nearly flat.
+      hgt[i] = cover * (0.25 + 0.75 * depth) * (0.88 + (detail - 1) * 0.9) + tex * (0.02 + cover * 0.05);
+      rk[i] = cover * 255;
     }
     if ((py & 7) === 7) yield;
   }
   tctx.putImageData(img, 0, 0);
+  if (!normTarget) return;
+
+  // Bump map: the slope of the height field at each pixel, as a direction the surface faces.
+  normTarget.width = w; normTarget.height = h;
+  const nctx = normTarget.getContext("2d"), nimg = nctx.createImageData(w, h), N = nimg.data;
+  const S = TS * sc * 0.42;
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const i = py * w + px;
+      const dx = (hgt[px < w - 1 ? i + 1 : i] - hgt[px > 0 ? i - 1 : i]) * S;
+      const dy = (hgt[py < h - 1 ? i + w : i] - hgt[py > 0 ? i - w : i]) * S;
+      const m = 1 / Math.sqrt(dx * dx + dy * dy + 1), k = i * 4;
+      N[k] = (-dx * m * 0.5 + 0.5) * 255;
+      N[k + 1] = (-dy * m * 0.5 + 0.5) * 255;
+      N[k + 2] = (m * 0.5 + 0.5) * 255;
+      N[k + 3] = rk[i];
+    }
+    if ((py & 15) === 15) yield;
+  }
+  nctx.putImageData(nimg, 0, 0);
 }
 
 const insetProbe = document.createElement("div");

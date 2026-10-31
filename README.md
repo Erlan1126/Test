@@ -22,7 +22,7 @@ The site is hosted for free on GitHub Pages, straight from the `main` branch. Ev
 | --- | --- |
 | `index.html` | The Skyrise game (the site's home page) |
 | `echo.html` | Echo, a cave-exploring game where you see with sound: the page, its styles and screens |
-| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
+| `echo/` | Echo's code, loaded in order by `echo.html`: `levels.js` (handmade caves, worlds and the level generator), `save.js`, `audio.js` (sounds and music), `render.js` (canvas, camera and cave art), `decor.js` (each world's decorations), `gl.js` (lights and shadows on the rock, using the phone's graphics chip), `game.js` (gameplay), `mobs.js` (each world's creatures), `draw.js` (drawing and the main loop) and `ui.js` (menus, rewards and settings) |
 | `tests/run.js`, `package.json` | Automated tests for Echo (see below) |
 | `tools/bundle-echo.js` | Builds a single-file copy of Echo with all its code inlined |
 | `PLAYTEST.md` | A checklist for testing Echo on real phones with friends |

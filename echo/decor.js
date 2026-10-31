@@ -10,7 +10,12 @@ function planDecor() {
   const { cols, rows } = L;
   const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
   const chance = p => r() < p * dens;
-  const glowAt = (x, y, color, rad, a) => { if (!L.dark) emit.push({ x, y, color, r: rad, a, ph: r() * 6 }); };
+  const glowAt = (x, y, color, rad, a) => {
+    if (L.dark) return;
+    const e = { x, y, color, r: rad, a, ph: r() * 6 };
+    emit.push(e);
+    if (items.length) items[items.length - 1].em = e;
+  };
   for (let y = 1; y < rows - 1; y++) for (let x = 1; x < cols - 1; x++) {
     if (L.tile[y * cols + x] !== ".") continue;
     const ceil = rock(x, y - 1), floor = rock(x, y + 1), left = rock(x - 1, y), right = rock(x + 1, y);
@@ -50,8 +55,35 @@ function planDecor() {
       if ((left || right) && chance(0.25)) items.push({ k: "stars", x: left ? x : x + 1, y: y + r(), side: left ? -1 : 1, seed: r() });
     }
   }
-  L.decor = items;
-  L.emitters = emit;
+  // Sit everything on the rock you actually see: the painted edge wanders a little from the
+  // tile edge, so floor things are moved down (or up) onto it and hanging things up to it.
+  const shape = levelShape();
+  const FLOOR = ["pool", "fern", "grass", "vent", "snow", "coral", "weed", "shell"], CEIL = ["roots", "moss", "icicles", "lantern"];
+  // Something wide needs rock under (or over) both ends too, or it's left out: nothing hangs
+  // off the end of a ledge into thin air.
+  const rest = (x, y, dir) => {
+    const ys = [-0.18, 0, 0.18].map(o => shape.surface(x + o, y, dir));
+    if (ys.some(v => v === null) || Math.max(...ys) - Math.min(...ys) > 0.35) return null;
+    return dir > 0 ? Math.max(...ys) : Math.min(...ys);
+  };
+  const gone = new Set();
+  for (const d of items) {
+    const before = d.y;
+    const dir = FLOOR.includes(d.k) || (d.k === "crystals" && d.dir < 0) ? 1 : CEIL.includes(d.k) || (d.k === "crystals" && d.dir > 0) ? -1 : 0;
+    if (!dir) continue;
+    const y = rest(d.x, d.y, dir);
+    if (y === null) { gone.add(d); if (d.em) gone.add(d.em); continue; }
+    d.y = y + dir * 0.03;
+    if (d.em) d.em.y += d.y - before;
+  }
+  L.shrooms = L.shrooms.filter(m => {
+    const y = shape.surface(m.x, m.y - 0.06, 1);
+    if (y === null) return false;
+    m.y = y + 0.03;
+    return true;
+  });
+  L.decor = items.filter(d => !gone.has(d));
+  L.emitters = emit.filter(e => !gone.has(e));
 }
 
 // Draws the decorations into a cave art canvas; sc is art pixels per screen pixel.

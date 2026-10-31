@@ -21,6 +21,7 @@ const CORE = [
   "echo/audio.js",
   "echo/render.js",
   "echo/decor.js",
+  "echo/gl.js",
   "echo/game.js",
   "echo/mobs.js",
   "echo/draw.js",
