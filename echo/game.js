@@ -659,14 +659,24 @@ function update(dt) {
       g.y += (g.hy + Math.cos(g.ph * 0.4) * 0.2 - g.y) * Math.min(1, dt * 2);
       if (L.healing) {
         L.healing += dt;
-        g.heal = Math.min(1, L.healing / 7);
+        // The lullaby, line by line, and then the Hush answers.
+        const beat = L.healing < 2.4 ? 0 : L.healing < 4.8 ? 1 : L.healing < 7.2 ? 2 : 3;
+        if (beat !== L.healBeat && !L.healed) {
+          L.healBeat = beat;
+          const known = LULLABY.filter((l, w) => versesFound()[w]);
+          if (beat === 0) setHint(`♪ ${LULLABY[0]}`, 2.6);
+          else if (beat === 1) setHint(known.length > 1 ? `♪ ${known[Math.min(known.length - 1, 1)]}` : "♪ mm-mm, mm-mm-mm…", 2.6);
+          else if (beat === 2) setHint("…and from deep in the dark, something sings back.", 2.6);
+        }
+        g.heal = Math.min(1, L.healing / 8.5);
         if (Math.random() < dt * 20) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.4, Math.sin(a) * 1.4, 1.2, "gold", 0.12); }
         if (g.heal >= 1 && !L.healed) {
           L.healed = true;
           // Every other Hushling in the cave turns into a firefly and floats away.
           for (const o of L.gloom) if (!o.final) { for (let k = 0; k < 10; k++) spark(o.x, o.y, (Math.random() - 0.5) * 2, -Math.random() * 2, 1.4, "gold", 0.08); o.gone = 1e9; }
           sfx.gate();
-          setHint("The Great Hush remembers its song. The portal is awake", 4);
+          setHint("“You came back.”", 3.5);
+          setTimeout(() => { if (screen === "play") setHint("The Singer remembers its song. The portal is awake", 4); }, 3600);
         }
       }
       continue;
@@ -799,7 +809,12 @@ function update(dt) {
       sfx.unlock();
       buzz([20, 30, 20]);
       for (let k = 0; k < 30; k++) { const a = Math.random() * 6.28, s = 0.5 + Math.random() * 2.5; spark(fam.x, fam.y, Math.cos(a) * s, Math.sin(a) * s, 1.1, k % 2 ? "pink" : "gold", 0.1); }
-      setHint(fam.w < LULLABY.length ? `One of Lumi's family! It remembers a line of the lullaby: “${LULLABY[fam.w]}”` : "One of Lumi's little lights! It joins Lumi's family", fam.w < LULLABY.length ? 6 : 3.5);
+      // Each of the first eight remembers a line of the lullaby.
+      if (fam.w < FAMILY.length) {
+        const f = FAMILY[fam.w];
+        setHint(`${f.name}: “${f.says}”`, 4.5);
+        setTimeout(() => { if (screen === "play") setHint(`${f.name} remembers a line of the lullaby: “${LULLABY[fam.w]}”`, 6); }, 4600);
+      } else setHint("One of Lumi's little lights! It joins Lumi's family", 3.5);
     }
   }
 

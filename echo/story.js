@@ -1,6 +1,8 @@
 // Echo: the story. A chapter opens each of the first eight worlds, told in a few illustrated
-// pages and read aloud (Narration in Settings). Each world's family member remembers one line
-// of an old lullaby; at the bottom of the Starlight Abyss, Lumi sings it to the Great Hush.
+// pages over a music-box lullaby and read aloud (Narration in Settings). The Great Hush was
+// once the Singer, who sang every light to sleep, until its littlest light, Lumi, was lost in
+// a flood. Each world's family member remembers one line of its lullaby; at the bottom of the
+// Starlight Abyss, Lumi sings it back.
 "use strict";
 
 // The last level of World 8, where Lumi sings to the Great Hush.
@@ -19,61 +21,79 @@ const LULLABY = [
 const versesFound = () => LULLABY.map((l, w) => !!(save.family || {})[w]);
 
 // Each page: text, plus what the picture shows.
+// Lumi's family: one hides in each of the first eight worlds, and each remembers one line.
+const FAMILY = [
+  { name: "Pip",    says: "You're real! I thought I was the only one left." },
+  { name: "Fern",   says: "I fell asleep humming. I think I've been humming ever since." },
+  { name: "Bell",   says: "The crystals kept saying you'd come. I stopped believing them. I'm sorry." },
+  { name: "Kindle", says: "I kept one little ember warm. Just in case somebody came back." },
+  { name: "Wren",   says: "It's so cold without the song. Can I stay close to you?" },
+  { name: "Tide",   says: "The sea remembers the night we lost you. It never stopped looking either." },
+  { name: "Penny",  says: "I read the walls every night. I know every word by heart." },
+  { name: "Nova",   says: "Look up, Lumi. Can you see it? That's the sky." },
+];
+
+// The story. Pages name what the picture shows; the words carry the rest.
 const CHAPTERS = [
   { title: "The Last Song", pages: [
-    { text: "Long ago, the caves under the world were full of song. Every light that lived there had a voice, and every voice had an echo.", crowd: 1, notes: 1 },
-    { text: "But one voice was always alone. It sang and sang, and nobody ever sang back. Slowly it grew quiet. And then it grew hungry.", hush: "far", notes: 1 },
-    { text: "It became the Hush. It swallowed every song in the deep, and all the little lights went dark and fell asleep.", hush: "big", sleepers: 1 },
-    { text: "All but one. A tiny light called Lumi woke up alone in the dark. Far above, the sky was waiting.", lumi: 1 },
-    { text: "Sing, little light. Your song will show the way. But be careful. The Hushlings are listening.", lumi: 1, hushlings: 1 },
+    { text: "Before Lumi remembers anything else, it remembers a voice. Something very big and very warm, humming close by in the dark. Hush now, little light…", memory: 1 },
+    { text: "Long ago, the caves under the world were full of song. A great Singer sang every light in the deep to sleep each night, and every light sang back.", crowd: 1, notes: 1 },
+    { text: "Then, one by one, the songs went quiet. Something swallowed them. The lights went dark, and fell asleep, and forgot.", hush: "big", sleepers: 1 },
+    { text: "Lumi wakes up alone, in a silence so deep it hurts. Somewhere far above, there must be a sky. And somewhere, maybe, someone still remembers that song.", lumi: 1 },
+    { text: "So Lumi does the only thing a little light can do. It sings. And out in the dark, something hears.", lumi: 1, hushlings: 1 },
   ] },
   { title: "The Humming Moss", pages: [
     { text: "The moss hums back whenever Lumi sings. The caves aren't empty after all. They're only sleeping.", lumi: 1, notes: 1 },
-    { text: "Somewhere in every world, one of Lumi's family is hiding. Each of them remembers a single line of an old lullaby, older than the caves.", lumi: 1, family: 2 },
-    { text: "Nobody knows who wrote it. But when Lumi hums it, the Hushlings stop, just for a moment, as if they're listening.", lumi: 1, hushlings: 1, notes: 1 },
+    { text: "Lumi isn't the only light left. One of its family hides in every world, curled up small in the dark. Each one remembers a single line of the old lullaby.", lumi: 1, family: 2 },
+    { text: "Alone, a line is only a whisper. But if Lumi finds them all, maybe they can find the whole song. And maybe, whoever sang it.", lumi: 1, family: 2, notes: 1 },
   ] },
   { title: "Bells in the Stone", pages: [
-    { text: "Purple crystals ring like little bells. Inside them Lumi sees pictures from long ago: a lonely voice, singing to no one.", crystals: 1, hush: "ghost" },
-    { text: "The lullaby is getting clearer. It doesn't sound like a song for falling asleep. It sounds like a song for someone to come home.", lumi: 1, family: 3, notes: 1 },
+    { text: "The crystals here remember everything ever sung near them. Touch one, and it rings with an old, old voice: the Singer, humming to someone very small.", crystals: 1, hush: "ghost", notes: 1 },
+    { text: "“It had a favourite,” the crystals chime. “The littlest one. It sang them that song every single night.”", crystals: 1, memory: 1 },
+    { text: "“What happened to the littlest one?” Lumi asks. The crystals don't answer. One by one, they go dark.", crystals: 1, lumi: 1 },
   ] },
   { title: "The Shadow King", pages: [
-    { text: "Warm air rises through the glowing cracks. And here, for the first time, Lumi sees the Great Hush: enormous, silent, crowned in shadow.", hush: "big", lumi: 1 },
-    { text: "It doesn't roar. It only looks at Lumi, and its eyes are terribly sad. Then the dark closes in, and Lumi runs.", hush: "big", lumi: 1, hushlings: 1 },
+    { text: "In the heat of the Ember Caverns, Lumi finally sees it. The Great Hush: enormous, silent, crowned in shadow.", hush: "big", lumi: 1 },
+    { text: "It doesn't roar. It only looks at Lumi for a long, long moment, with the saddest eyes Lumi has ever seen. Then the Hushlings pour out of the walls, and Lumi runs.", hush: "big", lumi: 1, hushlings: 1 },
+    { text: "Later, hiding, Lumi notices something strange. The Hushlings never tried to bite. They were looking at its face, as if they were looking for someone.", lumi: 1, hushlings: 1 },
   ] },
-  { title: "The Far Voice", pages: [
-    { text: "Everything is cold and still. Each song echoes for a long, long time.", lumi: 1, frost: 1 },
-    { text: "And in the echoes, very far away, Lumi hears another voice humming along to the lullaby. Someone else knows it.", lumi: 1, notes: 1, hush: "far" },
+  { title: "Tears", pages: [
+    { text: "In the frozen tunnels, Lumi watches a Hushling from behind an icicle. Up close, it isn't scary at all. It's crying.", frost: 1, hushlings: 1, lumi: 1 },
+    { text: "Every time the Great Hush weeps, a tear falls into the dark and becomes a Hushling. They chase every song they hear, because they're looking for one voice. Just one.", hush: "far", tears: 1 },
+    { text: "And far away, so faint it might be the wind, someone hums along to Lumi's song. Then stops, as if it's afraid to hope.", lumi: 1, notes: 1, hush: "far" },
   ] },
-  { title: "The First Singer", pages: [
-    { text: "An old underground sea. Tiny glowing creatures drift in the water, and they tell Lumi a secret.", lumi: 1, sea: 1 },
-    { text: "The Hush wasn't born in the dark. It was the very first singer of all. It wrote the lullaby, for anyone who would listen.", hush: "ghost", notes: 1 },
-    { text: "But nobody ever came.", hush: "far" },
+  { title: "The Night of the Flood", pages: [
+    { text: "The old sea remembers. One night, long ago, the water rose through the deep caves, fast and cold, and in the dark the Singer's littlest light was swept away.", sea: 1, memory: 1 },
+    { text: "The Singer searched for years. It sang the lullaby into every tunnel, every crack, every echo. Nobody answered. It sang until its voice broke.", hush: "ghost", notes: 1 },
+    { text: "After that, it couldn't bear to hear any song that wasn't that one little voice. So it swallowed them all, and waited in the silence, listening. The lights called it the Hush, after the first word of its song.", hush: "far" },
   ] },
   { title: "Is Anyone There?", pages: [
-    { text: "Someone lived in these mines long ago. On the walls, Lumi finds the lullaby, carved in small careful letters, over and over and over.", lumi: 1, carving: 1 },
-    { text: "At the very bottom, scratched deep into the stone: “Is anyone there?”", carving: 1 },
+    { text: "Deep in the old mines, the lullaby is carved into every wall. Over and over, in big, shaking letters.", carving: 1, lumi: 1 },
+    { text: "Under the last verse, scratched so many times the stone is worn smooth, there's a name. Lumi reads it, and its light flickers. The name is Lumi.", carving: 1, name: 1 },
+    { text: "Lumi's family gather close. “The littlest one,” someone whispers. “It was you. It was always you.”", lumi: 1, family: 4 },
   ] },
   { title: "The Answer", pages: [
-    { text: "The deepest place of all, where the Great Hush waits. Far above, Lumi can almost hear the stars.", lumi: 1, hush: "far", stars: 1 },
-    { text: "Lumi's family gather close. They're scared, and so is Lumi. But now Lumi knows what the Hush needs. Not a fight. An answer.", lumi: 1, family: 5 },
+    { text: "The deepest place of all. The Great Hush is waiting at the bottom, the way it has waited for a hundred years.", lumi: 1, hush: "far", stars: 1 },
+    { text: "“What if it swallows you too?” the smallest of them asks. Lumi thinks about it for a long time. “Then at least it won't be alone anymore.”", lumi: 1, family: 5 },
+    { text: "Lumi doesn't need to run this time. It only needs to sing.", lumi: 1, notes: 1 },
   ] },
 ];
 
 function endingPages() {
   const all = versesFound().every(Boolean);
   return [
-    { text: all ? "Lumi swam right up to the Great Hush, closer than anyone had ever dared, and sang the lullaby. Every single line."
-      : "Lumi swam right up to the Great Hush, closer than anyone had ever dared, and sang the lullaby: the lines it knew, and hummed the rest.", lumi: 1, hush: "big", notes: 1 },
-    { text: "The Hush went very still. Then, softly, from somewhere deep inside the dark, it sang back.", hush: "big", notes: 1 },
-    { text: "It remembered. It had written this song long ago, for whoever would come. And at last, someone had.", hush: "healing", lumi: 1 },
-    { text: "The shadow cracked like an eggshell, and light poured out: a great, gentle light, the oldest voice in the deep. The Hushlings turned into fireflies and floated home.", hush: "healed", fireflies: 1 },
-    { text: "All through the caves, the songs woke up. And Lumi, with its whole family and one very big new friend, rose up, and up, and up, and for the first time, saw the stars.", hush: "healed", lumi: 1, family: 5, stars: 1 },
-    { text: "The End. But the caves are deep, and a few lost echoes of the Hush still wander down there. Lumi is going back to help them find their songs.", lumi: 1, stars: 1, hushlings: 1 },
+    { text: "Lumi swam right up to the Great Hush, so close it could feel the cold of the shadow, and began to sing. " + (all ? "Every line, the way its family had taught it." : "Where it didn't know the words, it hummed."), lumi: 1, hush: "big", notes: 1 },
+    { text: "The Hush went still. A hundred years of silence held its breath.", hush: "big" },
+    { text: "Then, very softly, the way it used to every night, it sang the next line back. Its voice was cracked and old. It was the most beautiful thing Lumi had ever heard.", hush: "healing", lumi: 1, notes: 1 },
+    { text: "“You came back,” it said. “I'm sorry,” said Lumi. “I didn't know the way.” “But you found it. You sang, and sang, until you found it.”", hush: "healing", lumi: 1 },
+    { text: "The shadow broke like a shell, and the Singer was inside it all along: warm, and golden, and so very glad. Every Hushling, every lost tear, flew home to it and turned to light.", hush: "healed", fireflies: 1 },
+    { text: "All through the deep, the songs woke up. That night, under the stars, the Singer hummed the lullaby one more time. And this time, Lumi was there to sing back.", hush: "healed", lumi: 1, family: 5, stars: 1 },
+    { text: "The End. But somewhere far below, a few lost echoes are still out there, listening for an answer. Somebody's always listening.", stars: 1, hushlings: 1 },
   ];
 }
 const AFTER = [
-  { text: "Lumi's family live in the light now, and the great old singer hums them to sleep each night.", hush: "healed", family: 5, stars: 1 },
-  { text: "But deep below, lost Hushlings still wander, remembering only silence. Lumi dives back down, singing, to bring them home.", lumi: 1, hushlings: 1 },
+  { text: "Lumi's family live in the light now, and every night the Singer hums them to sleep.", hush: "healed", family: 5, stars: 1 },
+  { text: "But a few lost Hushlings never heard the song. They're still down there, crying in the dark. So Lumi goes back down, singing, to bring every last one of them home.", lumi: 1, hushlings: 1 },
 ];
 
 // ---------- Pictures ----------
@@ -95,7 +115,14 @@ function storyArt(p, w) {
   if (p.frost) for (let k = 0; k < 9; k++) { const x = 20 + k * 32; s += `<path d="M${x} ${30 + (k % 2) * 6}l4 ${14 + (k % 3) * 6}l4-${14 + (k % 3) * 6}z" fill="#d8ecff" opacity=".7"/>`; }
   if (p.sea) s += `<path d="M0 110q40-8 75 0t75 0t75 0t75 0v40H0z" fill="#3fb6c8" opacity=".18"/>` + [...Array(8)].map(() => `<circle cx="${r() * 300}" cy="${95 + r() * 40}" r="${1 + r() * 2}" fill="#9ffff0" opacity=".8"/>`).join("");
   if (p.carving) for (let k = 0; k < 5; k++) s += `<path d="M${30 + k * 6} ${50 + k * 16}h${120 + r() * 60}" stroke="#ffe6a0" stroke-opacity=".35" stroke-dasharray="${2 + r() * 4} 3"/>`;
-  if (p.carving && !p.lumi) s += `<text x="150" y="150" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="14" fill="#ffe6a0" opacity=".85">Is anyone there?</text>`;
+  if (p.name) s += `<text x="150" y="128" text-anchor="middle" font-family="Georgia, serif" font-size="30" letter-spacing="6" fill="#ffe6a0" opacity=".9">LUMI</text><path d="M95 136h110" stroke="#ffe6a0" stroke-opacity=".5"/>`;
+  else if (p.carving && !p.lumi) s += `<text x="150" y="150" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="14" fill="#ffe6a0" opacity=".85">Is anyone there?</text>`;
+  // A memory: something big and warm, humming over a very small light.
+  if (p.memory) s += `<circle cx="150" cy="88" r="72" fill="url(#warm)" opacity=".55"/><ellipse cx="150" cy="78" rx="44" ry="38" fill="#fff1c8" opacity=".18"/><circle cx="150" cy="116" r="9" fill="#ffffff" opacity=".9"/><circle cx="150" cy="116" r="20" fill="#c9f6ff" opacity=".25"/><path d="M120 60q30-18 60 0" stroke="#fff1c8" stroke-opacity=".5" fill="none"/>`;
+  // Tears falling into the dark and opening their eyes as Hushlings.
+  if (p.tears) for (const [x, y, k] of [[200, 70, 0], [215, 95, 0.4], [190, 118, 0.8], [228, 132, 1]]) s += k < 1
+    ? `<path d="M${x} ${y - 6}q5 8 0 11q-5-3 0-11z" fill="#9fb6ff" opacity="${0.8 - k * 0.4}"/>`
+    : `<g><circle cx="${x}" cy="${y}" r="9" fill="#160c26"/><ellipse cx="${x - 3}" cy="${y - 1}" rx="2.2" ry="1.2" fill="#ff9ad0"/><ellipse cx="${x + 3}" cy="${y - 1}" rx="2.2" ry="1.2" fill="#ff9ad0"/></g>`;
   const face = (x, y, rad, col, happy = true) => `<g transform="translate(${x} ${y})"><circle r="${rad * 2.2}" fill="${col}" opacity=".18"/><circle r="${rad}" fill="${col}"/><circle cx="${-rad * 0.33}" cy="${-rad * 0.15}" r="${rad * 0.15}" fill="#123049"/><circle cx="${rad * 0.33}" cy="${-rad * 0.15}" r="${rad * 0.15}" fill="#123049"/>${happy ? `<path d="M${-rad * 0.28} ${rad * 0.28}q${rad * 0.28} ${rad * 0.22} ${rad * 0.56} 0" stroke="#123049" stroke-width="${rad * 0.12}" fill="none" stroke-linecap="round"/>` : ""}</g>`;
   const famCol = k => rgb(lift(THEMES[k % THEMES.length].rim, 1.15));
   if (p.crowd) for (let k = 0; k < 9; k++) s += face(30 + k * 30, 120 - (k % 3) * 18, 7, famCol(k));
@@ -132,7 +159,7 @@ function narrate(text) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text.replace(/“|”/g, ""));
     if (storyVoice) u.voice = storyVoice;
-    u.rate = 0.9; u.pitch = 1.05; u.volume = Math.max(0.3, save.settings.sfx ?? 0.9);
+    u.rate = 0.86; u.pitch = 1.02; u.volume = Math.max(0.3, save.settings.sfx ?? 0.9);
     speechSynthesis.speak(u);
   } catch (e) {}
 }
@@ -140,8 +167,23 @@ function stopNarration() { try { speechSynthesis.cancel(); } catch (e) {} }
 
 // ---------- Playing a chapter ----------
 let story = null;
+// A soft music-box lullaby plays under the story, one note at a time so it stops the moment
+// the story closes.
+let storyTuneT = 0, storyNote = 0;
+function storyTune() {
+  clearTimeout(storyTuneT);
+  if (!story || screen !== "story") return;
+  const [st, len] = LULLABY_TUNE[storyNote];
+  note(261.63 * Math.pow(2, (st + 12) / 12), { dur: len * 0.6 + 0.6, vol: 0.03, type: "sine", echo: 0.9 });
+  storyNote = (storyNote + 1) % LULLABY_TUNE.length;
+  storyTuneT = setTimeout(storyTune, len * 500 + (storyNote === 0 ? 2500 : 0));
+}
 function playStory(pages, { num, name, world, last = "Continue", done }) {
+  audio();
   story = { pages, k: 0, num, name, world, last, done };
+  storyNote = 0;
+  clearTimeout(storyTuneT);
+  storyTuneT = setTimeout(storyTune, 400);
   const th = THEMES[world % THEMES.length];
   $("storyScreen").style.setProperty("--world", `rgb(${th.rim.join(",")})`);
   show("story");
@@ -162,6 +204,7 @@ function storyNext() {
   if (!story) return;
   if (story.k < story.pages.length - 1) { story.k++; storyPageShow(); return; }
   stopNarration();
+  clearTimeout(storyTuneT);
   const done = story.done;
   story = null;
   done();
@@ -175,12 +218,12 @@ function worldChapter(w) {
 
 // ---------- The lullaby ----------
 // A gentle tune, the same every time, played when Lumi sings to the Great Hush.
+const LULLABY_TUNE = [[7, 1], [4, 0.5], [5, 0.5], [7, 1], [9, 1], [7, 2], [5, 1], [4, 0.5], [2, 0.5], [0, 1], [2, 1], [4, 2],
+  [7, 1], [9, 0.5], [7, 0.5], [12, 1], [11, 1], [9, 2], [7, 1], [5, 0.5], [4, 0.5], [2, 1], [4, 1], [0, 3]];
 function playLullaby() {
-  const C = 261.63, f = s => C * Math.pow(2, s / 12);
-  const tune = [[7, 1], [4, 0.5], [5, 0.5], [7, 1], [9, 1], [7, 2], [5, 1], [4, 0.5], [2, 0.5], [0, 1], [2, 1], [4, 2],
-    [7, 1], [9, 0.5], [7, 0.5], [12, 1], [11, 1], [9, 2], [7, 1], [5, 0.5], [4, 0.5], [2, 1], [4, 1], [0, 3]];
+  const f = s => 261.63 * Math.pow(2, s / 12);
   let t = 0;
-  for (const [s, len] of tune) {
+  for (const [s, len] of LULLABY_TUNE) {
     note(f(s), { at: t * 0.42, dur: len * 0.5 + 0.3, vol: 0.07, type: "triangle", echo: 0.8 });
     t += len;
   }

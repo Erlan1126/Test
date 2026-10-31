@@ -521,7 +521,7 @@ function renderJournal() {
     html += `<li class="award${seen ? " done" : ""}"><span class="ico">${seen ? ico : "❔"}</span><span><span class="nm">${seen ? name : "Not found yet"}</span><br><span class="ds">${seen ? desc : "Keep exploring"}</span></span></li>`;
   }
   const verses = versesFound();
-  html += `</ul><h3 class="journal-h">The lullaby</h3><p class="journal-note">Each of Lumi's family remembers one line.</p><div class="lullaby">${LULLABY.map((l, w) => verses[w] ? `<p>${l}</p>` : `<p class="missing">· · · (World ${w + 1})</p>`).join("")}</div><ul class="awards">`;
+  html += `</ul><h3 class="journal-h">The lullaby</h3><p class="journal-note">Each of Lumi's family remembers one line.</p><div class="lullaby">${LULLABY.map((l, w) => verses[w] ? `<p><b>${FAMILY[w].name}</b> ${l}</p>` : `<p class="missing">· · · (someone is hiding in World ${w + 1})</p>`).join("")}</div><ul class="awards">`;
   const vs = save.variants || {};
   html += `</ul><h3 class="journal-h">Rare Hushlings</h3><ul class="awards">`;
   for (const [k, v] of Object.entries(VARIANTS))

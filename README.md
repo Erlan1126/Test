@@ -16,12 +16,12 @@ Sound effects are generated in the browser (there's a mute button). Fonts load f
 
 ## The story
 
-Long ago the caves were full of song, but one voice was always alone. Nobody ever sang back, so it became the **Hush** and swallowed every song in the deep. Lumi is the last small light left awake.
+A great **Singer** used to sing every light in the deep to sleep with the same lullaby. One night a flood swept its littlest light away. It searched and sang for years, and nobody answered, until it couldn't bear any song that wasn't that one little voice. It swallowed them all and waited in the silence. The lights called it **the Hush**, after the first word of its song, and every tear it cries becomes a **Hushling**, chasing every song because they're looking for one voice. The littlest light was **Lumi**.
 
-- A chapter opens each of the first eight worlds: a few illustrated pages, read aloud by the phone's voice (**Story narration** in Settings, or the link under the story). Lumi learns the lullaby, meets the Great Hush, hears a far voice humming along, and finds out the Hush was the very first singer, who wrote the lullaby for anyone who would listen. Nobody ever came.
-- Each world's family member remembers one line of the **lullaby**; the journal collects them.
-- **The finale** is level 160, the last cave of the Starlight Abyss. The Great Hush won't hurt Lumi there and the portal won't open: you sing to it. Lumi sings the lines it knows, the Hush sings back, its shadow cracks open into a great warm light, every Hushling in the cave turns into a firefly, and the ending plays (it changes a little if you found all eight lines).
-- World 9 opens "The Long Echo": Lumi goes back down to bring the lost Hushlings home, which is why they're still in the deeper caves.
+- Eight illustrated chapters open the first eight worlds, read aloud (Story narration in Settings) over a music-box lullaby. Lumi hears the Singer in the crystals, meets the Great Hush, learns the Hushlings are tears, hears the night of the flood, and finds its own name carved under the lullaby in the old mines.
+- **Lumi's family** (Pip, Fern, Bell, Kindle, Wren, Tide, Penny, Nova) hide one per world. Each says something when found and remembers one line of the lullaby; the journal collects them.
+- **The finale** is level 160. The Great Hush won't hurt Lumi and the portal won't open: you sing to it. The lullaby plays line by line, the Hush sings back, says "You came back", and its shadow breaks into the warm golden Singer; every Hushling in the cave turns to light, and the ending plays (it changes if you found all eight lines).
+- World 9 opens "The Long Echo": a few lost Hushlings never heard the song, so Lumi goes back down to bring them home.
 
 ## Coming back every day
 
