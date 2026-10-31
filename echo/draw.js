@@ -136,32 +136,48 @@ function drawCaveDetails() {
     const a = vis(m.i);
     if (a < 0.03) continue;
     const X = sx(m.x), Y = sy(m.y), r = m.s * TS;
-    glow(m.pink ? GLOW.pink : GLOW.green, X, Y - r * 1.7, r * 4.5, a * (0.35 + Math.sin(clock * 1.5 + m.ph) * 0.1));
+    glow(m.pink ? GLOW.pink : GLOW.green, X, Y - r * 1.7, r * 3.5, a * (0.22 + Math.sin(clock * 1.5 + m.ph) * 0.06));
   }
   ctx.globalCompositeOperation = "source-over";
   for (const m of L.shrooms) {
     const a = vis(m.i);
     if (a < 0.03) continue;
     const X = sx(m.x), Y = sy(m.y), r = m.s * TS;
-    const sway = Math.sin(clock * 0.9 + m.ph) * r * 0.08;
-    ctx.fillStyle = `rgba(200,222,240,${a * 0.8})`;
-    ctx.beginPath();
-    ctx.moveTo(X - r * 0.3, Y);
-    ctx.quadraticCurveTo(X - r * 0.12, Y - r * 0.8, X - r * 0.18 + sway, Y - r * 1.3);
-    ctx.lineTo(X + r * 0.18 + sway, Y - r * 1.3);
-    ctx.quadraticCurveTo(X + r * 0.12, Y - r * 0.8, X + r * 0.3, Y);
-    ctx.fill();
-    ctx.fillStyle = m.pink ? `rgba(255,140,200,${a})` : `rgba(110,240,210,${a})`;
-    ctx.beginPath();
-    ctx.moveTo(X - r + sway, Y - r * 1.2);
-    ctx.bezierCurveTo(X - r * 0.95 + sway, Y - r * 2.4, X + r * 0.95 + sway, Y - r * 2.4, X + r + sway, Y - r * 1.2);
-    ctx.quadraticCurveTo(X + sway, Y - r * 1.45, X - r + sway, Y - r * 1.2);
-    ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${a * 0.55})`;
-    ctx.beginPath();
-    ctx.arc(X - r * 0.35 + sway, Y - r * 1.75, r * 0.14, 0, Math.PI * 2);
-    ctx.arc(X + r * 0.25 + sway, Y - r * 1.9, r * 0.1, 0, Math.PI * 2);
-    ctx.fill();
+    const sway = Math.sin(clock * 0.9 + m.ph) * r * 0.08, lean = (m.ph % 1 - 0.5) * r * 0.3;
+    // A soft dark spot where the stem meets the rock.
+    ctx.fillStyle = `rgba(0,0,0,${a * 0.35})`;
+    ctx.beginPath(); ctx.ellipse(X, Y + r * 0.05, r * 0.7, r * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    drawLit(X, Y - r * 1.2, r * 2.6, Math.min(1, a * 1.2), a, () => {
+      const tx = X + lean + sway, ty = Y - r * 1.3;
+      // Stem: pale, slightly curved and fibrous, darker at the base.
+      const sg = ctx.createLinearGradient(X, Y, tx, ty);
+      sg.addColorStop(0, "#5d5a52"); sg.addColorStop(1, "#d7d0bd");
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.moveTo(X - r * 0.26, Y + r * 0.04);
+      ctx.quadraticCurveTo(X - r * 0.1 + lean * 0.3, Y - r * 0.7, tx - r * 0.15, ty);
+      ctx.lineTo(tx + r * 0.15, ty);
+      ctx.quadraticCurveTo(X + r * 0.14 + lean * 0.3, Y - r * 0.7, X + r * 0.26, Y + r * 0.04);
+      ctx.fill();
+      // Gills under the cap.
+      ctx.fillStyle = m.pink ? "#4a2236" : "#1f3b36";
+      ctx.beginPath(); ctx.ellipse(tx, ty + r * 0.05, r * 0.92, r * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+      // Cap: a dome shaded from a lit crown to a dark rim.
+      const cg = ctx.createRadialGradient(tx - r * 0.3, ty - r * 0.75, r * 0.1, tx, ty - r * 0.3, r * 1.1);
+      if (m.pink) { cg.addColorStop(0, "#e7a1c2"); cg.addColorStop(0.55, "#a8507a"); cg.addColorStop(1, "#4d1e36"); }
+      else { cg.addColorStop(0, "#9fd8c4"); cg.addColorStop(0.55, "#3f8f7d"); cg.addColorStop(1, "#173d36"); }
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.moveTo(tx - r, ty);
+      ctx.bezierCurveTo(tx - r * 0.95, ty - r * 1.2, tx + r * 0.95, ty - r * 1.2, tx + r, ty);
+      ctx.quadraticCurveTo(tx, ty - r * 0.18, tx - r, ty);
+      ctx.fill();
+      // Glowing freckles.
+      ctx.fillStyle = m.pink ? "rgba(255,200,230,0.9)" : "rgba(200,255,235,0.9)";
+      for (const [ox, oy, s] of [[-0.42, -0.42, 0.09], [0.12, -0.7, 0.07], [0.5, -0.35, 0.06], [-0.1, -0.3, 0.05]]) {
+        ctx.beginPath(); ctx.arc(tx + ox * r, ty + oy * r, r * s, 0, Math.PI * 2); ctx.fill();
+      }
+    });
   }
 
   // Sound curtains: shimmering strands across the passage that part when the song arrives.
@@ -209,14 +225,23 @@ function drawThings() {
     const a = Math.max(c.on, vis(c.i) * 0.8, 0.05);
     const X = sx(c.x), Y = sy(c.y);
     if (c.on) glow(GLOW.violet, X, Y, T * 2.2, 0.35 * c.on + Math.sin(clock * 2 + c.x) * 0.05);
-    ctx.fillStyle = `rgba(210,180,255,${a})`;
-    ctx.beginPath();
-    ctx.moveTo(X, Y - T * 0.34); ctx.lineTo(X + T * 0.18, Y); ctx.lineTo(X, Y + T * 0.3); ctx.lineTo(X - T * 0.18, Y);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;
-    ctx.beginPath();
-    ctx.moveTo(X, Y - T * 0.2); ctx.lineTo(X + T * 0.07, Y); ctx.lineTo(X, Y + T * 0.12); ctx.lineTo(X - T * 0.07, Y);
-    ctx.closePath(); ctx.fill();
+    // A cut gem hovering and slowly turning: facets catch the light as it spins.
+    ctx.globalCompositeOperation = "source-over";
+    const bob = Math.sin(clock * 1.6 + c.x * 3) * T * 0.04, spin = Math.cos(clock * 0.9 + c.y * 2);
+    const top = Y - T * 0.34 + bob, mid = Y - T * 0.06 + bob, bot = Y + T * 0.3 + bob, w = T * 0.2;
+    const xs = [-1, -0.35, 0.35, 1].map(k => X + w * Math.sin(Math.asin(k) + spin * 0.6));
+    const faces = [[0, 1, "#4a2a86", "#2a1550"], [1, 2, "#d8c2ff", "#7a52c8"], [2, 3, "#8e68d8", "#3b2170"]];
+    for (const [i0, i1, cTop, cBot] of faces) {
+      if (xs[i1] <= xs[i0]) continue;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = cTop; ctx.beginPath(); ctx.moveTo(X, top); ctx.lineTo(xs[i0], mid); ctx.lineTo(xs[i1], mid); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = cBot; ctx.beginPath(); ctx.moveTo(xs[i0], mid); ctx.lineTo(X, bot); ctx.lineTo(xs[i1], mid); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(245,235,255,0.7)"; ctx.lineWidth = Math.max(1, T * 0.012);
+    ctx.beginPath(); ctx.moveTo(xs[0], mid); ctx.lineTo(xs[3], mid); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.white, xs[2] - w * 0.2, mid - T * 0.08, T * 0.12, a * (0.4 + 0.3 * Math.max(0, spin)));
   }
 
   // Portal: a slow vortex, always faintly visible so there's a goal.
@@ -450,16 +475,25 @@ function drawThings() {
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.violet, X, Y, TS * (0.8 + fl), a * 0.35 + fl * 0.8);
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = `rgba(214,190,255,${Math.min(1, a * 0.9 + fl)})`;
-    for (const [ox, oy, s] of [[-0.18, 0.05, 0.22], [0.12, -0.1, 0.28], [0.2, 0.18, 0.16]]) {
-      ctx.beginPath();
-      ctx.moveTo(X + ox * TS, Y + (oy - s) * TS);
-      ctx.lineTo(X + (ox + s * 0.45) * TS, Y + oy * TS);
-      ctx.lineTo(X + ox * TS, Y + (oy + s * 0.6) * TS);
-      ctx.lineTo(X + (ox - s * 0.45) * TS, Y + oy * TS);
-      ctx.closePath();
-      ctx.fill();
-    }
+    // A cluster of shards growing out of a dark socket in the rock, each with a lit face, a
+    // shadowed face and a bright ridge.
+    drawLit(X, Y, TS * 0.6, Math.min(1, a + fl), Math.min(1, a * 1.1 + fl), () => {
+      ctx.fillStyle = "rgba(14,8,26,0.75)";
+      ctx.beginPath(); ctx.ellipse(X, Y + TS * 0.2, TS * 0.36, TS * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [ox, ang, len, wd] of [[-0.17, -0.45, 0.42, 0.09], [0.15, 0.4, 0.36, 0.08], [0, -0.05, 0.55, 0.11], [0.26, 0.85, 0.22, 0.06], [-0.28, -0.95, 0.24, 0.06]]) {
+        const bx = X + ox * TS, by = Y + TS * 0.2, dx = Math.sin(ang), dy = -Math.cos(ang);
+        const tx = bx + dx * len * TS, ty = by + dy * len * TS, nx = -dy * wd * TS, ny = dx * wd * TS;
+        const px = tx + dx * wd * 1.3 * TS, py = ty + dy * wd * 1.3 * TS;
+        for (const [s, c0, c1] of [[1, "#2c1650", "#cdb2ff"], [-1, "#160a2c", "#7a55c4"]]) {
+          const g = ctx.createLinearGradient(bx, by, px, py);
+          g.addColorStop(0, c0); g.addColorStop(1, c1);
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + nx * s, by + ny * s); ctx.lineTo(tx + nx * s * 0.8, ty + ny * s * 0.8); ctx.lineTo(px, py); ctx.closePath(); ctx.fill();
+        }
+        ctx.strokeStyle = `rgba(245,235,255,${0.5 + fl * 0.5})`; ctx.lineWidth = Math.max(1, TS * 0.012);
+        ctx.beginPath(); ctx.moveTo(bx + (tx - bx) * 0.3, by + (ty - by) * 0.3); ctx.lineTo(px, py); ctx.stroke();
+      }
+    });
     if (fl > 0) L.echoFlash.set(j, Math.max(0, fl - 1 / 40));
   }
 

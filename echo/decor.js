@@ -34,7 +34,7 @@ function planDecor() {
     } else if (t === 3) {
       if ((left || right || ceil || floor) && chance(0.4)) {
         const side = left ? [-1, 0] : right ? [1, 0] : ceil ? [0, -1] : [0, 1];
-        const ex = x + 0.5 + side[0] * 0.62, ey = y + 0.5 + side[1] * 0.62;
+        const ex = x + 0.5 + side[0] * 0.8, ey = y + 0.5 + side[1] * 0.8;
         items.push({ k: "lava", x: ex, y: ey, side, s: 0.35 + r() * 0.3, seed: r() });
         glowAt(ex - side[0] * 0.2, ey - side[1] * 0.2, "ember", 0.75, 0.3);
       }
@@ -69,6 +69,12 @@ function planDecor() {
   const gone = new Set();
   for (const d of items) {
     const before = d.y;
+    if (d.k === "beam") {
+      // Mine supports stand on the floor and hold up the ceiling, wherever the rock really is.
+      d.posts = [-0.32, 0.32].map(o => [d.x + o, shape.surface(d.x + o, d.y, -1), shape.surface(d.x + o, d.y + 1, 1)]);
+      if (d.posts.some(p => p[1] === null || p[2] === null)) gone.add(d);
+      continue;
+    }
     const dir = FLOOR.includes(d.k) || (d.k === "crystals" && d.dir < 0) ? 1 : CEIL.includes(d.k) || (d.k === "crystals" && d.dir > 0) ? -1 : 0;
     if (!dir) continue;
     const y = rest(d.x, d.y, dir);
@@ -87,13 +93,31 @@ function planDecor() {
 }
 
 // Draws the decorations into a cave art canvas; sc is art pixels per screen pixel.
-function paintDecor(c, sc) {
+// Things set into the rock (lava veins, mineral flecks, star crystals) are painted on a side
+// layer and trimmed to the rock, using the bump map's rock mask, so none of them spill into the air.
+const IN_ROCK = new Set(["lava", "flecks", "stars"]);
+function paintDecor(c, sc, mask) {
   if (!L.decor) return;
+  let side = null;
+  if (mask) {
+    side = document.createElement("canvas");
+    side.width = c.canvas.width; side.height = c.canvas.height;
+    paintDecorItems(side.getContext("2d"), sc, d => IN_ROCK.has(d.k));
+    const sctx = side.getContext("2d");
+    sctx.globalCompositeOperation = "destination-in";
+    sctx.drawImage(mask, 0, 0, side.width, side.height);
+    c.drawImage(side, 0, 0);
+  }
+  paintDecorItems(c, sc, d => !mask || !IN_ROCK.has(d.k));
+}
+
+function paintDecorItems(c, sc, which) {
   const u = TS * sc, X = x => (x + LM.mx) * u, Y = y => (y + LM.my) * u;
   c.save();
   c.lineCap = "round";
   c.lineJoin = "round";
   for (const d of L.decor) {
+    if (!which(d)) continue;
     const rr = seeded(Math.floor((d.seed || 0.5) * 1e6) + 1);
     if (d.k === "pool") {
       const g = c.createRadialGradient(X(d.x), Y(d.y) - u * 0.04, 0, X(d.x), Y(d.y) - u * 0.04, u * d.s * 0.6);
@@ -136,25 +160,36 @@ function paintDecor(c, sc) {
       for (let q = 0; q < 4; q++) {
         const a = Math.PI / 2 * d.dir + (q - 1.5) * 0.35 + (rr() - 0.5) * 0.2, len = u * d.s * (0.6 + rr() * 0.6), wd = u * 0.06;
         const bx = X(d.x + (q - 1.5) * 0.08), by = Y(d.y), tx = bx + Math.cos(a) * len, ty = by + Math.sin(a) * len;
-        const nx = -Math.sin(a) * wd, ny = Math.cos(a) * wd;
-        const g = c.createLinearGradient(bx, by, tx, ty);
-        g.addColorStop(0, "rgba(120,80,200,0.95)"); g.addColorStop(1, "rgba(235,215,255,0.95)");
-        c.fillStyle = g;
-        c.beginPath(); c.moveTo(bx + nx, by + ny); c.lineTo(tx + nx * 0.6, ty + ny * 0.6); c.lineTo(tx + Math.cos(a) * wd * 1.4, ty + Math.sin(a) * wd * 1.4); c.lineTo(tx - nx * 0.6, ty - ny * 0.6); c.lineTo(bx - nx, by - ny); c.closePath(); c.fill();
-        c.strokeStyle = "rgba(255,255,255,0.5)"; c.lineWidth = Math.max(1, u * 0.012);
-        c.beginPath(); c.moveTo(bx, by); c.lineTo(tx, ty); c.stroke();
+        const nx = -Math.sin(a) * wd, ny = Math.cos(a) * wd, px = tx + Math.cos(a) * wd * 1.4, py = ty + Math.sin(a) * wd * 1.4;
+        // Each shard has a lit face and a shadowed face meeting at a ridge, darker at the root.
+        for (const [s, top, bot] of [[1, "rgba(206,176,255,0.95)", "rgba(70,40,120,0.95)"], [-1, "rgba(120,86,190,0.95)", "rgba(40,22,74,0.95)"]]) {
+          const g = c.createLinearGradient(bx, by, tx, ty);
+          g.addColorStop(0, bot); g.addColorStop(1, top);
+          c.fillStyle = g;
+          c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + nx * s, by + ny * s); c.lineTo(tx + nx * 0.6 * s, ty + ny * 0.6 * s); c.lineTo(px, py); c.closePath(); c.fill();
+        }
+        c.strokeStyle = "rgba(240,228,255,0.55)"; c.lineWidth = Math.max(1, u * 0.01);
+        c.beginPath(); c.moveTo(bx + (tx - bx) * 0.25, by + (ty - by) * 0.25); c.lineTo(px, py); c.stroke();
       }
     } else if (d.k === "lava") {
-      const [sxd, syd] = d.side, along = [syd, -sxd];
-      c.strokeStyle = "rgba(255,120,50,0.9)"; c.lineWidth = Math.max(1.2, u * 0.035);
-      c.shadowColor = "rgba(255,140,60,0.9)"; c.shadowBlur = u * 0.15;
-      c.beginPath();
-      for (let q = 0; q <= 5; q++) {
-        const k = (q / 5 - 0.5) * d.s * 2, jit = (rr() - 0.5) * 0.12;
-        const px = X(d.x + along[0] * k + sxd * jit), py = Y(d.y + along[1] * k + syd * jit);
-        q ? c.lineTo(px, py) : c.moveTo(px, py);
+      // A crack in the rock with molten stone inside: a dark crust, a glowing core and a
+      // white-hot thread, with a short branch.
+      const [sxd, syd] = d.side, along = [syd, -sxd], pts = [];
+      for (let q = 0; q <= 6; q++) {
+        const k = (q / 6 - 0.5) * d.s * 2, jit = (rr() - 0.5) * 0.14;
+        pts.push([X(d.x + along[0] * k + sxd * jit), Y(d.y + along[1] * k + syd * jit)]);
       }
-      c.stroke();
+      const b = pts[2 + Math.floor(rr() * 3)], bl = u * d.s * 0.45, bs = rr() < 0.5 ? 1 : -1;
+      const branch = [b, [b[0] + (sxd * 0.8 + along[0] * 0.5 * bs) * bl, b[1] + (syd * 0.8 + along[1] * 0.5 * bs) * bl]];
+      const vein = (pp, w, col, blur) => {
+        c.strokeStyle = col; c.lineWidth = w; c.shadowBlur = blur; c.shadowColor = "rgba(255,110,40,0.9)";
+        c.beginPath(); pp.forEach(([px, py], q) => (q ? c.lineTo(px, py) : c.moveTo(px, py))); c.stroke();
+      };
+      for (const [pp, k] of [[pts, 1], [branch, 0.6]]) {
+        vein(pp, Math.max(2, u * 0.07 * k), "rgba(30,10,6,0.85)", 0);
+        vein(pp, Math.max(1.2, u * 0.035 * k), "rgba(230,90,30,0.95)", u * 0.12);
+        vein(pp, Math.max(0.6, u * 0.012 * k), "rgba(255,220,150,0.95)", 0);
+      }
       c.shadowBlur = 0;
     } else if (d.k === "vent") {
       c.fillStyle = "#2a1410";
@@ -198,11 +233,23 @@ function paintDecor(c, sc) {
       c.strokeStyle = "rgba(200,140,120,0.8)"; c.lineWidth = Math.max(1, u * 0.01);
       for (let q = -2; q <= 2; q++) { c.beginPath(); c.moveTo(X(d.x), Y(d.y)); c.lineTo(X(d.x) + q * u * d.s * 0.45, Y(d.y) - u * d.s * 0.85); c.stroke(); }
     } else if (d.k === "beam") {
-      c.fillStyle = "#5c3d22"; c.strokeStyle = "#2e1e10"; c.lineWidth = Math.max(1, u * 0.02);
-      const post = u * 0.09;
-      c.fillRect(X(d.x - 0.5), Y(d.y), post, u); c.strokeRect(X(d.x - 0.5), Y(d.y), post, u);
-      c.fillRect(X(d.x + 0.5) - post, Y(d.y), post, u); c.strokeRect(X(d.x + 0.5) - post, Y(d.y), post, u);
-      c.fillRect(X(d.x - 0.55), Y(d.y), u * 1.1, post); c.strokeRect(X(d.x - 0.55), Y(d.y), u * 1.1, post);
+      // Timber posts from floor to ceiling with a crossbeam, rounded with light and shade.
+      if (!d.posts) continue;
+      const post = u * 0.1, wood = (x0, y0, w, h, vertical) => {
+        const g = vertical ? c.createLinearGradient(x0, 0, x0 + w, 0) : c.createLinearGradient(0, y0, 0, y0 + h);
+        g.addColorStop(0, "#8a6238"); g.addColorStop(0.45, "#5c3d22"); g.addColorStop(1, "#24170c");
+        c.fillStyle = g; c.fillRect(x0, y0, w, h);
+        c.strokeStyle = "rgba(30,18,8,0.6)"; c.lineWidth = Math.max(1, u * 0.008);
+        for (let q = 1; q < 3; q++) {
+          c.beginPath();
+          if (vertical) { c.moveTo(x0 + w * q / 3, y0); c.lineTo(x0 + w * q / 3 + (rr() - 0.5) * 2, y0 + h); }
+          else { c.moveTo(x0, y0 + h * q / 3); c.lineTo(x0 + w, y0 + h * q / 3 + (rr() - 0.5) * 2); }
+          c.stroke();
+        }
+      };
+      for (const [px, top, bot] of d.posts) wood(X(px) - post / 2, Y(top) - u * 0.04, post, Y(bot) - Y(top) + u * 0.08, true);
+      const top = Math.max(d.posts[0][1], d.posts[1][1]);
+      wood(X(d.posts[0][0]) - post, Y(top), X(d.posts[1][0]) - X(d.posts[0][0]) + post * 2, post * 0.9, false);
     } else if (d.k === "lantern") {
       c.strokeStyle = "rgba(120,100,80,0.9)"; c.lineWidth = Math.max(1, u * 0.015);
       c.beginPath(); c.moveTo(X(d.x), Y(d.y)); c.lineTo(X(d.x), Y(d.y) + u * d.s); c.stroke();

@@ -286,6 +286,11 @@ function levelShape() {
     if (v > TH + 0.47) return TH + 0.5;
     v = bare(tx, ty);
     const ix = Math.floor(tx), iy = Math.floor(ty);
+    // Every rock tile keeps a solid core, so a lone pillar never thins into a ghost.
+    if (ix >= 0 && iy >= 0 && ix < cols && iy < rows && L.tile[iy * cols + ix] === "#") {
+      const core = 1 - Math.hypot(tx - ix - 0.5, ty - iy - 0.5) / 0.4;
+      if (core > 0) v = Math.max(v, TH - 0.06 + core * 0.3);
+    }
     if (ix >= 0 && iy >= 0 && ix < cols && iy < rows) {
       const sp = L.spikes[iy * cols + ix];
       // Stalactites and stalagmites grow out of the rock: their roots reach back into it, so
@@ -318,7 +323,7 @@ function buildArt() {
   artJob = null;
   const quick = paintArt(art, Math.min(DPR, TS > 40 ? 0.55 : 0.8), normArt);
   while (!quick.next().done);
-  paintDecor(actx, art.width / ((L.cols + LM.mx * 2) * TS));
+  paintDecor(actx, art.width / ((L.cols + LM.mx * 2) * TS), normArt);
   artVersion++;
   const sharp = Math.min(DPR, qualityCap >= 2 ? 1.6 : 1);
   if (sharp > art.width / ((L.cols + LM.mx * 2) * TS) + 0.1) {
@@ -332,7 +337,7 @@ function stepArtJob(budgetMs) {
   const until = performance.now() + budgetMs;
   while (performance.now() < until) {
     if (artJob.steps.next().done) {
-      paintDecor(artJob.canvas.getContext("2d"), artJob.sc);
+      paintDecor(artJob.canvas.getContext("2d"), artJob.sc, artJob.norm);
       art = artJob.canvas;
       actx = art.getContext("2d");
       normArt = artJob.norm;
