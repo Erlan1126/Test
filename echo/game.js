@@ -22,8 +22,8 @@ function loadLevel(i, demo = false) {
     seen: new Uint8Array(n),
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
-  // From World 3 lights stop glowing through the dark: you have to sing to find them.
-  hideLights: (!!def.dark || i >= 11) && !save.settings.glow,
+  // Nothing shows until Lumi's light or a song reaches it, unless Guiding glow is on.
+  hideLights: !save.settings.glow && !demo,
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
@@ -209,6 +209,12 @@ function ping(long = false) {
   const range = long ? LONG_RANGE : WAVE_RANGE;
   L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, range + 1), r: 0, prev: -1, range, speed: long ? LONG_SPEED : WAVE_SPEED, echoed: new Set(), long });
   L.lumi.sing = long ? 0.9 : 0.45;
+  // Hushlings hear a song the moment it's sung, through rock, and come at once.
+  if (!L.demo) for (const g of L.gloom) {
+    if (g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 8 : 6.5) * (long ? 1.25 : 1)) continue;
+    if (g.hunt <= 0) sfx.gloomWake(g.x - L.lumi.x, g.big);
+    g.hunt = g.big ? 6 : 4.5;
+  }
   if (!L.demo) { long ? sfx.longSong(L.pings - 1) : sfx.ping(L.pings - 1); buzz(long ? [10, 30, 20] : 8); }
   for (let k = 0; k < 14; k++) {
     const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 1.5;
@@ -244,7 +250,7 @@ function reveal(i, d = 0, w = null) {
     if (snore || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
     // Only a song heard fairly close by wakes a Hushling, not a faint echo from far away.
     if (Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : 6)) continue;
-    g.hunt = g.big ? 5 : 2.8;
+    g.hunt = g.big ? 6 : 4.5;
     sfx.gloomWake(g.x - L.lumi.x, g.big);
   }
 }
@@ -628,17 +634,23 @@ function update(dt) {
     // After a touch, a Hushling rests at home for a while before a song can wake it again.
     g.calm = Math.max(0, (g.calm || 0) - dt);
     g.hunt = Math.max(0, g.hunt - dt);
+    // Swim close by and it notices you too, and it keeps chasing while you're near.
+    const gap = Math.hypot(lumi.x - g.x, lumi.y - g.y);
+    if (ctl && g.calm <= 0 && gap < (g.big ? 3.2 : 2.4)) {
+      if (g.hunt <= 0) sfx.gloomWake(g.x - lumi.x, g.big);
+      g.hunt = Math.max(g.hunt, g.big ? 3 : 2.2);
+    }
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? lumi.x : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? lumi.y : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = g.big ? (hunting ? 0.85 : 0.35) : hunting ? 1.15 + depthOf(levelIndex) * 0.3 : 0.6;
+    const spd = g.big ? (hunting ? 1.35 : 0.4) : hunting ? 1.9 + depthOf(levelIndex) * 0.35 : 0.6;
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
     if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
       const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 26 : 16));
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 22 : 12));
       L.hits++;
       g.gone = g.big ? 10 : 8;
       g.calm = g.big ? 8 : 6;

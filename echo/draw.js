@@ -27,6 +27,13 @@ function drawBackground(dt) {
 }
 
 const vis = i => Math.max(L.lit[i], L.glow[i], L.seen[i] * MEMORY);
+// Nothing shows until Lumi's light or a song reaches it (Guiding glow turns this off).
+// sightAt: things that move, seen only while light is on them. knownAt: things that stay put,
+// which stay known once a song has found them.
+const tileAt = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y); return ix < 0 || iy < 0 || ix >= L.cols || iy >= L.rows ? -1 : iy * L.cols + ix; };
+const sightAt = (x, y) => { if (!L.hideLights) return 1; const i = tileAt(x, y); return i < 0 ? 0 : Math.min(1, Math.max(L.lit[i], L.glow[i]) * 2.2); };
+const knownAt = (x, y) => { const i = tileAt(x, y); return !L.hideLights ? 1 : i < 0 ? 0 : L.seen[i] ? 1 : sightAt(x, y); };
+const hidden = min => (L.hideLights && !save.settings.contrast ? 0 : min);
 const sx = x => OX + x * TS, sy = y => OY + y * TS;
 
 function drawCave() {
@@ -49,11 +56,11 @@ function drawCave() {
   for (const c of L.crystals) if (c.on) blob(c.x, c.y, 1.3, c.on * 0.6);
   for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) blob(o.x, o.y, 0.7, 0.3);
   for (const r of L.runes) if (r.on) blob(r.x, r.y, 1.1, r.on * 0.5);
-  if (L.baby) blob(L.baby.x, L.baby.y, 0.7, 0.4);
-  for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4);
-  if (!L.dark || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
-  for (const e of L.emitters || []) blob(e.x, e.y, e.r, e.a * (0.85 + 0.15 * Math.sin(clock * 2.3 + e.ph)));
-  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35);  // Frostwisps glow
+  if (L.baby) blob(L.baby.x, L.baby.y, 0.7, 0.4 * (L.baby.following ? 1 : knownAt(L.baby.hx, L.baby.hy)));
+  for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4 * sightAt(m.x, m.y));
+  if (!L.hideLights || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
+  for (const e of L.emitters || []) blob(e.x, e.y, e.r, e.a * (0.85 + 0.15 * Math.sin(clock * 2.3 + e.ph)) * knownAt(e.x, e.y));
+  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35 * sightAt(m.x, m.y));  // Frostwisps glow
   lctx.globalAlpha = 1;
 
   // Scene: the painted cave, lit by nearby lights on the graphics chip where possible.
@@ -96,12 +103,12 @@ function sceneLights(mx, my) {
   const bright = L.useEnergy ? 0.5 + 0.5 * Math.min(1, L.energy / 40) : 1;
   out.push({ x: lumi.x + mx, y: lumi.y + my, r: (3.2 + L.moths.filter(m => m.following).length * 0.8) * bright * Math.max(shrink, 0.2), i: (1.25 + lumi.sing) * bright, c: look });
   const add = (x, y, r, i, c) => { if (Math.abs(x - lumi.x) < 9 && Math.abs(y - lumi.y) < 12) out.push({ x: x + mx, y: y + my, r, i, c, d: Math.hypot(x - lumi.x, y - lumi.y) }); };
-  for (const e of L.emitters || []) add(e.x, e.y, e.r * 2.6, e.a * 2.4, LIGHT_RGB[e.color]);
+  for (const e of L.emitters || []) { const k = knownAt(e.x, e.y); if (k > 0) add(e.x, e.y, e.r * 2.6, e.a * 2.4 * k, LIGHT_RGB[e.color]); }
   for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
   for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
-  if (!L.dark || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
-  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) add(m.x, m.y, 2, 0.6, LIGHT_RGB.cyan);
-  for (const m of L.moths) add(m.x, m.y, 1.6, 0.5, LIGHT_RGB.green);
+  if (!L.hideLights || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
+  for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0 && sightAt(m.x, m.y) > 0) add(m.x, m.y, 2, 0.6 * sightAt(m.x, m.y), LIGHT_RGB.cyan);
+  for (const m of L.moths) if (sightAt(m.x, m.y) > 0) add(m.x, m.y, 1.6, 0.5 * sightAt(m.x, m.y), LIGHT_RGB.green);
   out.sort((a, b) => (a.d || 0) - (b.d || 0));
   return out;
 }
@@ -116,7 +123,7 @@ function drawCaveDetails() {
   for (let i = 0; i < L.n; i++) {
     const f = L.flow[i];
     if (!f) continue;
-    const a = 0.06 + Math.max(L.lit[i], L.glow[i]) * 0.35;
+    const a = hidden(0.06) + Math.max(L.lit[i], L.glow[i]) * 0.35;
     const x = i % cols, y = (i / cols) | 0;
     for (let k = 0; k < 2; k++) {
       const t = (clock * 0.55 + k / 2 + (x * 0.37 + y * 0.61)) % 1;
@@ -185,7 +192,7 @@ function drawCaveDetails() {
   for (let i = 0; i < L.n; i++) {
     if (L.tile[i] !== "D") continue;
     const x = i % cols, y = (i / cols) | 0, o = L.doorAnim[i];
-    const a = Math.max(vis(i), save.settings.contrast ? 0.6 : 0.1 + Math.sin(clock * 2 + i) * 0.04) * (1 - o * 0.85);
+    const a = Math.max(vis(i), save.settings.contrast ? 0.6 : hidden(0.1 + Math.sin(clock * 2 + i) * 0.04)) * (1 - o * 0.85);
     const across = !solidAt(x, y - 1) || !solidAt(x, y + 1);  // passage runs up-down, so strands run left-right
     const cx = sx(x + 0.5), cy = sy(y + 0.5);
     glow(GLOW.violet, cx, cy, TS * 0.9, a * 0.45);
@@ -222,7 +229,8 @@ function drawThings() {
   ctx.globalCompositeOperation = "lighter";
   // Crystals.
   for (const c of L.crystals) {
-    const a = Math.max(c.on, vis(c.i) * 0.8, 0.05);
+    const a = Math.max(c.on, vis(c.i) * 0.8, hidden(0.05));
+    if (a < 0.02) continue;
     const X = sx(c.x), Y = sy(c.y);
     if (c.on) glow(GLOW.violet, X, Y, T * 2.2, 0.35 * c.on + Math.sin(clock * 2 + c.x) * 0.05);
     // A cut gem hovering and slowly turning: facets catch the light as it spins.
@@ -248,7 +256,7 @@ function drawThings() {
   {
     const e = L.exit, X = sx(e.x), Y = sy(e.y);
     const asleep = L.goal === "rescue" && L.baby && !L.baby.following;
-    const a = (L.dark ? vis(e.i) : Math.max(0.35, vis(e.i))) * (asleep ? 0.45 : 1);
+    const a = (L.hideLights && !L.seen[e.i] ? vis(e.i) : Math.max(0.35, vis(e.i))) * (asleep ? 0.45 : 1);
     glow(GLOW.violet, X, Y, T * 1.5, a * 0.5);
     glow(GLOW.white, X, Y, T * 0.35, a * 0.6);
     for (let k = 0; k < 18; k++) {
@@ -282,7 +290,8 @@ function drawThings() {
 
   // Glow-moths.
   for (const m of L.moths) {
-    const X = sx(m.x), Y = sy(m.y), a = m.following ? 0.9 : 0.55;
+    const X = sx(m.x), Y = sy(m.y), a = (m.following ? 0.9 : 0.55) * sightAt(m.x, m.y);
+    if (a < 0.02) continue;
     const flap = Math.abs(Math.sin(m.ph * 14));
     glow(GLOW.green, X, Y, T * 0.8, a * 0.6);
     ctx.fillStyle = `rgba(200,255,220,${a})`;
@@ -295,7 +304,8 @@ function drawThings() {
 
   // Snoozles.
   for (const c of L.critters) {
-    const a = Math.max(vis(c.i), 0.12);
+    const a = Math.max(vis(c.i), hidden(0.12));
+    if (a < 0.02) continue;
     const X = sx(c.x), Y = sy(c.y), r = CRITTER_R * T;
     const breathe = 1 + Math.sin(c.ph * (c.awake ? 8 : 1.6)) * 0.05;
     const angry = Math.min(1, c.awake);
@@ -329,15 +339,15 @@ function drawThings() {
   // Glowing decorations (crystals, lava, lanterns...) shimmer a little.
   ctx.globalCompositeOperation = "lighter";
   for (const e of L.emitters || []) {
-    if (sx(e.x) < -TS * 2 || sx(e.x) > W + TS * 2 || sy(e.y) < -TS * 2 || sy(e.y) > H + TS * 2) continue;
+    if (sx(e.x) < -TS * 2 || sx(e.x) > W + TS * 2 || sy(e.y) < -TS * 2 || sy(e.y) > H + TS * 2 || knownAt(e.x, e.y) <= 0) continue;
     const fl = e.color === "gold" ? 0.75 + 0.25 * Math.sin(clock * 9 + e.ph) * Math.sin(clock * 3.1 + e.ph) : 0.8 + 0.2 * Math.sin(clock * 1.7 + e.ph);
-    glow(GLOW[e.color], sx(e.x), sy(e.y), TS * e.r * 0.9, e.a * 0.55 * fl);
+    glow(GLOW[e.color], sx(e.x), sy(e.y), TS * e.r * 0.9, e.a * 0.55 * fl * knownAt(e.x, e.y));
   }
   ctx.globalCompositeOperation = "source-over";
 
   // Rune stones: a carved ring that lights up green once it hears a song from close by.
   for (const r of L.runes) {
-    const X = sx(r.x), Y = sy(r.y), a = Math.max(vis(r.i), r.on, 0.12 + r.far * 0.5), rr = TS * 0.3;
+    const X = sx(r.x), Y = sy(r.y), a = Math.max(vis(r.i), r.on, hidden(0.12) + r.far * 0.5), rr = TS * 0.3;
     ctx.globalCompositeOperation = "lighter";
     if (r.on) glow(GLOW.green, X, Y, TS * 1.4, 0.45 * r.on);
     ctx.globalCompositeOperation = "source-over";
@@ -362,7 +372,7 @@ function drawThings() {
   // Stone gate: a carved slab that sinks into the ground when every rune is awake.
   if (L.gate) {
     const gt = L.gate, X = sx(gt.x - 0.5), Y = sy(gt.y - 0.5), sink = Math.min(1, gt.open);
-    const a = Math.max(vis(gt.i), save.settings.contrast ? 0.7 : 0.1) * (1 - sink);
+    const a = Math.max(vis(gt.i), save.settings.contrast ? 0.7 : hidden(0.1)) * (1 - sink);
     if (a > 0.01) {
       ctx.fillStyle = `rgba(58,70,86,${a})`;
       ctx.fillRect(X + TS * 0.06, Y + TS * (0.04 + sink * 0.9), TS * 0.88, TS * 0.92 * (1 - sink));
@@ -379,12 +389,12 @@ function drawThings() {
       }
     }
   }
-  // The lost baby moth: small, pale pink, and visible from afar so you know it's there.
-  if (L.baby) {
-    const b = L.baby, X = sx(b.x), Y = sy(b.y), flap = Math.abs(Math.sin(b.ph * 16)), T2 = TS * 0.8;
+  // The lost baby moth: small and pale pink, hidden until a song or Lumi's light finds it.
+  if (L.baby && (L.baby.following || knownAt(L.baby.hx, L.baby.hy) > 0.02)) {
+    const b = L.baby, X = sx(b.x), Y = sy(b.y), flap = Math.abs(Math.sin(b.ph * 16)), T2 = TS * 0.8, k = b.following ? 1 : knownAt(b.hx, b.hy);
     ctx.globalCompositeOperation = "lighter";
-    glow(GLOW.pink, X, Y, TS * 0.9, b.following ? 0.6 : 0.4 + Math.sin(b.ph * 3) * 0.15);
-    ctx.fillStyle = "rgba(255,225,240,0.95)";
+    glow(GLOW.pink, X, Y, TS * 0.9, (b.following ? 0.6 : 0.4 + Math.sin(b.ph * 3) * 0.15) * k);
+    ctx.fillStyle = `rgba(255,225,240,${0.95 * k})`;
     ctx.beginPath();
     ctx.ellipse(X - T2 * 0.1, Y, T2 * 0.12 * (0.3 + flap * 0.7), T2 * 0.14, -0.4, 0, Math.PI * 2);
     ctx.ellipse(X + T2 * 0.1, Y, T2 * 0.12 * (0.3 + flap * 0.7), T2 * 0.14, 0.4, 0, Math.PI * 2);
@@ -396,7 +406,8 @@ function drawThings() {
   for (const t of L.thorns) {
     if (sx(t.x) < -TS * 2 || sx(t.x) > W + TS * 2 || sy(t.y) < -TS * 2 || sy(t.y) > H + TS * 2) continue;
     const ti = Math.floor(t.y) * L.cols + Math.floor(t.x);
-    const a = Math.max(ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0, save.settings.contrast ? 0.7 : 0.07);
+    const a = Math.max(ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0, save.settings.contrast ? 0.7 : hidden(0.07));
+    if (a < 0.02) continue;
     const X = sx(t.x), Y = sy(t.y), r = TS * 0.2, spin = t.ph * 0.6;
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.ember, X, Y, TS * 0.7, a * 0.35);
@@ -442,75 +453,81 @@ function drawThings() {
   for (const g of L.gloom) {
     if (g.gone > 0) continue;
     const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : 0.3), hunting = g.hunt > 0, t = g.ph;
-    ctx.globalCompositeOperation = "lighter";
-    glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.16);
-    ctx.globalCompositeOperation = "source-over";
-    // Smoky tail: wisps trailing down and away, each fading out.
-    for (let k = 0; k < 4; k++) {
-      const sway = Math.sin(t * 2.2 + k * 1.7) * r * 0.35, len = r * (1.1 + k * 0.18);
-      ctx.fillStyle = `rgba(14,8,24,${0.5 - k * 0.09})`;
-      ctx.beginPath();
-      ctx.moveTo(X - r * (0.7 - k * 0.12), Y + r * 0.2);
-      ctx.quadraticCurveTo(X + sway - r * 0.2, Y + len * 0.8, X + sway * 1.6 + (k - 1.5) * r * 0.3, Y + len + r * 0.3);
-      ctx.quadraticCurveTo(X + sway + r * 0.2, Y + len * 0.7, X + r * (0.7 - k * 0.12), Y + r * 0.2);
-      ctx.fill();
-    }
-    // Hooded body with two ear tufts, darkest at the rim.
-    const body = ctx.createRadialGradient(X - r * 0.2, Y - r * 0.35, r * 0.1, X, Y, r * 1.1);
-    body.addColorStop(0, hunting ? "#3a1a4e" : "#2a1840"); body.addColorStop(0.7, "#140a22"); body.addColorStop(1, "#08040e");
-    ctx.fillStyle = body;
-    const ear = Math.sin(t * 1.5) * r * 0.06;
-    ctx.beginPath();
-    ctx.moveTo(X - r * 0.95, Y + r * 0.35);
-    ctx.bezierCurveTo(X - r * 1.05, Y - r * 0.4, X - r * 0.75, Y - r * 0.8, X - r * 0.55, Y - r * 0.85);
-    ctx.lineTo(X - r * 0.75, Y - r * 1.35 + ear);
-    ctx.lineTo(X - r * 0.25, Y - r * 0.98);
-    ctx.quadraticCurveTo(X, Y - r * 1.06, X + r * 0.25, Y - r * 0.98);
-    ctx.lineTo(X + r * 0.75, Y - r * 1.35 - ear);
-    ctx.lineTo(X + r * 0.55, Y - r * 0.85);
-    ctx.bezierCurveTo(X + r * 0.75, Y - r * 0.8, X + r * 1.05, Y - r * 0.4, X + r * 0.95, Y + r * 0.35);
-    ctx.quadraticCurveTo(X, Y + r * 0.75, X - r * 0.95, Y + r * 0.35);
-    ctx.fill();
-    if (g.big) {
-      // A crown of shadow spikes.
-      ctx.fillStyle = "#0c0616";
-      for (const [ox, h] of [[-0.3, 0.55], [0, 0.75], [0.3, 0.55]]) {
-        ctx.beginPath(); ctx.moveTo(X + (ox - 0.12) * r, Y - r * 0.95); ctx.lineTo(X + ox * r, Y - r * (0.95 + h)); ctx.lineTo(X + (ox + 0.12) * r, Y - r * 0.95); ctx.fill();
+    if (X < -r * 4 || Y < -r * 4 || X > W + r * 4 || Y > H + r * 4) continue;
+    // Shadows in the dark: only seen where light falls on them.
+    const seenA = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0);
+    if (seenA < 0.02) continue;
+    drawLit(X, Y, r * 2.8, 1, seenA, () => {
+      ctx.globalCompositeOperation = "lighter";
+      glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.16);
+      ctx.globalCompositeOperation = "source-over";
+      // Smoky tail: wisps trailing down and away, each fading out.
+      for (let k = 0; k < 4; k++) {
+        const sway = Math.sin(t * 2.2 + k * 1.7) * r * 0.35, len = r * (1.1 + k * 0.18);
+        ctx.fillStyle = `rgba(14,8,24,${0.5 - k * 0.09})`;
+        ctx.beginPath();
+        ctx.moveTo(X - r * (0.7 - k * 0.12), Y + r * 0.2);
+        ctx.quadraticCurveTo(X + sway - r * 0.2, Y + len * 0.8, X + sway * 1.6 + (k - 1.5) * r * 0.3, Y + len + r * 0.3);
+        ctx.quadraticCurveTo(X + sway + r * 0.2, Y + len * 0.7, X + r * (0.7 - k * 0.12), Y + r * 0.2);
+        ctx.fill();
       }
-    }
-    if (save.settings.contrast) {
-      ctx.strokeStyle = "rgba(255,255,255,0.8)";
-      ctx.lineWidth = 2;
+      // Hooded body with two ear tufts, darkest at the rim.
+      const body = ctx.createRadialGradient(X - r * 0.2, Y - r * 0.35, r * 0.1, X, Y, r * 1.1);
+      body.addColorStop(0, hunting ? "#3a1a4e" : "#2a1840"); body.addColorStop(0.7, "#140a22"); body.addColorStop(1, "#08040e");
+      ctx.fillStyle = body;
+      const ear = Math.sin(t * 1.5) * r * 0.06;
       ctx.beginPath();
-      ctx.arc(X, Y - r * 0.2, r * 1.15, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    // Eyes: almond shapes looking toward Lumi; narrowed and slanted when hunting.
-    const look = Math.atan2(L.lumi.y - g.y, L.lumi.x - g.x), lx = Math.cos(look) * r * 0.07, ly = Math.sin(look) * r * 0.05;
-    const blink = (t * 0.37) % 4 < 0.08 ? 0.15 : 1, eh = r * (hunting ? 0.1 : 0.17) * blink;
-    const eyes = [[-0.36, -0.25, 1], [0.36, -0.25, -1]];
-    if (g.big) eyes.push([-0.18, 0.08, 0.6], [0.18, 0.08, -0.6]);
-    ctx.globalCompositeOperation = "lighter";
-    for (const [ox, oy] of eyes) glow(hunting ? GLOW.pink : GLOW.violet, X + ox * r, Y + oy * r, r * 0.55, hunting ? 0.7 : 0.4);
-    ctx.globalCompositeOperation = "source-over";
-    for (const [ox, oy, s] of eyes) {
-      const small = Math.abs(s) < 1 ? 0.65 : 1, ex = X + ox * r, ey = Y + oy * r, ew = r * 0.2 * small;
-      ctx.save();
-      ctx.translate(ex, ey);
-      ctx.rotate(hunting ? s * 0.35 : 0);
-      ctx.fillStyle = hunting ? "#ff9ad0" : "#c9a8ff";
-      ctx.beginPath(); ctx.ellipse(0, 0, ew, eh * small, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.beginPath(); ctx.ellipse(lx, ly, ew * 0.32, eh * 0.55 * small, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
-    if (hunting) {
-      // A jagged glowing grin.
-      ctx.strokeStyle = "rgba(255,150,210,0.9)"; ctx.lineWidth = Math.max(1, r * 0.06); ctx.lineJoin = "miter";
-      ctx.beginPath();
-      for (let q = 0; q <= 6; q++) ctx.lineTo(X + (q / 6 - 0.5) * r * 0.7, Y + r * (0.18 + (q % 2) * 0.1 + Math.abs(q / 6 - 0.5) * -0.14));
-      ctx.stroke();
-    }
+      ctx.moveTo(X - r * 0.95, Y + r * 0.35);
+      ctx.bezierCurveTo(X - r * 1.05, Y - r * 0.4, X - r * 0.75, Y - r * 0.8, X - r * 0.55, Y - r * 0.85);
+      ctx.lineTo(X - r * 0.75, Y - r * 1.35 + ear);
+      ctx.lineTo(X - r * 0.25, Y - r * 0.98);
+      ctx.quadraticCurveTo(X, Y - r * 1.06, X + r * 0.25, Y - r * 0.98);
+      ctx.lineTo(X + r * 0.75, Y - r * 1.35 - ear);
+      ctx.lineTo(X + r * 0.55, Y - r * 0.85);
+      ctx.bezierCurveTo(X + r * 0.75, Y - r * 0.8, X + r * 1.05, Y - r * 0.4, X + r * 0.95, Y + r * 0.35);
+      ctx.quadraticCurveTo(X, Y + r * 0.75, X - r * 0.95, Y + r * 0.35);
+      ctx.fill();
+      if (g.big) {
+        // A crown of shadow spikes.
+        ctx.fillStyle = "#0c0616";
+        for (const [ox, h] of [[-0.3, 0.55], [0, 0.75], [0.3, 0.55]]) {
+          ctx.beginPath(); ctx.moveTo(X + (ox - 0.12) * r, Y - r * 0.95); ctx.lineTo(X + ox * r, Y - r * (0.95 + h)); ctx.lineTo(X + (ox + 0.12) * r, Y - r * 0.95); ctx.fill();
+        }
+      }
+      if (save.settings.contrast) {
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(X, Y - r * 0.2, r * 1.15, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // Eyes: almond shapes looking toward Lumi; narrowed and slanted when hunting.
+      const look = Math.atan2(L.lumi.y - g.y, L.lumi.x - g.x), lx = Math.cos(look) * r * 0.07, ly = Math.sin(look) * r * 0.05;
+      const blink = (t * 0.37) % 4 < 0.08 ? 0.15 : 1, eh = r * (hunting ? 0.1 : 0.17) * blink;
+      const eyes = [[-0.36, -0.25, 1], [0.36, -0.25, -1]];
+      if (g.big) eyes.push([-0.18, 0.08, 0.6], [0.18, 0.08, -0.6]);
+      ctx.globalCompositeOperation = "lighter";
+      for (const [ox, oy] of eyes) glow(hunting ? GLOW.pink : GLOW.violet, X + ox * r, Y + oy * r, r * 0.55, hunting ? 0.7 : 0.4);
+      ctx.globalCompositeOperation = "source-over";
+      for (const [ox, oy, s] of eyes) {
+        const small = Math.abs(s) < 1 ? 0.65 : 1, ex = X + ox * r, ey = Y + oy * r, ew = r * 0.2 * small;
+        ctx.save();
+        ctx.translate(ex, ey);
+        ctx.rotate(hunting ? s * 0.35 : 0);
+        ctx.fillStyle = hunting ? "#ff9ad0" : "#c9a8ff";
+        ctx.beginPath(); ctx.ellipse(0, 0, ew, eh * small, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.ellipse(lx, ly, ew * 0.32, eh * 0.55 * small, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      if (hunting) {
+        // A jagged glowing grin.
+        ctx.strokeStyle = "rgba(255,150,210,0.9)"; ctx.lineWidth = Math.max(1, r * 0.06); ctx.lineJoin = "miter";
+        ctx.beginPath();
+        for (let q = 0; q <= 6; q++) ctx.lineTo(X + (q / 6 - 0.5) * r * 0.7, Y + r * (0.18 + (q % 2) * 0.1 + Math.abs(q / 6 - 0.5) * -0.14));
+        ctx.stroke();
+      }
+    });
   }
 
   // Echo crystals: violet facets in the rock that flash when a song bounces off them.

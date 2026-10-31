@@ -154,7 +154,8 @@ function drawMobs() {
   for (const m of L.mobs) {
     const ti = Math.floor(m.y) * L.cols + Math.floor(m.x);
     const lit = ti >= 0 && ti < L.n ? Math.max(L.lit[ti], L.glow[ti]) : 0;
-    const a = Math.min(1, Math.max(lit * 1.2, save.settings.contrast ? 0.75 : m.kind === "w" ? 0.5 : 0.1));
+    const a = Math.min(1, Math.max(lit * 1.2, save.settings.contrast ? 0.75 : L.hideLights ? 0 : m.kind === "w" ? 0.5 : 0.1));
+    if (a < 0.02) continue;
     const X = sx(m.x), Y = sy(m.y), u = TS;
     if (X < -u * 2 || Y < -u * 2 || X > W + u * 2 || Y > H + u * 2) continue;
     if (m.kind === "w" && m.cd > 0) continue;

@@ -118,7 +118,7 @@ const CARDS = {
     art: `<g transform="translate(50 60)">${LUMI_SVG}</g><g fill="#ffd1ea"><ellipse cx="80" cy="56" rx="4" ry="6" transform="rotate(-25 80 56)"/><ellipse cx="88" cy="56" rx="4" ry="6" transform="rotate(25 88 56)"/></g><path d="M100 58h22" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 5" stroke-linecap="round"/><g fill="none" stroke="#b48cff" stroke-width="2.5"><circle cx="136" cy="58" r="12" stroke-dasharray="20 10"/><circle cx="136" cy="58" r="6"/></g>` },
   runes: { title: "Rune stones", text: "A stone gate blocks the way. Sing close to every rune stone, inside its dotted ring, and the gate opens for good.",
     art: `<circle cx="56" cy="56" r="34" fill="none" stroke="#96ffbe" stroke-opacity=".5" stroke-dasharray="3 6"/><circle cx="56" cy="56" r="13" fill="#283a46"/><g stroke="#96ffbe" stroke-width="2" fill="none"><circle cx="56" cy="56" r="2" fill="#96ffbe"/><path d="M49 51a8 8 0 0 0 0 10M63 51a8 8 0 0 1 0 10"/></g><g transform="translate(36 72)">${LUMI_SVG}</g><rect x="112" y="34" width="34" height="44" rx="3" fill="#3a4656"/><rect x="117" y="39" width="24" height="34" fill="none" stroke="#96ffbe" stroke-width="1.5"/>` },
-  gloom: { title: "Hushlings", text: "The Hush wants the caves silent forever, and Hushlings are its shadows. They drift through rock, and when your song reaches one it chases you. A touch steals light. They're in every cave from now on.",
+  gloom: { title: "Hushlings", text: "The Hush wants the caves silent forever, and Hushlings are its shadows. They drift through rock, hear every song nearby and notice you if you swim close, then chase you fast. A touch steals light. They're in every cave from now on.",
     art: `<g transform="translate(44 56)">${LUMI_SVG}</g><g fill="none" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2"><path d="M66 44a16 16 0 0 1 0 24"/><path d="M74 38a24 24 0 0 1 0 36"/></g><g transform="translate(122 58) scale(1.3)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g>` },
   quiet: { title: "Quiet caves", text: "These caves only let you sing a few times. Watch the counter, sing where it matters, and remember the way.",
     art: `<g transform="translate(52 56)">${LUMI_SVG}</g><g fill="#e9f3ff"><path d="M98 30v34a8 6 0 1 1-4-5V34l26-6v30a8 6 0 1 1-4-5V36z"/></g><text x="128" y="92" fill="#ff9fb8" font-size="18" font-family="Fredoka, sans-serif" font-weight="600">3 left</text>` },
@@ -156,7 +156,7 @@ const CARDS = {
 const CREATURES = { t: "thorns", g: "gloom", B: "boss", n: "mobn", a: "moba", k: "mobk", w: "mobw", j: "mobj" };
 const CREATURE_MEET = {  // name and a one-line tip
   thorns: ["Thornling", "It patrols back and forth. Wait for a gap."],
-  gloom: ["Hushling", "It hunts songs. Sing less when it's near."],
+  gloom: ["Hushling", "It hears your songs and chases fast. Swim away!"],
   boss: ["The Great Hush", "King of the Hushlings. Don't let it hear you."],
   mobn: ["Snapvine", "It shivers before it snaps. Keep your distance."],
   moba: ["Shardbat", "It swoops at songs it hears. Then it rests."],
