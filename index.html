@@ -3,15 +3,291 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b0820">
-<title>Orbit Hop</title>
-<style>
-  html, body { margin: 0; height: 100%; background: #0b0820; overflow: hidden; touch-action: none; }
-  #game { width: 100%; height: 100%; }
-</style>
+<title>Skyrise</title>
+<!-- site-head: website-only tags (icons, link previews, install). Stripped from the Claude page copy. -->
+<meta name="description" content="Build the tallest skyscraper in the world, one tap at a time. Drop each floor perfectly, house as many people as you can, and climb past real landmarks. Free to play in your browser.">
+<meta name="theme-color" content="#3d9be0">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Skyrise">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Skyrise">
+<meta property="og:title" content="Skyrise: build the tallest skyscraper in the world">
+<meta property="og:description" content="One tap per floor. How many people can your tower hold? Free to play, no download.">
+<meta property="og:image" content="og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A glowing skyscraper on a floating island at sunset, next to the Skyrise logo">
+<meta name="twitter:card" content="summary_large_image">
+<!-- /site-head -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Lilita+One&family=Figtree:wght@500;600;700;800&display=swap">
 </head>
 <body>
-<div id="game"></div>
+<canvas id="game" aria-label="Skyrise game. Tap or press Space to drop a floor."></canvas>
+
+<div id="hud" hidden>
+  <div id="people">0</div>
+  <div class="people-label">people live here</div>
+  <div class="alt">
+    <div class="alt-row"><b id="height">0 m</b><span id="next"></span></div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+  <div id="goal" hidden></div>
+  <div id="floor-tag" hidden></div>
+  <div id="wind" hidden><span id="wind-label">Wind</span><i class="gust"><b id="gust"></b></i></div>
+  <div id="hint" hidden></div>
+</div>
+
+<button id="level-btn" class="corner-btn level-btn" hidden aria-label="Your builder profile">
+  <span class="lv-text">Lv <b id="level-num">1</b></span>
+  <span class="lv-bar"><i id="level-bar"></i></span>
+  <span class="new-dot" hidden></span>
+</button>
+<button id="stars-btn" class="corner-btn stars-btn" hidden aria-label="Stars and shop">
+  <span class="star-ico" aria-hidden="true">★</span><b id="stars-num">0</b>
+  <span class="new-dot" hidden></span>
+</button>
+<button id="pause" class="corner-btn" hidden aria-label="Pause">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
+</button>
+<button id="settings-btn" class="corner-btn" aria-label="Settings">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.8c.1.6.1 1.3 0 1.9l2 1.8-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.8a6 6 0 0 1 0-1.9l-2-1.8L5.9 4.6l2.5.9c.5-.4 1.1-.7 1.7-.9L10.3 2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" transform="translate(0 1.5)"/></svg>
+</button>
+<div id="banner" hidden><small id="banner-eyebrow"></small><strong id="banner-title"></strong></div>
+
+<div id="menu">
+  <div class="menu-top">
+    <div class="app-logo" id="app-logo"></div>
+    <h1 class="logo">SKYRISE</h1>
+    <p class="tagline">Build the tallest skyscraper in the world</p>
+    <div class="rules" id="rules">
+      <span>Tap to drop a floor</span>
+      <span>Wider floors fit more people</span>
+      <span><b>Gold</b> penthouses pay 5x</span>
+    </div>
+  </div>
+  <div class="menu-bottom">
+    <div class="challenge-chip" id="menu-challenge" hidden></div>
+    <button type="button" class="gift-chip" id="gift-chip" hidden>Daily gift ready! Tap to claim</button>
+    <div class="chips">
+      <div class="best-chip" id="menu-best" hidden></div>
+      <div class="event-chip" id="event-chip" hidden></div>
+    </div>
+    <button class="btn btn-primary" id="play">Start building</button>
+    <div class="boost-note" id="boost-note" hidden></div>
+    <div class="tiles" id="mode-tiles">
+      <button type="button" class="tile" id="daily-btn" hidden>
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <b id="daily-title">Daily</b><small id="daily-sub"></small><span class="badge" hidden>New</span>
+      </button>
+      <button type="button" class="tile" id="challenges-btn" hidden>
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
+        <b>Challenges</b><small id="challenges-sub"></small><span class="badge" hidden>New</span>
+      </button>
+      <button type="button" class="tile" id="zen-btn" hidden>
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor"/></svg></span>
+        <b>Zen</b><small>No failing</small><span class="badge" hidden>New</span>
+      </button>
+    </div>
+    <div class="tiles" id="meta-tiles">
+      <button type="button" class="tile" id="skins-btn" hidden>
+        <span class="tile-ico swatch" id="skins-swatch" aria-hidden="true"></span>
+        <b>Skins</b><small id="skins-sub"></small><span class="badge" hidden>New</span>
+      </button>
+      <button type="button" class="tile" id="missions-btn" hidden>
+        <span class="tile-ico star" aria-hidden="true">★</span>
+        <b>Missions</b><small id="missions-sub"></small><span class="badge" hidden>New</span><span class="dot" id="missions-dot" hidden></span>
+      </button>
+      <button type="button" class="tile" id="shop-btn" hidden>
+        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <b>Shop</b><small id="shop-sub"></small><span class="badge" hidden>New</span>
+      </button>
+    </div>
+    <div class="island-chip" id="island-chip" hidden></div>
+  </div>
+</div>
+
+<div id="over" hidden>
+  <div class="card">
+    <div class="card-head">
+      <div class="eyebrow" id="over-eyebrow">Tower complete</div>
+      <div class="big" id="over-people">0</div>
+      <div class="sub" id="over-sub"></div>
+      <div class="landmark" id="over-landmark"></div>
+      <div class="versus" id="over-versus" hidden></div>
+      <div class="near" id="over-near" hidden></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stat-floors">0</b><span>floors</span></div>
+      <div class="stat"><b id="stat-perfect">0</b><span>perfect drops</span></div>
+      <div class="stat"><b id="stat-streak">0</b><span>best streak</span></div>
+    </div>
+    <div class="xp" id="over-xp">
+      <div class="xp-row"><b id="xp-level">Builder level 1</b><span id="xp-gain"></span></div>
+      <div class="bar"><i id="xp-bar"></i></div>
+    </div>
+    <div class="rewards" id="over-rewards" hidden></div>
+    <div class="actions" id="over-actions">
+      <button class="btn btn-secondary" id="share">Challenge a friend</button>
+      <button class="btn btn-primary" id="again">Build again</button>
+    </div>
+    <button class="btn btn-secondary wide" id="next-challenge" hidden>Next challenge</button>
+    <button class="menu-link" id="to-menu">Main menu</button>
+  </div>
+</div>
+
+<div id="skins" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="skins-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="skins-title">Tower skins</h2><p id="skins-count"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="bar"><i id="skins-bar"></i></div>
+    </div>
+    <div class="skin-grid" id="skin-grid"></div>
+    <h3 class="sheet-sub">Island themes</h3>
+    <div class="skin-grid" id="theme-grid"></div>
+  </div>
+</div>
+
+<div id="shop" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="shop-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="shop-title">Star shop</h2><p id="shop-balance"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+    </div>
+    <p class="sheet-note">Earn stars from missions, trophies, challenges, level-ups and daily gifts. Everything here is bought with stars only.</p>
+    <h3 class="sheet-sub">Boosts for your next Classic tower</h3>
+    <div class="shop-list" id="boost-list"></div>
+    <h3 class="sheet-sub">Shop skins</h3>
+    <div class="skin-grid" id="shop-skins"></div>
+  </div>
+</div>
+
+<div id="challenges" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="challenges-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="challenges-title">Landmark challenges</h2><p id="challenges-count"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="bar"><i id="challenges-bar"></i></div>
+    </div>
+    <p class="sheet-note">Every challenge is the same tower for everyone. Finish one to open the next.</p>
+    <div class="challenge-list" id="challenge-list"></div>
+  </div>
+</div>
+
+<div id="profile" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="profile-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="profile-title">Builder level 1</h2><p id="profile-xp"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="bar"><i id="profile-bar"></i></div>
+    </div>
+    <p class="sheet-note" id="profile-next"></p>
+    <div class="stat-grid" id="profile-stats"></div>
+    <h3 class="sheet-sub">Your best towers</h3>
+    <div class="history" id="history"></div>
+    <h3 class="sheet-sub" id="trophy-title">Trophies</h3>
+    <div class="trophy-grid" id="trophy-grid"></div>
+  </div>
+</div>
+
+<div id="missions" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="missions-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="missions-title">Missions</h2><p id="missions-count"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="mission-list" id="mission-list"></div>
+    <h3 class="sheet-sub">Your island</h3>
+    <div class="island-list" id="island-list"></div>
+  </div>
+</div>
+
+<div id="settings" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="sheet narrow">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <h2 id="settings-title">Settings</h2>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="setting-list">
+      <label class="setting"><span><b>Sound effects</b><small>Drops, perfects and cheers</small></span><input type="checkbox" id="set-sound" class="switch"></label>
+      <label class="setting"><span><b>Music</b><small>Builds up as your tower climbs</small></span><input type="checkbox" id="set-music" class="switch"></label>
+      <label class="setting" id="vibrate-row"><span><b>Vibration</b><small>Buzz on drops (Android)</small></span><input type="checkbox" id="set-vibrate" class="switch"></label>
+      <div class="setting">
+        <span><b>Graphics</b><small id="quality-note">Auto picks smooth mode on slower phones</small></span>
+        <div class="seg" role="radiogroup" aria-label="Graphics quality">
+          <button type="button" role="radio" data-q="auto">Auto</button>
+          <button type="button" role="radio" data-q="high">High</button>
+          <button type="button" role="radio" data-q="low">Smooth</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary wide" id="replay-tips">Show beginner tips again</button>
+    </div>
+    <h3 class="sheet-sub">Move your progress</h3>
+    <div class="transfer">
+      <p class="sheet-note">Your progress is saved on this device. To play on another phone or browser, copy your save code there and load it.</p>
+      <button type="button" class="btn btn-secondary wide" id="copy-code">Copy my save code</button>
+      <textarea id="code-box" rows="3" spellcheck="false" autocomplete="off" aria-label="Save code" placeholder="Paste a save code here"></textarea>
+      <button type="button" class="btn btn-secondary wide" id="load-code">Load save code</button>
+      <p class="transfer-msg" id="code-msg" role="status"></p>
+    </div>
+  </div>
+</div>
+
+<div id="gift" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="gift-title">
+  <div class="dialog gift-dialog">
+    <div class="eyebrow" id="gift-streak">Day 1</div>
+    <h2 id="gift-title">Daily gift</h2>
+    <p id="gift-sub">Come back every day for bigger gifts.</p>
+    <div class="gift-track" id="gift-track"></div>
+    <button type="button" class="btn btn-primary wide" id="gift-claim">Claim</button>
+    <button type="button" class="menu-link" id="gift-later">Later</button>
+  </div>
+</div>
+
+<div id="pause-menu" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
+  <div class="dialog">
+    <h2 id="pause-title">Paused</h2>
+    <p id="pause-sub"></p>
+    <button type="button" class="btn btn-primary wide" id="resume">Resume</button>
+    <button type="button" class="btn btn-secondary wide" id="finish-zen" hidden>Finish tower</button>
+    <button type="button" class="btn btn-secondary wide" id="pause-settings">Settings</button>
+    <button type="button" class="menu-link" id="pause-menu-btn">Quit to main menu</button>
+  </div>
+</div>
+
+<div id="rescue" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="rescue-title">
+  <div class="dialog">
+    <div class="eyebrow">So close!</div>
+    <h2 id="rescue-title">Rewind that floor?</h2>
+    <p id="rescue-sub">You get one rewind per tower.</p>
+    <div class="countdown" aria-hidden="true"><i id="countdown"></i></div>
+    <button type="button" class="btn btn-primary wide" id="rewind">Rewind</button>
+    <button type="button" class="btn btn-secondary wide" id="give-up">End tower</button>
+  </div>
+</div>
+
+<div id="toast" hidden role="status"></div>
+
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

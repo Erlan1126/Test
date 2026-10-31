@@ -1,45 +1,47 @@
-# Orbit Hop
+# Skyrise
 
-A one-thumb space game for phones. Your comet circles a planet; tap to launch it off along its path and get caught by the next planet's pull. Climb as high as you can.
+Build the tallest skyscraper in the world, one tap at a time. Drop each floor so it lines up with the one below; overhangs break off, wider floors fit more people, and your tower climbs past real landmarks from Niagara Falls to the Burj Khalifa.
 
-- **Hops are your score.** Each new planet you reach is one hop.
-- **Perfect launches** (aimed straight at the next planet's center) build a combo, and each one pays a growing bonus: +1, +2, +3 and so on.
-- **Stars** float between planets. Fly through them to collect them; they're saved between games.
-- **It gets harder as you climb:** planets drift side to side from hop 8, asteroids cross your path from hop 14, and everything gets faster and farther apart.
-- **You lose** if you fly off the screen, drift in space for too long, or hit an asteroid.
+## What's in the game
 
-## Development
+- **Modes:** Classic, a Daily tower that's the same for everyone, relaxing Zen, and six Landmark challenges with their own rules.
+- **Special floors:** gold penthouses (5x on a perfect drop), icy floors (fast, +50% people) and garden terraces (slow, widen your tower again).
+- **Weekly events:** a different twist each week, such as Golden Week, Ice Age or Calm Skies.
+- **Progress:** builder levels, missions, trophies, a growing island, island themes, 13 tower skins and a daily gift streak.
+- **Star shop:** spend stars on shop skins and one-tower boosts (extra rewind, double XP, gold rush). Stars are only earned by playing; there are no real-money purchases.
+- **Gentle start:** new players see only the Start button. Skins, missions, the daily tower, challenges, the shop and Zen open over the first few towers, each with a "New" badge.
+- **Your progress:** saved on the device. Settings → *Move your progress* gives a save code to load on another phone or browser. Your profile lists your 10 best towers.
 
-Built with [Phaser 3](https://phaser.io), TypeScript and Vite. Requires Node 18 or newer.
+## Develop
 
-```bash
+```sh
 npm install
-npm run dev        # play locally with hot reload
-npm test           # unit tests for the game logic
-npm run build      # type-check and build to dist/
-npm run preview    # serve the built game
+npm run dev        # local server with hot reload
+npm test           # unit tests for the rules, saves, shop and progression
+npm run build      # type-check, then build to dist/
 ```
 
-Add `?debug` to the URL to expose the running game scene as `window.__game` for testing.
+`npm run build` produces `dist/index.html`, a single self-contained file (the script and styles are inlined), plus icons, the web-app manifest, a link-preview image and an offline service worker.
 
 ## Project layout
 
-| Path | What it is |
-| --- | --- |
-| `src/main.ts` | Creates the Phaser game and the shared services (save data, sound) |
-| `src/logic/` | Game rules with no Phaser dependency: orbit math, level generation, seeded random numbers, save data |
-| `src/scenes/BootScene.ts` | Draws every texture in code (planets, comet, stars, asteroids, sky), so there are no image files |
-| `src/scenes/MenuScene.ts` | Title screen |
-| `src/scenes/GameScene.ts` | The game itself |
-| `src/scenes/GameOverScene.ts` | Results and the way back in |
-| `src/audio.ts` | Sound effects synthesized with the Web Audio API |
-| `tests/` | Vitest unit tests for `src/logic/` |
+```
+src/
+  core/      small helpers and the seeded random generator
+  data/      tuning: skins, landmarks, missions, trophies, events, challenges, shop
+  logic/     game rules with no DOM: the tower sim, saves, progression, shop, unlocks
+  render/    canvas drawing: camera, sky and island, buildings, effects, previews
+  ui/        DOM helpers and the pop-up sheets
+  app.ts     the controller: screens, input and the frame loop
+  sound.ts   synthesized sound effects and music (no audio files)
+tests/       Vitest tests for everything in logic/
+public/      icons, manifest, link preview image, service worker
+```
 
-The game world is 720 × 1280. On screens with a different shape, the view expands to show more sky instead of adding black bars.
+The logic layer is separate from drawing so it can be tested directly. Add `?debug` to the URL to expose the game as `window.__app` for automated tests.
 
-## Roadmap
+## Publishing
 
-- App store builds for iPhone and Android (with Capacitor)
-- A shop for comet trails and skins, paid for with stars
-- Daily challenge, missions and achievements
-- Music
+`dist/` is a static site. Upload it to any static host (GitHub Pages, Netlify, Cloudflare Pages), or zip its contents for game portals such as itch.io (an HTML game with `index.html` at the top level) or CrazyGames and Poki (which review submissions and have their own SDK requirements).
+
+Not included yet, because they need a server: global leaderboards, cloud saves tied to an account, and friend lists.

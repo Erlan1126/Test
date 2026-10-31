@@ -1,7 +1,7 @@
 {
-  "name": "orbit-hop",
+  "name": "skyrise",
   "private": true,
-  "version": "0.1.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,9 +9,6 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "phaser": "3.90.0"
   },
   "devDependencies": {
     "typescript": "5.8.3",
