@@ -75,8 +75,17 @@ export class App implements Host {
   private readonly site = siteUrl();
   private last = performance.now();
   private perf = { frames: 0, time: 0 };
+  /** Resolution multiplier, lowered step by step if the device can't keep up. */
+  private renderScale = 1;
+  private hudBottom = 0;
+  private installPrompt: (Event & { prompt(): Promise<void> }) | null = null;
   private bannerTimer = 0;
   private hint = "";
+  /** The results card is hidden so the whole tower shows. */
+  private peek = false;
+  private timing: "" | "early" | "late" = "";
+  /** The skin the current tower was built in. */
+  private builtSkin = "";
   private tag = "";
 
   constructor(logoSvg: string) {
@@ -149,7 +158,13 @@ export class App implements Host {
   }
 
   private resize(): void {
-    this.renderer.resize(this.low);
+    this.renderer.resize(this.low, this.renderScale);
+    this.measureHud();
+  }
+
+  /** Where the score display ends, so popups stay below it. Read only when it changes. */
+  private measureHud(): void {
+    this.hudBottom = $("hud").hidden ? 0 : $("hud").getBoundingClientRect().bottom;
   }
 
   /** A fresh island with just the lobby, for the title screen. */
@@ -164,6 +179,7 @@ export class App implements Host {
     this.canvas.addEventListener("pointerdown", e => {
       e.preventDefault();
       if (this.state === "playing") this.drop();
+      else if (this.peek) this.setPeek(false);
     });
     $("play").addEventListener("click", () => this.start("classic"));
     $("daily-btn").addEventListener("click", () => this.start("daily"));
@@ -187,6 +203,8 @@ export class App implements Host {
       if (next) this.start("challenge", next.id);
     });
     $("to-menu").addEventListener("click", () => this.goToMenu());
+    $("peek").addEventListener("click", () => this.setPeek(true));
+    $("unpeek").addEventListener("click", () => this.setPeek(false));
     $("share").addEventListener("click", () => void this.share());
 
     $("pause").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); this.pause(); });
@@ -201,6 +219,30 @@ export class App implements Host {
     document.addEventListener("visibilitychange", () => { if (document.hidden) this.pause(); });
     window.addEventListener("blur", () => this.pause());
     window.addEventListener("keydown", e => this.key(e));
+
+    // Offer to install the game as an app (Chrome and Android). The chip appears once the
+    // player has built a few towers.
+    window.addEventListener("beforeinstallprompt", e => {
+      e.preventDefault();
+      this.installPrompt = e as Event & { prompt(): Promise<void> };
+      this.refresh();
+    });
+    $("install-chip").addEventListener("click", async () => {
+      const ev = this.installPrompt;
+      this.installPrompt = null;
+      $("install-chip").hidden = true;
+      if (ev) await ev.prompt().catch(() => {});
+    });
+  }
+
+  private setPeek(on: boolean): void {
+    if (this.state !== "over" && on) return;
+    this.peek = on;
+    this.sound.click();
+    $("over").hidden = on;
+    $("unpeek").hidden = !on;
+    for (const id of ["settings-btn", "level-btn", "stars-btn"]) if (on) $(id).hidden = true;
+    if (!on && this.state === "over") { this.renderCorners(); $("over").hidden = false; }
   }
 
   private ordinal(n: number): string {
@@ -217,6 +259,7 @@ export class App implements Host {
     const go = e.code === "Space" || e.code === "Enter";
     // Let focused buttons handle Space and Enter themselves.
     if (go && e.target instanceof HTMLButtonElement) return;
+    if (this.peek) { if (go || e.code === "Escape") { e.preventDefault(); this.setPeek(false); } return; }
     if (this.state === "rescue") {
       if (go) { e.preventDefault(); if (!e.repeat) this.rewind(); }
       if (e.code === "Escape") this.endFromRescue();
@@ -270,6 +313,9 @@ export class App implements Host {
       xpMultiplier: (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1),
     });
     this.renderer.fx.clear();
+    this.peek = false;
+    $("unpeek").hidden = true;
+    this.builtSkin = this.save.skin;
     this.outcome = null;
     this.shareBlob = null;
     this.state = "playing";
@@ -289,7 +335,8 @@ export class App implements Host {
     this.sound.ensure();
     this.sound.click();
     this.sound.duck(false);
-    for (const id of ["over", "hud", "pause", "pause-menu", "rescue"]) $(id).hidden = true;
+    for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek"]) $(id).hidden = true;
+    this.peek = false;
     this.mode = "classic";
     this.challenge = null;
     this.reset();
@@ -360,7 +407,6 @@ export class App implements Host {
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
-    if (this.outcome.newSkin) this.save.skin = this.outcome.newSkin;
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
     if (run.challengeWon) this.sound.win();
@@ -378,6 +424,10 @@ export class App implements Host {
   }
 
   private drop(): void {
+    // Was the tap early or late? The floor was still heading toward its spot if it moves
+    // toward zero offset.
+    const m = this.sim.mover, off = this.sim.offset();
+    this.timing = m && Math.abs(off) > 0.05 ? (Math.sign(off) === m.dir ? "late" : "early") : "";
     const out = this.sim.drop();
     if (!out) return;
     const fx = this.renderer.fx;
@@ -414,7 +464,9 @@ export class App implements Host {
       }
       vibrate(vib, gold ? [20, 30, 20] : 20);
     } else {
-      fx.popup(`+${out.points}`, "", f.y + 1, "#ffffff", 0.8);
+      // New builders get told which way they missed, to learn the timing.
+      const coach = this.save.profile.towers < 8 && this.timing ? (this.timing === "early" ? "A bit early" : "A bit late") : "";
+      fx.popup(`+${out.points}`, coach, f.y + 1, "#ffffff", coach ? 1 : 0.8);
       if (out.piece && out.side) {
         const d = this.debrisFrom(out.piece, out.side, 2.5, 1.2);
         fx.debris.push(d);
@@ -474,6 +526,7 @@ export class App implements Host {
       goal.innerHTML = `${label} · ${Math.min(have, g.type === "height" ? g.n + 1 : g.n)}${g.type === "height" ? " m" : ""}`;
     }
 
+    this.measureHud();
     const kind = sim.mover?.kind ?? "normal";
     const tag = kind === "normal" ? "" : kind;
     if (tag !== this.tag) {
@@ -546,6 +599,7 @@ export class App implements Host {
     evChip.innerHTML = `<b>${esc(ev.name)}</b> · ${esc(ev.text)}`;
     evChip.title = `This week's event. ${duration(eventEndsIn(now))} left.`;
 
+    $("install-chip").hidden = !this.installPrompt || p.towers < 3;
     const n = boostCount(save), note = $("boost-note");
     note.hidden = !n;
     note.textContent = `Boosts ready: ${BOOSTS.filter(b => save.boosts[b.id]).map(b => `${b.name}${save.boosts[b.id] > 1 ? ` x${save.boosts[b.id]}` : ""}`).join(", ")}`;
@@ -607,6 +661,22 @@ export class App implements Host {
       el.className = l.cls;
       el.textContent = l.text;
       rewards.appendChild(el);
+    }
+    // A new skin is offered, not forced: switching would repaint the tower you just built.
+    const fresh = o.newSkin ? skinById(o.newSkin) : null;
+    if (fresh && save.skin !== fresh.id) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn btn-secondary try-skin";
+      b.innerHTML = `<span class="swatch">${swatchHtml(fresh.swatch ?? fresh.floors)}</span> Use ${esc(fresh.name)} next time`;
+      b.addEventListener("click", () => {
+        save.skin = fresh.id;
+        this.persist();
+        this.sound.click();
+        b.disabled = true;
+        b.textContent = `${fresh.name} is on for your next tower`;
+      });
+      rewards.appendChild(b);
     }
     rewards.hidden = !lines.length;
 
@@ -709,13 +779,18 @@ export class App implements Host {
     const raw = (now - this.last) / 1000;
     const dt = Math.min(0.05, Math.max(0, raw));
     this.last = now;
-    // Auto graphics: if a tower plays below about 40 fps, switch this device to smooth mode.
+    // Auto graphics: if a tower plays below about 50 fps, first lower the resolution a
+    // step at a time, and only then switch this device to smooth mode (no shaders).
     const st = this.save.settings;
     if (this.state === "playing" && st.quality === "auto" && !st.autoLow && raw < 0.5) {
       this.perf.frames++;
       this.perf.time += raw;
-      if (this.perf.time > 4) {
-        if (this.perf.frames / this.perf.time < 40) {
+      if (this.perf.time > 3) {
+        const fps = this.perf.frames / this.perf.time;
+        if (fps < 50 && this.renderScale > 0.65) {
+          this.renderScale = Math.max(0.6, this.renderScale - 0.15);
+          this.resize();
+        } else if (fps < 40) {
           st.autoLow = true;
           this.persist();
           this.resize();
@@ -753,7 +828,7 @@ export class App implements Host {
     this.sound.intensity = active ? 1 + (sim.level >= 12 ? 1 : 0) + (sim.combo >= 5 ? 1 : 0) : 0;
 
     const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" ? "over" : "play";
-    this.renderer.camera(dt, shot, sim.level);
+    this.renderer.camera(dt, shot, sim.level, this.peek);
 
     if (this.state === "over" && !this.overReady) {
       this.overTimer -= dt;
@@ -778,12 +853,14 @@ export class App implements Host {
       sim: this.sim,
       shot: this.state === "menu" ? "menu" : this.state === "over" ? "over" : "play",
       showMover: this.state === "playing" || this.state === "paused",
-      skin: skinById(save.skin),
+      // A finished tower keeps the skin it was built in.
+      skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       theme: currentTheme(save),
       islandLevel: islandLevel(save),
       guide: this.tutorial && this.mode !== "zen" && this.sim.stack.length <= 4,
       low: this.low,
-      hudBottom: this.state === "playing" || this.state === "paused" ? $("hud").getBoundingClientRect().bottom : 0,
+      bestFloors: this.mode === "zen" ? 0 : Math.round(this.save.bestMeters / 5),
+      hudBottom: this.state === "playing" || this.state === "paused" ? this.hudBottom : 0,
     });
     if (this.captureShare) {
       this.captureShare = false;

@@ -157,7 +157,7 @@ export class Scenery {
   drawSky(p: Paint, n: number, dt: number): void {
     const { ctx, view, env } = p;
     const { W, H } = view;
-    const key = `${n}:${W}:${H}`;
+    const key = `${n}:${W}:${H}:${p.env.skyTop.join()}:${p.env.skyBot.join()}`;
     if (key !== this.skyKey) { this.skyKey = key; this.paintSky(p, n); }
     ctx.drawImage(this.skyCache, 0, 0, W, H);
 

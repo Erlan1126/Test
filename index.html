@@ -76,6 +76,7 @@
   <div class="menu-bottom">
     <div class="challenge-chip" id="menu-challenge" hidden></div>
     <button type="button" class="gift-chip" id="gift-chip" hidden>Daily gift ready! Tap to claim</button>
+    <button type="button" class="install-chip" id="install-chip" hidden>Install Skyrise as an app</button>
     <div class="chips">
       <div class="best-chip" id="menu-best" hidden></div>
       <div class="event-chip" id="event-chip" hidden></div>
@@ -116,6 +117,9 @@
 
 <div id="over" hidden>
   <div class="card">
+    <button type="button" class="peek-btn" id="peek" aria-label="Hide this card to see your whole tower">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+    </button>
     <div class="card-head">
       <div class="eyebrow" id="over-eyebrow">Tower complete</div>
       <div class="big" id="over-people">0</div>
@@ -142,6 +146,8 @@
     <button class="menu-link" id="to-menu">Main menu</button>
   </div>
 </div>
+
+<button type="button" id="unpeek" class="unpeek-chip" hidden>Show results</button>
 
 <div id="skins" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="skins-title">
   <div class="sheet">

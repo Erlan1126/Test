@@ -41,6 +41,8 @@ export interface Env {
   time: number;
   /** Smooth mode: skip the most expensive effects. */
   low: boolean;
+  /** The shader pass is on, which adds its own glow. */
+  post: boolean;
 }
 
 export interface Paint {
@@ -71,7 +73,7 @@ export function face(p: Paint, pts: Pt[], c: RGB, fTop: number, fBot: number): v
 
 /** Additive glow for lit windows and neon, skipped in smooth mode. */
 export function glow(p: Paint, pts: Pt[], color: string): void {
-  if (p.env.low) return;
+  if (p.env.low || p.env.post) return;
   const ctx = p.ctx;
   ctx.globalCompositeOperation = "lighter";
   ctx.globalAlpha *= 0.22;

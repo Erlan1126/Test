@@ -182,6 +182,8 @@ export interface BlockOpts {
   plain?: boolean;
   lobby?: boolean;
   kind?: FloorKind;
+  /** Drawn into the tower cache: skip animated details. */
+  still?: boolean;
 }
 
 /** A building block: two visible walls with facade detail, a roof, and crisp edges. */
@@ -226,7 +228,7 @@ export function drawBlock(p: Paint, b: Box, y0: number, y1: number, c: RGB, look
   const ins = Math.min(0.45, (b.x1 - b.x0) / 6, (b.z1 - b.z0) / 6);
   poly(p, [P(b.x0 + ins, y1, b.z0 + ins), P(b.x1 - ins, y1, b.z0 + ins), P(b.x1 - ins, y1, b.z1 - ins), P(b.x0 + ins, y1, b.z1 - ins)], rgb(c, 0.98 * d));
 
-  if (opts.kind === "gold" || opts.kind === "ice") {
+  if ((opts.kind === "gold" || opts.kind === "ice") && !opts.still) {
     // A shine that sweeps across penthouse and icy floors
     const t = (env.time / (opts.kind === "ice" ? 0.6 : 0.9)) % 1.6 - 0.3;
     if (t > 0 && t < 1) {
