@@ -652,6 +652,23 @@ function drawThings() {
     if (L.charge >= 1) glow(GLOW.gold, cx, cy, rr * 1.6, 0.25 + Math.sin(clock * 10) * 0.1);
   }
 
+  // Flick, Lumi's glow-moth friend: with Lumi for the first three worlds, and again for good
+  // once the whole lullaby has brought it home.
+  if (L.lumi && (save.flick || (levelIndex >= 0 && levelIndex < PER_WORLD * 3)) && !L.ending) {
+    const f = L.flickPos || (L.flickPos = { x: L.lumi.x, y: L.lumi.y - 0.5 });
+    const tx = L.lumi.x + Math.cos(clock * 1.3) * 0.45, ty = L.lumi.y - 0.5 + Math.sin(clock * 2.1) * 0.15;
+    f.x += (tx - f.x) * 0.08; f.y += (ty - f.y) * 0.08;
+    const FX = sx(f.x), FY = sy(f.y), flap = Math.abs(Math.sin(clock * 15)), T = TS * 0.62;
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW.green, FX, FY, TS * 0.45, 0.45);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(205,255,185,0.95)";
+    ctx.beginPath();
+    ctx.ellipse(FX - T * 0.1, FY, T * 0.12 * (0.3 + flap * 0.7), T * 0.15, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(FX + T * 0.1, FY, T * 0.12 * (0.3 + flap * 0.7), T * 0.15, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Lumi.
   const lumi = L.lumi;
   const shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;

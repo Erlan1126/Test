@@ -343,7 +343,8 @@ function finish() {
     }
   }
   earnGlow(L.got + stars);
-  if (levelIndex === STORY_FINALE && !save.ended && L.healed) save.endingDue = 1;
+  // The ending plays the first time, and again once the whole lullaby can bring Flick home.
+  if (levelIndex === STORY_FINALE && L.healed && (!save.ended || (flickCanReturn() && !save.flick))) save.endingDue = 1;
   persist();
   questsOnFinish(stars);
   lastStars = stars;
@@ -448,8 +449,6 @@ function renderTitle() {
   $("starCount").textContent = t;
   $("playLabel").textContent = started ? "Continue" : "Play";
   $("playSub").textContent = `Level ${next + 1} · ${getLevel(next).name}`;
-  const doneToday = save.daily.last === dayKey();
-  $("dailyDot").hidden = doneToday;
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
   renderToday();
@@ -582,7 +581,6 @@ function renderSettings() {
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
   $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
-  $("setNarrate").setAttribute("aria-pressed", String(st.narrate !== false));
   $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
   $("setGlow").setAttribute("aria-pressed", String(!!st.glow));
   $("setBigText").setAttribute("aria-pressed", String(!!st.bigText));
@@ -635,7 +633,9 @@ async function shareGame() {
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
 tap("playBtn", () => startLevel(nextUnplayed()));
 tap("levelsBtn", openMap);
-tap("dailyBtn", () => { renderChallenges(); show("challenges"); });
+// A soft tick when a switch or option changes, so settings feel alive.
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
+tap("weekLink", () => { renderChallenges(); show("challenges"); });
 tap("playDaily", () => startLevel(DAILY));
 tap("todayCard", () => startLevel(DAILY));
 tap("homeBtn", () => { renderHome(); show("home"); });
@@ -668,14 +668,12 @@ tap("retryBtn", () => startLevel(levelIndex));
 tap("resultLevels", openMap);
 tap("failRetry", () => startLevel(levelIndex));
 tap("storyGo", () => storyNext());
-tap("storyVoice", () => { save.settings.narrate = !narrationOn(); persist(); if (!narrationOn()) stopNarration(); else if (story) narrate(story.pages[story.k].text); $("storyVoice").textContent = narrationOn() ? "🔊 Narration on" : "🔈 Narration off"; });
-tap("setNarrate", () => { save.settings.narrate = save.settings.narrate === false; persist(); renderSettings(); });
 tap("cardGo", () => startLevel(pendingLevel, { story: true, card: true }));
 tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {
   // Clearing the Starlight Abyss for the first time plays the ending first.
   if (save.endingDue) {
-    save.endingDue = 0; save.ended = 1; persist();
+    save.endingDue = 0; save.ended = 1; if (flickCanReturn()) save.flick = 1; persist();
     playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => startLevel(levelIndex + 1) });
     return;
   }

@@ -101,7 +101,7 @@ const SIM = `
         // Hushlings are in every cave once they've appeared, so they don't count as a big idea.
         const big = [R > 18 || Wd > 11, !!lv.dark, !!gate, flat.includes("D"), /[<>^v]/.test(flat), flat.includes("z"), lv.goal && lv.goal !== "explore"].filter(Boolean).length;
         if (i >= 10 && !INTRO[i] && big > 3) tooBusy++;
-        if (i >= 19 && !flat.includes("g") && !flat.includes("B")) bad.push(i + ": no Hushlings");
+        if (i >= 5 && (flat.match(/[gB]/g) || []).length < 3) bad.push(i + ": fewer than 3 Hushlings");
         if (R > 18) counts.tall++;
         if (Wd > 11) counts.wide = (counts.wide || 0) + 1;
         if (lv.dark) counts.dark++;
@@ -202,6 +202,7 @@ const SIM = `
       startLevel(12, true); L.energy = 30; Object.assign(L.lumi, { x: L.lights[0].x, y: L.lights[0].y }); __sim(0.1);
       out.lightRefillsEnergy = L.energy > 60;
       startLevel(cardLevel("gloom"), true);
+      L.gloom = [L.gloom[0]];  // just one, so no other Hushling can get there first
       const g = L.gloom[0]; g.hunt = 4; Object.assign(L.lumi, { x: g.x + 1.2, y: g.y });
       const e0 = L.energy; __sim(1.5);
       out.gloomlingCostsLight = L.hits === 1 && L.energy < e0 - 11;
@@ -243,10 +244,12 @@ const SIM = `
       out.dailyStartsStreak = save.daily.streak >= 1 && save.daily.last === dayKey();
       // Thornlings patrol and cost light when touched.
       startLevel(cardLevel("thorns"), true);
-      const th = L.thorns[0], p0 = [th.x, th.y]; __sim(0.5);
-      out.thornlingsPatrol = Math.hypot(th.x - p0[0], th.y - p0[1]) > 0.2;
-      const e1 = L.energy; Object.assign(L.lumi, { x: th.x, y: th.y }); __sim(0.05);
-      out.thornlingsCostLight = L.hits >= 1 && L.energy < e1 - 10;
+      // A Thornling may be pausing at the end of its lane, so watch it for a while.
+      const th = L.thorns[0], p0 = [th.x, th.y]; let moved = 0;
+      for (let k = 0; k < 12; k++) { __sim(0.25); moved = Math.max(moved, Math.hypot(th.x - p0[0], th.y - p0[1])); }
+      out.thornlingsPatrol = moved > 0.2;
+      L.invuln = 0; L.energy = 100; const e1 = L.energy, h1 = L.hits; Object.assign(L.lumi, { x: th.x, y: th.y }); __sim(0.05);
+      out.thornlingsCostLight = L.hits > h1 && L.energy < e1 - 10;
       // Long songs reach further than short ones.
       startLevel(12, true); L.pingCd = 0; ping(false); const shortRange = L.waves[0].range;
       L.waves = []; L.pingCd = 0; ping(true);
@@ -330,6 +333,11 @@ const SIM = `
       out.storyHasPicturesAndPages = !!document.querySelector("#storyArt svg") && document.querySelectorAll("#storyDots i").length === CHAPTERS[0].pages.length;
       for (let k = 0; k < 10 && screen === "story"; k++) document.getElementById("storyGo").click();
       out.storyLeadsToLevel = screen === "play";
+      const fam0 = save.family; save.family = {};
+      out.partEndingLeavesFlickLost = !endingPages().some(p => p.flick);
+      save.family = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1 };
+      out.wholeLullabyBringsFlickHome = endingPages().some(p => p.flick);
+      save.family = fam0;
       save.cards = {}; startLevel(cardLevel("runes"), { story: true }); out.card = screen === "card";
       document.getElementById("cardGo").click(); out.cardLeadsToLevel = screen === "play" && L.def.name === "Listening Stones";
       pause(); out.pauseShowsGoal = screen === "pause" && document.getElementById("pauseGoal").textContent.length > 5;

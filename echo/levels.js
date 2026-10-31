@@ -481,12 +481,38 @@ function getLevel(i) {
   }
   if (i === DAILY) {
     const day = dayNumber(), key = "daily" + day;
-    if (!levelCache.has(key)) levelCache.set(key, applyTwist(generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }), day));
+    if (!levelCache.has(key)) levelCache.set(key, applyTwist(withHushlings(generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }), 50000 + day), day));
     return levelCache.get(key);
   }
-  if (INTRO[i]) return INTRO[i];
-  if (!levelCache.has(i)) levelCache.set(i, generateLevel(i));
+  if (!levelCache.has(i)) levelCache.set(i, withHushlings(INTRO[i] || generateLevel(i), i));
   return levelCache.get(i);
+}
+
+// From level 6 on, every cave has at least three Hushlings (the Great Hush counts as one).
+// The generator places them itself; this tops up the handmade caves and any cave too cramped.
+const MIN_HUSHLINGS = 3, HUSHLINGS_FROM = 5;
+function withHushlings(def, i) {
+  if (i < HUSHLINGS_FROM) return def;
+  const g = def.map.map(row => row.split("")), r = seeded(i * 4211 + 77);
+  const count = () => g.flat().filter(c => c === "g" || c === "B").length;
+  if (count() >= MIN_HUSHLINGS) return def;
+  let S = [0, 0];
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "S") S = [x, y]; }));
+  for (const near of [6, 4]) {
+    while (count() < MIN_HUSHLINGS) {
+      const spots = [];
+      g.forEach((row, y) => row.forEach((c, x) => {
+        if (c !== "." || Math.abs(x - S[0]) + Math.abs(y - S[1]) < near) return;
+        for (let yy = y - 2; yy <= y + 2; yy++) for (let xx = x - 2; xx <= x + 2; xx++)
+          if (g[yy] && "tnakwjgBmfE".includes(g[yy][xx])) return;
+        spots.push([x, y]);
+      }));
+      if (!spots.length) break;
+      const [x, y] = spots[Math.floor(r() * spots.length)];
+      g[y][x] = "g";
+    }
+  }
+  return Object.assign({}, def, { map: g.map(row => row.join("")) });
 }
 
 function seeded(a) {
@@ -789,9 +815,10 @@ function generateLevel(n, opts = {}) {
     if (plan.has("gloom")) {
       // Finales with the Great Hush get at most one ordinary Hushling besides.
       // Hushlings count toward the cap of five creatures per cave (six in a big one).
-      const others = g.flat().filter(c => "tnakwj".includes(c)).length, room = Math.max(0, (R * C > 198 ? 6 : 5) - others);
-      const want = Math.min(room, !daily && isFinale(n) ? 1 : 3, 1 + Math.floor(r() * (1 + hard * 2)));
-      for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
+      // Hushlings are the caves' villains: three in every cave (four, sometimes, deep down),
+      // and two beside the Great Hush. Other creatures fill whatever room is left.
+      const want = !daily && isFinale(n) ? 2 : 3 + (hard > 0.6 && r() < 0.4 ? 1 : 0);
+      for (let k = 0, tries = 0; k < want && tries < 200; tries++) {
         const [x, y] = pick(floor);
         if (free(x, y) && Math.abs(x - S[0]) + Math.abs(y - S[1]) >= 6) { g[y][x] = "g"; k++; }
       }

@@ -814,6 +814,7 @@ function update(dt) {
         const f = FAMILY[fam.w];
         setHint(`${f.name}: “${f.says}”`, 4.5);
         setTimeout(() => { if (screen === "play") setHint(`${f.name} remembers a line of the lullaby: “${LULLABY[fam.w]}”`, 6); }, 4600);
+        if (save.ended && !save.flick && flickCanReturn()) setTimeout(() => toast("🎵 You know the <b>whole lullaby</b> now. Sing it to the Singer again in level 160", true), 11000);
       } else setHint("One of Lumi's little lights! It joins Lumi's family", 3.5);
     }
   }

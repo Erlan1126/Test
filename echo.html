@@ -336,6 +336,7 @@
   .today-main small, .today-side small { font-size: 12px; color: var(--dim); }
   .today-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; }
   .today-side b { color: var(--gold); font-weight: 600; }
+  .week-link { display: block; margin: -4px auto 12px; font-size: 13px; color: var(--dim); }
   .share-result { margin: 4px 0 10px; border-color: rgba(255, 211, 110, 0.45); }
   /* Lumi's home */
   .home-scene svg { width: 100%; height: auto; border-radius: 18px; display: block; border: 1px solid var(--line); }
@@ -375,6 +376,15 @@
   .award .ds { font-size: 13px; color: var(--dim); }
   .award .bar { grid-column: 2; height: 5px; border-radius: 9px; background: rgba(255,255,255,0.08); overflow: hidden; }
   .award .bar i { display: block; height: 100%; background: var(--gold); }
+  .set-group { background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(126, 232, 255, 0.1); border-radius: 18px; padding: 4px 14px 6px; margin-bottom: 12px; text-align: left; }
+  .set-group h3 { margin: 10px 0 2px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); opacity: 0.8; }
+  .set-group .set:last-of-type { border-bottom: 0; }
+  details.backup { padding: 10px 0; }
+  details.backup summary { cursor: pointer; font-size: 16px; list-style: none; display: flex; justify-content: space-between; }
+  details.backup summary::after { content: "›"; color: var(--dim); transition: transform 0.2s; }
+  details.backup[open] summary::after { transform: rotate(90deg); }
+  details.backup label { display: block; margin: 8px 0; color: var(--dim); font-size: 14px; }
+  .set-group .btn.danger { margin: 6px 0 8px; width: 100%; }
   .set { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
   .set label { font-size: 16px; }
   .set small { display: block; color: var(--dim); font-size: 13px; }
@@ -435,7 +445,6 @@
   .lullaby p { margin: 0 0 4px; }
   .lullaby .missing { color: var(--dim); opacity: 0.6; }
   .lullaby b { font-family: Fredoka, sans-serif; font-style: normal; font-size: 12px; font-weight: 500; color: var(--gold); letter-spacing: 0.06em; margin-right: 4px; }
-  #storyVoice { margin-top: 10px; color: var(--dim); font-size: 13px; }
   .backup { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
   .backup textarea { width: 100%; min-height: 64px; resize: vertical; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.3); color: var(--ink); font: 12px ui-monospace, Menlo, monospace; padding: 8px; touch-action: auto; user-select: text; -webkit-user-select: text; }
   .backup .row { width: 100%; }
@@ -476,10 +485,10 @@
   <div class="title-actions">
     <div class="title-meta" id="titleMeta"></div>
     <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
+    <button class="link week-link" id="weekLink">This week's cave ›</button>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
     <nav class="dock glass" aria-label="Menu">
       <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
-      <button id="dailyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>Daily<i class="dot" id="dailyDot" hidden></i></button>
       <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
@@ -543,7 +552,6 @@
   <p class="story-text" id="storyText"></p>
   <div class="story-dots" id="storyDots"></div>
   <button class="btn main" id="storyGo">Begin</button>
-  <button class="link" id="storyVoice"></button>
 </div>
 
 <div class="screen dim-bg" id="challengeScreen">
@@ -629,27 +637,36 @@
   <div class="panel tall">
     <h2 id="settingsTitle">Settings</h2>
     <div class="scroll">
+      <section class="set-group"><h3>Sound</h3>
       <div class="set"><label for="setMusic">Music</label><input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
       <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
       <div class="set"><label>Vibration<small>On phones that support it</small></label><button class="toggle" id="setVibrate" aria-label="Vibration"></button></div>
-      <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
-      <div class="set"><label>Controls<small>Swim with a thumb and sing with the button, slide only, or tap where to go</small></label><div class="seg" id="setControls"><button data-v="dual">Button</button><button data-v="stick">Slide</button><button data-v="tap">Tap</button></div></div>
+      </section>
+      <section class="set-group"><h3>Controls</h3>
+      <div class="set"><label>Controls<small>How you swim and sing</small></label><div class="seg" id="setControls"><button data-v="dual">Button</button><button data-v="stick">Slide</button><button data-v="tap">Tap</button></div></div>
       <div class="set" id="handRow"><label>Sing button</label><div class="seg" id="setHand"><button data-v="left">Left</button><button data-v="right">Right</button></div></div>
-      <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
-      <div class="set"><label>Relaxed mode<small>No light energy, Hushlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
-      <div class="set"><label>Story narration<small>Read the story aloud between worlds</small></label><button class="toggle" id="setNarrate" aria-label="Story narration"></button></div>
-      <div class="set"><label>Guiding glow<small>Lights, the portal and creatures show a little even before your song finds them</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
+      <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
+      </section>
+      <section class="set-group"><h3>Look &amp; comfort</h3>
       <div class="set"><label>Lighting<small>Light and shadow on the rock. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
+      <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
+      <div class="set"><label>Guiding glow<small>Lights, the portal and creatures show a little even before your song finds them</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
+      </section>
+      <section class="set-group"><h3>Play style</h3>
+      <div class="set"><label>Relaxed mode<small>No light energy, Hushlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
       <div class="set" id="testRow" hidden><label>Unlock all levels<small>For testing. Stars still count normally</small></label><button class="toggle" id="setUnlockAll" aria-label="Unlock all levels"></button></div>
-      <div class="backup">
+      </section>
+      <section class="set-group"><h3>Your progress</h3>
+      <details class="backup"><summary>Back up or move your progress</summary>
         <label for="saveCode">Back up progress<small>Copy this code somewhere safe. Paste it here on any phone to bring your stars back.</small></label>
         <textarea id="saveCode" spellcheck="false" autocomplete="off"></textarea>
         <div class="row"><button class="btn" id="copyCode">Copy code</button><button class="btn" id="restoreCode">Restore</button></div>
-      </div>
+      </details>
       <button class="btn danger" id="setReset">Erase all progress</button>
+      </section>
     </div>
-    <button class="btn" id="settingsBack">Done</button>
+    <button class="btn main" id="settingsBack">Done</button>
   </div>
 </div>
 
