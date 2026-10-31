@@ -214,6 +214,7 @@ function ping(long = false) {
     if (g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 8 : 6.5) * (long ? 1.25 : 1)) continue;
     if (g.hunt <= 0) sfx.gloomWake(g.x - L.lumi.x, g.big);
     g.hunt = g.big ? 6 : 4.5;
+    g.lx = L.lumi.x; g.ly = L.lumi.y;
   }
   if (!L.demo) { long ? sfx.longSong(L.pings - 1) : sfx.ping(L.pings - 1); buzz(long ? [10, 30, 20] : 8); }
   for (let k = 0; k < 14; k++) {
@@ -251,6 +252,7 @@ function reveal(i, d = 0, w = null) {
     // Only a song heard fairly close by wakes a Hushling, not a faint echo from far away.
     if (Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : 6)) continue;
     g.hunt = g.big ? 6 : 4.5;
+    g.lx = L.lumi.x; g.ly = L.lumi.y;
     sfx.gloomWake(g.x - L.lumi.x, g.big);
   }
 }
@@ -633,17 +635,23 @@ function update(dt) {
     if (g.gone > 0) { g.gone -= dt; if (g.gone <= 0) { g.x = g.hx; g.y = g.hy; } continue; }
     // After a touch, a Hushling rests at home for a while before a song can wake it again.
     g.calm = Math.max(0, (g.calm || 0) - dt);
+    const was = g.hunt > 0;
     g.hunt = Math.max(0, g.hunt - dt);
-    // Swim close by and it notices you too, and it keeps chasing while you're near.
+    // Swim close by and it notices you too. While it can see you it keeps coming, nearly as fast
+    // as Lumi swims, so you have to run. Break its line of sight behind rock and it hunts where
+    // it last saw you, then gives up and drifts home.
     const gap = Math.hypot(lumi.x - g.x, lumi.y - g.y);
     if (ctl && g.calm <= 0 && gap < (g.big ? 3.2 : 2.4)) {
       if (g.hunt <= 0) sfx.gloomWake(g.x - lumi.x, g.big);
       g.hunt = Math.max(g.hunt, g.big ? 3 : 2.2);
     }
+    const sees = g.hunt > 0 && (gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
+    if (sees) { g.hunt = Math.max(g.hunt, g.big ? 2.5 : 2); g.lx = lumi.x; g.ly = lumi.y; }
+    if (was && g.hunt <= 0 && ctl) sfx.grumble();
     const hunting = g.hunt > 0 && ctl;
-    const tx = hunting ? lumi.x : g.hx + Math.sin(g.ph * 0.7) * 0.3;
-    const ty = hunting ? lumi.y : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = g.big ? (hunting ? 1.35 : 0.4) : hunting ? 1.9 + depthOf(levelIndex) * 0.35 : 0.6;
+    const tx = hunting ? (sees ? lumi.x : g.lx ?? lumi.x) : g.hx + Math.sin(g.ph * 0.7) * 0.3;
+    const ty = hunting ? (sees ? lumi.y : g.ly ?? lumi.y) : g.hy + Math.cos(g.ph * 0.5) * 0.3;
+    const spd = g.big ? (hunting ? 2.4 : 0.4) : hunting ? 3.1 + depthOf(levelIndex) * 0.5 : 0.6;
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
     if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
