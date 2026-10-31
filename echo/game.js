@@ -651,7 +651,7 @@ function update(dt) {
     const hunting = g.hunt > 0 && ctl;
     const tx = hunting ? (sees ? lumi.x : g.lx ?? lumi.x) : g.hx + Math.sin(g.ph * 0.7) * 0.3;
     const ty = hunting ? (sees ? lumi.y : g.ly ?? lumi.y) : g.hy + Math.cos(g.ph * 0.5) * 0.3;
-    const spd = g.big ? (hunting ? 2.4 : 0.4) : hunting ? 3.1 + depthOf(levelIndex) * 0.5 : 0.6;
+    const spd = g.big ? (hunting ? 1.9 : 0.4) : hunting ? 2.5 + depthOf(levelIndex) * 0.4 : 0.6;
     const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
     if (d > 0.01) { const m = Math.min(d, spd * dt) / d; g.x += dx * m; g.y += dy * m; }
     if (ctl && Math.hypot(lumi.x - g.x, lumi.y - g.y) < LUMI_R + (g.big ? 0.6 : 0.28)) {
