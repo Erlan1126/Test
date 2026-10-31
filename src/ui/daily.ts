@@ -7,12 +7,12 @@ import { eventEndsIn, weekIndex } from "../data/events";
 import { ISLAND_UPGRADES } from "../data/islands";
 import { MISSION_TYPES, missionText } from "../data/missions";
 import { skinById } from "../data/skins";
-import { buyBuild, chestReady, claimChest, claimLeagueReward, collectRent, leagueFor, rentFullIn, rentPerHour, rentWaiting, streakView } from "../logic/daily";
+import { buyBuild, chestReady, claimChest, collectRent, leagueFor, rentFullIn, rentPerHour, rentWaiting, streakView } from "../logic/daily";
 import { markSeen } from "../logic/features";
 import { islandLevel, swapMission } from "../logic/progress";
 import { dayKey, dayNumber, duration } from "../logic/rules";
 import type { Online, Entry } from "../online";
-import { $, closeModal, esc, openModal, replay, toast, vibrate, wireModal } from "./dom";
+import { $, closeModal, esc, openModal, replay, showTab, toast, vibrate, wireModal } from "./dom";
 import type { Host } from "./sheets";
 
 export interface DailyHost extends Host {
@@ -76,14 +76,6 @@ export class DailySheets {
     if (!$("missions").hidden) this.renderMissions();
   }
 
-  claimLeague(): void {
-    this.host.sound.ensure();
-    const r = claimLeagueReward(this.save);
-    this.host.persist();
-    if (r) { this.host.sound.unlock(); this.celebrate(`Last week you finished in the ${r.league} league: +${r.stars} ★`); }
-    else this.host.refresh();
-  }
-
   // ---------- Streak ----------
 
   openStreak(): void {
@@ -141,13 +133,14 @@ export class DailySheets {
     this.host.persist();
     this.renderMissions();
     this.host.refresh();
+    showTab($("missions"), "today");
     openModal($("missions"));
   }
 
   private renderMissions(): void {
     const save = this.save, m = save.missions;
     const done = m.slots.filter(x => x.d).length;
-    $("missions-count").textContent = `${done} of 3 done today · new missions in ${duration(untilMidnight())}`;
+    $("missions-count").textContent = `${done} of 3 done · new in ${duration(untilMidnight())}`;
     const canSwap = save.profile.swapDay !== dayKey(0);
     const list = $("mission-list");
     list.innerHTML = m.slots.map((x, i) => `
@@ -167,7 +160,7 @@ export class DailySheets {
     const chest = $("chest-card");
     chest.className = `chest-card${ready ? " ready" : ""}${opened ? " opened" : ""}`;
     chest.innerHTML = `<span class="chest-ico" aria-hidden="true">${opened ? "📭" : "🧰"}</span>
-      <span><b>${opened ? "Chest opened" : "Daily chest"}</b><small>${opened ? "Come back tomorrow for a new one" : `Finish all 3 missions: +${CHEST.stars} ★ and +${CHEST.coins} coins`}</small></span>
+      <span><b>${opened ? "Chest opened" : "Daily chest"}</b><small>${opened ? "A new one tomorrow" : `All 3 done: +${CHEST.stars} ★ · +${CHEST.coins} coins`}</small></span>
       ${ready ? '<button type="button" class="buy" id="chest-open">Open</button>' : `<span class="chest-dots">${[0, 1, 2].map(i => `<i class="${i < done ? "on" : ""}"></i>`).join("")}</span>`}`;
     chest.querySelector("#chest-open")?.addEventListener("click", () => this.openChest());
 
@@ -177,7 +170,8 @@ export class DailySheets {
       <div class="league-head"><span class="league-badge" style="--tier:${tier.color}">${esc(tier.name)}</span>
         <span><b>${fmt(L.points)} points</b><small>Week ends in ${duration(eventEndsIn())}</small></span></div>
       <div class="bar"><i style="width:${pct * 100}%"></i></div>
-      <small class="league-next">${next ? `${fmt(next.min - L.points)} more for ${esc(next.name)} (+${next.stars} ★ at the end of the week)` : "Top league! Hold on to it until the week ends"}</small>
+      <small class="league-next">${next ? `${fmt(next.min - L.points)} more for ${esc(next.name)} · +${next.stars} ★` : "Top league!"}</small>
+      <div class="league-ladder">${LEAGUES.map(l => `<span class="${l === tier ? "on" : l.min <= L.points ? "past" : ""}" style="--tier:${l.color}">${esc(l.name)}</span>`).join("")}</div>
       <small class="league-how">Every tower earns points. Daily towers count double.</small>`;
   }
 
@@ -189,6 +183,7 @@ export class DailySheets {
     this.host.persist();
     this.renderCity();
     this.host.refresh();
+    showTab($("city"), "build");
     openModal($("city"));
   }
 
@@ -197,8 +192,8 @@ export class DailySheets {
     $("city-balance").textContent = `${fmt(save.coins)} coins`;
     const full = rentFullIn(save);
     $("rent-card").innerHTML = `<span class="rent-ico" aria-hidden="true">🏦</span>
-      <span><b>${fmt(waiting)} coins of rent waiting</b>
-      <small>${fmt(rate)} coins an hour from the people in your best tower. ${full > 0 ? `Full in ${duration(full * 36e5)}` : `Full! Rent stops after ${RENT_CAP_HOURS} hours`}</small></span>
+      <span><b>${fmt(waiting)} coins of rent</b>
+      <small>${fmt(rate)} an hour · ${full > 0 ? `full in ${duration(full * 36e5)}` : `full (holds ${RENT_CAP_HOURS} hours)`}</small></span>
       <button type="button" class="buy" id="rent-collect"${waiting > 0 ? "" : " disabled"}>Collect</button>`;
     $("rent-collect").addEventListener("click", () => this.collectRent());
 
@@ -207,11 +202,12 @@ export class DailySheets {
     for (const b of CITY) {
       const owned = save.city.includes(b.id), poor = save.coins < b.price;
       const row = document.createElement("div");
-      row.className = `shop-item${owned ? " owned-row" : ""}`;
-      row.innerHTML = `<b>${esc(b.name)}</b>
-        <button type="button" class="buy"${owned ? " disabled" : ""}>${owned ? "Built" : `${fmt(b.price)} coins`}</button>
-        <small>${esc(b.text)}. +${Math.round(RENT_BONUS_PER_BUILD * 100)}% rent</small>`;
+      row.className = `build-card${owned ? " owned" : ""}`;
+      row.innerHTML = `<span class="build-ico" aria-hidden="true">${b.icon}</span><b>${esc(b.name)}</b>
+        <small>${esc(b.text)}</small>
+        <button type="button" class="buy"${owned ? " disabled" : ""}>${owned ? "✓ Built" : `🪙 ${fmt(b.price)}`}</button>`;
       const btn = row.querySelector<HTMLButtonElement>(".buy")!;
+      btn.setAttribute("aria-label", owned ? `${b.name}, built` : `Build ${b.name} for ${b.price} coins, adds ${Math.round(RENT_BONUS_PER_BUILD * 100)}% rent`);
       btn.addEventListener("click", () => {
         if (poor) {
           this.host.sound.click();
@@ -265,8 +261,8 @@ export class DailySheets {
       el.appendChild(row);
     });
     $("ranks-note").textContent = on.stale ? "Can't reach the leaderboard right now. It may be out of date."
-      : !on.canPost ? "You can see the board, but your scores aren't posted: ask the person who shared Skyrise to make you a Contributor."
-      : "Share this game page with friends (as Contributors) to compete with them. Scores post after every tower.";
+      : !on.canPost ? "Your scores aren't posted yet: ask whoever shared Skyrise to make you a Contributor."
+      : "Share this page with friends as Contributors to compete.";
   }
 
   private saveNick(): void {

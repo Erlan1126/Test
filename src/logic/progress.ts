@@ -113,16 +113,19 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
       penthouse: run.penthouses, towers: 1, floors: run.floors, daily: run.mode === "daily" ? 1 : 0,
     };
     refreshMissions(save, now, rng);
+    let finishedNow = 0;
     for (const m of save.missions.slots) {
       if (m.d) continue;
       m.p = MISSION_TYPES[m.t].game ? Math.max(m.p, got[m.t]) : m.p + got[m.t];
       if (m.p < m.n) continue;
       m.d = true;
+      finishedNow++;
       save.missions.done++;
       addStars(save, m.r);
       rewards.push({ kind: "star", text: `Mission complete: ${missionText(m)} (+${m.r} ★)` });
     }
-    if (allMissionsDone(save) && save.missions.chest !== dayKey(0, now)) {
+    // Only on the tower that finished the last one, not every tower after it.
+    if (finishedNow && allMissionsDone(save) && save.missions.chest !== dayKey(0, now)) {
       rewards.push({ kind: "star", text: "All of today's missions done! Open your chest on the main menu" });
     }
     const tier = addLeague(save, run, now);

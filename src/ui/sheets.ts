@@ -33,14 +33,11 @@ const isShopSkin = (s: Skin) => !!s.unlock && "price" in s.unlock;
 const priceOf = (s: Skin) => (s.unlock && "price" in s.unlock ? s.unlock.price : 0);
 
 export class Sheets {
-  private giftOffered = false;
   private loadArmed = false;
 
   constructor(private readonly host: Host) {
     for (const id of ["skins", "shop", "challenges", "profile"]) wireModal($(id));
     wireModal($("settings"), () => this.closeSettings());
-    $("gift-claim").addEventListener("click", () => this.claimGift());
-    $("gift-later").addEventListener("click", () => { $("gift").hidden = true; this.host.refresh(); });
     this.wireSettings();
   }
 
@@ -68,8 +65,7 @@ export class Sheets {
     this.click();
     this.seen("skins");
     const save = this.save, count = unlockedSkinCount(save);
-    $("skins-count").textContent = `${count} of ${SKINS.length} unlocked. Build taller to unlock more, or buy them in the shop.`;
-    $("skins-bar").style.width = `${count / SKINS.length * 100}%`;
+    $("skins-count").textContent = `${count} of ${SKINS.length} tower skins unlocked`;
     const grid = $("skin-grid");
     grid.innerHTML = "";
     for (const st of SKINS) {
@@ -237,11 +233,10 @@ export class Sheets {
     $("profile-xp").textContent = `${fmt(p.xp)} of ${fmt(need)} XP to level ${p.level + 1}`;
     $("profile-bar").style.width = `${p.xp / need * 100}%`;
     const nextTheme = ISLAND_THEMES.find(t => t.level > p.level);
-    $("profile-next").textContent = `Every level gives a star (3 at levels 5, 10, 15...). ${nextTheme ? `Level ${nextTheme.level} unlocks the ${nextTheme.name} island.` : "Every island theme is unlocked."}`;
+    $("profile-next").textContent = nextTheme ? `Level ${nextTheme.level} unlocks the ${nextTheme.name} island` : "Every island theme unlocked";
     const stats: [string | number, string][] = [
-      [fmt(p.towers), "towers"], [fmt(p.floors), "floors"], [fmt(p.perfects), "perfect drops"],
-      [fmt(save.best), "best people"], [`${fmt(save.bestMeters)} m`, "tallest"], [p.bestStreak, "best streak"],
-      [fmt(save.starsEarned), "stars earned"], [p.penthouses, "penthouses"], [`${save.challenges.length}/${CHALLENGES.length}`, "challenges"],
+      [fmt(save.best), "best people"], [`${fmt(save.bestMeters)} m`, "tallest"], [fmt(p.towers), "towers"],
+      [p.bestStreak, "best streak"], [fmt(p.perfects), "perfects"], [`${save.challenges.length}/${CHALLENGES.length}`, "landmarks"],
     ];
     $("profile-stats").innerHTML = stats.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
     const modeName = { classic: "Classic", daily: "Daily", challenge: "Challenge", zen: "Zen" } as const;
@@ -250,7 +245,7 @@ export class Sheets {
           <span><b>${fmt(h.score)}</b> <small>people · ${h.meters} m</small></span>
           <span class="when">${modeName[h.mode]}<br>${esc(this.when(h.day))}</span></div>`).join("")
       : `<p class="history-empty">Your best towers will show up here.</p>`;
-    $("trophy-title").textContent = `Trophies · ${p.trophies.length} of ${TROPHIES.length}`;
+    $("trophy-title").textContent = `${p.trophies.length} of ${TROPHIES.length} won`;
     $("trophy-grid").innerHTML = TROPHIES.map(t => {
       const won = p.trophies.includes(t.id);
       return `<div class="trophy${won ? " won" : ""}"><span class="t-ico">${won ? TROPHY_ICON : LOCK_ICON}</span><span><b>${esc(t.name)}</b><small>${esc(t.text)}</small></span></div>`;
@@ -274,10 +269,11 @@ export class Sheets {
     $<HTMLInputElement>("set-music").checked = st.music;
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
     $("vibrate-row").hidden = !("vibrate" in navigator);
-    document.querySelectorAll<HTMLButtonElement>(".seg button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
-    $("quality-note").textContent = st.quality === "auto" && st.autoLow
-      ? "Auto switched to smooth mode on this device"
-      : "High adds glow and depth effects. Auto turns them off on slower phones";
+    document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
+    $("quality-note").textContent = st.quality === "auto" && st.autoLow ? "Smooth mode was picked for this device"
+      : st.quality === "low" ? "Simpler graphics, easier on the battery"
+      : st.quality === "high" ? "Glow, depth and light effects always on"
+      : "Full effects, switching to smooth on slower phones";
   }
 
   openSettings(): void {
@@ -294,6 +290,7 @@ export class Sheets {
 
   private resetTransfer(): void {
     this.loadArmed = false;
+    $<HTMLDetailsElement>("transfer").open = false;
     $("load-code").textContent = "Load save code";
     $("load-code").classList.remove("danger");
     $<HTMLTextAreaElement>("code-box").value = "";
@@ -325,7 +322,7 @@ export class Sheets {
       this.host.persist();
       vibrate(st().vibrate, 20);
     });
-    document.querySelectorAll<HTMLButtonElement>(".seg button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.addEventListener("click", () => {
       st().quality = b.dataset.q as "auto" | "high" | "low";
       if (st().quality !== "auto") st().autoLow = false;
       this.host.persist();
@@ -384,38 +381,18 @@ export class Sheets {
 
   // ---------- Daily gift ----------
 
-  /** Offers the gift once per visit, after the first tower. */
-  maybeOfferGift(): void {
-    if (this.giftOffered || this.save.profile.towers < 1 || !giftState(this.save.profile.gift).ready) return;
-    this.giftOffered = true;
-    this.openGift();
-  }
-
-  openGift(): void {
-    const g = giftState(this.save.profile.gift);
-    const slot = (g.streak - 1) % GIFTS.length;
-    $("gift-streak").textContent = g.streak > 1 ? `Day ${g.streak} streak` : "Day 1";
-    $("gift-sub").textContent = g.streak > 1 ? "You came back! Keep the streak going for bigger gifts." : "Come back every day for bigger gifts.";
-    $("gift-track").innerHTML = GIFTS.map((n, i) => `
-      <div class="gift-day${i < slot ? " done" : ""}${i === slot ? " today" : ""}"><b>${n}★</b>Day ${i + 1}</div>`).join("");
-    $("gift-claim").textContent = `Claim ${giftAmount(g.streak)} ★`;
-    $("gift").hidden = false;
-    $("gift-claim").focus();
-  }
-
-  private claimGift(): void {
-    const save = this.save;
-    this.host.sound.ensure();
-    const g = giftState(save.profile.gift);
-    $("gift").hidden = true;
-    if (!g.ready) return;
+  /** Claims today's gift, if it's ready. The main menu's "collect" button shows it. */
+  claimGift(): { stars: number; day: number; trophies: string[] } | null {
+    const save = this.save, g = giftState(save.profile.gift);
+    if (!g.ready || save.profile.towers < 1) return null;
     const n = giftAmount(g.streak);
     save.profile.gift = { last: dayKey(0), streak: g.streak };
     addStars(save, n);
-    const won = awardStandingTrophies(save);
-    this.host.persist();
-    this.host.sound.star();
-    toast(`+${n} ★${won.length ? ` · Trophy: ${won.join(", ")}` : ""} · Tomorrow: ${giftAmount(g.streak + 1)} ★`);
-    this.host.refresh();
+    const trophies = awardStandingTrophies(save);
+    // The week's gift track, with today highlighted.
+    const slot = (g.streak - 1) % GIFTS.length;
+    $("gift-track").innerHTML = GIFTS.map((x, i) => `
+      <div class="gift-day${i < slot ? " done" : ""}${i === slot ? " today" : ""}"><b>${x}★</b>Day ${i + 1}</div>`).join("");
+    return { stars: n, day: g.streak, trophies };
   }
 }

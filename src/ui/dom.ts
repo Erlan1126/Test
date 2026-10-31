@@ -61,3 +61,19 @@ export function vibrate(on: boolean, pattern: number | number[]): void {
   if (!on) return;
   try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
 }
+
+/** Tabbed sheets: a `[data-tabs]` bar of `[data-tab]` buttons shows the sheet's matching
+ *  `[data-panel]` and hides the rest. */
+export function wireTabs(): void {
+  document.querySelectorAll<HTMLElement>("[data-tabs]").forEach(bar => {
+    const first = bar.querySelector<HTMLButtonElement>("[data-tab]")!.dataset.tab!;
+    bar.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(b => b.addEventListener("click", () => showTab(bar, b.dataset.tab!)));
+    showTab(bar, first);
+  });
+}
+
+export function showTab(barOrSheet: HTMLElement, name: string): void {
+  const sheet = barOrSheet.closest(".sheet") ?? barOrSheet;
+  sheet.querySelectorAll<HTMLButtonElement>("[data-tabs] [data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  sheet.querySelectorAll<HTMLElement>("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== name; });
+}

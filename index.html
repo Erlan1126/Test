@@ -79,58 +79,23 @@
   </div>
   <div class="menu-bottom">
     <div class="challenge-chip" id="menu-challenge" hidden></div>
-    <div class="chips" id="claim-chips">
-      <button type="button" class="gift-chip" id="gift-chip" hidden>🎁 Daily gift</button>
-      <button type="button" class="claim-chip" id="rent-chip" hidden></button>
-      <button type="button" class="claim-chip" id="chest-chip" hidden>🧰 Open today's chest</button>
-      <button type="button" class="claim-chip" id="league-chip" hidden></button>
-    </div>
+    <button type="button" class="status-line" id="status-line" hidden></button>
+    <button type="button" class="collect-chip" id="collect-chip" hidden></button>
     <button type="button" class="install-chip" id="install-chip" hidden>Install Skyrise as an app</button>
-    <button type="button" class="streak-line" id="streak-line" hidden></button>
-    <button type="button" class="rival-line" id="rival-line" hidden></button>
-    <div class="chips">
-      <div class="best-chip" id="menu-best" hidden></div>
-      <div class="event-chip" id="event-chip" hidden></div>
-    </div>
     <button class="btn btn-primary" id="play">Start building</button>
     <div class="boost-note" id="boost-note" hidden></div>
-    <div class="tiles" id="mode-tiles">
-      <button type="button" class="tile" id="daily-btn" hidden>
-        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-        <b id="daily-title">Daily</b><small id="daily-sub"></small><span class="badge" hidden>New</span>
-      </button>
-      <button type="button" class="tile" id="challenges-btn" hidden>
-        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
-        <b>Landmarks</b><small id="challenges-sub"></small><span class="badge" hidden>New</span>
-      </button>
-      <button type="button" class="tile" id="zen-btn" hidden>
-        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor"/></svg></span>
-        <b>Zen</b><small>No failing</small><span class="badge" hidden>New</span>
-      </button>
-      <button type="button" class="tile" id="ranks-btn" hidden>
-        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V12h4v8M10 20V6h4v14M16 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-        <b>Ranks</b><small id="ranks-sub"></small><span class="badge" hidden>New</span>
-      </button>
+    <div class="modes" id="modes">
+      <button type="button" class="mode" id="daily-btn" hidden><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="daily-title">Daily</span><i class="dot" hidden></i></button>
+      <button type="button" class="mode" id="challenges-btn" hidden><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>Landmarks</span><i class="dot" hidden></i></button>
+      <button type="button" class="mode" id="zen-btn" hidden><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Zen</span><i class="dot" hidden></i></button>
     </div>
-    <div class="tiles" id="meta-tiles">
-      <button type="button" class="tile" id="missions-btn" hidden>
-        <span class="tile-ico star" aria-hidden="true">★</span>
-        <b>Missions</b><small id="missions-sub"></small><span class="badge" hidden>New</span><span class="dot" id="missions-dot" hidden></span>
-      </button>
-      <button type="button" class="tile" id="city-btn" hidden>
-        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13M13 10h3M13 14h3M13 18h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
-        <b>City</b><small id="city-sub"></small><span class="badge" hidden>New</span><span class="dot" id="city-dot" hidden></span>
-      </button>
-      <button type="button" class="tile" id="skins-btn" hidden>
-        <span class="tile-ico swatch" id="skins-swatch" aria-hidden="true"></span>
-        <b>Skins</b><small id="skins-sub"></small><span class="badge" hidden>New</span>
-      </button>
-      <button type="button" class="tile" id="shop-btn" hidden>
-        <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
-        <b>Shop</b><small id="shop-sub"></small><span class="badge" hidden>New</span>
-      </button>
-    </div>
-    <div class="island-chip" id="island-chip" hidden></div>
+    <nav class="dock" id="dock" aria-label="More">
+      <button type="button" class="dock-btn" id="missions-btn" hidden><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Missions</span><i class="dot" hidden></i></button>
+      <button type="button" class="dock-btn" id="city-btn" hidden><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13M13 10h3M13 14h3M13 18h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>City</span><i class="dot" hidden></i></button>
+      <button type="button" class="dock-btn" id="skins-btn" hidden><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.5-2.2-.6-1.4.3-2.8 1.8-2.8H17a4 4 0 0 0 4-4c0-5-4-9-9-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7.5" cy="11" r="1.4" fill="currentColor"/><circle cx="10.5" cy="7" r="1.4" fill="currentColor"/><circle cx="15" cy="7.5" r="1.4" fill="currentColor"/></svg><span>Skins</span><i class="dot" hidden></i></button>
+      <button type="button" class="dock-btn" id="shop-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Shop</span><i class="dot" hidden></i></button>
+      <button type="button" class="dock-btn" id="ranks-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 20V12h4v8M10 20V6h4v14M16 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Ranks</span><i class="dot" hidden></i></button>
+    </nav>
   </div>
 </div>
 
@@ -172,14 +137,13 @@
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
-        <div><h2 id="skins-title">Tower skins</h2><p id="skins-count"></p></div>
+        <div><h2 id="skins-title">Skins</h2><p id="skins-count"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
-      <div class="bar"><i id="skins-bar"></i></div>
+      <div class="seg tabs" role="tablist" aria-label="Skins" data-tabs><button type="button" role="tab" data-tab="towers">Towers</button><button type="button" role="tab" data-tab="islands">Islands</button></div>
     </div>
-    <div class="skin-grid" id="skin-grid"></div>
-    <h3 class="sheet-sub">Island themes</h3>
-    <div class="skin-grid" id="theme-grid"></div>
+    <div class="skin-grid" id="skin-grid" data-panel="towers"></div>
+    <div class="skin-grid" id="theme-grid" data-panel="islands"></div>
   </div>
 </div>
 
@@ -187,15 +151,16 @@
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
-        <div><h2 id="shop-title">Star shop</h2><p id="shop-balance"></p></div>
+        <div><h2 id="shop-title">Shop</h2><p id="shop-balance"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
+      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="boosts">Boosts</button><button type="button" role="tab" data-tab="skins">Skins</button></div>
     </div>
-    <p class="sheet-note">Earn stars from missions, trophies, challenges, level-ups and daily gifts. Everything here is bought with stars only.</p>
-    <h3 class="sheet-sub">Boosts for your next Classic tower</h3>
-    <div class="shop-list" id="boost-list"></div>
-    <h3 class="sheet-sub">Shop skins</h3>
-    <div class="skin-grid" id="shop-skins"></div>
+    <div data-panel="boosts">
+      <p class="sheet-note">Used on your next Classic tower.</p>
+      <div class="shop-list" id="boost-list"></div>
+    </div>
+    <div class="skin-grid" id="shop-skins" data-panel="skins"></div>
   </div>
 </div>
 
@@ -208,7 +173,7 @@
       </div>
       <div class="bar"><i id="challenges-bar"></i></div>
     </div>
-    <p class="sheet-note">Every challenge is the same tower for everyone. Finish one to open the next.</p>
+    <p class="sheet-note">Finish one to unlock the next.</p>
     <div class="challenge-list" id="challenge-list"></div>
   </div>
 </div>
@@ -221,13 +186,17 @@
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
       <div class="bar"><i id="profile-bar"></i></div>
+      <div class="seg tabs" role="tablist" aria-label="Profile" data-tabs><button type="button" role="tab" data-tab="stats">Stats</button><button type="button" role="tab" data-tab="towers">Best towers</button><button type="button" role="tab" data-tab="trophies">Trophies</button></div>
     </div>
-    <p class="sheet-note" id="profile-next"></p>
-    <div class="stat-grid" id="profile-stats"></div>
-    <h3 class="sheet-sub">Your best towers</h3>
-    <div class="history" id="history"></div>
-    <h3 class="sheet-sub" id="trophy-title">Trophies</h3>
-    <div class="trophy-grid" id="trophy-grid"></div>
+    <div data-panel="stats">
+      <div class="stat-grid" id="profile-stats"></div>
+      <p class="sheet-note center" id="profile-next"></p>
+    </div>
+    <div class="history" id="history" data-panel="towers"></div>
+    <div data-panel="trophies">
+      <p class="sheet-note" id="trophy-title"></p>
+      <div class="trophy-grid" id="trophy-grid"></div>
+    </div>
   </div>
 </div>
 
@@ -238,11 +207,13 @@
         <div><h2 id="missions-title">Missions</h2><p id="missions-count"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
+      <div class="seg tabs" role="tablist" aria-label="Missions" data-tabs><button type="button" role="tab" data-tab="today">Today</button><button type="button" role="tab" data-tab="league">Weekly league</button></div>
     </div>
-    <div class="mission-list" id="mission-list"></div>
-    <div class="chest-card" id="chest-card"></div>
-    <h3 class="sheet-sub">Weekly league</h3>
-    <div class="league-card" id="league-card"></div>
+    <div data-panel="today">
+      <div class="mission-list" id="mission-list"></div>
+      <div class="chest-card" id="chest-card"></div>
+    </div>
+    <div class="league-card" id="league-card" data-panel="league"></div>
   </div>
 </div>
 
@@ -260,7 +231,6 @@
     <div class="streak-track" id="streak-track"></div>
     <div class="reminder" id="reminder" hidden>
       <h3 class="sheet-sub">Daily reminder</h3>
-      <p class="sheet-note">Add a daily reminder to your phone's calendar so you never lose your streak.</p>
       <div class="reminder-row"><label for="reminder-time">Remind me at</label><input type="time" id="reminder-time" value="19:00"></div>
       <button type="button" class="btn btn-secondary wide" id="reminder-btn">Add to my calendar</button>
     </div>
@@ -274,12 +244,13 @@
         <div><h2 id="city-title">Your city</h2><p id="city-balance"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
+      <div class="seg tabs" role="tablist" aria-label="City" data-tabs><button type="button" role="tab" data-tab="build">Build</button><button type="button" role="tab" data-tab="island">Island upgrades</button></div>
     </div>
-    <div class="rent-card" id="rent-card"></div>
-    <h3 class="sheet-sub">Build with coins</h3>
-    <div class="shop-list" id="build-list"></div>
-    <h3 class="sheet-sub">Island upgrades from tall towers</h3>
-    <div class="island-list" id="island-list"></div>
+    <div data-panel="build">
+      <div class="rent-card" id="rent-card"></div>
+      <div class="build-grid" id="build-list"></div>
+    </div>
+    <div class="island-list" id="island-list" data-panel="island"></div>
   </div>
 </div>
 
@@ -287,7 +258,7 @@
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
-        <div><h2 id="ranks-title">Leaderboard</h2><p id="ranks-sub2">Everyone this game is shared with</p></div>
+        <div><h2 id="ranks-title">Leaderboard</h2><p id="ranks-sub2">Friends you share Skyrise with</p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
       <div class="seg tabs" role="tablist" aria-label="Leaderboard">
@@ -298,7 +269,7 @@
     </div>
     <div class="rank-list" id="rank-list"></div>
     <p class="sheet-note" id="ranks-note"></p>
-    <h3 class="sheet-sub">Your name on the board</h3>
+    <h3 class="sheet-sub">Your name</h3>
     <div class="nick-row">
       <input type="text" id="nick" maxlength="16" placeholder="Your account name" autocomplete="nickname" spellcheck="false" aria-label="Leaderboard name">
       <button type="button" class="btn btn-secondary" id="nick-save">Save</button>
@@ -314,39 +285,45 @@
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
     </div>
-    <div class="setting-list">
-      <label class="setting"><span><b>Sound effects</b><small>Drops, perfects and cheers</small></span><input type="checkbox" id="set-sound" class="switch"></label>
-      <label class="setting"><span><b>Music</b><small>Builds up as your tower climbs</small></span><input type="checkbox" id="set-music" class="switch"></label>
-      <label class="setting" id="vibrate-row"><span><b>Vibration</b><small>Buzz on drops (Android)</small></span><input type="checkbox" id="set-vibrate" class="switch"></label>
-      <div class="setting">
-        <span><b>Graphics</b><small id="quality-note">High adds glow and depth effects</small></span>
+    <div class="group">
+      <label class="setting"><span class="set-ico" aria-hidden="true">🔊</span><b>Sound effects</b><input type="checkbox" id="set-sound" class="switch"></label>
+      <label class="setting"><span class="set-ico" aria-hidden="true">🎵</span><b>Music</b><input type="checkbox" id="set-music" class="switch"></label>
+      <label class="setting" id="vibrate-row"><span class="set-ico" aria-hidden="true">📳</span><b>Vibration</b><input type="checkbox" id="set-vibrate" class="switch"></label>
+    </div>
+    <div class="group">
+      <div class="setting stack">
+        <span class="set-row"><span class="set-ico" aria-hidden="true">✨</span><b>Graphics</b></span>
         <div class="seg" role="radiogroup" aria-label="Graphics quality">
           <button type="button" role="radio" data-q="auto">Auto</button>
           <button type="button" role="radio" data-q="high">High</button>
           <button type="button" role="radio" data-q="low">Smooth</button>
         </div>
+        <small id="quality-note"></small>
       </div>
-      <button type="button" class="btn btn-secondary wide" id="replay-tips">Show beginner tips again</button>
     </div>
-    <h3 class="sheet-sub">Move your progress</h3>
-    <div class="transfer">
-      <p class="sheet-note">Your progress is saved on this device. To play on another phone or browser, copy your save code there and load it.</p>
-      <button type="button" class="btn btn-secondary wide" id="copy-code">Copy my save code</button>
-      <textarea id="code-box" rows="3" spellcheck="false" autocomplete="off" aria-label="Save code" placeholder="Paste a save code here"></textarea>
-      <button type="button" class="btn btn-secondary wide" id="load-code">Load save code</button>
-      <p class="transfer-msg" id="code-msg" role="status"></p>
+    <div class="group">
+      <button type="button" class="setting link" id="replay-tips"><span class="set-ico" aria-hidden="true">💡</span><b>Show beginner tips again</b><span class="chev" aria-hidden="true">›</span></button>
+      <details class="setting disclosure" id="transfer">
+        <summary><span class="set-ico" aria-hidden="true">📲</span><b>Move progress to another device</b><span class="chev" aria-hidden="true">›</span></summary>
+        <div class="transfer">
+          <p class="sheet-note">Copy your code here, then load it on the other device.</p>
+          <button type="button" class="btn btn-secondary wide" id="copy-code">Copy my save code</button>
+          <textarea id="code-box" rows="3" spellcheck="false" autocomplete="off" aria-label="Save code" placeholder="Paste a save code here"></textarea>
+          <button type="button" class="btn btn-secondary wide" id="load-code">Load save code</button>
+          <p class="transfer-msg" id="code-msg" role="status"></p>
+        </div>
+      </details>
     </div>
   </div>
 </div>
 
-<div id="gift" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="gift-title">
-  <div class="dialog gift-dialog">
-    <div class="eyebrow" id="gift-streak">Day 1</div>
-    <h2 id="gift-title">Daily gift</h2>
-    <p id="gift-sub">Come back every day for bigger gifts.</p>
-    <div class="gift-track" id="gift-track"></div>
-    <button type="button" class="btn btn-primary wide" id="gift-claim">Claim</button>
-    <button type="button" class="menu-link" id="gift-later">Later</button>
+<div id="rewards" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="rewards-title">
+  <div class="dialog rewards-dialog">
+    <div class="reward-burst" aria-hidden="true">🎁</div>
+    <h2 id="rewards-title">Collected!</h2>
+    <div class="reward-lines" id="reward-lines"></div>
+    <div class="gift-track" id="gift-track" hidden></div>
+    <button type="button" class="btn btn-primary wide" id="rewards-ok">Nice!</button>
   </div>
 </div>
 

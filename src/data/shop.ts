@@ -10,9 +10,9 @@ export interface Boost {
 }
 
 export const BOOSTS: Boost[] = [
-  { id: "rewind", name: "Extra rewind", text: "One more rewind in your next Classic tower", price: 4 },
-  { id: "xp", name: "Double XP", text: "Your next Classic tower earns twice the XP", price: 3 },
-  { id: "gold", name: "Gold rush", text: "Gold penthouses show up twice as often in your next Classic tower", price: 3 },
+  { id: "rewind", name: "Extra rewind", text: "One more chance if a floor falls", price: 4 },
+  { id: "xp", name: "Double XP", text: "Level up twice as fast", price: 3 },
+  { id: "gold", name: "Gold rush", text: "Twice as many gold penthouses", price: 3 },
 ];
 
 /** You can hold at most this many of each boost. */

@@ -4,12 +4,11 @@ import { clamp, fmt, shortName } from "./core/util";
 import { challengeById, type Challenge } from "./data/challenges";
 import { GOLD, MILESTONES } from "./data/constants";
 import { eventEndsIn, eventFor } from "./data/events";
-import { ISLAND_UPGRADES } from "./data/islands";
 import { BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
-import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, unlockedSkinCount, type RunOutcome } from "./logic/progress";
-import { dailyEndsIn, dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
+import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
+import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
 import { loadSave, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { TowerSim, type DropOutcome, type FloorKind } from "./logic/sim";
@@ -19,11 +18,11 @@ import type { Debris } from "./render/effects";
 import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { Sound } from "./sound";
-import { $, closeModal, esc, openModalEl, replay, swatchHtml, toast, vibrate } from "./ui/dom";
+import { $, closeModal, esc, openModalEl, replay, swatchHtml, toast, vibrate, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
-import { chestReady, pendingLeagueReward, refreshMissions, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
 
@@ -102,6 +101,7 @@ export class App implements DailyHost {
     this.sound = new Sound(() => this.save.settings);
     this.renderer = new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
     this.sheets = new Sheets(this);
+    wireTabs();
     this.daily = new DailySheets(this);
     // Leaderboards light up only where shared storage is available (the claude.ai page).
     void this.online.init().then(() => this.refresh());
@@ -113,7 +113,6 @@ export class App implements DailyHost {
     this.resize();
     this.reset();
     this.renderMenu();
-    setTimeout(() => { if (this.state === "menu") this.sheets.maybeOfferGift(); }, 600);
     // Keep rent, countdowns and the day rollover fresh while the menu is open.
     setInterval(() => this.tickMenu(), 20000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) this.tickMenu(); });
@@ -211,11 +210,9 @@ export class App implements DailyHost {
     $("city-btn").addEventListener("click", () => this.daily.openCity());
     $("ranks-btn").addEventListener("click", () => this.daily.openRanks());
     $("streak-btn").addEventListener("click", () => this.daily.openStreak());
-    $("streak-line").addEventListener("click", () => this.daily.openStreak());
-    $("rival-line").addEventListener("click", () => this.daily.openRanks());
-    $("rent-chip").addEventListener("click", () => this.daily.collectRent());
-    $("chest-chip").addEventListener("click", () => this.daily.openChest());
-    $("league-chip").addEventListener("click", () => this.daily.claimLeague());
+    $("status-line").addEventListener("click", () => this.statusTap());
+    $("collect-chip").addEventListener("click", () => this.collectAll());
+    $("rewards-ok").addEventListener("click", () => { $("rewards").hidden = true; this.renderMenu(); });
     $("shop-btn").addEventListener("click", () => this.sheets.openShop());
     $("level-btn").addEventListener("click", () => this.sheets.openProfile());
     $("stars-btn").addEventListener("click", () => {
@@ -225,7 +222,6 @@ export class App implements DailyHost {
       toast(`You have ${this.save.stars} ★. The star shop opens after your ${this.ordinal(3)} tower.`);
     });
     $("settings-btn").addEventListener("click", () => this.sheets.openSettings());
-    $("gift-chip").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); this.sheets.openGift(); });
     $("again").addEventListener("click", () => this.start(this.mode, this.challenge?.id));
     $("next-challenge").addEventListener("click", () => {
       const next = nextChallenge(this.save);
@@ -284,7 +280,7 @@ export class App implements DailyHost {
       if (e.code === "Escape") { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); }
       return;
     }
-    if (!$("gift").hidden) { if (e.code === "Escape") { $("gift").hidden = true; this.renderMenu(); } return; }
+    if (!$("rewards").hidden) { if (e.code === "Escape" || e.code === "Enter") { e.preventDefault(); $("rewards").hidden = true; this.renderMenu(); } return; }
     const go = e.code === "Space" || e.code === "Enter";
     // Let focused buttons handle Space and Enter themselves.
     if (go && e.target instanceof HTMLButtonElement) return;
@@ -348,7 +344,7 @@ export class App implements DailyHost {
     this.outcome = null;
     this.shareBlob = null;
     this.state = "playing";
-    for (const id of ["menu", "over", "gift", "pause-menu", "rescue", "settings-btn", "level-btn", "stars-btn", "banner"]) $(id).hidden = true;
+    for (const id of ["menu", "over", "rewards", "pause-menu", "rescue", "settings-btn", "level-btn", "stars-btn", "banner"]) $(id).hidden = true;
     $("hud").hidden = false;
     $("pause").hidden = false;
     this.sound.duck(false);
@@ -372,7 +368,6 @@ export class App implements DailyHost {
     this.state = "menu";
     this.renderMenu();
     $("menu").hidden = false;
-    this.sheets.maybeOfferGift();
   }
 
   private pause(): void {
@@ -621,78 +616,124 @@ export class App implements DailyHost {
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     $("rules").hidden = p.towers >= 3;
-    const best = $("menu-best");
-    best.hidden = !save.best;
-    best.innerHTML = `Best tower: <b>${fmt(save.best)}</b> people`;
     const friend = $("menu-challenge");
     friend.hidden = !this.friendScore;
     friend.innerHTML = `A friend housed <b>${fmt(this.friendScore)}</b> people. Can you beat them?`;
-    $("gift-chip").hidden = p.towers < 1 || !giftState(p.gift).ready;
-
-    const ev = eventFor(now), evChip = $("event-chip");
-    evChip.hidden = !isOpen(save, "daily");
-    evChip.innerHTML = `<b>${esc(ev.name)}</b> · ${esc(ev.text)}`;
-    evChip.title = `This week's event. ${duration(eventEndsIn(now))} left.`;
-
     $("install-chip").hidden = !this.installPrompt || p.towers < 3;
     const n = boostCount(save), note = $("boost-note");
     note.hidden = !n;
-    note.textContent = `Boosts ready: ${BOOSTS.filter(b => save.boosts[b.id]).map(b => `${b.name}${save.boosts[b.id] > 1 ? ` x${save.boosts[b.id]}` : ""}`).join(", ")}`;
+    note.textContent = `⚡ ${BOOSTS.filter(b => save.boosts[b.id]).map(b => b.name).join(" · ")} on your next tower`;
 
-    // Things to claim: rent, the mission chest, last week's league reward.
-    const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0, rc = $("rent-chip");
-    rc.hidden = rent < 1;
-    rc.textContent = `🪙 Collect ${fmt(rent)} coins`;
-    $("chest-chip").hidden = !chestReady(save, now);
-    const lr = pendingLeagueReward(save, now), lc = $("league-chip");
-    lc.hidden = !lr;
-    if (lr) lc.textContent = `🏆 ${lr.league} league last week · +${lr.stars} ★`;
-    $("claim-chips").hidden = [...$("claim-chips").children].every(c => (c as HTMLElement).hidden);
+    // One button collects everything that's waiting.
+    const waiting = this.waitingRewards(now), cc = $("collect-chip");
+    cc.hidden = !waiting.length;
+    cc.textContent = waiting.length === 1 ? waiting[0] : `🎁 Collect ${waiting.length} rewards`;
 
-    // The streak, front and center when it's at risk.
-    const sv = streakView(save, now), sl = $("streak-line");
-    sl.hidden = p.towers < 1 || (sv.doneToday && sv.count < 2);
-    sl.classList.toggle("risk", sv.atRisk);
-    sl.textContent = sv.needsFreeze ? `🧊 A freeze will save your ${sv.count}-day streak. Build a tower today!`
-      : sv.atRisk ? `🔥 Build a tower today to keep your ${sv.count}-day streak`
-      : sv.doneToday ? `🔥 ${sv.count}-day streak · done for today`
-      : "🔥 Build a tower today to start a streak";
-    void this.renderRival();
-    this.declutter();
-
-    for (const f of ["daily", "challenges", "zen", "skins", "missions", "shop", "city"] as Feature[]) {
-      const btn = $(`${f}-btn`);
-      btn.hidden = !isOpen(save, f);
-      const fresh = isNew(save, f);
-      btn.classList.toggle("is-new", fresh);
-      btn.querySelector<HTMLElement>(".badge")!.hidden = !fresh;
-    }
-
+    // Modes and the dock show just an icon and a name; a dot marks something new or waiting.
+    const show = (id: string, visible: boolean, dot: boolean) => {
+      const b = $(id);
+      b.hidden = !visible;
+      b.querySelector<HTMLElement>(".dot")!.hidden = !dot;
+    };
+    const fresh = (f: Feature) => isNew(save, f);
+    show("daily-btn", isOpen(save, "daily"), fresh("daily") || !(save.daily.day === dayNumber(now) && save.daily.plays > 0));
+    show("challenges-btn", isOpen(save, "challenges"), fresh("challenges"));
+    show("zen-btn", isOpen(save, "zen"), fresh("zen"));
+    show("missions-btn", isOpen(save, "missions"), fresh("missions") || chestReady(save, now));
+    show("city-btn", isOpen(save, "city"), fresh("city") || rentWaiting(save, now) >= rentPerHour(save) * 3);
+    show("skins-btn", isOpen(save, "skins"), fresh("skins"));
+    show("shop-btn", isOpen(save, "shop"), fresh("shop"));
+    show("ranks-btn", this.online.ready && p.towers >= 1, false);
     $("daily-title").textContent = `Daily #${dayNumber(now)}`;
-    $("daily-sub").textContent = save.daily.day === dayNumber(now) && save.daily.plays ? `Best ${fmt(save.daily.best)}` : `New · ${duration(dailyEndsIn(now))} left`;
-    const nc = nextChallenge(save);
-    $("challenges-sub").textContent = nc ? `${save.challenges.length}/6 done` : "All done!";
-    const skin = skinById(save.skin);
-    $("skins-swatch").innerHTML = swatchHtml(skin.swatch ?? skin.floors);
-    $("skins-sub").textContent = `${unlockedSkinCount(save)}/${SKINS.length}`;
-    const doneToday = save.missions.slots.filter(m => m.d).length;
-    $("missions-sub").textContent = chestReady(save, now) ? "Chest ready!" : `${doneToday}/3 today`;
-    $("missions-dot").hidden = !chestReady(save, now) || isNew(save, "missions");
-    $("city-sub").textContent = `${fmt(save.coins)} coins`;
-    $("city-dot").hidden = isNew(save, "city") || rentWaiting(save, now) < rentPerHour(save) * 3;
-    const rb = $("ranks-btn");
-    rb.hidden = !this.online.ready || p.towers < 1;
-    const today = this.online.daily(dayNumber(now)), mine = today.findIndex(e => e.id === this.online.me);
-    $("ranks-sub").textContent = mine >= 0 ? `#${mine + 1} of ${today.length}` : today.length ? `${today.length} today` : "Today";
-    for (const id of ["mode-tiles", "meta-tiles"]) $(id).hidden = [...$(id).children].every(c => (c as HTMLElement).hidden);
-    $("shop-sub").textContent = `${save.stars} ★`;
+    $("modes").hidden = [...$("modes").children].every(c => (c as HTMLElement).hidden);
+    $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
+    void this.renderStatus(now);
+  }
 
-    const lvl = islandLevel(save), chip = $("island-chip");
-    chip.hidden = p.towers < 1;
-    const next = ISLAND_UPGRADES[lvl];
-    chip.innerHTML = next
-      ? `Island level <b>${lvl + 1}</b> · Next: ${esc(next.name)} at ${MILESTONES[next.at].m + 1} m`
-      : `Island level <b>${lvl + 1}</b> · Fully upgraded`;
+  /** Labels for everything ready to collect: the daily gift, rent, the chest, the league reward. */
+  private waitingRewards(now: number): string[] {
+    const save = this.save, out: string[] = [];
+    if (save.profile.towers >= 1 && giftState(save.profile.gift).ready) out.push("🎁 Open your daily gift");
+    const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0;
+    if (rent >= 1) out.push(`🪙 Collect ${fmt(rent)} coins`);
+    if (chestReady(save, now)) out.push("🧰 Open today's chest");
+    const lr = pendingLeagueReward(save, now);
+    if (lr) out.push(`🏆 Claim your ${lr.league} league reward`);
+    return out;
+  }
+
+  /** Collects everything at once and shows what came in. */
+  private collectAll(): void {
+    this.sound.ensure();
+    const save = this.save, lines: string[] = [];
+    const gift = this.sheets.claimGift();
+    if (gift) {
+      lines.push(`🎁 Day ${gift.day} gift · +${gift.stars} ★`);
+      for (const t of gift.trophies) lines.push(`🏅 Trophy: ${t} · +1 ★`);
+    }
+    $("gift-track").hidden = !gift;
+    if (isOpen(save, "city")) {
+      const r = collectRent(save);
+      if (r) lines.push(`🪙 Rent · +${fmt(r)} coins`);
+    }
+    const c = claimChest(save);
+    if (c) lines.push(`🧰 Mission chest · +${c.stars} ★ · +${c.coins} coins`);
+    const lr = claimLeagueReward(save);
+    if (lr) lines.push(`🏆 ${lr.league} league · +${lr.stars} ★`);
+    this.persist();
+    if (lines.length) {
+      const list = $("reward-lines");
+      list.replaceChildren(...lines.map((text, i) => {
+        const el = document.createElement("div");
+        el.className = "reward-line";
+        el.style.animationDelay = `${0.08 * i}s`;
+        el.textContent = text;
+        return el;
+      }));
+      $("rewards").hidden = false;
+      $("rewards-ok").focus();
+      this.sound.unlock();
+      this.sound.coins();
+      vibrate(save.settings.vibrate, [15, 30, 15]);
+    }
+    this.renderMenu();
+  }
+
+  /** One line of news above the play button: a streak at risk, a rival, or the week's event. */
+  private statusToken = 0;
+  private async renderStatus(now: number): Promise<void> {
+    const el = $("status-line"), save = this.save, token = ++this.statusToken;
+    const sv = streakView(save, now);
+    let text = "", kind = "";
+    if (save.profile.towers >= 1 && sv.atRisk) {
+      kind = "risk";
+      text = sv.needsFreeze ? `🧊 Build today: a freeze will save your ${sv.count}-day streak` : `🔥 Build today to keep your ${sv.count}-day streak`;
+    } else {
+      const r = this.online.ready && save.profile.towers >= 1 ? this.online.rival(dayNumber(now)) : null;
+      if (r) {
+        const who = (await this.online.names([r.entry.id]))[r.entry.id];
+        if (token !== this.statusToken) return;
+        kind = "rival";
+        text = r.rank === 0 ? `🏁 ${who} leads today's Daily. Your turn!` : `⚔️ #${r.rank} of ${r.of} today · ${who} is ${fmt(r.gap)} ahead`;
+      } else if (isOpen(save, "daily")) {
+        kind = "event";
+        text = `✨ ${eventFor(now).name}: ${eventFor(now).text.toLowerCase()}`;
+      }
+    }
+    el.dataset.kind = kind;
+    el.hidden = !text;
+    el.textContent = text;
+  }
+
+  private statusTap(): void {
+    const kind = $("status-line").dataset.kind;
+    if (kind === "risk") this.daily.openStreak();
+    else if (kind === "rival") this.daily.openRanks();
+    else if (kind === "event") {
+      this.sound.ensure();
+      this.sound.click();
+      toast(`This week's event · ${duration(eventEndsIn())} left. Applies to Classic and Daily towers.`);
+    }
   }
 
   /** " · #2 of 5 today" once the leaderboard has this tower. */
@@ -702,26 +743,6 @@ export class App implements DailyHost {
     const rank = list.filter(e => e.id !== this.online.me && e.dailyScore > mine).length + 1;
     const of = list.filter(e => e.id !== this.online.me).length + 1;
     return of > 1 ? ` · #${rank} of ${of} today` : "";
-  }
-
-  /** "Ana is 34 people ahead of you in today's Daily": someone to chase. */
-  private async renderRival(): Promise<void> {
-    const el = $("rival-line"), on = this.online;
-    const r = on.ready && this.save.profile.towers >= 1 ? on.rival(dayNumber()) : null;
-    if (!r) { el.hidden = true; return; }
-    const names = await on.names([r.entry.id]);
-    const who = names[r.entry.id];
-    el.textContent = r.rank === 0
-      ? `🏁 ${who} leads today's Daily: ${fmt(r.entry.dailyScore)}. Your turn!`
-      : `⚔️ #${r.rank} of ${r.of} today · ${who} is ${fmt(r.gap)} ahead`;
-    el.hidden = false;
-    this.declutter();
-  }
-
-  /** At most two info lines above the play button, so the island stays visible. */
-  private declutter(): void {
-    const lines = ["claim-chips", "streak-line", "rival-line"].filter(id => !$(id).hidden).length;
-    $("menu-best").parentElement!.hidden = lines >= 2;
   }
 
   // ---------- Game over ----------

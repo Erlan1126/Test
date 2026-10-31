@@ -20,6 +20,7 @@ export const MIN_RENT_PER_HOUR = 10;
 
 export interface CityBuild {
   id: string;
+  icon: string;
   name: string;
   text: string;
   price: number;
@@ -27,13 +28,13 @@ export interface CityBuild {
 
 /** Buildings bought with coins. Each one also raises your rent by 15%. */
 export const CITY: CityBuild[] = [
-  { id: "cafe", name: "Corner café", text: "Striped awning and tables outside", price: 150 },
-  { id: "playground", name: "Playground", text: "Swings, a slide and a sandpit", price: 300 },
-  { id: "statue", name: "Founder's statue", text: "A golden builder on a pedestal", price: 500 },
-  { id: "windmill", name: "Windmill", text: "Its sails turn in the breeze", price: 800 },
-  { id: "observatory", name: "Observatory", text: "A domed telescope for star-gazing", price: 1300 },
-  { id: "lighthouse", name: "Sky lighthouse", text: "Sweeps a beam across the night sky", price: 2000 },
-  { id: "rocket", name: "Rocket pad", text: "Every so often, a rocket launches", price: 3500 },
+  { id: "cafe", icon: "☕", name: "Corner café", text: "Striped awning and tables outside", price: 150 },
+  { id: "playground", icon: "🛝", name: "Playground", text: "Swings, a slide and a sandpit", price: 300 },
+  { id: "statue", icon: "🗽", name: "Founder's statue", text: "A golden builder on a pedestal", price: 500 },
+  { id: "windmill", icon: "🌾", name: "Windmill", text: "Its sails turn in the breeze", price: 800 },
+  { id: "observatory", icon: "🔭", name: "Observatory", text: "A domed telescope for star-gazing", price: 1300 },
+  { id: "lighthouse", icon: "🗼", name: "Sky lighthouse", text: "Sweeps a beam across the night sky", price: 2000 },
+  { id: "rocket", icon: "🚀", name: "Rocket pad", text: "Every so often, a rocket launches", price: 3500 },
 ];
 
 export const RENT_BONUS_PER_BUILD = 0.15;
