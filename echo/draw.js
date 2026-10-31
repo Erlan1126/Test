@@ -436,34 +436,81 @@ function drawThings() {
     ctx.globalAlpha = 1;
   }
 
-  // Gloomlings.
+  // Hushlings: hooded shadows with a smoky tail, ear tufts and almond eyes that follow Lumi.
+  // Hunting, their eyes narrow and burn pink and a jagged grin opens. The Great Hush is bigger,
+  // wears a crown of shadow spikes and has a second, smaller pair of eyes.
   for (const g of L.gloom) {
     if (g.gone > 0) continue;
-    const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : 0.3), hunting = g.hunt > 0;
+    const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : 0.3), hunting = g.hunt > 0, t = g.ph;
     ctx.globalCompositeOperation = "lighter";
-    glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.18);
+    glow(GLOW.violet, X, Y, r * 2.6, hunting ? 0.35 : 0.16);
     ctx.globalCompositeOperation = "source-over";
-    for (let k = 0; k < 5; k++) {
-      const a = g.ph * 1.7 + k * 1.26;
-      ctx.fillStyle = `rgba(${hunting ? 40 : 22},${hunting ? 10 : 12},${hunting ? 50 : 38},0.55)`;
+    // Smoky tail: wisps trailing down and away, each fading out.
+    for (let k = 0; k < 4; k++) {
+      const sway = Math.sin(t * 2.2 + k * 1.7) * r * 0.35, len = r * (1.1 + k * 0.18);
+      ctx.fillStyle = `rgba(14,8,24,${0.5 - k * 0.09})`;
       ctx.beginPath();
-      ctx.arc(X + Math.cos(a) * r * 0.35, Y + Math.sin(a) * r * 0.3, r * (0.7 + 0.15 * Math.sin(g.ph * 3 + k)), 0, Math.PI * 2);
+      ctx.moveTo(X - r * (0.7 - k * 0.12), Y + r * 0.2);
+      ctx.quadraticCurveTo(X + sway - r * 0.2, Y + len * 0.8, X + sway * 1.6 + (k - 1.5) * r * 0.3, Y + len + r * 0.3);
+      ctx.quadraticCurveTo(X + sway + r * 0.2, Y + len * 0.7, X + r * (0.7 - k * 0.12), Y + r * 0.2);
       ctx.fill();
+    }
+    // Hooded body with two ear tufts, darkest at the rim.
+    const body = ctx.createRadialGradient(X - r * 0.2, Y - r * 0.35, r * 0.1, X, Y, r * 1.1);
+    body.addColorStop(0, hunting ? "#3a1a4e" : "#2a1840"); body.addColorStop(0.7, "#140a22"); body.addColorStop(1, "#08040e");
+    ctx.fillStyle = body;
+    const ear = Math.sin(t * 1.5) * r * 0.06;
+    ctx.beginPath();
+    ctx.moveTo(X - r * 0.95, Y + r * 0.35);
+    ctx.bezierCurveTo(X - r * 1.05, Y - r * 0.4, X - r * 0.75, Y - r * 0.8, X - r * 0.55, Y - r * 0.85);
+    ctx.lineTo(X - r * 0.75, Y - r * 1.35 + ear);
+    ctx.lineTo(X - r * 0.25, Y - r * 0.98);
+    ctx.quadraticCurveTo(X, Y - r * 1.06, X + r * 0.25, Y - r * 0.98);
+    ctx.lineTo(X + r * 0.75, Y - r * 1.35 - ear);
+    ctx.lineTo(X + r * 0.55, Y - r * 0.85);
+    ctx.bezierCurveTo(X + r * 0.75, Y - r * 0.8, X + r * 1.05, Y - r * 0.4, X + r * 0.95, Y + r * 0.35);
+    ctx.quadraticCurveTo(X, Y + r * 0.75, X - r * 0.95, Y + r * 0.35);
+    ctx.fill();
+    if (g.big) {
+      // A crown of shadow spikes.
+      ctx.fillStyle = "#0c0616";
+      for (const [ox, h] of [[-0.3, 0.55], [0, 0.75], [0.3, 0.55]]) {
+        ctx.beginPath(); ctx.moveTo(X + (ox - 0.12) * r, Y - r * 0.95); ctx.lineTo(X + ox * r, Y - r * (0.95 + h)); ctx.lineTo(X + (ox + 0.12) * r, Y - r * 0.95); ctx.fill();
+      }
     }
     if (save.settings.contrast) {
       ctx.strokeStyle = "rgba(255,255,255,0.8)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(X, Y, r * 1.05, 0, Math.PI * 2);
+      ctx.arc(X, Y - r * 0.2, r * 1.15, 0, Math.PI * 2);
       ctx.stroke();
     }
+    // Eyes: almond shapes looking toward Lumi; narrowed and slanted when hunting.
+    const look = Math.atan2(L.lumi.y - g.y, L.lumi.x - g.x), lx = Math.cos(look) * r * 0.07, ly = Math.sin(look) * r * 0.05;
+    const blink = (t * 0.37) % 4 < 0.08 ? 0.15 : 1, eh = r * (hunting ? 0.1 : 0.17) * blink;
+    const eyes = [[-0.36, -0.25, 1], [0.36, -0.25, -1]];
+    if (g.big) eyes.push([-0.18, 0.08, 0.6], [0.18, 0.08, -0.6]);
     ctx.globalCompositeOperation = "lighter";
-    const eye = hunting ? GLOW.pink : GLOW.violet, ea = hunting ? 0.95 : 0.55;
-    glow(eye, X - r * 0.32, Y - r * 0.1, r * 0.5, ea);
-    glow(eye, X + r * 0.32, Y - r * 0.1, r * 0.5, ea);
-    glow(GLOW.white, X - r * 0.32, Y - r * 0.1, r * 0.14, ea);
-    glow(GLOW.white, X + r * 0.32, Y - r * 0.1, r * 0.14, ea);
+    for (const [ox, oy] of eyes) glow(hunting ? GLOW.pink : GLOW.violet, X + ox * r, Y + oy * r, r * 0.55, hunting ? 0.7 : 0.4);
     ctx.globalCompositeOperation = "source-over";
+    for (const [ox, oy, s] of eyes) {
+      const small = Math.abs(s) < 1 ? 0.65 : 1, ex = X + ox * r, ey = Y + oy * r, ew = r * 0.2 * small;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(hunting ? s * 0.35 : 0);
+      ctx.fillStyle = hunting ? "#ff9ad0" : "#c9a8ff";
+      ctx.beginPath(); ctx.ellipse(0, 0, ew, eh * small, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.ellipse(lx, ly, ew * 0.32, eh * 0.55 * small, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    if (hunting) {
+      // A jagged glowing grin.
+      ctx.strokeStyle = "rgba(255,150,210,0.9)"; ctx.lineWidth = Math.max(1, r * 0.06); ctx.lineJoin = "miter";
+      ctx.beginPath();
+      for (let q = 0; q <= 6; q++) ctx.lineTo(X + (q / 6 - 0.5) * r * 0.7, Y + r * (0.18 + (q % 2) * 0.1 + Math.abs(q / 6 - 0.5) * -0.14));
+      ctx.stroke();
+    }
   }
 
   // Echo crystals: violet facets in the rock that flash when a song bounces off them.

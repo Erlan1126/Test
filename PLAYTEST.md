@@ -35,7 +35,7 @@ Play the first level of each idea and note whether the picture card made it clea
 | --- | --- | --- |
 | 3 | Light energy | Do they notice the bar and understand that lights refill it? |
 | 5 | Thornlings | Do they hear the rattle and sing to spot them? Is dodging fun or frustrating? |
-| 7 | Gloomlings | Scary or fun? Fair? Can they escape? |
+| 7 | Hushlings | Scary or fun? Fair? Can they escape? |
 | 9 | Lost baby moths and long songs | Do they find the moth? Do they discover holding the Sing button? |
 | 11 | Quiet caves | Is the song limit clear? Too strict? |
 | 13 | Rune stones | Do they realise they have to sing close to the stones? |

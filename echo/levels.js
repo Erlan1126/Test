@@ -222,14 +222,14 @@ const THEMES = [
   { name: "Starlight Abyss", floor: [16, 16, 40], floor2: [30, 18, 52], rock: [52, 52, 100],   deep: [8, 8, 22],   rim: [255, 150, 220] },
 ];
 const STORY = [
-  "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way.",
+  "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way. But the Hush lives down here too, and its Hushlings hate every song.",
   "Soft moss hums back whenever Lumi sings. The cave is alive, and it seems to be listening.",
   "Purple crystals ring like little bells. Lumi feels braver now, and every song travels further.",
   "Warm air rises from glowing cracks in the rock. The lost lights down here burn brighter than ever.",
   "Everything is quiet and cold. Each song echoes for a long, long time before it fades.",
   "An old underground sea. Tiny creatures glow in the water, and some of them want to be friends.",
   "Someone lived here long ago. Their lanterns are gone, but the tunnels still remember their songs.",
-  "The deepest place of all. Far above, Lumi can almost hear the stars singing back.",
+  "The deepest place of all, where the Great Hush was born. Far above, Lumi can almost hear the stars singing back.",
 ];
 const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
 const DAILY = -1;
@@ -242,7 +242,7 @@ const weekNumber = () => Math.floor((dayNumber() + 3) / 7);  // weeks start on M
 const isChallenge = i => i < 0;
 const themeIndex = i => (i === WEEKLY ? weekNumber() + 3 : i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
 const themeOf = i => THEMES[themeIndex(i)];
-// Energy and Gloomlings get gently harder with depth; the daily cave sits in the middle.
+// Energy and Hushlings get gently harder with depth; the daily cave sits in the middle.
 const depthOf = i => (i === WEEKLY ? 0.8 : i < 0 ? 0.5 : Math.min(1, Math.max(0, 0.1 + (i - 19) / 320)));
 const worldName = w => THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)];
 
@@ -512,10 +512,10 @@ const familyLevel = w => w * PER_WORLD + (w === 0 ? 19 : 9);
 // three big ones at once.
 const BASICS = ["doors", "currents", "snoozles", "thorns"];
 const SIGNATURE = [
-  ["thorns", "gloom"],        // 1 Moonlit Grotto: Thornlings and the first Gloomlings
+  ["thorns", "gloom"],        // 1 Moonlit Grotto: Thornlings and the first Hushlings
   ["rescue"],                 // 2 Mossy Hollow: lost baby moths
   ["runes", "echo"],          // 3 Amethyst Deep: rune stones, gates and echo crystals
-  ["gloom", "quiet", "thorns"], // 4 Ember Caverns: Gloomlings, quiet caves and Thornlings
+  ["gloom", "quiet", "thorns"], // 4 Ember Caverns: Hushlings, quiet caves and Thornlings
   ["dark", "tall"],           // 5 Frost Tunnels: dark caves and long climbs
   ["race", "currents"],       // 6 Coral Depths: races on the tide
   ["runes", "doors", "tall"], // 7 Golden Mines
@@ -542,7 +542,10 @@ function planLevel(n, daily, hard, pre) {
   // At most three big ideas (one on a breather level), keeping the world's signature first.
   const limit = !daily && isBreather(n) ? 1 : 3;
   const ranked = [...plan].sort((a, b) => sig.includes(b) - sig.includes(a) || pre() - 0.5);
-  return new Set(ranked.slice(0, limit));
+  const chosen = new Set(ranked.filter(k => k !== "gloom").slice(0, limit));
+  // Hushlings are the caves' villains: once they've appeared, they're in every cave.
+  if (open.includes("gloom")) chosen.add("gloom");
+  return chosen;
 }
 
 function generateLevel(n, opts = {}) {
@@ -781,10 +784,10 @@ function generateLevel(n, opts = {}) {
       }
     }
 
-    // Gloomlings: shadows that come looking when they hear you sing.
+    // Hushlings: shadows that come looking when they hear you sing.
     if (plan.has("gloom")) {
-      // Finales with the Great Gloom get at most one ordinary Gloomling besides.
-      // Gloomlings count toward the cap of five creatures per cave (six in a big one).
+      // Finales with the Great Hush get at most one ordinary Hushling besides.
+      // Hushlings count toward the cap of five creatures per cave (six in a big one).
       const others = g.flat().filter(c => "tnakwj".includes(c)).length, room = Math.max(0, (R * C > 198 ? 6 : 5) - others);
       const want = Math.min(room, !daily && isFinale(n) ? 1 : 3, 1 + Math.floor(r() * (1 + hard * 2)));
       for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
@@ -831,7 +834,7 @@ function generateLevel(n, opts = {}) {
         if (kind === "j") return open(x, y - 1) && open(x, y + 1) && (open(x, y - 2) || open(x, y + 2)) && Math.abs(x - S[0]) > 1;
         return true;
       };
-      // Never more than five creatures in a cave (six in a big one), counting Thornlings and Gloomlings.
+      // Never more than five creatures in a cave (six in a big one), counting Thornlings and Hushlings.
       const already = g.flat().filter(c => "tgB".includes(c)).length, cap = (R * C > 198 ? 6 : 5) - already;
       for (let k = 0; k < Math.min(count, cap) && met.length; k++) {
         const kind = met.includes(own) && r() < 0.6 ? own : pick(met);
@@ -852,7 +855,7 @@ function generateLevel(n, opts = {}) {
       for (let k = 0; k < want; k++) { const [x, y] = faces.splice(Math.floor(r() * faces.length), 1)[0]; g[y][x] = "W"; }
     }
 
-    // The Great Gloom guards world finales from World 4, halfway along the way to the portal.
+    // The Great Hush guards world finales from World 4, halfway along the way to the portal.
     if (!daily && isFinale(n) && n >= UNLOCK.gloom) {
       const mid = route.slice(Math.floor(route.length * 0.35), Math.floor(route.length * 0.7)).filter(([x, y]) => g[y][x] === ".");
       if (mid.length) { const [x, y] = pick(mid); g[y][x] = "B"; }

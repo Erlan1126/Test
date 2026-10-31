@@ -120,7 +120,7 @@ function fairDrain(i, def, rows) {
   if (!def.walk) return base;
   const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length + (flat.match(/[tnakwj]/g) || []).length * 0.9;
   // Light gained from lights, minus what songs (about one every five tiles) and a couple of
-  // Gloomling touches cost, spread over the time a careful swim takes.
+  // Hushling touches cost, spread over the time a careful swim takes.
   const songs = (def.walk / 5) * 2.5 * (def.dark ? 0.6 : 1);
   const budget = Math.max(60, 100 + 35 * lights - songs - gloom * 30);
   const seconds = def.walk / 2 + 10;
@@ -242,7 +242,7 @@ function reveal(i, d = 0, w = null) {
   if (!snore) wakeMobsAt(i);
   for (const g of L.gloom) {
     if (snore || g.gone > 0 || g.hunt > 0 || g.calm > 0 || idx(Math.floor(g.x), Math.floor(g.y)) !== i) continue;
-    // Only a song heard fairly close by wakes a Gloomling, not a faint echo from far away.
+    // Only a song heard fairly close by wakes a Hushling, not a faint echo from far away.
     if (Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : 6)) continue;
     g.hunt = g.big ? 5 : 2.8;
     sfx.gloomWake(g.x - L.lumi.x, g.big);
@@ -620,12 +620,12 @@ function update(dt) {
     c.x = c.hx + wob;
   }
 
-  // Gloomlings drift at home, then chase you for a while after hearing a song.
+  // Hushlings drift at home, then chase you for a while after hearing a song.
   // They're shadows, so rock doesn't stop them. Touching one costs light.
   for (const g of L.gloom) {
     g.ph += dt;
     if (g.gone > 0) { g.gone -= dt; if (g.gone <= 0) { g.x = g.hx; g.y = g.hy; } continue; }
-    // After a touch, a Gloomling rests at home for a while before a song can wake it again.
+    // After a touch, a Hushling rests at home for a while before a song can wake it again.
     g.calm = Math.max(0, (g.calm || 0) - dt);
     g.hunt = Math.max(0, g.hunt - dt);
     const hunting = g.hunt > 0 && ctl;
@@ -729,7 +729,7 @@ function update(dt) {
 
   updateMobs(dt, ctl);
 
-  // Lumi's mood: scared when a Gloomling hunts nearby, happy after a find, sleepy when dim.
+  // Lumi's mood: scared when a Hushling hunts nearby, happy after a find, sleepy when dim.
   L.happy = Math.max(0, (L.happy || 0) - dt);
   L.mood = L.gloom.some(g => g.hunt > 0 && !g.gone && Math.hypot(g.x - lumi.x, g.y - lumi.y) < (g.big ? 5 : 3)) ? "scared"
     : L.happy > 0 ? "happy" : L.useEnergy && L.energy < 25 ? "sleepy" : "";

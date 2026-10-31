@@ -118,8 +118,8 @@ const CARDS = {
     art: `<g transform="translate(50 60)">${LUMI_SVG}</g><g fill="#ffd1ea"><ellipse cx="80" cy="56" rx="4" ry="6" transform="rotate(-25 80 56)"/><ellipse cx="88" cy="56" rx="4" ry="6" transform="rotate(25 88 56)"/></g><path d="M100 58h22" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 5" stroke-linecap="round"/><g fill="none" stroke="#b48cff" stroke-width="2.5"><circle cx="136" cy="58" r="12" stroke-dasharray="20 10"/><circle cx="136" cy="58" r="6"/></g>` },
   runes: { title: "Rune stones", text: "A stone gate blocks the way. Sing close to every rune stone, inside its dotted ring, and the gate opens for good.",
     art: `<circle cx="56" cy="56" r="34" fill="none" stroke="#96ffbe" stroke-opacity=".5" stroke-dasharray="3 6"/><circle cx="56" cy="56" r="13" fill="#283a46"/><g stroke="#96ffbe" stroke-width="2" fill="none"><circle cx="56" cy="56" r="2" fill="#96ffbe"/><path d="M49 51a8 8 0 0 0 0 10M63 51a8 8 0 0 1 0 10"/></g><g transform="translate(36 72)">${LUMI_SVG}</g><rect x="112" y="34" width="34" height="44" rx="3" fill="#3a4656"/><rect x="117" y="39" width="24" height="34" fill="none" stroke="#96ffbe" stroke-width="1.5"/>` },
-  gloom: { title: "Gloomlings", text: "Shadows that drift through rock. When your song reaches one, it chases you for a while. Touching it costs light.",
-    art: `<g transform="translate(44 56)">${LUMI_SVG}</g><g fill="none" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2"><path d="M66 44a16 16 0 0 1 0 24"/><path d="M74 38a24 24 0 0 1 0 36"/></g><g fill="#160c26" opacity=".95"><circle cx="118" cy="56" r="17"/><circle cx="128" cy="50" r="12"/><circle cx="108" cy="62" r="12"/></g><circle cx="112" cy="53" r="3" fill="#ff8cc8"/><circle cx="124" cy="53" r="3" fill="#ff8cc8"/>` },
+  gloom: { title: "Hushlings", text: "The Hush wants the caves silent forever, and Hushlings are its shadows. They drift through rock, and when your song reaches one it chases you. A touch steals light. They're in every cave from now on.",
+    art: `<g transform="translate(44 56)">${LUMI_SVG}</g><g fill="none" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2"><path d="M66 44a16 16 0 0 1 0 24"/><path d="M74 38a24 24 0 0 1 0 36"/></g><g transform="translate(122 58) scale(1.3)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g>` },
   quiet: { title: "Quiet caves", text: "These caves only let you sing a few times. Watch the counter, sing where it matters, and remember the way.",
     art: `<g transform="translate(52 56)">${LUMI_SVG}</g><g fill="#e9f3ff"><path d="M98 30v34a8 6 0 1 1-4-5V34l26-6v30a8 6 0 1 1-4-5V36z"/></g><text x="128" y="92" fill="#ff9fb8" font-size="18" font-family="Fredoka, sans-serif" font-weight="600">3 left</text>` },
   dark: { title: "Dark caves", text: "Nothing glows here, not even the lights or the portal, until your song finds them. If it's too hard, turn on Guiding glow in Settings.",
@@ -142,8 +142,8 @@ const CARDS = {
     art: `<g fill="none" stroke-linecap="round"><circle cx="80" cy="56" r="20" stroke="rgba(255,255,255,.15)" stroke-width="4"/><path d="M80 36a20 20 0 1 1-19 26" stroke="#ffe6a0" stroke-width="4"/><circle cx="80" cy="56" r="40" stroke="#7ee8ff" stroke-opacity=".35" stroke-width="2"/><circle cx="80" cy="56" r="52" stroke="#7ee8ff" stroke-opacity=".18" stroke-width="2"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
   echo: { title: "Echo crystals", text: "Violet crystals in the rock catch your song and sing it onward, carrying it around corners and into far tunnels.",
     art: `<path d="M20 30h70v50" fill="none" stroke="#3a4656" stroke-width="18"/><g fill="#d6beff"><path d="M98 66l6 10-6 12-6-12z"/><path d="M110 60l5 9-5 10-5-10z"/></g><g transform="translate(40 56)">${LUMI_SVG}</g><g fill="none" stroke-width="2" stroke-linecap="round"><path d="M58 50a12 12 0 0 1 0 14" stroke="#7ee8ff"/><path d="M120 70a14 14 0 0 1 10 14" stroke="#b48cff"/><path d="M124 62a22 22 0 0 1 16 24" stroke="#b48cff" stroke-opacity=".6"/></g>` },
-  boss: { title: "The Great Gloom", text: "At the end of some worlds a huge, slow Gloomling waits. It hunts anything that sings nearby, and a touch costs a lot of light. Sing far from it.",
-    art: `<g fill="#120a20"><circle cx="100" cy="56" r="34"/><circle cx="122" cy="40" r="22"/><circle cx="78" cy="70" r="22"/></g><circle cx="90" cy="50" r="5" fill="#ff8cc8"/><circle cx="112" cy="50" r="5" fill="#ff8cc8"/><g transform="translate(32 70) scale(.8)">${LUMI_SVG}</g>` },
+  boss: { title: "The Great Hush", text: "The king of the Hushlings guards the end of some worlds, crowned in shadow. It hunts anything that sings nearby, and a touch costs a lot of light. Sing far from it.",
+    art: `<g transform="translate(104 58) scale(2.2)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g><g fill="#0c0616"><path d="M90 30l4-14 4 14z"/><path d="M99 28l5-18 5 18z"/><path d="M110 30l4-14 4 14z"/></g><g transform="translate(32 76) scale(.8)">${LUMI_SVG}</g>` },
   family: { title: "Lumi's family", text: "Somewhere in this world, one of Lumi's little lights is hiding. Find it and it joins Lumi's journal for good.",
     art: `<g transform="translate(64 56)">${LUMI_SVG}</g><g transform="translate(104 60) scale(.6)"><circle r="17" fill="url(#cardGlow)"/><circle r="9" fill="#ffd1ea"/><circle cx="-3" cy="-1.5" r="1.4" fill="#123049"/><circle cx="3" cy="-1.5" r="1.4" fill="#123049"/></g><path d="M80 40c6-10 18-10 22 0" stroke="#ff9fb8" stroke-width="2" fill="none"/>` },
   race: { title: "Races", text: "Reach the portal before the clock runs out. Currents can help you, and in Relaxed mode there's no timer at all.",
@@ -239,7 +239,7 @@ const ACHS = [
   { id: "quiet",   ico: "🤫", name: "Quiet Voice",        desc: "Finish a cave singing 2 times or fewer",     goal: 1,   val: () => save.stats.quiet },
   { id: "smooth",  ico: "🫧", name: "Smooth Swimmer",     desc: "Finish 5 caves without bumping a wall",      goal: 5,   val: () => save.stats.clean },
   { id: "moths",   ico: "🦋", name: "Moth Whisperer",     desc: "Make friends with 10 glow-moths",            goal: 10,  val: () => save.stats.moths },
-  { id: "brave",   ico: "🛡️", name: "Brave Little Light", desc: "Finish 5 caves that have Gloomlings",        goal: 5,   val: () => save.stats.gloom },
+  { id: "brave",   ico: "🛡️", name: "Brave Little Light", desc: "Finish 5 caves that have Hushlings",        goal: 5,   val: () => save.stats.gloom },
   { id: "rescue",  ico: "🪽", name: "Moth Rescuer",       desc: "Bring 5 lost baby moths home",               goal: 5,   val: () => save.stats.rescues || 0 },
   { id: "runes",   ico: "🗝️", name: "Gatekeeper",         desc: "Open 5 rune gates",                          goal: 5,   val: () => save.stats.gates || 0 },
   { id: "daily",   ico: "📅", name: "Daily Habit",        desc: "Play the daily cave 3 days in a row",        goal: 3,   val: () => save.daily.best },
@@ -338,7 +338,7 @@ function failLevel() {
   $("failSub").textContent = L.failWhy === "time"
     ? "The cave closed before Lumi reached the portal. Sing early to plan your route."
     : L.hits
-    ? "Gloomlings took some of Lumi's light. Sing less near them, or swim away fast."
+    ? "Hushlings took some of Lumi's light. Sing less near them, or swim away fast."
     : "Lost lights, crystals and glow-moths all help Lumi stay bright.";
   show("fail");
 }
@@ -461,8 +461,8 @@ const JOURNAL = [
   ["crabs", "🦀", "Cinder Crabs", "Fiery crabs that dash along floors and pause at the ends."],
   ["wisps", "❄️", "Frostwisps", "Ice ghosts that drift toward Lumi and freeze it on touch."],
   ["jellies", "🪼", "Jellyglows", "Glowing jellies that bob through shafts and sting."],
-  ["gloom", "👀", "Gloomlings", "Shadows that drift through rock and chase songs."],
-  ["boss", "🌑", "The Great Gloom", "A huge, slow shadow that guards the end of some worlds."],
+  ["gloom", "👀", "Hushlings", "The Hush's shadows. They drift through rock, chase songs and steal light."],
+  ["boss", "🌑", "The Great Hush", "King of the Hushlings, crowned in shadow, guarding the end of some worlds."],
 ];
 function renderJournal() {
   const fam = save.family || {}, got = Object.keys(fam).length;

@@ -98,8 +98,10 @@ const SIM = `
         if (gate && before.has(X + "")) bad.push(i + ": gate can be skipped");
         if (lv.goal === "rescue" && !m.join("").includes("m")) bad.push(i + ": rescue level without a moth");
         const flat = m.join("");
-        const big = [R > 18 || Wd > 11, !!lv.dark, !!gate, flat.includes("g"), flat.includes("D"), /[<>^v]/.test(flat), flat.includes("z"), lv.goal && lv.goal !== "explore"].filter(Boolean).length;
+        // Hushlings are in every cave once they've appeared, so they don't count as a big idea.
+        const big = [R > 18 || Wd > 11, !!lv.dark, !!gate, flat.includes("D"), /[<>^v]/.test(flat), flat.includes("z"), lv.goal && lv.goal !== "explore"].filter(Boolean).length;
         if (i >= 10 && !INTRO[i] && big > 3) tooBusy++;
+        if (i >= 19 && !flat.includes("g") && !flat.includes("B")) bad.push(i + ": no Hushlings");
         if (R > 18) counts.tall++;
         if (Wd > 11) counts.wide = (counts.wide || 0) + 1;
         if (lv.dark) counts.dark++;
@@ -224,7 +226,7 @@ const SIM = `
       startLevel(cardLevel("race"), true);
       out.relaxedHasNoTimerOrEnergy = !L.timeLeft && !L.useEnergy;
       startLevel(cardLevel("gloom"), true);
-      out.relaxedHasNoGloomlings = L.gloom.length === 0;
+      out.relaxedHasNoHushlings = L.gloom.length === 0;
       save.settings.relaxed = false;
       startLevel(cardLevel("dark"), true);
       out.darkCaveHidesLights = L.dark && L.lights.every(o => !L.seen[o.i]);
@@ -266,7 +268,7 @@ const SIM = `
       out.familyHidesInEachWorld = !!L.family;
       Object.assign(L.lumi, { x: L.family.x, y: L.family.y }); __sim(0.2);
       out.familyCanBeFound = !!(save.family && save.family[1]);
-      // The Great Gloom guards world finales from World 4.
+      // The Great Hush guards world finales from World 4.
       startLevel(79, true);
       out.greatGloomInFinales = L.gloom.some(g => g.big);
       // Weekly cave.
@@ -415,7 +417,7 @@ const SIM = `
             if (target) for (const r of L.runes) if (!r.on && Math.hypot(r.x - L.lumi.x, r.y - L.lumi.y) < 0.6) sing(t);
             target = pickTarget(); path = route(Math.floor(target[0]), Math.floor(target[1])) || []; best = Infinity;
           }
-          // A careful player sings less when a Gloomling is close, so as not to wake it.
+          // A careful player sings less when a Hushling is close, so as not to wake it.
           const gloomNear = L.gloom.some(gl => !gl.gone && !gl.calm && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < 6) ||
             L.mobs.some(mb => mb.kind === "a" && mb.state === "idle" && Math.hypot(mb.x - L.lumi.x, mb.y - L.lumi.y) < 6.5);
           if (t - lastSong > (L.songLimit ? 9 : gloomNear ? 7 : 3)) sing(t);
