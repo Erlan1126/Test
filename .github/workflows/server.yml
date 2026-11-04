@@ -34,7 +34,10 @@ jobs:
         run: |
           # Pasted secrets can pick up extra lines or spaces: keep just the token (40+
           # letters, digits, - and _) and the 32-character account id.
-          CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -s ' \t\r' '\n' | grep -E '^[A-Za-z0-9_-]{40,}$' | head -1)
+          RAW_LEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | wc -c)
+          RAW_LINES=$(printf '%s\n' "$CLOUDFLARE_API_TOKEN" | wc -l)
+          echo "Token secret: $RAW_LEN characters on $RAW_LINES line(s)"
+          CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '[A-Za-z0-9_-]{35,}' | head -1)
           CLOUDFLARE_ACCOUNT_ID=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | grep -oiE '[0-9a-f]{32}' | head -1)
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::CLOUDFLARE_API_TOKEN doesn't look like a Cloudflare API token"; exit 1; fi
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::CLOUDFLARE_ACCOUNT_ID doesn't look like a 32-character account id"; exit 1; fi
