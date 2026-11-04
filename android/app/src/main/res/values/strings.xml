@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Skyrise</string>
+    <string name="title_activity_main">Skyrise</string>
+    <string name="package_name">com.erlan1126.skyrise</string>
+    <string name="custom_url_scheme">com.erlan1126.skyrise</string>
+</resources>

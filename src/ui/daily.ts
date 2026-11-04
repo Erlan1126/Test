@@ -11,6 +11,7 @@ import { buyBuild, chestReady, claimChest, collectRent, leagueFor, rentFullIn, r
 import { markSeen } from "../logic/features";
 import { islandLevel, swapMission } from "../logic/progress";
 import { dayKey, dayNumber, duration } from "../logic/rules";
+import { isNative, reminderTime, setReminder, type ReminderInfo } from "../native";
 import type { Online, Entry } from "../online";
 import { $, closeModal, esc, openModal, replay, showTab, toast, vibrate, wireModal } from "./dom";
 import type { Host } from "./sheets";
@@ -19,6 +20,8 @@ export interface DailyHost extends Host {
   readonly online: Online;
   /** Posts this player's numbers to the leaderboard. */
   postScores(): void;
+  /** What the phone apps' reminder notifications should say. */
+  reminderInfo(): ReminderInfo;
 }
 
 /** Time until local midnight, when missions and the streak day roll over. */
@@ -40,6 +43,11 @@ export class DailySheets {
     $("nick-save").addEventListener("click", () => this.saveNick());
     $("nick").addEventListener("keydown", e => { if (e.key === "Enter") this.saveNick(); });
     $("reminder-btn").addEventListener("click", () => this.addReminder());
+    // In the apps, changing the time moves a reminder that's already on.
+    $("reminder-time").addEventListener("change", e => {
+      const t = (e.target as HTMLInputElement).value;
+      if (isNative() && reminderTime() && t) void setReminder(t, this.host.reminderInfo());
+    });
     host.online.onChange = () => { if (!$("ranks").hidden) void this.renderRanks(); };
   }
 
@@ -96,11 +104,21 @@ export class DailySheets {
       </div>`;
     }).join("");
     // Calendar files download on a normal website; the claude.ai page can't save them.
-    $("reminder").hidden = !!(window as unknown as { claude?: unknown }).claude;
+    // The phone apps use real notifications instead.
+    $("reminder").hidden = !isNative() && !!(window as unknown as { claude?: unknown }).claude;
+    this.renderReminder();
     openModal($("streak"));
   }
 
+  private renderReminder(): void {
+    if (!isNative()) return;
+    const on = reminderTime();
+    if (on) $<HTMLInputElement>("reminder-time").value = on;
+    $("reminder-btn").textContent = on ? "Turn off the reminder" : "Remind me every day";
+  }
+
   private addReminder(): void {
+    if (isNative()) { void this.toggleNativeReminder(); return; }
     const [hh, mm] = ($<HTMLInputElement>("reminder-time").value || "19:00").split(":").map(Number);
     const start = new Date();
     start.setHours(hh || 19, mm || 0, 0, 0);
@@ -122,6 +140,15 @@ export class DailySheets {
     a.click();
     a.remove();
     toast("Open the downloaded file to add the reminder to your calendar");
+  }
+
+  private async toggleNativeReminder(): Promise<void> {
+    this.click();
+    const time = reminderTime() ? "" : ($<HTMLInputElement>("reminder-time").value || "19:00");
+    const r = await setReminder(time, this.host.reminderInfo());
+    toast(r === "denied" ? "Notifications are off for Skyrise. Turn them on in your phone's settings."
+      : r === "on" ? `We'll remind you at ${time} on days you haven't played yet` : "Daily reminder turned off");
+    this.renderReminder();
   }
 
   // ---------- Missions, chest and league ----------

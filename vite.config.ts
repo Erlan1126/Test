@@ -28,6 +28,7 @@ function singleFile(): Plugin {
 export default defineConfig({
   // Relative paths so the built game works from any folder or host.
   base: "./",
-  build: { target: "es2020", assetsInlineLimit: 100000, modulePreload: false },
+  // One script: the app plugins' small web fallbacks are bundled in rather than split out.
+  build: { target: "es2020", assetsInlineLimit: 100000, modulePreload: false, rollupOptions: { output: { inlineDynamicImports: true } } },
   plugins: [singleFile()],
 });

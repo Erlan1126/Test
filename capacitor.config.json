@@ -1,0 +1,34 @@
+{
+  "appId": "com.erlan1126.skyrise",
+  "appName": "Skyrise",
+  "webDir": "dist",
+  "backgroundColor": "#1b1446",
+  "loggingBehavior": "debug",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#1b1446"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchShowDuration": 4000,
+      "backgroundColor": "#1b1446",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_skyrise",
+      "iconColor": "#ff8a3d"
+    }
+  }
+}

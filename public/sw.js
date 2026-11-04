@@ -1,6 +1,6 @@
 // Offline support for Skyrise. Pages load from the network first so updates show up
 // right away, and fall back to the saved copy when there is no connection.
-const CACHE = "skyrise-v6";
+const CACHE = "skyrise-v7";
 const CORE = [
   "./",
   "index.html",
@@ -9,8 +9,11 @@ const CORE = [
   "icon-192.png",
   "icon-512.png",
   "apple-touch-icon.png",
+  "fonts/fonts.css",
+  "fonts/bungee.woff2",
+  "fonts/lilita-one.woff2",
+  "fonts/figtree.woff2",
 ];
-const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
@@ -28,18 +31,6 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-
-  // Fonts rarely change: serve the saved copy and refresh it in the background.
-  if (FONT_HOSTS.includes(url.hostname)) {
-    event.respondWith(
-      caches.open(CACHE).then(async cache => {
-        const saved = await cache.match(req);
-        const fresh = fetch(req).then(res => { cache.put(req, res.clone()); return res; }).catch(() => saved);
-        return saved || fresh;
-      })
-    );
-    return;
-  }
 
   if (url.origin !== location.origin) return;
 

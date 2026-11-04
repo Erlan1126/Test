@@ -1,0 +1,5 @@
+/* Fonts bundled with the game so it looks right offline and inside the phone apps.
+   Bungee, Lilita One and Figtree are under the SIL Open Font License (see OFL.txt). */
+@font-face { font-family: "Bungee"; font-style: normal; font-weight: 400; font-display: swap; src: url(bungee.woff2) format("woff2"); }
+@font-face { font-family: "Lilita One"; font-style: normal; font-weight: 400; font-display: swap; src: url(lilita-one.woff2) format("woff2"); }
+@font-face { font-family: "Figtree"; font-style: normal; font-weight: 300 900; font-display: swap; src: url(figtree.woff2) format("woff2"); }

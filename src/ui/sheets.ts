@@ -34,6 +34,8 @@ export interface Host {
   readonly payments: PaymentProvider | null;
   /** Starts a premium purchase. */
   buyPremium(product: Product): Promise<void>;
+  /** App Store and Google Play: asks the store again for everything already bought. */
+  restorePurchases(): Promise<void>;
 }
 
 const isShopSkin = (s: Skin) => !!s.unlock && "price" in s.unlock;
@@ -46,6 +48,18 @@ export class Sheets {
     for (const id of ["skins", "shop", "challenges", "profile"]) wireModal($(id));
     wireModal($("settings"), () => this.closeSettings());
     this.wireSettings();
+    $("restore-purchases").addEventListener("click", async () => {
+      const b = $<HTMLButtonElement>("restore-purchases");
+      b.disabled = true;
+      await this.host.restorePurchases();
+      b.disabled = false;
+      this.renderShop();
+    });
+  }
+
+  /** Redraws the shop if it's open (the store's prices arrive a moment after start). */
+  refreshShop(): void {
+    if (!$("shop").hidden) this.renderShop();
   }
 
   private get save(): SaveData { return this.host.save; }
@@ -148,26 +162,29 @@ export class Sheets {
     const save = this.save, pay = this.host.payments;
     const note = $("premium-note");
     note.textContent = !pay ? "Premium items are coming soon. Everything here is cosmetic: it never helps you score."
+      : pay.store ? "Cosmetic only: never helps you score."
       : pay.live ? "Cosmetic only: never helps you score. Payments are handled securely by Stripe."
       : "Test mode: purchases unlock instantly and nothing is charged.";
     note.classList.toggle("test", !!pay && !pay.live);
+    $("restore-purchases").hidden = !pay?.store;
     const list = $("premium-list");
     list.innerHTML = "";
     for (const p of PRODUCTS) {
       const owned = ownsProduct(save, p.id);
+      const price = pay?.price?.(p) ?? formatPrice(p.cents);
       const card = document.createElement("div");
       card.className = `premium-card${p.kind === "bundle" ? " bundle" : ""}${owned ? " owned" : ""}`;
       card.innerHTML = `<canvas aria-hidden="true"></canvas>
         ${p.kind === "bundle" ? '<span class="best-value">Best value</span>' : ""}
         <b>${esc(p.name)}</b><small>${esc(p.text)}</small>
-        <button type="button" class="buy">${owned ? "✓ Owned" : pay ? formatPrice(p.cents) : "Coming soon"}</button>`;
+        <button type="button" class="buy">${owned ? "✓ Owned" : pay ? esc(price) : "Coming soon"}</button>`;
       const cv = card.querySelector("canvas")!;
       const skinId = p.grants.skins?.[0], themeId = p.grants.themes?.[0];
       if (p.kind === "island" && themeId) drawThemePreview(cv, ISLAND_THEMES.find(t => t.id === themeId)!);
       else if (skinId) drawSkinPreview(cv, SKINS.find(s => s.id === (p.kind === "bundle" ? "cyber" : skinId))!);
       const btn = card.querySelector<HTMLButtonElement>(".buy")!;
       btn.disabled = owned || !pay;
-      btn.setAttribute("aria-label", owned ? `${p.name}, owned` : pay ? `Buy ${p.name} for ${formatPrice(p.cents)}` : `${p.name}, coming soon`);
+      btn.setAttribute("aria-label", owned ? `${p.name}, owned` : pay ? `Buy ${p.name} for ${price}` : `${p.name}, coming soon`);
       btn.addEventListener("click", async () => {
         btn.disabled = true;
         btn.textContent = "…";

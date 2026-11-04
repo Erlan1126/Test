@@ -1,4 +1,5 @@
 // Small DOM helpers shared by the screens.
+import { haptic } from "../native";
 
 export function $<T extends HTMLElement = HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -62,6 +63,9 @@ export const TROPHY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fi
 
 export function vibrate(on: boolean, pattern: number | number[]): void {
   if (!on) return;
+  // The phone apps use real haptics; the pattern picks the closest feel.
+  const total = typeof pattern === "number" ? pattern : pattern.reduce((a, b) => a + b, 0);
+  if (haptic(total <= 10 ? "tap" : total <= 20 ? "land" : total >= 150 ? "fail" : total === 70 ? "perfect" : "success")) return;
   try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
 }
 

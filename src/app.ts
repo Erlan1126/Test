@@ -9,7 +9,7 @@ import { skinById, SKINS } from "./data/skins";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
-import { loadSave, writeSave, type SaveData } from "./logic/save";
+import { loadSave, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { TowerSim, type DropOutcome, type FloorKind } from "./logic/sim";
 import type { Mode } from "./logic/types";
@@ -24,9 +24,10 @@ import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
 import { choosePayments, purchaseReturn } from "./payments";
-import { grantPurchase, newPlayerId, syncPurchases } from "./logic/premium";
+import { grantPurchase, newPlayerId, ownsProduct, syncPurchases } from "./logic/premium";
 import { productById, type Product } from "./data/premium";
-import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
 
@@ -52,6 +53,8 @@ function openStorage(): Storage | null {
 /** Where share links point: this site, unless it's an embedded preview with no public address. */
 function siteUrl(): string {
   const { protocol, hostname, origin, pathname } = location;
+  // The phone apps run from a local address that means nothing to anyone else.
+  if (isNative()) return "";
   if (!/^https?:$/.test(protocol) || /(^|\.)claude\.ai$|claudeusercontent|anthropic/.test(hostname)) return "";
   return origin + pathname;
 }
@@ -60,7 +63,7 @@ export class App implements DailyHost {
   save: SaveData;
   readonly sound: Sound;
   readonly online = new Online();
-  readonly payments = choosePayments();
+  readonly payments = choosePayments(() => this.sheets?.refreshShop());
   private readonly daily: DailySheets;
   private readonly storage = openStorage();
   private readonly canvas = $<HTMLCanvasElement>("game");
@@ -109,6 +112,7 @@ export class App implements DailyHost {
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
+    if (this.payments) this.payments.onOwned = ids => this.unlockOwned(ids, false);
     void this.syncPurchases(purchaseReturn());
     // Leaderboards light up only where shared storage is available (the claude.ai page).
     void this.online.init().then(() => this.refresh());
@@ -124,9 +128,13 @@ export class App implements DailyHost {
     setInterval(() => this.tickMenu(), 20000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) this.tickMenu(); });
     requestAnimationFrame(t => this.frame(t));
+    requestAnimationFrame(() => requestAnimationFrame(() => nativeReady()));
+    void this.restoreBackup();
+    onBackButton(() => this.back());
+    onAppHidden(() => void scheduleReminders(this.reminderInfo()));
 
     // Offline support on the website. Embedded copies and file:// skip it.
-    if ("serviceWorker" in navigator && this.site && (location.protocol === "https:" || location.hostname === "localhost")) {
+    if ("serviceWorker" in navigator && this.site && !isNative() && (location.protocol === "https:" || location.hostname === "localhost")) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
     }
   }
@@ -135,6 +143,48 @@ export class App implements DailyHost {
 
   persist(): void {
     writeSave(this.storage, this.save);
+    // The phone apps keep a second copy in native storage (a moment later, so a burst of
+    // saves only writes once).
+    if (isNative()) {
+      clearTimeout(this.backupTimer);
+      this.backupTimer = window.setTimeout(() => backupSave(JSON.stringify(this.save)), 800);
+    }
+  }
+
+  private backupTimer = 0;
+
+  /** If the phone cleared the web copy of the save, bring back the native backup. */
+  private async restoreBackup(): Promise<void> {
+    const json = await readBackup();
+    if (!json) { if (isNative()) this.persist(); return; }
+    try {
+      const backup = JSON.parse(json) as { profile?: { towers?: number } };
+      if ((backup.profile?.towers ?? 0) > this.save.profile.towers) {
+        this.storage?.setItem(SAVE_KEY, json);
+        location.reload();
+      }
+    } catch { /* a broken backup is ignored */ }
+  }
+
+  reminderInfo(): ReminderInfo {
+    const v = streakView(this.save);
+    return { doneToday: v.doneToday, streak: v.count, rentFull: isOpen(this.save, "city") && rentFullIn(this.save) <= 0 };
+  }
+
+  /** The Android back button: closes what's open, pauses, or steps back to the menu.
+   *  Returns false on the main menu, where the app goes to the background. */
+  private back(): boolean {
+    const modal = openModalEl();
+    if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
+    if (!$("rewards").hidden) { $("rewards").hidden = true; this.renderMenu(); return true; }
+    if (this.peek) { this.setPeek(false); return true; }
+    switch (this.state) {
+      case "rescue": this.endFromRescue(); return true;
+      case "paused": this.resume(); return true;
+      case "playing": this.pause(); return true;
+      case "over": if (this.overReady) this.goToMenu(); return true;
+      default: return false;
+    }
   }
 
   refresh(): void {
@@ -176,15 +226,30 @@ export class App implements DailyHost {
       if (attempt) await new Promise(r => setTimeout(r, 3000));
       const owned = await pay.owned(this.save.playerId);
       if (!owned) continue;
-      const added = syncPurchases(this.save, owned);
-      this.persist();
-      this.refresh();
-      if (added.length) {
-        this.sound.purchase();
-        toast(`Unlocked: ${added.map(id => productById(id)?.name ?? id).join(", ")}`);
-        return;
-      }
+      if (this.unlockOwned(owned, !pay.store)) return;
     }
+  }
+
+  /**
+   * Brings the save in line with what the player owns. With `exact`, the payment server
+   * is the source of truth and unknown purchases are removed; the app stores only add.
+   * Returns whether anything new was unlocked.
+   */
+  private unlockOwned(owned: string[], exact: boolean): boolean {
+    const added = exact ? syncPurchases(this.save, owned) : owned.filter(id => !ownsProduct(this.save, id) && grantPurchase(this.save, id));
+    this.persist();
+    this.refresh();
+    this.sheets?.refreshShop();
+    if (!added.length) return false;
+    this.sound.purchase();
+    toast(`Unlocked: ${added.map(id => productById(id)?.name ?? id).join(", ")}`);
+    return true;
+  }
+
+  async restorePurchases(): Promise<void> {
+    const owned = await this.payments?.restore?.();
+    if (!owned) { toast("Couldn't reach the store. Check your connection and try again."); return; }
+    if (!this.unlockOwned(owned, false)) toast(owned.length ? "Your purchases are all here" : "No purchases found for this account");
   }
 
   postScores(): void {
@@ -493,6 +558,7 @@ export class App implements DailyHost {
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
     this.postScores();
+    void scheduleReminders(this.reminderInfo());
     if (run.challengeWon) this.sound.win();
     else if (!silent) { this.sound.fail(); vibrate(this.save.settings.vibrate, [40, 40, 90]); }
   }
@@ -924,6 +990,7 @@ export class App implements DailyHost {
     const url = this.site ? (this.mode === "zen" ? this.site : `${this.site}?beat=${sim.score}`) : "";
     const text = this.shareText();
     const full = url ? `${text} ${url}` : text;
+    if (await nativeShare(full, this.shareBlob)) return;
     try {
       if (this.shareBlob && navigator.canShare) {
         const file = new File([this.shareBlob], "skyrise.png", { type: "image/png" });
