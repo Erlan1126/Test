@@ -23,7 +23,9 @@ export type SkinUnlock =
   /** Earned by keeping a play streak this many days. */
   | { streak: number }
   /** A premium skin, unlocked by buying the named product. */
-  | { product: string };
+  | { product: string }
+  /** A Sky Pass reward from the named season theme. */
+  | { pass: string };
 
 export interface Skin extends Look {
   id: string;
@@ -107,6 +109,55 @@ export const SKINS: Skin[] = [
     glass: "#0a2624", frame: "#1d6b62", slab: "#08201e", slabH: 0.08,
     lit: ["#3ee6c4", "#7cf5ff", "#b48cff"], alwaysLit: true, swatch: ["#0b3d3a", "#3ee6c4", "#b48cff"] },
 ];
+
+// Sky Pass skins, three per season theme (see data/pass.ts).
+SKINS.push(
+  // Golden Hour
+  { id: "sunset", name: "Sunset Glass", unlock: { pass: "Golden Hour" }, kind: "ribbon",
+    floors: ["#ff8a5c", "#ff9f6e", "#f7744d", "#ffb07f"],
+    glass: "#ffd2a8", frame: "#fff3e6", slab: "#e86a45", slabH: 0.1, lit: ["#fff1c4", "#ffe0a8"], swatch: ["#ff8a5c", "#ffd2a8", "#fff3e6"] },
+  { id: "copper", name: "Copper Crown", unlock: { pass: "Golden Hour" }, kind: "punched",
+    floors: ["#b5653a", "#c27448", "#a65a32"],
+    glass: "#2e1c14", frame: "#f0c9a0", slab: "#7a3f22", slabH: 0.16, lit: ["#ffc98a", "#ffe2b8"], swatch: ["#b5653a", "#f0c9a0", "#7a3f22"] },
+  { id: "goldenhour", name: "Golden Hour", unlock: { pass: "Golden Hour" }, kind: "ribbon", neon: true,
+    floors: ["#3b1f12", "#47261a", "#33190e"],
+    glass: "#1f0f08", frame: "#ffb347", slab: "#2a140a", slabH: 0.08, lit: ["#ffd36b", "#ff9f43", "#fff1b0"], alwaysLit: true,
+    swatch: ["#3b1f12", "#ffb347", "#ffd36b"] },
+  // Frostbite
+  { id: "glacier", name: "Glacier", unlock: { pass: "Frostbite" }, kind: "ribbon",
+    floors: ["#9ed8f5", "#b6e4fa", "#86cbee", "#cdeefd"],
+    glass: "#e8f8ff", frame: "#ffffff", slab: "#6fb6dd", slabH: 0.12, lit: ["#ffffff", "#d6f3ff"], swatch: ["#9ed8f5", "#ffffff", "#6fb6dd"] },
+  { id: "snowdrift", name: "Snowdrift", unlock: { pass: "Frostbite" }, kind: "punched",
+    floors: ["#eef3f8", "#e2eaf2", "#f6f9fc"],
+    glass: "#4b6a88", frame: "#ffffff", slab: "#c7d6e6", slabH: 0.2, lit: ["#ffe6a8", "#fff3d1"], swatch: ["#eef3f8", "#4b6a88", "#c7d6e6"] },
+  { id: "frostqueen", name: "Frost Queen", unlock: { pass: "Frostbite" }, kind: "ribbon", neon: true,
+    floors: ["#13203f", "#182850", "#101a35"],
+    glass: "#0b1430", frame: "#8fd8ff", slab: "#0a1228", slabH: 0.08, lit: ["#bdf0ff", "#8fd8ff", "#e2d4ff"], alwaysLit: true,
+    swatch: ["#13203f", "#8fd8ff", "#e2d4ff"] },
+  // Neon Carnival
+  { id: "arcade", name: "Arcade", unlock: { pass: "Neon Carnival" }, kind: "punched", neon: true,
+    floors: ["#2a1450", "#341a63", "#22103f"],
+    glass: "#140a2a", frame: "#ff5fd2", slab: "#1a0c33", slabH: 0.1, lit: ["#ff5fd2", "#ffe14f", "#4ff0ff"], alwaysLit: true,
+    swatch: ["#2a1450", "#ff5fd2", "#ffe14f"] },
+  { id: "carnival", name: "Carnival", unlock: { pass: "Neon Carnival" }, kind: "punched",
+    floors: ["#e63946", "#ffffff", "#e63946", "#ffd166"],
+    glass: "#1d3557", frame: "#ffffff", slab: "#f1faee", slabH: 0.14, lit: ["#ffd166", "#fff3c4"], swatch: ["#e63946", "#ffffff", "#ffd166"] },
+  { id: "hyperdrive", name: "Hyperdrive", unlock: { pass: "Neon Carnival" }, kind: "ribbon", neon: true,
+    floors: ["#07070f", "#0c0c1a", "#05050b"],
+    glass: "#04040a", frame: "#7c4dff", slab: "#030308", slabH: 0.06, lit: ["#ff5fd2", "#7c4dff", "#4ff0ff", "#ffe14f"], alwaysLit: true,
+    swatch: ["#07070f", "#7c4dff", "#ff5fd2"] },
+  // Jungle Temple
+  { id: "jade", name: "Jade", unlock: { pass: "Jungle Temple" }, kind: "ribbon",
+    floors: ["#2f9e6e", "#38b07c", "#278a5f"],
+    glass: "#c9f2dc", frame: "#eafff2", slab: "#1d6e4b", slabH: 0.12, lit: ["#fff4c2", "#d9ffe8"], swatch: ["#2f9e6e", "#c9f2dc", "#1d6e4b"] },
+  { id: "mossy", name: "Mossy Stone", unlock: { pass: "Jungle Temple" }, kind: "punched",
+    floors: ["#7d8a6a", "#8b9877", "#6f7c5d"],
+    glass: "#2b3324", frame: "#c9d6a8", slab: "#55603f", slabH: 0.18, lit: ["#ffd98a", "#ffecc0"], swatch: ["#7d8a6a", "#c9d6a8", "#55603f"] },
+  { id: "idol", name: "Emerald Idol", unlock: { pass: "Jungle Temple" }, kind: "punched", neon: true,
+    floors: ["#0f3b2a", "#134833", "#0b2f21"],
+    glass: "#082319", frame: "#ffd23f", slab: "#0a281c", slabH: 0.12, lit: ["#5fd18b", "#ffd23f", "#b8ffd8"], alwaysLit: true,
+    swatch: ["#0f3b2a", "#ffd23f", "#5fd18b"] },
+);
 
 export const skinById = (id: string): Skin => SKINS.find(s => s.id === id) ?? SKINS[0];
 

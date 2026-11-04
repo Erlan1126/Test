@@ -29,8 +29,15 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 ## App privacy
 
 - Privacy policy URL: https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
-- Data collection: **"No, we do not collect data from this app."**
-  (Progress stays on the phone. Apple handles purchases. There are no ads or analytics.)
+- Data collection: **"Yes, we collect data from this app"**, only for the worldwide
+  leaderboard. Declare these three, each **Linked to the user: No**, **Used for tracking:
+  No**, purpose **App Functionality**:
+  - **Identifiers → User ID** (a random player id the game makes; not an Apple or device id)
+  - **User Content → Other User Content** (the leaderboard nickname the player types)
+  - **Usage Data → Product Interaction** (scores and the taps of ranked towers, to check them)
+  Progress stays on the phone. Apple handles purchases. There are no ads or analytics.
+  (If the leaderboard server isn't switched on yet, nothing is sent; you can still declare
+  it now so you don't have to change the answers later.)
 
 ## Version 1.0 page
 
@@ -92,22 +99,23 @@ The app is iPhone only, so no iPad screenshots are needed.
 
 ## In-app purchases
 
-Features → **In-App Purchases** → +. Make each one **Non-Consumable**. The Product ID
-must match exactly, because the game looks for these ids.
+Features → **In-App Purchases** → +. Make each one **Consumable** (players can buy
+packs again and again). The Product ID must match exactly, because the game looks for these ids.
 
 | Reference name | Product ID | Price | Display name | Description (55 max) |
 |---|---|---|---|---|
-| Crystal Palace skin | skin_crystal | $1.99 | Crystal Palace | A sparkling tower of ice-blue glass |
-| Sakura Spire skin | skin_sakura | $1.99 | Sakura Spire | Blossom pink with warm paper lanterns |
-| Royal Amethyst skin | skin_royal | $1.99 | Royal Amethyst | Deep purple stone trimmed in gold |
-| Cyber City skin | skin_cyber | $2.99 | Cyber City | Black glass with glowing neon edges |
-| Volcano Island | island_volcano | $2.99 | Volcano Island | Black rock, palm trees and glowing lava |
-| Candy Island | island_candy | $2.99 | Candy Island | Pastel lawns and cotton-candy trees |
-| Founder's Pack | founders | $7.99 | Founder's Pack | Every premium skin and island + 5,000 coins |
+| 100 Sky Crystals | crystals_100 | $0.99 | 100 Sky Crystals | A handful of Sky Crystals |
+| 550 Sky Crystals | crystals_550 | $4.99 | 550 Sky Crystals | 500 Sky Crystals + 10% bonus |
+| 1,200 Sky Crystals | crystals_1200 | $9.99 | 1,200 Sky Crystals | 1,000 Sky Crystals + 20% bonus |
+| 2,600 Sky Crystals | crystals_2600 | $19.99 | 2,600 Sky Crystals | 2,000 Sky Crystals + 30% bonus |
+| 7,000 Sky Crystals | crystals_7000 | $49.99 | 7,000 Sky Crystals | 5,000 Sky Crystals + 40% bonus |
 
-For each one, also add a **review screenshot**: take one of the shop's Premium tab on your
-iPhone (TestFlight build) and reuse it for all seven. Then, on the version page, select
-all seven under **In-App Purchases and Subscriptions** so they're reviewed with the app.
+Everything else (premium skins and islands, the Sky Pass premium track) is bought **with
+Sky Crystals inside the game**, so it doesn't need its own store product.
+
+For each pack, also add a **review screenshot**: take one of Shop → 💎 Crystals on your
+iPhone (TestFlight build) and reuse it for all five. Then, on the version page, select
+all five under **In-App Purchases and Subscriptions** so they're reviewed with the app.
 
 Before any of this works you must accept the **Paid Apps Agreement** and add your bank
 and tax details (Business → Agreements). Without it, purchases won't load.
@@ -118,6 +126,9 @@ and tax details (Business → Agreements). Without it, purchases won't load.
 - Notes:
 
 > Skyrise is a one-tap tower stacking game. Tap anywhere to drop the sliding floor.
-> Premium items are in Shop → Premium. The shop appears after the first 3 towers (one
-> tower takes under a minute); then tap the bag icon at the bottom of the home screen. All in-app purchases are non-consumable
-> cosmetics, and "Restore purchases" is at the bottom of that tab. No account is needed.
+> In-app purchases are packs of Sky Crystals (consumable), in Shop → 💎 Crystals. The
+> shop appears after the first 3 towers (one tower takes under a minute); then tap the
+> bag icon at the bottom of the home screen. Crystals buy cosmetic skins and islands and
+> the monthly Sky Pass premium track (Pass button). Everything is cosmetic and nothing is
+> random: players always see exactly what they get. No account is needed. The worldwide
+> leaderboard (Ranks button) shows a nickname the player chooses.

@@ -1,0 +1,46 @@
+# Deploys the Skyrise server (worldwide rankings) to Cloudflare, so no computer is needed.
+# Needs two repository secrets (see server/README.md):
+#   CLOUDFLARE_API_TOKEN   a token from the "Edit Cloudflare Workers" template, plus D1 edit
+#   CLOUDFLARE_ACCOUNT_ID  your account id from the Cloudflare dashboard
+# It creates the database the first time, sets up its tables, and deploys the Worker.
+name: Server
+
+on:
+  push:
+    branches: [claude/new-session-klw8t6, main, master]
+    paths: ["server/**", "src/logic/**", "src/data/**", "src/core/**", ".github/workflows/server.yml"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Test the server
+        run: |
+          npm ci
+          npx vitest run tests/rankings.test.ts tests/worker.test.js tests/replay.test.ts
+      - name: Deploy to Cloudflare
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        working-directory: server
+        run: |
+          W="npx --yes wrangler@4"
+          # Find the database, or create it the first time.
+          ID=$($W d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);const d=l.find(x=>x.name==="skyrise");process.stdout.write(d?d.uuid:"")})')
+          if [ -z "$ID" ]; then
+            $W d1 create skyrise
+            ID=$($W d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);process.stdout.write(l.find(x=>x.name==="skyrise").uuid)})')
+          fi
+          sed -i "s/PASTE_YOUR_D1_DATABASE_ID/$ID/" wrangler.toml
+          $W d1 execute skyrise --remote --file=schema.sql --yes
+          $W deploy 2>&1 | tee deploy.log
+          echo "## Server address" >> "$GITHUB_STEP_SUMMARY"
+          grep -o 'https://[a-z0-9.-]*workers.dev' deploy.log | head -1 >> "$GITHUB_STEP_SUMMARY" || true

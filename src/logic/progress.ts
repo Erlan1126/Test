@@ -10,6 +10,8 @@ import { TROPHIES, type TrophyContext } from "../data/trophies";
 import { addXp, dayKey, dayNumber, landmarkIndex, runXp, xpNeeded } from "./rules";
 import { addLeague, allMissionsDone, dealMissions, refreshMissions, startRent, tickStreak } from "./daily";
 import { premiumGrants } from "./premium";
+import { addPassXp } from "./pass";
+import { levelReward, MISSION_PASS_XP, towerPassXp } from "../data/pass";
 import { HISTORY_SIZE, type SaveData } from "./save";
 
 export { dealMissions };
@@ -22,6 +24,7 @@ export function isSkinUnlocked(save: SaveData, skin: Skin): boolean {
   if ("price" in skin.unlock) return save.ownedSkins.includes(skin.id);
   if ("streak" in skin.unlock) return save.streak.best >= skin.unlock.streak;
   if ("product" in skin.unlock) return premiumGrants(save).skins.has(skin.id);
+  if ("pass" in skin.unlock) return save.ownedSkins.includes(skin.id);
   return save.bestMeters > MILESTONES[skin.unlock.at].m;
 }
 
@@ -31,7 +34,8 @@ export function skinUnlockText(skin: Skin): string {
   if (!skin.unlock) return "";
   if ("price" in skin.unlock) return `Buy it in the shop for ${skin.unlock.price} ★`;
   if ("streak" in skin.unlock) return `Play ${skin.unlock.streak} days in a row`;
-  if ("product" in skin.unlock) return "Get it in the Premium shop";
+  if ("product" in skin.unlock) return "Get it with Sky Crystals in the shop";
+  if ("pass" in skin.unlock) return `A Sky Pass reward (${skin.unlock.pass} season)`;
   const ms = MILESTONES[skin.unlock.at];
   return `Build taller than ${ms.name} (${ms.m} m)`;
 }
@@ -111,13 +115,14 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   }
 
   // Missions
+  let finishedNow = 0;
   if (!zen) {
     const got: Record<string, number> = {
       perfects: run.perfects, streak: run.bestStreak, height: run.meters, people: run.score, wind: run.windFloors,
       penthouse: run.penthouses, towers: 1, floors: run.floors, daily: run.mode === "daily" ? 1 : 0,
     };
     refreshMissions(save, now, rng);
-    let finishedNow = 0;
+    finishedNow = 0;
     for (const m of save.missions.slots) {
       if (m.d) continue;
       m.p = MISSION_TYPES[m.t].game ? Math.max(m.p, got[m.t]) : m.p + got[m.t];
@@ -175,8 +180,21 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   p.xp = lv.xp;
   if (lv.ups) {
     addStars(save, lv.stars);
-    rewards.unshift({ kind: "star", text: `Level up! You're now builder level ${p.level} (+${lv.stars} ★)` });
+    let coins = 0, crystals = 0;
+    for (let l = levelBefore + 1; l <= p.level; l++) {
+      const r = levelReward(l);
+      coins += r.coins;
+      crystals += r.crystals;
+    }
+    save.coins += coins;
+    save.crystals += crystals;
+    const extra = [`+${lv.stars} ★`, `+${fmt(coins)} coins`, crystals ? `+${crystals} 💎` : ""].filter(Boolean).join(", ");
+    rewards.unshift({ kind: "star", text: `Level up! You're now builder level ${p.level} (${extra})` });
   }
+
+  // Sky Pass
+  const tiers = addPassXp(save, towerPassXp(run.floors, zen) + finishedNow * MISSION_PASS_XP, now);
+  if (tiers) rewards.push({ kind: "pass", text: `Sky Pass: ${tiers > 1 ? `${tiers} tiers` : "a new tier"} reached! Claim your rewards` });
 
   // Best towers
   if (!zen && run.floors > 0) {

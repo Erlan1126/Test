@@ -32,6 +32,13 @@ Mac minute counts as 10). A Skyrise iPhone build takes about 10–15 minutes.
 - [x] **A public privacy policy link:** https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
       (To change it, edit that gist; the link stays the same.)
 
+## Step 0b: switch on the worldwide rankings (free, about 10 minutes)
+
+The leaderboard, rival line and "#12 worldwide" on the game-over card need the Skyrise
+server. Follow **Part 1** of `server/README.md`: a free Cloudflare account, two GitHub
+secrets, then run the **Server** action. Send Claude the address it prints, and it will
+switch the game over to it.
+
 ## Step 1: try the Android app on a phone today (free)
 
 - [ ] On GitHub, open the repository → **Actions** → **Android app** → the latest green
@@ -62,7 +69,8 @@ store's own testing tracks.
       `launch/stores/google-play.md`.
 - [ ] Testing → **Closed testing**: upload the `.aab`, add at least 12 testers and send
       them the link. Wait 14 days.
-- [ ] Create the 7 in-app products (Monetize → Products) and set up your payments profile.
+- [ ] Create the 5 Sky Crystal packs (Monetize → Products; ids and prices are in
+      `launch/stores/google-play.md`) and set up your payments profile.
 - [ ] Apply for production and publish.
 
 ## Step 3: App Store
@@ -89,7 +97,7 @@ store's own testing tracks.
          turns green.
 - [ ] Install **TestFlight** on your iPhone, add yourself as an internal tester, and play it.
 - [ ] Business → **Agreements**: accept the Paid Apps Agreement and add bank and tax info.
-- [ ] Create the 7 in-app purchases from `app-store.md`.
+- [ ] Create the 5 Sky Crystal packs (consumable) from `app-store.md`.
 - [ ] On the 1.0 version page: pick the build, add screenshots and the in-app purchases,
       then **Add for Review** → **Submit**.
 

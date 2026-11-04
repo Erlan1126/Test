@@ -71,8 +71,16 @@ export interface SaveData {
   league: { week: number; points: number; lastWeek: number; lastPoints: number; rewarded: number };
   /** A name shown on the leaderboard, chosen by the player. */
   nickname: string;
-  /** Premium products bought with real money (kept in step with the payment server). */
+  /** Private key for posting to the worldwide rankings (from the server, on first use). */
+  onlineToken: string;
+  /** Premium items owned (bought with Sky Crystals). */
   purchases: string[];
+  /** Sky Crystals, the paid currency. */
+  crystals: number;
+  /** Store or checkout transactions already turned into crystals, so none pays twice. */
+  crystalTx: string[];
+  /** This season's Sky Pass. */
+  pass: { season: number; xp: number; premium: boolean; free: number[]; prem: number[] };
   /** Products whose one-off coins have been paid. */
   coinsGranted: string[];
   /** Random id the payment server knows this player by. Made on first launch. */
@@ -110,7 +118,11 @@ export function defaultSave(): SaveData {
     city: [],
     league: { week: 0, points: 0, lastWeek: 0, lastPoints: 0, rewarded: 0 },
     nickname: "",
+    onlineToken: "",
     purchases: [],
+    crystals: 0,
+    crystalTx: [],
+    pass: { season: -999, xp: 0, premium: false, free: [], prem: [] },
     coinsGranted: [],
     playerId: "",
   };
@@ -193,8 +205,16 @@ export function normalize(raw: unknown): SaveData {
       lastPoints: int(lg.lastPoints, 0), rewarded: int(lg.rewarded, 0, -1e6),
     },
     // Letters, digits, spaces and a little punctuation, up to 16 characters.
+    onlineToken: /^[a-f0-9]{48}$/.test(String(r.onlineToken ?? "")) ? String(r.onlineToken) : "",
     nickname: str(r.nickname, "", 64).replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 16),
     purchases: strList(r.purchases, PRODUCTS.map(x => x.id)),
+    crystals: int(r.crystals, 0, 0, 1e7),
+    crystalTx: strList(r.crystalTx).filter(x => x.length <= 200).slice(-300),
+    pass: (() => {
+      const ps = obj(r.pass);
+      const tiers = (v: unknown) => Array.isArray(v) ? [...new Set(v.filter((x): x is number => Number.isInteger(x) && x >= 1 && x <= 30))] : [];
+      return { season: int(ps.season, -999, -999, 1e4), xp: int(ps.xp, 0), premium: bool(ps.premium, false), free: tiers(ps.free), prem: tiers(ps.prem) };
+    })(),
     coinsGranted: strList(r.coinsGranted, PRODUCTS.map(x => x.id)),
     playerId: /^[A-Za-z0-9-]{8,64}$/.test(String(r.playerId ?? "")) ? String(r.playerId) : "",
   };

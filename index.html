@@ -53,8 +53,9 @@
   <span class="flame" aria-hidden="true">🔥</span><b id="streak-num">0</b>
   <span class="new-dot" hidden></span>
 </button>
-<button id="stars-btn" class="corner-btn stars-btn" hidden aria-label="Stars and shop">
+<button id="stars-btn" class="corner-btn stars-btn" hidden aria-label="Stars, Sky Crystals and shop">
   <span class="star-ico" aria-hidden="true">★</span><b id="stars-num">0</b>
+  <span class="gem-ico" aria-hidden="true">💎</span><b id="crystals-num">0</b>
   <span class="new-dot" hidden></span>
 </button>
 <button id="pause" class="corner-btn" hidden aria-label="Pause">
@@ -92,6 +93,7 @@
       <button type="button" class="dock-btn" id="city-btn" hidden><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13M13 10h3M13 14h3M13 18h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>City</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="skins-btn" hidden><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.5-2.2-.6-1.4.3-2.8 1.8-2.8H17a4 4 0 0 0 4-4c0-5-4-9-9-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7.5" cy="11" r="1.4" fill="currentColor"/><circle cx="10.5" cy="7" r="1.4" fill="currentColor"/><circle cx="15" cy="7.5" r="1.4" fill="currentColor"/></svg><span>Skins</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="shop-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Shop</span><i class="dot" hidden></i></button>
+      <button type="button" class="dock-btn" id="pass-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5V10a2 2 0 0 0 0 4v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5V14a2 2 0 0 0 0-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 8.5l1.1 2.2 2.4.3-1.8 1.7.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.7 2.4-.3z" fill="currentColor"/></svg><span>Pass</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="ranks-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 20V12h4v8M10 20V6h4v14M16 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Ranks</span><i class="dot" hidden></i></button>
     </nav>
   </div>
@@ -107,6 +109,7 @@
       <div class="big" id="over-people">0</div>
       <div class="sub" id="over-sub"></div>
       <div class="landmark" id="over-landmark"></div>
+      <div class="landmark world" id="over-world" hidden></div>
       <div class="versus" id="over-versus" hidden></div>
       <div class="near" id="over-near" hidden></div>
     </div>
@@ -152,17 +155,20 @@
         <div><h2 id="shop-title">Shop</h2><p id="shop-balance"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
-      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="boosts">Boosts</button><button type="button" role="tab" data-tab="skins">Skins</button><button type="button" role="tab" data-tab="premium">✦ Premium</button></div>
+      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="boosts">Boosts</button><button type="button" role="tab" data-tab="skins">Skins</button><button type="button" role="tab" data-tab="crystals">💎 Crystals</button></div>
     </div>
     <div data-panel="boosts">
       <p class="sheet-note">Used on your next Classic tower.</p>
       <div class="shop-list" id="boost-list"></div>
     </div>
     <div class="skin-grid" id="shop-skins" data-panel="skins"></div>
-    <div data-panel="premium">
+    <div data-panel="crystals">
+      <div class="wallet-card"><span class="gem-big" aria-hidden="true">💎</span><div><b id="crystal-balance">0</b><small>Sky Crystals</small></div></div>
       <p class="premium-note" id="premium-note"></p>
+      <h3 class="sheet-sub">Get Sky Crystals</h3>
+      <div class="pack-grid" id="pack-list"></div>
+      <h3 class="sheet-sub">Premium skins and islands</h3>
       <div class="premium-grid" id="premium-list"></div>
-      <button type="button" class="btn btn-secondary wide restore-btn" id="restore-purchases" hidden>Restore purchases</button>
     </div>
   </div>
 </div>
@@ -200,6 +206,26 @@
       <p class="sheet-note" id="trophy-title"></p>
       <div class="trophy-grid" id="trophy-grid"></div>
     </div>
+  </div>
+</div>
+
+<div id="pass" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="pass-title">
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-head">
+        <div><h2 id="pass-title">Sky Pass</h2><p id="pass-season"></p></div>
+        <button type="button" class="close-btn" aria-label="Close">×</button>
+      </div>
+      <div class="pass-progress">
+        <div class="pass-tier"><small>Tier</small><b id="pass-tier">0</b></div>
+        <div class="pass-bar-wrap"><div class="pass-bar"><i id="pass-bar"></i></div><small id="pass-next"></small></div>
+      </div>
+    </div>
+    <div class="pass-premium" id="pass-premium"></div>
+    <button type="button" class="btn btn-primary wide" id="pass-claim-all" hidden>Claim all rewards</button>
+    <div class="pass-head"><span>Tier</span><span>Free</span><span>✦ Premium</span></div>
+    <div class="pass-tiers" id="pass-tiers"></div>
+    <p class="sheet-note">Earn pass XP from every tower (more for taller ones), +40 for each mission and +100 for the daily chest. A new season starts on the 1st of every month; rewards you haven't claimed by then are lost.</p>
   </div>
 </div>
 

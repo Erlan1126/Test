@@ -11,8 +11,8 @@ import { addStars, awardStandingTrophies, challengeOpen, currentTheme, isSkinUnl
 import { dayKey, giftAmount, giftState, GIFTS, xpNeeded } from "../logic/rules";
 import { exportCode, importCode, type SaveData } from "../logic/save";
 import { buyBoost, buySkin } from "../logic/shop";
-import { ownsProduct } from "../logic/premium";
-import { formatPrice, PRODUCTS, type Product } from "../data/premium";
+import { itemPrice, ownsProduct } from "../logic/premium";
+import { CRYSTAL_PACKS, formatPrice, PRODUCTS, type CrystalPack, type Product } from "../data/premium";
 import type { PaymentProvider } from "../payments";
 import { drawSkinPreview, drawThemePreview } from "../render/previews";
 import type { Sound } from "../sound";
@@ -33,9 +33,10 @@ export interface Host {
   /** How premium items are paid for here, or null when they can't be bought on this page. */
   readonly payments: PaymentProvider | null;
   /** Starts a premium purchase. */
-  buyPremium(product: Product): Promise<void>;
-  /** App Store and Google Play: asks the store again for everything already bought. */
-  restorePurchases(): Promise<void>;
+  /** Buys a crystal pack with real money. */
+  buyPack(pack: CrystalPack): Promise<void>;
+  /** Spends crystals on a premium item. */
+  buyItem(product: Product): void;
 }
 
 const isShopSkin = (s: Skin) => !!s.unlock && "price" in s.unlock;
@@ -48,13 +49,6 @@ export class Sheets {
     for (const id of ["skins", "shop", "challenges", "profile"]) wireModal($(id));
     wireModal($("settings"), () => this.closeSettings());
     this.wireSettings();
-    $("restore-purchases").addEventListener("click", async () => {
-      const b = $<HTMLButtonElement>("restore-purchases");
-      b.disabled = true;
-      await this.host.restorePurchases();
-      b.disabled = false;
-      this.renderShop();
-    });
   }
 
   /** Redraws the shop if it's open (the store's prices arrive a moment after start). */
@@ -92,13 +86,15 @@ export class Sheets {
     for (const st of SKINS) {
       const open = isSkinUnlocked(save, st), on = save.skin === st.id;
       const premium = !!st.unlock && "product" in st.unlock;
+      const pass = !!st.unlock && "pass" in st.unlock;
       const b = this.skinCard(st, open, on, on ? "Equipped" : open ? "Tap to use" : isShopSkin(st) ? `<span class="price">${priceOf(st)} ★ in the shop</span>`
-        : premium ? `<span class="premium-tag">✦ Premium</span>`
+        : premium ? `<span class="premium-tag">💎 Crystals</span>`
+        : pass ? `<span class="premium-tag">Sky Pass</span>`
         : st.unlock && "streak" in st.unlock ? `🔥 ${st.unlock.streak}-day streak` : `Over ${MILESTONES[(st.unlock as { at: number }).at].m} m`);
       b.setAttribute("aria-label", open ? `${st.name}${on ? ", equipped" : ""}` : `${st.name}, locked. ${skinUnlockText(st)}`);
       b.addEventListener("click", () => {
         if (!open) {
-          if (premium) { closeModal($("skins")); this.openShop("premium"); return; }
+          if (premium) { closeModal($("skins")); this.openShop("crystals"); return; }
           if (isShopSkin(st) && isOpen(save, "shop")) { closeModal($("skins")); this.openShop("skins"); return; }
           this.nope(b, `${skinUnlockText(st)} to unlock ${st.name}.`);
           return;
@@ -120,11 +116,11 @@ export class Sheets {
       b.type = "button";
       b.className = `skin${open ? "" : " locked"}${on ? " equipped" : ""}`;
       b.innerHTML = `<canvas aria-hidden="true"></canvas><span class="skin-name">${esc(t.name)}</span>
-        <span class="skin-sub">${on ? "Equipped" : open ? "Tap to use" : t.product ? `<span class="premium-tag">✦ Premium</span>` : `Builder level ${t.level}`}</span>${open ? "" : `<span class="lock" aria-hidden="true">${LOCK_ICON}</span>`}`;
+        <span class="skin-sub">${on ? "Equipped" : open ? "Tap to use" : t.product ? `<span class="premium-tag">💎 Crystals</span>` : `Builder level ${t.level}`}</span>${open ? "" : `<span class="lock" aria-hidden="true">${LOCK_ICON}</span>`}`;
       b.setAttribute("aria-label", open ? `${t.name} island${on ? ", equipped" : ""}` : t.product ? `${t.name} island, premium` : `${t.name} island, locked. Reach builder level ${t.level}`);
       drawThemePreview(b.querySelector("canvas")!, t);
       b.addEventListener("click", () => {
-        if (!open && t.product) { closeModal($("skins")); this.openShop("premium"); return; }
+        if (!open && t.product) { closeModal($("skins")); this.openShop("crystals"); return; }
         if (!open) { this.nope(b, `Reach builder level ${t.level} to unlock the ${t.name} island.`); return; }
         save.island = t.id;
         this.host.persist();
@@ -149,7 +145,7 @@ export class Sheets {
 
   // ---------- Star shop ----------
 
-  openShop(tab?: "boosts" | "skins" | "premium"): void {
+  openShop(tab?: "boosts" | "skins" | "crystals"): void {
     this.click();
     this.seen("shop");
     this.renderShop();
@@ -157,38 +153,60 @@ export class Sheets {
     openModal($("shop"));
   }
 
-  /** Premium cosmetics for real money. */
-  private renderPremium(): void {
+  /** Sky Crystal packs (real money) and premium items (bought with crystals). */
+  private renderCrystals(): void {
     const save = this.save, pay = this.host.payments;
+    $("crystal-balance").textContent = fmt(save.crystals);
     const note = $("premium-note");
-    note.textContent = !pay ? "Premium items are coming soon. Everything here is cosmetic: it never helps you score."
-      : pay.store ? "Cosmetic only: never helps you score."
-      : pay.live ? "Cosmetic only: never helps you score. Payments are handled securely by Stripe."
-      : "Test mode: purchases unlock instantly and nothing is charged.";
+    note.textContent = !pay ? "Crystal packs are coming soon. You can still earn crystals from levels and the Sky Pass."
+      : pay.live ? "Everything here is cosmetic: it never helps you score."
+      : "Test mode: packs are added instantly and nothing is charged.";
     note.classList.toggle("test", !!pay && !pay.live);
-    $("restore-purchases").hidden = !pay?.store;
+
+    const packs = $("pack-list");
+    packs.innerHTML = "";
+    for (const pk of CRYSTAL_PACKS) {
+      const price = pay?.price?.(pk) ?? formatPrice(pk.cents);
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `pack-card${pk.best ? " best" : ""}`;
+      card.disabled = !pay;
+      card.innerHTML = `${pk.best ? '<span class="best-value">Most popular</span>' : ""}
+        <span class="pack-gems" aria-hidden="true">${"💎".repeat(Math.min(3, 1 + CRYSTAL_PACKS.indexOf(pk) / 2 | 0))}</span>
+        <b>${fmt(pk.crystals)}</b>${pk.bonus ? `<small class="bonus">${esc(pk.bonus)} bonus</small>` : "<small>&nbsp;</small>"}
+        <span class="buy">${pay ? esc(price) : "Soon"}</span>`;
+      card.setAttribute("aria-label", pay ? `Buy ${pk.crystals} Sky Crystals for ${price}` : `${pk.crystals} Sky Crystals, coming soon`);
+      card.addEventListener("click", async () => {
+        card.disabled = true;
+        await this.host.buyPack(pk);
+        card.disabled = false;
+      });
+      packs.appendChild(card);
+    }
+
     const list = $("premium-list");
     list.innerHTML = "";
     for (const p of PRODUCTS) {
-      const owned = ownsProduct(save, p.id);
-      const price = pay?.price?.(p) ?? formatPrice(p.cents);
+      const owned = ownsProduct(save, p.id), price = itemPrice(save, p.id);
       const card = document.createElement("div");
       card.className = `premium-card${p.kind === "bundle" ? " bundle" : ""}${owned ? " owned" : ""}`;
       card.innerHTML = `<canvas aria-hidden="true"></canvas>
         ${p.kind === "bundle" ? '<span class="best-value">Best value</span>' : ""}
         <b>${esc(p.name)}</b><small>${esc(p.text)}</small>
-        <button type="button" class="buy">${owned ? "✓ Owned" : pay ? esc(price) : "Coming soon"}</button>`;
+        <button type="button" class="buy">${owned ? "✓ Owned" : `💎 ${fmt(price)}`}</button>`;
       const cv = card.querySelector("canvas")!;
       const skinId = p.grants.skins?.[0], themeId = p.grants.themes?.[0];
       if (p.kind === "island" && themeId) drawThemePreview(cv, ISLAND_THEMES.find(t => t.id === themeId)!);
       else if (skinId) drawSkinPreview(cv, SKINS.find(s => s.id === (p.kind === "bundle" ? "cyber" : skinId))!);
       const btn = card.querySelector<HTMLButtonElement>(".buy")!;
-      btn.disabled = owned || !pay;
-      btn.setAttribute("aria-label", owned ? `${p.name}, owned` : pay ? `Buy ${p.name} for ${price}` : `${p.name}, coming soon`);
-      btn.addEventListener("click", async () => {
-        btn.disabled = true;
-        btn.textContent = "…";
-        await this.host.buyPremium(p);
+      btn.disabled = owned;
+      btn.setAttribute("aria-label", owned ? `${p.name}, owned` : `Buy ${p.name} for ${price} Sky Crystals`);
+      btn.addEventListener("click", () => {
+        if (save.crystals < price) {
+          this.nope(btn, `You need ${fmt(price - save.crystals)} more 💎. Get a crystal pack above.`);
+          return;
+        }
+        this.host.buyItem(p);
         this.renderShop();
       });
       list.appendChild(card);
@@ -197,8 +215,8 @@ export class Sheets {
 
   private renderShop(): void {
     const save = this.save;
-    this.renderPremium();
-    $("shop-balance").textContent = `You have ${save.stars} ★`;
+    this.renderCrystals();
+    $("shop-balance").textContent = `You have ${save.stars} ★ · ${fmt(save.crystals)} 💎`;
     const list = $("boost-list");
     list.innerHTML = "";
     for (const bo of BOOSTS) {

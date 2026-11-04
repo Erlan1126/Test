@@ -1,9 +1,8 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
-import { seeded } from "./core/rng";
 import { clamp, fmt, shortName } from "./core/util";
 import { challengeById, type Challenge } from "./data/challenges";
 import { GOLD, MILESTONES } from "./data/constants";
-import { eventEndsIn, eventFor } from "./data/events";
+import { eventEndsIn, eventFor, weekIndex } from "./data/events";
 import { BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
@@ -11,7 +10,8 @@ import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
 import { loadSave, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
-import { TowerSim, type DropOutcome, type FloorKind } from "./logic/sim";
+import { TICK, TowerSim, type DropOutcome, type FloorKind } from "./logic/sim";
+import { RunRecorder, simFor } from "./logic/replay";
 import type { Mode } from "./logic/types";
 import { floorColor, lookFor } from "./render/buildings";
 import type { Debris } from "./render/effects";
@@ -24,8 +24,10 @@ import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
 import { choosePayments, purchaseReturn } from "./payments";
-import { grantPurchase, newPlayerId, ownsProduct, syncPurchases } from "./logic/premium";
-import { productById, type Product } from "./data/premium";
+import { buyWithCrystals, grantPack, newPlayerId } from "./logic/premium";
+import { refreshPass, unclaimed } from "./logic/pass";
+import type { CrystalPack, Product } from "./data/premium";
+import type { PackPurchase } from "./payments";
 import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 import { backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 
@@ -99,6 +101,10 @@ export class App implements DailyHost {
   /** The skin the current tower was built in. */
   private builtSkin = "";
   private tag = "";
+  /** The current tower's taps, for the online rankings. */
+  private recorder: RunRecorder | null = null;
+  /** Time not yet turned into fixed sim steps. */
+  private stepTime = 0;
 
   constructor(logoSvg: string) {
     this.save = loadSave(this.storage);
@@ -112,10 +118,10 @@ export class App implements DailyHost {
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
-    if (this.payments) this.payments.onOwned = ids => this.unlockOwned(ids, false);
+    if (this.payments) { const test = !this.payments.live; this.payments.onPurchase = p => this.packBought(p, test); }
     void this.syncPurchases(purchaseReturn());
     // Leaderboards light up only where shared storage is available (the claude.ai page).
-    void this.online.init().then(() => this.refresh());
+    void this.online.init(this.save.playerId).then(() => this.refresh());
 
     preloadLogo(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`);
     try { this.friendScore = clamp(parseInt(new URLSearchParams(location.search).get("beat") ?? "", 10) || 0, 0, 999999); } catch { /* no query */ }
@@ -192,25 +198,45 @@ export class App implements DailyHost {
     else if (this.state === "over") this.renderCorners();
   }
 
-  async buyPremium(product: Product): Promise<void> {
+  /** Buys a crystal pack with real money. */
+  async buyPack(pack: CrystalPack): Promise<void> {
     const pay = this.payments;
     if (!pay) return;
     this.sound.ensure();
-    const r = await pay.buy(product, this.save.playerId);
-    if (r === "ok" && !pay.live) {
-      // Test mode only: unlock right away. Real purchases unlock when the server confirms them.
-      grantPurchase(this.save, product.id);
-      this.persist();
-      this.sound.purchase();
-      toast(`Test purchase: ${product.name} unlocked. Nothing was charged.`);
-      this.refresh();
-    } else if (r === "error") {
-      toast("Couldn't open the checkout. Check your connection and try again.");
-    }
+    const r = await pay.buy(pack, this.save.playerId);
+    if (r === "error") toast("Couldn't open the checkout. Check your connection and try again.");
   }
 
-  /** Asks the payment server what this player owns. After a checkout, Stripe's
-   *  confirmation can take a few seconds to arrive, so it checks a few times. */
+  /** A pack purchase finished: add its crystals (once per transaction). */
+  private packBought(p: PackPurchase, test: boolean): boolean {
+    const added = grantPack(this.save, p.pack, p.tx);
+    if (!added) return false;
+    this.persist();
+    this.sound.purchase();
+    toast(test ? `Test purchase: +${fmt(added)} 💎 Sky Crystals. Nothing was charged.` : `+${fmt(added)} 💎 Sky Crystals. Thanks for supporting Skyrise!`);
+    this.refresh();
+    this.sheets?.refreshShop();
+    this.daily?.refreshPass();
+    return true;
+  }
+
+  openCrystalShop(): void {
+    this.sheets.openShop("crystals");
+  }
+
+  /** Spends crystals on a premium item. */
+  buyItem(product: Product): void {
+    const r = buyWithCrystals(this.save, product.id);
+    if (r === "short") { toast("Not enough Sky Crystals"); this.sheets.openShop("crystals"); return; }
+    if (r !== "ok") return;
+    this.persist();
+    this.sound.purchase();
+    toast(`Unlocked: ${product.name}`);
+    this.refresh();
+  }
+
+  /** Website purchases: asks the payment server for packs not yet counted. After a
+   *  checkout, Stripe's confirmation can take a few seconds to arrive, so it checks a few times. */
   private async syncPurchases(returned: "success" | "cancelled" | null): Promise<void> {
     if (returned) {
       // Tidy the address so a reload doesn't repeat this.
@@ -218,42 +244,35 @@ export class App implements DailyHost {
       u.searchParams.delete("purchase");
       history.replaceState(null, "", u.toString());
       if (returned === "cancelled") toast("Purchase cancelled. You weren't charged.");
-      else toast("Thanks for supporting Skyrise! Unlocking your purchase…");
+      else toast("Thanks for supporting Skyrise! Adding your crystals…");
     }
     const pay = this.payments;
-    if (!pay?.live) return;
+    if (!pay?.purchases) return;
     for (let attempt = 0; attempt < (returned === "success" ? 5 : 1); attempt++) {
       if (attempt) await new Promise(r => setTimeout(r, 3000));
-      const owned = await pay.owned(this.save.playerId);
-      if (!owned) continue;
-      if (this.unlockOwned(owned, !pay.store)) return;
+      const list = await pay.purchases(this.save.playerId);
+      if (!list) continue;
+      let any = false;
+      for (const p of list) any = this.packBought(p, false) || any;
+      if (any) return;
     }
-  }
-
-  /**
-   * Brings the save in line with what the player owns. With `exact`, the payment server
-   * is the source of truth and unknown purchases are removed; the app stores only add.
-   * Returns whether anything new was unlocked.
-   */
-  private unlockOwned(owned: string[], exact: boolean): boolean {
-    const added = exact ? syncPurchases(this.save, owned) : owned.filter(id => !ownsProduct(this.save, id) && grantPurchase(this.save, id));
-    this.persist();
-    this.refresh();
-    this.sheets?.refreshShop();
-    if (!added.length) return false;
-    this.sound.purchase();
-    toast(`Unlocked: ${added.map(id => productById(id)?.name ?? id).join(", ")}`);
-    return true;
-  }
-
-  async restorePurchases(): Promise<void> {
-    const owned = await this.payments?.restore?.();
-    if (!owned) { toast("Couldn't reach the store. Check your connection and try again."); return; }
-    if (!this.unlockOwned(owned, false)) toast(owned.length ? "Your purchases are all here" : "No purchases found for this account");
   }
 
   postScores(): void {
     this.online.post(this.save, dayNumber(), streakView(this.save).count);
+  }
+
+  /** Sends the finished tower to the worldwide rankings and shows where it placed. */
+  private async submitRun(): Promise<void> {
+    const rec = this.recorder?.rec;
+    if (!rec || this.online.kind !== "global") return;
+    await this.online.submit(this.save, rec, () => this.persist());
+    const r = this.online.lastRanks;
+    if (!r || this.state !== "over" || this.recorder?.rec !== rec) return;
+    const line = rec.mode === "daily" && r.daily ? `🌍 #${fmt(r.daily)} worldwide on today's Daily`
+      : r.week ? `🌍 Your best this week is #${fmt(r.week)} worldwide` : "";
+    if (line) $("over-world").textContent = line;
+    $("over-world").hidden = !line;
   }
 
   /** A new day brings new missions; the menu's numbers move with the clock. */
@@ -326,6 +345,7 @@ export class App implements DailyHost {
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
     $("ranks-btn").addEventListener("click", () => this.daily.openRanks());
+    $("pass-btn").addEventListener("click", () => this.daily.openPass());
     $("streak-btn").addEventListener("click", () => this.daily.openStreak());
     $("status-line").addEventListener("click", () => this.statusTap());
     $("collect-chip").addEventListener("click", () => this.collectAll());
@@ -450,13 +470,15 @@ export class App implements DailyHost {
     const event = mode === "classic" || mode === "daily" ? eventFor() : null;
     this.boosts = mode === "classic" ? takeBoosts(this.save) : NO_BOOSTS;
     this.persist();
-    const rng = mode === "daily" ? seeded(dailySeed(dayNumber())) : challenge ? seeded(challenge.seed) : Math.random;
-    this.sim = new TowerSim({
-      mode, rng, event, challenge,
-      rewinds: 1 + (this.boosts.rewind ? 1 : 0),
-      goldBoost: this.boosts.gold,
-      xpMultiplier: (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1),
+    // Every tower has a seed and a log of taps, so the rankings server can replay it.
+    const day = dayNumber();
+    const seed = mode === "daily" ? dailySeed(day) : challenge ? challenge.seed : (Math.random() * 2 ** 31) | 0;
+    this.recorder = new RunRecorder({
+      mode, seed, day, week: weekIndex(), challenge: challenge?.id,
+      boosts: { rewind: this.boosts.rewind, gold: this.boosts.gold },
     });
+    this.sim = simFor(this.recorder.rec, (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1));
+    this.stepTime = 0;
     this.renderer.fx.clear();
     // Weather for this tower: snow on the snowy island, sometimes rain or snow elsewhere.
     const r = Math.random(), snowy = currentTheme(this.save).id === "snow";
@@ -525,8 +547,9 @@ export class App implements DailyHost {
   }
 
   private rewind(): void {
-    if (this.state !== "rescue") return;
+    if (this.state !== "rescue" || !this.sim.canRewind()) return;
     this.sim.rewind();
+    this.recorder?.rewind();
     this.renderer.fx.debris = [];
     $("rescue").hidden = true;
     $("pause").hidden = false;
@@ -558,6 +581,8 @@ export class App implements DailyHost {
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
     this.postScores();
+    $("over-world").hidden = true;
+    void this.submitRun();
     void scheduleReminders(this.reminderInfo());
     if (run.challengeWon) this.sound.win();
     else if (!silent) { this.sound.fail(); vibrate(this.save.settings.vibrate, [40, 40, 90]); }
@@ -578,6 +603,7 @@ export class App implements DailyHost {
     // toward zero offset.
     const m = this.sim.mover, off = this.sim.offset();
     this.timing = m && Math.abs(off) > 0.05 ? (Math.sign(off) === m.dir ? "late" : "early") : "";
+    if (this.sim.mover) this.recorder?.drop(this.sim.ticks);
     const out = this.sim.drop();
     if (!out) return;
     const fx = this.renderer.fx;
@@ -734,6 +760,7 @@ export class App implements DailyHost {
     const st = $("stars-btn");
     st.hidden = save.starsEarned <= 0 && !isOpen(save, "shop");
     $("stars-num").textContent = String(save.stars);
+    $("crystals-num").textContent = fmt(save.crystals);
     st.querySelector<HTMLElement>(".new-dot")!.hidden = true;
   }
 
@@ -768,6 +795,8 @@ export class App implements DailyHost {
     show("city-btn", isOpen(save, "city"), fresh("city") || rentWaiting(save, now) >= rentPerHour(save) * 3);
     show("skins-btn", isOpen(save, "skins"), fresh("skins"));
     show("shop-btn", isOpen(save, "shop"), fresh("shop"));
+    refreshPass(save, now);
+    show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && p.towers >= 1, false);
     $("daily-title").textContent = `Daily #${dayNumber(now)}`;
     $("modes").hidden = [...$("modes").children].every(c => (c as HTMLElement).hidden);
@@ -802,7 +831,7 @@ export class App implements DailyHost {
       if (r) lines.push(`🪙 Rent · +${fmt(r)} coins`);
     }
     const c = claimChest(save);
-    if (c) lines.push(`🧰 Mission chest · +${c.stars} ★ · +${c.coins} coins`);
+    if (c) lines.push(`🧰 Mission chest · +${c.stars} ★ · +${c.coins} coins · +100 pass XP`);
     const lr = claimLeagueReward(save);
     if (lr) lines.push(`🏆 ${lr.league} league · +${lr.stars} ★`);
     this.persist();
@@ -834,9 +863,9 @@ export class App implements DailyHost {
       kind = "risk";
       text = sv.needsFreeze ? `🧊 Build today: a freeze will save your ${sv.count}-day streak` : `🔥 Build today to keep your ${sv.count}-day streak`;
     } else {
-      const r = this.online.ready && save.profile.towers >= 1 ? this.online.rival(dayNumber(now)) : null;
+      const r = this.online.ready && save.profile.towers >= 1 ? this.online.rival(dayNumber(now), weekIndex(now)) : null;
       if (r) {
-        const who = (await this.online.names([r.entry.id]))[r.entry.id];
+        const who = this.online.kind === "friends" ? (await this.online.names([r.id]))[r.id] : r.name;
         if (token !== this.statusToken) return;
         kind = "rival";
         text = r.rank === 0 ? `🏁 ${who} leads today's Daily. Your turn!` : `⚔️ #${r.rank} of ${r.of} today · ${who} is ${fmt(r.gap)} ahead`;
@@ -863,11 +892,8 @@ export class App implements DailyHost {
 
   /** " · #2 of 5 today" once the leaderboard has this tower. */
   private dailyRank(): string {
-    if (!this.online.ready) return "";
-    const list = this.online.daily(dayNumber()), mine = this.save.daily.best;
-    const rank = list.filter(e => e.id !== this.online.me && e.dailyScore > mine).length + 1;
-    const of = list.filter(e => e.id !== this.online.me).length + 1;
-    return of > 1 ? ` · #${rank} of ${of} today` : "";
+    const p = this.online.ready ? this.online.dailyPlace(dayNumber(), this.save.daily.best) : null;
+    return p && p.of > 1 ? ` · #${fmt(p.rank)} of ${fmt(p.of)} today` : "";
   }
 
   // ---------- Game over ----------
@@ -961,7 +987,7 @@ export class App implements DailyHost {
     const trophies = o.rewards.filter(r => r.text.startsWith("Trophy: "));
     for (const r of o.rewards) {
       if (missions.includes(r) || trophies.includes(r)) continue;
-      lines.push({ cls: r.kind === "star" ? "reward star" : "reward", text: r.text });
+      lines.push({ cls: r.kind === "star" ? "reward star" : r.kind === "pass" ? "reward new" : "reward", text: r.text });
     }
     if (missions.length === 1) lines.push({ cls: "reward star", text: missions[0].text });
     if (missions.length > 1) {
@@ -1045,7 +1071,9 @@ export class App implements DailyHost {
   private update(dt: number): void {
     const sim = this.sim;
     if (this.state === "playing") {
-      sim.update(dt);
+      // Fixed steps, so the same taps always build the same tower.
+      this.stepTime = Math.min(this.stepTime + dt, 0.25);
+      while (this.stepTime >= TICK) { sim.step(); this.stepTime -= TICK; }
       const m = sim.mover;
       // The wind meter shows the gust half a second ahead, so you can see it coming.
       if (m && sim.windFor(m.y) > 0) {

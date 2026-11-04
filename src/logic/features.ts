@@ -2,7 +2,7 @@
 // shows a "New" badge until it's been opened.
 import type { SaveData } from "./save";
 
-export type Feature = "skins" | "profile" | "missions" | "daily" | "zen" | "shop" | "challenges" | "city";
+export type Feature = "skins" | "profile" | "missions" | "daily" | "zen" | "shop" | "challenges" | "city" | "pass";
 
 /** Towers you need to have built before each feature appears. */
 export const FEATURE_TOWERS: Record<Feature, number> = {
@@ -11,6 +11,7 @@ export const FEATURE_TOWERS: Record<Feature, number> = {
   missions: 1,
   daily: 2,
   city: 2,
+  pass: 2,
   challenges: 3,
   shop: 3,
   zen: 4,
@@ -23,6 +24,7 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   daily: "Daily tower",
   challenges: "Landmark challenges",
   city: "Your city",
+  pass: "Sky Pass",
   shop: "Star shop",
   zen: "Zen mode",
 };

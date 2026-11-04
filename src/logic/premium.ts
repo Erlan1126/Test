@@ -1,8 +1,8 @@
-// What premium purchases unlock, and keeping the save in step with the payment server.
-import { PRODUCTS, productById } from "../data/premium";
+// Sky Crystals: buying packs, spending crystals on premium items, and what those items unlock.
+import { PRODUCTS, packById, productById } from "../data/premium";
 import type { SaveData } from "./save";
 
-/** Skin and island ids unlocked by the products this player owns. */
+/** Skin and island ids unlocked by the premium items this player owns. */
 export function premiumGrants(save: SaveData): { skins: Set<string>; themes: Set<string> } {
   const skins = new Set<string>(), themes = new Set<string>();
   for (const id of save.purchases) {
@@ -23,7 +23,7 @@ function covers(bundleId: string, id: string): boolean {
   return (p.grants.skins ?? []).every(s => b.grants.skins?.includes(s)) && (p.grants.themes ?? []).every(t => b.grants.themes?.includes(t));
 }
 
-/** Records a completed purchase. One-off extras (bundle coins) are paid once per product. */
+/** Records an owned item. One-off extras (bundle coins) are paid once per product. */
 export function grantPurchase(save: SaveData, id: string): boolean {
   const p = productById(id);
   if (!p) return false;
@@ -35,20 +35,39 @@ export function grantPurchase(save: SaveData, id: string): boolean {
   return true;
 }
 
-/**
- * Makes the save match what the payment server says this player owns. The server is the
- * source of truth: a purchase it doesn't know about (say, one typed into a save code) is
- * removed, and new ones are granted. Returns the products newly granted.
- */
-export function syncPurchases(save: SaveData, owned: string[]): string[] {
-  const valid = owned.filter(id => productById(id));
-  const added = valid.filter(id => !save.purchases.includes(id));
-  save.purchases = save.purchases.filter(id => valid.includes(id));
-  added.forEach(id => grantPurchase(save, id));
-  return added;
+/** What a premium item costs this player: a bundle is cheaper by what they already own. */
+export function itemPrice(save: SaveData, id: string): number {
+  const p = productById(id);
+  if (!p) return Infinity;
+  if (p.kind !== "bundle") return p.crystals;
+  const owned = PRODUCTS.filter(x => x.kind !== "bundle" && covers(p.id, x.id) && ownsProduct(save, x.id))
+    .reduce((n, x) => n + x.crystals, 0);
+  return Math.max(Math.round(p.crystals * 0.4), p.crystals - owned);
 }
 
-/** A random, unguessable id the payment server uses to remember this player's purchases. */
+export type SpendResult = "ok" | "owned" | "short";
+
+/** Buys a premium item with crystals. */
+export function buyWithCrystals(save: SaveData, id: string): SpendResult {
+  if (ownsProduct(save, id)) return "owned";
+  const price = itemPrice(save, id);
+  if (save.crystals < price) return "short";
+  save.crystals -= price;
+  grantPurchase(save, id);
+  return "ok";
+}
+
+/** Adds a bought pack's crystals once per transaction. Returns the crystals added. */
+export function grantPack(save: SaveData, packId: string, tx: string): number {
+  const pack = packById(packId);
+  if (!pack || !tx || save.crystalTx.includes(tx)) return 0;
+  save.crystalTx.push(tx);
+  if (save.crystalTx.length > 300) save.crystalTx.splice(0, save.crystalTx.length - 300);
+  save.crystals += pack.crystals;
+  return pack.crystals;
+}
+
+/** A random, unguessable id the servers use to know this player. */
 export function newPlayerId(rand: () => number = Math.random): string {
   const c = globalThis.crypto;
   if (c?.randomUUID) return c.randomUUID();

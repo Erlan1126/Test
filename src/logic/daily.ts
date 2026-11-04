@@ -1,6 +1,8 @@
 // Daily habits: the play streak with freezes and milestone rewards, daily missions and
 // their chest, island rent and city buildings, and the weekly league. Pure functions
 // over SaveData, so they're tested.
+import { addPassXp } from "./pass";
+import { CHEST_PASS_XP } from "../data/pass";
 import { CHEST, CITY, LEAGUES, MAX_FREEZES, MIN_RENT_PER_HOUR, RENT_BONUS_PER_BUILD, RENT_CAP_HOURS, STREAK_REWARDS } from "../data/daily";
 import { weekIndex } from "../data/events";
 import { MISSION_KEYS, MISSION_TYPES } from "../data/missions";
@@ -119,6 +121,7 @@ export function claimChest(save: SaveData, now = Date.now()): { stars: number; c
   save.stars += CHEST.stars;
   save.starsEarned += CHEST.stars;
   save.coins += CHEST.coins;
+  addPassXp(save, CHEST_PASS_XP, now);
   return { ...CHEST };
 }
 

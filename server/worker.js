@@ -1,20 +1,33 @@
-// Skyrise payment server: a Cloudflare Worker that sells premium cosmetics with Stripe
-// Checkout and remembers what each player owns. See README.md in this folder to deploy it.
+// Skyrise server: one Cloudflare Worker for the online rankings and for selling Sky Crystal
+// packs on the website. See README.md in this folder to deploy it.
 //
+// Rankings (D1 database bound as DB, tables in schema.sql):
+//   POST /players        { player } -> { token }. Registers a new player once; the token is
+//                        their private key for posting scores.
+//   POST /runs           { player, token, name, level, record } -> { score, ranks }. The
+//                        server replays the tower from its seed and taps (the same game
+//                        rules as the app) and ranks the score it computes itself.
+//   GET  /board          ?board=daily|week|all&period=<n>&player=<id> -> top 100 and your rank
+//
+// Payments (website only; the phone apps sell packs through the App Store and Google Play):
 //   POST /checkout       { product, player, returnUrl } -> { url } of a Stripe checkout page
 //   POST /webhook        Stripe calls this when a payment completes (signature verified)
-//   GET  /entitlements   ?player=<id> -> { products: [...] } this player owns
+//   GET  /entitlements   ?player=<id> -> { purchases: [{ pack, tx }] } for this player;
+//                        the game adds each tx's crystals once
 //
 // Settings (wrangler secrets / vars):
 //   STRIPE_SECRET_KEY       sk_live_... (or sk_test_... while testing)
 //   STRIPE_WEBHOOK_SECRET   whsec_... from the webhook you create in Stripe
 //   ALLOWED_ORIGINS         comma-separated sites allowed to start a checkout,
 //                           e.g. "https://yourname.itch.io,https://html-classic.itch.zone"
-//   PRICE_<product id>      the Stripe price id for each product, e.g. PRICE_skin_crystal
+//   PRICE_<pack id>         the Stripe price id for each pack, e.g. PRICE_crystals_550
 // Storage: a KV namespace bound as ENTITLEMENTS.
+import { replayRun } from "../src/logic/replay";
+import { dailySeed, dayNumber } from "../src/logic/rules";
+import { weekIndex } from "../src/data/events";
 
-// Must match src/data/premium.ts.
-const PRODUCTS = ["skin_crystal", "skin_sakura", "skin_royal", "skin_cyber", "island_volcano", "island_candy", "founders"];
+// Must match CRYSTAL_PACKS in src/data/premium.ts.
+const PRODUCTS = ["crystals_100", "crystals_550", "crystals_1200", "crystals_2600", "crystals_7000"];
 const PLAYER = /^[A-Za-z0-9-]{8,64}$/;
 
 export default {
@@ -22,14 +35,26 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("origin") ?? "";
     const allowed = (env.ALLOWED_ORIGINS ?? "").split(",").map(s => s.trim()).filter(Boolean);
-    const cors = allowed.includes(origin)
+    // Reading purchases is open to any copy of the game; starting a checkout isn't.
+    const cors = url.pathname === "/entitlements" ? { "access-control-allow-origin": "*" } : allowed.includes(origin)
       ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type", vary: "origin" }
       : {};
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...cors } });
 
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    // The rankings are open to any game copy (the apps, the website); posting needs the
+    // player's token instead.
+    const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
+    const ranked = ["/players", "/runs", "/board"].includes(url.pathname);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
     try {
+      if (ranked) {
+        if (!env.DB) return Response.json({ error: "rankings not set up" }, { status: 503, headers: open });
+        const res = await rankings(request, url, env, Date.now());
+        for (const [k, v] of Object.entries(open)) res.headers.set(k, v);
+        return res;
+      }
+
       if (url.pathname === "/checkout" && request.method === "POST") {
         if (!cors["access-control-allow-origin"]) return json({ error: "origin not allowed" }, 403);
         const { product, player, returnUrl } = await request.json();
@@ -71,9 +96,10 @@ export default {
           const { product, player } = s.metadata ?? {};
           if (s.payment_status === "paid" && PRODUCTS.includes(product) && PLAYER.test(player ?? "")) {
             const key = `player:${player}`;
-            const owned = JSON.parse((await env.ENTITLEMENTS.get(key)) ?? "[]");
-            if (!owned.includes(product)) owned.push(product);
-            await env.ENTITLEMENTS.put(key, JSON.stringify(owned));
+            const list = JSON.parse((await env.ENTITLEMENTS.get(key)) ?? "[]");
+            // Stripe can send the same event more than once; the session id keeps it single.
+            if (!list.some(p => p.tx === `stripe:${s.id}`)) list.push({ pack: product, tx: `stripe:${s.id}` });
+            await env.ENTITLEMENTS.put(key, JSON.stringify(list));
           }
         }
         return new Response("ok");
@@ -82,8 +108,9 @@ export default {
       if (url.pathname === "/entitlements" && request.method === "GET") {
         const player = url.searchParams.get("player") ?? "";
         if (!PLAYER.test(player)) return json({ error: "bad player id" }, 400);
-        const owned = JSON.parse((await env.ENTITLEMENTS.get(`player:${player}`)) ?? "[]");
-        return json({ products: owned });
+        if (!env.ENTITLEMENTS) return json({ purchases: [] });
+        const list = JSON.parse((await env.ENTITLEMENTS.get(`player:${player}`)) ?? "[]");
+        return json({ purchases: list.filter(p => p && typeof p.tx === "string") });
       }
 
       return json({ error: "not found" }, 404);
@@ -111,4 +138,113 @@ function timingSafeEqual(a, b) {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
+}
+
+// ---------- Rankings ----------
+
+const BOARDS = ["daily", "week", "all"];
+/** At most one tower every few seconds per player. */
+const RUN_GAP_MS = 4000;
+
+async function rankings(request, url, env, now) {
+  const db = env.DB;
+  const json = (body, status = 200) => Response.json(body, { status });
+
+  if (url.pathname === "/players" && request.method === "POST") {
+    const { player } = await request.json();
+    if (!PLAYER.test(player ?? "")) return json({ error: "bad player id" }, 400);
+    const token = randomToken();
+    const r = await db.prepare("INSERT OR IGNORE INTO players (id, token_hash, created) VALUES (?, ?, ?)")
+      .bind(player, await sha256(token), now).run();
+    // Each id registers once, so nobody else can take over a player's scores.
+    if (!r.meta?.changes) return json({ error: "already registered" }, 409);
+    return json({ token });
+  }
+
+  if (url.pathname === "/runs" && request.method === "POST") {
+    const body = await request.json();
+    const { player, token, record } = body ?? {};
+    if (!PLAYER.test(player ?? "") || typeof token !== "string") return json({ error: "bad player" }, 400);
+    const row = await db.prepare("SELECT token_hash, last_run FROM players WHERE id = ?").bind(player).first();
+    if (!row || !timingSafeEqual(row.token_hash, await sha256(token))) return json({ error: "not allowed" }, 403);
+    if (now - row.last_run < RUN_GAP_MS) return json({ error: "too fast" }, 429);
+    if (!record || (record.mode !== "classic" && record.mode !== "daily")) return json({ error: "this mode isn't ranked" }, 400);
+
+    // Only current towers: this week (or last, for towers finished just after midnight
+    // Monday), and today's or yesterday's Daily with its real seed.
+    const week = weekIndex(now), day = dayNumber(now);
+    if (record.week !== week && record.week !== week - 1) return json({ error: "old tower" }, 400);
+    if (record.mode === "daily" && ((record.day !== day && record.day !== day - 1) || record.seed !== dailySeed(record.day))) {
+      return json({ error: "not today's Daily" }, 400);
+    }
+    if (JSON.stringify(record).length > 60000) return json({ error: "too long" }, 413);
+
+    const out = replayRun(record);
+    if (!out.ok) return json({ error: `rejected: ${out.reason}` }, 422);
+    const { score, meters } = out.summary;
+
+    const name = cleanName(body.name), level = Math.max(1, Math.min(999, Math.floor(Number(body.level) || 1)));
+    const up = "INSERT INTO scores (board, period, player, score, meters, at) VALUES (?, ?, ?, ?, ?, ?) " +
+      "ON CONFLICT (board, period, player) DO UPDATE SET score = excluded.score, meters = excluded.meters, at = excluded.at " +
+      "WHERE excluded.score > scores.score";
+    const boards = [["week", record.week], ["all", 0]];
+    if (record.mode === "daily") boards.unshift(["daily", record.day]);
+    await db.batch([
+      db.prepare("UPDATE players SET name = ?, level = ?, last_run = ? WHERE id = ?").bind(name, level, now, player),
+      ...boards.map(([b, period]) => db.prepare(up).bind(b, period, player, score, meters, now)),
+    ]);
+    const ranks = {};
+    for (const [b, period] of boards) ranks[b] = await rankOf(db, b, period, player);
+    return json({ score, meters, ranks });
+  }
+
+  if (url.pathname === "/board" && request.method === "GET") {
+    const board = url.searchParams.get("board") ?? "";
+    const period = Math.floor(Number(url.searchParams.get("period") ?? "0"));
+    const player = url.searchParams.get("player") ?? "";
+    if (!BOARDS.includes(board) || !Number.isFinite(period)) return json({ error: "bad board" }, 400);
+    const { results } = await db.prepare(
+      "SELECT s.player, s.score, s.meters, p.name, p.level FROM scores s JOIN players p ON p.id = s.player " +
+      "WHERE s.board = ? AND s.period = ? ORDER BY s.score DESC, s.at ASC LIMIT 100").bind(board, period).all();
+    const total = (await db.prepare("SELECT COUNT(*) AS n FROM scores WHERE board = ? AND period = ?").bind(board, period).first())?.n ?? 0;
+    const top = results.map((r, i) => ({ rank: i + 1, id: r.player, name: r.name || defaultName(r.player), level: r.level, score: r.score, meters: r.meters }));
+    let me = null;
+    if (PLAYER.test(player)) {
+      const mine = await db.prepare("SELECT score, meters FROM scores WHERE board = ? AND period = ? AND player = ?").bind(board, period, player).first();
+      if (mine) me = { rank: await rankOf(db, board, period, player), score: mine.score, meters: mine.meters };
+    }
+    return json({ board, period, total, top, me });
+  }
+
+  return json({ error: "not found" }, 404);
+}
+
+async function rankOf(db, board, period, player) {
+  const r = await db.prepare(
+    "SELECT 1 + (SELECT COUNT(*) FROM scores o WHERE o.board = s.board AND o.period = s.period AND o.score > s.score) AS rank " +
+    "FROM scores s WHERE s.board = ? AND s.period = ? AND s.player = ?").bind(board, period, player).first();
+  return r?.rank ?? null;
+}
+
+/** Letters, digits, spaces and a little punctuation, up to 16 characters. */
+function cleanName(v) {
+  const name = String(v ?? "").replace(/[^\p{L}\p{N} _.-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 16);
+  return BLOCKED.some(w => name.toLowerCase().replace(/[^a-z]/g, "").includes(w)) ? "" : name;
+}
+
+const defaultName = id => `Builder ${id.replace(/[^a-z0-9]/gi, "").slice(-4).toUpperCase()}`;
+
+// A short list of words that never belong in a public name. Players can be renamed by hand
+// in the D1 console if something else slips through.
+const BLOCKED = ["fuck", "shit", "cunt", "nigg", "fagg", "rape", "nazi", "hitler", "whore", "slut"];
+
+function randomToken() {
+  const b = new Uint8Array(24);
+  crypto.getRandomValues(b);
+  return [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256(text) {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join("");
 }

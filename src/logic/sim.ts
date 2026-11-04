@@ -60,6 +60,10 @@ export type DropOutcome =
       windStarts?: boolean;
     };
 
+/** The sim always moves in fixed steps of this length, so a tower can be replayed exactly
+ *  from its seed and the steps at which the player tapped (see replay.ts). */
+export const TICK = 1 / 120;
+
 const SPEED: Record<FloorKind, number> = { normal: 1, gold: 1.35, ice: 1.45, garden: 0.75 };
 const PEOPLE: Record<FloorKind, number> = { normal: 1, gold: 1, ice: 1.5, garden: 0.5 };
 
@@ -78,6 +82,8 @@ export class TowerSim {
   rewindLevel = 0;
   lastLandmark = -1;
   time = 0;
+  /** Fixed steps taken so far. */
+  ticks = 0;
   private windAnnounced = false;
 
   constructor(cfg: SimConfig) {
@@ -143,6 +149,12 @@ export class TowerSim {
     };
     if (axis === "x") { m.x0 -= RANGE; m.x1 -= RANGE; } else { m.z0 -= RANGE; m.z1 -= RANGE; }
     this.mover = m;
+  }
+
+  /** One fixed step of TICK seconds. */
+  step(): void {
+    this.update(TICK);
+    this.ticks++;
   }
 
   /** Moves the sliding floor back and forth, with gusts up high. */

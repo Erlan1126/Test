@@ -7,11 +7,12 @@ Build the tallest skyscraper in the world, one tap at a time. Drop each floor so
 - **Modes:** Classic, a Daily tower that's the same for everyone, relaxing Zen, and six Landmark challenges with their own rules.
 - **Special floors:** gold penthouses (5x on a perfect drop), icy floors (fast, +50% people) and garden terraces (slow, widen your tower again).
 - **Weekly events:** a different twist each week, such as Golden Week, Ice Age or Calm Skies.
-- **Progress:** builder levels, missions, trophies, a growing island, island themes, 13 tower skins and a daily gift streak.
+- **Progress:** builder levels with rewards on every level (coins, and Sky Crystals every 5th), missions, trophies, a growing island, island themes, 31 tower skins and a daily gift streak.
+- **Sky Pass:** a monthly season with 30 tiers. Everyone earns the free track by playing (pass XP from towers, missions and the daily chest); the premium track (500 Sky Crystals) adds season skins and crystals back.
 - **Star shop:** spend stars on shop skins and one-tower boosts (extra rewind, double XP, gold rush). Stars are only earned by playing; there are no real-money purchases.
 - **Every day:** a 🔥 play streak with weekly freezes and milestone rewards (including two streak-only skins), three new missions each day with a chest for finishing them all, rent from your tower that fills up over 12 hours, coins to build your city (café, windmill, lighthouse, rocket pad and more), and a weekly league from Bronze to Legend.
-- **Leaderboards:** on the shared claude.ai page, everyone the game is shared with (as Contributors) shows up on today's Daily, weekly and all-time boards, with a rival to chase on the main menu. Elsewhere the leaderboard is hidden.
-- **Premium (real money):** cosmetic tower skins and islands plus a Founder's Pack, sold through Stripe Checkout via the small server in `server/` (see [server/README.md](server/README.md)). Until that server is set up, premium items show as "coming soon". Add `?testpay` to try the purchase flow without charging anything (it's disabled on a live site once real payments are on).
+- **Leaderboards:** worldwide Daily, weekly and all-time boards through the Skyrise server (`server/`), which replays every tower from its seed and taps before ranking it. On the shared claude.ai page, the boards are for friends the game is shared with. A rival to chase shows on the main menu.
+- **Sky Crystals (real money):** the paid currency, sold in packs through the App Store and Google Play in the apps (and Stripe on a website, via `server/`). Crystals buy premium skins and islands, a Founder's Pack and the Sky Pass. Everything is cosmetic and nothing is random. Add `?testpay` to try purchases without charging anything (disabled on a live site once real payments are on).
 - **World:** a large floating island that grows with your best tower, with houses, a farm, a lake, forests, waterfalls and crystals underneath; weather (rain with lightning, snow); planes, airships and satellites at their own altitudes; the next landmark's silhouette to race; and shader effects (bloom, light streaks, sun rays, tilt-shift, filmic color).
 - **Sound:** synthesized music that changes from day to night, ambience that follows your height (city and birds, crickets, wind), and a reverb room. No audio files.
 - **Gentle start:** new players see only the Start button. Skins, missions, the daily tower, challenges, the shop and Zen open over the first few towers, each with a "New" badge.
@@ -39,11 +40,11 @@ src/
   ui/        DOM helpers and the pop-up sheets
   native.ts  phone-app extras: haptics, back button, reminders, share, save backup
   payments.ts  premium purchases (Stripe on the web, App Store / Google Play in the apps)
-  online.ts  leaderboards on the shared claude.ai page
+  online.ts  leaderboards: worldwide (Skyrise server) or friends (claude.ai page)
   app.ts     the controller: screens, input and the frame loop
   sound.ts   synthesized sound effects and music (no audio files)
-tests/       Vitest tests for everything in logic/ and the payment server
-server/      Cloudflare Worker for Stripe payments (deploy separately)
+tests/       Vitest tests for everything in logic/ and the server
+server/      Cloudflare Worker: worldwide rankings (D1) and website crystal packs
 public/      icons, fonts, manifest, link preview image, service worker
 android/ ios/  the phone apps (Capacitor), built by .github/workflows/
 assets/      source images for the app icons and launch screen
@@ -59,4 +60,4 @@ The App Store and Google Play apps are built on GitHub from the same code; see
 [STORES.md](STORES.md). After changing the game, `npm run build && npx cap sync` copies
 it into the native projects.
 
-Not included yet, because they need a server: global leaderboards, cloud saves tied to an account, and friend lists.
+Not included yet: cloud saves tied to an account, and friend lists.

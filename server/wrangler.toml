@@ -1,24 +1,31 @@
-name = "skyrise-pay"
+name = "skyrise"
 main = "worker.js"
 compatibility_date = "2026-10-01"
 
+# Worldwide rankings. Create the database with:  npx wrangler d1 create skyrise
+# paste the database_id it prints here, then create the tables with:
+#   npx wrangler d1 execute skyrise --remote --file=schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "skyrise"
+database_id = "PASTE_YOUR_D1_DATABASE_ID"
+
+# Website crystal purchases (only needed if you sell packs on the website with Stripe).
 # Create the namespace with:  npx wrangler kv namespace create ENTITLEMENTS
 # then paste the id it prints here.
-[[kv_namespaces]]
-binding = "ENTITLEMENTS"
-id = "PASTE_YOUR_KV_NAMESPACE_ID"
+# [[kv_namespaces]]
+# binding = "ENTITLEMENTS"
+# id = "PASTE_YOUR_KV_NAMESPACE_ID"
 
 [vars]
-# Sites allowed to start a checkout (your game's address on itch.io or your own site).
-ALLOWED_ORIGINS = "https://YOURNAME.itch.io,https://html-classic.itch.zone"
-# Stripe price ids for each product (create the products in the Stripe dashboard).
-PRICE_skin_crystal = "price_..."
-PRICE_skin_sakura = "price_..."
-PRICE_skin_royal = "price_..."
-PRICE_skin_cyber = "price_..."
-PRICE_island_volcano = "price_..."
-PRICE_island_candy = "price_..."
-PRICE_founders = "price_..."
+# Sites allowed to start a Stripe checkout (your game's website).
+ALLOWED_ORIGINS = "https://YOUR-SITE.example"
+# Stripe price ids for each Sky Crystal pack (create them in the Stripe dashboard).
+PRICE_crystals_100 = "price_..."
+PRICE_crystals_550 = "price_..."
+PRICE_crystals_1200 = "price_..."
+PRICE_crystals_2600 = "price_..."
+PRICE_crystals_7000 = "price_..."
 # Secrets are NOT stored here. Set them with:
 #   npx wrangler secret put STRIPE_SECRET_KEY
 #   npx wrangler secret put STRIPE_WEBHOOK_SECRET

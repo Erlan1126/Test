@@ -44,8 +44,13 @@ changed after that.
 - **Target audience:** **13–15, 16–17 and 18+**. Picking under-13 groups puts the app
   under the Families policy, which needs extra review. You can add younger ages later.
 - **Data safety:** "Does your app collect or share any of the required user data types?"
-  → **No**. (Google Play handles purchases. Progress stays on the phone. No analytics.)
-  Is all data encrypted in transit? → **Yes**. Account deletion → not applicable (no accounts).
+  → **Yes** (only for the worldwide leaderboard). Not shared with anyone. Declare:
+  - **Personal info → User IDs** (a random player id the game makes)
+  - **Personal info → Name** (the optional leaderboard nickname)
+  - **App activity → Other actions** (scores and the taps of ranked towers, to check them)
+  For each: collected **Yes**, shared **No**, processed ephemerally **No**, collection
+  **Required** (Classic and Daily towers are posted automatically), purpose **App functionality**. Encrypted in transit → **Yes**. Users can request deletion →
+  **Yes** (by emailing erlanstudios1@gmail.com). Google Play handles purchases. No ads or analytics.
 - **Government app:** No. **Financial features:** None. **Health:** None.
 - **News app:** No.
 
@@ -54,15 +59,19 @@ changed after that.
 You can only create these after the first build has been uploaded to a testing track
 (Google needs to see the billing permission first). Make each one **active**.
 
+These are **consumable** crystal packs (in the current Play Console they're "one-time
+products"; leave them as consumable, which is the default for this game's purchase code).
+
 | Product ID | Name | Description | Price |
 |---|---|---|---|
-| skin_crystal | Crystal Palace | A sparkling tower of ice-blue glass | $1.99 |
-| skin_sakura | Sakura Spire | Blossom pink with warm paper lanterns | $1.99 |
-| skin_royal | Royal Amethyst | Deep purple stone trimmed in gold | $1.99 |
-| skin_cyber | Cyber City | Black glass with glowing neon edges | $2.99 |
-| island_volcano | Volcano Island | Black rock, palm trees and glowing lava | $2.99 |
-| island_candy | Candy Island | Pastel lawns and cotton-candy trees | $2.99 |
-| founders | Founder's Pack | Every premium skin and island, plus 5,000 coins | $7.99 |
+| crystals_100 | 100 Sky Crystals | A handful of Sky Crystals | $0.99 |
+| crystals_550 | 550 Sky Crystals | 500 Sky Crystals + 10% bonus | $4.99 |
+| crystals_1200 | 1,200 Sky Crystals | 1,000 Sky Crystals + 20% bonus | $9.99 |
+| crystals_2600 | 2,600 Sky Crystals | 2,000 Sky Crystals + 30% bonus | $19.99 |
+| crystals_7000 | 7,000 Sky Crystals | 5,000 Sky Crystals + 40% bonus | $49.99 |
+
+Premium skins, islands and the Sky Pass premium track are bought with Sky Crystals inside
+the game, so they don't need their own products.
 
 Product IDs must match exactly. Set up a **payments profile** (Monetize → Monetization
 setup) before you can sell anything.

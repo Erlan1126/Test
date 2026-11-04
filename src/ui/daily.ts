@@ -9,11 +9,14 @@ import { MISSION_TYPES, missionText } from "../data/missions";
 import { skinById } from "../data/skins";
 import { buyBuild, chestReady, claimChest, collectRent, leagueFor, rentFullIn, rentPerHour, rentWaiting, streakView } from "../logic/daily";
 import { markSeen } from "../logic/features";
+import { buyPremiumPass, claimable, claimAll, claimTier, passTier, refreshPass, rewardText, unclaimed, type Track } from "../logic/pass";
+import { freeReward, PASS_TIERS, premiumReward, seasonEndsIn, seasonTheme, XP_PER_TIER, type PassReward } from "../data/pass";
+import { PASS_PRICE } from "../data/premium";
 import { islandLevel, swapMission } from "../logic/progress";
 import { dayKey, dayNumber, duration } from "../logic/rules";
 import { isNative, reminderTime, setReminder, type ReminderInfo } from "../native";
-import type { Online, Entry } from "../online";
-import { $, closeModal, esc, openModal, replay, showTab, toast, vibrate, wireModal } from "./dom";
+import type { Online, Row } from "../online";
+import { $, closeModal, esc, LOCK_ICON, openModal, replay, showTab, toast, vibrate, wireModal } from "./dom";
 import type { Host } from "./sheets";
 
 export interface DailyHost extends Host {
@@ -22,6 +25,8 @@ export interface DailyHost extends Host {
   postScores(): void;
   /** What the phone apps' reminder notifications should say. */
   reminderInfo(): ReminderInfo;
+  /** Opens the shop on the Sky Crystals tab. */
+  openCrystalShop(): void;
 }
 
 /** Time until local midnight, when missions and the streak day roll over. */
@@ -34,7 +39,13 @@ export class DailySheets {
   private tab: "daily" | "week" | "best" = "daily";
 
   constructor(private readonly host: DailyHost) {
-    for (const id of ["streak", "missions", "city", "ranks"]) wireModal($(id));
+    for (const id of ["streak", "missions", "city", "ranks", "pass"]) wireModal($(id));
+    $("pass-claim-all").addEventListener("click", () => {
+      const got = claimAll(this.save);
+      if (!got.length) return;
+      this.celebrate(`Claimed ${got.length} reward${got.length > 1 ? "s" : ""}: ${got.map(rewardText).join(", ")}`);
+      this.renderPass();
+    });
     document.querySelectorAll<HTMLButtonElement>("#ranks .tabs button").forEach(b => b.addEventListener("click", () => {
       this.tab = b.dataset.tab as typeof this.tab;
       this.host.sound.click();
@@ -80,7 +91,7 @@ export class DailySheets {
     const r = claimChest(this.save);
     if (!r) return;
     this.host.sound.unlock();
-    this.celebrate(`Chest opened: +${r.stars} ★ and +${r.coins} coins! New missions tomorrow`);
+    this.celebrate(`Chest opened: +${r.stars} ★, +${r.coins} coins and +100 pass XP! New missions tomorrow`);
     if (!$("missions").hidden) this.renderMissions();
   }
 
@@ -149,6 +160,90 @@ export class DailySheets {
     toast(r === "denied" ? "Notifications are off for Skyrise. Turn them on in your phone's settings."
       : r === "on" ? `We'll remind you at ${time} on days you haven't played yet` : "Daily reminder turned off");
     this.renderReminder();
+  }
+
+  // ---------- Sky Pass ----------
+
+  openPass(): void {
+    this.click();
+    markSeen(this.save, "pass");
+    refreshPass(this.save);
+    this.host.persist();
+    this.renderPass();
+    openModal($("pass"));
+    // Show the next tier to earn rather than tier 1.
+    const next = $("pass-tiers").querySelector<HTMLElement>(".pass-row.next");
+    if (next) next.scrollIntoView({ block: "center" });
+  }
+
+  /** Redraws the pass if it's open. */
+  refreshPass(): void {
+    if (!$("pass").hidden) this.renderPass();
+  }
+
+  private renderPass(): void {
+    const save = this.save, season = save.pass.season, theme = seasonTheme(season);
+    const tier = passTier(save), days = Math.max(1, Math.ceil(seasonEndsIn() / 864e5));
+    $("pass-season").innerHTML = `<b style="color:${theme.color}">${esc(theme.name)}</b> · ends in ${days} day${days === 1 ? "" : "s"}`;
+    $("pass-tier").textContent = String(tier);
+    const into = tier >= PASS_TIERS ? XP_PER_TIER : save.pass.xp - tier * XP_PER_TIER;
+    $("pass-bar").style.width = `${(into / XP_PER_TIER) * 100}%`;
+    $("pass-next").textContent = tier >= PASS_TIERS ? "Every tier reached. Amazing!" : `${into} / ${XP_PER_TIER} XP to tier ${tier + 1}`;
+
+    const prem = $("pass-premium");
+    if (save.pass.premium) {
+      prem.innerHTML = `<b>✦ Premium pass active</b><small>${esc(theme.text)}. Every premium reward is yours to claim.</small>`;
+      prem.classList.add("on");
+    } else {
+      prem.classList.remove("on");
+      prem.innerHTML = `<div><b>✦ Unlock the premium track</b><small>${esc(skinById(theme.skins.first).name)} skin now, ${esc(skinById(theme.skins.last).name)} at tier 30, and ${fmt(seasonCrystals(season))} 💎 back along the way.</small></div>
+        <button type="button" class="buy" id="pass-buy">💎 ${PASS_PRICE}</button>`;
+      prem.querySelector("#pass-buy")!.addEventListener("click", () => {
+        const r = buyPremiumPass(save);
+        if (r === "short") {
+          toast(`You need ${PASS_PRICE - save.crystals} more Sky Crystals`);
+          closeModal($("pass"));
+          this.host.openCrystalShop();
+          return;
+        }
+        if (r !== "ok") return;
+        this.host.sound.purchase();
+        this.celebrate("Premium Sky Pass unlocked! Claim your rewards");
+        this.renderPass();
+      });
+    }
+
+    const waiting = unclaimed(save);
+    const all = $<HTMLButtonElement>("pass-claim-all");
+    all.hidden = waiting === 0;
+    all.textContent = `Claim all rewards (${waiting})`;
+
+    const list = $("pass-tiers");
+    list.innerHTML = "";
+    for (let t = 1; t <= PASS_TIERS; t++) {
+      const row = document.createElement("div");
+      row.className = `pass-row${t <= tier ? " reached" : ""}${t === tier + 1 ? " next" : ""}`;
+      row.innerHTML = `<span class="pass-num">${t}</span>`;
+      for (const track of ["free", "prem"] as Track[]) {
+        const r = track === "free" ? freeReward(season, t) : premiumReward(season, t);
+        const done = save.pass[track].includes(t), can = claimable(save, track, t);
+        const locked = track === "prem" && !save.pass.premium;
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = `pass-cell ${track}${done ? " done" : ""}${can ? " ready" : ""}${locked ? " locked" : ""}${r.skin ? " skin" : ""}`;
+        cell.disabled = !can;
+        cell.innerHTML = `<span class="pass-ico" aria-hidden="true">${rewardIcon(r)}</span><span>${esc(rewardText(r))}</span>${done ? '<i aria-hidden="true">✓</i>' : locked ? `<i aria-hidden="true">${LOCK_ICON}</i>` : ""}`;
+        cell.setAttribute("aria-label", `Tier ${t} ${track === "free" ? "free" : "premium"} reward: ${rewardText(r)}${done ? ", claimed" : can ? ", tap to claim" : ""}`);
+        cell.addEventListener("click", () => {
+          const got = claimTier(save, track, t);
+          if (!got) return;
+          this.celebrate(`Claimed: ${rewardText(got)}`);
+          this.renderPass();
+        });
+        row.appendChild(cell);
+      }
+      list.appendChild(row);
+    }
   }
 
   // ---------- Missions, chest and league ----------
@@ -268,26 +363,37 @@ export class DailySheets {
   }
 
   private async renderRanks(): Promise<void> {
-    const on = this.host.online, today = dayNumber(), week = weekIndex();
-    document.querySelectorAll<HTMLButtonElement>("#ranks .tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === this.tab)));
-    const list: Entry[] = this.tab === "daily" ? on.daily(today) : this.tab === "week" ? on.weekly(week) : on.allTime();
-    const value = (e: Entry) => this.tab === "daily" ? `${fmt(e.dailyScore)} people` : this.tab === "week" ? `${fmt(e.weekPoints)} pts` : `${fmt(e.best)} people`;
-    const top = list.slice(0, 50);
-    const names = await on.names(top.map(e => e.id));
+    const on = this.host.online, today = dayNumber(), week = weekIndex(), tab = this.tab;
+    document.querySelectorAll<HTMLButtonElement>("#ranks .tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    const global = on.kind === "global";
+    $("ranks-sub2").textContent = global ? "Builders all over the world" : "Friends you share Skyrise with";
     const el = $("rank-list");
+    if (global && !el.children.length) el.innerHTML = `<p class="history-empty">Loading…</p>`;
+    const board = await on.board(tab, today, week);
+    if (tab !== this.tab) return; // switched tabs while loading
     el.innerHTML = "";
-    if (!top.length) {
-      el.innerHTML = `<p class="history-empty">${this.tab === "daily" ? "Nobody has built today's Daily yet. Be the first!" : "No scores yet."}</p>`;
+    if (!board.rows.length) {
+      el.innerHTML = `<p class="history-empty">${tab === "daily" ? "Nobody has built today's Daily yet. Be the first!" : "No scores yet."}</p>`;
     }
-    top.forEach((e, i) => {
+    const line = (r: Row) => {
       const row = document.createElement("div");
-      row.className = `rank-row${e.id === on.me ? " me" : ""}`;
-      const medal = ["🥇", "🥈", "🥉"][i] ?? String(i + 1);
-      row.innerHTML = `<span class="rank">${medal}</span><span class="who"></span><span class="fire">${e.streak > 1 ? `🔥${e.streak}` : ""}</span><b>${value(e)}</b>`;
-      row.querySelector(".who")!.textContent = names[e.id] + (e.id === on.me ? " (you)" : "");
-      el.appendChild(row);
-    });
+      row.className = `rank-row${r.me ? " me" : ""}`;
+      const medal = ["🥇", "🥈", "🥉"][r.rank - 1] ?? fmt(r.rank);
+      row.innerHTML = `<span class="rank">${medal}</span><span class="who"></span><span class="fire">${r.streak && r.streak > 1 ? `🔥${r.streak}` : r.level ? `Lv ${r.level}` : ""}</span><b>${fmt(r.value)} ${r.unit}</b>`;
+      row.querySelector(".who")!.textContent = r.name + (r.me ? " (you)" : "");
+      return row;
+    };
+    board.rows.slice(0, 100).forEach(r => el.appendChild(line(r)));
+    // Outside the top 100: your own row at the bottom.
+    if (board.me && !board.rows.some(r => r.me)) {
+      const gap = document.createElement("p");
+      gap.className = "rank-gap";
+      gap.textContent = "⋯";
+      el.append(gap, line(board.me));
+    }
     $("ranks-note").textContent = on.stale ? "Can't reach the leaderboard right now. It may be out of date."
+      : global ? (tab === "week" ? "Your best Classic or Daily tower this week. Every tower is checked by replaying it."
+        : `${fmt(board.total)} builder${board.total === 1 ? "" : "s"} ranked. Every tower is checked by replaying it.`)
       : !on.canPost ? "Your scores aren't posted yet: ask whoever shared Skyrise to make you a Contributor."
       : "Share this page with friends as Contributors to compete.";
   }
@@ -299,7 +405,7 @@ export class DailySheets {
     this.host.persist();
     this.host.postScores();
     this.host.sound.click();
-    toast(v ? `You're "${v}" on the leaderboard` : "Using your account name on the leaderboard");
+    toast(v ? `You're "${v}" on the leaderboard${this.host.online.kind === "global" ? " from your next tower" : ""}` : "Using your default name on the leaderboard");
     void this.renderRanks();
   }
 
@@ -307,4 +413,19 @@ export class DailySheets {
   closeAll(): void {
     for (const id of ["streak", "missions", "city", "ranks"]) if (!$(id).hidden) closeModal($(id));
   }
+}
+
+function rewardIcon(r: PassReward): string {
+  if (r.skin) return "🏙️";
+  if (r.crystals) return "💎";
+  if (r.stars) return "★";
+  if (r.boost) return "⚡";
+  return "🪙";
+}
+
+/** Crystals the premium track pays back over a season. */
+function seasonCrystals(season: number): number {
+  let n = 0;
+  for (let t = 1; t <= PASS_TIERS; t++) n += premiumReward(season, t).crystals ?? 0;
+  return n;
 }

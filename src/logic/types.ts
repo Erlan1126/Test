@@ -24,6 +24,6 @@ export interface RunSummary {
 
 /** A line on the game-over card. */
 export interface Reward {
-  kind: "star" | "skin" | "island";
+  kind: "star" | "skin" | "island" | "pass" | "crystal";
   text: string;
 }
