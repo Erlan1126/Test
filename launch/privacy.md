@@ -1,4 +1,7 @@
-# Skyrise privacy note
+# Skyrise privacy policy
+
+Skyrise is made by Erlan Studios (contact: erlanstudios1@gmail.com).
+Last updated: November 4, 2026.
 
 Short version: Skyrise has no accounts, no ads and no tracking. Your progress stays on
 your device.
@@ -61,4 +64,4 @@ https://itch.io/docs/legal/privacy-policy
 ## Contact
 
 Questions about privacy, or want your purchase record deleted? Contact
-[your contact email] and include your player id or save code.
+erlanstudios1@gmail.com and include your player id or save code.

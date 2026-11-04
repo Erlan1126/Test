@@ -1,12 +1,14 @@
-# Support and refunds
+# Skyrise support and refunds
+
+Skyrise is made by Erlan Studios.
 
 ## Getting help
 
-Something not working, or a purchase that didn't unlock? Email [your contact email].
+Something not working, or a purchase that didn't unlock? Email erlanstudios1@gmail.com.
 It helps to include:
 
 - what happened and what you expected,
-- your device and browser (for example "iPhone 13, Safari"),
+- your device and whether you play in the app or a browser (for example "Pixel 8, app"),
 - for purchase problems: the email on your Stripe receipt and your save code.
 
 Most purchase problems are fixed by reopening the game, so it can check with the
@@ -14,10 +16,16 @@ payment server again.
 
 ## Refunds
 
-Premium items are cosmetic and optional. If you're not happy with a purchase, ask for a
-refund within 14 days by emailing [your contact email] with the email on your receipt.
-We'll refund the full price through Stripe. Refunds usually show up on your statement
-within 5 to 10 business days.
+Premium items are cosmetic and optional.
+
+- **Bought in the Android or iPhone app:** refunds go through the store you paid. On
+  Android, open Google Play → Profile → Payments & subscriptions → Budget & history, or
+  ask at https://support.google.com/googleplay/workflow/9813244. On iPhone, go to
+  https://reportaproblem.apple.com. In the app, **Shop → Premium → Restore purchases**
+  brings back items you already own on a new phone.
+- **Bought on the website:** ask for a refund within 14 days by emailing
+  erlanstudios1@gmail.com with the email on your receipt. We'll refund the full price
+  through Stripe. Refunds usually show up on your statement within 5 to 10 business days.
 
 <!-- Note for the owner: refunds are issued by hand in the Stripe dashboard
 (Payments → the payment → Refund). The payment server does not remove refunded items
