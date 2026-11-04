@@ -321,7 +321,7 @@ export class App implements DailyHost {
     this.sound.click();
     $("over").hidden = on;
     $("unpeek").hidden = !on;
-    for (const id of ["settings-btn", "level-btn", "stars-btn"]) if (on) $(id).hidden = true;
+    for (const id of ["settings-btn", "level-btn", "stars-btn", "streak-btn"]) if (on) $(id).hidden = true;
     if (!on && this.state === "over") { this.renderCorners(); $("over").hidden = false; }
   }
 
@@ -402,7 +402,7 @@ export class App implements DailyHost {
     this.outcome = null;
     this.shareBlob = null;
     this.state = "playing";
-    for (const id of ["menu", "over", "rewards", "pause-menu", "rescue", "settings-btn", "level-btn", "stars-btn", "banner"]) $(id).hidden = true;
+    for (const id of ["menu", "over", "rewards", "pause-menu", "rescue", "settings-btn", "level-btn", "stars-btn", "streak-btn", "banner"]) $(id).hidden = true;
     $("hud").hidden = false;
     $("pause").hidden = false;
     this.sound.duck(false);
