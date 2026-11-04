@@ -32,6 +32,13 @@ jobs:
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
         working-directory: server
         run: |
+          # Pasted secrets can pick up extra lines or spaces: keep just the token (40+
+          # letters, digits, - and _) and the 32-character account id.
+          CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -s ' \t\r' '\n' | grep -E '^[A-Za-z0-9_-]{40,}$' | head -1)
+          CLOUDFLARE_ACCOUNT_ID=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | grep -oiE '[0-9a-f]{32}' | head -1)
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::CLOUDFLARE_API_TOKEN doesn't look like a Cloudflare API token"; exit 1; fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::CLOUDFLARE_ACCOUNT_ID doesn't look like a 32-character account id"; exit 1; fi
+          export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID
           W="npx --yes wrangler@4"
           # Find the database, or create it the first time.
           ID=$($W d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);const d=l.find(x=>x.name==="skyrise");process.stdout.write(d?d.uuid:"")})')
