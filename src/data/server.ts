@@ -4,7 +4,7 @@
  * packs on the website. While it's empty, the rankings use the shared claude.ai page when
  * the game runs there and are hidden elsewhere, and website crystal packs show "coming soon".
  */
-export const SERVER_URL: string = "";
+export const SERVER_URL: string = "https://skyrise.erlanstudios.workers.dev";
 
 /**
  * Sell crystal packs on the website through Stripe (needs the Stripe setup in

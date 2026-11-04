@@ -64,3 +64,11 @@ jobs:
           $W deploy 2>&1 | tee deploy.log
           echo "## Server address" >> "$GITHUB_STEP_SUMMARY"
           grep -o 'https://[a-z0-9.-]*workers.dev' deploy.log | head -1 >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Check the live server answers
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          URL=$(grep -o 'https://[a-z0-9.-]*workers.dev' server/deploy.log | head -1)
+          sleep 5
+          OUT=$(curl -sS -m 20 "$URL/board?board=all&period=0")
+          echo "$OUT"
+          echo "$OUT" | grep -q '"board":"all"'
