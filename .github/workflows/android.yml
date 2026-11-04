@@ -53,8 +53,12 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         working-directory: android
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          # Pasted secrets often pick up a stray space or line break; strip them.
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/upload.jks"
           export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.jks"
+          export ANDROID_KEYSTORE_PASSWORD="$(printf '%s' "$ANDROID_KEYSTORE_PASSWORD" | tr -d '[:space:]')"
+          export ANDROID_KEY_PASSWORD="$(printf '%s' "$ANDROID_KEY_PASSWORD" | tr -d '[:space:]')"
+          export ANDROID_KEY_ALIAS="$(printf '%s' "$ANDROID_KEY_ALIAS" | tr -d '[:space:]')"
           ./gradlew bundleRelease --no-daemon
           rm -f "$RUNNER_TEMP/upload.jks"
 
