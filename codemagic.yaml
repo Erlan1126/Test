@@ -1,0 +1,38 @@
+# Cloud builds on Codemagic (codemagic.io), as an alternative to GitHub's Mac machines.
+# The free plan includes 500 build minutes a month on Macs. Setup is in STORES.md.
+workflows:
+  ios-testflight:
+    name: Skyrise iPhone app → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: App Store Connect key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.erlan1126.skyrise
+      node: 22
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Build the game and copy it into the iPhone project
+        script: |
+          npm ci
+          npm test
+          npm run build
+          npx cap sync ios
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Give each build a new number
+        script: |
+          cd ios/App
+          agvtool new-version -all $BUILD_NUMBER
+      - name: Build the app
+        script: |
+          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

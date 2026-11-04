@@ -86,6 +86,16 @@ store's own testing tracks.
   - `APPLE_TEAM_ID`: from https://developer.apple.com/account → Membership details
 - [ ] Run Actions → **iOS app** → **Run workflow**. When it's green, the build appears in
       App Store Connect → **TestFlight** after 10–30 minutes.
+
+      **If the iOS build sits in "Queued" and then gets cancelled**, GitHub isn't giving
+      this repository a Mac machine. That happened on the first try. Use Codemagic instead
+      (free, 500 Mac minutes a month):
+      1. Sign in at https://codemagic.io with GitHub and add this repository.
+      2. Team settings → **Integrations** → **Developer Portal** → Connect, using the same
+         API key. Name it exactly `App Store Connect key`.
+      3. Start the **Skyrise iPhone app → TestFlight** workflow on the
+         `claude/new-session-klw8t6` branch. It reads `codemagic.yaml` and uploads to
+         TestFlight by itself.
 - [ ] Install **TestFlight** on your iPhone, add yourself as an internal tester, and play it.
 - [ ] Business → **Agreements**: accept the Paid Apps Agreement and add bank and tax info.
 - [ ] Create the 7 in-app purchases from `app-store.md`.
