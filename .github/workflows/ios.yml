@@ -4,10 +4,13 @@
 #   uploads it to TestFlight, ready to test on your iPhone and submit for review.
 name: iOS app
 
+# GitHub hasn't been giving this repository Mac machines (runs wait 15 minutes and are
+# cancelled), so this only runs when the iPhone project itself changes. Codemagic
+# (codemagic.yaml) is the main way to build the iPhone app; see STORES.md.
 on:
   push:
     branches: [claude/new-session-klw8t6, main, master]
-    paths-ignore: ["launch/**", "**.md"]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 
 jobs:

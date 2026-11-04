@@ -79,23 +79,16 @@ store's own testing tracks.
 - [ ] **Let GitHub sign and upload builds:** in App Store Connect → **Users and Access**
       → **Integrations** → **App Store Connect API** → Team Keys → **+**. Name it
       "GitHub", access **Admin**, then download the `.p8` file. It can only be downloaded once.
-- [ ] Add four GitHub secrets (Settings → Secrets and variables → Actions):
-  - `APPSTORE_KEY_ID`: the key's ID, shown next to it
-  - `APPSTORE_ISSUER_ID`: the Issuer ID, shown at the top of that page
-  - `APPSTORE_API_KEY_P8`: open the `.p8` file in a text editor and paste all of it
-  - `APPLE_TEAM_ID`: from https://developer.apple.com/account → Membership details
-- [ ] Run Actions → **iOS app** → **Run workflow**. When it's green, the build appears in
-      App Store Connect → **TestFlight** after 10–30 minutes.
-
-      **If the iOS build sits in "Queued" and then gets cancelled**, GitHub isn't giving
-      this repository a Mac machine. That happened on the first try. Use Codemagic instead
-      (free, 500 Mac minutes a month):
-      1. Sign in at https://codemagic.io with GitHub and add this repository.
-      2. Team settings → **Integrations** → **Developer Portal** → Connect, using the same
-         API key. Name it exactly `App Store Connect key`.
-      3. Start the **Skyrise iPhone app → TestFlight** workflow on the
-         `claude/new-session-klw8t6` branch. It reads `codemagic.yaml` and uploads to
-         TestFlight by itself.
+- [ ] **Build in the cloud with Codemagic.** GitHub hasn't been giving this repository
+      Mac machines, so Codemagic builds the iPhone app instead (free, 500 Mac minutes a month):
+      1. Sign in at https://codemagic.io with GitHub and add the `Test` repository.
+      2. Team settings → **Integrations** → **Developer Portal** → Connect. Enter the
+         Issuer ID, the Key ID and the `.p8` file from the step above, and name it exactly
+         `App Store Connect key`.
+      3. Start a new build: branch `claude/new-session-klw8t6`, workflow
+         **Skyrise iPhone app → TestFlight**. Codemagic reads `codemagic.yaml`, signs the
+         app and uploads it to TestFlight. It appears there 10–30 minutes after the build
+         turns green.
 - [ ] Install **TestFlight** on your iPhone, add yourself as an internal tester, and play it.
 - [ ] Business → **Agreements**: accept the Paid Apps Agreement and add bank and tax info.
 - [ ] Create the 7 in-app purchases from `app-store.md`.
