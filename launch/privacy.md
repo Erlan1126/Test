@@ -5,7 +5,8 @@ your device.
 
 ## What the game stores
 
-- **Your progress is stored on your device**, in your browser's local storage: your
+- **Your progress is stored on your device**, in your browser's local storage (in the
+  phone apps, in the app's own storage, with a backup copy kept by the app): your
   towers, levels, coins, stars, skins, settings and a random player id. It is not sent to
   us. Clearing your browser's site data deletes it.
 - **Save codes** (Settings → Move progress to another device) are created on your device.
@@ -18,7 +19,7 @@ your device.
 - No ads.
 - No analytics, tracking pixels or third-party trackers.
 
-## Premium purchases
+## Premium purchases on the website
 
 Premium items are optional and cosmetic. If you buy one:
 
@@ -30,10 +31,27 @@ Premium items are optional and cosmetic. If you buy one:
   does not store your name, email or card details. The server runs on Cloudflare, which
   handles the network requests to it.
 
+## Purchases in the phone apps
+
+In the iPhone and Android apps, premium items are bought through the **App Store** or
+**Google Play**. Apple or Google handles the payment and your account details; the game
+only learns which items you own. Their privacy policies apply:
+https://www.apple.com/legal/privacy/ and https://policies.google.com/privacy
+
+## Reminders
+
+The phone apps can show a daily reminder notification if you turn it on in the streak
+screen. It is scheduled on your phone; nothing is sent to us. Turn it off there or in your
+phone's settings at any time.
+
 ## Fonts
 
-The game loads its fonts from **Google Fonts**, so your browser connects to Google's
-servers when the game starts. Google's privacy policy applies: https://policies.google.com/privacy
+The game's fonts are included with the game, so it doesn't contact any font service.
+
+## Children
+
+Skyrise is suitable for all ages and doesn't collect personal information from anyone,
+including children.
 
 ## Where the game is hosted
 

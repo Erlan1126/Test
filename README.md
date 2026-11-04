@@ -37,13 +37,16 @@ src/
   logic/     game rules with no DOM: the tower sim, saves, progression, shop, unlocks
   render/    canvas drawing: camera, sky and island, buildings, effects, previews
   ui/        DOM helpers and the pop-up sheets
-  payments.ts  premium purchases (test mode or Stripe through server/)
+  native.ts  phone-app extras: haptics, back button, reminders, share, save backup
+  payments.ts  premium purchases (Stripe on the web, App Store / Google Play in the apps)
   online.ts  leaderboards on the shared claude.ai page
   app.ts     the controller: screens, input and the frame loop
   sound.ts   synthesized sound effects and music (no audio files)
 tests/       Vitest tests for everything in logic/ and the payment server
 server/      Cloudflare Worker for Stripe payments (deploy separately)
-public/      icons, manifest, link preview image, service worker
+public/      icons, fonts, manifest, link preview image, service worker
+android/ ios/  the phone apps (Capacitor), built by .github/workflows/
+assets/      source images for the app icons and launch screen
 ```
 
 The logic layer is separate from drawing so it can be tested directly. Add `?debug` to the URL to expose the game as `window.__app` for automated tests.
@@ -51,5 +54,9 @@ The logic layer is separate from drawing so it can be tested directly. Add `?deb
 ## Publishing
 
 `dist/` is a static site. Upload it to any static host (GitHub Pages, Netlify, Cloudflare Pages), or zip its contents for game portals such as itch.io (an HTML game with `index.html` at the top level) or CrazyGames and Poki (which review submissions and have their own SDK requirements).
+
+The App Store and Google Play apps are built on GitHub from the same code; see
+[STORES.md](STORES.md). After changing the game, `npm run build && npx cap sync` copies
+it into the native projects.
 
 Not included yet, because they need a server: global leaderboards, cloud saves tied to an account, and friend lists.
