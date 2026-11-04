@@ -15,6 +15,8 @@ export interface Settings {
   quality: "auto" | "high" | "low";
   /** Auto mode measured this device as slow. */
   autoLow: boolean;
+  /** Language: "auto" follows the device. */
+  lang: "auto" | "en" | "es";
 }
 
 export interface RunRecord {
@@ -115,7 +117,7 @@ export function defaultSave(): SaveData {
     daily: { day: 0, best: 0, plays: 0 },
     challenges: [],
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, lang: "auto" },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -198,6 +200,7 @@ export function normalize(raw: unknown): SaveData {
       sound: bool(set.sound, true), music: bool(set.music, true), vibrate: bool(set.vibrate, true),
       quality: (["auto", "high", "low"].includes(set.quality as string) ? set.quality : "auto") as Settings["quality"],
       autoLow: bool(set.autoLow, false),
+      lang: (["auto", "en", "es"].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
     },
     tutorialDone: bool(r.tutorialDone, false),
     seenFeatures: strList(r.seenFeatures),
@@ -266,6 +269,7 @@ export function migrateLegacy(get: (key: string) => string | null): SaveData | n
       vibrate: get("skyriseVibrate") !== "0",
       quality: get("skyriseQuality") ?? "auto",
       autoLow: get("skyriseAutoLow") === "1",
+      lang: "auto",
     },
     tutorialDone: get("skyriseTutorial") === "done",
     // Returning players already know every feature.

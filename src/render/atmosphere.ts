@@ -1,6 +1,7 @@
 // Weather (rain with lightning, snow), the next landmark's silhouette beside the tower, and
 // the aurora high up at night.
-import { clamp, mixRgb, rand, rgb } from "../core/util";
+import { clamp, mixRgb, rand, rgb, shortName } from "../core/util";
+import { t } from "../i18n";
 import { MILESTONES, NUM_FONT, UI_FONT } from "../data/constants";
 import type { Paint } from "./paint";
 
@@ -172,7 +173,7 @@ export function drawLandmarkLabel(p: Paint, index: number, alpha: number, minY =
     ctx.shadowColor = "rgba(0,0,0,0.4)";
     ctx.shadowBlur = 6;
     // Keep the label on screen even when the silhouette sits near the edge.
-    const name = ms.name.replace(/^the /, "").replace(/^a /, "");
+    const name = shortName(t(ms.name));
     ctx.font = `800 12px ${UI_FONT}`;
     const half = Math.max(ctx.measureText(name).width / 2 + 8, 30);
     const lx = clamp(cx, half, view.W - half);

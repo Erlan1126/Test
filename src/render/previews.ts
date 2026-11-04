@@ -5,6 +5,7 @@ import type { IslandTheme } from "../data/islands";
 import type { Skin } from "../data/skins";
 import type { View } from "./paint";
 import { drawTreeShape } from "./scenery";
+import { t } from "../i18n";
 
 type P = [number, number];
 
@@ -136,11 +137,11 @@ export function makeShareImage(canvas: HTMLCanvasElement, view: View, info: Shar
   o.font = `190px ${NUM_FONT}`;
   o.fillText(fmt(info.score), 540, 1150);
   o.font = `800 46px ${UI_FONT}`;
-  o.fillText(`people live in my ${info.meters} m tower`, 540, 1215);
+  o.fillText(t("people live in my {m} m tower", { m: info.meters }), 540, 1215, 1000);
   if (info.landmark >= 0) {
     o.fillStyle = GOLD;
     o.font = `800 40px ${UI_FONT}`;
-    o.fillText(`Taller than ${MILESTONES[info.landmark].name}`, 540, 1280);
+    o.fillText(t("Taller than {name}", { name: t(MILESTONES[info.landmark].name) }), 540, 1280, 1000);
   }
   return new Promise(res => out.toBlob(b => res(b)));
 }

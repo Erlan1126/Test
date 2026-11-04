@@ -1,4 +1,5 @@
 // Small math, color and formatting helpers shared across the game.
+import { t } from "../i18n";
 
 export type RGB = [number, number, number];
 
@@ -24,12 +25,13 @@ export const hash = (a: number, b: number, c: number): number => {
 
 export const fmt = (n: number): string => n.toLocaleString("en-US");
 
-/** "the Eiffel Tower" -> "Eiffel Tower", "a house" -> "House". */
+/** "the Eiffel Tower" -> "Eiffel Tower", "a house" -> "House" (and the same for Spanish
+ *  articles: "la Torre Eiffel" -> "Torre Eiffel"). */
 export const shortName = (n: string): string => {
-  const t = n.replace(/^(the|a) /, "");
-  return t[0].toUpperCase() + t.slice(1);
+  const s = n.replace(/^(the|a|el|la|los|las|un|una) /, "");
+  return s[0].toUpperCase() + s.slice(1);
 };
 
 /** Joins names for one line of text: "A", "A and B", "A, B and 3 more". */
 export const listNames = (names: string[]): string =>
-  names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+  names.length <= 2 ? names.join(t(" and ")) : t("{names} and {n} more", { names: names.slice(0, 2).join(", "), n: names.length - 2 });

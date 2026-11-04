@@ -26,4 +26,10 @@ export interface RunSummary {
 export interface Reward {
   kind: "star" | "skin" | "island" | "pass" | "crystal";
   text: string;
+  /** Lines the game-over card groups together when there are several. */
+  group?: "mission" | "trophy";
+  /** Stars it paid (missions). */
+  stars?: number;
+  /** What was won, without the rest of the line (trophies). */
+  name?: string;
 }

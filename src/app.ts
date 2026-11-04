@@ -19,7 +19,7 @@ import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
-import { $, closeModal, esc, openModalEl, replay, swatchHtml, toast, vibrate, wireTabs } from "./ui/dom";
+import { $, closeModal, displayName, esc, openModalEl, replay, swatchHtml, toast, vibrate, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
@@ -29,6 +29,7 @@ import { refreshPass, unclaimed } from "./logic/pass";
 import type { CrystalPack, Product } from "./data/premium";
 import type { PackPurchase } from "./payments";
 import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { resolveLang, setLang, t, tn, translateDom } from "./i18n";
 import { backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
@@ -36,11 +37,10 @@ type State = "menu" | "playing" | "paused" | "rescue" | "over";
 const RESCUE_TIME = 5;
 const NO_BOOSTS: ActiveBoosts = { rewind: false, xp: false, gold: false };
 
-const FLOOR_TAGS: Record<Exclude<FloorKind, "normal">, string> = {
-  gold: "Gold penthouse · a perfect drop pays 5x",
-  ice: "Icy floor · slides fast, holds 50% more people",
-  garden: "Garden terrace · slow, and widens your tower",
-};
+const floorTag = (kind: Exclude<FloorKind, "normal">): string =>
+  kind === "gold" ? t("Gold penthouse · a perfect drop pays 5x")
+  : kind === "ice" ? t("Icy floor · slides fast, holds 50% more people")
+  : t("Garden terrace · slow, and widens your tower");
 
 function openStorage(): Storage | null {
   try {
@@ -108,6 +108,8 @@ export class App implements DailyHost {
 
   constructor(logoSvg: string) {
     this.save = loadSave(this.storage);
+    setLang(resolveLang(this.save.settings.lang));
+    translateDom();
     refreshMissions(this.save);
     if (!this.save.playerId) this.save.playerId = newPlayerId();
     if (!isSkinUnlocked(this.save, skinById(this.save.skin))) this.save.skin = "glass";
@@ -212,13 +214,27 @@ export class App implements DailyHost {
     else if (this.state === "over") this.renderCorners();
   }
 
+  /** The language setting changed: redraws the page's text in the new language. */
+  applyLang(): void {
+    if (!setLang(resolveLang(this.save.settings.lang))) return;
+    translateDom();
+    this.sheets.rerenderOpen();
+    this.daily.rerenderOpen();
+    this.tag = "";
+    this.hint = "";
+    if (this.state === "playing" || this.state === "paused" || this.state === "rescue") { this.updateHud(false); this.updateHint(); }
+    if (this.state === "paused") this.pauseText();
+    if (this.state === "over" && this.overReady && !this.peek) this.showOver();
+    this.refresh();
+  }
+
   /** Buys a crystal pack with real money. */
   async buyPack(pack: CrystalPack): Promise<void> {
     const pay = this.payments;
     if (!pay) return;
     this.sound.ensure();
     const r = await pay.buy(pack, this.save.playerId);
-    if (r === "error") toast("Couldn't open the checkout. Check your connection and try again.");
+    if (r === "error") toast(t("Couldn't open the checkout. Check your connection and try again."));
   }
 
   /** A pack purchase finished: add its crystals (once per transaction). */
@@ -227,7 +243,7 @@ export class App implements DailyHost {
     if (!added) return false;
     this.persist();
     this.sound.purchase();
-    toast(test ? `Test purchase: +${fmt(added)} 💎 Sky Crystals. Nothing was charged.` : `+${fmt(added)} 💎 Sky Crystals. Thanks for supporting Skyrise!`);
+    toast(test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }));
     this.refresh();
     this.sheets?.refreshShop();
     this.daily?.refreshPass();
@@ -241,11 +257,11 @@ export class App implements DailyHost {
   /** Spends crystals on a premium item. */
   buyItem(product: Product): void {
     const r = buyWithCrystals(this.save, product.id);
-    if (r === "short") { toast("Not enough Sky Crystals"); this.sheets.openShop("crystals"); return; }
+    if (r === "short") { toast(t("Not enough Sky Crystals")); this.sheets.openShop("crystals"); return; }
     if (r !== "ok") return;
     this.persist();
     this.sound.purchase();
-    toast(`Unlocked: ${product.name}`);
+    toast(t("Unlocked: {name}", { name: t(product.name) }));
     this.refresh();
   }
 
@@ -257,8 +273,8 @@ export class App implements DailyHost {
       const u = new URL(location.href);
       u.searchParams.delete("purchase");
       history.replaceState(null, "", u.toString());
-      if (returned === "cancelled") toast("Purchase cancelled. You weren't charged.");
-      else toast("Thanks for supporting Skyrise! Adding your crystals…");
+      if (returned === "cancelled") toast(t("Purchase cancelled. You weren't charged."));
+      else toast(t("Thanks for supporting Skyrise! Adding your crystals…"));
     }
     const pay = this.payments;
     if (!pay?.purchases) return;
@@ -283,8 +299,8 @@ export class App implements DailyHost {
     await this.online.submit(this.save, rec, () => this.persist());
     const r = this.online.lastRanks;
     if (!r || this.state !== "over" || this.recorder?.rec !== rec) return;
-    const line = rec.mode === "daily" && r.daily ? `🌍 #${fmt(r.daily)} worldwide on today's Daily`
-      : r.week ? `🌍 Your best this week is #${fmt(r.week)} worldwide` : "";
+    const line = rec.mode === "daily" && r.daily ? t("🌍 #{n} worldwide on today's Daily", { n: fmt(r.daily) })
+      : r.week ? t("🌍 Your best this week is #{n} worldwide", { n: fmt(r.week) }) : "";
     if (line) $("over-world").textContent = line;
     $("over-world").hidden = !line;
   }
@@ -396,7 +412,7 @@ export class App implements DailyHost {
       if (isOpen(this.save, "shop")) { this.sheets.openShop(); return; }
       this.sound.ensure();
       this.sound.click();
-      toast(`You have ${this.save.stars} ★. The star shop opens after your ${this.ordinal(3)} tower.`);
+      toast(t("You have {n} ★. The star shop opens after your 3rd tower.", { n: this.save.stars }));
     });
     $("settings-btn").addEventListener("click", () => this.sheets.openSettings());
     $("restore-link").addEventListener("click", () => {
@@ -455,10 +471,6 @@ export class App implements DailyHost {
     if (!on && this.state === "over") { this.renderCorners(); $("over").hidden = false; }
   }
 
-  private ordinal(n: number): string {
-    return `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
-  }
-
   private key(e: KeyboardEvent): void {
     const modal = openModalEl();
     if (modal) {
@@ -500,7 +512,7 @@ export class App implements DailyHost {
     this.persist();
     this.sound.ensure();
     this.sound.click();
-    toast(skinById(this.save.skin).name);
+    toast(t(skinById(this.save.skin).name));
     this.refresh();
   }
 
@@ -540,10 +552,10 @@ export class App implements DailyHost {
     this.sound.duck(false);
     this.updateHud(false);
     this.updateHint();
-    const used = BOOSTS.filter(b => this.boosts[b.id]).map(b => b.name);
-    if (challenge) this.banner("Challenge", challenge.text);
-    else if (used.length) this.banner("Boosts on", used.join(" · "));
-    else if (mode === "daily") this.banner(`Daily tower #${dayNumber()}`, "Same tower for everyone");
+    const used = BOOSTS.filter(b => this.boosts[b.id]).map(b => t(b.name));
+    if (challenge) this.banner(t("Challenge"), t(challenge.text));
+    else if (used.length) this.banner(t("Boosts on"), used.join(" · "));
+    else if (mode === "daily") this.banner(t("Daily tower #{n}", { n: dayNumber() }), t("Same tower for everyone"));
   }
 
   private goToMenu(): void {
@@ -566,9 +578,13 @@ export class App implements DailyHost {
     this.state = "paused";
     this.sound.duck(true);
     $("finish-zen").hidden = this.mode !== "zen";
-    $("pause-sub").textContent = this.mode === "zen" ? "Take your time." : `${fmt(this.sim.score)} people · ${this.sim.meters} m so far`;
+    this.pauseText();
     $("pause-menu").hidden = false;
     $("resume").focus();
+  }
+
+  private pauseText(): void {
+    $("pause-sub").textContent = this.mode === "zen" ? t("Take your time.") : t("{people} people · {m} m so far", { people: fmt(this.sim.score), m: this.sim.meters });
   }
 
   private resume(): void {
@@ -586,7 +602,7 @@ export class App implements DailyHost {
     this.renderer.fx.shake = 0.4;
     $("pause").hidden = true;
     const left = this.sim.rewindsLeft;
-    $("rescue-sub").textContent = left > 1 ? `You have ${left} rewinds left in this tower.` : "You have one rewind left in this tower.";
+    $("rescue-sub").textContent = left > 1 ? t("You have {n} rewinds left in this tower.", { n: left }) : t("You have one rewind left in this tower.");
     $("rescue").hidden = false;
     $("rewind").focus();
   }
@@ -600,7 +616,7 @@ export class App implements DailyHost {
     $("pause").hidden = false;
     this.state = "playing";
     this.sound.rewind();
-    this.renderer.fx.popup("REWIND", "Try that floor again", this.sim.stack.length + 1, "#8ce99a", 1.2);
+    this.renderer.fx.popup(t("REWIND"), t("Try that floor again"), this.sim.stack.length + 1, "#8ce99a", 1.2);
     this.updateHud(false);
   }
 
@@ -677,16 +693,16 @@ export class App implements DailyHost {
       fx.startRipple(rx / view.W, ry / view.H, f.kind === "gold" ? 1 : out.combo >= 5 ? 0.75 : 0.45);
       const gold = f.kind === "gold";
       fx.sparkle(f, gold ? 46 : 22, gold ? GOLD : f.kind === "ice" ? "#d8f4ff" : f.kind === "garden" ? "#b8f5a0" : "#ffffff");
-      fx.popup(gold ? `PENTHOUSE +${out.points}` : out.combo > 1 ? `PERFECT x${out.combo}` : "PERFECT", gold ? "" : `+${out.points}`, f.y + 1, gold ? GOLD : "#ffffff");
+      fx.popup(gold ? t("PENTHOUSE +{n}", { n: out.points }) : out.combo > 1 ? t("PERFECT x{n}", { n: out.combo }) : t("PERFECT"), gold ? "" : `+${out.points}`, f.y + 1, gold ? GOLD : "#ffffff");
       if (gold) { s.golden(); fx.whiteFlash = 0.35; } else s.perfect(out.combo);
       if (out.combo === 5 || out.combo === 10 || out.combo === 20) {
-        fx.popup(out.combo >= 10 ? "UNSTOPPABLE!" : "ON FIRE!", "", f.y + 2.2, "#ffb13b", 1.4, true);
+        fx.popup(out.combo >= 10 ? t("UNSTOPPABLE!") : t("ON FIRE!"), "", f.y + 2.2, "#ffb13b", 1.4, true);
         s.streak();
       }
       vibrate(vib, gold ? [20, 30, 20] : 20);
     } else {
       // New builders get told which way they missed, to learn the timing.
-      const coach = this.save.profile.towers < 8 && this.timing ? (this.timing === "early" ? "A bit early" : "A bit late") : "";
+      const coach = this.save.profile.towers < 8 && this.timing ? (this.timing === "early" ? t("A bit early") : t("A bit late")) : "";
       fx.popup(`+${out.points}`, coach, f.y + 1, "#ffffff", coach ? 1 : 0.8);
       if (out.piece && out.side) {
         const d = this.debrisFrom(out.piece, out.side, 2.5, 1.2);
@@ -698,17 +714,17 @@ export class App implements DailyHost {
       vibrate(vib, 8);
     }
     if (f.kind === "ice") s.ice();
-    if (f.kind === "garden") { s.garden(); fx.popup("TERRACE", "Your tower grew wider", f.y + 2.1, "#b8f5a0", 1.2); }
+    if (f.kind === "garden") { s.garden(); fx.popup(t("TERRACE"), t("Your tower grew wider"), f.y + 2.1, "#b8f5a0", 1.2); }
     fx.dust(f);
     fx.bounce = 1;
     fx.punch = Math.max(fx.punch, 0.25);
     this.updateHud(true);
     if (out.landmark !== undefined) {
-      this.banner("Landmark passed", `Taller than ${MILESTONES[out.landmark].name}!`);
+      this.banner(t("Landmark passed"), t("Taller than {name}!", { name: t(MILESTONES[out.landmark].name) }));
       setTimeout(() => s.milestone(), 120);
     }
     if (out.windStarts) {
-      this.banner("Wind ahead", "Gusts speed floors up and slow them down");
+      this.banner(t("Wind ahead"), t("Gusts speed floors up and slow them down"));
       s.wind();
     }
     if (this.mode === "challenge" && this.sim.goalReached()) {
@@ -730,10 +746,10 @@ export class App implements DailyHost {
     const i = MILESTONES.findIndex(ms => ms.m >= m);
     if (i >= 0) {
       const prev = i > 0 ? MILESTONES[i - 1].m : 0;
-      $("next").textContent = `${shortName(MILESTONES[i].name)} · ${MILESTONES[i].m} m`;
+      $("next").textContent = `${shortName(t(MILESTONES[i].name))} · ${MILESTONES[i].m} m`;
       $("bar").style.width = `${clamp((m - prev) / (MILESTONES[i].m - prev), 0, 1) * 100}%`;
     } else {
-      $("next").textContent = "Taller than every landmark";
+      $("next").textContent = t("Taller than every landmark");
       $("bar").style.width = "100%";
     }
     $("wind").hidden = !sim.mover || sim.windFor(sim.mover.y) <= 0;
@@ -743,7 +759,7 @@ export class App implements DailyHost {
     if (c) {
       const g = c.goal;
       const have = g.type === "height" ? m : g.type === "streak" ? sim.bestStreak : sim.penthouses;
-      const label = g.type === "height" ? `Goal: taller than <b>${g.n} m</b>` : g.type === "streak" ? `Goal: perfect streak of <b>${g.n}</b>` : `Goal: <b>${g.n}</b> perfect penthouses`;
+      const label = g.type === "height" ? t("Goal: taller than <b>{n} m</b>", { n: g.n }) : g.type === "streak" ? t("Goal: perfect streak of <b>{n}</b>", { n: g.n }) : t("Goal: <b>{n}</b> perfect penthouses", { n: g.n });
       goal.innerHTML = `${label} · ${Math.min(have, g.type === "height" ? g.n + 1 : g.n)}${g.type === "height" ? " m" : ""}`;
     }
 
@@ -756,7 +772,7 @@ export class App implements DailyHost {
       el.hidden = !tag;
       if (tag) {
         el.className = tag;
-        el.textContent = FLOOR_TAGS[kind as Exclude<FloorKind, "normal">];
+        el.textContent = floorTag(kind as Exclude<FloorKind, "normal">);
         replay(el, tag);
       }
     }
@@ -767,9 +783,9 @@ export class App implements DailyHost {
     let text = "";
     if (this.tutorial && this.state === "playing" && this.mode !== "zen") {
       const n = this.sim.stack.length;
-      if (n <= 2) text = "Tap when the sliding floor lines up with the one below";
-      else if (n <= 4) text = "Overhangs break off. Wider floors fit more people!";
-      else if (n <= 6) text = "Perfect drops add bonus people and keep floors wide";
+      if (n <= 2) text = t("Tap when the sliding floor lines up with the one below");
+      else if (n <= 4) text = t("Overhangs break off. Wider floors fit more people!");
+      else if (n <= 6) text = t("Perfect drops add bonus people and keep floors wide");
     }
     if (text === this.hint) return;
     this.hint = text;
@@ -815,17 +831,17 @@ export class App implements DailyHost {
     $("rules").hidden = p.towers >= 3;
     const friend = $("menu-challenge");
     friend.hidden = !this.friendScore;
-    friend.innerHTML = `A friend housed <b>${fmt(this.friendScore)}</b> people. Can you beat them?`;
+    friend.innerHTML = t("A friend housed <b>{n}</b> people. Can you beat them?", { n: fmt(this.friendScore) });
     $("install-chip").hidden = !this.installPrompt || p.towers < 3;
     $("restore-link").hidden = p.towers > 0 || this.online.kind !== "global";
     const n = boostCount(save), note = $("boost-note");
     note.hidden = !n;
-    note.textContent = `⚡ ${BOOSTS.filter(b => save.boosts[b.id]).map(b => b.name).join(" · ")} on your next tower`;
+    note.textContent = t("⚡ {boosts} on your next tower", { boosts: BOOSTS.filter(b => save.boosts[b.id]).map(b => t(b.name)).join(" · ") });
 
     // One button collects everything that's waiting.
     const waiting = this.waitingRewards(now), cc = $("collect-chip");
     cc.hidden = !waiting.length;
-    cc.textContent = waiting.length === 1 ? waiting[0] : `🎁 Collect ${waiting.length} rewards`;
+    cc.textContent = waiting.length === 1 ? waiting[0] : t("🎁 Collect {n} rewards", { n: waiting.length });
 
     // Modes and the dock show just an icon and a name; a dot marks something new or waiting.
     const show = (id: string, visible: boolean, dot: boolean) => {
@@ -844,7 +860,7 @@ export class App implements DailyHost {
     refreshPass(save, now);
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && p.towers >= 1, false);
-    $("daily-title").textContent = `Daily #${dayNumber(now)}`;
+    $("daily-title").textContent = t("Daily #{n}", { n: dayNumber(now) });
     $("modes").hidden = [...$("modes").children].every(c => (c as HTMLElement).hidden);
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
     void this.renderStatus(now);
@@ -853,12 +869,12 @@ export class App implements DailyHost {
   /** Labels for everything ready to collect: the daily gift, rent, the chest, the league reward. */
   private waitingRewards(now: number): string[] {
     const save = this.save, out: string[] = [];
-    if (save.profile.towers >= 1 && giftState(save.profile.gift).ready) out.push("🎁 Open your daily gift");
+    if (save.profile.towers >= 1 && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
     const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0;
-    if (rent >= 1) out.push(`🪙 Collect ${fmt(rent)} coins`);
-    if (chestReady(save, now)) out.push("🧰 Open today's chest");
+    if (rent >= 1) out.push(t("🪙 Collect {n} coins", { n: fmt(rent) }));
+    if (chestReady(save, now)) out.push(t("🧰 Open today's chest"));
     const lr = pendingLeagueReward(save, now);
-    if (lr) out.push(`🏆 Claim your ${lr.league} league reward`);
+    if (lr) out.push(t("🏆 Claim your {league} league reward", { league: t(lr.league) }));
     return out;
   }
 
@@ -868,18 +884,18 @@ export class App implements DailyHost {
     const save = this.save, lines: string[] = [];
     const gift = this.sheets.claimGift();
     if (gift) {
-      lines.push(`🎁 Day ${gift.day} gift · +${gift.stars} ★`);
-      for (const t of gift.trophies) lines.push(`🏅 Trophy: ${t} · +1 ★`);
+      lines.push(t("🎁 Day {day} gift · +{n} ★", { day: gift.day, n: gift.stars }));
+      for (const name of gift.trophies) lines.push(t("🏅 Trophy: {name} · +1 ★", { name }));
     }
     $("gift-track").hidden = !gift;
     if (isOpen(save, "city")) {
       const r = collectRent(save);
-      if (r) lines.push(`🪙 Rent · +${fmt(r)} coins`);
+      if (r) lines.push(t("🪙 Rent · +{n} coins", { n: fmt(r) }));
     }
     const c = claimChest(save);
-    if (c) lines.push(`🧰 Mission chest · +${c.stars} ★ · +${c.coins} coins · +100 pass XP`);
+    if (c) lines.push(t("🧰 Mission chest · +{stars} ★ · +{coins} coins · +100 pass XP", { stars: c.stars, coins: c.coins }));
     const lr = claimLeagueReward(save);
-    if (lr) lines.push(`🏆 ${lr.league} league · +${lr.stars} ★`);
+    if (lr) lines.push(t("🏆 {league} league · +{n} ★", { league: t(lr.league), n: lr.stars }));
     this.persist();
     if (lines.length) {
       const list = $("reward-lines");
@@ -907,18 +923,18 @@ export class App implements DailyHost {
     let text = "", kind = "";
     if (save.profile.towers >= 1 && sv.atRisk) {
       kind = "risk";
-      text = sv.needsFreeze ? `🧊 Build today: a freeze will save your ${sv.count}-day streak` : `🔥 Build today to keep your ${sv.count}-day streak`;
+      text = sv.needsFreeze ? t("🧊 Build today: a freeze will save your {n}-day streak", { n: sv.count }) : t("🔥 Build today to keep your {n}-day streak", { n: sv.count });
     } else {
       const r = this.online.ready && save.profile.towers >= 1 ? this.online.rival(dayNumber(now), weekIndex(now)) : null;
       if (r) {
-        const who = this.online.kind === "friends" ? (await this.online.names([r.id]))[r.id] : r.name;
+        const who = displayName(this.online.kind === "friends" ? (await this.online.names([r.id]))[r.id] : r.name);
         if (token !== this.statusToken) return;
         kind = "rival";
-        text = r.rank === 0 ? `🏁 ${who} leads today's Daily. Your turn!` : `⚔️ #${r.rank} of ${r.of} today · ${who} is ${fmt(r.gap)} ahead`;
+        text = r.rank === 0 ? t("🏁 {who} leads today's Daily. Your turn!", { who }) : t("⚔️ #{rank} of {of} today · {who} is {gap} ahead", { rank: r.rank, of: r.of, who, gap: fmt(r.gap) });
       } else if (isOpen(save, "daily")) {
         kind = "event";
         // Short enough for one line on small phones; tapping it explains the event.
-        text = `✨ This week: ${eventFor(now).name} · tap to see`;
+        text = t("✨ This week: {name} · tap to see", { name: t(eventFor(now).name) });
       }
     }
     el.dataset.kind = kind;
@@ -933,14 +949,14 @@ export class App implements DailyHost {
     else if (kind === "event") {
       this.sound.ensure();
       this.sound.click();
-      toast(`${eventFor().name}: ${eventFor().text}. ${duration(eventEndsIn())} left, in Classic and Daily towers.`);
+      toast(t("{name}: {text}. {time} left, in Classic and Daily towers.", { name: t(eventFor().name), text: t(eventFor().text), time: duration(eventEndsIn()) }));
     }
   }
 
   /** " · #2 of 5 today" once the leaderboard has this tower. */
   private dailyRank(): string {
     const p = this.online.ready ? this.online.dailyPlace(dayNumber(), this.save.daily.best) : null;
-    return p && p.of > 1 ? ` · #${fmt(p.rank)} of ${fmt(p.of)} today` : "";
+    return p && p.of > 1 ? t(" · #{rank} of {of} today", { rank: fmt(p.rank), of: fmt(p.of) }) : "";
   }
 
   // ---------- Game over ----------
@@ -950,15 +966,15 @@ export class App implements DailyHost {
     const c = this.challenge, mode = this.mode;
     const won = !!c && sim.goalReached();
     const eyebrow = $("over-eyebrow");
-    eyebrow.textContent = c ? (won ? "Challenge complete!" : "Challenge failed")
-      : mode === "zen" ? "Zen tower" : mode === "daily" ? `Daily tower #${dayNumber()}` : o.newBest ? "New best!" : "Tower complete";
+    eyebrow.textContent = c ? (won ? t("Challenge complete!") : t("Challenge failed"))
+      : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: dayNumber() }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
     $("over-people").textContent = fmt(sim.score);
-    $("over-sub").textContent = `people live in your ${sim.meters} m tower`;
-    $("over-landmark").textContent = c ? c.text
-      : mode === "daily" ? `Today's best: ${fmt(o.dailyBest)} people${o.newBest ? " · New all-time best!" : ""}${this.dailyRank()}`
-      : sim.lastLandmark >= 0 ? `Taller than ${MILESTONES[sim.lastLandmark].name}`
-      : mode === "zen" ? "Zen towers don't count toward bests" : `Best: ${fmt(save.best)} people`;
+    $("over-sub").textContent = t("people live in your {m} m tower", { m: sim.meters });
+    $("over-landmark").textContent = c ? t(c.text)
+      : mode === "daily" ? t("Today's best: {n} people", { n: fmt(o.dailyBest) }) + (o.newBest ? t(" · New all-time best!") : "") + this.dailyRank()
+      : sim.lastLandmark >= 0 ? t("Taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) })
+      : mode === "zen" ? t("Zen towers don't count toward bests") : t("Best: {n} people", { n: fmt(save.best) });
     $("stat-floors").textContent = String(sim.level);
     $("stat-perfect").textContent = String(sim.perfects);
     $("stat-streak").textContent = String(sim.bestStreak);
@@ -978,13 +994,13 @@ export class App implements DailyHost {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "btn btn-secondary try-skin";
-      b.innerHTML = `<span class="swatch">${swatchHtml(fresh.swatch ?? fresh.floors)}</span> Use ${esc(fresh.name)} next time`;
+      b.innerHTML = `<span class="swatch">${swatchHtml(fresh.swatch ?? fresh.floors)}</span> ${esc(t("Use {name} next time", { name: t(fresh.name) }))}`;
       b.addEventListener("click", () => {
         save.skin = fresh.id;
         this.persist();
         this.sound.click();
         b.disabled = true;
-        b.textContent = `${fresh.name} is on for your next tower`;
+        b.textContent = t("{name} is on for your next tower", { name: t(fresh.name) });
       });
       rewards.appendChild(b);
     }
@@ -993,7 +1009,7 @@ export class App implements DailyHost {
     const near = $("over-near");
     near.hidden = !o.near || !!c;
     near.textContent = o.near;
-    $("xp-level").textContent = `Builder level ${o.xp.level}`;
+    $("xp-level").textContent = t("Builder level {n}", { n: o.xp.level });
     $("xp-gain").textContent = `+${o.xp.gained} XP${sim.cfg.xpMultiplier && sim.cfg.xpMultiplier > 1 ? ` (x${sim.cfg.xpMultiplier})` : ""}`;
     const bar = $("xp-bar");
     bar.style.transition = "none";
@@ -1009,17 +1025,17 @@ export class App implements DailyHost {
       const beat = sim.score > this.friendScore;
       versus.classList.toggle("won", beat);
       versus.textContent = beat
-        ? `You beat your friend's ${fmt(this.friendScore)} people!`
-        : `Your friend's tower: ${fmt(this.friendScore)} people. ${fmt(this.friendScore - sim.score + 1)} more to win.`;
+        ? t("You beat your friend's {n} people!", { n: fmt(this.friendScore) })
+        : t("Your friend's tower: {n} people. {more} more to win.", { n: fmt(this.friendScore), more: fmt(this.friendScore - sim.score + 1) });
     }
     const next = won ? nextChallenge(save) : undefined;
     const again = $("again"), nb = $("next-challenge");
-    again.textContent = c ? "Try again" : "Build again";
+    again.textContent = c ? t("Try again") : t("Build again");
     // After a won challenge the next one is the main action.
     again.className = `btn ${next ? "btn-secondary" : "btn-primary"}`;
     nb.className = `btn ${next ? "btn-primary" : "btn-secondary"} wide`;
     nb.hidden = !next;
-    if (next) nb.textContent = `Next challenge: ${next.name}`;
+    if (next) nb.textContent = t("Next challenge: {name}", { name: t(next.name) });
     $("share").hidden = mode === "challenge";
     $("over-actions").classList.toggle("single", mode === "challenge");
     this.renderCorners();
@@ -1029,32 +1045,31 @@ export class App implements DailyHost {
   /** Groups the outcome into a few short lines so the card stays compact on phones. */
   private rewardLines(o: RunOutcome): { cls: string; text: string }[] {
     const lines: { cls: string; text: string }[] = [];
-    const stars = (text: string) => Number(/\(\+(\d+) ★\)/.exec(text)?.[1] ?? 0);
-    const missions = o.rewards.filter(r => r.text.startsWith("Mission complete"));
-    const trophies = o.rewards.filter(r => r.text.startsWith("Trophy: "));
+    const missions = o.rewards.filter(r => r.group === "mission");
+    const trophies = o.rewards.filter(r => r.group === "trophy");
     for (const r of o.rewards) {
       if (missions.includes(r) || trophies.includes(r)) continue;
       lines.push({ cls: r.kind === "star" ? "reward star" : r.kind === "pass" ? "reward new" : "reward", text: r.text });
     }
     if (missions.length === 1) lines.push({ cls: "reward star", text: missions[0].text });
     if (missions.length > 1) {
-      lines.push({ cls: "reward star", text: `${missions.length} missions complete (+${missions.reduce((n, r) => n + stars(r.text), 0)} ★)` });
+      lines.push({ cls: "reward star", text: t("{n} missions complete (+{stars} ★)", { n: missions.length, stars: missions.reduce((n, r) => n + (r.stars ?? 0), 0) }) });
     }
     if (trophies.length) {
-      const names = trophies.map(r => r.text.replace(/^Trophy: /, "").replace(/ \(\+\d+ ★\)$/, ""));
-      lines.push({ cls: "reward star", text: `Troph${names.length > 1 ? "ies" : "y"}: ${names.join(", ")} (+${trophies.length} ★)` });
+      const names = trophies.map(r => r.name ?? "").join(", ");
+      lines.push({ cls: "reward star", text: tn(trophies.length, "Trophy: {names} (+{n} ★)", "Trophies: {names} (+{n} ★)", { names }) });
     }
     if (this.opened.length) {
-      lines.push({ cls: "reward new", text: `Now on the main menu: ${this.opened.map(f => FEATURE_NAMES[f]).join(", ")}` });
+      lines.push({ cls: "reward new", text: t("Now on the main menu: {list}", { list: this.opened.map(f => t(FEATURE_NAMES[f])).join(", ") }) });
     }
     return lines;
   }
 
   private shareText(): string {
     const sim = this.sim;
-    const ms = sim.lastLandmark >= 0 ? `, taller than ${MILESTONES[sim.lastLandmark].name}` : "";
-    if (this.mode === "daily") return `Skyrise Daily #${dayNumber()}: ${fmt(sim.score)} people in a ${sim.meters} m tower${ms}. Can you beat it today?`;
-    return `My Skyrise tower is ${sim.meters} m tall${ms}, with ${fmt(sim.score)} people living in it. Can you build a bigger one?`;
+    const ms = sim.lastLandmark >= 0 ? t(", taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) }) : "";
+    if (this.mode === "daily") return t("Skyrise Daily #{day}: {n} people in a {m} m tower{landmark}. Can you beat it today?", { day: dayNumber(), n: fmt(sim.score), m: sim.meters, landmark: ms });
+    return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
   }
 
   private async share(): Promise<void> {
@@ -1078,7 +1093,7 @@ export class App implements DailyHost {
     }
     try {
       await navigator.clipboard.writeText(full);
-      toast("Copied! Paste it to a friend");
+      toast(t("Copied! Paste it to a friend"));
     } catch {
       toast(full);
     }
@@ -1128,7 +1143,7 @@ export class App implements DailyHost {
         $("gust").style.width = `${clamp((ahead - 0.45) / 1.1, 0.05, 1) * 100}%`;
         const strong = ahead > 1.25;
         $("wind").classList.toggle("strong", strong);
-        const label = strong ? "Gust coming" : ahead < 0.75 ? "Calm" : "Wind";
+        const label = strong ? t("Gust coming") : ahead < 0.75 ? t("Calm") : t("Wind");
         if ($("wind-label").textContent !== label) $("wind-label").textContent = label;
       }
     }
@@ -1181,7 +1196,7 @@ export class App implements DailyHost {
     });
     if (this.captureShare) {
       this.captureShare = false;
-      const sim = this.sim, tag = this.mode === "daily" ? `Daily #${dayNumber()}` : "";
+      const sim = this.sim, tag = this.mode === "daily" ? t("Daily #{n}", { n: dayNumber() }) : "";
       void makeShareImage(this.renderer.output, this.renderer.view, {
         score: sim.score, meters: sim.meters, floors: sim.level, landmark: sim.lastLandmark, tag,
       }).then(b => { this.shareBlob = b; });

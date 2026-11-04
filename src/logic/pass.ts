@@ -4,6 +4,7 @@ import { CHEST_PASS_XP, freeReward, PASS_TIERS, premiumReward, seasonIndex, XP_P
 import { MAX_BOOSTS } from "../data/shop";
 import { skinById } from "../data/skins";
 import { fmt } from "../core/util";
+import { t } from "../i18n";
 import type { SaveData } from "./save";
 
 /** Starts a fresh pass when a new season begins. */
@@ -36,11 +37,11 @@ export function giveReward(save: SaveData, r: PassReward): void {
 }
 
 export function rewardText(r: PassReward): string {
-  if (r.skin) return `${skinById(r.skin).name} skin`;
-  if (r.crystals) return `${r.crystals} Sky Crystals`;
+  if (r.skin) return t("{name} skin", { name: t(skinById(r.skin).name) });
+  if (r.crystals) return t("{n} Sky Crystals", { n: r.crystals });
   if (r.stars) return `${r.stars} ★`;
-  if (r.boost) return { rewind: "Extra rewind", xp: "Double XP", gold: "Gold rush" }[r.boost];
-  return `${fmt(r.coins ?? 0)} coins`;
+  if (r.boost) return { rewind: t("Extra rewind"), xp: t("Double XP"), gold: t("Gold rush") }[r.boost];
+  return t("{n} coins", { n: fmt(r.coins ?? 0) });
 }
 
 export type Track = "free" | "prem";

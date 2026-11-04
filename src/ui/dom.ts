@@ -1,5 +1,6 @@
 // Small DOM helpers shared by the screens.
 import { haptic } from "../native";
+import { t } from "../i18n";
 
 export function $<T extends HTMLElement = HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -18,6 +19,14 @@ export function replay(el: HTMLElement, cls: string): void {
   el.classList.remove(cls);
   void el.offsetWidth;
   el.classList.add(cls);
+}
+
+/** Default names from the rankings ("Builder", "Builder 7QX2", "You", "Hidden player") in
+ *  this language. Names players chose are left alone. */
+export function displayName(name: string): string {
+  if (name === "You" || name === "Hidden player" || name === "Builder") return t(name);
+  const m = /^Builder ([A-Z0-9]{4})$/.exec(name);
+  return m ? `${t("Builder")} ${m[1]}` : name;
 }
 
 let toastTimer = 0;

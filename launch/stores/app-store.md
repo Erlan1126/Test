@@ -133,3 +133,77 @@ and tax details (Business → Agreements). Without it, purchases won't load.
 > the monthly Sky Pass premium track (Pass button). Everything is cosmetic and nothing is
 > random: players always see exactly what they get. No account is needed. The worldwide
 > leaderboard (Ranks button) shows a nickname the player chooses.
+
+## Spanish (Mexico) localization
+
+The game switches to Spanish automatically on iPhones set to any Spanish language, so the
+store page should too. In App Store Connect, open the app → the language menu at the top
+right of **App Information** → add **Spanish (Mexico)** (and, if you like, **Spanish
+(Spain)** with the same text). Then fill these fields for that language, on both the App
+Information page and the version page. Everything else (screenshots, review notes, prices)
+is shared with English unless you change it.
+
+| Field | Value |
+|---|---|
+| Name (30 max) | Skyrise: Construye Torres |
+| Subtitle (30 max) | `Apila pisos. Toca el cielo.` |
+
+**Promotional text** (170 max):
+
+> Nuevo: misiones diarias, racha de juego y ligas semanales. ¿Qué tan alto puedes construir?
+
+**Description:**
+
+> Construye el rascacielos más alto del mundo, un toque a la vez.
+>
+> Un piso se desliza de un lado a otro sobre tu torre. Toca para soltarlo. Lo que
+> sobresale del borde se cae, así que cada error hace tu torre más angosta. Colócalo
+> perfecto y el piso conserva todo su ancho, y en pisos más anchos cabe más gente.
+>
+> SUPERA MONUMENTOS REALES
+> Las Cataratas del Niágara, la Estatua de la Libertad, la Gran Pirámide, la Torre Eiffel,
+> el Empire State y el Burj Khalifa. El siguiente aparece junto a tu torre mientras subes.
+>
+> PISOS ESPECIALES
+> Los penthouses dorados pagan 5x si los colocas perfecto. Los pisos de hielo se deslizan
+> rápido pero caben más personas. Las terrazas jardín van lento y vuelven a ensanchar tu torre.
+>
+> ALGO NUEVO CADA DÍA
+> Una torre diaria igual para todos, tres misiones y un cofre de premios, una racha de
+> juego con protectores para los días libres, renta de tu torre y una liga semanal de
+> Bronce a Leyenda. Activa el recordatorio diario para no perder nunca tu racha.
+>
+> TU PROPIA ISLA FLOTANTE
+> Casas, una granja, un lago y una cascada, y una ciudad que construyes con monedas: un
+> café, un molino, un faro, una plataforma de cohetes y más.
+>
+> UN CIELO QUE CAMBIA MIENTRAS SUBES
+> El día se vuelve atardecer y noche, con ventanas encendidas, luciérnagas, auroras,
+> lluvia, nieve y relámpagos. Aviones, dirigibles y satélites pasan a su propia altura.
+>
+> JUEGA A TU MANERA
+> Clásico, Diaria, un modo Zen relajante en el que no puedes perder, y seis desafíos de
+> monumentos. Decenas de aspectos de torre, islas, trofeos y niveles de constructor.
+>
+> Gratis y sin anuncios. Los aspectos e islas premium son opcionales, solo cambian cómo
+> se ve el juego y nunca te ayudan a puntuar.
+
+**Keywords** (100 max, commas, no spaces after commas):
+
+`torre,apilar,edificio,rascacielos,construir,ciudad,bloques,casual,relajante,arcade,isla,un toque`
+
+(That's 96 characters.)
+
+**In-app purchases:** open each pack → **App Store Localization** → add Spanish (Mexico):
+
+| Product ID | Display name | Description (55 max) |
+|---|---|---|
+| crystals_200 | 200 Cristales Celestes | Una bolsa de Cristales Celestes |
+| crystals_650 | 650 Cristales Celestes | 600 Cristales Celestes + 8% extra |
+| crystals_1250 | 1,250 Cristales Celestes | 1,100 Cristales Celestes + 14% extra |
+| crystals_2600 | 2,600 Cristales Celestes | 2,100 Cristales Celestes + 24% extra |
+| crystals_8000 | 8,000 Cristales Celestes | 6,000 Cristales Celestes + 33% extra |
+| crystals_14000 | 14,000 Cristales Celestes | 10,000 Cristales Celestes + 40% extra |
+
+The privacy policy URL is shared across languages; a Spanish copy is in `../privacy-es.md`
+if you want to publish it as well.

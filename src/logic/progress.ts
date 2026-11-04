@@ -1,6 +1,7 @@
 // What a finished tower changes in the save: bests, missions, trophies, XP and levels,
 // stars, challenges, history and unlocks. Pure functions over SaveData, so they're tested.
 import { fmt, listNames } from "../core/util";
+import { t, tn } from "../i18n";
 import { challengeById, CHALLENGES } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
 import { ISLAND_THEMES, ISLAND_UPGRADES, type IslandTheme } from "../data/islands";
@@ -32,12 +33,12 @@ export const unlockedSkinCount = (save: SaveData): number => SKINS.filter(s => i
 
 export function skinUnlockText(skin: Skin): string {
   if (!skin.unlock) return "";
-  if ("price" in skin.unlock) return `Buy it in the shop for ${skin.unlock.price} ★`;
-  if ("streak" in skin.unlock) return `Play ${skin.unlock.streak} days in a row`;
-  if ("product" in skin.unlock) return "Get it with Sky Crystals in the shop";
-  if ("pass" in skin.unlock) return `A Sky Pass reward (${skin.unlock.pass} season)`;
+  if ("price" in skin.unlock) return t("Buy it in the shop for {n} ★", { n: skin.unlock.price });
+  if ("streak" in skin.unlock) return t("Play {n} days in a row", { n: skin.unlock.streak });
+  if ("product" in skin.unlock) return t("Get it with Sky Crystals in the shop");
+  if ("pass" in skin.unlock) return t("A Sky Pass reward ({season} season)", { season: t(skin.unlock.pass) });
   const ms = MILESTONES[skin.unlock.at];
-  return `Build taller than ${ms.name} (${ms.m} m)`;
+  return t("Build taller than {name} ({m} m)", { name: t(ms.name), m: ms.m });
 }
 
 export const islandLevel = (save: SaveData): number => ISLAND_UPGRADES.filter(u => save.bestMeters > MILESTONES[u.at].m).length;
@@ -131,14 +132,14 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
       finishedNow++;
       save.missions.done++;
       addStars(save, m.r);
-      rewards.push({ kind: "star", text: `Mission complete: ${missionText(m)} (+${m.r} ★)` });
+      rewards.push({ kind: "star", group: "mission", stars: m.r, text: t("Mission complete: {mission} (+{n} ★)", { mission: missionText(m), n: m.r }) });
     }
     // Only on the tower that finished the last one, not every tower after it.
     if (finishedNow && allMissionsDone(save) && save.missions.chest !== dayKey(0, now)) {
-      rewards.push({ kind: "star", text: "All of today's missions done! Open your chest on the main menu" });
+      rewards.push({ kind: "star", text: t("All of today's missions done! Open your chest on the main menu") });
     }
     const tier = addLeague(save, run, now);
-    if (tier) rewards.push({ kind: "star", text: `You moved up to the ${tier} league this week!` });
+    if (tier) rewards.push({ kind: "star", text: t("You moved up to the {league} league this week!", { league: t(tier) }) });
   }
 
   // Streak and rent: every tower counts, Zen too.
@@ -151,7 +152,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
     if (c) {
       save.challenges.push(c.id);
       addStars(save, c.reward);
-      rewards.unshift({ kind: "star", text: `Challenge complete: ${c.name} (+${c.reward} ★)` });
+      rewards.unshift({ kind: "star", text: t("Challenge complete: {name} (+{n} ★)", { name: t(c.name), n: c.reward }) });
     }
   }
 
@@ -165,11 +166,11 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
 
   // Trophies
   const ctx = trophyContext(save);
-  for (const t of TROPHIES) {
-    if (p.trophies.includes(t.id) || (zen && !t.zen) || !t.test(run, ctx)) continue;
-    p.trophies.push(t.id);
+  for (const tr of TROPHIES) {
+    if (p.trophies.includes(tr.id) || (zen && !tr.zen) || !tr.test(run, ctx)) continue;
+    p.trophies.push(tr.id);
     addStars(save, 1);
-    rewards.push({ kind: "star", text: `Trophy: ${t.name} (+1 ★)` });
+    rewards.push({ kind: "star", group: "trophy", name: t(tr.name), text: t("Trophy: {name} (+1 ★)", { name: t(tr.name) }) });
   }
 
   // XP and levels
@@ -188,13 +189,13 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
     }
     save.coins += coins;
     save.crystals += crystals;
-    const extra = [`+${lv.stars} ★`, `+${fmt(coins)} coins`, crystals ? `+${crystals} 💎` : ""].filter(Boolean).join(", ");
-    rewards.unshift({ kind: "star", text: `Level up! You're now builder level ${p.level} (${extra})` });
+    const extra = [`+${lv.stars} ★`, t("+{n} coins", { n: fmt(coins) }), crystals ? `+${crystals} 💎` : ""].filter(Boolean).join(", ");
+    rewards.unshift({ kind: "star", text: t("Level up! You're now builder level {n} ({extra})", { n: p.level, extra }) });
   }
 
   // Sky Pass
   const tiers = addPassXp(save, towerPassXp(run.floors, zen) + finishedNow * MISSION_PASS_XP, now);
-  if (tiers) rewards.push({ kind: "pass", text: `Sky Pass: ${tiers > 1 ? `${tiers} tiers` : "a new tier"} reached! Claim your rewards` });
+  if (tiers) rewards.push({ kind: "pass", text: tn(tiers, "Sky Pass: a new tier reached! Claim your rewards", "Sky Pass: {n} tiers reached! Claim your rewards") });
 
   // Best towers
   if (!zen && run.floors > 0) {
@@ -205,11 +206,11 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
 
   // Unlocks, one line each
   const newSkins = SKINS.filter(s => isSkinUnlocked(save, s) && !skinsBefore.has(s.id));
-  if (newSkins.length) rewards.push({ kind: "skin", text: `New skin${newSkins.length > 1 ? "s" : ""} unlocked: ${listNames(newSkins.map(s => s.name))}` });
-  const built = ISLAND_UPGRADES.slice(islandBefore, islandLevel(save)).map(u => u.name);
-  if (built.length) rewards.push({ kind: "island", text: `Island upgrade${built.length > 1 ? "s" : ""}: ${listNames(built)}` });
-  const themes = ISLAND_THEMES.filter(t => t.level > levelBefore && t.level <= p.level).map(t => t.name);
-  if (themes.length) rewards.push({ kind: "island", text: `New island theme${themes.length > 1 ? "s" : ""}: ${listNames(themes)}` });
+  if (newSkins.length) rewards.push({ kind: "skin", text: tn(newSkins.length, "New skin unlocked: {names}", "New skins unlocked: {names}", { names: listNames(newSkins.map(s => t(s.name))) }) });
+  const built = ISLAND_UPGRADES.slice(islandBefore, islandLevel(save)).map(u => t(u.name));
+  if (built.length) rewards.push({ kind: "island", text: tn(built.length, "Island upgrade: {names}", "Island upgrades: {names}", { names: listNames(built) }) });
+  const themes = ISLAND_THEMES.filter(th => th.level > levelBefore && th.level <= p.level).map(th => t(th.name));
+  if (themes.length) rewards.push({ kind: "island", text: tn(themes.length, "New island theme: {names}", "New island themes: {names}", { names: listNames(themes) }) });
 
   return {
     rewards,
@@ -233,11 +234,11 @@ export function trophyContext(save: SaveData): TrophyContext {
 /** Trophies that don't need a tower (gift streaks, collections) can be awarded any time. */
 export function awardStandingTrophies(save: SaveData): string[] {
   const ctx = trophyContext(save), won: string[] = [];
-  for (const t of TROPHIES) {
-    if (save.profile.trophies.includes(t.id) || !t.test(null, ctx)) continue;
-    save.profile.trophies.push(t.id);
+  for (const tr of TROPHIES) {
+    if (save.profile.trophies.includes(tr.id) || !tr.test(null, ctx)) continue;
+    save.profile.trophies.push(tr.id);
     addStars(save, 1);
-    won.push(t.name);
+    won.push(t(tr.name));
   }
   return won;
 }
@@ -245,11 +246,11 @@ export function awardStandingTrophies(save: SaveData): string[] {
 /** The closest goal you just missed: your best, the next landmark, or a mission. */
 export function nearMiss(save: SaveData, run: RunSummary, newBest: boolean): string {
   if (!newBest && save.best > 0 && run.score > 0 && save.best - run.score <= Math.max(60, save.best * 0.25)) {
-    return `Only ${fmt(save.best - run.score + 1)} people away from your best!`;
+    return t("Only {n} people away from your best!", { n: fmt(save.best - run.score + 1) });
   }
   const next = MILESTONES[landmarkIndex(run.meters) + 1];
-  if (next && next.m - run.meters < 30) return `Just ${next.m - run.meters + 1} m short of ${next.name}!`;
+  if (next && next.m - run.meters < 30) return t("Just {n} m short of {name}!", { n: next.m - run.meters + 1, name: t(next.name) });
   const close = save.missions.slots.find(m => !m.d && MISSION_TYPES[m.t].game && m.p / m.n >= 0.6 && m.p < m.n);
-  if (close) return `Almost there: ${missionText(close)} (${fmt(close.p)} of ${fmt(close.n)})`;
+  if (close) return t("Almost there: {mission} ({p} of {n})", { mission: missionText(close), p: fmt(close.p), n: fmt(close.n) });
   return "";
 }

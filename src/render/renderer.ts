@@ -12,6 +12,7 @@ import { nightAt, Scenery, skyAt, sunAt } from "./scenery";
 import { SkyTraffic } from "./sky";
 import { drawAurora, drawLandmark, drawLandmarkLabel, Weather } from "./atmosphere";
 import { landmarkIndex } from "../logic/rules";
+import { t } from "../i18n";
 
 /** What the screen is showing, which decides where the camera goes. */
 export type Shot = "menu" | "play" | "over";
@@ -258,7 +259,7 @@ export class Renderer {
     ctx.strokeStyle = "#ff6f9c";
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(view.W, y); ctx.stroke();
     ctx.setLineDash([]);
-    const label = ahead >= 0 ? `BEST ${f.bestFloors * 5} m` : "NEW BEST!";
+    const label = ahead >= 0 ? t("BEST {n} m", { n: f.bestFloors * 5 }) : t("NEW BEST!");
     ctx.font = `800 12px ${UI_FONT}`;
     const w = ctx.measureText(label).width + 18, x = view.W - w - 10;
     ctx.fillStyle = "#ff4f8b";

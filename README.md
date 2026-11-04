@@ -16,6 +16,7 @@ Build the tallest skyscraper in the world, one tap at a time. Drop each floor so
 - **World:** a large floating island that grows with your best tower, with houses, a farm, a lake, forests, waterfalls and crystals underneath; weather (rain with lightning, snow); planes, airships and satellites at their own altitudes; the next landmark's silhouette to race; and shader effects (bloom, light streaks, sun rays, tilt-shift, filmic color).
 - **Sound:** synthesized music that changes from day to night, ambience that follows your height (city and birds, crickets, wind), and a reverb room. No audio files.
 - **Gentle start:** new players see only the Start button. Skins, missions, the daily tower, challenges, the shop and Zen open over the first few towers, each with a "New" badge.
+- **Languages:** English and Spanish (neutral Latin American). The game follows the device language (any `es-*` locale gets Spanish) and Settings → *Language / Idioma* switches it (Auto, English, Español). The store listings and privacy policy have Spanish versions in `launch/`.
 - **Your progress:** saved on the device. Settings → *Move your progress* gives a save code to load on another phone or browser. Your profile lists your 10 best towers.
 
 ## Develop
@@ -38,6 +39,8 @@ src/
   logic/     game rules with no DOM: the tower sim, saves, progression, shop, unlocks
   render/    canvas drawing: camera, sky and island, buildings, effects, previews
   ui/        DOM helpers and the pop-up sheets
+  i18n.ts    translations: t("English text", {vars}) looks the text up in i18n/es.ts
+  i18n/      the Spanish dictionary (English text is the key; missing entries show English)
   native.ts  phone-app extras: haptics, back button, reminders, share, save backup
   payments.ts  premium purchases (Stripe on the web, App Store / Google Play in the apps)
   online.ts  leaderboards: worldwide (Skyrise server) or friends (claude.ai page)

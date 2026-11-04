@@ -11,6 +11,7 @@ import { Preferences } from "@capacitor/preferences";
 import { Share } from "@capacitor/share";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar } from "@capacitor/status-bar";
+import { t } from "./i18n";
 
 export const isNative = (): boolean => Capacitor.isNativePlatform();
 export const platform = (): "ios" | "android" | "web" => Capacitor.getPlatform() as "ios" | "android" | "web";
@@ -121,9 +122,9 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       const first = n === 0;
       notifications.push({
         id: REMINDER_IDS[n++],
-        title: first && info.streak > 0 ? `🔥 Keep your ${info.streak}-day streak going` : "🏙️ Your skyline is waiting",
-        body: first && info.rentFull ? "Your rent is ready to collect, and today's tower is waiting."
-          : "Today's daily tower and missions are ready. One quick tower?",
+        title: first && info.streak > 0 ? t("🔥 Keep your {n}-day streak going", { n: info.streak }) : t("🏙️ Your skyline is waiting"),
+        body: first && info.rentFull ? t("Your rent is ready to collect, and today's tower is waiting.")
+          : t("Today's daily tower and missions are ready. One quick tower?"),
         schedule: { at, allowWhileIdle: true },
       });
     }

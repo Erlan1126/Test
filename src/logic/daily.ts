@@ -7,6 +7,7 @@ import { CHEST, CITY, LEAGUES, MAX_FREEZES, MIN_RENT_PER_HOUR, RENT_BONUS_PER_BU
 import { weekIndex } from "../data/events";
 import { MISSION_KEYS, MISSION_TYPES } from "../data/missions";
 import { dayKey } from "./rules";
+import { t } from "../i18n";
 import type { SaveData } from "./save";
 import type { Reward, RunSummary } from "./types";
 
@@ -66,11 +67,11 @@ export function tickStreak(save: SaveData, now = Date.now()): Reward[] {
   else if (gap === 2 && s.freezes > 0) {
     s.freezes--;
     s.count++;
-    rewards.push({ kind: "star", text: `A streak freeze saved your ${s.count - 1}-day streak` });
+    rewards.push({ kind: "star", text: t("A streak freeze saved your {n}-day streak", { n: s.count - 1 }) });
   } else s.count = 1;
   s.last = today;
   s.best = Math.max(s.best, s.count);
-  if (s.count > 1) rewards.unshift({ kind: "star", text: `🔥 ${s.count}-day streak!` });
+  if (s.count > 1) rewards.unshift({ kind: "star", text: t("🔥 {n}-day streak!", { n: s.count }) });
   for (const m of STREAK_REWARDS) {
     if (s.count < m.day || s.claimed.includes(m.day)) continue;
     s.claimed.push(m.day);
@@ -78,7 +79,7 @@ export function tickStreak(save: SaveData, now = Date.now()): Reward[] {
     save.starsEarned += m.stars;
     save.coins += m.coins;
     // A skin it unlocks is announced with the other new skins.
-    rewards.push({ kind: "star", text: `${m.day}-day streak reward: +${m.stars} ★ and +${m.coins} coins` });
+    rewards.push({ kind: "star", text: t("{day}-day streak reward: +{stars} ★ and +{coins} coins", { day: m.day, stars: m.stars, coins: m.coins }) });
   }
   return rewards;
 }
