@@ -11,7 +11,7 @@ Copy each part into the matching field in the Play Console (play.google.com/cons
 | App or game | **Game** |
 | Free or paid | **Free** |
 
-The package name is set by the first upload: **com.erlangames.skyrise**. It can never be
+The package name is set by the first upload: **com.erlanstudios.skyrise**. It can never be
 changed after that.
 
 ## Store listing (Grow → Store presence → Main store listing)
