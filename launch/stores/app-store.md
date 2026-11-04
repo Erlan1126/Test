@@ -91,8 +91,8 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 - **Marketing URL:** your itch.io page (optional).
 - **Copyright:** `2026 Erlan Studios`
 
-**Screenshots:** upload the five files in `app-store-screenshots/` (1290 × 2796) to the
-**6.9" / 6.7" iPhone** slot, in order 01 to 05. Apple scales them for smaller iPhones.
+**Screenshots:** upload the six files in `app-store-screenshots/` (1290 × 2796) to the
+**6.9" / 6.7" iPhone** slot, in order 1 to 6. Apple scales them for smaller iPhones.
 The app is iPhone only, so no iPad screenshots are needed.
 
 **App icon:** taken from the build automatically.

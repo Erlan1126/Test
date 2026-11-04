@@ -27,7 +27,7 @@ changed after that.
 - App icon (512 × 512): `../../assets/icon-only.png`, resized. Or use
   `public/icon-512.png` from the game.
 - Feature graphic (1024 × 500): `feature-graphic.png`
-- Phone screenshots: the five files in `google-play-screenshots/` (1080 × 2160), in order.
+- Phone screenshots: the six files in `google-play-screenshots/` (1080 × 2160), in order 1 to 6.
 
 **Category:** Game → **Casual**. Tags: Stacking, Building, Arcade, Offline.
 
