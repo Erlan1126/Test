@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.erlan1126.skyrise"
+    namespace = "com.erlangames.skyrise"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.erlan1126.skyrise"
+        applicationId "com.erlangames.skyrise"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Each cloud build gets a higher number (Google Play needs that); local builds use 1.

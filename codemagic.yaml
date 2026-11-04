@@ -10,7 +10,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.erlan1126.skyrise
+        bundle_identifier: com.erlangames.skyrise
       node: 22
       xcode: latest
       cocoapods: default

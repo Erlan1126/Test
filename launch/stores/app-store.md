@@ -9,7 +9,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 | Platform | iOS |
 | Name | Skyrise: Tower Stack (30 characters max. If it's taken, try "Skyrise: Build the Sky") |
 | Primary language | English (U.S.) |
-| Bundle ID | com.erlan1126.skyrise (register it first under Certificates, Identifiers & Profiles → Identifiers) |
+| Bundle ID | com.erlangames.skyrise (register it first under Certificates, Identifiers & Profiles → Identifiers) |
 | SKU | skyrise-ios-1 |
 | User access | Full access |
 
@@ -82,7 +82,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 - **Support URL:** your itch.io page, or any page with your contact email.
 - **Marketing URL:** your itch.io page (optional).
-- **Copyright:** `2026 [your name]`
+- **Copyright:** `2026 Erlan Games`
 
 **Screenshots:** upload the five files in `app-store-screenshots/` (1290 × 2796) to the
 **6.9" / 6.7" iPhone** slot, in order 01 to 05. Apple scales them for smaller iPhones.
