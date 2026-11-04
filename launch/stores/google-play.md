@@ -35,7 +35,7 @@ changed after that.
 
 ## App content (Policy → App content)
 
-- **Privacy policy:** the public link to your privacy page (see STORES.md, step 0).
+- **Privacy policy:** https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
 - **Ads:** "No, my app does not contain ads."
 - **App access:** "All functionality is available without special access."
 - **Content rating:** start the questionnaire. Category: **Game**. Answer **No** to

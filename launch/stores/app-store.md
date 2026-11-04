@@ -28,7 +28,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 ## App privacy
 
-- Privacy policy URL: the public link to your privacy page (see STORES.md, step 0).
+- Privacy policy URL: https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
 - Data collection: **"No, we do not collect data from this app."**
   (Progress stays on the phone. Apple handles purchases. There are no ads or analytics.)
 

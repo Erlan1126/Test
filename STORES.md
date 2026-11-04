@@ -27,12 +27,10 @@ Mac minute counts as 10). A Skyrise iPhone build takes about 10–15 minutes.
 
 ## Step 0: things both stores ask for
 
-- [ ] **A contact email** that you check. Put it in `launch/privacy.md` and
+- [x] **A contact email** (erlanstudios1@gmail.com) that you check. Put it in `launch/privacy.md` and
       `launch/support-and-refunds.md` in place of `[your contact email]`.
-- [ ] **A public privacy policy link.** The easiest way: go to https://gist.github.com,
-      paste the contents of `launch/privacy.md`, name the file `privacy.md`, click
-      **Create public gist**, and use that link. A Google Doc shared with "Anyone with the
-      link" also works.
+- [x] **A public privacy policy link:** https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
+      (To change it, edit that gist; the link stays the same.)
 
 ## Step 1: try the Android app on a phone today (free)
 
