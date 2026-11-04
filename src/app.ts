@@ -917,7 +917,8 @@ export class App implements DailyHost {
         text = r.rank === 0 ? `🏁 ${who} leads today's Daily. Your turn!` : `⚔️ #${r.rank} of ${r.of} today · ${who} is ${fmt(r.gap)} ahead`;
       } else if (isOpen(save, "daily")) {
         kind = "event";
-        text = `✨ ${eventFor(now).name}: ${eventFor(now).text.toLowerCase()}`;
+        // Short enough for one line on small phones; tapping it explains the event.
+        text = `✨ This week: ${eventFor(now).name} · tap to see`;
       }
     }
     el.dataset.kind = kind;
@@ -932,7 +933,7 @@ export class App implements DailyHost {
     else if (kind === "event") {
       this.sound.ensure();
       this.sound.click();
-      toast(`This week's event · ${duration(eventEndsIn())} left. Applies to Classic and Daily towers.`);
+      toast(`${eventFor().name}: ${eventFor().text}. ${duration(eventEndsIn())} left, in Classic and Daily towers.`);
     }
   }
 

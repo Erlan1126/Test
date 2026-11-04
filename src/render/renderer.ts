@@ -10,7 +10,7 @@ import { ISO_X, View, type Env, type Paint } from "./paint";
 import { PostFX } from "./post";
 import { nightAt, Scenery, skyAt, sunAt } from "./scenery";
 import { SkyTraffic } from "./sky";
-import { drawAurora, drawLandmark, Weather } from "./atmosphere";
+import { drawAurora, drawLandmark, drawLandmarkLabel, Weather } from "./atmosphere";
 import { landmarkIndex } from "../logic/rules";
 
 /** What the screen is showing, which decides where the camera goes. */
@@ -114,9 +114,11 @@ export class Renderer {
       const room = v.wide || full ? H * 0.84 : H * 0.44;
       // Fit the island's full width too (it's wider than it is tall on most phones).
       const width = v.wide && !full ? W * 0.52 : W * 0.96;
-      tZoom = Math.min(1, room / (above + ISLAND * s + 3 * th), width / (4 * ISLAND * ISO_X * s));
+      const content = above + ISLAND * s + 3 * th;
+      tZoom = Math.min(1, room / content, width / (4 * ISLAND * ISO_X * s));
       tLevel = 0;
-      tOrigin = H * 0.08 + above * tZoom;
+      // Centered in the space it has, so a short tower doesn't leave empty sky below the island.
+      tOrigin = H * 0.08 + Math.max(0, (room - content * tZoom) / 2) + above * tZoom;
       if (v.wide && !full) tCx = W * 0.27;
     }
     const k = Math.min(1, dt * (shot === "over" ? 3 : 6));
@@ -192,6 +194,7 @@ export class Renderer {
     scenery.drawWind(p, f.showMover && m ? sim.windFor(m.y) : 0, dt);
     this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0);
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
+    if (f.shot === "play") drawLandmarkLabel(p, landmarkIndex(f.sim.meters) + 1, 1, f.hudBottom);
     fx.drawPopups(p, top, f.hudBottom);
     this.setPost(!f.low);
     if (!this.postOn) scenery.drawVignette(p); // the shader has its own

@@ -33,6 +33,14 @@ export const SEASON_THEMES: SeasonTheme[] = [
     skins: { first: "arcade", free: "carnival", last: "hyperdrive" } },
   { name: "Jungle Temple", text: "Jade stone and hidden treasure", color: "#5fd18b",
     skins: { first: "jade", free: "mossy", last: "idol" } },
+  { name: "Spring Bloom", text: "Fresh petals and pastel glass", color: "#ff9fcf",
+    skins: { first: "bloom", free: "tulip", last: "eden" } },
+  { name: "Deep Sea", text: "Coral reefs and glowing depths", color: "#3fd6d0",
+    skins: { first: "tide", free: "coral", last: "abyss" } },
+  { name: "Desert Mirage", text: "Shimmering sand and golden oases", color: "#f2c46b",
+    skins: { first: "oasis", free: "dune", last: "pharaoh" } },
+  { name: "Cosmic Voyage", text: "Nebulas, comets and distant stars", color: "#b48cff",
+    skins: { first: "nebula", free: "comet", last: "galaxy" } },
 ];
 
 /** Season 1 is November 2026. */

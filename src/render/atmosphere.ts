@@ -129,9 +129,12 @@ export function drawLandmark(p: Paint, index: number, alpha: number): void {
   const h = groundY - topY;
   if (topY > view.H + 20 || groundY < -20) return;
   const w = Math.min(h * shape.aspect, view.W * 0.42), cx = view.cx - view.W * 0.34;
+  // A darker version of the sky with a soft glowing edge, so it reads clearly from day
+  // to night without hiding the tower in front of it.
   const col = mixRgb(env.skyBot, env.skyTop, 0.35);
   const g = ctx.createLinearGradient(0, topY, 0, groundY);
-  g.addColorStop(0, rgb(mixRgb(col, [20, 26, 60], 0.35)));
+  g.addColorStop(0, rgb(mixRgb(col, [16, 20, 52], 0.62)));
+  g.addColorStop(0.7, rgb(mixRgb(col, [16, 20, 52], 0.5)));
   g.addColorStop(1, rgb(col, 1, 0));
   ctx.save();
   ctx.globalAlpha = alpha * 0.55;
@@ -141,22 +144,41 @@ export function drawLandmark(p: Paint, index: number, alpha: number): void {
   shape.draw(ctx);
   ctx.restore();
   ctx.save();
-  ctx.globalAlpha = alpha * 0.55;
+  ctx.globalAlpha = alpha * 0.82;
   ctx.fillStyle = g;
+  if (!env.low) {
+    ctx.shadowColor = `rgba(255, 236, 200, ${0.35 + env.nf * 0.25})`;
+    ctx.shadowBlur = 14;
+  }
   ctx.fill();
   ctx.restore();
-  // Label at the tip
+}
+
+/** The landmark's height and name, drawn over the scene so the island never hides it. */
+export function drawLandmarkLabel(p: Paint, index: number, alpha: number, minY = 0): void {
+  const ms = MILESTONES[index], shape = SHAPES[index];
+  if (!ms || !shape || alpha <= 0) return;
+  const { ctx, view } = p;
+  const floors = ms.m / 5;
+  const [, topY] = view.project(0, floors + 1, 0);
+  const cx = view.cx - view.W * 0.34;
+  if (topY < minY + 30) return;
   if (topY > 0 && topY < view.H - 40) {
     ctx.save();
-    ctx.globalAlpha = alpha * 0.9;
+    ctx.globalAlpha = alpha;
     ctx.textAlign = "center";
-    ctx.font = `14px ${NUM_FONT}`;
+    ctx.font = `16px ${NUM_FONT}`;
     ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "rgba(0,0,0,0.4)";
     ctx.shadowBlur = 6;
-    ctx.fillText(`${ms.m} m`, cx, topY - 22);
-    ctx.font = `800 11px ${UI_FONT}`;
-    ctx.fillText(ms.name.replace(/^the /, "").replace(/^a /, ""), cx, topY - 8);
+    // Keep the label on screen even when the silhouette sits near the edge.
+    const name = ms.name.replace(/^the /, "").replace(/^a /, "");
+    ctx.font = `800 12px ${UI_FONT}`;
+    const half = Math.max(ctx.measureText(name).width / 2 + 8, 30);
+    const lx = clamp(cx, half, view.W - half);
+    ctx.fillText(name, lx, topY - 8);
+    ctx.font = `16px ${NUM_FONT}`;
+    ctx.fillText(`${ms.m} m`, lx, topY - 24);
     ctx.restore();
   }
 }

@@ -7,7 +7,7 @@ Build the tallest skyscraper in the world, one tap at a time. Drop each floor so
 - **Modes:** Classic, a Daily tower that's the same for everyone, relaxing Zen, and six Landmark challenges with their own rules.
 - **Special floors:** gold penthouses (5x on a perfect drop), icy floors (fast, +50% people) and garden terraces (slow, widen your tower again).
 - **Weekly events:** a different twist each week, such as Golden Week, Ice Age or Calm Skies.
-- **Progress:** builder levels with rewards on every level (coins, and Sky Crystals every 5th), missions, trophies, a growing island, island themes, 31 tower skins and a daily gift streak.
+- **Progress:** builder levels with rewards on every level (coins, and Sky Crystals every 5th), missions, trophies, a growing island, island themes, 43 tower skins and a daily gift streak.
 - **Sky Pass:** a monthly season with 30 tiers. Everyone earns the free track by playing (pass XP from towers, missions and the daily chest); the premium track (500 Sky Crystals) adds season skins and crystals back.
 - **Star shop:** spend stars on shop skins and one-tower boosts (extra rewind, double XP, gold rush). Stars are only earned by playing; there are no real-money purchases.
 - **Every day:** a 🔥 play streak with weekly freezes and milestone rewards (including two streak-only skins), three new missions each day with a chest for finishing them all, rent from your tower that fills up over 12 hours, coins to build your city (café, windmill, lighthouse, rocket pad and more), and a weekly league from Bronze to Legend.
