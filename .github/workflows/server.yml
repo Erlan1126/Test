@@ -42,7 +42,17 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::CLOUDFLARE_API_TOKEN doesn't look like a Cloudflare API token"; exit 1; fi
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::CLOUDFLARE_ACCOUNT_ID doesn't look like a 32-character account id"; exit 1; fi
           export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID
+          set -o pipefail
           W="npx --yes wrangler@4"
+          # A free workers.dev address is needed once per account; pick one if missing.
+          CF="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
+          HAVE=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$CF" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).result?.subdomain??"")}catch{}})')
+          if [ -z "$HAVE" ]; then
+            for NAME in erlanstudios erlan-studios skyrise-erlan "skyrise-$(date +%s)"; do
+              OK=$(curl -s -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "content-type: application/json" --data "{\"subdomain\":\"$NAME\"}" "$CF" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).success))}catch{}})')
+              if [ "$OK" = "true" ]; then echo "Registered $NAME.workers.dev"; break; fi
+            done
+          fi
           # Find the database, or create it the first time.
           ID=$($W d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);const d=l.find(x=>x.name==="skyrise");process.stdout.write(d?d.uuid:"")})')
           if [ -z "$ID" ]; then
