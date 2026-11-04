@@ -23,3 +23,24 @@ CREATE TABLE IF NOT EXISTS scores (
 );
 
 CREATE INDEX IF NOT EXISTS scores_rank ON scores (board, period, score DESC);
+
+-- Cloud backup of each player's save, so a new phone or a reinstall gets it back.
+CREATE TABLE IF NOT EXISTS saves (
+  player TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  updated INTEGER NOT NULL
+);
+
+-- Recovery codes (stored hashed): typing one on another device restores that player.
+CREATE TABLE IF NOT EXISTS recovery (
+  code_hash TEXT PRIMARY KEY,
+  player TEXT NOT NULL UNIQUE
+);
+
+-- Leaderboard names reported by other players. Three reports hide a name.
+CREATE TABLE IF NOT EXISTS reports (
+  reporter TEXT NOT NULL,
+  target TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  PRIMARY KEY (reporter, target)
+);

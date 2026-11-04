@@ -103,4 +103,36 @@ describe("online rankings", () => {
     const r = await call("/board?board=all&period=0");
     expect(r.body.top[0].name).toBe("bSky Kingb 12345");
   });
+
+  it("backs up a save and restores it on a new device with the recovery code", async () => {
+    const token = await register(P1);
+    expect((await call("/save", { player: P1, token: "nope", data: "{}" })).status).toBe(403);
+    expect((await call("/save", { player: P1, token, data: '{"crystals":650}' })).status).toBe(200);
+    expect((await call("/save", { player: P1, token, data: "{}" })).status).toBe(429); // too soon
+    expect((await call("/recovery", { player: P1, token, code: "ABCDEFGH2345" })).status).toBe(200);
+    expect((await call("/restore", { code: "WRXNGCADE234" })).status).toBe(404);
+    const back = await call("/restore", { code: "abcd-efgh-2345" });
+    expect(back.status).toBe(200);
+    expect(back.body.player).toBe(P1);
+    expect(back.body.data).toBe('{"crystals":650}');
+    // The restored device posts with its new token; the old one is retired.
+    const run = play("classic", 7).rec;
+    expect((await call("/runs", { player: P1, token, record: run })).status).toBe(403);
+    expect((await call("/runs", { player: P1, token: back.body.token, record: run })).status).toBe(200);
+  });
+
+  it("hides a name once three players report it", async () => {
+    const ids = [P1, P2, "33333333-2fa1-11d2-883f-0016d3cca427", "44444444-2fa1-11d2-883f-0016d3cca427"];
+    const tokens = [];
+    for (const id of ids) tokens.push(await register(id));
+    await call("/runs", { player: P1, token: tokens[0], name: "Rude Name", level: 3, record: play("classic", 8).rec });
+    const name = async () => (await call("/board?board=all&period=0")).body.top[0].name;
+    expect(await name()).toBe("Rude Name");
+    expect((await call("/report", { player: P1, token: tokens[0], target: P1 })).status).toBe(400); // not yourself
+    for (let i = 1; i <= 2; i++) await call("/report", { player: ids[i], token: tokens[i], target: P1 });
+    await call("/report", { player: ids[1], token: tokens[1], target: P1 }); // a repeat doesn't count twice
+    expect(await name()).toBe("Rude Name");
+    await call("/report", { player: ids[3], token: tokens[3], target: P1 });
+    expect(await name()).toMatch(/^Builder /);
+  });
 });

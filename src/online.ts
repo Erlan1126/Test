@@ -55,6 +55,17 @@ export interface Board { rows: Row[]; me: Row | null; total: number }
 
 const num = (v: unknown, max = 1e9) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.floor(v))) : 0);
 const API = SERVER_URL.replace(/\/$/, "");
+const JSON_HEADERS = { "content-type": "application/json" };
+
+/** 12 letters and digits without look-alikes (no 0, O, 1, I), shown as XXXX-XXXX-XXXX. */
+export function newRecoveryCode(): string {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(12);
+  globalThis.crypto.getRandomValues(bytes);
+  return [...bytes].map(b => abc[b % abc.length]).join("");
+}
+
+export const formatRecoveryCode = (c: string): string => c.replace(/(.{4})(?=.)/g, "$1-");
 
 export class Online {
   /** The leaderboard can be shown. */
@@ -67,6 +78,8 @@ export class Online {
   /** No answer from the server or store yet after a while. */
   stale = false;
   onChange: () => void = () => {};
+  /** Players this person blocked: their names show as "Hidden player". */
+  blocked = new Set<string>();
   /** The ranks from the last tower sent to the worldwide server. */
   lastRanks: { daily?: number; week?: number; all?: number } | null = null;
   private entries: Entry[] = [];
@@ -144,30 +157,112 @@ export class Online {
     });
   }
 
-  /** Worldwide board: sends a finished Classic or Daily tower. `persist` saves a new token. */
+  /** Registers this player with the server the first time (and sets a recovery code).
+   *  Returns false if the server can't be reached. */
+  private async ensureAccount(save: SaveData, persist: () => void): Promise<boolean> {
+    if (!save.onlineToken) {
+      const res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
+      if (!res.ok) return false;
+      save.onlineToken = String((await res.json() as { token?: string }).token ?? "");
+      persist();
+    }
+    if (!save.recoveryCode) {
+      const code = newRecoveryCode();
+      const res = await fetch(`${API}/recovery`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, code }) });
+      if (!res.ok) return true;
+      save.recoveryCode = code;
+      persist();
+    }
+    return true;
+  }
+
+  /** Worldwide board: sends a finished Classic or Daily tower, or keeps it for later if
+   *  there's no connection. */
   async submit(save: SaveData, rec: RunRecord, persist: () => void): Promise<void> {
     if (this.kind !== "global" || (rec.mode !== "classic" && rec.mode !== "daily") || !rec.log.length) return;
+    save.pendingRuns.push(rec);
+    if (save.pendingRuns.length > 5) save.pendingRuns.splice(0, save.pendingRuns.length - 5);
+    persist();
+    await this.flush(save, persist, rec);
+  }
+
+  private flushing = false;
+
+  /** Sends any towers waiting to be ranked. `current` is the one just built, whose ranks
+   *  are shown on the game-over card. */
+  async flush(save: SaveData, persist: () => void, current?: RunRecord): Promise<void> {
+    if (this.kind !== "global" || this.flushing || !save.pendingRuns.length) return;
+    this.flushing = true;
     try {
-      if (!save.onlineToken) {
-        const res = await fetch(`${API}/players`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ player: save.playerId }) });
-        if (!res.ok) return;
-        save.onlineToken = String((await res.json() as { token?: string }).token ?? "");
+      if (!(await this.ensureAccount(save, persist))) { this.stale = true; return; }
+      while (save.pendingRuns.length) {
+        const rec = save.pendingRuns[0] as RunRecord;
+        const res = await fetch(`${API}/runs`, {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ player: save.playerId, token: save.onlineToken, name: save.nickname, level: save.profile.level, record: rec }),
+        });
+        // Too fast: try again a little later. Anything else is final (ranked or refused).
+        if (res.status === 429) { setTimeout(() => void this.flush(save, persist), 6000); break; }
+        save.pendingRuns.shift();
         persist();
+        if (res.ok) {
+          const ranks = (await res.json() as { ranks?: Online["lastRanks"] }).ranks ?? null;
+          if (!current || rec === current) this.lastRanks = ranks;
+          this.cache.clear();
+        }
       }
-      const res = await fetch(`${API}/runs`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ player: save.playerId, token: save.onlineToken, name: save.nickname, level: save.profile.level, record: rec }),
-      });
-      if (!res.ok) return;
-      this.lastRanks = (await res.json() as { ranks?: Online["lastRanks"] }).ranks ?? null;
       this.stale = false;
-      this.cache.clear();
-      // Keep today's board fresh for the rival line on the menu.
-      void this.board("daily", rec.day, rec.week).then(() => this.onChange());
+      const today = current?.day, week = current?.week;
+      if (today !== undefined && week !== undefined) void this.board("daily", today, week).then(() => this.onChange());
       this.onChange();
     } catch {
+      // Offline: the towers stay queued for next time.
       this.stale = true;
+    } finally {
+      this.flushing = false;
+    }
+  }
+
+  private lastBackup = "";
+
+  /** Backs up the save to the server (only when it changed). */
+  async backup(save: SaveData, persist: () => void): Promise<void> {
+    // Nothing worth keeping before the first tower.
+    if (this.kind !== "global" || !save.playerId || (save.profile.towers === 0 && !save.crystals)) return;
+    // The token and queue stay on this device; a restore makes new ones.
+    const data = JSON.stringify({ ...save, onlineToken: "", pendingRuns: [] });
+    if (data === this.lastBackup) return;
+    try {
+      if (!(await this.ensureAccount(save, persist))) return;
+      const res = await fetch(`${API}/save`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, data }) });
+      if (res.ok) this.lastBackup = data;
+    } catch { /* offline: next time */ }
+  }
+
+  /** Gets a player back from their recovery code: their id, a new token and their save. */
+  async restore(code: string): Promise<{ player: string; token: string; data: string | null } | "bad" | "offline"> {
+    if (this.kind !== "global") return "offline";
+    try {
+      const res = await fetch(`${API}/restore`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ code }) });
+      if (res.status === 404 || res.status === 400) return "bad";
+      if (!res.ok) return "offline";
+      return await res.json() as { player: string; token: string; data: string | null };
+    } catch {
+      return "offline";
+    }
+  }
+
+  /** Reports a leaderboard name. */
+  async report(save: SaveData, target: string, persist: () => void): Promise<boolean> {
+    if (this.kind !== "global") return false;
+    try {
+      if (!(await this.ensureAccount(save, persist))) return false;
+      this.cache.clear();
+      const res = await fetch(`${API}/report`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, target }) });
+      return res.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -187,7 +282,8 @@ export class Online {
       const rows: Row[] = (Array.isArray(body.top) ? body.top : []).map(x => {
         const r = x as Record<string, unknown>;
         return {
-          id: String(r.id ?? ""), rank: num(r.rank), name: String(r.name ?? "Builder").slice(0, 16),
+          id: String(r.id ?? ""), rank: num(r.rank),
+          name: this.blocked.has(String(r.id)) ? "Hidden player" : String(r.name ?? "Builder").slice(0, 16),
           level: num(r.level, 999), value: num(r.score), unit: "people" as const, me: r.id === this.me,
         };
       });

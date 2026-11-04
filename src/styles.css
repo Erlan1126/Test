@@ -963,6 +963,10 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .best-value { position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 999px; background: linear-gradient(135deg, #ffe08a, #ffb35c); color: #3a1d00; font-size: 11px; font-weight: 800; }
 .landmark.world { color: #9fe2ff; }
 .rank-gap { margin: 2px 0; text-align: center; color: var(--muted); font-weight: 800; }
+.recovery-code { margin: 4px 0 10px; padding: 12px; border: 1px dashed rgba(140, 220, 255, 0.5); border-radius: 12px; background: rgba(90, 200, 255, 0.1); font: 400 22px var(--num); letter-spacing: 0.08em; text-align: center; user-select: all; -webkit-user-select: all; }
+#restore-box { width: 100%; margin: 10px 0 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: var(--text); font: 700 16px var(--ui); text-transform: uppercase; letter-spacing: 0.06em; }
+.link-btn { align-self: center; padding: 4px 10px; border: 0; background: none; color: var(--muted); font: 700 13px var(--ui); text-decoration: underline; text-underline-offset: 3px; }
+.rank-row .report { margin-left: 4px; padding: 2px 6px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 14px; opacity: 0.7; }
 /* ---------- Sky Crystals ---------- */
 .gem-ico { font-size: 14px; margin-left: 4px; filter: drop-shadow(0 0 5px rgba(120, 220, 255, 0.6)); }
 .wallet-card { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; padding: 12px 14px; border: 1px solid rgba(140, 220, 255, 0.35); border-radius: 16px; background: linear-gradient(135deg, rgba(90, 200, 255, 0.18), rgba(169, 139, 255, 0.16)); }
@@ -1050,3 +1054,4 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   .btn-primary::after { animation: none; }
   .collect-chip, .chest-card.ready, .streak-flame, .reward-burst, .reward-line, .pass-cell.ready { animation: none; }
 }
+.rank-row.has-report { grid-template-columns: 34px 1fr auto auto auto; }

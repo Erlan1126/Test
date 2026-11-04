@@ -73,6 +73,12 @@ export interface SaveData {
   nickname: string;
   /** Private key for posting to the worldwide rankings (from the server, on first use). */
   onlineToken: string;
+  /** Code that restores this player (and their cloud backup) on another device. */
+  recoveryCode: string;
+  /** Ranked towers not sent yet (no connection), oldest first. */
+  pendingRuns: unknown[];
+  /** Leaderboard players this person reported or blocked; their names are hidden here. */
+  blocked: string[];
   /** Premium items owned (bought with Sky Crystals). */
   purchases: string[];
   /** Sky Crystals, the paid currency. */
@@ -119,6 +125,9 @@ export function defaultSave(): SaveData {
     league: { week: 0, points: 0, lastWeek: 0, lastPoints: 0, rewarded: 0 },
     nickname: "",
     onlineToken: "",
+    recoveryCode: "",
+    pendingRuns: [],
+    blocked: [],
     purchases: [],
     crystals: 0,
     crystalTx: [],
@@ -206,6 +215,12 @@ export function normalize(raw: unknown): SaveData {
     },
     // Letters, digits, spaces and a little punctuation, up to 16 characters.
     onlineToken: /^[a-f0-9]{48}$/.test(String(r.onlineToken ?? "")) ? String(r.onlineToken) : "",
+    recoveryCode: /^[A-HJ-NP-Z2-9]{12}$/.test(String(r.recoveryCode ?? "")) ? String(r.recoveryCode) : "",
+    // Checked properly by the server when sent; here just kept small.
+    pendingRuns: Array.isArray(r.pendingRuns)
+      ? r.pendingRuns.filter(x => obj(x).v === 1 && Array.isArray(obj(x).log) && (obj(x).log as unknown[]).length <= 5000).slice(-5)
+      : [],
+    blocked: strList(r.blocked).filter(x => /^[A-Za-z0-9-]{8,64}$/.test(x)).slice(-200),
     nickname: str(r.nickname, "", 64).replace(/[^\p{L}\p{N} _.-]/gu, "").trim().slice(0, 16),
     purchases: strList(r.purchases, PRODUCTS.map(x => x.id)),
     crystals: int(r.crystals, 0, 0, 1e7),

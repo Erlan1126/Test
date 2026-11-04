@@ -1,4 +1,5 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
+import { formatRecoveryCode } from "../online";
 import { fmt } from "../core/util";
 import { CHALLENGES } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
@@ -27,6 +28,10 @@ export interface Host {
   startChallenge(id: string): void;
   /** Swaps in progress loaded from a save code. */
   replaceSave(save: SaveData): void;
+  /** The cloud backup's recovery code: null when there's no server, "" until it's made. */
+  cloudCode(): string | null;
+  /** Brings back a player from their recovery code. */
+  restoreCloud(code: string): Promise<"ok" | "bad" | "offline" | "empty">;
   /** Graphics quality changed. */
   applyQuality(): void;
   replayTips(): void;
@@ -348,6 +353,10 @@ export class Sheets {
 
   private renderSettings(): void {
     const st = this.save.settings;
+    const code = this.host.cloudCode();
+    $("cloud").hidden = code === null;
+    $("recovery-code").textContent = code ? formatRecoveryCode(code) : "Made after your first tower online";
+    $<HTMLButtonElement>("copy-recovery").disabled = !code;
     $<HTMLInputElement>("set-sound").checked = st.sound;
     $<HTMLInputElement>("set-music").checked = st.music;
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
@@ -374,10 +383,21 @@ export class Sheets {
   private resetTransfer(): void {
     this.loadArmed = false;
     $<HTMLDetailsElement>("transfer").open = false;
+    $<HTMLDetailsElement>("cloud").open = false;
+    this.restoreArmed = false;
+    this.restoreMsg("", "");
     $("load-code").textContent = "Load save code";
     $("load-code").classList.remove("danger");
     $<HTMLTextAreaElement>("code-box").value = "";
     this.codeMsg("", "");
+  }
+
+  private restoreArmed = false;
+
+  private restoreMsg(text: string, kind: "" | "ok" | "bad"): void {
+    const el = $("restore-msg");
+    el.textContent = text;
+    el.className = `transfer-msg${kind ? ` ${kind}` : ""}`;
   }
 
   private codeMsg(text: string, kind: "" | "ok" | "bad"): void {
@@ -415,6 +435,45 @@ export class Sheets {
     $("replay-tips").addEventListener("click", () => {
       this.host.replayTips();
       toast("Tips will show on your next tower");
+    });
+
+    $("copy-recovery").addEventListener("click", async () => {
+      const code = this.host.cloudCode();
+      if (!code) return;
+      try {
+        await navigator.clipboard.writeText(formatRecoveryCode(code));
+        this.restoreMsg("Copied! Keep it somewhere safe, like your notes.", "ok");
+      } catch {
+        this.restoreMsg("Write the code down or take a screenshot.", "ok");
+      }
+    });
+    $("restore-btn").addEventListener("click", async () => {
+      const box = $<HTMLInputElement>("restore-box"), btn = $<HTMLButtonElement>("restore-btn");
+      const code = box.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (code.length !== 12) { this.restoreMsg("Recovery codes have 12 letters and numbers, like ABCD-EFGH-2345.", "bad"); return; }
+      if (code === this.host.cloudCode()) { this.restoreMsg("That's this device's own code.", "bad"); return; }
+      if (!this.restoreArmed) {
+        this.restoreArmed = true;
+        btn.textContent = "Tap again to replace this device's progress";
+        btn.classList.add("danger");
+        return;
+      }
+      this.restoreArmed = false;
+      btn.disabled = true;
+      btn.textContent = "Restoring…";
+      const r = await this.host.restoreCloud(code);
+      btn.disabled = false;
+      btn.textContent = "Restore my progress";
+      btn.classList.remove("danger");
+      if (r === "ok") { box.value = ""; this.restoreMsg("Welcome back! Your progress is restored.", "ok"); this.host.sound.star(); this.renderSettings(); }
+      else if (r === "empty") this.restoreMsg("Found your player, but there was no backup yet. Your rankings are back.", "ok");
+      else this.restoreMsg(r === "bad" ? "That code wasn't found. Check it and try again." : "Can't reach the server. Check your connection.", "bad");
+    });
+    $("restore-box").addEventListener("input", () => {
+      if (!this.restoreArmed) return;
+      this.restoreArmed = false;
+      $("restore-btn").textContent = "Restore my progress";
+      $("restore-btn").classList.remove("danger");
     });
 
     $("copy-code").addEventListener("click", async () => {

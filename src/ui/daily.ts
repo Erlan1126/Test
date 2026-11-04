@@ -377,10 +377,20 @@ export class DailySheets {
     }
     const line = (r: Row) => {
       const row = document.createElement("div");
-      row.className = `rank-row${r.me ? " me" : ""}`;
+      const canReport = global && !r.me && !this.save.blocked.includes(r.id);
+      row.className = `rank-row${r.me ? " me" : ""}${canReport ? " has-report" : ""}`;
       const medal = ["🥇", "🥈", "🥉"][r.rank - 1] ?? fmt(r.rank);
       row.innerHTML = `<span class="rank">${medal}</span><span class="who"></span><span class="fire">${r.streak && r.streak > 1 ? `🔥${r.streak}` : r.level ? `Lv ${r.level}` : ""}</span><b>${fmt(r.value)} ${r.unit}</b>`;
       row.querySelector(".who")!.textContent = r.name + (r.me ? " (you)" : "");
+      if (canReport) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "report";
+        btn.textContent = "⚑";
+        btn.setAttribute("aria-label", `Report or hide ${r.name}`);
+        btn.addEventListener("click", () => void this.report(r));
+        row.appendChild(btn);
+      }
       return row;
     };
     board.rows.slice(0, 100).forEach(r => el.appendChild(line(r)));
@@ -396,6 +406,18 @@ export class DailySheets {
         : `${fmt(board.total)} builder${board.total === 1 ? "" : "s"} ranked. Every tower is checked by replaying it.`)
       : !on.canPost ? "Your scores aren't posted yet: ask whoever shared Skyrise to make you a Contributor."
       : "Share this page with friends as Contributors to compete.";
+  }
+
+  /** Reports a rude name and hides it for this player. */
+  private async report(r: Row): Promise<void> {
+    if (!window.confirm(`Report "${r.name}" as an offensive name? It will be hidden for you, and names reported by several players are removed.`)) return;
+    const save = this.save;
+    if (!save.blocked.includes(r.id)) save.blocked.push(r.id);
+    this.host.online.blocked.add(r.id);
+    this.host.persist();
+    const sent = await this.host.online.report(save, r.id, () => this.host.persist());
+    toast(sent ? "Thanks. That name is hidden for you and was reported." : "That name is hidden for you. The report will need a connection.");
+    void this.renderRanks();
   }
 
   private saveNick(): void {

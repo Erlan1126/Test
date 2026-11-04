@@ -8,6 +8,10 @@
 //                        server replays the tower from its seed and taps (the same game
 //                        rules as the app) and ranks the score it computes itself.
 //   GET  /board          ?board=daily|week|all&period=<n>&player=<id> -> top 100 and your rank
+//   POST /save           { player, token, data } backs up the player's save
+//   POST /recovery       { player, token, code } sets the player's recovery code
+//   POST /restore        { code } -> { player, token, data } on a new device
+//   POST /report         { player, token, target } reports a leaderboard name
 //
 // Payments (website only; the phone apps sell packs through the App Store and Google Play):
 //   POST /checkout       { product, player, returnUrl } -> { url } of a Stripe checkout page
@@ -44,7 +48,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board"].includes(url.pathname);
+    const ranked = ["/players", "/runs", "/board", "/save", "/recovery", "/restore", "/report"].includes(url.pathname);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
     try {
@@ -143,6 +147,12 @@ function timingSafeEqual(a, b) {
 // ---------- Rankings ----------
 
 const BOARDS = ["daily", "week", "all"];
+/** Recovery codes: 12 letters and digits without look-alikes (no 0, O, 1, I). */
+const RECOVERY = /^[A-HJ-NP-Z2-9]{12}$/;
+/** Cloud saves at most every few seconds per player. */
+const SAVE_GAP_MS = 5000;
+/** Reports from this many players hide a name. */
+const HIDE_AFTER = 3;
 /** At most one tower every few seconds per player. */
 const RUN_GAP_MS = 4000;
 
@@ -159,6 +169,60 @@ async function rankings(request, url, env, now) {
     // Each id registers once, so nobody else can take over a player's scores.
     if (!r.meta?.changes) return json({ error: "already registered" }, 409);
     return json({ token });
+  }
+
+  /** The player a request is from, if its token matches. */
+  const auth = async (body) => {
+    const { player, token } = body ?? {};
+    if (!PLAYER.test(player ?? "") || typeof token !== "string") return null;
+    const row = await db.prepare("SELECT token_hash, last_run FROM players WHERE id = ?").bind(player).first();
+    return row && timingSafeEqual(row.token_hash, await sha256(token)) ? { id: player, ...row } : null;
+  };
+
+  if (url.pathname === "/save" && request.method === "POST") {
+    const body = await request.json();
+    const me = await auth(body);
+    if (!me) return json({ error: "not allowed" }, 403);
+    if (typeof body.data !== "string" || body.data.length > 200_000) return json({ error: "bad save" }, 400);
+    const last = await db.prepare("SELECT updated FROM saves WHERE player = ?").bind(me.id).first();
+    if (last && now - last.updated < SAVE_GAP_MS) return json({ error: "too fast" }, 429);
+    await db.prepare("INSERT INTO saves (player, data, updated) VALUES (?, ?, ?) ON CONFLICT (player) DO UPDATE SET data = excluded.data, updated = excluded.updated")
+      .bind(me.id, body.data, now).run();
+    return json({ ok: true });
+  }
+
+  if (url.pathname === "/recovery" && request.method === "POST") {
+    const body = await request.json();
+    const me = await auth(body);
+    if (!me) return json({ error: "not allowed" }, 403);
+    if (!RECOVERY.test(body.code ?? "")) return json({ error: "bad code" }, 400);
+    await db.batch([
+      db.prepare("DELETE FROM recovery WHERE player = ?").bind(me.id),
+      db.prepare("INSERT OR REPLACE INTO recovery (code_hash, player) VALUES (?, ?)").bind(await sha256(body.code), me.id),
+    ]);
+    return json({ ok: true });
+  }
+
+  if (url.pathname === "/restore" && request.method === "POST") {
+    const { code } = await request.json();
+    const clean = String(code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!RECOVERY.test(clean)) return json({ error: "bad code" }, 400);
+    const r = await db.prepare("SELECT player FROM recovery WHERE code_hash = ?").bind(await sha256(clean)).first();
+    if (!r) return json({ error: "no such code" }, 404);
+    const save = await db.prepare("SELECT data FROM saves WHERE player = ?").bind(r.player).first();
+    // The restoring device gets a fresh token; the old one stops posting.
+    const token = randomToken();
+    await db.prepare("UPDATE players SET token_hash = ? WHERE id = ?").bind(await sha256(token), r.player).run();
+    return json({ player: r.player, token, data: save?.data ?? null });
+  }
+
+  if (url.pathname === "/report" && request.method === "POST") {
+    const body = await request.json();
+    const me = await auth(body);
+    if (!me) return json({ error: "not allowed" }, 403);
+    if (!PLAYER.test(body.target ?? "") || body.target === me.id) return json({ error: "bad target" }, 400);
+    await db.prepare("INSERT OR IGNORE INTO reports (reporter, target, at) VALUES (?, ?, ?)").bind(me.id, body.target, now).run();
+    return json({ ok: true });
   }
 
   if (url.pathname === "/runs" && request.method === "POST") {
@@ -204,7 +268,7 @@ async function rankings(request, url, env, now) {
     const player = url.searchParams.get("player") ?? "";
     if (!BOARDS.includes(board) || !Number.isFinite(period)) return json({ error: "bad board" }, 400);
     const { results } = await db.prepare(
-      "SELECT s.player, s.score, s.meters, p.name, p.level FROM scores s JOIN players p ON p.id = s.player " +
+      `SELECT s.player, s.score, s.meters, CASE WHEN (SELECT COUNT(*) FROM reports r WHERE r.target = s.player) >= ${HIDE_AFTER} THEN '' ELSE p.name END AS name, p.level FROM scores s JOIN players p ON p.id = s.player ` +
       "WHERE s.board = ? AND s.period = ? ORDER BY s.score DESC, s.at ASC LIMIT 100").bind(board, period).all();
     const total = (await db.prepare("SELECT COUNT(*) AS n FROM scores WHERE board = ? AND period = ?").bind(board, period).first())?.n ?? 0;
     const top = results.map((r, i) => ({ rank: i + 1, id: r.player, name: r.name || defaultName(r.player), level: r.level, score: r.score, meters: r.meters }));

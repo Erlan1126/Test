@@ -8,7 +8,7 @@ import { skinById, SKINS } from "./data/skins";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
-import { loadSave, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
+import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { TICK, TowerSim, type DropOutcome, type FloorKind } from "./logic/sim";
 import { RunRecorder, simFor } from "./logic/replay";
@@ -121,7 +121,13 @@ export class App implements DailyHost {
     if (this.payments) { const test = !this.payments.live; this.payments.onPurchase = p => this.packBought(p, test); }
     void this.syncPurchases(purchaseReturn());
     // Leaderboards light up only where shared storage is available (the claude.ai page).
-    void this.online.init(this.save.playerId).then(() => this.refresh());
+    this.online.blocked = new Set(this.save.blocked);
+    void this.online.init(this.save.playerId).then(() => {
+      this.refresh();
+      // Towers built offline last time, and a first backup.
+      void this.online.flush(this.save, () => this.persist());
+      this.scheduleBackup(3000);
+    });
 
     preloadLogo(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`);
     try { this.friendScore = clamp(parseInt(new URLSearchParams(location.search).get("beat") ?? "", 10) || 0, 0, 999999); } catch { /* no query */ }
@@ -137,7 +143,14 @@ export class App implements DailyHost {
     requestAnimationFrame(() => requestAnimationFrame(() => nativeReady()));
     void this.restoreBackup();
     onBackButton(() => this.back());
-    onAppHidden(() => void scheduleReminders(this.reminderInfo()));
+    onAppHidden(() => {
+      void scheduleReminders(this.reminderInfo());
+      this.scheduleBackup(0);
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this.scheduleBackup(0);
+      else void this.online.flush(this.save, () => this.persist());
+    });
 
     // Offline support on the website. Embedded copies and file:// skip it.
     if ("serviceWorker" in navigator && this.site && !isNative() && (location.protocol === "https:" || location.hostname === "localhost")) {
@@ -149,6 +162,7 @@ export class App implements DailyHost {
 
   persist(): void {
     writeSave(this.storage, this.save);
+    this.scheduleBackup();
     // The phone apps keep a second copy in native storage (a moment later, so a burst of
     // saves only writes once).
     if (isNative()) {
@@ -285,6 +299,32 @@ export class App implements DailyHost {
     this.start("challenge", id);
   }
 
+  cloudCode(): string | null {
+    return this.online.kind === "global" ? this.save.recoveryCode : null;
+  }
+
+  async restoreCloud(code: string): Promise<"ok" | "bad" | "offline" | "empty"> {
+    const r = await this.online.restore(code);
+    if (typeof r === "string") return r;
+    let restored: SaveData = this.save;
+    if (r.data) { try { restored = normalize(JSON.parse(r.data)); } catch { /* keep this device's save */ } }
+    restored.playerId = r.player;
+    restored.onlineToken = r.token;
+    restored.recoveryCode = code;
+    restored.pendingRuns = [];
+    this.online.me = r.player;
+    this.replaceSave(restored);
+    return r.data ? "ok" : "empty";
+  }
+
+  /** Backs the save up to the server a little after it changes. */
+  private cloudTimer = 0;
+  private scheduleBackup(delay = 20000): void {
+    if (this.online.kind !== "global") return;
+    clearTimeout(this.cloudTimer);
+    this.cloudTimer = window.setTimeout(() => void this.online.backup(this.save, () => writeSave(this.storage, this.save)), delay);
+  }
+
   replaceSave(save: SaveData): void {
     this.save = save;
     refreshMissions(this.save);
@@ -359,6 +399,11 @@ export class App implements DailyHost {
       toast(`You have ${this.save.stars} ★. The star shop opens after your ${this.ordinal(3)} tower.`);
     });
     $("settings-btn").addEventListener("click", () => this.sheets.openSettings());
+    $("restore-link").addEventListener("click", () => {
+      this.sheets.openSettings();
+      $<HTMLDetailsElement>("cloud").open = true;
+      $("restore-box").focus();
+    });
     $("again").addEventListener("click", () => this.start(this.mode, this.challenge?.id));
     $("next-challenge").addEventListener("click", () => {
       const next = nextChallenge(this.save);
@@ -772,6 +817,7 @@ export class App implements DailyHost {
     friend.hidden = !this.friendScore;
     friend.innerHTML = `A friend housed <b>${fmt(this.friendScore)}</b> people. Can you beat them?`;
     $("install-chip").hidden = !this.installPrompt || p.towers < 3;
+    $("restore-link").hidden = p.towers > 0 || this.online.kind !== "global";
     const n = boostCount(save), note = $("boost-note");
     note.hidden = !n;
     note.textContent = `⚡ ${BOOSTS.filter(b => save.boosts[b.id]).map(b => b.name).join(" · ")} on your next tower`;

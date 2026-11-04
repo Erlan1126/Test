@@ -82,6 +82,7 @@
     <button type="button" class="collect-chip" id="collect-chip" hidden></button>
     <button type="button" class="install-chip" id="install-chip" hidden>Install Skyrise as an app</button>
     <button class="btn btn-primary" id="play">Start building</button>
+    <button type="button" class="link-btn" id="restore-link" hidden>Played before? Restore your progress</button>
     <div class="boost-note" id="boost-note" hidden></div>
     <div class="modes" id="modes">
       <button type="button" class="mode" id="daily-btn" hidden><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="daily-title">Daily</span><i class="dot" hidden></i></button>
@@ -332,6 +333,17 @@
     </div>
     <div class="group">
       <button type="button" class="setting link" id="replay-tips"><span class="set-ico" aria-hidden="true">💡</span><b>Show beginner tips again</b><span class="chev" aria-hidden="true">›</span></button>
+      <details class="setting disclosure" id="cloud" hidden>
+        <summary><span class="set-ico" aria-hidden="true">☁️</span><b>Cloud backup</b><span class="chev" aria-hidden="true">›</span></summary>
+        <div class="transfer">
+          <p class="sheet-note" id="cloud-note">Your progress, Sky Crystals and purchases are backed up online. Keep this recovery code somewhere safe (a screenshot works): it brings everything back on a new phone or after reinstalling.</p>
+          <div class="recovery-code" id="recovery-code">…</div>
+          <button type="button" class="btn btn-secondary wide" id="copy-recovery">Copy recovery code</button>
+          <input type="text" id="restore-box" maxlength="20" spellcheck="false" autocomplete="off" autocapitalize="characters" aria-label="Recovery code" placeholder="Recovery code from your old device">
+          <button type="button" class="btn btn-secondary wide" id="restore-btn">Restore my progress</button>
+          <p class="transfer-msg" id="restore-msg" role="status"></p>
+        </div>
+      </details>
       <details class="setting disclosure" id="transfer">
         <summary><span class="set-ico" aria-hidden="true">📲</span><b>Move progress to another device</b><span class="chev" aria-hidden="true">›</span></summary>
         <div class="transfer">
