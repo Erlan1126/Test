@@ -68,7 +68,10 @@ jobs:
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
         run: |
           URL=$(grep -o 'https://[a-z0-9.-]*workers.dev' server/deploy.log | head -1)
-          sleep 5
-          OUT=$(curl -sS -m 20 "$URL/board?board=all&period=0")
-          echo "$OUT"
-          echo "$OUT" | grep -q '"board":"all"'
+          # A brand-new workers.dev address can take a few minutes to get its certificate.
+          for i in $(seq 1 20); do
+            OUT=$(curl -sS -m 20 "$URL/board?board=all&period=0" 2>&1 || true)
+            if echo "$OUT" | grep -q '"board":"all"'; then echo "Live: $OUT"; exit 0; fi
+            echo "Not ready yet ($i): $OUT"; sleep 20
+          done
+          exit 1
