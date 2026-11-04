@@ -27,7 +27,7 @@ function loadLevel(i, demo = false) {
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
-    waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0, mobs: [], slow: 0,
+    chimes: [], chimeNext: 1, waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0, mobs: [], slow: 0,
     pings: 0, time: 0, got: 0,
     pingCd: 0, bumpCd: 0,
     ending: 0, done: false,
@@ -49,6 +49,7 @@ function loadLevel(i, demo = false) {
     if (ch === "z") L.critters.push({ x: cx, y: cy, hx: cx, hy: cy, i: i2, awake: 0, ph: Math.random() * 6 });
     if (ch === "b") L.moths.push({ x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6, idx: 0 });
     if (ch === "r") L.runes.push({ x: cx, y: cy, i: i2, on: 0, far: 0 });
+    if (ch >= "1" && ch <= "4") L.chimes.push({ x: cx, y: cy, i: i2, n: +ch, rung: 0, cd: 0, ph: Math.random() * 6 });
     if (ch === "G") L.gate = { x: cx, y: cy, i: i2, open: 0 };
     if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
     if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
@@ -105,6 +106,7 @@ function loadLevel(i, demo = false) {
 // One short line about what this cave asks of you, shown at the start and in the pause menu.
 function goalLine() {
   const i = levelIndex;
+  if (L.chimes.length && !L.finale && L.goal === "explore") return "Find the chimes and ring them in order to open the portal";
   if (L.finale) return "Find the Great Hush. Don't run this time. Sing to it";
   if (L.goal === "quiet") return `Only ${L.songLimit} songs here. Make them count`;
   if (L.goal === "rescue") return "Find the lost baby moth and bring it home";
@@ -124,13 +126,14 @@ function goalLine() {
 function fairDrain(i, def, rows) {
   const base = (0.8 + depthOf(i) * 0.45) * 18 / rows;
   if (!def.walk) return base;
-  const flat = def.map.join(""), lights = flat.split("o").length - 1, gloom = (flat.match(/[gB]/g) || []).length + (flat.match(/[tnakwj]/g) || []).length * 0.9;
+  const flat = def.map.join(""), lights = flat.split("o").length - 1 + (flat.match(/[1-4]/g) || []).length * 0.6, gloom = (flat.match(/[gB]/g) || []).length + (flat.match(/[tnakwj]/g) || []).length * 0.9;
   // Light gained from lights, minus what songs (about one every five tiles) and a couple of
   // Hushling touches cost, spread over the time a careful swim takes.
   const songs = (def.walk / 5) * 2.5 * (def.dark ? 0.6 : 1);
   const budget = Math.max(60, 100 + 35 * lights - songs - gloom * 30);
   const seconds = def.walk / 2 + 10;
-  return Math.max(0.35, Math.min(base, (budget * 0.6) / seconds));
+  // Long routes (past every chime) drain slower, down to a gentle floor.
+  return Math.max(0.2, Math.min(base, (budget * 0.6) / seconds));
 }
 
 const idx = (x, y) => y * L.cols + x;
@@ -418,6 +421,54 @@ window.addEventListener("keydown", e => {
   } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
 });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+
+// ---------- Chimes: the song puzzle ----------
+// Swim into a chime to ring it. Rung in the right order, the portal opens; the wrong one just
+// sounds dull. Each has a colour, a shape (for colour-blind players) and a note.
+const CHIMES = [
+  { name: "blue",   mark: "●", color: "#7ee8ff", glow: "cyan",   deg: 0 },
+  { name: "violet", mark: "◆", color: "#c9a8ff", glow: "violet", deg: 2 },
+  { name: "gold",   mark: "▲", color: "#ffd36e", glow: "gold",   deg: 4 },
+  { name: "pink",   mark: "★", color: "#ff9ad0", glow: "pink",   deg: 7 },
+];
+function updateChimes(dt, ctl) {
+  const lumi = L.lumi;
+  for (const c of L.chimes) {
+    c.ph += dt;
+    c.cd = Math.max(0, c.cd - dt);
+    c.rung = c.rung ? Math.min(1, c.rung + dt * 2) : 0;
+    if (!ctl || c.rung || Math.hypot(c.x - lumi.x, c.y - lumi.y) > 0.6) continue;
+    const info = CHIMES[c.n - 1];
+    L.lit[c.i] = 1; L.seen[c.i] = 1;
+    if (c.n !== L.chimeNext) {
+      if (c.cd > 0) continue;  // don't repeat the hint while Lumi lingers on it
+      c.cd = 1.5;
+      note(pitch(info.deg, 0) * 0.94, { dur: 0.5, vol: 0.08, type: "square", lowpass: 600, echo: 0.2 });
+      const want = CHIMES[L.chimeNext - 1];
+      setHint(`Not yet. Ring the ${want.name} ${want.mark} chime next`, 2.5);
+      continue;
+    }
+    c.rung = 0.001;
+    L.chimeNext++;
+    // A true note sings back into Lumi: a little light returns.
+    if (L.useEnergy) L.energy = Math.min(100, L.energy + 22);
+    note(pitch(info.deg, 1), { dur: 1.6, vol: 0.1, type: "triangle", fm: 3, fmDepth: 0.6, echo: 0.9 });
+    buzz(15);
+    for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; spark(c.x, c.y, Math.cos(a) * 2, Math.sin(a) * 2, 0.8, info.glow === "cyan" ? "skin" : info.glow, 0.09); }
+    updateHud();
+    if (L.chimeNext > L.chimes.length) {
+      // The whole melody: play it back, and the portal wakes and shines through the dark.
+      L.chimes.forEach((cc, k) => note(pitch(CHIMES[k].deg, 1), { at: 0.5 + k * 0.22, dur: 1.4, vol: 0.08, type: "triangle", echo: 0.9 }));
+      L.seen[L.exit.i] = 1;
+      L.lit[L.exit.i] = 1;
+      L.flash = Math.max(L.flash, 0.4);
+      setHint("The melody is complete. The portal is open!", 3);
+    } else {
+      const next = CHIMES[L.chimeNext - 1];
+      setHint(`${info.mark} rang true. Now the ${next.name} ${next.mark} chime`, 2.5);
+    }
+  }
+}
 
 // ---------- Flare: Lumi's defense ----------
 // A burst of light: nearby Hushlings shrink back and stop chasing for a while, other creatures
@@ -751,7 +802,7 @@ function update(dt) {
       const nx = (lumi.x - g.x) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1), ny = (lumi.y - g.y) / (Math.hypot(lumi.x - g.x, lumi.y - g.y) || 1);
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 18 : 10));
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - (g.big ? 15 : 8));
       L.hits++;
       g.gone = g.big ? 10 : 8;
       g.hunt = 0;
@@ -834,7 +885,7 @@ function update(dt) {
       lumi.squash = 1;
       L.invuln = 1.2;
       L.hits++;
-      if (L.useEnergy) L.energy = Math.max(0, L.energy - 12);
+      if (L.useEnergy) L.energy = Math.max(0, L.energy - 9);
       sfx.hurt();
       buzz([30, 30, 30]);
       L.lit[t.i] = 1;
@@ -843,6 +894,7 @@ function update(dt) {
   }
 
   updateMobs(dt, ctl);
+  updateChimes(dt, ctl);
   meetCreatures(dt);
 
   // Lumi's mood: scared when a Hushling hunts nearby, happy after a find, sleepy when dim.
@@ -878,10 +930,13 @@ function update(dt) {
   L.flash = Math.max(0, L.flash - dt * 1.6);
 
   // Portal.
-  const portalLocked = (L.goal === "rescue" && L.baby && !L.baby.following) || (L.finale && !L.healed);
+  const chimesLeft = L.chimeNext <= L.chimes.length;
+  const portalLocked = (L.goal === "rescue" && L.baby && !L.baby.following) || (L.finale && !L.healed) || chimesLeft;
   if (ctl && portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.6 && L.portalHintCd <= 0) {
     L.portalHintCd = 3;
-    setHint(L.finale ? "The portal won't wake while the Great Hush is sad. Sing to it" : "The portal is asleep. Bring the lost baby moth here first", 3);
+    setHint(L.finale ? "The portal won't wake while the Great Hush is sad. Sing to it"
+      : L.goal === "rescue" && L.baby && !L.baby.following ? "The portal is asleep. Bring the lost baby moth here first"
+      : `The portal is sealed. Ring the chimes in order: ${CHIMES.slice(0, L.chimes.length).map(c => c.mark).join(" ")}`, 3);
   }
   if (ctl && !portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.45) {
     L.ending = 0.001;

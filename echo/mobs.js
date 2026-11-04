@@ -8,11 +8,11 @@
 
 const MOB_KINDS = "nakwj";
 const MOB_INFO = {
-  n: { name: "Snapvine", cost: 11 },
-  a: { name: "Shardbat", cost: 9 },
-  k: { name: "Cinder Crab", cost: 11 },
-  w: { name: "Frostwisp", cost: 7 },
-  j: { name: "Jellyglow", cost: 10 },
+  n: { name: "Snapvine", cost: 8 },
+  a: { name: "Shardbat", cost: 7 },
+  k: { name: "Cinder Crab", cost: 8 },
+  w: { name: "Frostwisp", cost: 5 },
+  j: { name: "Jellyglow", cost: 8 },
 };
 
 function makeMob(kind, x, y, i) {

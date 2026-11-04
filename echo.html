@@ -206,6 +206,14 @@
   #encounter b { display: block; font-family: Cinzel, serif; font-weight: 600; font-size: 34px; color: var(--ink); margin: 2px 0 4px; }
   #encounter span { display: block; font-size: 15px; color: var(--dim); }
 
+  /* The song puzzle's order, under the HUD. */
+  #chimeBar { position: fixed; top: calc(92px + var(--top)); left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 3; pointer-events: none; }
+  #chimeBar i { font-style: normal; font-size: 15px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: var(--c); background: rgba(10, 14, 32, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); opacity: 0.55; }
+  #chimeBar i.next { opacity: 1; border-color: var(--c); animation: chimePulse 1.4s ease-in-out infinite; }
+  #chimeBar i.rung { opacity: 1; background: var(--c); color: #0b1020; box-shadow: 0 0 12px var(--c); }
+  @keyframes chimePulse { 50% { box-shadow: 0 0 14px var(--c); } }
+  #chimeBar:not(.on) { display: none; }
+
   #hint {
     position: fixed;
     left: 50%;
@@ -473,6 +481,7 @@
   <button class="pill icon-btn" id="muteBtn" aria-label="Mute">🔊</button>
 </div>
 <div id="energy" aria-hidden="true"><i></i></div>
+<div id="chimeBar" hidden aria-label="Chimes to ring, in order"></div>
 <div id="hint"></div>
 <div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
 <button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>

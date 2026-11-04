@@ -37,8 +37,8 @@ const FAMILY = [
 const CHAPTERS = [
   { title: "The Last Song", pages: [
     { text: "Before Lumi remembers anything else, it remembers a voice. Something very big and very warm, humming close by in the dark. Hush now, little light…", memory: 1 },
-    { text: "Long ago, the caves under the world were full of song. A great Singer sang every light in the deep to sleep each night, and every light sang back.", crowd: 1, notes: 1 },
-    { text: "Then, one by one, the songs went quiet. Something swallowed them. The lights went dark, and fell asleep, and forgot.", hush: "big", sleepers: 1 },
+    { text: "Long ago, the caves under the world were a city. Streets of carved stone, windows full of warm light, a song in every doorway. And every night, a great Singer sang every light in the city to sleep.", crowd: 1, notes: 1 },
+    { text: "Then, one by one, the songs went quiet. Something swallowed them. The windows went dark, the streets fell silent, and the lights fell asleep and forgot.", hush: "big", sleepers: 1 },
     { text: "Lumi wakes up alone, in a silence so deep it hurts. Somewhere far above, there must be a sky. And somewhere, maybe, someone still remembers that song.", lumi: 1 },
     { text: "So Lumi does the only thing a little light can do. It sings. And out in the dark, something hears.", lumi: 1, hushlings: 1 },
     { text: "Something small. A glow-moth no bigger than a crumb of light wobbles out of the dark and lands on Lumi's head. “You sang,” it says. “Nobody sings anymore.”", lumi: 1, flick: 1 },

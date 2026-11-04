@@ -18,6 +18,7 @@ function show(name) {
   document.body.classList.toggle("sing-on", !$("singBtn").hidden);
   for (const k in screens) screens[k].classList.toggle("on", k === name);
   $("hud").classList.toggle("on", name === "play" || name === "pause");
+  $("chimeBar").classList.toggle("on", name === "play" || name === "pause");
   if (name !== "play") { pointers.clear(); steer = null; }
   if (name !== "play" && name !== "pause") { setHint("", 0); $("levelCard").classList.remove("on"); }
   // Away from the title, keep one history entry so the phone's Back button stays in the game.
@@ -89,6 +90,10 @@ const levelLabel = i => (i === DAILY ? "Daily Cave" : i === WEEKLY ? "Weekly Cav
 function updateHud() {
   if (!L) return;
   $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
+  // The chimes to ring, in order: rung ones bright, the next one pulsing.
+  const bar = $("chimeBar");
+  bar.hidden = !L.chimes.length;
+  bar.innerHTML = L.chimes.map((c, k) => `<i class="${k + 1 < L.chimeNext ? "rung" : k + 1 === L.chimeNext ? "next" : ""}" style="--c:${CHIMES[k].color}">${CHIMES[k].mark}</i>`).join("");
   const pill = $("pingsPill");
   pill.hidden = levelIndex >= 0 && levelIndex < 10;
   if (L.songLimit) {
@@ -122,6 +127,8 @@ const CARDS = {
     art: `<circle cx="56" cy="56" r="34" fill="none" stroke="#96ffbe" stroke-opacity=".5" stroke-dasharray="3 6"/><circle cx="56" cy="56" r="13" fill="#283a46"/><g stroke="#96ffbe" stroke-width="2" fill="none"><circle cx="56" cy="56" r="2" fill="#96ffbe"/><path d="M49 51a8 8 0 0 0 0 10M63 51a8 8 0 0 1 0 10"/></g><g transform="translate(36 72)">${LUMI_SVG}</g><rect x="112" y="34" width="34" height="44" rx="3" fill="#3a4656"/><rect x="117" y="39" width="24" height="34" fill="none" stroke="#96ffbe" stroke-width="1.5"/>` },
   gloom: { title: "Hushlings", text: "The Hush wants the caves silent forever, and Hushlings are its shadows. They drift through rock, hear every song nearby and notice you if you swim close, then chase you almost as fast as you swim. Run, or hide behind rock until it gives up. A touch steals light. They're in every cave from now on.",
     art: `<g transform="translate(44 56)">${LUMI_SVG}</g><g fill="none" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2"><path d="M66 44a16 16 0 0 1 0 24"/><path d="M74 38a24 24 0 0 1 0 36"/></g><g transform="translate(122 58) scale(1.3)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g>` },
+  chimes: { title: "Chimes", text: "Every cave from now on hides chime stones. The marks at the top show the order: ring them by swimming into them, one after another, and the sealed portal opens.",
+    art: `<g transform="translate(40 58)">${LUMI_SVG}</g><g font-size="16" text-anchor="middle"><text x="84" y="40" fill="#7ee8ff">●</text><text x="106" y="40" fill="#c9a8ff">◆</text><text x="128" y="40" fill="#ffd36e">▲</text></g><g transform="translate(84 76)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#7ee8ff"/></g><g transform="translate(118 80)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#c9a8ff" opacity=".6"/></g><path d="M54 62q14-10 26 6" stroke="#8ea3c8" stroke-dasharray="2 4" fill="none"/>` },
   flare: { title: "Flare", text: "Tap the ✦ button to burst your light. Creatures close by are dazzled, and Hushlings shrink back and stop chasing. It needs a few seconds to recharge.",
     art: `<g transform="translate(70 58)"><circle r="40" fill="url(#cardGold)" opacity=".55"/><circle r="30" fill="none" stroke="#fff6d6" stroke-width="2"/>${LUMI_SVG}</g><g transform="translate(132 50) scale(.9)" opacity=".8"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><path d="M-9-5l6 2M9-5l-6 2" stroke="#c9a8ff" stroke-width="1.6" stroke-linecap="round"/></g><path d="M112 36l-6-6M116 70l-7 5" stroke="#fff6d6" stroke-width="2" stroke-linecap="round"/>` },
   quiet: { title: "Quiet caves", text: "These caves only let you sing a few times. Watch the counter, sing where it matters, and remember the way.",
@@ -172,7 +179,7 @@ const CREATURE_CARDS = new Set(Object.values(CREATURES));
 
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [def.card, i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
+  const wants = [def.card, i >= CHIMES_FROM && i !== STORY_FINALE && "chimes", i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
     def.map[0].length > 11 && "tall"];
   return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
 }

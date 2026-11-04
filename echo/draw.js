@@ -107,6 +107,7 @@ function sceneLights(mx, my) {
   for (const e of L.emitters || []) { const k = knownAt(e.x, e.y); if (k > 0) add(e.x, e.y, e.r * 2.6, e.a * 2.4 * k, LIGHT_RGB[e.color]); }
   for (const g of L.gloom) if (g.heal) add(g.x, g.y, 2 + g.heal * 4, g.heal * 1.4, LIGHT_RGB.gold);
   for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
+  for (const c of L.chimes) if (c.rung) add(c.x, c.y, 2.2, 0.8, LIGHT_RGB[CHIMES[c.n - 1].glow] || LIGHT_RGB.cyan);
   for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
   if (!L.hideLights || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
   for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0 && sightAt(m.x, m.y) > 0) add(m.x, m.y, 2, 0.6 * sightAt(m.x, m.y), LIGHT_RGB.cyan);
@@ -252,6 +253,47 @@ function drawThings() {
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.white, xs[2] - w * 0.2, mid - T * 0.08, T * 0.12, a * (0.4 + 0.3 * Math.max(0, spin)));
+  }
+
+  // Chime stones: a carved post with a crystal bell, hidden until light finds them. The bell
+  // shows its colour and mark, and once rung it shines and sways.
+  for (const c of L.chimes) {
+    const k = knownAt(c.x, c.y);
+    if (k < 0.02) continue;
+    const info = CHIMES[c.n - 1], X = sx(c.x), Y = sy(c.y), s = TS, on = c.rung > 0;
+    const sway = on ? Math.sin(clock * 5 + c.ph) * 0.12 * (1.2 - c.rung) : Math.sin(clock * 1.2 + c.ph) * 0.03;
+    ctx.globalCompositeOperation = "lighter";
+    glow(GLOW[info.glow], X, Y - s * 0.12, s * (on ? 1.3 : 0.6), k * (on ? 0.75 : 0.25 + Math.sin(clock * 2 + c.ph) * 0.06));
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = k;
+    // Post and arm.
+    ctx.fillStyle = "#3a4152";
+    ctx.fillRect(X - s * 0.05, Y - s * 0.32, s * 0.1, s * 0.78);
+    ctx.fillRect(X - s * 0.16, Y + s * 0.38, s * 0.32, s * 0.08);
+    ctx.fillRect(X - s * 0.05, Y - s * 0.34, s * 0.24, s * 0.05);
+    // The bell hangs from the arm.
+    ctx.save();
+    ctx.translate(X + s * 0.15, Y - s * 0.3);
+    ctx.rotate(sway);
+    ctx.strokeStyle = "#5a6276"; ctx.lineWidth = Math.max(1, s * 0.015);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, s * 0.1); ctx.stroke();
+    const bell = ctx.createLinearGradient(-s * 0.12, 0, s * 0.12, 0);
+    bell.addColorStop(0, info.color); bell.addColorStop(0.5, "#ffffff"); bell.addColorStop(1, info.color);
+    ctx.fillStyle = on ? bell : info.color;
+    ctx.globalAlpha = k * (on ? 1 : 0.55);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.04, s * 0.1);
+    ctx.quadraticCurveTo(-s * 0.12, s * 0.14, -s * 0.13, s * 0.32);
+    ctx.lineTo(s * 0.13, s * 0.32);
+    ctx.quadraticCurveTo(s * 0.12, s * 0.14, s * 0.04, s * 0.1);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = k;
+    ctx.fillStyle = on ? "#0b1020" : "rgba(11,16,32,0.7)";
+    ctx.font = `${Math.round(s * 0.13)}px sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(info.mark, 0, s * 0.24);
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   // Portal: a slow vortex, always faintly visible so there's a goal.
@@ -878,6 +920,7 @@ function drawTitle(dt) {
 
 // ---------- Loop ----------
 let last = performance.now();
+let bloomOn = true;
 function frame(now) {
   const raw = (now - last) / 1000;
   const dt = Math.max(0, Math.min(1 / 30, raw));
@@ -885,7 +928,11 @@ function frame(now) {
   if (screen === "play" && raw < 0.25) {
     if (raw > 0.024) slowFrames++;
     if (++frameCount >= 120) {
-      if (slowFrames > 70 && qualityCap > 1) { qualityCap = Math.max(1, qualityCap - 0.5); resize(); }
+      // On a struggling phone, give up the glow first; only then lower the resolution.
+      if (slowFrames > 70) {
+        if (bloomOn) bloomOn = false;
+        else if (qualityCap > 1) { qualityCap = Math.max(1, qualityCap - 0.5); resize(); }
+      }
       frameCount = slowFrames = 0;
     }
   }
@@ -896,7 +943,7 @@ function frame(now) {
   if (L) { drawCave(); drawThings(); }
   else drawTitle(dt);
   // Bloom on the graphics chip, unless Lighting is off or the phone is struggling.
-  if (L && BLOOM && save.settings.lighting !== false && qualityCap >= 1.5) BLOOM.apply(canvas, ctx, W, H, 0.85);
+  if (L && BLOOM && bloomOn && save.settings.lighting !== false) BLOOM.apply(canvas, ctx, W, H, 0.5);
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
   if (L && L.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${L.flash * 0.45})`; ctx.fillRect(0, 0, W, H); }

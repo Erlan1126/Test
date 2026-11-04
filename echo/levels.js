@@ -481,11 +481,79 @@ function getLevel(i) {
   }
   if (i === DAILY) {
     const day = dayNumber(), key = "daily" + day;
-    if (!levelCache.has(key)) levelCache.set(key, applyTwist(withHushlings(generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }), 50000 + day), day));
+    if (!levelCache.has(key)) levelCache.set(key, withChimes(applyTwist(withHushlings(generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }), 50000 + day), day), 50000 + day));
     return levelCache.get(key);
   }
-  if (!levelCache.has(i)) levelCache.set(i, withHushlings(INTRO[i] || generateLevel(i), i));
+  if (!levelCache.has(i)) levelCache.set(i, withChimes(withHushlings(INTRO[i] || generateLevel(i), i), i));
   return levelCache.get(i);
+}
+
+// The song puzzle: from level 4, chime stones hide in every cave, written in the map as 1-4 in
+// the order they must be rung. Two at first, three from World 2, four from level 301. They're spread
+// out and shuffled, so finding them and choosing a route is the puzzle. Each true note gives
+// Lumi back some light. (Not in the story's
+// finale, which has its own song.)
+const CHIMES_FROM = 3;
+function withChimes(def, i) {
+  if (i < CHIMES_FROM || i === PER_WORLD * 8 - 1) return def;
+  const n = i < 19 ? 2 : i < 300 ? 3 : 4, g = def.map.map(row => row.split("")), r = seeded(i * 7717 + 13);
+  let S = [0, 0];
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "S") S = [x, y]; }));
+  // Tiles Lumi can reach (rune gates open, so they count; Snoozles and echo walls don't).
+  const seen = new Set([S + ""]), q = [S];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, c = g[ny] && g[ny][nx];
+      if (!c || c === "#" || c === "W" || c === "z" || seen.has(nx + "," + ny)) continue;
+      seen.add(nx + "," + ny); q.push([nx, ny]);
+    }
+  }
+  const spots = [];
+  g.forEach((row, y) => row.forEach((c, x) => {
+    if (c !== "." || !seen.has(x + "," + y) || Math.abs(x - S[0]) + Math.abs(y - S[1]) < 4) return;
+    for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (g[yy] && "SEomfrztnakwjgB".includes(g[yy][xx])) return;
+    spots.push([x, y]);
+  }));
+  if (spots.length < n) return def;
+  // Spread them out: each new chime goes far from the others, with a little chance.
+  const picked = [spots.splice(Math.floor(r() * spots.length), 1)[0]];
+  while (picked.length < n && spots.length) {
+    const score = s => Math.min(...picked.map(p => Math.abs(p[0] - s[0]) + Math.abs(p[1] - s[1]))) + r() * 3;
+    let best = 0;
+    for (let k = 1; k < spots.length; k++) if (score(spots[k]) > score(spots[best])) best = k;
+    picked.push(spots.splice(best, 1)[0]);
+  }
+  // Shuffle the ringing order so the nearest chime isn't always first.
+  for (let k = picked.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [picked[k], picked[j]] = [picked[j], picked[k]]; }
+  picked.forEach(([x, y], k) => { g[y][x] = String(k + 1); });
+  // The route now runs past every chime in order: the walk, songs, and any timer grow to match,
+  // so the light budget and par stay fair.
+  const dist = (a, b) => {
+    const d = new Map([[a + "", 0]]), qq = [a];
+    while (qq.length) {
+      const [x, y] = qq.shift(), k = d.get(x + "," + y);
+      if (x === b[0] && y === b[1]) return k;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, c = g[ny] && g[ny][nx];
+        if (!c || c === "#" || c === "W" || c === "z" || d.has(nx + "," + ny)) continue;
+        d.set(nx + "," + ny, k + 1); qq.push([nx, ny]);
+      }
+    }
+    return 0;
+  };
+  let E = S;
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "E") E = [x, y]; }));
+  const stops = [S, ...picked, E];
+  let walk = 0;
+  for (let k = 1; k < stops.length; k++) walk += dist(stops[k - 1], stops[k]);
+  const out = Object.assign({}, def, { map: g.map(row => row.join("")) });
+  const extra = Math.max(0, walk - (def.walk || 0));
+  out.walk = (def.walk || 0) + extra;
+  out.par = def.par + picked.length;
+  if (def.songs) out.songs = def.songs + picked.length;
+  if (def.time) out.time = def.time + Math.ceil(extra / 2.2) + picked.length * 2;
+  return out;
 }
 
 // From level 6 on, every cave has at least three Hushlings (the Great Hush counts as one).

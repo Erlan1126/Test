@@ -52,7 +52,7 @@ const GLR = (() => {
         float spec = pow(max(dot(n, h), 0.0), 28.0) * rock * 0.55;
         lit += uC[i] * L.w * a * (0.25 + diff * 1.15 + spec);
         // Light hanging in the air of the open cave, like dust or mist catching it.
-        air += uC[i] * L.w * a * a * 0.16 * (1.0 - rock);
+        air += uC[i] * L.w * a * a * 0.08 * (1.0 - rock);
       }
       vec3 col = alb.rgb * lit + air;
       gl_FragColor = vec4(col * vis, vis);
@@ -140,8 +140,9 @@ const GLR = (() => {
 })();
 
 // Bloom: bright things (Lumi, lights, crystals, lava, songs) bleed a soft glow into the air
-// around them. The finished frame is shrunk to a quarter size, its brightest parts are blurred
-// on the graphics chip, and the glow is added back over the frame.
+// around them. The finished frame is shrunk to half size, its brightest parts are blurred
+// on the graphics chip, and the glow is added back over the frame. Only the brightest parts
+// glow, at half size, so edges stay crisp.
 const BLOOM = (() => {
   const canvas = document.createElement("canvas");
   let gl = null;
@@ -155,7 +156,7 @@ const BLOOM = (() => {
       vec3 c = texture2D(uTex, uv).rgb;
       if (uPass > 0.5) return c;
       float l = dot(c, vec3(0.3, 0.55, 0.15));
-      return c * smoothstep(0.32, 0.85, l);
+      return c * smoothstep(0.55, 0.95, l);
     }
     void main() {
       vec3 c = pick(vUv) * 0.227;
@@ -198,7 +199,7 @@ const BLOOM = (() => {
     // Adds the glow of `source` (the finished frame) onto ctx, which covers w×h.
     apply(source, target, w, h, strength) {
       if (lost) return;
-      const bw = Math.max(16, Math.round(w / 4)), bh = Math.max(16, Math.round(h / 4));
+      const bw = Math.max(16, Math.round(w / 2)), bh = Math.max(16, Math.round(h / 2));
       if (small.width !== bw || small.height !== bh) { small.width = bw; small.height = bh; }
       sctx.drawImage(source, 0, 0, bw, bh);
       if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }

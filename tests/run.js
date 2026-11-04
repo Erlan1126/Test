@@ -72,7 +72,7 @@ const SIM = `
         m.forEach((row, y) => [...row].forEach((c, x) => {
           if (c === "S") S = [x, y];
           if (c === "E") X = [x, y];
-          if (c === "o" || c === "m" || c === "f") goals.push([x, y]);
+          if (c === "o" || c === "m" || c === "f" || (c >= "1" && c <= "4")) goals.push([x, y]);
           if (c === "r") runes.push([x, y]);
           if (c === "G") gate = [x, y];
         }));
@@ -205,7 +205,7 @@ const SIM = `
       L.gloom = [L.gloom[0]];  // just one, so no other Hushling can get there first
       const g = L.gloom[0]; g.hunt = 4; Object.assign(L.lumi, { x: g.x + 1.2, y: g.y });
       const e0 = L.energy; __sim(1.5);
-      out.gloomlingCostsLight = L.hits === 1 && L.energy < e0 - 9;
+      out.gloomlingCostsLight = L.hits === 1 && L.energy < e0 - 7;
       startLevel(cardLevel("runes"), true);
       out.gateStartsClosed = solidAt(Math.floor(L.gate.x), Math.floor(L.gate.y));
       const far = L.runes[0]; Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y + 3 }); L.pingCd = 0; ping(); __sim(1.2);
@@ -216,6 +216,7 @@ const SIM = `
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
       out.portalSleepsWithoutMoth = !L.ending;
       Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2);
+      L.chimeNext = L.chimes.length + 1;  // the chime puzzle is tested on its own
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.6);
       out.mothRescueFinishes = screen === "result";
       startLevel(cardLevel("quiet"), true);
@@ -240,6 +241,15 @@ const SIM = `
       out.cameraFollowsInTallCaves = L.scroll && OY > oy + 100;
       startLevel(DAILY, true);
       if (L.baby) { Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2); }
+      // Chimes: the portal stays sealed until they're rung in order; the wrong one does nothing.
+      out.dailyHasChimes = L.chimes.length >= 2;
+      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
+      out.portalSealedUntilChimesRing = !L.ending;
+      const last = L.chimes.find(c => c.n === L.chimes.length);
+      Object.assign(L.lumi, { x: last.x, y: last.y }); __sim(0.2);
+      out.wrongChimeDoesNothing = L.chimeNext === 1 && !last.rung;
+      for (const c of L.chimes.slice().sort((a, b) => a.n - b.n)) { Object.assign(L.lumi, { x: c.x, y: c.y }); __sim(0.2); }
+      out.chimesInOrderOpenThePortal = L.chimeNext > L.chimes.length;
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
       out.dailyStartsStreak = save.daily.streak >= 1 && save.daily.last === dayKey();
       // Thornlings patrol and cost light when touched.
@@ -249,7 +259,7 @@ const SIM = `
       for (let k = 0; k < 12; k++) { __sim(0.25); moved = Math.max(moved, Math.hypot(th.x - p0[0], th.y - p0[1])); }
       out.thornlingsPatrol = moved > 0.2;
       L.invuln = 0; L.energy = 100; const e1 = L.energy, h1 = L.hits; Object.assign(L.lumi, { x: th.x, y: th.y }); __sim(0.05);
-      out.thornlingsCostLight = L.hits > h1 && L.energy < e1 - 10;
+      out.thornlingsCostLight = L.hits > h1 && L.energy < e1 - 7;
       // Long songs reach further than short ones.
       startLevel(12, true); L.pingCd = 0; ping(false); const shortRange = L.waves[0].range;
       L.waves = []; L.pingCd = 0; ping(true);
@@ -429,6 +439,8 @@ const SIM = `
           for (const o of L.lights) if (!o.got) list.push([o.x, o.y]);
           if (L.baby && !L.baby.following) list.push([L.baby.hx, L.baby.hy]);
           for (const r of L.runes) if (!r.on) list.push([r.x, r.y]);
+          const chime = L.chimes.find(c => c.n === L.chimeNext);
+          if (chime) list.push([chime.x, chime.y]);
           let bestT = null, bestLen = Infinity;
           for (const t of list) { const p = route(Math.floor(t[0]), Math.floor(t[1])); if (p && p.length < bestLen) { bestLen = p.length; bestT = t; } }
           if (!bestT && L.finale && !L.healed) { const k = L.gloom.find(g => g.final); return [k.hx, k.hy]; }

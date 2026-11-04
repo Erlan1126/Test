@@ -372,7 +372,7 @@ function* paintArt(target, sc, normTarget) {
   const img = tctx.createImageData(w, h), D = img.data;
   const hgt = new Float32Array(w * h), rk = new Uint8Array(w * h);  // height and "is rock", for the bump map
   const hasWater = L.flow.some(Boolean);
-  let patch = 0, far = 0, near = 0;
+  let patch = 0, far = 0, near = 0, city = 0, built = 0;
   for (let py = 0; py < h; py++) {
     const ty = (py + 0.5) * inv - oy;
     for (let px = 0; px < w; px++) {
@@ -390,7 +390,7 @@ function* paintArt(target, sc, normTarget) {
 
       // Open cave: deep blue with teal and violet patches, darker where it meets rock.
       // Colour patches are a couple of tiles across, so every fourth pixel is plenty.
-      if ((px & 3) === 0) patch = vnoise(tx * 0.45 + seed, ty * 0.45 - seed);
+      if ((px & 3) === 0) { patch = vnoise(tx * 0.45 + seed, ty * 0.45 - seed); city = smooth(0.42, 0.56, vnoise(tx * 0.16 + seed * 3, ty * 0.16 - seed)); }
       const ao = smooth(TH - 0.32, TH, v);
       let fr = th.floor[0] + (th.floor2[0] - th.floor[0]) * patch;
       let fg = th.floor[1] + (th.floor2[1] - th.floor[1]) * patch;
@@ -428,7 +428,18 @@ function* paintArt(target, sc, normTarget) {
         const strata = 0.9 + 0.1 * Math.sin(ty * 5.3 + vnoise(tx * 0.8, ty * 0.8 + seed) * 6);
         const cn = vnoise(tx * 2.6 + seed, ty * 2.6), crack = smooth(0.9, 0.985, 1 - Math.abs(cn * 2 - 1));
         detail = strata * (1 - crack * 0.45 * (1 - rim)) * (0.92 + vnoise(tx * 41, ty * 41) * 0.16);
-      }
+        // The lost city: in its old districts the walls are built, not raw. Cut blocks laid in
+        // courses with mortar between, fading back into rough rock deeper in.
+        if (city > 0 && depth < 0.85) {
+          const bh = 0.24, row = Math.floor(ty / bh), fy = ty / bh - row;
+          const bxw = (tx + (row & 1) * 0.23) / 0.46, col = Math.floor(bxw), fx = bxw - col;
+          const mortar = Math.max(1 - smooth(0.0, 0.09, fy), smooth(0.92, 1, fx), 1 - smooth(0, 0.06, fx));
+          const tone = 0.86 + ((col * 73 + row * 37) % 17) / 17 * 0.24;
+          const k = city * (1 - smooth(0.55, 0.85, depth));
+          detail *= 1 - k + k * (tone * (1 - mortar * 0.55));
+          built = k * mortar;
+        } else built = 0;
+      } else built = 0;
       let rr = ((th.rock[0] + (th.deep[0] - th.rock[0]) * depth) * t * detail) + th.rim[0] * hl;
       let rg = ((th.rock[1] + (th.deep[1] - th.rock[1]) * depth) * t * detail) + th.rim[1] * hl;
       let rb = ((th.rock[2] + (th.deep[2] - th.rock[2]) * depth) * t * detail) + th.rim[2] * hl;
@@ -455,7 +466,7 @@ function* paintArt(target, sc, normTarget) {
       D[k + 2] = fb + (rb - fb) * cover;
       D[k + 3] = 255;
       // Rock rises from its edge into a rounded, bumpy mass; the open cave behind is nearly flat.
-      hgt[i] = cover * (0.25 + 0.75 * depth) * (0.88 + (detail - 1) * 0.9) + tex * (0.02 + cover * 0.05) + fluff * 0.06;
+      hgt[i] = cover * (0.25 + 0.75 * depth) * (0.88 + (detail - 1) * 0.9) + tex * (0.02 + cover * 0.05) + fluff * 0.06 - built * 0.05;
       rk[i] = cover * 255;
     }
     if ((py & 7) === 7) yield;
