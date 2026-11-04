@@ -23,7 +23,7 @@ There are 160 caves now: eight worlds of twenty, the first nineteen handmade. Fe
 
 ## A look at 3D
 
-`echo3d.html` is a separate test scene, not part of the game: one street of the lost city in real 3D (Three.js), with cobbles, brick houses, warm and dark windows, arches, fog, dust in the light, Lumi as a light source, a song ring that lights the street as it rolls, five street lamps to relight and Hushlings that chase songs and flee from lit lamps. Drag to swim, tap ♪ to sing.
+`echo3d.html` is a separate test scene, not part of the game: one street of the lost city in real 3D (Three.js with bloom and filmic tone mapping), with irregular cobbles and brick walls that catch the light (bump maps), houses with pilasters, cornices, ledges, arched window frames, sills, balconies, doorsteps and gabled or crenellated roofs, warm and dark mullioned windows, stone arches, a far skyline fading into fog, hanging rock above, dust in the light, Lumi and the Hushlings drawn in the game's own style as billboards, Lumi as a light source, a song ring that lights the street as it rolls, five street lamps to relight and Hushlings that chase songs and flee from lit lamps. Drag to swim, tap ♪ to sing.
 
 ## The chime puzzle
 
