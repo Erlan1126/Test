@@ -110,7 +110,7 @@ How many people can you house before you run out of room?
 - Something new every day: three missions and a daily chest, a play streak with freezes for days off, rent from your tower, and a weekly league from Bronze to Legend.
 - Your own floating island: houses, a farm, a lake and a waterfall, plus a city you build up with coins (café, windmill, lighthouse, rocket pad and more).
 - A sky that changes as you climb: day turns to sunset and night, with lit windows, fireflies, the aurora, rain, snow and lightning, and planes, airships and even a UFO at altitude.
-- 19 tower skins, island themes, trophies, builder levels and a star shop with boosts.
+- 43 tower skins, island themes, trophies, builder levels, a monthly Sky Pass and a star shop with boosts.
 - Calm synthesized music and ambience that change with your height and the time of day.
 
 ## Controls

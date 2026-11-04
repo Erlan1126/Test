@@ -76,7 +76,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 >
 > PLAY YOUR WAY
 > Classic, Daily, a relaxing Zen mode with no way to fail, and six landmark challenges.
-> 19 tower skins, island themes, trophies and builder levels.
+> 43 tower skins, island themes, trophies and builder levels.
 >
 > Free to play with no ads. Optional premium skins and islands are cosmetic only and
 > never help you score.
