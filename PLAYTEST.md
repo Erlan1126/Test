@@ -102,5 +102,5 @@ Before each update, the automated tests check every level and the main features:
 ```
 npm install
 npm test            # about a minute
-npm test -- --all   # the robot plays all 1,000 levels (about 5 minutes)
+npm test -- --all   # the robot plays all 160 levels (about a minute)
 ```

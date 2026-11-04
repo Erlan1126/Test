@@ -14,9 +14,20 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Every cave has a job
+
+There are 160 caves now: eight worlds of twenty, the first nineteen handmade. Fewer than before, but no two in a row play alike, because each cave's place in its world decides what it asks of you (`SLOT_GOALS` in `levels.js`): explore and solve the chimes, **Relight the city**, **Run!**, rescue a lost moth, sneak through a quiet cave, race the clock, and a finale with the Great Hush. A cave with a job gets one other big idea fewer.
+
+- **Relight the city** (from World 2): three to five dark street lamps stand along the streets. Sing close to each to light it again (it gives Lumi a little light back and lights its street for good). When all burn, the district wakes (its windows glow brighter) and the portal opens.
+- **Run!** (from World 2): a Hunter, a piece of the Hush, rises behind you three seconds after you arrive. It never gives up and passes through rock, but it's a little slower than Lumi; flare it back if it gets close, and reach the portal. A touch costs light and sends it back to where it rose.
+
+## A look at 3D
+
+`echo3d.html` is a separate test scene, not part of the game: one street of the lost city in real 3D (Three.js), with cobbles, brick houses, warm and dark windows, arches, fog, dust in the light, Lumi as a light source, a song ring that lights the street as it rolls, five street lamps to relight and Hushlings that chase songs and flee from lit lamps. Drag to swim, tap ♪ to sing.
+
 ## The chime puzzle
 
-From level 4, every cave hides chime stones (two at first, three from World 2, four from level 301), shuffled and spread out, and the portal stays sealed until they're rung in order. The order is shown under the HUD as colours and shapes (● blue, ◆ violet, ▲ gold, ★ pink, so it works without colour too). Swim into a chime to ring it: the right one sings its note, gives Lumi 22 light back and lights up; the wrong one just sounds dull and tells you which comes next. When the melody is complete it plays back and the portal wakes. Chimes stay hidden until light finds them, so each cave is a little search-and-route puzzle. The level's walk, par, song limit and timer all grow to cover the chime route.
+From level 4, every cave hides chime stones (two at first, three from World 2, four from level 101), shuffled and spread out, and the portal stays sealed until they're rung in order. The order is shown under the HUD as colours and shapes (● blue, ◆ violet, ▲ gold, ★ pink, so it works without colour too). Swim into a chime to ring it: the right one sings its note, gives Lumi 22 light back and lights up; the wrong one just sounds dull and tells you which comes next. When the melody is complete it plays back and the portal wakes. Chimes stay hidden until light finds them, so each cave is a little search-and-route puzzle. The level's walk, par, song limit and timer all grow to cover the chime route.
 
 ## The lost city
 
@@ -86,7 +97,7 @@ You're Lumi, a glowing creature in a pitch-black cave. You can't see, but you ca
 
 **Levels**
 
-- 1,000 levels in 50 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
+- 160 levels in 8 worlds of 20, shown on a winding level map. Each level unlocks when you finish the one before.
 - Nothing in a cave shows until Lumi's light or a song reaches it: lights, moths, creatures, glowing decorations and the portal all stay hidden in the dark (Guiding glow in Settings shows them faintly).
 - The first 19 levels are handmade, with only a two-level tutorial. After that something new arrives every level or two. New ideas get a picture card; new creatures are never announced (see below): light energy (level 3), Thornlings (5), Hushlings (7), long songs (9), lost baby moths (9), quiet caves (11), rune stones (13), dark caves (15), big caves (17) and races (19). Echo crystals appear from level 25.
 - The rest come from a level generator seeded by the level number, so a given level is the same cave for every player. Each one has its own name in its world's style, like "Whispering Fernway" or "Glimmering Geode", and each world ends with a "Heart of …" finale. A level only uses ideas that have already been introduced, and never more than three big ones at once.
@@ -140,7 +151,7 @@ The cave art is painted twice: a quick soft pass so a level starts at once, then
 `npm install` once (it installs [Playwright](https://playwright.dev)), then:
 
 - `npm test` checks every level's layout, the gameplay, each mechanic and mode, every screen at several phone sizes, a robot play-through of about 100 levels, and random "chaos" input, then reports speed. It takes about a minute.
-- `npm test -- --all` has the robot play all 1,000 levels and the daily cave (about four minutes). The robot is a simple player, so the check passes if it finishes at least 99% and lists the caves it lost as the hardest ones.
+- `npm test -- --all` has the robot play all 160 levels and the daily cave (about a minute). The robot is a simple player, so the check passes if it finishes at least 99% and lists the caves it lost as the hardest ones.
 - `npm run test:quick` skips the robot and chaos sections.
 
 For testing on real phones with people, see [PLAYTEST.md](PLAYTEST.md).

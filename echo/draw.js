@@ -60,7 +60,8 @@ function drawCave() {
   for (const m of L.moths) blob(m.x, m.y, 0.8, 0.4 * sightAt(m.x, m.y));
   if (!L.hideLights || L.seen[L.exit.i]) blob(L.exit.x, L.exit.y, 0.9, 0.3);
   for (const e of L.emitters || []) blob(e.x, e.y, e.r, e.a * (0.85 + 0.15 * Math.sin(clock * 2.3 + e.ph)) * knownAt(e.x, e.y));
-  for (const g of L.gloom) if (g.heal) blob(g.x, g.y, 1 + g.heal * 3, g.heal * 0.9);  // the Great Hush, healed, lights the cave
+  for (const g of L.gloom) if (g.heal) blob(g.x, g.y, 1 + g.heal * 3, g.heal * 0.9);
+  for (const lp of L.lamps) if (lp.on) blob(lp.x + 0.12, lp.y - 0.4, 2.6, 0.75);  // relit street lamps light their street  // the Great Hush, healed, lights the cave
   for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0) blob(m.x, m.y, 0.8, 0.35 * sightAt(m.x, m.y));  // Frostwisps glow
   lctx.globalAlpha = 1;
 
@@ -104,10 +105,11 @@ function sceneLights(mx, my) {
   const bright = L.useEnergy ? 0.5 + 0.5 * Math.min(1, L.energy / 40) : 1;
   out.push({ x: lumi.x + mx, y: lumi.y + my, r: (3.2 + L.moths.filter(m => m.following).length * 0.8) * bright * Math.max(shrink, 0.2), i: (1.25 + lumi.sing) * bright, c: look });
   const add = (x, y, r, i, c) => { if (Math.abs(x - lumi.x) < 9 && Math.abs(y - lumi.y) < 12) out.push({ x: x + mx, y: y + my, r, i, c, d: Math.hypot(x - lumi.x, y - lumi.y) }); };
-  for (const e of L.emitters || []) { const k = knownAt(e.x, e.y); if (k > 0) add(e.x, e.y, e.r * 2.6, e.a * 2.4 * k, LIGHT_RGB[e.color]); }
+  for (const e of L.emitters || []) { const k = L.cityLit && e.color === "gold" ? 2.2 : knownAt(e.x, e.y); if (k > 0) add(e.x, e.y, e.r * 2.6, e.a * 2.4 * k, LIGHT_RGB[e.color]); }
   for (const g of L.gloom) if (g.heal) add(g.x, g.y, 2 + g.heal * 4, g.heal * 1.4, LIGHT_RGB.gold);
   for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
   for (const c of L.chimes) if (c.rung) add(c.x, c.y, 2.2, 0.8, LIGHT_RGB[CHIMES[c.n - 1].glow] || LIGHT_RGB.cyan);
+  for (const lp of L.lamps) if (lp.on) add(lp.x + 0.12, lp.y - 0.4, 3.6, 1.1, LIGHT_RGB.gold);
   for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
   if (!L.hideLights || L.seen[L.exit.i]) add(L.exit.x, L.exit.y, 2.2, 0.7, LIGHT_RGB.violet);
   for (const m of L.mobs) if (m.kind === "w" && m.cd <= 0 && sightAt(m.x, m.y) > 0) add(m.x, m.y, 2, 0.6 * sightAt(m.x, m.y), LIGHT_RGB.cyan);
@@ -253,6 +255,22 @@ function drawThings() {
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "lighter";
     glow(GLOW.white, xs[2] - w * 0.2, mid - T * 0.08, T * 0.12, a * (0.4 + 0.3 * Math.max(0, spin)));
+  }
+
+  // Street lamps to relight: dark iron and grey glass until a song sets them burning.
+  for (const lp of L.lamps) {
+    const k = knownAt(lp.x, lp.y);
+    if (k < 0.02) continue;
+    const X = sx(lp.x), Y = sy(lp.y) + TS * 0.5, s = TS, on = lp.on > 0;
+    if (on) { lp.on = Math.min(1, lp.on + 1 / 60); ctx.globalCompositeOperation = "lighter"; glow(GLOW.gold, X + s * 0.12, Y - s * 0.86, s * (1.2 + lp.on * 0.6), 0.6 + Math.sin(clock * 3 + lp.ph) * 0.05); ctx.globalCompositeOperation = "source-over"; }
+    ctx.globalAlpha = k;
+    ctx.strokeStyle = "#20252e"; ctx.lineWidth = Math.max(2, s * 0.05); ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X, Y - s * 0.8); ctx.quadraticCurveTo(X, Y - s * 0.92, X + s * 0.1, Y - s * 0.92); ctx.stroke();
+    ctx.fillStyle = "#20252e"; ctx.fillRect(X - s * 0.1, Y - s * 0.05, s * 0.2, s * 0.05);
+    ctx.fillStyle = on ? "#ffe2a0" : "#4a5466";
+    ctx.beginPath(); ctx.moveTo(X + s * 0.03, Y - s * 0.92); ctx.lineTo(X + s * 0.21, Y - s * 0.92); ctx.lineTo(X + s * 0.18, Y - s * 0.72); ctx.lineTo(X + s * 0.06, Y - s * 0.72); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#20252e"; ctx.fillRect(X + s * 0.02, Y - s * 0.96, s * 0.2, s * 0.04);
+    ctx.globalAlpha = 1;
   }
 
   // Chime stones: a carved post with a crystal bell, hidden until light finds them. The bell

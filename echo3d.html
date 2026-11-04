@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Echo in 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* One dark, lantern-lit world: the game's own look, so this page stays single-theme on purpose.
+     Layout: the 3D street fills the screen; a thin HUD on top, the Sing button bottom right. */
+  :root {
+    color-scheme: dark;
+    --night: #04060d;
+    --ink: #e9f3ff;
+    --dim: #8ea3c8;
+    --cyan: #7ee8ff;
+    --lamp: #ffd27a;
+    --hush: #ff9ad0;
+    --panel: rgba(10, 14, 32, 0.78);
+    --line: rgba(126, 232, 255, 0.22);
+    --display: "Cinzel", Georgia, serif;
+    --body: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); pointer-events: none; }
+  .brand { font-family: var(--display); letter-spacing: 0.3em; font-size: 15px; color: var(--ink); text-shadow: 0 0 12px rgba(126, 232, 255, 0.6); }
+  .brand small { display: block; font-family: var(--body); letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px; color: var(--dim); margin-top: 4px; }
+  .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 7px 13px; font-size: 14px; white-space: nowrap; }
+  .pill b { color: var(--lamp); font-weight: 600; }
+  #hint { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100% - 150px);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 10px 16px; font-size: 15px; text-align: center; pointer-events: none; transition: opacity 0.4s; }
+  #sing { position: fixed; right: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 76px; height: 76px; border-radius: 50%;
+    border: 0; font-size: 34px; color: #0b1020; background: radial-gradient(circle at 40% 35%, #ffffff, #bfefff 60%, #7ee8ff); box-shadow: 0 0 30px rgba(126, 232, 255, 0.6); cursor: pointer; }
+  #sing:active { transform: scale(0.94); }
+  #sing:focus-visible { outline: 3px solid var(--lamp); outline-offset: 3px; }
+  #flash { position: fixed; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(255, 90, 160, 0.45)); opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+  #done { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(4, 6, 13, 0.6); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  #done .card { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 26px 22px; max-width: 340px; text-align: center; display: grid; gap: 12px; }
+  #done h2 { margin: 0; font-family: var(--display); font-weight: 500; letter-spacing: 0.05em; text-wrap: balance; }
+  #done p { margin: 0; color: var(--dim); line-height: 1.45; }
+  #again { border: 0; border-radius: 16px; padding: 12px; font: 600 16px var(--body); background: var(--ink); color: #0b1020; cursor: pointer; }
+  #err { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--dim); }
+</style>
+
+<canvas id="view" aria-label="A street of the lost city in 3D. Drag to swim, tap the note button to sing."></canvas>
+<div class="hud">
+  <div class="brand">ECHO<small>3D test · the lost city</small></div>
+  <div class="pill">Street lamps <b id="lamps">0/5</b></div>
+</div>
+<div id="hint">Drag anywhere to swim. Tap ♪ to sing.</div>
+<button id="sing" aria-label="Sing">♪</button>
+<div id="flash"></div>
+<div id="done" hidden><div class="card"><h2>The street remembers</h2><p>Every lamp burns again and the portal is open. This is what Echo could look like in 3D.</p><button id="again">Play again</button></div></div>
+<div id="err" hidden>This test needs WebGL, which this browser doesn't offer.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+(() => {
+  if (!window.THREE) { document.getElementById("err").hidden = false; return; }
+  const $ = id => document.getElementById(id);
+  const canvas = $("view");
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); } catch (e) { $("err").hidden = false; return; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x04060d);
+  scene.fog = new THREE.FogExp2(0x070b18, 0.055);
+  const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 120);
+  scene.add(new THREE.AmbientLight(0x3a4878, 0.6));
+  scene.add(new THREE.HemisphereLight(0x5a6ab0, 0x0a0c14, 0.45));
+
+  // ---------- Textures drawn on the fly ----------
+  const tex = (w, h, draw, rx = 1, ry = 1) => {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    draw(c.getContext("2d"), w, h);
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.encoding = THREE.sRGBEncoding;
+    return t;
+  };
+  const cobble = tex(256, 256, (g, w, h) => {
+    g.fillStyle = "#1a1d26"; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      const v = 34 + Math.random() * 22, ox = (y % 2) * 16;
+      g.fillStyle = `rgb(${v},${v + 3},${v + 10})`;
+      g.beginPath(); g.roundRect ? g.roundRect(x * 32 + ox + 2, y * 32 + 2, 28, 28, 7) : g.rect(x * 32 + ox + 2, y * 32 + 2, 28, 28); g.fill();
+    }
+  }, 6, 30);
+  const brick = tex(256, 256, (g, w, h) => {
+    g.fillStyle = "#2b2f3c"; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 6; x++) {
+      const v = 58 + Math.random() * 28, ox = (y % 2) * 22;
+      g.fillStyle = `rgb(${v},${v - 4},${v + 6})`;
+      g.fillRect(x * 44 + ox - 22 + 2, y * 16 + 2, 40, 12);
+    }
+  }, 1, 1);
+  const glowTex = tex(128, 128, (g, w) => {
+    const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+    gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.25, "rgba(255,255,255,0.45)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, w, w);
+  });
+  const glowSprite = (color, size, opacity = 1) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    s.scale.set(size, size, 1); return s;
+  };
+
+  // ---------- The street ----------
+  const STREET = 3.2, LEN = 46;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(STREET * 2 + 2, LEN + 10), new THREE.MeshStandardMaterial({ map: cobble, roughness: 0.85, metalness: 0.05 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.z = -LEN / 2 + 4; scene.add(ground);
+  const wallMat = h => { const t = brick.clone(); t.needsUpdate = true; t.repeat.set(1.4, h / 2.2); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.9, color: 0x9aa6c8 }); };
+  const windows = [];
+  const winGeo = new THREE.PlaneGeometry(0.9, 1.3), doorGeo = new THREE.PlaneGeometry(1.1, 1.9);
+  for (const side of [-1, 1]) {
+    let z = 4;
+    while (z > -LEN) {
+      const w = 3 + Math.random() * 2.2, h = 4 + Math.random() * 6, d = 4;
+      const b = new THREE.Mesh(new THREE.BoxGeometry(d, h, w), wallMat(h));
+      b.position.set(side * (STREET + d / 2), h / 2, z - w / 2); scene.add(b);
+      // Arched windows on the street face: most dark, a few still warm.
+      const face = side * STREET - side * 0.01;
+      for (let fy = 2.2; fy < h - 0.8; fy += 1.9) for (let fz = -w / 2 + 0.9; fz < w / 2 - 0.5; fz += 1.5) {
+        const lit = Math.random() < 0.18;
+        const m = new THREE.MeshBasicMaterial({ color: lit ? 0xffc46a : 0x05060c, transparent: true, opacity: 1 });
+        const wnd = new THREE.Mesh(winGeo, m);
+        wnd.position.set(face, fy, z - w / 2 + fz); wnd.rotation.y = -side * Math.PI / 2; scene.add(wnd);
+        windows.push({ mesh: wnd, lit, z: wnd.position.z });
+        if (lit) { const g = glowSprite(0xffb050, 2.2, 0.35); g.position.copy(wnd.position); g.position.x -= side * 0.3; scene.add(g); }
+      }
+      if (Math.random() < 0.6) {
+        const door = new THREE.Mesh(doorGeo, new THREE.MeshStandardMaterial({ color: 0x3b2414, roughness: 0.8 }));
+        door.position.set(face, 0.95, z - w / 2); door.rotation.y = -side * Math.PI / 2; scene.add(door);
+      }
+      z -= w + 0.15;
+    }
+  }
+  // Stone arches across the street every so often.
+  const archMat = new THREE.MeshStandardMaterial({ color: 0x6a7290, roughness: 0.85 });
+  for (let z = -6; z > -LEN; z -= 11) {
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(STREET, 0.35, 8, 24, Math.PI), archMat);
+    arch.position.set(0, 4.2, z); scene.add(arch);
+  }
+  // The portal at the far end.
+  const portal = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.12, 12, 40), new THREE.MeshBasicMaterial({ color: 0xb48cff }));
+  portal.add(ring); const pGlow = glowSprite(0xb48cff, 5, 0.6); portal.add(pGlow);
+  portal.position.set(0, 1.6, -LEN + 2); scene.add(portal);
+  const portalLight = new THREE.PointLight(0xb48cff, 0.6, 8); portal.add(portalLight);
+
+  // ---------- Street lamps to relight ----------
+  const lamps = [];
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x1c2026, roughness: 0.6, metalness: 0.4 });
+  for (let k = 0; k < 5; k++) {
+    const z = -4 - k * 8.5, x = (k % 2 ? 1 : -1) * (STREET - 0.6);
+    const g = new THREE.Group();
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 3, 8), postMat); post.position.y = 1.5; g.add(post);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.45, 0.35), new THREE.MeshStandardMaterial({ color: 0x4a5466, emissive: 0x000000, roughness: 0.3 }));
+    glass.position.y = 3.15; g.add(glass);
+    const halo = glowSprite(0xffc46a, 4, 0); halo.position.y = 3.15; g.add(halo);
+    const light = new THREE.PointLight(0xffc46a, 0, 9, 1.6); light.position.y = 3.1; g.add(light);
+    g.position.set(x, 0, z); scene.add(g);
+    lamps.push({ g, glass, halo, light, on: 0, x, z });
+  }
+
+  // ---------- Lumi ----------
+  const lumi = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 32, 24), new THREE.MeshBasicMaterial({ color: 0xf2fdff, fog: false }));
+  lumi.add(body);
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0x123049, fog: false })); e.position.set(s * 0.11, 0.05, 0.31); lumi.add(e); }
+  const lumiGlow = glowSprite(0x7ee8ff, 2.6, 0.75); lumi.add(lumiGlow);
+  const lumiLight = new THREE.PointLight(0x7ee8ff, 2.4, 9, 1.5); lumi.add(lumiLight);
+  scene.add(lumi);
+  const songLight = new THREE.PointLight(0x9fefff, 0, 1, 1.2); scene.add(songLight);
+  const ringMesh = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 96), new THREE.MeshBasicMaterial({ color: 0x9fefff, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ringMesh.rotation.x = -Math.PI / 2; scene.add(ringMesh);
+
+  // ---------- Hushlings ----------
+  const hush = [];
+  const shadowMat = new THREE.MeshBasicMaterial({ color: 0x0c0616, transparent: true, opacity: 0.92 });
+  for (const [x, z] of [[1.8, -12], [-2, -21], [1.5, -30], [-1.4, -37]]) {
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), shadowMat); b.scale.set(1, 1.15, 1); g.add(b);
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 8), shadowMat); ear.position.set(s * 0.22, 0.48, 0); ear.rotation.z = -s * 0.35; g.add(ear);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: 0xc9a8ff })); eye.scale.set(1.3, 0.6, 1); eye.position.set(s * 0.15, 0.08, 0.36); g.add(eye);
+    }
+    const eg = glowSprite(0xff9ad0, 1.4, 0.35); eg.position.set(0, 0.08, 0.4); g.add(eg);
+    g.position.set(x, 0.9, z); scene.add(g);
+    hush.push({ g, eg, eyes: g.children.filter(c => c.geometry && c.geometry.type === "SphereGeometry" && c !== b), hx: x, hz: z, hunt: 0, ph: Math.random() * 6, calm: 0 });
+  }
+
+  // Dust in the air, catching the light.
+  const dustGeo = new THREE.BufferGeometry(), N = 500, pos = new Float32Array(N * 3);
+  for (let k = 0; k < N; k++) { pos[k * 3] = (Math.random() - 0.5) * STREET * 2; pos[k * 3 + 1] = Math.random() * 7; pos[k * 3 + 2] = 6 - Math.random() * (LEN + 8); }
+  dustGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0x9fbfff, size: 0.05, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(dust);
+
+  // ---------- Sound ----------
+  let AC = null;
+  const note = (f, at = 0, dur = 1.4, vol = 0.12, type = "triangle") => {
+    if (!AC) return;
+    const t = AC.currentTime + at, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + 0.05);
+  };
+  const wakeAudio = () => { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} };
+
+  // ---------- Play ----------
+  const state = { x: 0, z: 2, vx: 0, vz: 0, song: 0, songT: 9, light: 100, hurt: 0, done: false, lit: 0 };
+  const hint = (t, sec = 3) => { const h = $("hint"); h.textContent = t; h.style.opacity = 1; clearTimeout(hint.t); if (sec) hint.t = setTimeout(() => (h.style.opacity = 0), sec * 1000); };
+  function sing() {
+    wakeAudio();
+    if (state.songT < 0.45 || state.done) return;
+    state.songT = 0;
+    [0, 4, 7].forEach((d, i) => note(523.25 * Math.pow(2, d / 12), i * 0.05));
+    // Lamps close by burn again; Hushlings that hear it come looking.
+    for (const lp of lamps) if (!lp.on && Math.hypot(lp.x - state.x, lp.z - state.z) < 3.4) {
+      lp.on = 0.001; state.lit++;
+      note(659.25, 0.15, 1.8, 0.1); note(987.77, 0.3, 1.8, 0.07);
+      $("lamps").textContent = `${state.lit}/${lamps.length}`;
+      hint(state.lit === lamps.length ? "Every lamp burns again. The portal is open!" : `A lamp burns again. ${lamps.length - state.lit} still dark`, 3);
+    }
+    for (const h of hush) if (h.calm <= 0 && Math.hypot(h.g.position.x - state.x, h.g.position.z - state.z) < 7) { if (h.hunt <= 0) note(110, 0, 1, 0.08, "sawtooth"); h.hunt = 3.5; }
+  }
+
+  // Drag anywhere to swim (relative to where the thumb went down); a quick tap sings.
+  let drag = null;
+  canvas.addEventListener("pointerdown", e => { wakeAudio(); drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t: performance.now(), moved: false }; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} });
+  canvas.addEventListener("pointermove", e => { if (!drag || drag.id !== e.pointerId) return; drag.x = e.clientX; drag.y = e.clientY; if (Math.hypot(drag.x - drag.x0, drag.y - drag.y0) > 10) drag.moved = true; });
+  const end = e => { if (!drag || drag.id !== e.pointerId) return; if (!drag.moved && performance.now() - drag.t < 300) sing(); drag = null; };
+  canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
+  $("sing").addEventListener("pointerdown", e => { e.stopPropagation(); sing(); });
+  const keys = {};
+  addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; if (e.key === " ") { e.preventDefault(); sing(); } });
+  addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+  $("again").addEventListener("click", () => location.reload());
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize); resize();
+
+  let last = performance.now(), clock = 0;
+  const camPos = new THREE.Vector3(0, 7, 9);
+  function frame(now) {
+    const dt = Math.min(1 / 30, (now - last) / 1000); last = now; clock += dt;
+    // Steering: drag offset (screen up = forward) or keys.
+    let ix = 0, iz = 0;
+    if (drag && drag.moved) { const dx = drag.x - drag.x0, dy = drag.y - drag.y0, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 50); ix = dx / d * k; iz = dy / d * k; }
+    if (keys.arrowleft || keys.a) ix -= 1; if (keys.arrowright || keys.d) ix += 1; if (keys.arrowup || keys.w) iz -= 1; if (keys.arrowdown || keys.s) iz += 1;
+    const SPEED = 4.2;
+    state.vx += (ix * SPEED - state.vx) * Math.min(1, dt * 8); state.vz += (iz * SPEED - state.vz) * Math.min(1, dt * 8);
+    if (!state.done) { state.x += state.vx * dt; state.z += state.vz * dt; }
+    state.x = Math.max(-STREET + 0.45, Math.min(STREET - 0.45, state.x)); state.z = Math.max(-LEN + 1.5, Math.min(5, state.z));
+    lumi.position.set(state.x, 1 + Math.sin(clock * 2.2) * 0.08, state.z);
+    // The camera floats behind and above, tilted down: the 2.5D view.
+    camPos.lerp(new THREE.Vector3(state.x * 0.5, 6.5, state.z + 8.5), Math.min(1, dt * 3));
+    camera.position.copy(camPos); camera.lookAt(state.x * 0.7, 0.9, state.z - 2.5);
+
+    // The song rolls outward, lighting the street as it passes.
+    state.songT += dt;
+    const sp = Math.min(1, state.songT / 1.3);
+    songLight.position.set(state.x, 1.2, state.z);
+    songLight.intensity = state.songT < 1.3 ? 2.4 * (1 - sp) : 0; songLight.distance = 2 + sp * 16;
+    ringMesh.position.set(state.x, 0.05, state.z); ringMesh.scale.setScalar(0.5 + sp * 12); ringMesh.material.opacity = state.songT < 1.3 ? 0.6 * (1 - sp) : 0;
+    lumiGlow.material.opacity = 0.65 + (state.songT < 0.4 ? 0.35 : 0);
+
+    for (const lp of lamps) if (lp.on) {
+      lp.on = Math.min(1, lp.on + dt * 1.5);
+      lp.light.intensity = 1.8 * lp.on * (0.94 + Math.sin(clock * 9 + lp.z) * 0.06);
+      lp.halo.material.opacity = 0.8 * lp.on; lp.glass.material.emissive.setHex(0xffc46a); lp.glass.material.emissiveIntensity = lp.on;
+    }
+    const open = state.lit === lamps.length;
+    ring.rotation.z += dt * (open ? 1.6 : 0.3); portalLight.intensity = open ? 2 + Math.sin(clock * 3) * 0.3 : 0.5; pGlow.material.opacity = open ? 0.9 : 0.35;
+    if (open && !state.done && Math.hypot(state.x - portal.position.x, state.z - portal.position.z) < 1.4) {
+      state.done = true; [0, 4, 7, 12].forEach((d, i) => note(523.25 * Math.pow(2, d / 12), i * 0.12, 2)); $("done").hidden = false;
+    }
+
+    // Hushlings drift at home, chase songs and anyone close, and flinch from relit lamps.
+    for (const h of hush) {
+      h.ph += dt; h.calm = Math.max(0, h.calm - dt); h.hunt = Math.max(0, h.hunt - dt);
+      const p = h.g.position, d = Math.hypot(p.x - state.x, p.z - state.z);
+      if (h.calm <= 0 && d < 2.2) h.hunt = Math.max(h.hunt, 1.5);
+      let tx = h.hx + Math.sin(h.ph * 0.7) * 0.6, tz = h.hz + Math.cos(h.ph * 0.5) * 0.6, spd = 0.6;
+      if (h.hunt > 0 && !state.done) { tx = state.x; tz = state.z; spd = 2.2; }
+      for (const lp of lamps) if (lp.on > 0.5) { const ld = Math.hypot(p.x - lp.x, p.z - lp.z); if (ld < 3.2) { tx = p.x + (p.x - lp.x); tz = p.z + (p.z - lp.z); spd = 2.6; h.hunt = 0; } }
+      const dx = tx - p.x, dz = tz - p.z, dd = Math.hypot(dx, dz);
+      if (dd > 0.01) { const m = Math.min(dd, spd * dt) / dd; p.x += dx * m; p.z += dz * m; }
+      p.y = 0.9 + Math.sin(h.ph * 1.6) * 0.12;
+      h.g.lookAt(state.x, p.y, state.z);
+      const hunting = h.hunt > 0;
+      h.eg.material.opacity = hunting ? 0.8 : 0.3;
+      for (const e of h.eyes) e.material.color.setHex(hunting ? 0xff9ad0 : 0xc9a8ff);
+      if (d < 0.75 && state.hurt <= 0 && !state.done) {
+        state.hurt = 1.5; h.calm = 5; h.hunt = 0; p.x = h.hx; p.z = h.hz;
+        state.vx = (state.x - p.x) * 2; state.vz = (state.z - p.z) * 2;
+        note(220, 0, 0.4, 0.1, "square"); $("flash").style.opacity = 1; setTimeout(() => ($("flash").style.opacity = 0), 220);
+        hint("A Hushling caught you! Sing near a lamp: they hate the light", 3);
+      }
+    }
+    state.hurt = Math.max(0, state.hurt - dt);
+    dust.rotation.y = Math.sin(clock * 0.05) * 0.02;
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  hint("Drag anywhere to swim. Sing near the dark street lamps to light them again.", 6);
+  requestAnimationFrame(frame);
+})();
+</script>
+</html>

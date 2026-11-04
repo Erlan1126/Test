@@ -92,8 +92,8 @@ function updateHud() {
   $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
   // The chimes to ring, in order: rung ones bright, the next one pulsing.
   const bar = $("chimeBar");
-  bar.hidden = !L.chimes.length;
-  bar.innerHTML = L.chimes.map((c, k) => `<i class="${k + 1 < L.chimeNext ? "rung" : k + 1 === L.chimeNext ? "next" : ""}" style="--c:${CHIMES[k].color}">${CHIMES[k].mark}</i>`).join("");
+  bar.hidden = !L.chimes.length && !L.lamps.length;
+  bar.innerHTML = L.lamps.map(q => `<i class="${q.on ? "rung" : "next"}" style="--c:#ffd27a">✹</i>`).join("") + L.chimes.map((c, k) => `<i class="${k + 1 < L.chimeNext ? "rung" : k + 1 === L.chimeNext ? "next" : ""}" style="--c:${CHIMES[k].color}">${CHIMES[k].mark}</i>`).join("");
   const pill = $("pingsPill");
   pill.hidden = levelIndex >= 0 && levelIndex < 10;
   if (L.songLimit) {
@@ -127,6 +127,10 @@ const CARDS = {
     art: `<circle cx="56" cy="56" r="34" fill="none" stroke="#96ffbe" stroke-opacity=".5" stroke-dasharray="3 6"/><circle cx="56" cy="56" r="13" fill="#283a46"/><g stroke="#96ffbe" stroke-width="2" fill="none"><circle cx="56" cy="56" r="2" fill="#96ffbe"/><path d="M49 51a8 8 0 0 0 0 10M63 51a8 8 0 0 1 0 10"/></g><g transform="translate(36 72)">${LUMI_SVG}</g><rect x="112" y="34" width="34" height="44" rx="3" fill="#3a4656"/><rect x="117" y="39" width="24" height="34" fill="none" stroke="#96ffbe" stroke-width="1.5"/>` },
   gloom: { title: "Hushlings", text: "The Hush wants the caves silent forever, and Hushlings are its shadows. They drift through rock, hear every song nearby and notice you if you swim close, then chase you almost as fast as you swim. Run, or hide behind rock until it gives up. A touch steals light. They're in every cave from now on.",
     art: `<g transform="translate(44 56)">${LUMI_SVG}</g><g fill="none" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2"><path d="M66 44a16 16 0 0 1 0 24"/><path d="M74 38a24 24 0 0 1 0 36"/></g><g transform="translate(122 58) scale(1.3)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g>` },
+  relight: { title: "Relight the city", text: "The old street lamps have been dark since the Hush came. Sing close to each one and it burns again. Light them all, and this part of the city wakes up.",
+    art: `<g transform="translate(46 62)">${LUMI_SVG}</g><path d="M64 54a14 14 0 0 1 0 18" stroke="#7ee8ff" stroke-opacity=".6" fill="none" stroke-width="2"/><g transform="translate(104 92)"><circle cy="-50" r="18" fill="url(#cardGold)" opacity=".7"/><path d="M0 0V-46q0-6 6-6h4" stroke="#1c2026" stroke-width="3" fill="none"/><path d="M6-54h10l-2 12H8z" fill="#ffd27a"/></g><g transform="translate(140 92)"><path d="M0 0V-46q0-6 6-6h4" stroke="#1c2026" stroke-width="3" fill="none"/><path d="M6-54h10l-2 12H8z" fill="#5a6476"/></g>` },
+  escape: { title: "Run!", text: "In some caves a Hunter rises out of the dark behind you, a piece of the Hush that never gives up. It's a little slower than you. Don't stop, flare it back if it gets close, and reach the portal.",
+    art: `<g transform="translate(112 58)">${LUMI_SVG}</g><path d="M90 50h-14M92 60h-20M90 70h-14" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/><g transform="translate(46 60) scale(1.5)"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".6"/><ellipse cx="-6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/><ellipse cx="6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/></g>` },
   chimes: { title: "Chimes", text: "Every cave from now on hides chime stones. The marks at the top show the order: ring them by swimming into them, one after another, and the sealed portal opens.",
     art: `<g transform="translate(40 58)">${LUMI_SVG}</g><g font-size="16" text-anchor="middle"><text x="84" y="40" fill="#7ee8ff">●</text><text x="106" y="40" fill="#c9a8ff">◆</text><text x="128" y="40" fill="#ffd36e">▲</text></g><g transform="translate(84 76)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#7ee8ff"/></g><g transform="translate(118 80)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#c9a8ff" opacity=".6"/></g><path d="M54 62q14-10 26 6" stroke="#8ea3c8" stroke-dasharray="2 4" fill="none"/>` },
   flare: { title: "Flare", text: "Tap the ✦ button to burst your light. Creatures close by are dazzled, and Hushlings shrink back and stop chasing. It needs a few seconds to recharge.",
@@ -169,6 +173,7 @@ const CREATURE_MEET = {  // name and a one-line tip
   thorns: ["Thornling", "It patrols back and forth. Wait for a gap."],
   gloom: ["Hushling", "It hears your songs and chases fast. Run, or hide behind rock!"],
   boss: ["The Great Hush", "King of the Hushlings. Don't let it hear you."],
+  hunter: ["The Hunter", "A piece of the Hush that never stops. Run, or flare it back!"],
   mobn: ["Snapvine", "It shivers before it snaps. Keep your distance."],
   moba: ["Shardbat", "It swoops at songs it hears. Then it rests."],
   mobk: ["Cinder Crab", "It dashes along the floor. Cross when it pauses."],
@@ -179,7 +184,7 @@ const CREATURE_CARDS = new Set(Object.values(CREATURES));
 
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [def.card, i >= CHIMES_FROM && i !== STORY_FINALE && "chimes", i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
+  const wants = [def.card, def.goal === "relight" && "relight", def.goal === "escape" && "escape", i >= CHIMES_FROM && i !== STORY_FINALE && m.match(/[1-4]/) && "chimes", i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
     def.map[0].length > 11 && "tall"];
   return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
 }
@@ -196,7 +201,7 @@ function meetCreatures(dt) {
   };
   const met = [];
   for (const t of L.thorns) if (near(t.x, t.y)) met.push("thorns");
-  for (const g of L.gloom) if (!g.gone && near(g.x, g.y)) met.push(g.big ? "boss" : "gloom");
+  for (const g of L.gloom) if (!g.gone && !(g.delay > 0) && near(g.x, g.y)) met.push(g.chaser ? "hunter" : g.big ? "boss" : "gloom");
   for (const m of L.mobs) if (!(m.kind === "w" && m.cd > 0) && near(m.x, m.y)) met.push("mob" + m.kind);
   if (encounterTimer > 0.5) return;
   const rare = L.gloom.find(g => g.variant && !g.gone && near(g.x, g.y) && !(save.variants || {})[g.variant]);
@@ -684,7 +689,7 @@ tap("nextBtn", () => {
   // Clearing the Starlight Abyss for the first time plays the ending first.
   if (save.endingDue) {
     save.endingDue = 0; save.ended = 1; if (flickCanReturn()) save.flick = 1; persist();
-    playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => startLevel(levelIndex + 1) });
+    playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => (levelIndex + 1 < TOTAL ? startLevel(levelIndex + 1) : showTitle()) });
     return;
   }
   if (isChallenge(levelIndex)) showTitle();

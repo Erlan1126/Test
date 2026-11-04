@@ -72,7 +72,7 @@ const SIM = `
         m.forEach((row, y) => [...row].forEach((c, x) => {
           if (c === "S") S = [x, y];
           if (c === "E") X = [x, y];
-          if (c === "o" || c === "m" || c === "f" || (c >= "1" && c <= "4")) goals.push([x, y]);
+          if (c === "o" || c === "m" || c === "f" || c === "l" || (c >= "1" && c <= "4")) goals.push([x, y]);
           if (c === "r") runes.push([x, y]);
           if (c === "G") gate = [x, y];
         }));
@@ -126,11 +126,11 @@ const SIM = `
       }
       return { bad, counts, tooBusy, introsOk, early };
     });
-    check("all 1,000 levels and the daily cave are well formed and completable", r.bad.length === 0, r.bad.slice(0, 5).join("; "));
+    check("all 160 levels and the daily cave are well formed and completable", r.bad.length === 0, r.bad.slice(0, 5).join("; "));
     check("no generated level uses more than 3 big ideas", r.tooBusy === 0, r.tooBusy + " too busy");
     check("every introduction level has a picture card", r.introsOk);
     check("no idea appears before its introduction level", r.early.length === 0, r.early.slice(0, 5).join(", "));
-    check("the mix includes tall, dark, gate and goal levels", Object.values(r.counts).every(n => n > 50), JSON.stringify(r.counts));
+    check("the mix includes tall, dark, gate and goal levels", Object.values(r.counts).every(n => n >= 8), JSON.stringify(r.counts));
     check("no page errors", errors.length === 0, errors[0]);
     await page.close();
   }
@@ -241,8 +241,12 @@ const SIM = `
       out.cameraFollowsInTallCaves = L.scroll && OY > oy + 100;
       startLevel(DAILY, true);
       if (L.baby) { Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2); }
+      L.chimeNext = L.chimes.length + 1; for (const q of L.lamps) q.on = 1;  // tested on their own below
+      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
+      out.dailyStartsStreak = save.daily.streak >= 1 && save.daily.last === dayKey();
       // Chimes: the portal stays sealed until they're rung in order; the wrong one does nothing.
-      out.dailyHasChimes = L.chimes.length >= 2;
+      startLevel(find(lv => lv.goal === "explore" && /[1-4]/.test(lv.map.join(""))), true);
+      out.cavesHaveChimes = L.chimes.length >= 2;
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
       out.portalSealedUntilChimesRing = !L.ending;
       const last = L.chimes.find(c => c.n === L.chimes.length);
@@ -250,8 +254,18 @@ const SIM = `
       out.wrongChimeDoesNothing = L.chimeNext === 1 && !last.rung;
       for (const c of L.chimes.slice().sort((a, b) => a.n - b.n)) { Object.assign(L.lumi, { x: c.x, y: c.y }); __sim(0.2); }
       out.chimesInOrderOpenThePortal = L.chimeNext > L.chimes.length;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
-      out.dailyStartsStreak = save.daily.streak >= 1 && save.daily.last === dayKey();
+      // Relight the city: a song close to each dark lamp lights it; then the portal opens.
+      startLevel(find(lv => lv.goal === "relight"), true);
+      out.relightCavesHaveLamps = L.lamps.length >= 3;
+      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
+      out.portalWaitsForTheLamps = !L.ending;
+      for (const q of L.lamps) { Object.assign(L.lumi, { x: q.x, y: q.y }); L.pingCd = 0; ping(); __sim(0.2); }
+      out.singingLightsEveryLamp = L.lamps.every(q => q.on) && L.cityLit;
+      // Run!: a Hunter rises behind Lumi and keeps coming.
+      startLevel(find(lv => lv.goal === "escape"), true);
+      const hunter = L.gloom.find(g => g.chaser), h0 = [hunter.x, hunter.y];
+      Object.assign(L.lumi, { x: h0[0] + 5, y: h0[1] }); L.lumi.x = Math.min(L.cols - 1.5, L.lumi.x); __sim(4);
+      out.hunterChasesInRunCaves = !!hunter && Math.hypot(hunter.x - h0[0], hunter.y - h0[1]) > 0.5;
       // Thornlings patrol and cost light when touched.
       startLevel(cardLevel("thorns"), true);
       // A Thornling may be pausing at the end of its lane, so watch it for a while.
@@ -390,11 +404,11 @@ const SIM = `
     const { page, errors } = await openGame(browser);
     await page.evaluate(SIM);
     const sample = [];
-    if (ALL) { for (let i = 0; i < 1000; i++) sample.push(i); sample.push(-1); }
+    if (ALL) { for (let i = 0; i < 160; i++) sample.push(i); sample.push(-1); }
     else {
       for (let i = 0; i < 10; i++) sample.push(i);
         for (let i = 10; i < 19; i++) sample.push(i);
-      for (let i = 11; i < 400; i += 5) sample.push(i);
+      for (let i = 19; i < 160; i += 3) sample.push(i);
     }
     const res = await page.evaluate(list => {
       // A simple robot: walk tile paths to each light, the lost moth and each rune, then the
@@ -441,6 +455,13 @@ const SIM = `
           for (const r of L.runes) if (!r.on) list.push([r.x, r.y]);
           const chime = L.chimes.find(c => c.n === L.chimeNext);
           if (chime) list.push([chime.x, chime.y]);
+          for (const q of L.lamps) if (!q.on) list.push([q.x, q.y]);
+          // Running from the Hunter, a player heads for the portal and only grabs what's close.
+          if (L.goal === "escape") {
+            const must = L.runes.filter(r => !r.on).map(r => [r.x, r.y]);
+            const near = list.filter(t => Math.hypot(t[0] - L.lumi.x, t[1] - L.lumi.y) < 3);
+            list.length = 0; list.push(...must, ...near);
+          }
           let bestT = null, bestLen = Infinity;
           for (const t of list) { const p = route(Math.floor(t[0]), Math.floor(t[1])); if (p && p.length < bestLen) { bestLen = p.length; bestT = t; } }
           if (!bestT && L.finale && !L.healed) { const k = L.gloom.find(g => g.final); return [k.hx, k.hy]; }
@@ -450,7 +471,7 @@ const SIM = `
         const time = __sim(150, t => {
           if (L.ending || L.failing) return;
           if (!target || Math.hypot(target[0] - L.lumi.x, target[1] - L.lumi.y) < 0.35) {
-            if (target) for (const r of L.runes) if (!r.on && Math.hypot(r.x - L.lumi.x, r.y - L.lumi.y) < 0.6) sing(t);
+            if (target) for (const r of L.runes.concat(L.lamps)) if (!r.on && Math.hypot(r.x - L.lumi.x, r.y - L.lumi.y) < 0.6) sing(t);
             target = pickTarget(); path = route(Math.floor(target[0]), Math.floor(target[1])) || []; best = Infinity;
           }
           // A careful player sings less when a Hushling is close, so as not to wake it.
@@ -508,7 +529,7 @@ const SIM = `
       let seed = 12345, problems = [];
       const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let k = 0; k < 40; k++) {
-        const n = k < 4 ? [DAILY, 40, 84, 100][k] : Math.floor(rnd() * 400);
+        const n = k < 4 ? [DAILY, 40, 84, 100][k] : Math.floor(rnd() * 160);
         startLevel(n, true);
         __sim(20, t => {
           if (rnd() < 0.05) for (const d of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[d] = rnd() < 0.35;
