@@ -21,11 +21,12 @@ database_id = "PASTE_YOUR_D1_DATABASE_ID"
 # Sites allowed to start a Stripe checkout (your game's website).
 ALLOWED_ORIGINS = "https://YOUR-SITE.example"
 # Stripe price ids for each Sky Crystal pack (create them in the Stripe dashboard).
-PRICE_crystals_100 = "price_..."
-PRICE_crystals_550 = "price_..."
-PRICE_crystals_1200 = "price_..."
+PRICE_crystals_200 = "price_..."
+PRICE_crystals_650 = "price_..."
+PRICE_crystals_1250 = "price_..."
 PRICE_crystals_2600 = "price_..."
-PRICE_crystals_7000 = "price_..."
+PRICE_crystals_8000 = "price_..."
+PRICE_crystals_14000 = "price_..."
 # Secrets are NOT stored here. Set them with:
 #   npx wrangler secret put STRIPE_SECRET_KEY
 #   npx wrangler secret put STRIPE_WEBHOOK_SECRET

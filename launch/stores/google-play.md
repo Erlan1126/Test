@@ -64,11 +64,12 @@ products"; leave them as consumable, which is the default for this game's purcha
 
 | Product ID | Name | Description | Price |
 |---|---|---|---|
-| crystals_100 | 100 Sky Crystals | A handful of Sky Crystals | $0.99 |
-| crystals_550 | 550 Sky Crystals | 500 Sky Crystals + 10% bonus | $4.99 |
-| crystals_1200 | 1,200 Sky Crystals | 1,000 Sky Crystals + 20% bonus | $9.99 |
-| crystals_2600 | 2,600 Sky Crystals | 2,000 Sky Crystals + 30% bonus | $19.99 |
-| crystals_7000 | 7,000 Sky Crystals | 5,000 Sky Crystals + 40% bonus | $49.99 |
+| crystals_200 | 200 Sky Crystals | A pouch of Sky Crystals | $1.99 |
+| crystals_650 | 650 Sky Crystals | 600 Sky Crystals + 8% bonus | $5.99 |
+| crystals_1250 | 1,250 Sky Crystals | 1,100 Sky Crystals + 14% bonus | $10.99 |
+| crystals_2600 | 2,600 Sky Crystals | 2,100 Sky Crystals + 24% bonus | $20.99 |
+| crystals_8000 | 8,000 Sky Crystals | 6,000 Sky Crystals + 33% bonus | $59.99 |
+| crystals_14000 | 14,000 Sky Crystals | 10,000 Sky Crystals + 40% bonus | $99.99 |
 
 Premium skins, islands and the Sky Pass premium track are bought with Sky Crystals inside
 the game, so they don't need their own products.

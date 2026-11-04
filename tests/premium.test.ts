@@ -63,11 +63,11 @@ describe("premium purchases", () => {
 
   it("adds each pack purchase exactly once", () => {
     const s = defaultSave();
-    expect(grantPack(s, "crystals_550", "android:abc")).toBe(550);
-    expect(grantPack(s, "crystals_550", "android:abc")).toBe(0); // the store resent it
-    expect(grantPack(s, "crystals_100", "android:def")).toBe(100);
+    expect(grantPack(s, "crystals_650", "android:abc")).toBe(650);
+    expect(grantPack(s, "crystals_650", "android:abc")).toBe(0); // the store resent it
+    expect(grantPack(s, "crystals_200", "android:def")).toBe(200);
     expect(grantPack(s, "free_crystals", "x")).toBe(0);
-    expect(s.crystals).toBe(650);
+    expect(s.crystals).toBe(850);
   });
 
   it("keeps purchases and the player id through saves and save codes", () => {
@@ -95,8 +95,8 @@ describe("premium purchases", () => {
       expect(perDollar).toBeGreaterThanOrEqual(last);
       last = perDollar;
     }
-    // The $4.99 pack covers the Sky Pass.
-    expect(CRYSTAL_PACKS.find(p => p.cents === 499)!.crystals).toBeGreaterThanOrEqual(PASS_PRICE);
+    // The $5.99 pack covers the Sky Pass.
+    expect(CRYSTAL_PACKS.find(p => p.cents === 599)!.crystals).toBeGreaterThanOrEqual(PASS_PRICE);
   });
 });
 

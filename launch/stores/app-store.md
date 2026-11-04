@@ -104,18 +104,19 @@ packs again and again). The Product ID must match exactly, because the game look
 
 | Reference name | Product ID | Price | Display name | Description (55 max) |
 |---|---|---|---|---|
-| 100 Sky Crystals | crystals_100 | $0.99 | 100 Sky Crystals | A handful of Sky Crystals |
-| 550 Sky Crystals | crystals_550 | $4.99 | 550 Sky Crystals | 500 Sky Crystals + 10% bonus |
-| 1,200 Sky Crystals | crystals_1200 | $9.99 | 1,200 Sky Crystals | 1,000 Sky Crystals + 20% bonus |
-| 2,600 Sky Crystals | crystals_2600 | $19.99 | 2,600 Sky Crystals | 2,000 Sky Crystals + 30% bonus |
-| 7,000 Sky Crystals | crystals_7000 | $49.99 | 7,000 Sky Crystals | 5,000 Sky Crystals + 40% bonus |
+| 200 Sky Crystals | crystals_200 | $1.99 | 200 Sky Crystals | A pouch of Sky Crystals |
+| 650 Sky Crystals | crystals_650 | $5.99 | 650 Sky Crystals | 600 Sky Crystals + 8% bonus |
+| 1,250 Sky Crystals | crystals_1250 | $10.99 | 1,250 Sky Crystals | 1,100 Sky Crystals + 14% bonus |
+| 2,600 Sky Crystals | crystals_2600 | $20.99 | 2,600 Sky Crystals | 2,100 Sky Crystals + 24% bonus |
+| 8,000 Sky Crystals | crystals_8000 | $59.99 | 8,000 Sky Crystals | 6,000 Sky Crystals + 33% bonus |
+| 14,000 Sky Crystals | crystals_14000 | $99.99 | 14,000 Sky Crystals | 10,000 Sky Crystals + 40% bonus |
 
 Everything else (premium skins and islands, the Sky Pass premium track) is bought **with
 Sky Crystals inside the game**, so it doesn't need its own store product.
 
 For each pack, also add a **review screenshot**: take one of Shop → 💎 Crystals on your
-iPhone (TestFlight build) and reuse it for all five. Then, on the version page, select
-all five under **In-App Purchases and Subscriptions** so they're reviewed with the app.
+iPhone (TestFlight build) and reuse it for all six. Then, on the version page, select
+all six under **In-App Purchases and Subscriptions** so they're reviewed with the app.
 
 Before any of this works you must accept the **Paid Apps Agreement** and add your bank
 and tax details (Business → Agreements). Without it, purchases won't load.

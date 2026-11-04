@@ -47,7 +47,7 @@ Sky Crystals and everything they buy are optional and cosmetic. If you buy a pac
   card details, and the game never sees them. Stripe may ask for your email address for
   the receipt. Stripe's own privacy policy applies to that: https://stripe.com/privacy
 - **Our server stores only your random player id and the packs you bought** (for example
-  `crystals_550` with Stripe's order number). That is how the game knows to add them. It
+  `crystals_650` with Stripe's order number). That is how the game knows to add them. It
   does not store your name, email or card details. The server runs on Cloudflare, which
   handles the network requests to it.
 

@@ -23,15 +23,19 @@ export interface CrystalPack {
   cents: number;
   /** "+20% bonus" style tag. */
   bonus?: string;
+  /** Tagged "Most popular". */
   best?: boolean;
+  /** Tagged "Best value". */
+  value?: boolean;
 }
 
 export const CRYSTAL_PACKS: CrystalPack[] = [
-  { id: "crystals_100", crystals: 100, cents: 99 },
-  { id: "crystals_550", crystals: 550, cents: 499, bonus: "+10%" },
-  { id: "crystals_1200", crystals: 1200, cents: 999, bonus: "+20%", best: true },
-  { id: "crystals_2600", crystals: 2600, cents: 1999, bonus: "+30%" },
-  { id: "crystals_7000", crystals: 7000, cents: 4999, bonus: "+40%" },
+  { id: "crystals_200", crystals: 200, cents: 199 },
+  { id: "crystals_650", crystals: 650, cents: 599, bonus: "+8%" },
+  { id: "crystals_1250", crystals: 1250, cents: 1099, bonus: "+14%", best: true },
+  { id: "crystals_2600", crystals: 2600, cents: 2099, bonus: "+24%" },
+  { id: "crystals_8000", crystals: 8000, cents: 5999, bonus: "+33%" },
+  { id: "crystals_14000", crystals: 14000, cents: 9999, bonus: "+40%", value: true },
 ];
 
 export const packById = (id: string): CrystalPack | undefined => CRYSTAL_PACKS.find(p => p.id === id);

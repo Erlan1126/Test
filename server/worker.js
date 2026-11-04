@@ -20,14 +20,14 @@
 //   STRIPE_WEBHOOK_SECRET   whsec_... from the webhook you create in Stripe
 //   ALLOWED_ORIGINS         comma-separated sites allowed to start a checkout,
 //                           e.g. "https://yourname.itch.io,https://html-classic.itch.zone"
-//   PRICE_<pack id>         the Stripe price id for each pack, e.g. PRICE_crystals_550
+//   PRICE_<pack id>         the Stripe price id for each pack, e.g. PRICE_crystals_650
 // Storage: a KV namespace bound as ENTITLEMENTS.
 import { replayRun } from "../src/logic/replay";
 import { dailySeed, dayNumber } from "../src/logic/rules";
 import { weekIndex } from "../src/data/events";
 
 // Must match CRYSTAL_PACKS in src/data/premium.ts.
-const PRODUCTS = ["crystals_100", "crystals_550", "crystals_1200", "crystals_2600", "crystals_7000"];
+const PRODUCTS = ["crystals_200", "crystals_650", "crystals_1250", "crystals_2600", "crystals_8000", "crystals_14000"];
 const PLAYER = /^[A-Za-z0-9-]{8,64}$/;
 
 export default {

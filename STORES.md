@@ -69,7 +69,7 @@ store's own testing tracks.
       `launch/stores/google-play.md`.
 - [ ] Testing → **Closed testing**: upload the `.aab`, add at least 12 testers and send
       them the link. Wait 14 days.
-- [ ] Create the 5 Sky Crystal packs (Monetize → Products; ids and prices are in
+- [ ] Create the 6 Sky Crystal packs (Monetize → Products; ids and prices are in
       `launch/stores/google-play.md`) and set up your payments profile.
 - [ ] Apply for production and publish.
 
@@ -97,7 +97,7 @@ store's own testing tracks.
          turns green.
 - [ ] Install **TestFlight** on your iPhone, add yourself as an internal tester, and play it.
 - [ ] Business → **Agreements**: accept the Paid Apps Agreement and add bank and tax info.
-- [ ] Create the 5 Sky Crystal packs (consumable) from `app-store.md`.
+- [ ] Create the 6 Sky Crystal packs (consumable) from `app-store.md`.
 - [ ] On the 1.0 version page: pick the build, add screenshots and the in-app purchases,
       then **Add for Review** → **Submit**.
 

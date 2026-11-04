@@ -169,9 +169,9 @@ export class Sheets {
       const price = pay?.price?.(pk) ?? formatPrice(pk.cents);
       const card = document.createElement("button");
       card.type = "button";
-      card.className = `pack-card${pk.best ? " best" : ""}`;
+      card.className = `pack-card${pk.best || pk.value ? " best" : ""}`;
       card.disabled = !pay;
-      card.innerHTML = `${pk.best ? '<span class="best-value">Most popular</span>' : ""}
+      card.innerHTML = `${pk.best ? '<span class="best-value">Most popular</span>' : pk.value ? '<span class="best-value">Best value</span>' : ""}
         <span class="pack-gems" aria-hidden="true">${"💎".repeat(Math.min(3, 1 + CRYSTAL_PACKS.indexOf(pk) / 2 | 0))}</span>
         <b>${fmt(pk.crystals)}</b>${pk.bonus ? `<small class="bonus">${esc(pk.bonus)} bonus</small>` : "<small>&nbsp;</small>"}
         <span class="buy">${pay ? esc(price) : "Soon"}</span>`;
