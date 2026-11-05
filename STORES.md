@@ -10,7 +10,7 @@ Store text, screenshots and product lists are ready in `launch/stores/`:
 - `app-store.md`: every App Store Connect field
 - `google-play.md`: every Play Console field
 - `app-store-screenshots/`: 1290 × 2796
-- `google-play-screenshots/`: 1080 × 2160
+- `google-play-screenshots/`: 1080 × 1920
 - `feature-graphic.png`: 1024 × 500
 
 ## Costs and timing
