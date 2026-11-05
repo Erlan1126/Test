@@ -62,6 +62,16 @@ jobs:
           ./gradlew bundleRelease --no-daemon
           rm -f "$RUNNER_TEMP/upload.jks"
 
+      - name: Check the Play Store bundle is valid
+        if: ${{ env.HAS_KEY == 'true' }}
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          ls -la "$AAB"
+          curl -sSL -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+          java -jar "$RUNNER_TEMP/bundletool.jar" validate --bundle="$AAB" | head -20
+          jarsigner -verify -verbose:summary "$AAB" | tail -5
+          unzip -p "$AAB" base/manifest/AndroidManifest.xml | wc -c
+
       - uses: actions/upload-artifact@v4
         if: ${{ hashFiles('android/app/build/outputs/bundle/release/app-release.aab') != '' }}
         with:
