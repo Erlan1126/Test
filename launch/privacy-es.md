@@ -1,10 +1,11 @@
 # Política de privacidad de Skyrise
 
 Skyrise es un juego de Erlan Studios (contacto: erlanstudios1@gmail.com).
-Última actualización: 4 de noviembre de 2026 (se agregaron el ranking mundial y los Cristales Celestes).
+Última actualización: 5 de noviembre de 2026.
 
-En resumen: Skyrise no tiene cuentas, ni anuncios, ni rastreo. Tu progreso se queda en
-tu dispositivo.
+En resumen: Skyrise no tiene cuentas, ni anuncios, ni rastreo. Tu progreso se guarda en
+tu dispositivo y se respalda en nuestro servidor con un id de jugador aleatorio, para que
+puedas recuperarlo en un teléfono nuevo. Nunca lo vendemos ni lo compartimos.
 
 Esta es una traducción de la política en inglés (`privacy.md`). Si hay alguna diferencia,
 la versión en inglés es la que vale.
@@ -14,8 +15,8 @@ la versión en inglés es la que vale.
 - **Tu progreso se guarda en tu dispositivo**, en el almacenamiento local de tu navegador
   (en las apps para teléfono, en el almacenamiento propio de la app, con una copia de
   respaldo que guarda la app): tus torres, niveles, monedas, estrellas, aspectos, ajustes
-  y un identificador de jugador aleatorio. No se nos envía. Si borras los datos del sitio
-  en tu navegador, se borra.
+  y un identificador de jugador aleatorio. También se guarda una copia en nuestro servidor
+  (ver "Respaldo en la nube" más abajo).
 - **Los códigos de partida** (Ajustes → Pasar tu progreso a otro dispositivo) se crean en
   tu dispositivo y contienen tu progreso. Solo se comparten si tú mismo los copias y
   pegas. Mantén tu código de partida en privado, porque cualquiera que lo tenga puede
@@ -93,15 +94,11 @@ servicio de fuentes.
 
 ## Niños
 
-Skyrise es apto para todas las edades y no recopila información personal de nadie,
-incluidos los niños.
-
-## Dónde se publica el juego
-
-Cuando juegas en itch.io, se aplica la política de privacidad del propio sitio de itch.io:
-https://itch.io/docs/legal/privacy-policy
+Skyrise es apto para todas las edades. No pide nombres, correos, números de teléfono,
+ubicación ni fotos a nadie. Lo único que un jugador escribe y que otros pueden ver es el
+apodo opcional del ranking, y los jugadores pueden reportar nombres que no sean apropiados.
 
 ## Contacto
 
-¿Tienes preguntas sobre privacidad o quieres que borremos tu registro de compras? Escribe
-a erlanstudios1@gmail.com e incluye tu identificador de jugador o tu código de partida.
+¿Preguntas sobre privacidad, o quieres que borremos tus datos? Escribe a
+erlanstudios1@gmail.com e incluye tu apodo o tu código de recuperación.

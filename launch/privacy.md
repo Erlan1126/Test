@@ -3,15 +3,16 @@
 Skyrise is made by Erlan Studios (contact: erlanstudios1@gmail.com).
 Last updated: November 5, 2026.
 
-Short version: Skyrise has no accounts, no ads and no tracking. Your progress stays on
-your device.
+Short version: Skyrise has no accounts, no ads and no tracking. Your progress is saved on
+your device and backed up to our server under a random player id, so you can get it back
+on a new phone. We never sell or share it.
 
 ## What the game stores
 
 - **Your progress is stored on your device**, in your browser's local storage (in the
   phone apps, in the app's own storage, with a backup copy kept by the app): your
-  towers, levels, coins, stars, skins, settings and a random player id. It is not sent to
-  us. Clearing your browser's site data deletes it.
+  towers, levels, coins, stars, skins, settings and a random player id. A copy is also
+  kept on our server (see "Cloud backup" below).
 - **Save codes** (Settings → Move progress to another device) are created on your device.
   They contain your progress. They are only shared if you copy and paste them yourself.
   Keep your save code private, since anyone with it can load your progress and purchases.
@@ -84,15 +85,11 @@ The game's fonts are included with the game, so it doesn't contact any font serv
 
 ## Children
 
-Skyrise is suitable for all ages and doesn't collect personal information from anyone,
-including children.
-
-## Where the game is hosted
-
-When you play on itch.io, itch.io's own privacy policy applies to its website:
-https://itch.io/docs/legal/privacy-policy
+Skyrise is suitable for all ages. It doesn't ask for names, emails, phone numbers,
+locations or photos from anyone. The only thing a player types that others can see is the
+optional leaderboard nickname, and players can report names that aren't appropriate.
 
 ## Contact
 
-Questions about privacy, or want your purchase record deleted? Contact
-erlanstudios1@gmail.com and include your player id or save code.
+Questions about privacy, or want your data deleted? Contact erlanstudios1@gmail.com
+and include your nickname or recovery code.
