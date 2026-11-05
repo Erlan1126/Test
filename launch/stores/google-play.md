@@ -18,14 +18,13 @@ changed after that.
 
 **Short description** (80 max):
 
-> Stack floors, nail perfect drops and build past real landmarks. One tap to play.
+> Stack floors, nail perfect drops and race the world up the leaderboards.
 
 **Full description:** use the description in `app-store.md` (the same text works here).
 
 **Graphics:**
 
-- App icon (512 × 512): `../../assets/icon-only.png`, resized. Or use
-  `public/icon-512.png` from the game.
+- App icon (512 × 512): `play-icon-512.png`
 - Feature graphic (1024 × 500): `feature-graphic.png`
 - Phone screenshots: the six files in `google-play-screenshots/` (1080 × 2160), in order 1 to 6.
 
