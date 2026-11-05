@@ -38,6 +38,21 @@ servidor funciona en Cloudflare. No vendemos ni compartimos estos datos, y no se
 para anuncios ni para rastreo. Para que borremos tus entradas del ranking, escribe a
 erlanstudios1@gmail.com con tu nombre en el ranking.
 
+## Respaldo en la nube
+
+Para que no pierdas tu progreso ni tus compras al cambiar de teléfono o reinstalar, el
+juego guarda una copia de tu partida en el servidor de Skyrise: tus torres, niveles,
+monedas, estrellas, Cristales Celestes, aspectos, ajustes y apodo, vinculados a tu id de
+jugador aleatorio. En Ajustes → Respaldo en la nube verás un **código de recuperación**;
+al escribirlo en otro dispositivo, se restaura la copia ahí. Mantén el código en
+privado, porque cualquiera que lo tenga puede restaurar tu progreso. Para que borremos
+tu copia, escribe a erlanstudios1@gmail.com con tu código de recuperación.
+
+## Reportar nombres
+
+Si reportas un nombre del ranking, el servidor guarda que lo reportaste (con tu id de
+jugador aleatorio). Los nombres reportados por varios jugadores se ocultan.
+
 ## Qué no hace el juego
 
 - No hay cuentas ni inicio de sesión (el ranking usa el identificador aleatorio de arriba).
