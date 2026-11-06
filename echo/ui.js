@@ -596,6 +596,8 @@ function renderSettings() {
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
   $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
+  $("setView3d").setAttribute("aria-pressed", String(st.view3d !== false));
+  $("setView3d").disabled = !R3D;
   $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
   $("setGlow").setAttribute("aria-pressed", String(!!st.glow));
   $("setBigText").setAttribute("aria-pressed", String(!!st.bigText));
@@ -700,6 +702,7 @@ $("setMusic").addEventListener("input", e => { save.settings.music = +e.target.v
 $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value; applyVolumes(); persist(); });
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
+tap("setView3d", () => { save.settings.view3d = save.settings.view3d === false; persist(); renderSettings(); });
 tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); });
 tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
 tap("setRelaxed", () => { save.settings.relaxed = !save.settings.relaxed; persist(); renderSettings(); toast(save.settings.relaxed ? "Relaxed mode on. It starts with your next cave" : "Relaxed mode off"); });

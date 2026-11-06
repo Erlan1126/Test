@@ -41,7 +41,7 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  #game { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  #game, #game3d { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
   button {
     font: inherit;
     color: inherit;
@@ -668,6 +668,7 @@
       <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
       </section>
       <section class="set-group"><h3>Look &amp; comfort</h3>
+      <div class="set"><label>3D view<small>The caves in 3D. Turn off for the classic flat view</small></label><button class="toggle" id="setView3d" aria-label="3D view"></button></div>
       <div class="set"><label>Lighting<small>Light and shadow on the rock. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
       <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
@@ -699,6 +700,14 @@
 <script src="echo/game.js"></script>
 <script src="echo/mobs.js"></script>
 <script src="echo/draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="echo/r3d.js"></script>
 <script src="echo/story.js"></script>
 <script src="echo/meta.js"></script>
 <script src="echo/ui.js"></script>

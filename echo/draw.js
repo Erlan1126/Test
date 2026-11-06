@@ -957,11 +957,20 @@ function frame(now) {
   clock += dt;
   if (L && (screen === "play" || (screen === "title" && L.demo))) update(dt);
   if (L) stepArtJob(screen === "play" ? 5 : 10);
-  drawBackground(dt);
-  if (L) { drawCave(); drawThings(); }
-  else drawTitle(dt);
-  // Bloom on the graphics chip, unless Lighting is off or the phone is struggling.
-  if (L && BLOOM && bloomOn && save.settings.lighting !== false) BLOOM.apply(canvas, ctx, W, H, 0.5);
+  // The 3D view draws the cave and everything in it on its own canvas underneath; this canvas
+  // then only carries the vignette, flashes and fades on top.
+  const in3d = !!(L && R3D && save.settings.view3d !== false);
+  if (R3D) R3D.show(in3d);
+  if (in3d) {
+    R3D.render(dt);
+    ctx.clearRect(0, 0, W, H);
+  } else {
+    drawBackground(dt);
+    if (L) { drawCave(); drawThings(); }
+    else drawTitle(dt);
+    // Bloom on the graphics chip, unless Lighting is off or the phone is struggling.
+    if (L && BLOOM && bloomOn && save.settings.lighting !== false) BLOOM.apply(canvas, ctx, W, H, 0.5);
+  }
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
   if (L && L.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${L.flash * 0.45})`; ctx.fillRect(0, 0, W, H); }

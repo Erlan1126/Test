@@ -47,6 +47,10 @@ A great **Singer** used to sing every light in the deep to sleep with the same l
 - **The finale** is level 160. The Great Hush won't hurt Lumi and the portal won't open: you sing to it. The lullaby plays line by line, the Hush sings back, says "You came back", and its shadow breaks into the warm golden Singer; every Hushling in the cave turns to light, and the ending plays (it changes if you found all eight lines).
 - World 9 opens "The Long Echo": a few lost Hushlings never heard the song, so Lumi goes back down to bring them home.
 
+## 3D
+
+The game is drawn in 3D by default (`echo/r3d.js`, Three.js 0.128 from a CDN, with the 2D view as a fallback and a **3D view** switch in Settings). The game itself is unchanged; only the drawing is new. Each cave's shape becomes sculpted terrain seen from above at an angle: rock walls rise from the floor with a bright lip on top and the world's moss, snow or ash on their crowns, the floor darkens where it meets them, and a fine stone grain with a bump map keeps everything crisp up close. A shader reads the same visibility as the 2D view, so the dark stays dark until Lumi's light or a song reaches it. Glowing things are real lights (Lumi, the song, the nearest few lamps, crystals, chimes and lights), songs roll out as rings of light, and bloom finishes it. Lumi, the Hushlings and the other creatures are the game's own drawings standing in the scene; chimes, street lamps, runes, gates, curtains, mushrooms, crystals, pillars, pools and the portal are 3D. A struggling phone drops the bloom first, then resolution. Tests serve Three.js from `node_modules` (`npm install`), so they run the 3D view offline.
+
 ## Coming back every day
 
 - **Today's cave** sits on the title screen: Daily #N, the day's twist, time left, your streak and quest progress. Twists (the same for everyone): Quiet Waters, Hushling Night (extra Hushlings), Silent Day (few songs), Deep Dark, Star Shower (extra lights) and Swift Current (a timer). Daily caves stay one screen tall, a minute or two each.
