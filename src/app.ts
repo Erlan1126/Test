@@ -5,6 +5,8 @@ import { GOLD, MILESTONES } from "./data/constants";
 import { eventEndsIn, eventFor, weekIndex } from "./data/events";
 import { BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
+import { shapeById } from "./data/shapes";
+import { currentShape } from "./logic/shapes";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
@@ -100,6 +102,7 @@ export class App implements DailyHost {
   private timing: "" | "early" | "late" = "";
   /** The skin the current tower was built in. */
   private builtSkin = "";
+  private builtShape = "";
   private tag = "";
   /** The current tower's taps, for the online rankings. */
   private recorder: RunRecorder | null = null;
@@ -556,6 +559,7 @@ export class App implements DailyHost {
     this.peek = false;
     $("unpeek").hidden = true;
     this.builtSkin = this.save.skin;
+    this.builtShape = currentShape(this.save).id;
     this.outcome = null;
     this.shareBlob = null;
     this.state = "playing";
@@ -1207,6 +1211,7 @@ export class App implements DailyHost {
       showMover: this.state === "playing" || this.state === "paused",
       // A finished tower keeps the skin it was built in.
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
+      shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
       theme: currentTheme(save),
       islandLevel: islandLevel(save),
       guide: this.tutorial && this.mode !== "zen" && this.sim.stack.length <= 4,

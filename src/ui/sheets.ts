@@ -6,7 +6,7 @@ import { CHALLENGES } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
 import { ISLAND_THEMES } from "../data/islands";
 import { BOOSTS, MAX_BOOSTS } from "../data/shop";
-import { SKINS, type Skin } from "../data/skins";
+import { skinById, SKINS, type Skin } from "../data/skins";
 import { TROPHIES } from "../data/trophies";
 import { markSeen, type Feature } from "../logic/features";
 import { addStars, awardStandingTrophies, challengeOpen, currentTheme, isSkinUnlocked, skinUnlockText, themeUnlocked, unlockedSkinCount } from "../logic/progress";
@@ -14,9 +14,11 @@ import { dayKey, giftAmount, giftState, GIFTS, xpNeeded } from "../logic/rules";
 import { exportCode, importCode, type SaveData } from "../logic/save";
 import { buyBoost, buySkin } from "../logic/shop";
 import { itemPrice, ownsProduct } from "../logic/premium";
+import { buyShape, currentShape, shapeUnlocked } from "../logic/shapes";
+import { SHAPES } from "../data/shapes";
 import { CRYSTAL_PACKS, formatPrice, PRODUCTS, type CrystalPack, type Product } from "../data/premium";
 import type { PaymentProvider } from "../payments";
-import { drawSkinPreview, drawThemePreview } from "../render/previews";
+import { drawShapePreview, drawSkinPreview, drawThemePreview } from "../render/previews";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
@@ -140,6 +142,7 @@ export class Sheets {
       });
       grid.appendChild(b);
     }
+    this.renderShapes();
     const themes = $("theme-grid");
     themes.innerHTML = "";
     const theme = currentTheme(save);
@@ -166,6 +169,44 @@ export class Sheets {
     }
   }
 
+  private renderShapes(): void {
+    const save = this.save, grid = $("shape-grid"), skin = skinById(save.skin), shape = currentShape(save);
+    grid.innerHTML = "";
+    for (const sh of SHAPES) {
+      const open = shapeUnlocked(save, sh), on = shape.id === sh.id, u = sh.unlock, name = t(sh.name);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `skin${open || (u && !("level" in u)) ? "" : " locked"}${on ? " equipped" : ""}`;
+      const how = !u ? "" : "level" in u ? esc(t("Builder level {n}", { n: u.level }))
+        : "stars" in u ? `<span class="price">${u.stars} ★</span>` : `<span class="premium-tag">💎 ${fmt(u.crystals)}</span>`;
+      b.innerHTML = `<canvas aria-hidden="true"></canvas><span class="skin-name">${esc(name)}</span>
+        <span class="skin-sub">${on ? esc(t("Equipped")) : open ? esc(t("Tap to use")) : how}</span>${open ? "" : `<span class="lock" aria-hidden="true">${LOCK_ICON}</span>`}`;
+      b.setAttribute("aria-label", open ? (on ? t("{name}, equipped", { name }) : name) : t("{name}, locked", { name }));
+      drawShapePreview(b.querySelector("canvas")!, sh, skin);
+      b.addEventListener("click", () => {
+        if (!open && u) {
+          if ("level" in u) { this.nope(b, t("Reach builder level {n} to unlock {name}.", { n: u.level, name })); return; }
+          const stars = "stars" in u, price = stars ? u.stars : u.crystals, have = stars ? save.stars : save.crystals;
+          if (have < price) {
+            if (stars) this.nope(b, t("You need {n} more ★ for {name}.", { n: price - have, name }));
+            else { this.nope(b, t("You need {n} more 💎. Get a crystal pack above.", { n: fmt(price - have) })); showTab($("shop"), "crystals"); }
+            return;
+          }
+          if (buyShape(save, sh.id) !== "ok") return;
+          save.shape = sh.id;
+          this.bought(t("{name} is yours!", { name }));
+          return;
+        }
+        save.shape = sh.id;
+        this.host.persist();
+        this.click();
+        this.renderShop();
+        this.host.refresh();
+      });
+      grid.appendChild(b);
+    }
+  }
+
   private skinCard(st: Skin, open: boolean, on: boolean, sub: string): HTMLButtonElement {
     const b = document.createElement("button");
     b.type = "button";
@@ -178,7 +219,7 @@ export class Sheets {
 
   // ---------- Star shop ----------
 
-  openShop(tab: "towers" | "islands" | "crystals" | "boosts" = "towers"): void {
+  openShop(tab: "towers" | "shapes" | "islands" | "crystals" | "boosts" = "towers"): void {
     this.click();
     this.seen("shop");
     this.seen("skins");

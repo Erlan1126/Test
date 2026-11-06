@@ -2,6 +2,7 @@
 // older per-key format and transfer codes for moving progress to another device.
 import { MISSION_KEYS, type Mission } from "../data/missions";
 import { SKINS } from "../data/skins";
+import { SHAPES } from "../data/shapes";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES } from "../data/islands";
 import { CITY } from "../data/daily";
@@ -42,6 +43,9 @@ export interface SaveData {
   island: string;
   /** Skins bought in the shop. */
   ownedSkins: string[];
+  /** The building shape (see data/shapes.ts) and the shapes bought in the shop. */
+  shape: string;
+  ownedShapes: string[];
   boosts: Record<BoostId, number>;
   missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
@@ -110,6 +114,8 @@ export function defaultSave(): SaveData {
     skin: "glass",
     island: "meadow",
     ownedSkins: [],
+    shape: "square",
+    ownedShapes: [],
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -158,6 +164,7 @@ export function normalize(raw: unknown): SaveData {
   const d = defaultSave();
   const r = obj(raw);
   const p = obj(r.profile), m = obj(r.missions), set = obj(r.settings), dl = obj(r.daily), b = obj(r.boosts), gift = obj(p.gift);
+  const shapeIds = SHAPES.map(s => s.id);
   const skinIds = SKINS.map(s => s.id), themeIds = ISLAND_THEMES.map(t => t.id);
   const st = obj(r.streak), lg = obj(r.league);
   const slots: Mission[] = Array.isArray(m.slots)
@@ -185,6 +192,8 @@ export function normalize(raw: unknown): SaveData {
     skin: skinIds.includes(r.skin as string) ? (r.skin as string) : d.skin,
     island: themeIds.includes(r.island as string) ? (r.island as string) : d.island,
     ownedSkins: strList(r.ownedSkins, skinIds),
+    shape: shapeIds.includes(r.shape as string) ? (r.shape as string) : d.shape,
+    ownedShapes: strList(r.ownedShapes, shapeIds),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {

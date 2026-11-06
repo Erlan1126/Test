@@ -19,6 +19,9 @@ export interface Floor extends Box {
   y: number;
   kind: FloorKind;
   lobby?: boolean;
+  /** The floor before its overhang broke off. Only used to draw shaped floors with a flat,
+   *  sliced side; scoring never reads it. */
+  frame?: Box;
 }
 
 export interface Mover extends Floor {
@@ -227,10 +230,12 @@ export class TowerSim {
         set(lo - grow / 2, hi + grow / 2);
       }
       // The part hanging over the edge breaks off.
-      piece = { ...placed, axis: m.axis };
+      const frame: Box = { x0: m.x0, x1: m.x1, z0: m.z0, z1: m.z1 };
+      piece = { ...placed, axis: m.axis, frame };
       if (m.axis === "x") {
         if (side < 0) { piece.x0 = m.x0; piece.x1 = topLo; } else { piece.x0 = topHi; piece.x1 = m.x1; }
       } else if (side < 0) { piece.z0 = m.z0; piece.z1 = topLo; } else { piece.z0 = topHi; piece.z1 = m.z1; }
+      if (this.cfg.mode !== "zen" && m.kind !== "garden") placed.frame = frame;
     }
 
     // Garden terraces widen the tower back out on both sides.

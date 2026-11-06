@@ -1,10 +1,11 @@
 // Buildings: tower floors, the lobby, neighbors, cars and the rooftop.
-import { hash, hexRgb, lerp, mixRgb, rgb, type RGB } from "../core/util";
+import { clamp, hash, hexRgb, lerp, mixRgb, rgb, type RGB } from "../core/util";
 import { GOLD } from "../data/constants";
 import { SPECIAL_COLORS, type Look, type Skin } from "../data/skins";
 import type { Box } from "../logic/rules";
 import type { FloorKind } from "../logic/sim";
 import { face, glow, ISO_X, ISO_Y, poly, type Paint, type Pt } from "./paint";
+import { inside, shrink, type XZ } from "./footprint";
 
 /** Icy floors: pale, frosted glass. */
 const ICE_LOOK: Look = { kind: "ribbon", glass: "#e6f8ff", frame: "#ffffff", slab: "#ffffff", slabH: 0.1, lit: ["#e6f8ff", "#ffffff"] };
@@ -23,19 +24,27 @@ export function floorColor(skin: Skin, y: number, kind: FloorKind): RGB {
 export const lookFor = (skin: Skin, kind: FloorKind): Look => (kind === "ice" ? ICE_LOOK : kind === "garden" ? GARDEN_LOOK : skin);
 
 interface Wall {
-  axis: "x" | "z";
-  at: number;
+  /** Where on the ground a distance u along the wall is. */
+  pos: (u: number) => XZ;
+  /** Corners along a bent wall (a round floor), where shapes drawn on it must bend too. */
+  knots?: number[];
   lo: number;
   hi: number;
   sh: number;
   id: number;
 }
 
-/** Four corners of a rectangle on a wall. The wall runs along `axis` at the fixed coordinate `at`. */
+/** A straight wall along x (at z = at) or along z (at x = at), measured in world units. */
+const flatWall = (axis: "x" | "z", at: number, lo: number, hi: number, sh: number, id: number): Wall =>
+  ({ pos: axis === "x" ? u => [u, at] : u => [at, u], lo, hi, sh, id });
+
+/** Four corners of a rectangle on a wall, between u0 and u1 along it and heights ya to yb. */
 function wallQuad(p: Paint, f: Wall, u0: number, u1: number, ya: number, yb: number): Pt[] {
   const v = p.view;
-  const q = f.axis === "x" ? (u: number, y: number) => v.project(u, y, f.at) : (u: number, y: number) => v.project(f.at, y, u);
-  return [q(u0, yb), q(u1, yb), q(u1, ya), q(u0, ya)];
+  const us = f.knots ? [u0, ...f.knots.filter(k => k > u0 && k < u1), u1] : [u0, u1];
+  const top = us.map(u => { const [x, z] = f.pos(u); return v.project(x, yb, z); });
+  const bot = us.map(u => { const [x, z] = f.pos(u); return v.project(x, ya, z); });
+  return [...top, ...bot.reverse()];
 }
 
 function glassColor(p: Paint, look: Look, sh: number): string {
@@ -47,7 +56,8 @@ function glassColor(p: Paint, look: Look, sh: number): string {
 function glassGradient(p: Paint, look: Look, sh: number, q: Pt[]): CanvasGradient {
   const base = mixRgb(mixRgb(hexRgb(look.glass), p.env.skyBot, 0.22), [14, 20, 42], p.env.nf * 0.88);
   const sky = mixRgb(p.env.skyTop, [255, 255, 255], 0.35 * (1 - p.env.nf));
-  const g = p.ctx.createLinearGradient(q[0][0], q[0][1], q[2][0], q[2][1]);
+  const e = q[q.length / 2];
+  const g = p.ctx.createLinearGradient(q[0][0], q[0][1], e[0], e[1]);
   g.addColorStop(0, rgb(mixRgb(base, sky, 0.45 * (1 - p.env.nf * 0.7)), sh));
   g.addColorStop(0.55, rgb(base, sh));
   g.addColorStop(1, rgb(base, sh * 0.78));
@@ -170,9 +180,10 @@ function drawLobby(p: Paint, look: Look, f: Wall): void {
   }
   ctx.stroke();
   if (f.id === 1) {
-    poly(p, wallQuad(p, f, -0.9, 0.9, 0.04, 0.62), rgb([30, 36, 52]));
-    poly(p, wallQuad(p, f, -0.04, 0.04, 0.04, 0.62), rgb([120, 130, 150]));
-    poly(p, wallQuad(p, f, -1.5, 1.5, 0.62, 0.7), rgb(hexRgb(look.frame), 0.9));
+    const m = (f.lo + f.hi) / 2;
+    poly(p, wallQuad(p, f, m - 0.9, m + 0.9, 0.04, 0.62), rgb([30, 36, 52]));
+    poly(p, wallQuad(p, f, m - 0.04, m + 0.04, 0.04, 0.62), rgb([120, 130, 150]));
+    poly(p, wallQuad(p, f, m - 1.5, m + 1.5, 0.62, 0.7), rgb(hexRgb(look.frame), 0.9));
   }
 }
 
@@ -184,10 +195,13 @@ export interface BlockOpts {
   kind?: FloorKind;
   /** Drawn into the tower cache: skip animated details. */
   still?: boolean;
+  /** A shaped floor's outline on the ground (counter-clockwise). Without it, the box. */
+  foot?: XZ[];
 }
 
 /** A building block: two visible walls with facade detail, a roof, and crisp edges. */
 export function drawBlock(p: Paint, b: Box, y0: number, y1: number, c: RGB, look: Look, opts: BlockOpts = {}): void {
+  if (opts.foot) { if (opts.foot.length >= 3) drawPrism(p, opts.foot, y0, y1, c, look, opts); return; }
   const { ctx, view, env } = p;
   const alpha = opts.alpha ?? 1;
   const d = 1 - env.nf * (look.neon ? 0.15 : 0.55);
@@ -199,10 +213,7 @@ export function drawBlock(p: Paint, b: Box, y0: number, y1: number, c: RGB, look
   face(p, [B, C, Cb, Bb], c, 0.78 * d, 0.66 * d);
 
   if (!opts.plain) {
-    const walls: Wall[] = [
-      { axis: "x", at: b.z1, lo: b.x0, hi: b.x1, sh: 1, id: 1 },
-      { axis: "z", at: b.x1, lo: b.z0, hi: b.z1, sh: 0.8, id: 2 },
-    ];
+    const walls: Wall[] = [flatWall("x", b.z1, b.x0, b.x1, 1, 1), flatWall("z", b.x1, b.z0, b.z1, 0.8, 2)];
     if (opts.lobby) walls.forEach(f => drawLobby(p, look, f));
     else for (let fy = y0; fy < y1 - 0.3; fy++) walls.forEach(f => drawStorey(p, fy, y1, look, f, alpha));
     // Structural columns at the front corner, like a real tower's frame
@@ -246,6 +257,132 @@ export function drawBlock(p: Paint, b: Box, y0: number, y1: number, c: RGB, look
   ctx.beginPath(); ctx.moveTo(D[0], D[1]); ctx.lineTo(C[0], C[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
   ctx.strokeStyle = `rgba(255,255,255,${0.18 * d})`;
   ctx.beginPath(); ctx.moveTo(C[0], C[1]); ctx.lineTo(Cb[0], Cb[1]); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** How bright a wall is from the way it faces: 1 facing +z (the lit side), 0.78 facing +x. */
+const facing = (nx: number, nz: number): number => 0.78 + 0.22 * clamp((nz - nx + 1) / 2, 0, 1);
+
+/** A shaped floor: the footprint raised from y0 to y1, with facade detail on every wall
+ *  that faces the camera. Gently curving runs of edges become one bent wall, so windows
+ *  run around a round floor instead of breaking at every little facet. */
+function drawPrism(p: Paint, pts: XZ[], y0: number, y1: number, c: RGB, look: Look, opts: BlockOpts): void {
+  const { ctx, view, env } = p;
+  const alpha = opts.alpha ?? 1;
+  const d = 1 - env.nf * (look.neon ? 0.15 : 0.55);
+  const n = pts.length;
+  const P = (q: XZ, y: number) => view.project(q[0], y, q[1]);
+  interface Edge { a: XZ; b: XZ; nx: number; nz: number; len: number; seen: boolean }
+  const edges: Edge[] = pts.map((a, i) => {
+    const b = pts[(i + 1) % n], dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz) || 1;
+    const nx = dz / len, nz = -dx / len;
+    return { a, b, nx, nz, len, seen: nx + nz > 1e-4 && len > 1e-3 };
+  });
+  ctx.globalAlpha = alpha;
+  for (const e of edges) {
+    if (!e.seen) continue;
+    const sh = facing(e.nx, e.nz);
+    face(p, [P(e.a, y1), P(e.b, y1), P(e.b, y0), P(e.a, y0)], c, sh * d, (sh - 0.12) * d);
+  }
+
+  // Group the visible edges into walls. The visible edges are one run around the outline.
+  const start = edges.findIndex((e, i) => e.seen && !edges[(i + n - 1) % n].seen);
+  const walls: Wall[] = [];
+  if (start >= 0) {
+    let run: Edge[] = [];
+    const flush = () => {
+      if (!run.length) return;
+      const ks = [0];
+      for (const e of run) ks.push(ks[ks.length - 1] + e.len);
+      const r = run;
+      const pos = (u: number): XZ => {
+        let i = 0;
+        while (i < r.length - 1 && u > ks[i + 1]) i++;
+        const t = clamp((u - ks[i]) / r[i].len, 0, 1);
+        return [lerp(r[i].a[0], r[i].b[0], t), lerp(r[i].a[1], r[i].b[1], t)];
+      };
+      const nx = r.reduce((s, e) => s + e.nx * e.len, 0), nz = r.reduce((s, e) => s + e.nz * e.len, 0), m = Math.hypot(nx, nz) || 1;
+      walls.push({ pos, lo: 0, hi: ks[ks.length - 1], knots: ks.slice(1, -1), sh: facing(nx / m, nz / m), id: walls.length + 3 });
+      run = [];
+    };
+    for (let k = 0; k < n; k++) {
+      const e = edges[(start + k) % n];
+      if (!e.seen) break;
+      const prev = run[run.length - 1];
+      if (prev) {
+        const turn = Math.acos(clamp(prev.nx * e.nx + prev.nz * e.nz, -1, 1));
+        if (turn > 0.45 || Math.sign(prev.nz - prev.nx) !== Math.sign(e.nz - e.nx)) flush();
+      }
+      run.push(e);
+    }
+    flush();
+    // The wall facing most toward the front gets the lobby door.
+    if (walls.length) walls.reduce((best, w) => (w.hi > 2.5 && w.sh > best.sh ? w : best), walls[0]).id = 1;
+  }
+  if (!opts.plain) {
+    if (opts.lobby) walls.forEach(f => drawLobby(p, look, f));
+    else for (let fy = y0; fy < y1 - 0.3; fy++) walls.forEach(f => drawStorey(p, fy, y1, look, f, alpha));
+  }
+  if (!opts.plain && !opts.lobby && y1 - y0 <= 1.2) {
+    ctx.globalAlpha = alpha * 0.28 * (1 - env.nf * 0.5);
+    for (const e of edges) if (e.seen) poly(p, [P(e.a, y0 + 0.16), P(e.b, y0 + 0.16), P(e.b, y0), P(e.a, y0)], "#0a1030");
+    ctx.globalAlpha = alpha;
+  }
+
+  // Roof with a parapet rim
+  const roof = pts.map(q => P(q, y1));
+  poly(p, roof, rgb(c, 1.14 * d));
+  const xs = pts.map(q => q[0]), zs = pts.map(q => q[1]);
+  const w = Math.max(...xs) - Math.min(...xs), dd = Math.max(...zs) - Math.min(...zs);
+  const ins = Math.min(0.45, w / 6, dd / 6);
+  const inner = shrink(pts, Math.max(0.5, 1 - (2 * ins) / Math.max(0.5, Math.min(w, dd))));
+  poly(p, inner.map(q => P(q, y1)), rgb(c, 0.98 * d));
+
+  if ((opts.kind === "gold" || opts.kind === "ice") && !opts.still) {
+    const t = (env.time / (opts.kind === "ice" ? 0.6 : 0.9)) % 1.6 - 0.3;
+    if (t > 0 && t < 1) {
+      const x0 = Math.min(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+      const x = x0 + w * t, x2 = Math.min(x0 + w, x + 1.2);
+      ctx.save();
+      ctx.beginPath();
+      roof.forEach(([sx, sy], i) => (i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy)));
+      ctx.clip();
+      ctx.globalAlpha = alpha * 0.5;
+      poly(p, [view.project(x, y1, z0), view.project(x2, y1, z0), view.project(x2, y1, z1), view.project(x, y1, z1)], "#ffffff");
+      ctx.restore();
+    }
+  }
+  if (opts.kind === "garden" && view.zoom > 0.3) {
+    const r = 0.38 * view.s * view.zoom, ring = shrink(pts, 0.82);
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length], e = edges[i];
+      if (!e.seen) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      for (let u = 0.5; u < len - 0.3; u += 1.4) {
+        const x = lerp(a[0], b[0], u / len), z = lerp(a[1], b[1], u / len);
+        if (!inside(pts, x, z)) continue;
+        const [sx, sy] = view.project(x, y1, z);
+        ctx.fillStyle = rgb(hash(x, z, 4) > 0.5 ? [78, 160, 70] : [104, 186, 84], d);
+        ctx.beginPath(); ctx.arc(sx, sy - r * 0.6, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // Light catching the top edges, and the sharp corners
+  ctx.lineWidth = Math.max(0.8, 1.2 * view.zoom);
+  ctx.strokeStyle = `rgba(255,255,255,${0.45 * d})`;
+  ctx.beginPath();
+  for (const e of edges) if (e.seen) { const a = P(e.a, y1), b = P(e.b, y1); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255,255,255,${0.18 * d})`;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const e = edges[i], f = edges[(i + 1) % n];
+    if (!e.seen || !f.seen || e.nx * f.nx + e.nz * f.nz > 0.9) continue;
+    const a = P(e.b, y1), b = P(e.b, y0);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+  }
+  ctx.stroke();
   ctx.globalAlpha = 1;
 }
 

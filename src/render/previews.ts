@@ -3,7 +3,10 @@ import { clamp, fmt, hexRgb, rgb } from "../core/util";
 import { DISPLAY_FONT, GOLD, ISLAND, MILESTONES, NUM_FONT, UI_FONT } from "../data/constants";
 import type { IslandTheme } from "../data/islands";
 import type { Skin } from "../data/skins";
-import type { View } from "./paint";
+import { View, type Env, type Paint } from "./paint";
+import type { Shape } from "../data/shapes";
+import { drawBlock, floorColor, lookFor } from "./buildings";
+import { footprint } from "./footprint";
 import { drawTreeShape } from "./scenery";
 import { t } from "../i18n";
 
@@ -144,4 +147,25 @@ export function makeShareImage(canvas: HTMLCanvasElement, view: View, info: Shar
     o.fillText(t("Taller than {name}", { name: t(MILESTONES[info.landmark].name) }), 540, 1280, 1000);
   }
   return new Promise(res => out.toBlob(b => res(b)));
+}
+
+/** A small tower built in the given shape, drawn with the game's own building code. */
+export function drawShapePreview(cv: HTMLCanvasElement, shape: Shape, skin: Skin): void {
+  const w = 120, h = 132, g = prep(cv, w, h);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, "#4f8fe0");
+  sky.addColorStop(1, "#ffd9b5");
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  const view = new View();
+  Object.assign(view, { W: w, H: h, s: 5.2, th: 11, zoom: 1, level: 0, originY: 96, cx: w / 2 });
+  const env: Env = { nf: 0, skyTop: [79, 143, 224], skyBot: [255, 217, 181], climb: 0, time: 0, low: true, post: false };
+  const p: Paint = { ctx: g, view, env };
+  const fill = filler(g), [lx, ly] = view.project(5.5, 0, 5.5), [rx] = view.project(5.5, 0, -5.5), [, ty] = view.project(-5.5, 0, -5.5);
+  fill([[w - rx, (ly + ty) / 2], [lx, ly], [rx, (ly + ty) / 2], [lx, ty]], "#7fc76a");
+  const box = { x0: -4, x1: 4, z0: -4, z1: 4 };
+  for (let y = 0; y < 6; y++) {
+    const foot = shape.id === "square" ? undefined : footprint(shape, box, y);
+    drawBlock(p, box, y, y + 1, floorColor(skin, y * 3, "normal"), lookFor(skin, "normal"), { foot, lobby: y === 0, still: true });
+  }
 }

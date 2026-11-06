@@ -3,7 +3,9 @@ import { clamp, lerp, mixRgb, rand } from "../core/util";
 import { BLOCK_SIZE, ISLAND, UI_FONT } from "../data/constants";
 import type { IslandTheme } from "../data/islands";
 import type { Skin } from "../data/skins";
-import type { TowerSim } from "../logic/sim";
+import type { Shape } from "../data/shapes";
+import { footprint, type XZ } from "./footprint";
+import type { Floor, TowerSim } from "../logic/sim";
 import { drawBlock, drawRoof, floorColor, lookFor } from "./buildings";
 import { drawGuide, drawLandingShadow, Effects } from "./effects";
 import { ISO_X, View, type Env, type Paint } from "./paint";
@@ -11,7 +13,7 @@ import { PostFX } from "./post";
 import { nightAt, Scenery, skyAt, sunAt } from "./scenery";
 import { SkyTraffic } from "./sky";
 import { drawAurora, drawLandmark, drawLandmarkLabel, Weather } from "./atmosphere";
-import { landmarkIndex } from "../logic/rules";
+import { landmarkIndex, type Box } from "../logic/rules";
 import { t } from "../i18n";
 
 /** What the screen is showing, which decides where the camera goes. */
@@ -23,6 +25,7 @@ export interface Frame {
   /** The sliding floor is on screen (playing or paused). */
   showMover: boolean;
   skin: Skin;
+  shape: Shape;
   theme: IslandTheme;
   islandLevel: number;
   /** Beginner guide outline. */
@@ -37,6 +40,12 @@ export interface Frame {
   bestFloors: number;
   /** City buildings on the island. */
   city: string[];
+}
+
+/** A box shrunk toward its middle, so rooftop gear stays on a round or angled roof. */
+function shrinkBox<B extends Box>(b: B, k: number): B {
+  const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, hx = (b.x1 - b.x0) / 2 * k, hz = (b.z1 - b.z0) / 2 * k;
+  return { ...b, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz };
 }
 
 export class Renderer {
@@ -180,17 +189,17 @@ export class Renderer {
       ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
     }
 
-    fx.drawDebris(p, true);
+    fx.drawDebris(p, true, f.shape);
     this.drawTower(f);
     const m = sim.mover;
     if (m && f.showMover) drawLandingShadow(p, m, top, fx.bounce);
-    if (f.shot === "over" && n > 1) drawRoof(p, top, f.skin);
+    if (f.shot === "over" && n > 1) drawRoof(p, f.shape.id === "square" ? top : shrinkBox(top, 0.72), f.skin);
     scenery.drawFront(p);
     if (m && f.showMover) {
-      drawBlock(p, m, m.y, m.y + 1, floorColor(f.skin, m.y, m.kind), lookFor(f.skin, m.kind), { kind: m.kind });
+      drawBlock(p, m, m.y, m.y + 1, floorColor(f.skin, m.y, m.kind), lookFor(f.skin, m.kind), { kind: m.kind, foot: this.foot(f, m) });
       if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect());
     }
-    fx.drawDebris(p, false);
+    fx.drawDebris(p, false, f.shape);
     fx.drawFlash(p, top);
     scenery.drawBandClouds(p, true, f.showMover ? n : null, dt);
     fx.drawParticles(p);
@@ -218,7 +227,7 @@ export class Renderer {
     this.lastZoom = view.zoom;
     const drawFloor = (q: Paint, i: number, still: boolean) => {
       const b = stack[i], isTop = i === n - 1 && i > 0;
-      drawBlock(q, b, b.y, b.y + 1 - (isTop ? fx.bounce * 0.3 : 0), floorColor(f.skin, b.y, b.kind), lookFor(f.skin, b.kind), { lobby: b.lobby, kind: b.kind, still });
+      drawBlock(q, b, b.y, b.y + 1 - (isTop ? fx.bounce * 0.3 : 0), floorColor(f.skin, b.y, b.kind), lookFor(f.skin, b.kind), { lobby: b.lobby, kind: b.kind, still, foot: this.foot(f, b) });
     };
     const reach = (BLOCK_SIZE * view.s + view.th * 2) * view.zoom;
     const visible = (i: number, margin: number) => {
@@ -230,7 +239,7 @@ export class Renderer {
       for (let i = 0; i < n; i++) if (visible(i, 0)) drawFloor(p, i, false);
       return;
     }
-    const key = [n, f.skin.id, view.zoom, view.W, view.H, this.dpr, env.low, env.post, f.shot].join("|");
+    const key = [n, f.skin.id, f.shape.id, view.zoom, view.W, view.H, this.dpr, env.low, env.post, f.shot].join("|");
     if (key !== this.cacheKey || this.cacheStack !== stack) {
       this.cacheKey = key;
       this.cacheStack = stack;
@@ -246,6 +255,11 @@ export class Renderer {
     const [x0, y0] = view.project(0, 0, 0);
     p.ctx.drawImage(this.towerCache, x0 - this.cacheRef[0], y0 - this.cacheRef[1] - this.cacheMargin, view.W, view.H + this.cacheMargin * 2);
     drawFloor(p, n - 1, false);
+  }
+
+  /** A shaped floor's outline, or nothing for plain box floors. */
+  private foot(f: Frame, b: Floor): XZ[] | undefined {
+    return f.shape.id === "square" ? undefined : footprint(f.shape, b, b.y, b.frame);
   }
 
   /** A dashed line at the height of your best tower, so you can see the record coming. */

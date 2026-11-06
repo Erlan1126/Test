@@ -5,6 +5,8 @@ import type { Look } from "../data/skins";
 import type { Box } from "../logic/rules";
 import type { Floor } from "../logic/sim";
 import { drawBlock } from "./buildings";
+import { footprint } from "./footprint";
+import type { Shape } from "../data/shapes";
 import { poly, type Paint } from "./paint";
 
 interface Particle {
@@ -110,6 +112,7 @@ export class Effects {
       d.y -= d.vy * dt;
       const side = d.vside * dt;
       if (d.axis === "x") { d.x0 += side; d.x1 += side; } else { d.z0 += side; d.z1 += side; }
+      if (d.frame) d.frame = d.axis === "x" ? { ...d.frame, x0: d.frame.x0 + side, x1: d.frame.x1 + side } : { ...d.frame, z0: d.frame.z0 + side, z1: d.frame.z1 + side };
       d.life -= dt * 0.7;
     }
     this.debris = this.debris.filter(d => d.life > 0);
@@ -124,9 +127,11 @@ export class Effects {
     this.popups = this.popups.filter(p => p.life > 0);
   }
 
-  drawDebris(p: Paint, back: boolean): void {
+  drawDebris(p: Paint, back: boolean, shape: Shape): void {
     for (const d of this.debris) {
-      if (d.back === back) drawBlock(p, d, d.y, d.y + 1, d.color, d.look, { alpha: clamp(d.life, 0, 1), kind: d.kind });
+      if (d.back !== back) continue;
+      const foot = shape.id === "square" ? undefined : footprint(shape, d, d.y, d.frame);
+      drawBlock(p, d, d.y, d.y + 1, d.color, d.look, { alpha: clamp(d.life, 0, 1), kind: d.kind, foot });
     }
   }
 
