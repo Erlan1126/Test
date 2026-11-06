@@ -411,7 +411,6 @@ export class App implements DailyHost {
     $("daily-btn").addEventListener("click", () => this.start("daily"));
     $("zen-btn").addEventListener("click", () => this.start("zen"));
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
-    $("skins-btn").addEventListener("click", () => this.sheets.openSkins());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
     $("ranks-btn").addEventListener("click", () => this.daily.openRanks());
@@ -843,8 +842,8 @@ export class App implements DailyHost {
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     $("rules").hidden = p.towers >= 3;
+    $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");
-    friend.hidden = !this.friendScore;
     friend.innerHTML = t("A friend housed <b>{n}</b> people. Can you beat them?", { n: fmt(this.friendScore) });
     $("install-chip").hidden = !this.installPrompt || p.towers < 3;
     $("restore-link").hidden = p.towers > 0 || this.online.kind !== "global";
@@ -856,6 +855,10 @@ export class App implements DailyHost {
     const waiting = this.waitingRewards(now), cc = $("collect-chip");
     cc.hidden = !waiting.length;
     cc.textContent = waiting.length === 1 ? waiting[0] : t("🎁 Collect {n} rewards", { n: waiting.length });
+    // One message above the play button at a time: rewards first, then a friend's challenge,
+    // then the news line (renderStatus), then the install offer.
+    friend.hidden = !this.friendScore || !cc.hidden;
+    $("install-chip").hidden ||= !cc.hidden || !friend.hidden;
 
     // Modes and the dock show just an icon and a name; a dot marks something new or waiting.
     const show = (id: string, visible: boolean, dot: boolean) => {
@@ -869,8 +872,8 @@ export class App implements DailyHost {
     show("zen-btn", isOpen(save, "zen"), fresh("zen"));
     show("missions-btn", isOpen(save, "missions"), fresh("missions") || chestReady(save, now));
     show("city-btn", isOpen(save, "city"), fresh("city") || rentWaiting(save, now) >= rentPerHour(save) * 3);
-    show("skins-btn", isOpen(save, "skins"), fresh("skins"));
-    show("shop-btn", isOpen(save, "shop"), fresh("shop"));
+    // Skins and the shop are one place now; it opens with the first skins.
+    show("shop-btn", isOpen(save, "skins"), fresh("skins") || (isOpen(save, "shop") && fresh("shop")));
     refreshPass(save, now);
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && p.towers >= 1, false);
@@ -952,7 +955,8 @@ export class App implements DailyHost {
       }
     }
     el.dataset.kind = kind;
-    el.hidden = !text;
+    el.hidden = !text || !$("collect-chip").hidden || !$("menu-challenge").hidden;
+    if (!el.hidden) $("install-chip").hidden = true;
     el.textContent = text;
   }
 

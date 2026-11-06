@@ -92,7 +92,6 @@
     <nav class="dock" id="dock" aria-label="More">
       <button type="button" class="dock-btn" id="missions-btn" hidden><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Missions</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="city-btn" hidden><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13M13 10h3M13 14h3M13 18h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>City</span><i class="dot" hidden></i></button>
-      <button type="button" class="dock-btn" id="skins-btn" hidden><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.5-2.2-.6-1.4.3-2.8 1.8-2.8H17a4 4 0 0 0 4-4c0-5-4-9-9-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7.5" cy="11" r="1.4" fill="currentColor"/><circle cx="10.5" cy="7" r="1.4" fill="currentColor"/><circle cx="15" cy="7.5" r="1.4" fill="currentColor"/></svg><span>Skins</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="shop-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Shop</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="pass-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5V10a2 2 0 0 0 0 4v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5V14a2 2 0 0 0 0-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 8.5l1.1 2.2 2.4.3-1.8 1.7.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.7 2.4-.3z" fill="currentColor"/></svg><span>Pass</span><i class="dot" hidden></i></button>
       <button type="button" class="dock-btn" id="ranks-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 20V12h4v8M10 20V6h4v14M16 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Ranks</span><i class="dot" hidden></i></button>
@@ -135,19 +134,6 @@
 
 <button type="button" id="unpeek" class="unpeek-chip" hidden>Show results</button>
 
-<div id="skins" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="skins-title">
-  <div class="sheet">
-    <div class="sheet-top">
-      <div class="sheet-head">
-        <div><h2 id="skins-title">Skins</h2><p id="skins-count"></p></div>
-        <button type="button" class="close-btn" aria-label="Close">×</button>
-      </div>
-      <div class="seg tabs" role="tablist" aria-label="Skins" data-tabs><button type="button" role="tab" data-tab="towers">Towers</button><button type="button" role="tab" data-tab="islands">Islands</button></div>
-    </div>
-    <div class="skin-grid" id="skin-grid" data-panel="towers"></div>
-    <div class="skin-grid" id="theme-grid" data-panel="islands"></div>
-  </div>
-</div>
 
 <div id="shop" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="shop-title">
   <div class="sheet">
@@ -156,13 +142,15 @@
         <div><h2 id="shop-title">Shop</h2><p id="shop-balance"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
-      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="boosts">Boosts</button><button type="button" role="tab" data-tab="skins">Skins</button><button type="button" role="tab" data-tab="crystals">💎 Crystals</button></div>
+      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="towers">Towers</button><button type="button" role="tab" data-tab="islands">Islands</button><button type="button" role="tab" data-tab="crystals">Crystals</button><button type="button" role="tab" data-tab="boosts">Boosts</button></div>
     </div>
+    <p class="sheet-note" id="skins-count" data-panel="towers"></p>
+    <div class="skin-grid" id="skin-grid" data-panel="towers"></div>
+    <div class="skin-grid" id="theme-grid" data-panel="islands"></div>
     <div data-panel="boosts">
       <p class="sheet-note">Used on your next Classic tower.</p>
       <div class="shop-list" id="boost-list"></div>
     </div>
-    <div class="skin-grid" id="shop-skins" data-panel="skins"></div>
     <div data-panel="crystals">
       <div class="wallet-card"><span class="gem-big" aria-hidden="true">💎</span><div><b id="crystal-balance">0</b><small>Sky Crystals</small></div></div>
       <p class="premium-note" id="premium-note"></p>

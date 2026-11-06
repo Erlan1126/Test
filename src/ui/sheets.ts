@@ -8,7 +8,7 @@ import { ISLAND_THEMES } from "../data/islands";
 import { BOOSTS, MAX_BOOSTS } from "../data/shop";
 import { SKINS, type Skin } from "../data/skins";
 import { TROPHIES } from "../data/trophies";
-import { isOpen, markSeen, type Feature } from "../logic/features";
+import { markSeen, type Feature } from "../logic/features";
 import { addStars, awardStandingTrophies, challengeOpen, currentTheme, isSkinUnlocked, skinUnlockText, themeUnlocked, unlockedSkinCount } from "../logic/progress";
 import { dayKey, giftAmount, giftState, GIFTS, xpNeeded } from "../logic/rules";
 import { exportCode, importCode, type SaveData } from "../logic/save";
@@ -54,7 +54,7 @@ export class Sheets {
   private loadArmed = false;
 
   constructor(private readonly host: Host) {
-    for (const id of ["skins", "shop", "challenges", "profile"]) wireModal($(id));
+    for (const id of ["shop", "challenges", "profile"]) wireModal($(id));
     wireModal($("settings"), () => this.closeSettings());
     this.wireSettings();
   }
@@ -68,7 +68,6 @@ export class Sheets {
 
   /** Redraws whichever of these sheets is open (after the language changes). */
   rerenderOpen(): void {
-    if (!$("skins").hidden) this.renderSkins();
     if (!$("shop").hidden) this.renderShop();
     if (!$("challenges").hidden) this.renderChallenges();
     if (!$("profile").hidden) this.renderProfile();
@@ -93,11 +92,9 @@ export class Sheets {
 
   // ---------- Skins ----------
 
+  /** Skins live in the Shop now, on its Towers tab. */
   openSkins(): void {
-    this.click();
-    this.seen("skins");
-    this.renderSkins();
-    openModal($("skins"));
+    this.openShop("towers");
   }
 
   private renderSkins(): void {
@@ -105,27 +102,40 @@ export class Sheets {
     $("skins-count").textContent = t("{n} of {total} tower skins unlocked", { n: count, total: SKINS.length });
     const grid = $("skin-grid");
     grid.innerHTML = "";
-    for (const st of SKINS) {
+    // What you can use comes first, then what you can buy, then what you earn by playing.
+    const rank = (st: Skin) => isSkinUnlocked(save, st) ? (save.skin === st.id ? 0 : 1)
+      : isShopSkin(st) ? 2 : st.unlock && ("product" in st.unlock || "pass" in st.unlock) ? 3 : 4;
+    for (const st of [...SKINS].sort((a, b) => rank(a) - rank(b))) {
       const open = isSkinUnlocked(save, st), on = save.skin === st.id;
       const premium = !!st.unlock && "product" in st.unlock;
       const pass = !!st.unlock && "pass" in st.unlock;
       const name = t(st.name);
-      const b = this.skinCard(st, open, on, on ? esc(t("Equipped")) : open ? esc(t("Tap to use")) : isShopSkin(st) ? `<span class="price">${esc(t("{n} ★ in the shop", { n: priceOf(st) }))}</span>`
+      // Skins for sale show in full color; ones earned by playing stay greyed out.
+      const b = this.skinCard(st, open || isShopSkin(st) || premium || pass, on, on ? esc(t("Equipped")) : open ? esc(t("Tap to use")) : isShopSkin(st) ? `<span class="price">${priceOf(st)} ★</span>`
         : premium ? `<span class="premium-tag">💎 ${esc(t("Crystals"))}</span>`
         : pass ? `<span class="premium-tag">Sky Pass</span>`
         : st.unlock && "streak" in st.unlock ? esc(t("🔥 {n}-day streak", { n: st.unlock.streak })) : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
       b.setAttribute("aria-label", open ? (on ? t("{name}, equipped", { name }) : name) : t("{name}, locked. {how}", { name, how: skinUnlockText(st) }));
       b.addEventListener("click", () => {
         if (!open) {
-          if (premium) { closeModal($("skins")); this.openShop("crystals"); return; }
-          if (isShopSkin(st) && isOpen(save, "shop")) { closeModal($("skins")); this.openShop("skins"); return; }
+          if (premium) { showTab($("shop"), "crystals"); this.click(); return; }
+          if (isShopSkin(st)) {
+            const price = priceOf(st);
+            if (save.stars < price) { this.nope(b, t("You need {n} more ★ for {name}.", { n: price - save.stars, name })); return; }
+            if (buySkin(save, st.id) === "ok") {
+              save.skin = st.id;
+              const won = awardStandingTrophies(save);
+              this.bought(t("{name} is yours!", { name }) + (won.length ? " " + tn(won.length, "Trophy: {names}", "Trophies: {names}", { names: won.join(", ") }) : ""));
+            }
+            return;
+          }
           this.nope(b, t("{how} to unlock {name}.", { how: skinUnlockText(st), name }));
           return;
         }
         save.skin = st.id;
         this.host.persist();
         this.click();
-        closeModal($("skins"));
+        closeModal($("shop"));
         this.host.refresh();
       });
       grid.appendChild(b);
@@ -144,12 +154,12 @@ export class Sheets {
       b.setAttribute("aria-label", open ? (on ? t("{name} island, equipped", { name }) : t("{name} island", { name })) : th.product ? t("{name} island, premium", { name }) : t("{name} island, locked. Reach builder level {n}", { name, n: th.level }));
       drawThemePreview(b.querySelector("canvas")!, th);
       b.addEventListener("click", () => {
-        if (!open && th.product) { closeModal($("skins")); this.openShop("crystals"); return; }
+        if (!open && th.product) { showTab($("shop"), "crystals"); this.click(); return; }
         if (!open) { this.nope(b, t("Reach builder level {n} to unlock the {name} island.", { n: th.level, name })); return; }
         save.island = th.id;
         this.host.persist();
         this.click();
-        closeModal($("skins"));
+        closeModal($("shop"));
         this.host.refresh();
       });
       themes.appendChild(b);
@@ -168,11 +178,12 @@ export class Sheets {
 
   // ---------- Star shop ----------
 
-  openShop(tab?: "boosts" | "skins" | "crystals"): void {
+  openShop(tab: "towers" | "islands" | "crystals" | "boosts" = "towers"): void {
     this.click();
     this.seen("shop");
+    this.seen("skins");
     this.renderShop();
-    if (tab) showTab($("shop"), tab);
+    showTab($("shop"), tab);
     openModal($("shop"));
   }
 
@@ -258,31 +269,7 @@ export class Sheets {
       });
       list.appendChild(row);
     }
-    const grid = $("shop-skins");
-    grid.innerHTML = "";
-    for (const st of SKINS.filter(isShopSkin)) {
-      const owned = isSkinUnlocked(save, st), price = priceOf(st), on = save.skin === st.id;
-      const name = t(st.name);
-      const b = this.skinCard(st, true, on, owned ? esc(on ? t("Equipped") : t("Owned · tap to use")) : `<span class="price">${price} ★</span>`);
-      b.setAttribute("aria-label", owned ? t("{name}, owned", { name }) : t("Buy {name} for {n} stars", { name, n: price }));
-      b.addEventListener("click", () => {
-        if (owned) {
-          save.skin = st.id;
-          this.host.persist();
-          this.click();
-          this.renderShop();
-          this.host.refresh();
-          return;
-        }
-        if (save.stars < price) { this.nope(b, t("You need {n} more ★ for {name}.", { n: price - save.stars, name })); return; }
-        if (buySkin(save, st.id) === "ok") {
-          save.skin = st.id;
-          const won = awardStandingTrophies(save);
-          this.bought(t("{name} is yours!", { name }) + (won.length ? " " + tn(won.length, "Trophy: {names}", "Trophies: {names}", { names: won.join(", ") }) : ""));
-        }
-      });
-      grid.appendChild(b);
-    }
+    this.renderSkins();
   }
 
   private bought(msg: string): void {

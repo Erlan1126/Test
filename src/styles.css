@@ -1061,3 +1061,6 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 html.phone * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 html.phone { --panel: rgba(16, 20, 52, 0.86); --glass: rgba(16, 20, 52, 0.8); --glass-strong: rgba(16, 20, 52, 0.92); }
 html.phone .card { background: rgba(16, 20, 52, 0.9); }
+
+/* Returning players already know the rules: the home screen is just the logo and Play. */
+#menu.returning .tagline { display: none; }
