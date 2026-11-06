@@ -391,8 +391,8 @@ export class Sheets {
     document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
     $("quality-note").textContent = st.quality === "auto" && st.autoLow ? t("Smooth mode was picked for this device")
       : st.quality === "low" ? t("Simpler graphics, easier on the battery")
-      : st.quality === "high" ? t("Glow, depth and light effects always on")
-      : t("Full effects, switching to smooth on slower phones");
+      : st.quality === "high" ? t("Glow and light effects always on (uses more battery)")
+      : t("Sharp graphics that adapt to your device");
     document.querySelectorAll<HTMLButtonElement>("[data-lang]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.lang === st.lang)));
   }
 

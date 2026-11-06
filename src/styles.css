@@ -1055,3 +1055,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   .collect-chip, .chest-card.ready, .streak-flame, .reward-burst, .reward-line, .pass-cell.ready { animation: none; }
 }
 .rank-row.has-report { grid-template-columns: 34px 1fr auto auto auto; }
+
+/* Phones: frosted glass is recomputed every frame over the moving game, which is a big
+   cost on Android. Solid, slightly darker panels look nearly the same and stay smooth. */
+html.phone * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+html.phone { --panel: rgba(16, 20, 52, 0.86); --glass: rgba(16, 20, 52, 0.8); --glass-strong: rgba(16, 20, 52, 0.92); }
+html.phone .card { background: rgba(16, 20, 52, 0.9); }

@@ -76,7 +76,7 @@ void main() {
   }
 
   // Subtle lens fringing toward the edges.
-  vec2 off = (uv - 0.5) * 0.0028;
+  vec2 off = (uv - 0.5) * 0.0006;
   vec3 c = vec3(texture2D(uScene, uv + off).r, texture2D(uScene, uv).g, texture2D(uScene, uv - off).b);
   vec3 soft = texture2D(uSoft, uv).rgb;
 

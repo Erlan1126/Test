@@ -15,6 +15,8 @@ export interface Settings {
   quality: "auto" | "high" | "low";
   /** Auto mode measured this device as slow. */
   autoLow: boolean;
+  /** Version of the automatic graphics choice; older choices are redone once. */
+  gfx: number;
   /** Language: "auto" follows the device. */
   lang: "auto" | "en" | "es";
 }
@@ -117,7 +119,7 @@ export function defaultSave(): SaveData {
     daily: { day: 0, best: 0, plays: 0 },
     challenges: [],
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, lang: "auto" },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: 2, lang: "auto" },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -199,7 +201,9 @@ export function normalize(raw: unknown): SaveData {
     settings: {
       sound: bool(set.sound, true), music: bool(set.music, true), vibrate: bool(set.vibrate, true),
       quality: (["auto", "high", "low"].includes(set.quality as string) ? set.quality : "auto") as Settings["quality"],
-      autoLow: bool(set.autoLow, false),
+      // Saves from before the sharper graphics re-measure the device once.
+      autoLow: set.gfx === 2 ? bool(set.autoLow, false) : false,
+      gfx: 2,
       lang: (["auto", "en", "es"].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
     },
     tutorialDone: bool(r.tutorialDone, false),

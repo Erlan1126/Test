@@ -107,6 +107,7 @@ export class App implements DailyHost {
   private stepTime = 0;
 
   constructor(logoSvg: string) {
+    if (this.phone) document.documentElement.classList.add("phone");
     this.save = loadSave(this.storage);
     setLang(resolveLang(this.save.settings.lang));
     translateDom();
@@ -367,6 +368,19 @@ export class App implements DailyHost {
   private get low(): boolean {
     const q = this.save.settings;
     return q.quality === "low" || (q.quality === "auto" && q.autoLow);
+  }
+
+  /** Phones (and the phone apps) skip the shader pass in Auto: copying every frame into
+   *  WebGL costs more there than it adds, and the screen looks sharper without it. */
+  private readonly phone = isNative() || (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches);
+  /** Shaders turned off this session because the device couldn't keep up. */
+  private autoNoShaders = false;
+
+  private get shaders(): boolean {
+    const q = this.save.settings;
+    if (q.quality === "high") return true;
+    if (q.quality === "low") return false;
+    return !this.phone && !q.autoLow && !this.autoNoShaders;
   }
 
   private resize(): void {
@@ -1105,20 +1119,23 @@ export class App implements DailyHost {
     const raw = (now - this.last) / 1000;
     const dt = Math.min(0.05, Math.max(0, raw));
     this.last = now;
-    // Auto graphics: if a tower plays below about 50 fps, first lower the resolution a
-    // step at a time, and only then switch this device to smooth mode (no shaders).
+    // Auto graphics: if a tower plays below about 50 fps, drop the costly extras one step
+    // at a time: shaders, then smooth mode (fewer details), and only as a last resort a
+    // slightly lower resolution, so the picture stays sharp.
     const st = this.save.settings;
-    if (this.state === "playing" && st.quality === "auto" && !st.autoLow && raw < 0.5) {
+    if (this.state === "playing" && st.quality === "auto" && raw < 0.5) {
       this.perf.frames++;
       this.perf.time += raw;
       if (this.perf.time > 3) {
         const fps = this.perf.frames / this.perf.time;
-        if (fps < 50 && this.renderScale > 0.65) {
-          this.renderScale = Math.max(0.6, this.renderScale - 0.15);
-          this.resize();
-        } else if (fps < 40) {
+        if (fps < 50 && this.shaders) {
+          this.autoNoShaders = true;
+        } else if (fps < 50 && !st.autoLow) {
           st.autoLow = true;
           this.persist();
+          this.resize();
+        } else if (fps < 40 && this.renderScale > 0.8) {
+          this.renderScale = 0.8;
           this.resize();
         }
         this.perf.frames = 0;
@@ -1190,6 +1207,7 @@ export class App implements DailyHost {
       islandLevel: islandLevel(save),
       guide: this.tutorial && this.mode !== "zen" && this.sim.stack.length <= 4,
       low: this.low,
+      shaders: this.shaders,
       bestFloors: this.mode === "zen" ? 0 : Math.round(this.save.bestMeters / 5),
       city: save.city,
       hudBottom: this.state === "playing" || this.state === "paused" ? this.hudBottom : 0,

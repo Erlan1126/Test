@@ -29,6 +29,8 @@ export interface Frame {
   guide: boolean;
   /** Smooth mode: no shaders, fewer effects. */
   low: boolean;
+  /** Run the shader pass (bloom, light rays, color grading). */
+  shaders: boolean;
   /** Bottom edge of the score display, in pixels. */
   hudBottom: number;
   /** Your tallest tower, in floors, marked on screen while you play (0 for none). */
@@ -86,8 +88,10 @@ export class Renderer {
   /** `scale` lowers the resolution on devices that can't keep up. */
   resize(low: boolean, scale = 1): void {
     const v = this.view;
-    // Past about 1.75x pixels the extra sharpness is hard to see but costs a lot.
-    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, low ? 1.25 : 1.75) * scale);
+    // The screen's real pixel density (up to 3x), so edges and text stay crisp on phones.
+    // Slower devices drop effects first; resolution is the last thing to go.
+    void low;
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3) * scale);
     this.dpr = dpr;
     this.cacheKey = "";
     v.W = this.canvas.clientWidth || window.innerWidth;
@@ -197,7 +201,7 @@ export class Renderer {
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
     if (f.shot === "play") drawLandmarkLabel(p, landmarkIndex(f.sim.meters) + 1, 1, f.hudBottom);
     fx.drawPopups(p, top, f.hudBottom);
-    this.setPost(!f.low);
+    this.setPost(f.shaders);
     if (!this.postOn) scenery.drawVignette(p); // the shader has its own
     if (fx.whiteFlash > 0) {
       ctx.fillStyle = `rgba(255,248,220,${fx.whiteFlash * 0.5})`;
@@ -276,11 +280,11 @@ export class Renderer {
     const { view, env } = this, n = f.sim.stack.length, H = view.H || 1;
     let target: number, tilt: number, span: number;
     if (f.shot === "menu") {
-      target = view.project(0, 0.5, 0)[1] / H; tilt = 0.85; span = 0.13;
+      target = view.project(0, 0.5, 0)[1] / H; tilt = 0; span = 0.13;
     } else if (f.shot === "over") {
-      target = view.project(0, f.sim.level / 2, 0)[1] / H; tilt = 0.6; span = 0.24;
+      target = view.project(0, f.sim.level / 2, 0)[1] / H; tilt = 0; span = 0.24;
     } else {
-      target = view.project(0, f.sim.top.y + 1, 0)[1] / H; tilt = 0.4; span = 0.2;
+      target = view.project(0, f.sim.top.y + 1, 0)[1] / H; tilt = 0; span = 0.2;
     }
     this.focus = lerp(this.focus, clamp(target, 0.1, 0.9), Math.min(1, dt * 4));
     const skin = f.skin;
