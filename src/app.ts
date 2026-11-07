@@ -210,7 +210,12 @@ export class App implements DailyHost {
 
   reminderInfo(): ReminderInfo {
     const v = streakView(this.save);
-    return { doneToday: v.doneToday, streak: v.count, rentFull: isOpen(this.save, "city") && rentFullIn(this.save) <= 0 };
+    const city = isOpen(this.save, "city"), left = rentFullIn(this.save), hp = holidayProgress(this.save);
+    return {
+      doneToday: v.doneToday, streak: v.count, rentFull: city && left <= 0,
+      rentFullAt: city && left > 0 && this.save.rent.last ? Date.now() + left * 36e5 : undefined,
+      holidayEnds: hp && !hp.done ? { at: Date.now() + holidayDaysLeft(hp.h) * 864e5, name: t(hp.h.name), skin: t(skinById(hp.h.skin).name) } : undefined,
+    };
   }
 
   /** The Android back button: closes what's open, pauses, or steps back to the menu.

@@ -97,7 +97,17 @@ export async function setReminder(time: string, info: ReminderInfo): Promise<"on
   return time ? "on" : "off";
 }
 
-export interface ReminderInfo { doneToday: boolean; streak: number; rentFull: boolean }
+export interface ReminderInfo {
+  doneToday: boolean;
+  streak: number;
+  rentFull: boolean;
+  /** When the rent box fills up (ms), if it's still filling. */
+  rentFullAt?: number;
+  /** A holiday event's last day: its name and skin, if the skin isn't earned yet. */
+  holidayEnds?: { at: number; name: string; skin: string };
+}
+
+const EXTRA_IDS = [104, 105];
 
 /**
  * Plans the next three reminders. Today's is skipped once today's tower is built, so a
@@ -107,7 +117,7 @@ export interface ReminderInfo { doneToday: boolean; streak: number; rentFull: bo
 export async function scheduleReminders(info: ReminderInfo): Promise<void> {
   if (!isNative()) return;
   try {
-    await LocalNotifications.cancel({ notifications: REMINDER_IDS.map(id => ({ id })) });
+    await LocalNotifications.cancel({ notifications: [...REMINDER_IDS, ...EXTRA_IDS].map(id => ({ id })) });
     const time = reminderTime();
     if (!time) return;
     const [hh, mm] = time.split(":").map(Number);
@@ -127,6 +137,20 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
           : t("Today's daily tower and missions are ready. One quick tower?"),
         schedule: { at, allowWhileIdle: true },
       });
+    }
+    // Rent filling up, at a sensible hour (not at night).
+    if (info.rentFullAt && info.rentFullAt > now + 60_000) {
+      const at = new Date(info.rentFullAt), h = at.getHours();
+      if (h < 9) at.setHours(9, 0, 0, 0); else if (h >= 22) { at.setDate(at.getDate() + 1); at.setHours(9, 0, 0, 0); }
+      notifications.push({ id: 104, title: t("🏙️ Your rent box is full"), body: t("Collect it before it stops filling up."), schedule: { at, allowWhileIdle: true } });
+    }
+    // The day before a holiday event ends, if its skin isn't earned yet.
+    if (info.holidayEnds) {
+      const at = new Date(info.holidayEnds.at - 864e5);
+      at.setHours(hh || 18, mm || 0, 0, 0);
+      if (at.getTime() > now + 60_000) {
+        notifications.push({ id: 105, title: t("⏳ {name} ends tomorrow", { name: info.holidayEnds.name }), body: t("Last chance to earn the {skin} skin.", { skin: info.holidayEnds.skin }), schedule: { at, allowWhileIdle: true } });
+      }
     }
     if (notifications.length) await LocalNotifications.schedule({ notifications });
   } catch { /* notifications unavailable */ }
