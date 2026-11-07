@@ -1083,3 +1083,140 @@ html.phone .card { background: rgba(16, 20, 52, 0.9); }
 
 /* Returning players already know the rules: the home screen is just the logo and Play. */
 #menu.returning .tagline { display: none; }
+
+/* ---------- v5: Skyrise's own home screen ----------
+   The bottom of the screen is a little skyline: each dock button is a lit building of its
+   own height, with a blinking rooftop light for anything new. It melts into the bottom
+   edge instead of floating in a box. Modes are round elevator buttons on a rail, and Play
+   is a chunky button you press down like a lift button. */
+#menu { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+.menu-bottom { gap: 12px; }
+.menu-bottom:has(#dock:not([hidden])) { padding-bottom: 96px; }
+
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 7px;
+  padding: 26px max(10px, env(safe-area-inset-right, 0px)) 0 max(10px, env(safe-area-inset-left, 0px));
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(to top, rgba(9, 11, 34, 0.96) 0, rgba(9, 11, 34, 0.82) calc(30px + env(safe-area-inset-bottom, 0px)), rgba(9, 11, 34, 0) 100%);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.dock-btn {
+  --h: 66px;
+  --tint: #3b3f8f;
+  flex: 1;
+  max-width: 86px;
+  height: calc(var(--h) + env(safe-area-inset-bottom, 0px));
+  justify-content: flex-start;
+  gap: 0;
+  padding: 9px 2px calc(7px + env(safe-area-inset-bottom, 0px));
+  border-radius: 12px 12px 0 0;
+  /* Rows of little lit windows over the building's color, darker toward the street. */
+  background:
+    radial-gradient(circle, rgba(255, 220, 130, 0.42) 1.1px, transparent 1.7px) 50% 38px / 9px 9px no-repeat,
+    radial-gradient(circle, rgba(255, 220, 130, 0.28) 1.1px, transparent 1.7px) center 30px / 9px 9px,
+    linear-gradient(180deg, var(--tint), color-mix(in srgb, var(--tint) 45%, #090b22));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), inset 1px 0 0 rgba(255, 255, 255, 0.08), inset -1px 0 0 rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  transition: transform 0.15s, filter 0.15s;
+}
+.dock-btn span {
+  margin-top: auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(9, 11, 34, 0.72);
+}
+/* The icon is the rooftop sign, glowing a little. */
+.dock-btn svg { width: 22px; height: 22px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--glow, #ffd36b) 70%, transparent)); color: var(--glow, #ffe08a); }
+.dock-btn:hover { background-color: transparent; filter: brightness(1.12); }
+.dock-btn:active { transform: translateY(3px); }
+#missions-btn { --h: 60px; --tint: #4a3c8c; --glow: #ffd36b; }
+#city-btn { --h: 72px; --tint: #2f5d8f; --glow: #8fe3ff; }
+#shop-btn { --h: 84px; --tint: #7a3a86; --glow: #ffb3d9; }
+#pass-btn { --h: 74px; --tint: #8a5a26; --glow: #ffe08a; }
+#ranks-btn { --h: 62px; --tint: #2f6e62; --glow: #9cf5c8; }
+/* Something new: a blinking aviation light on the roof instead of a red dot. */
+.dock-btn .dot {
+  top: -5px;
+  left: 50%;
+  right: auto;
+  width: 8px;
+  height: 8px;
+  transform: translateX(-50%);
+  background: #ff4646;
+  box-shadow: 0 0 0 2px rgba(9, 11, 34, 0.9), 0 0 12px 3px rgba(255, 70, 70, 0.75);
+  animation: beacon 1.2s steps(1) infinite;
+}
+@keyframes beacon { 50% { background: #7a1f1f; box-shadow: 0 0 0 2px rgba(9, 11, 34, 0.9); } }
+
+/* Modes: round elevator buttons on a brass rail. */
+.modes { position: relative; isolation: isolate; gap: 22px; }
+.modes::before { content: ""; position: absolute; z-index: -1; top: 23px; left: 18%; right: 18%; height: 2px; border-radius: 1px; background: rgba(255, 214, 120, 0.35); }
+.mode {
+  flex: none;
+  max-width: none;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  font-size: 12px;
+  text-shadow: 0 1px 3px rgba(5, 8, 30, 0.8);
+}
+.mode svg {
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  padding: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #5a5fb0, #20245a 75%);
+  box-shadow: inset 0 0 0 2px rgba(255, 214, 120, 0.8), inset 0 -3px 6px rgba(0, 0, 0, 0.35), 0 5px 14px rgba(5, 8, 30, 0.45);
+  color: #ffe08a;
+}
+.mode span { display: block; max-width: 90px; }
+.mode:active svg { box-shadow: inset 0 0 0 2px #ffe08a, inset 0 0 14px rgba(255, 214, 120, 0.6), 0 2px 6px rgba(5, 8, 30, 0.45); }
+.mode .dot { top: -1px; right: 2px; }
+
+/* Play: a chunky lift button with an up arrow, that presses down. */
+#play {
+  min-height: 62px;
+  border-radius: 20px;
+  padding-left: 58px;
+  padding-right: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 6px 0 #6b2a86, 0 14px 30px rgba(255, 79, 139, 0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+#play::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5l7 8h-4.5v6h-5v-6H5z' fill='white'/%3E%3C/svg%3E") center / 20px no-repeat;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+#play:active { transform: translateY(5px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 1px 0 #6b2a86, 0 6px 16px rgba(255, 79, 139, 0.3); }
+@media (max-width: 360px) {
+  .mode span { display: block; font-size: 11px; }
+  .modes { gap: 14px; }
+  .dock { gap: 5px; }
+}
