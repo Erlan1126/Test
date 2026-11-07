@@ -154,3 +154,21 @@ export async function readBackup(): Promise<string | null> {
   if (!isNative()) return null;
   try { return (await Preferences.get({ key: BACKUP_KEY })).value; } catch { return null; }
 }
+
+// ---------- Store rating ----------
+
+const REVIEW_KEY = "skyrise.review";
+
+/**
+ * Asks for a store rating at a happy moment (a new best). The stores decide whether the
+ * card actually shows, and we ask at most once every 90 days, and never in the first towers.
+ */
+export function askForReview(towers: number): void {
+  if (!isNative() || towers < 8) return;
+  try {
+    const last = Number(localStorage.getItem(REVIEW_KEY)) || 0;
+    if (Date.now() - last < 90 * 864e5) return;
+    localStorage.setItem(REVIEW_KEY, String(Date.now()));
+  } catch { return; }
+  void import("@capacitor-community/in-app-review").then(m => m.InAppReview.requestReview()).catch(() => {});
+}

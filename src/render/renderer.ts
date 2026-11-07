@@ -63,6 +63,7 @@ export class Renderer {
   private cacheStack: unknown = null;
   private cacheRef: [number, number] = [0, 0];
   private cacheMargin = 0;
+  private cacheCount = 0;
   private dpr = 1;
   private lastZoom = 0;
   /** Respect the system "reduce motion" setting: no shaking or ripples. */
@@ -239,21 +240,34 @@ export class Renderer {
       for (let i = 0; i < n; i++) if (visible(i, 0)) drawFloor(p, i, false);
       return;
     }
-    const key = [n, f.skin.id, f.shape.id, view.zoom, view.W, view.H, this.dpr, env.low, env.post, f.shot].join("|");
-    if (key !== this.cacheKey || this.cacheStack !== stack) {
+    // The cache keeps every settled floor. A new landing only adds that one floor to it,
+    // unless the camera has climbed past the cache's spare room or something else changed.
+    const key = [f.skin.id, f.shape.id, view.zoom, view.W, view.H, this.dpr, env.low, env.post, f.shot].join("|");
+    const [x0, y0] = view.project(0, 0, 0);
+    const dx = x0 - this.cacheRef[0], dy = y0 - this.cacheRef[1];
+    const settledN = n - 1, c = this.towerCache, g = this.cacheCtx, fh = view.th * view.zoom;
+    const fits = (i: number) => view.project(0, stack[i].y + 1, 0)[1] - dy - reach > -this.cacheMargin;
+    let fresh = key !== this.cacheKey || this.cacheStack !== stack || settledN < this.cacheCount || Math.abs(dx) > 0.5;
+    for (let i = this.cacheCount; !fresh && i < settledN; i++) if (!fits(i)) fresh = true;
+    if (fresh) {
       this.cacheKey = key;
       this.cacheStack = stack;
-      const m = this.cacheMargin = Math.ceil(view.th * view.zoom * 4);
-      const c = this.towerCache, g = this.cacheCtx;
-      c.width = Math.round(view.W * this.dpr);
-      c.height = Math.round((view.H + m * 2) * this.dpr);
-      g.setTransform(this.dpr, 0, 0, this.dpr, 0, m * this.dpr);
+      // Lots of room above (the tower grows up), a little below.
+      const top = this.cacheMargin = Math.ceil(fh * 14), bottom = Math.ceil(fh * 2);
+      const w = Math.round(view.W * this.dpr), h = Math.round((view.H + top + bottom) * this.dpr);
+      if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } else { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); }
+      g.setTransform(this.dpr, 0, 0, this.dpr, 0, top * this.dpr);
       const q: Paint = { ctx: g, view, env };
-      for (let i = 0; i < n - 1; i++) if (visible(i, m)) drawFloor(q, i, true);
-      this.cacheRef = view.project(0, 0, 0);
+      for (let i = 0; i < settledN; i++) if (visible(i, top)) drawFloor(q, i, true);
+      this.cacheRef = [x0, y0];
+      this.cacheCount = settledN;
+    } else if (settledN > this.cacheCount) {
+      g.setTransform(this.dpr, 0, 0, this.dpr, -dx * this.dpr, (this.cacheMargin - dy) * this.dpr);
+      const q: Paint = { ctx: g, view, env };
+      for (let i = this.cacheCount; i < settledN; i++) drawFloor(q, i, true);
+      this.cacheCount = settledN;
     }
-    const [x0, y0] = view.project(0, 0, 0);
-    p.ctx.drawImage(this.towerCache, x0 - this.cacheRef[0], y0 - this.cacheRef[1] - this.cacheMargin, view.W, view.H + this.cacheMargin * 2);
+    p.ctx.drawImage(c, dx, dy - this.cacheMargin, view.W, c.height / this.dpr);
     drawFloor(p, n - 1, false);
   }
 

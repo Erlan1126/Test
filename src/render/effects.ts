@@ -97,7 +97,11 @@ export class Effects {
   }
 
   popup(text: string, sub: string, y: number, color = "#ffffff", life = 1.1, big = false): void {
+    // A new label quickly fades the old ones of its size, so fast tapping never piles
+    // "PERFECT" on top of "PERFECT".
+    for (const q of this.popups) if (q.big === big) q.life = Math.min(q.life, 0.18);
     this.popups.push({ text, sub, y, life, color, big });
+    if (this.popups.length > 4) this.popups.splice(0, this.popups.length - 4);
   }
 
   update(dt: number): void {

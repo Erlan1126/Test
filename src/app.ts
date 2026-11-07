@@ -32,7 +32,7 @@ import type { CrystalPack, Product } from "./data/premium";
 import type { PackPurchase } from "./payments";
 import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 import { resolveLang, setLang, t, tn, translateDom } from "./i18n";
-import { backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
+import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
 
@@ -62,6 +62,9 @@ function siteUrl(): string {
   if (!/^https?:$/.test(protocol) || /(^|\.)claude\.ai$|claudeusercontent|anthropic/.test(hostname)) return "";
   return origin + pathname;
 }
+
+/** How long the landmark slow-motion lasts, in seconds. */
+const SLOWMO = 0.9;
 
 export class App implements DailyHost {
   save: SaveData;
@@ -103,6 +106,8 @@ export class App implements DailyHost {
   /** The skin the current tower was built in. */
   private builtSkin = "";
   private builtShape = "";
+  private slowmo = 0;
+  private readonly calmMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   private tag = "";
   /** The current tower's taps, for the online rankings. */
   private recorder: RunRecorder | null = null;
@@ -409,6 +414,8 @@ export class App implements DailyHost {
       e.preventDefault();
       if (this.state === "playing") this.drop();
       else if (this.peek) this.setPeek(false);
+      // Impatient? A tap brings the results card (and its Build again button) right away.
+      else if (this.state === "over" && !this.overReady) this.overTimer = Math.min(this.overTimer, 0.12);
     });
     $("play").addEventListener("click", () => this.start("classic"));
     $("daily-btn").addEventListener("click", () => this.start("daily"));
@@ -535,6 +542,7 @@ export class App implements DailyHost {
   // ---------- Starting and ending towers ----------
 
   private start(mode: Mode, challengeId?: string): void {
+    this.slowmo = 0;
     this.sound.ensure();
     const challenge = mode === "challenge" ? challengeById(challengeId ?? "") ?? null : null;
     if (mode === "challenge" && (!challenge || !challengeOpen(this.save, challenge.id))) return;
@@ -645,7 +653,7 @@ export class App implements DailyHost {
 
   private gameOver(silent: boolean): void {
     this.state = "over";
-    this.overTimer = 0.8;
+    this.overTimer = 0.55;
     this.overReady = false;
     this.sim.combo = 0;
     this.sim.mover = null;
@@ -737,6 +745,7 @@ export class App implements DailyHost {
     fx.punch = Math.max(fx.punch, 0.25);
     this.updateHud(true);
     if (out.landmark !== undefined) {
+      if (!this.calmMotion) this.slowmo = SLOWMO;
       this.banner(t("Landmark passed"), t("Taller than {name}!", { name: t(MILESTONES[out.landmark].name) }));
       setTimeout(() => s.milestone(), 120);
     }
@@ -991,6 +1000,8 @@ export class App implements DailyHost {
     eyebrow.textContent = c ? (won ? t("Challenge complete!") : t("Challenge failed"))
       : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: dayNumber() }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
+    // A new best is a happy moment: a good time to ask for a store rating.
+    if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
     $("over-people").textContent = fmt(sim.score);
     $("over-sub").textContent = t("people live in your {m} m tower", { m: sim.meters });
     $("over-landmark").textContent = c ? t(c.text)
@@ -1125,8 +1136,13 @@ export class App implements DailyHost {
 
   private frame(now: number): void {
     const raw = (now - this.last) / 1000;
-    const dt = Math.min(0.05, Math.max(0, raw));
+    let dt = Math.min(0.05, Math.max(0, raw));
     this.last = now;
+    // Passing a landmark slows the world for a moment, then eases back to full speed.
+    if (this.slowmo > 0) {
+      this.slowmo = Math.max(0, this.slowmo - dt);
+      dt *= 0.3 + 0.7 * (1 - this.slowmo / SLOWMO) ** 2;
+    }
     // Auto graphics: if a tower plays below about 50 fps, drop the costly extras one step
     // at a time: shaders, then smooth mode (fewer details), and only as a last resort a
     // slightly lower resolution, so the picture stays sharp.
@@ -1165,7 +1181,7 @@ export class App implements DailyHost {
       // The wind meter shows the gust half a second ahead, so you can see it coming.
       if (m && sim.windFor(m.y) > 0) {
         const ahead = sim.gustAt(m, sim.time + 0.5);
-        $("gust").style.width = `${clamp((ahead - 0.45) / 1.1, 0.05, 1) * 100}%`;
+        $("gust").style.transform = `scaleX(${clamp((ahead - 0.45) / 1.1, 0.05, 1).toFixed(3)})`;
         const strong = ahead > 1.25;
         $("wind").classList.toggle("strong", strong);
         const label = strong ? t("Gust coming") : ahead < 0.75 ? t("Calm") : t("Wind");
