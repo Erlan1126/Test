@@ -13,11 +13,11 @@ describe("rewards are never lost at rollover", () => {
     refreshPass(save, nov);
     addPassXp(save, XP_PER_TIER * 3, nov);
     expect(passTier(save)).toBe(3);
-    const coins = save.coins, stars = save.stars;
+    const stars = save.stars, crystals = save.crystals;
     carriedOver.length = 0;
     expect(refreshPass(save, dec)).toBe(true);
     expect(carriedOver.length).toBe(3);
-    expect(save.coins + save.stars).toBeGreaterThan(coins + stars);
+    expect(save.stars + save.crystals).toBeGreaterThan(stars + crystals);
     expect(passTier(save)).toBe(0);
   });
 
@@ -148,5 +148,13 @@ describe("VIP and themed bundles", () => {
     save.crystals = 600;
     expect(buyWithCrystals(save, "set_tokyo")).toBe("ok");
     expect(save.ownedShapes).toEqual(expect.arrayContaining(["spiral", "twist"]));
+  });
+});
+
+describe("rent timer survives a reload", () => {
+  it("keeps the real time rent was last collected (it used to be capped and always look full)", () => {
+    const now = Date.UTC(2026, 10, 7, 12);
+    const back = normalize({ rent: { last: now - 2 * 36e5 } });
+    expect(back.rent.last).toBe(now - 2 * 36e5);
   });
 });

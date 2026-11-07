@@ -78,9 +78,8 @@ export function tickStreak(save: SaveData, now = Date.now()): Reward[] {
     s.claimed.push(m.day);
     save.stars += m.stars;
     save.starsEarned += m.stars;
-    save.coins += m.coins;
     // A skin it unlocks is announced with the other new skins.
-    rewards.push({ kind: "star", text: t("{day}-day streak reward: +{stars} ★ and +{coins} coins", { day: m.day, stars: m.stars, coins: m.coins }) });
+    rewards.push({ kind: "star", text: t("{day}-day streak reward: +{stars} ★", { day: m.day, stars: m.stars }) });
   }
   return rewards;
 }
@@ -116,7 +115,6 @@ export function refreshMissions(save: SaveData, now = Date.now(), rng: () => num
       m.chest = m.day;
       save.stars += CHEST.stars;
       save.starsEarned += CHEST.stars;
-      save.coins += CHEST.coins;
       addPassXp(save, CHEST_PASS_XP, now);
       lateChest.opened = true;
     }
@@ -134,22 +132,22 @@ export const chestReady = (save: SaveData, now = Date.now()): boolean =>
   allMissionsDone(save) && save.missions.chest !== dayKey(0, now) && save.missions.day === dayKey(0, now);
 
 /** Opens today's chest once all three missions are done. */
-export function claimChest(save: SaveData, now = Date.now()): { stars: number; coins: number } | null {
+export function claimChest(save: SaveData, now = Date.now()): { stars: number } | null {
   if (!chestReady(save, now)) return null;
   save.missions.chest = dayKey(0, now);
   save.stars += CHEST.stars;
   save.starsEarned += CHEST.stars;
-  save.coins += CHEST.coins;
   addPassXp(save, CHEST_PASS_XP, now);
   return { ...CHEST };
 }
 
 // ---------- Rent and the city ----------
 
+/** Stars an hour (can be a fraction; what's collected is rounded down). */
 export const rentPerHour = (save: SaveData): number =>
-  Math.round(Math.max(MIN_RENT_PER_HOUR, save.best / 25) * (1 + save.city.length * RENT_BONUS_PER_BUILD));
+  Math.round(Math.max(MIN_RENT_PER_HOUR, save.best / 2500) * (1 + save.city.length * RENT_BONUS_PER_BUILD) * 10) / 10;
 
-/** Coins waiting to be collected. Rent starts once you've built a tower. */
+/** Stars waiting to be collected. Rent starts once you've built a tower. */
 export function rentWaiting(save: SaveData, now = Date.now()): number {
   if (!save.rent.last) return 0;
   const hours = Math.min(RENT_CAP_HOURS, Math.max(0, (now - save.rent.last) / 36e5));
@@ -167,7 +165,8 @@ export function startRent(save: SaveData, now = Date.now()): void {
 export function collectRent(save: SaveData, now = Date.now()): number {
   const n = rentWaiting(save, now);
   if (n <= 0) return 0;
-  save.coins += n;
+  save.stars += n;
+  save.starsEarned += n;
   save.rent.last = now;
   return n;
 }
@@ -178,8 +177,8 @@ export function buyBuild(save: SaveData, id: string): BuildResult {
   const b = CITY.find(c => c.id === id);
   if (!b) return "unknown";
   if (save.city.includes(id)) return "owned";
-  if (save.coins < b.price) return "poor";
-  save.coins -= b.price;
+  if (save.stars < b.price) return "poor";
+  save.stars -= b.price;
   save.city.push(id);
   return "ok";
 }

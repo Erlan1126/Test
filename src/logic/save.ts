@@ -1,5 +1,6 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
+import { COINS_PER_STAR } from "../data/daily";
 import { MISSION_KEYS, type Mission } from "../data/missions";
 import { SKINS } from "../data/skins";
 import { SHAPES } from "../data/shapes";
@@ -84,8 +85,7 @@ export interface SaveData {
   seenFeatures: string[];
   /** Days in a row with at least one tower. */
   streak: { count: number; best: number; last: string; freezes: number; freezeWeek: number; claimed: number[] };
-  /** Coins from island rent, spent on city buildings. */
-  coins: number;
+  /** When rent (stars) was last collected. */
   rent: { last: number };
   city: string[];
   league: { week: number; points: number; lastWeek: number; lastPoints: number; rewarded: number };
@@ -107,7 +107,7 @@ export interface SaveData {
   crystalTx: string[];
   /** This season's Sky Pass. */
   pass: { season: number; xp: number; premium: boolean; free: number[]; prem: number[] };
-  /** Products whose one-off coins have been paid. */
+  /** Products whose one-off stars (once coins) have been paid. */
   coinsGranted: string[];
   /** Random id the payment server knows this player by. Made on first launch. */
   playerId: string;
@@ -146,7 +146,6 @@ export function defaultSave(): SaveData {
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
-    coins: 0,
     rent: { last: 0 },
     city: [],
     league: { week: -1, points: 0, lastWeek: -1, lastPoints: 0, rewarded: -1 },
@@ -204,7 +203,8 @@ export function normalize(raw: unknown): SaveData {
     v: 2,
     best: int(r.best, 0),
     bestMeters: int(r.bestMeters, 0),
-    stars: int(r.stars, 0),
+    // Coins were folded into stars: old saves get theirs converted once.
+    stars: int(r.stars, 0) + Math.floor(int(r.coins, 0) / COINS_PER_STAR),
     starsEarned: int(r.starsEarned, 0),
     skin: skinIds.includes(r.skin as string) ? (r.skin as string) : d.skin,
     island: themeIds.includes(r.island as string) ? (r.island as string) : d.island,
@@ -246,8 +246,7 @@ export function normalize(raw: unknown): SaveData {
       freezes: int(st.freezes, 0, 0, 9), freezeWeek: int(st.freezeWeek, -1, -1),
       claimed: Array.isArray(st.claimed) ? [...new Set(st.claimed.filter((x): x is number => Number.isInteger(x)))] : [],
     },
-    coins: int(r.coins, 0),
-    rent: { last: num(obj(r.rent).last, 0) },
+    rent: { last: num(obj(r.rent).last, 0, 0, 1e15) }, // a timestamp in ms, far above the default cap
     city: strList(r.city, CITY.map(c => c.id)),
     league: {
       week: int(lg.week, -1, -1e6), points: int(lg.points, 0), lastWeek: int(lg.lastWeek, -1, -1e6),

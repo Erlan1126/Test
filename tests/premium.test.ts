@@ -32,11 +32,11 @@ describe("premium purchases", () => {
     expect(themeUnlocked(s, theme("candy"))).toBe(true);
   });
 
-  it("pays the bundle's coins once and counts its items as owned", () => {
+  it("pays the bundle's stars once and counts its items as owned", () => {
     const s = defaultSave();
     grantPurchase(s, "founders");
     grantPurchase(s, "founders");
-    expect(s.coins).toBe(5000);
+    expect(s.stars).toBe(50);
     expect(ownsProduct(s, "skin_royal")).toBe(true);
     expect(ownsProduct(s, "island_volcano")).toBe(true);
     const g = premiumGrants(s);

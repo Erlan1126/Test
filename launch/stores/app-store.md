@@ -67,7 +67,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 > to Legend. Turn on the daily reminder so you never lose your streak.
 >
 > YOUR OWN FLOATING ISLAND
-> Houses, a farm, a lake and a waterfall, and a city you build with coins: a café, a
+> Houses, a farm, a lake and a waterfall, and a city you build with stars: a café, a
 > windmill, a lighthouse, a rocket pad and more.
 >
 > A SKY THAT CHANGES AS YOU CLIMB
@@ -174,7 +174,7 @@ is shared with English unless you change it.
 > Bronce a Leyenda. Activa el recordatorio diario para no perder nunca tu racha.
 >
 > TU PROPIA ISLA FLOTANTE
-> Casas, una granja, un lago y una cascada, y una ciudad que construyes con monedas: un
+> Casas, una granja, un lago y una cascada, y una ciudad que construyes con estrellas: un
 > café, un molino, un faro, una plataforma de cohetes y más.
 >
 > UN CIELO QUE CAMBIA MIENTRAS SUBES

@@ -2,21 +2,24 @@
 // buildings, and the weekly league.
 
 /** Rewards for keeping a streak going. Each pays once, ever. */
-export const STREAK_REWARDS: { day: number; stars: number; coins: number; skin?: string }[] = [
-  { day: 3, stars: 2, coins: 100 },
-  { day: 7, stars: 5, coins: 250, skin: "ember" },
-  { day: 14, stars: 8, coins: 500 },
-  { day: 30, stars: 15, coins: 1000, skin: "gilded" },
-  { day: 60, stars: 25, coins: 2000 },
-  { day: 100, stars: 50, coins: 5000 },
+export const STREAK_REWARDS: { day: number; stars: number; skin?: string }[] = [
+  { day: 3, stars: 3 },
+  { day: 7, stars: 8, skin: "ember" },
+  { day: 14, stars: 13 },
+  { day: 30, stars: 25, skin: "gilded" },
+  { day: 60, stars: 45 },
+  { day: 100, stars: 100 },
 ];
 
 /** Streak freezes held at most; one is added each week. */
 export const MAX_FREEZES = 2;
 
-/** Rent: coins per hour from the people in your best tower, saved up for at most this long. */
+/** Rent: stars per hour from the people in your best tower, saved up for at most this long.
+ *  (There used to be coins too; 100 coins became 1 star.) */
 export const RENT_CAP_HOURS = 12;
-export const MIN_RENT_PER_HOUR = 10;
+export const MIN_RENT_PER_HOUR = 0.1;
+/** Old saves' coins turn into stars at this rate. */
+export const COINS_PER_STAR = 100;
 
 export interface CityBuild {
   id: string;
@@ -26,15 +29,15 @@ export interface CityBuild {
   price: number;
 }
 
-/** Buildings bought with coins. Each one also raises your rent by 15%. */
+/** Buildings bought with stars. Each one also raises your rent by 15%. */
 export const CITY: CityBuild[] = [
-  { id: "cafe", icon: "☕", name: "Corner café", text: "Striped awning and tables outside", price: 150 },
-  { id: "playground", icon: "🛝", name: "Playground", text: "Swings, a slide and a sandpit", price: 300 },
-  { id: "statue", icon: "🗽", name: "Founder's statue", text: "A golden builder on a pedestal", price: 500 },
-  { id: "windmill", icon: "🌾", name: "Windmill", text: "Its sails turn in the breeze", price: 800 },
-  { id: "observatory", icon: "🔭", name: "Observatory", text: "A domed telescope for star-gazing", price: 1300 },
-  { id: "lighthouse", icon: "🗼", name: "Sky lighthouse", text: "Sweeps a beam across the night sky", price: 2000 },
-  { id: "rocket", icon: "🚀", name: "Rocket pad", text: "Every so often, a rocket launches", price: 3500 },
+  { id: "cafe", icon: "☕", name: "Corner café", text: "Striped awning and tables outside", price: 3 },
+  { id: "playground", icon: "🛝", name: "Playground", text: "Swings, a slide and a sandpit", price: 6 },
+  { id: "statue", icon: "🗽", name: "Founder's statue", text: "A golden builder on a pedestal", price: 10 },
+  { id: "windmill", icon: "🌾", name: "Windmill", text: "Its sails turn in the breeze", price: 16 },
+  { id: "observatory", icon: "🔭", name: "Observatory", text: "A domed telescope for star-gazing", price: 26 },
+  { id: "lighthouse", icon: "🗼", name: "Sky lighthouse", text: "Sweeps a beam across the night sky", price: 40 },
+  { id: "rocket", icon: "🚀", name: "Rocket pad", text: "Every so often, a rocket launches", price: 70 },
 ];
 
 export const RENT_BONUS_PER_BUILD = 0.15;
@@ -48,5 +51,5 @@ export const LEAGUES: { name: string; min: number; stars: number; color: string 
   { name: "Legend", min: 6000, stars: 12, color: "#ff6f9c" },
 ];
 
-/** Coins and stars in the chest for finishing all of today's missions. */
-export const CHEST = { stars: 2, coins: 150 };
+/** Stars in the chest for finishing all of today's missions. */
+export const CHEST = { stars: 4 };

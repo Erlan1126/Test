@@ -40,7 +40,7 @@ Spanish section):
 > Bronce a Leyenda. Activa el recordatorio diario para no perder nunca tu racha.
 >
 > TU PROPIA ISLA FLOTANTE
-> Casas, una granja, un lago y una cascada, y una ciudad que construyes con monedas: un
+> Casas, una granja, un lago y una cascada, y una ciudad que construyes con estrellas: un
 > café, un molino, un faro, una plataforma de cohetes y más.
 >
 > UN CIELO QUE CAMBIA MIENTRAS SUBES

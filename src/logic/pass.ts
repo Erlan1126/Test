@@ -3,7 +3,6 @@ import { PASS_PRICE } from "../data/premium";
 import { CHEST_PASS_XP, freeReward, PASS_TIERS, premiumReward, seasonIndex, XP_PER_TIER, type PassReward } from "../data/pass";
 import { MAX_BOOSTS } from "../data/shop";
 import { skinById } from "../data/skins";
-import { fmt } from "../core/util";
 import { t } from "../i18n";
 import type { SaveData } from "./save";
 
@@ -35,7 +34,6 @@ export const chestPassXp = (save: SaveData, now = Date.now()): number => addPass
 
 /** Gives one reward to the player. */
 export function giveReward(save: SaveData, r: PassReward): void {
-  if (r.coins) save.coins += r.coins;
   if (r.stars) { save.stars += r.stars; save.starsEarned += r.stars; }
   if (r.crystals) save.crystals += r.crystals;
   if (r.boost) save.boosts[r.boost] = Math.min(MAX_BOOSTS, save.boosts[r.boost] + 1);
@@ -47,7 +45,7 @@ export function rewardText(r: PassReward): string {
   if (r.crystals) return t("{n} Sky Crystals", { n: r.crystals });
   if (r.stars) return `${r.stars} ★`;
   if (r.boost) return { rewind: t("Extra rewind"), xp: t("Double XP"), gold: t("Gold rush") }[r.boost];
-  return t("{n} coins", { n: fmt(r.coins ?? 0) });
+  return `${r.stars ?? 0} ★`;
 }
 
 export type Track = "free" | "prem";

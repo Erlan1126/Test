@@ -189,15 +189,15 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   p.xp = lv.xp;
   if (lv.ups) {
     addStars(save, lv.stars);
-    let coins = 0, crystals = 0;
+    let stars = 0, crystals = 0;
     for (let l = levelBefore + 1; l <= p.level; l++) {
       const r = levelReward(l);
-      coins += r.coins;
+      stars += r.stars;
       crystals += r.crystals;
     }
-    save.coins += coins;
+    addStars(save, stars);
     save.crystals += crystals;
-    const extra = [`+${lv.stars} ★`, t("+{n} coins", { n: fmt(coins) }), crystals ? `+${crystals} 💎` : ""].filter(Boolean).join(", ");
+    const extra = [`+${lv.stars + stars} ★`, crystals ? `+${crystals} 💎` : ""].filter(Boolean).join(", ");
     rewards.unshift({ kind: "star", text: t("Level up! You're now builder level {n} ({extra})", { n: p.level, extra }) });
   }
 

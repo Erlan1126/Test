@@ -24,15 +24,16 @@ function covers(bundleId: string, id: string): boolean {
     && (p.grants.shapes ?? []).every(s => b.grants.shapes?.includes(s));
 }
 
-/** Records an owned item. One-off extras (bundle coins) are paid once per product. */
+/** Records an owned item. One-off extras (bundle stars) are paid once per product. */
 export function grantPurchase(save: SaveData, id: string): boolean {
   const p = productById(id);
   if (!p) return false;
   if (!save.purchases.includes(id)) save.purchases.push(id);
   for (const sh of p.grants.shapes ?? []) if (!save.ownedShapes.includes(sh)) save.ownedShapes.push(sh);
-  if (p.grants.coins && !save.coinsGranted.includes(id)) {
+  if (p.grants.stars && !save.coinsGranted.includes(id)) {
     save.coinsGranted.push(id);
-    save.coins += p.grants.coins;
+    save.stars += p.grants.stars;
+    save.starsEarned += p.grants.stars;
   }
   return true;
 }

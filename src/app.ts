@@ -995,7 +995,7 @@ export class App implements DailyHost {
     }
     if (lateChest.opened) {
       lateChest.opened = false;
-      toast(t("Yesterday's chest opened for you: +{stars} ★ and {coins} coins", { stars: CHEST.stars, coins: CHEST.coins }));
+      toast(t("Yesterday's chest opened for you: +{stars} ★", { stars: CHEST.stars }));
       this.persist();
     }
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
@@ -1011,7 +1011,7 @@ export class App implements DailyHost {
     const save = this.save, out: string[] = [];
     if (save.profile.towers >= 1 && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
     const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0;
-    if (rent >= 1) out.push(t("🪙 Collect {n} coins", { n: fmt(rent) }));
+    if (rent >= 1) out.push(t("🏦 Collect {n} ★ of rent", { n: fmt(rent) }));
     if (chestReady(save, now)) out.push(t("🧰 Open today's chest"));
     const lr = pendingLeagueReward(save, now);
     if (lr) out.push(t("🏆 Claim your {league} league reward", { league: t(lr.league) }));
@@ -1030,10 +1030,10 @@ export class App implements DailyHost {
     $("gift-track").hidden = !gift;
     if (isOpen(save, "city")) {
       const r = collectRent(save);
-      if (r) lines.push(t("🪙 Rent · +{n} coins", { n: fmt(r) }));
+      if (r) lines.push(t("🏦 Rent · +{n} ★", { n: fmt(r) }));
     }
     const c = claimChest(save);
-    if (c) lines.push(t("🧰 Mission chest · +{stars} ★ · +{coins} coins · +100 pass XP", { stars: c.stars, coins: c.coins }));
+    if (c) lines.push(t("🧰 Mission chest · +{stars} ★ · +100 pass XP", { stars: c.stars }));
     const lr = claimLeagueReward(save);
     if (lr) lines.push(t("🏆 {league} league · +{n} ★", { league: t(lr.league), n: lr.stars }));
     this.persist();

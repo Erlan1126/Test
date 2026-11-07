@@ -7,7 +7,6 @@ export const PASS_TIERS = 30;
 export const XP_PER_TIER = 250;
 
 export interface PassReward {
-  coins?: number;
   stars?: number;
   crystals?: number;
   boost?: BoostId;
@@ -68,7 +67,7 @@ export function freeReward(season: number, t: number): PassReward {
   if (t % 10 === 0) return { stars: 3 };
   if (t % 5 === 0) return { crystals: 10 };
   if (t % 3 === 0) return { boost: BOOST_CYCLE[(t / 3) % 3] };
-  return { coins: 80 + t * 10 };
+  return { stars: t < 15 ? 1 : 2 };
 }
 
 /** What tier `t` pays on the premium track. */
@@ -79,7 +78,7 @@ export function premiumReward(season: number, t: number): PassReward {
   if (t === 15) return { crystals: 100 };
   if (t % 5 === 0) return { crystals: 40 };
   if (t % 3 === 0) return { boost: BOOST_CYCLE[(t / 3 + 1) % 3] };
-  if (t % 2 === 0) return { coins: 300 };
+  if (t % 2 === 0) return { stars: 3 };
   return { stars: 2 };
 }
 
@@ -89,9 +88,9 @@ export const MISSION_PASS_XP = 40;
 export const CHEST_PASS_XP = 100;
 
 /** Extra rewards for reaching builder level `level` (on top of the usual stars). */
-export function levelReward(level: number): { coins: number; crystals: number } {
+export function levelReward(level: number): { stars: number; crystals: number } {
   return {
-    coins: Math.min(600, 100 + level * 20),
+    stars: Math.min(6, 1 + Math.floor(level / 5)),
     crystals: level % 10 === 0 ? 30 : level % 5 === 0 ? 10 : 0,
   };
 }

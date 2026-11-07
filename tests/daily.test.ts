@@ -43,13 +43,12 @@ describe("play streak", () => {
     const ember = SKINS.find(x => x.id === "ember")!;
     for (let d = 1; d <= 7; d++) tickStreak(s, day(d));
     expect(s.streak.claimed).toEqual([3, 7]);
-    expect(s.stars).toBe(7);
-    expect(s.coins).toBe(350);
+    expect(s.stars).toBe(11);
     expect(isSkinUnlocked(s, ember)).toBe(true);
     // Losing the streak and building it back up pays nothing again.
     tickStreak(s, day(20));
     for (let d = 21; d <= 26; d++) tickStreak(s, day(d));
-    expect(s.stars).toBe(7);
+    expect(s.stars).toBe(11);
   });
 
   it("steps across month ends and clock changes", () => {
@@ -74,7 +73,7 @@ describe("daily missions", () => {
     refreshMissions(s, day(2), seeded(1));
     expect(claimChest(s, day(2))).toBeNull();
     s.missions.slots.forEach(m => { m.d = true; });
-    expect(claimChest(s, day(2))).toEqual({ stars: 2, coins: 150 });
+    expect(claimChest(s, day(2))).toEqual({ stars: 4 });
     expect(claimChest(s, day(2))).toBeNull();
   });
 
@@ -93,23 +92,24 @@ describe("rent and the city", () => {
     const s = defaultSave();
     expect(rentWaiting(s, day(2))).toBe(0); // starts with the first tower
     recordRun(s, run({ score: 1000 }), day(2, 8), seeded(1));
-    expect(rentPerHour(s)).toBe(40);
-    expect(rentWaiting(s, day(2, 10))).toBe(80);
-    expect(rentWaiting(s, day(3, 20))).toBe(480); // capped
-    expect(collectRent(s, day(2, 10))).toBe(80);
-    expect(s.coins).toBe(80);
-    expect(rentWaiting(s, day(2, 10))).toBe(0);
+    expect(rentPerHour(s)).toBe(0.4);
+    expect(rentWaiting(s, day(2, 13))).toBe(2);
+    expect(rentWaiting(s, day(3, 20))).toBe(4); // capped at 12 hours
+    const before = s.stars;
+    expect(collectRent(s, day(2, 13))).toBe(2);
+    expect(s.stars).toBe(before + 2);
+    expect(rentWaiting(s, day(2, 13))).toBe(0);
   });
 
-  it("builds city buildings with coins, each raising rent", () => {
+  it("builds city buildings with stars, each raising rent", () => {
     const s = defaultSave();
     s.best = 1000;
-    s.coins = 200;
+    s.stars = 5;
     expect(buyBuild(s, "playground")).toBe("poor");
     expect(buyBuild(s, "cafe")).toBe("ok");
     expect(buyBuild(s, "cafe")).toBe("owned");
-    expect(s.coins).toBe(50);
-    expect(rentPerHour(s)).toBe(46);
+    expect(s.stars).toBe(2);
+    expect(rentPerHour(s)).toBe(0.5);
   });
 });
 
@@ -135,11 +135,12 @@ describe("weekly league", () => {
 });
 
 describe("saving the new progress", () => {
-  it("validates streak, coins, city and nickname", () => {
+  it("validates streak, city and nickname, and turns old coins into stars", () => {
     const s = normalize({ streak: { count: 4, claimed: [3, "x"] }, coins: -3, city: ["cafe", "moon"], nickname: "<b>Erl@n</b> the great builder!!" });
     expect(s.streak.count).toBe(4);
     expect(s.streak.claimed).toEqual([3]);
-    expect(s.coins).toBe(0);
+    expect(s.stars).toBe(0);
+    expect(normalize({ stars: 5, coins: 1250 }).stars).toBe(17);
     expect(s.city).toEqual(["cafe"]);
     expect(s.nickname).toBe("bErlnb the great");
   });

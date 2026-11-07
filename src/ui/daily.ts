@@ -92,7 +92,7 @@ export class DailySheets {
   collectRent(): void {
     this.host.sound.ensure();
     const n = collectRent(this.save);
-    if (n > 0) this.celebrate(t("+{n} coins from your tower's rent", { n: fmt(n) }));
+    if (n > 0) this.celebrate(t("+{n} ★ from your tower's rent", { n: fmt(n) }));
     if (!$("city").hidden) this.renderCity();
   }
 
@@ -101,7 +101,7 @@ export class DailySheets {
     const r = claimChest(this.save);
     if (!r) return;
     this.host.sound.unlock();
-    this.celebrate(t("Chest opened: +{stars} ★, +{coins} coins and +100 pass XP! New missions tomorrow", { stars: r.stars, coins: r.coins }));
+    this.celebrate(t("Chest opened: +{stars} ★ and +100 pass XP! New missions tomorrow", { stars: r.stars }));
     if (!$("missions").hidden) this.renderMissions();
   }
 
@@ -126,7 +126,7 @@ export class DailySheets {
       const got = s.claimed.includes(r.day), skin = r.skin ? t(skinById(r.skin).name) : "";
       return `<div class="streak-step${got ? " done" : ""}${!got && v.next === r ? " next" : ""}">
         <b>${r.day}</b><span>${esc(t("days"))}</span>
-        <small>+${r.stars} ★ · ${esc(t("+{n} coins", { n: fmt(r.coins) }))}${skin ? `<br>${esc(t("{name} skin", { name: skin }))}` : ""}</small>
+        <small>+${r.stars} ★${skin ? `<br>${esc(t("{name} skin", { name: skin }))}` : ""}</small>
       </div>`;
     }).join("");
     // Calendar files download on a normal website; the claude.ai page can't save them.
@@ -296,7 +296,7 @@ export class DailySheets {
     const chest = $("chest-card");
     chest.className = `chest-card${ready ? " ready" : ""}${opened ? " opened" : ""}`;
     chest.innerHTML = `<span class="chest-ico" aria-hidden="true">${opened ? "📭" : "🧰"}</span>
-      <span><b>${esc(opened ? t("Chest opened") : t("Daily chest"))}</b><small>${esc(opened ? t("A new one tomorrow") : t("All 3 done: +{stars} ★ · +{coins} coins", { stars: CHEST.stars, coins: CHEST.coins }))}</small></span>
+      <span><b>${esc(opened ? t("Chest opened") : t("Daily chest"))}</b><small>${esc(opened ? t("A new one tomorrow") : t("All 3 done: +{stars} ★", { stars: CHEST.stars }))}</small></span>
       ${ready ? `<button type="button" class="buy" id="chest-open">${esc(t("Open"))}</button>` : `<span class="chest-dots">${[0, 1, 2].map(i => `<i class="${i < done ? "on" : ""}"></i>`).join("")}</span>`}`;
     chest.querySelector("#chest-open")?.addEventListener("click", () => this.openChest());
 
@@ -325,30 +325,30 @@ export class DailySheets {
 
   private renderCity(): void {
     const save = this.save, waiting = rentWaiting(save), rate = rentPerHour(save);
-    $("city-balance").textContent = t("{n} coins", { n: fmt(save.coins) });
+    $("city-balance").textContent = t("You have {n} ★", { n: fmt(save.stars) });
     const full = rentFullIn(save);
     $("rent-card").innerHTML = `<span class="rent-ico" aria-hidden="true">🏦</span>
-      <span><b>${esc(t("{n} coins of rent", { n: fmt(waiting) }))}</b>
-      <small>${esc(t("{n} an hour", { n: fmt(rate) }))} · ${esc(full > 0 ? t("full in {time}", { time: duration(full * 36e5) }) : t("full (holds {n} hours)", { n: RENT_CAP_HOURS }))}</small></span>
+      <span><b>${esc(t("{n} ★ of rent", { n: fmt(waiting) }))}</b>
+      <small>${esc(t("{n} ★ an hour", { n: rate < 10 ? rate.toFixed(1) : fmt(Math.round(rate)) }))} · ${esc(full > 0 ? t("full in {time}", { time: duration(full * 36e5) }) : t("full (holds {n} hours)", { n: RENT_CAP_HOURS }))}</small></span>
       <button type="button" class="buy" id="rent-collect"${waiting > 0 ? "" : " disabled"}>${esc(t("Collect"))}</button>`;
     $("rent-collect").addEventListener("click", () => this.collectRent());
 
     const list = $("build-list");
     list.innerHTML = "";
     for (const b of CITY) {
-      const owned = save.city.includes(b.id), poor = save.coins < b.price;
+      const owned = save.city.includes(b.id), poor = save.stars < b.price;
       const row = document.createElement("div");
       row.className = `build-card${owned ? " owned" : ""}`;
       const name = t(b.name);
       row.innerHTML = `<span class="build-ico" aria-hidden="true">${b.icon}</span><b>${esc(name)}</b>
         <small>${esc(t(b.text))}</small>
-        <button type="button" class="buy"${owned ? " disabled" : ""}>${owned ? esc(t("✓ Built")) : `🪙 ${fmt(b.price)}`}</button>`;
+        <button type="button" class="buy"${owned ? " disabled" : ""}>${owned ? esc(t("✓ Built")) : `${fmt(b.price)} ★`}</button>`;
       const btn = row.querySelector<HTMLButtonElement>(".buy")!;
-      btn.setAttribute("aria-label", owned ? t("{name}, built", { name }) : t("Build {name} for {n} coins, adds {pct}% rent", { name, n: b.price, pct: Math.round(RENT_BONUS_PER_BUILD * 100) }));
+      btn.setAttribute("aria-label", owned ? t("{name}, built", { name }) : t("Build {name} for {n} stars, adds {pct}% rent", { name, n: b.price, pct: Math.round(RENT_BONUS_PER_BUILD * 100) }));
       btn.addEventListener("click", () => {
         if (poor) {
           this.host.sound.click();
-          toast(t("You need {n} more coins. Collect rent and open daily chests to earn more.", { n: fmt(b.price - save.coins) }));
+          toast(t("You need {n} more ★. Collect rent and open daily chests to earn more.", { n: fmt(b.price - save.stars) }));
           replay(btn, "nope");
           return;
         }
@@ -457,7 +457,7 @@ function rewardIcon(r: PassReward): string {
   if (r.crystals) return "💎";
   if (r.stars) return "★";
   if (r.boost) return "⚡";
-  return "🪙";
+  return "★";
 }
 
 /** Crystals the premium track pays back over a season. */

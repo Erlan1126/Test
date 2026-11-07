@@ -12,7 +12,7 @@ export interface Product {
   kind: "skin" | "island" | "bundle";
   /** Price in Sky Crystals. */
   crystals: number;
-  grants: { skins?: string[]; themes?: string[]; shapes?: string[]; coins?: number };
+  grants: { skins?: string[]; themes?: string[]; shapes?: string[]; stars?: number };
 }
 
 /** A pack of crystals sold for real money. Its id is the store product id. */
@@ -63,8 +63,8 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: "founders", name: "Founder's Pack", kind: "bundle", crystals: 900,
-    text: "Every premium skin and island, plus 5,000 coins. Thank you for supporting Skyrise!",
-    grants: { skins: ["crystal", "sakura", "royal", "cyber"], themes: ["volcano", "candy"], coins: 5000 },
+    text: "Every premium skin and island, plus 50 stars. Thank you for supporting Skyrise!",
+    grants: { skins: ["crystal", "sakura", "royal", "cyber"], themes: ["volcano", "candy"], stars: 50 },
   },
 ];
 
