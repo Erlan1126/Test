@@ -18,7 +18,8 @@ import { buyShape, currentShape, shapeUnlocked } from "../logic/shapes";
 import { SHAPES } from "../data/shapes";
 import { CRYSTAL_PACKS, formatPrice, PRODUCTS, type CrystalPack, type Product } from "../data/premium";
 import type { PaymentProvider } from "../payments";
-import { drawShapePreview, drawSkinPreview, drawThemePreview } from "../render/previews";
+import { drawPostcard, drawShapePreview, drawSkinPreview, drawThemePreview } from "../render/previews";
+import { ALBUM_CRYSTALS, POSTCARD_COUNT, POSTCARD_LANDMARKS, postcardId, SET_STARS, WEATHERS } from "../logic/postcards";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
@@ -166,6 +167,23 @@ export class Sheets {
         this.host.refresh();
       });
       themes.appendChild(b);
+    }
+  }
+
+  private renderPostcards(): void {
+    const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+    const save = this.save, grid = $("postcard-grid");
+    $("postcard-title").textContent = t("{n} of {total} postcards. Pass a landmark in clear skies, rain or snow to collect it. A full set of three pays {stars} ★, and the whole album {crystals} 💎.",
+      { n: save.postcards.length, total: POSTCARD_COUNT, stars: SET_STARS, crystals: ALBUM_CRYSTALS });
+    grid.innerHTML = "";
+    const label = { clear: t("Clear skies"), rain: t("Rain"), snow: t("Snow") };
+    for (const i of POSTCARD_LANDMARKS) for (const w of WEATHERS) {
+      const got = save.postcards.includes(postcardId(i, w));
+      const card = document.createElement("figure");
+      card.className = `postcard${got ? " got" : ""}`;
+      card.innerHTML = `<canvas aria-hidden="true"></canvas><figcaption>${esc(got ? cap(t(MILESTONES[i].name)) : "???")}<br>${esc(label[w])}</figcaption>`;
+      drawPostcard(card.querySelector("canvas")!, i, w, got);
+      grid.appendChild(card);
     }
   }
 
@@ -390,6 +408,7 @@ export class Sheets {
           <span class="when">${modeName[h.mode]}<br>${esc(this.when(h.day))}</span></div>`).join("")
       : `<p class="history-empty">${esc(t("Your best towers will show up here."))}</p>`;
     $("trophy-title").textContent = t("{n} of {total} won", { n: p.trophies.length, total: TROPHIES.length });
+    this.renderPostcards();
     $("trophy-grid").innerHTML = TROPHIES.map(tr => {
       const won = p.trophies.includes(tr.id);
       return `<div class="trophy${won ? " won" : ""}"><span class="t-ico">${won ? TROPHY_ICON : LOCK_ICON}</span><span><b>${esc(t(tr.name))}</b><small>${esc(t(tr.text))}</small></span></div>`;

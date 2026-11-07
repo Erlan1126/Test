@@ -1,5 +1,5 @@
 // Small pictures for the skins gallery and the shop, and the share card.
-import { clamp, fmt, hexRgb, rgb } from "../core/util";
+import { clamp, fmt, hexRgb, mixRgb, rgb } from "../core/util";
 import { DISPLAY_FONT, GOLD, ISLAND, MILESTONES, NUM_FONT, UI_FONT } from "../data/constants";
 import type { IslandTheme } from "../data/islands";
 import type { Skin } from "../data/skins";
@@ -7,7 +7,8 @@ import { View, type Env, type Paint } from "./paint";
 import type { Shape } from "../data/shapes";
 import { drawBlock, floorColor, lookFor } from "./buildings";
 import { footprint } from "./footprint";
-import { drawTreeShape } from "./scenery";
+import { drawTreeShape, skyAt } from "./scenery";
+import { drawLandmarkShape } from "./atmosphere";
 import { t } from "../i18n";
 
 type P = [number, number];
@@ -167,5 +168,37 @@ export function drawShapePreview(cv: HTMLCanvasElement, shape: Shape, skin: Skin
   for (let y = 0; y < 6; y++) {
     const foot = shape.id === "square" ? undefined : footprint(shape, box, y);
     drawBlock(p, box, y, y + 1, floorColor(skin, y * 3, "normal"), lookFor(skin, "normal"), { foot, lobby: y === 0, still: true });
+  }
+}
+
+/** A postcard: the landmark against its sky at that height, in clear skies, rain or snow.
+ *  Ones not collected yet show as a dim outline. */
+export function drawPostcard(cv: HTMLCanvasElement, landmark: number, weather: "clear" | "rain" | "snow", owned: boolean): void {
+  const w = 132, h = 92, g = prep(cv, w, h);
+  const floors = MILESTONES[landmark].m / 5, [top, bot] = skyAt(floors);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  const grey = (c: [number, number, number]) => [c[0] * 0.25 + 40, c[1] * 0.25 + 44, c[2] * 0.25 + 70] as [number, number, number];
+  sky.addColorStop(0, rgb(owned ? (weather === "clear" ? top : mixRgb(top, [90, 100, 120], 0.5)) : grey(top)));
+  sky.addColorStop(1, rgb(owned ? (weather === "clear" ? bot : mixRgb(bot, [150, 160, 175], 0.5)) : grey(bot)));
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = owned ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.08)";
+  g.fillRect(0, h - 14, w, 14);
+  drawLandmarkShape(g, landmark, w / 2, h - 12, w * 0.8, h * 0.74, owned ? "rgba(24,28,64,0.82)" : "rgba(255,255,255,0.12)");
+  if (owned && weather !== "clear") {
+    g.strokeStyle = "rgba(255,255,255,0.7)";
+    g.fillStyle = "rgba(255,255,255,0.9)";
+    g.lineWidth = 1;
+    for (let i = 0; i < 26; i++) {
+      const x = (i * 37) % w, y = (i * 53) % (h - 14);
+      if (weather === "rain") { g.beginPath(); g.moveTo(x, y); g.lineTo(x - 2, y + 7); g.stroke(); }
+      else { g.beginPath(); g.arc(x, y, 1.4, 0, Math.PI * 2); g.fill(); }
+    }
+  }
+  if (!owned) {
+    g.fillStyle = "rgba(255,255,255,0.5)";
+    g.font = `800 26px ${DISPLAY_FONT}`;
+    g.textAlign = "center";
+    g.fillText("?", w / 2, h / 2 + 4);
   }
 }

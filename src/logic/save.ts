@@ -4,6 +4,7 @@ import { MISSION_KEYS, type Mission } from "../data/missions";
 import { SKINS } from "../data/skins";
 import { SHAPES } from "../data/shapes";
 import { SKYLINE_SIZE, type SkylineTower } from "./skyline";
+import { ALL_POSTCARDS } from "./postcards";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES } from "../data/islands";
 import { CITY } from "../data/daily";
@@ -49,6 +50,8 @@ export interface SaveData {
   ownedShapes: string[];
   /** Your tallest towers, standing on the skyline island. */
   skyline: SkylineTower[];
+  /** Postcards collected (see logic/postcards.ts). */
+  postcards: string[];
   boosts: Record<BoostId, number>;
   missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
@@ -120,6 +123,7 @@ export function defaultSave(): SaveData {
     shape: "square",
     ownedShapes: [],
     skyline: [],
+    postcards: [],
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -201,6 +205,7 @@ export function normalize(raw: unknown): SaveData {
     skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE).map(x => obj(x))
       .map(x => ({ f: int(x.f, 0, 0, 9999), s: skinIds.includes(x.s as string) ? (x.s as string) : "glass", h: shapeIds.includes(x.h as string) ? (x.h as string) : "square" }))
       .filter(x => x.f > 0),
+    postcards: strList(r.postcards, ALL_POSTCARDS),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {

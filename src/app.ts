@@ -8,6 +8,7 @@ import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline } from "./logic/skyline";
+import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
@@ -109,6 +110,7 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  private postcardsThisRun: PostcardGain[] = [];
   /** The day the current tower started (a Daily belongs to that day even past midnight). */
   private runDay = 0;
   /** The app is in the background or lost focus. */
@@ -553,6 +555,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.slowmo = 0;
+    this.postcardsThisRun = [];
     this.runDay = dayNumber();
     this.sound.ensure();
     const challenge = mode === "challenge" ? challengeById(challengeId ?? "") ?? null : null;
@@ -684,6 +687,11 @@ export class App implements DailyHost {
     if (this.mode === "daily") run.day = this.runDay;
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
+    for (const c of this.postcardsThisRun) {
+      this.outcome.rewards.push({ kind: "star", text: c.album ? t("Postcard album complete! +{n} 💎", { n: ALBUM_CRYSTALS })
+        : c.set ? t("Postcard set complete! +{n} ★", { n: SET_STARS + POSTCARD_STARS }) : t("New postcard (+{n} ★)", { n: POSTCARD_STARS }) });
+    }
+    this.postcardsThisRun = [];
     // Tall towers join your skyline island for good.
     if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square" })) {
       this.outcome.rewards.push({ kind: "island", text: t("Your tower joined your skyline island") });
@@ -774,7 +782,12 @@ export class App implements DailyHost {
     this.updateHud(true);
     if (out.landmark !== undefined) {
       if (!this.calmMotion) this.slowmo = SLOWMO;
-      this.banner(t("Landmark passed"), t("Taller than {name}!", { name: t(MILESTONES[out.landmark].name) }));
+      const card = this.mode === "zen" ? null : collectPostcard(this.save, out.landmark, this.renderer.weather.kind);
+      this.banner(card?.fresh ? t("📮 New postcard!") : t("Landmark passed"), t("Taller than {name}!", { name: t(MILESTONES[out.landmark].name) }));
+      if (card?.fresh) {
+        this.postcardsThisRun.push(card);
+        this.persist();
+      }
       setTimeout(() => s.milestone(), 120);
     }
     if (out.windStarts) {

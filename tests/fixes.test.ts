@@ -74,3 +74,19 @@ describe("skyline island", () => {
     expect(normalize({ skyline: [{ f: 9, s: "nope", h: "blob" }] }).skyline[0]).toEqual({ f: 9, s: "glass", h: "square" });
   });
 });
+
+import { ALBUM_CRYSTALS, ALL_POSTCARDS, collectPostcard, POSTCARD_COUNT } from "../src/logic/postcards";
+
+describe("postcard album", () => {
+  it("pays once per card, a bonus per set, and crystals for the full album", () => {
+    const save = defaultSave();
+    expect(collectPostcard(save, 0, "clear").fresh).toBe(false); // the house has no postcard
+    expect(collectPostcard(save, 1, "clear")).toEqual({ fresh: true, set: false, album: false });
+    expect(collectPostcard(save, 1, "clear").fresh).toBe(false);
+    collectPostcard(save, 1, "rain");
+    expect(collectPostcard(save, 1, "snow").set).toBe(true);
+    for (const id of ALL_POSTCARDS) { const [i, w] = id.split(":"); collectPostcard(save, Number(i), w as "clear"); }
+    expect(save.postcards.length).toBe(POSTCARD_COUNT);
+    expect(save.crystals).toBe(ALBUM_CRYSTALS);
+  });
+});

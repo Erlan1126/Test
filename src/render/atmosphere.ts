@@ -215,3 +215,18 @@ export function drawAurora(p: Paint, height: number): void {
   }
   ctx.restore();
 }
+
+/** A landmark's silhouette in a box (for postcards): bottom center at (cx, bottom). */
+export function drawLandmarkShape(g: CanvasRenderingContext2D, index: number, cx: number, bottom: number, maxW: number, h: number, fill: string | CanvasGradient): void {
+  const shape = SHAPES[index];
+  if (!shape) return;
+  const w = Math.min(h * shape.aspect, maxW);
+  g.save();
+  g.translate(cx, bottom);
+  g.scale(w, -h);
+  g.beginPath();
+  shape.draw(g);
+  g.fillStyle = fill;
+  g.fill();
+  g.restore();
+}
