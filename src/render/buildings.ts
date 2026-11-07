@@ -17,11 +17,18 @@ export function floorColor(skin: Skin, y: number, kind: FloorKind): RGB {
   if (kind === "gold") return hexRgb(GOLD);
   if (kind === "ice") return hexRgb(SPECIAL_COLORS.ice);
   if (kind === "garden") return hexRgb(SPECIAL_COLORS.garden);
+  if (kind === "shrink") return hexRgb(SPECIAL_COLORS.shrink);
+  if (kind === "magnet") return hexRgb(SPECIAL_COLORS.magnet);
   const f = skin.floors, i = Math.floor(y / 5), t = (y % 5) / 5;
   return mixRgb(hexRgb(f[i % f.length]), hexRgb(f[(i + 1) % f.length]), t);
 }
 
-export const lookFor = (skin: Skin, kind: FloorKind): Look => (kind === "ice" ? ICE_LOOK : kind === "garden" ? GARDEN_LOOK : skin);
+/** Shrinking floors: warning orange with dark bands. Magnet floors: red with silver trim. */
+const SHRINK_LOOK: Look = { kind: "ribbon", glass: "#3a2412", frame: "#ffd2a8", slab: "#2a1a0e", slabH: 0.16, lit: ["#ffd27a"] };
+const MAGNET_LOOK: Look = { kind: "punched", glass: "#3a1018", frame: "#e6ecf2", slab: "#c9d2dc", slabH: 0.14, lit: ["#ffd0d6"] };
+
+export const lookFor = (skin: Skin, kind: FloorKind): Look =>
+  kind === "ice" ? ICE_LOOK : kind === "garden" ? GARDEN_LOOK : kind === "shrink" ? SHRINK_LOOK : kind === "magnet" ? MAGNET_LOOK : skin;
 
 interface Wall {
   /** Where on the ground a distance u along the wall is. */

@@ -236,4 +236,6 @@ export const SPECIAL_COLORS = {
   gold: "#ffd23f",
   ice: "#a6e4ff",
   garden: "#6fbf5a",
+  shrink: "#ff8a3d",
+  magnet: "#e8455f",
 } as const;

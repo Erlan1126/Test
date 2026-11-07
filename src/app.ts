@@ -17,7 +17,7 @@ import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
-import { TICK, TowerSim, type DropOutcome, type FloorKind } from "./logic/sim";
+import { POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
 import { RunRecorder, simFor } from "./logic/replay";
 import type { Mode } from "./logic/types";
 import { floorColor, lookFor } from "./render/buildings";
@@ -48,7 +48,21 @@ const NO_BOOSTS: ActiveBoosts = { rewind: false, xp: false, gold: false };
 const floorTag = (kind: Exclude<FloorKind, "normal">): string =>
   kind === "gold" ? t("Gold penthouse · a perfect drop pays 5x")
   : kind === "ice" ? t("Icy floor · slides fast, holds 50% more people")
+  : kind === "shrink" ? t("Shrinking floor · drop it early, it gets narrower")
+  : kind === "magnet" ? t("🧲 Magnet floor · snaps into a perfect drop")
+  : kind === "ghost" ? t("Foggy floor · fades in and out, holds 40% more")
   : t("Garden terrace · slow, and widens your tower");
+
+const POWER_TAG: Record<PowerUp, () => string> = {
+  slow: () => t("⏳ Land it: the next 4 floors slide slower"),
+  wide: () => t("🎯 Land it: perfect drops are easier for 4 floors"),
+  steady: () => t("🍃 Land it: no wind for 6 floors"),
+};
+const POWER_NAME: Record<PowerUp, () => string> = {
+  slow: () => t("SLOW-MO"),
+  wide: () => t("EASY PERFECTS"),
+  steady: () => t("NO WIND"),
+};
 
 function openStorage(): Storage | null {
   try {
@@ -638,7 +652,7 @@ export class App implements DailyHost {
     this.sound.ensure();
     this.sound.click();
     this.sound.duck(false);
-    for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek"]) $(id).hidden = true;
+    for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek", "powers"]) $(id).hidden = true;
     this.renderer.weather.set("clear");
     this.peek = false;
     this.mode = "classic";
@@ -709,7 +723,7 @@ export class App implements DailyHost {
     this.sim.combo = 0;
     this.sim.mover = null;
     this.renderer.fx.shake = Math.max(this.renderer.fx.shake, 0.6);
-    for (const id of ["hud", "pause", "banner"]) $(id).hidden = true;
+    for (const id of ["hud", "pause", "banner", "powers"]) $(id).hidden = true;
     this.sound.intensity = 0;
     const run = this.sim.summary();
     if (this.mode === "daily") run.day = this.runDay;
@@ -814,6 +828,12 @@ export class App implements DailyHost {
     fx.bounce = 1;
     fx.punch = Math.max(fx.punch, 0.25);
     this.updateHud(true);
+    if (out.power) {
+      // Caught a power-up: a big label, a sparkle and a little fanfare.
+      fx.popup(POWER_NAME[out.power](), t("{n} floors", { n: POWER_FLOORS[out.power] }), f.y + 3.2, "#7cf5ff", 1.3, true);
+      fx.sparkle(f, 30, "#7cf5ff");
+      setTimeout(() => this.sound.unlock(), 80);
+    }
     if (out.landmark !== undefined) {
       if (!this.calmMotion) this.slowmo = SLOWMO;
       const card = this.mode === "zen" ? null : collectPostcard(this.save, out.landmark, this.renderer.weather.kind);
@@ -865,15 +885,20 @@ export class App implements DailyHost {
     }
 
     this.measureHud();
-    const kind = sim.mover?.kind ?? "normal";
-    const tag = kind === "normal" ? "" : kind;
+    // Power-ups in effect, with the floors each has left.
+    const pw = $("powers"), active = (["slow", "wide", "steady"] as const).filter(k => sim.powers[k] > 0);
+    pw.hidden = !active.length || this.state !== "playing";
+    if (active.length) pw.textContent = active.map(k => `${({ slow: "⏳", wide: "🎯", steady: "🍃" })[k]} ${sim.powers[k]}`).join("  ");
+    const kind = sim.mover?.kind ?? "normal", power = sim.mover?.power;
+    // A power-up gets the hint when the floor is otherwise ordinary.
+    const tag = kind !== "normal" ? kind : power ? `power-${power}` : "";
     if (tag !== this.tag) {
       this.tag = tag;
       const el = $("floor-tag");
       el.hidden = !tag;
       if (tag) {
-        el.className = tag;
-        el.textContent = floorTag(kind as Exclude<FloorKind, "normal">);
+        el.className = power && kind === "normal" ? "power" : tag;
+        el.textContent = kind !== "normal" ? floorTag(kind as Exclude<FloorKind, "normal">) : POWER_TAG[power!]();
         replay(el, tag);
       }
     }

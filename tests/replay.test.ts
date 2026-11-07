@@ -66,3 +66,52 @@ describe("replays", () => {
     expect(out.ok && out.summary.score).toBe(summary.score);
   });
 });
+
+describe("rules 2: new floors and power-ups", () => {
+  it("older towers (no rules field) still replay with the original rules", () => {
+    const { rec, summary } = play({ ...base, rules: 1 }, 0.8, 21);
+    const old = { ...rec } as Partial<RunRecord>;
+    delete old.rules;
+    const out = replayRun(old as RunRecord);
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.summary.score).toBe(summary.score);
+    expect(replayRun({ ...rec, rules: 99 }).ok).toBe(false);
+  });
+
+  it("original rules never make the new floors; rules 2 does, and power-ups", () => {
+    const kinds = (rules: number) => {
+      const sim = simFor({ ...base, seed: 77, rules });
+      const seen = new Set<string>();
+      let powers = 0;
+      for (let i = 0; i < 200; i++) {
+        const m = sim.mover!;
+        seen.add(m.kind);
+        if (m.power) powers++;
+        // Line it up and drop, so the tower keeps going.
+        const d = m.axis === "x" ? sim.top.x0 - m.x0 : sim.top.z0 - m.z0;
+        if (m.axis === "x") { m.x0 += d; m.x1 += d; } else { m.z0 += d; m.z1 += d; }
+        sim.drop();
+      }
+      return { seen, powers };
+    };
+    const v1 = kinds(1), v2 = kinds(2);
+    for (const k of ["shrink", "magnet", "ghost"]) {
+      expect(v1.seen.has(k)).toBe(false);
+      expect(v2.seen.has(k), k).toBe(true);
+    }
+    expect(v1.powers).toBe(0);
+    expect(v2.powers).toBeGreaterThan(5);
+  });
+
+  it("shrinking floors narrow while they slide, and power-ups take effect", () => {
+    const sim = simFor({ ...base, rules: 2 });
+    const m = sim.mover!;
+    m.kind = "shrink";
+    const w0 = m.axis === "x" ? m.x1 - m.x0 : m.z1 - m.z0;
+    for (let i = 0; i < 120 * 5; i++) sim.step();
+    const w1 = m.axis === "x" ? m.x1 - m.x0 : m.z1 - m.z0;
+    expect(w1).toBeCloseTo(w0 * 0.55, 1);
+    sim.powers.steady = 3;
+    expect(sim.gustAt(m, 1.234)).toBe(1);
+  });
+});

@@ -13,12 +13,26 @@ import type { Mode, RunSummary } from "./types";
  * ice: slides faster, worth 50% more people.
  * garden: slides slowly, holds half the people, but widens the tower back out.
  */
-export type FloorKind = "normal" | "gold" | "ice" | "garden";
+export type FloorKind = "normal" | "gold" | "ice" | "garden" | "shrink" | "magnet" | "ghost";
+
+/**
+ * Power-ups ride on some floors and are yours when that floor lands (a miss loses it).
+ * slow: the next floors slide slower. wide: the next floors are easier to land perfectly.
+ * steady: no wind gusts for a while.
+ */
+export type PowerUp = "slow" | "wide" | "steady";
+export const POWER_FLOORS: Record<PowerUp, number> = { slow: 4, wide: 4, steady: 6 };
+
+/** Rules versions: 1 is the original game; 2 adds shrinking, magnet and foggy floors and
+ *  power-ups. Every recorded tower says which rules it was played with. */
+export const RULES = 2;
 
 export interface Floor extends Box {
   y: number;
   kind: FloorKind;
   lobby?: boolean;
+  /** A power-up riding on this floor (rules 2). */
+  power?: PowerUp;
   /** The floor before its overhang broke off. Only used to draw shaped floors with a flat,
    *  sliced side; scoring never reads it. */
   frame?: Box;
@@ -32,6 +46,10 @@ export interface Mover extends Floor {
   /** Current speed including gusts. */
   v: number;
   gustPhase: number;
+  /** Seconds since it appeared (shrinking floors get narrower as it grows). */
+  age: number;
+  /** Its full width along the slide, before any shrinking. */
+  width: number;
 }
 
 export interface SimConfig {
@@ -44,6 +62,8 @@ export interface SimConfig {
   /** Gold rush boost. */
   goldBoost?: boolean;
   xpMultiplier?: number;
+  /** Rules version (see RULES); 1 when missing. */
+  rules?: number;
 }
 
 export type DropOutcome =
@@ -61,14 +81,18 @@ export type DropOutcome =
       landmark?: number;
       /** First floor in the wind. */
       windStarts?: boolean;
+      /** A power-up this floor carried. */
+      power?: PowerUp;
     };
 
 /** The sim always moves in fixed steps of this length, so a tower can be replayed exactly
  *  from its seed and the steps at which the player tapped (see replay.ts). */
 export const TICK = 1 / 120;
 
-const SPEED: Record<FloorKind, number> = { normal: 1, gold: 1.35, ice: 1.45, garden: 0.75 };
-const PEOPLE: Record<FloorKind, number> = { normal: 1, gold: 1, ice: 1.5, garden: 0.5 };
+const SPEED: Record<FloorKind, number> = { normal: 1, gold: 1.35, ice: 1.45, garden: 0.75, shrink: 0.95, magnet: 1.2, ghost: 1 };
+const PEOPLE: Record<FloorKind, number> = { normal: 1, gold: 1, ice: 1.5, garden: 0.5, shrink: 1.3, magnet: 1, ghost: 1.4 };
+/** A shrinking floor loses this share of its width over SHRINK_TIME seconds. */
+const SHRINK_BY = 0.45, SHRINK_TIME = 4;
 
 export class TowerSim {
   readonly cfg: SimConfig;
@@ -88,6 +112,10 @@ export class TowerSim {
   /** Fixed steps taken so far. */
   ticks = 0;
   private windAnnounced = false;
+  /** Floors left for each power-up in effect. */
+  powers: Record<PowerUp, number> = { slow: 0, wide: 0, steady: 0 };
+  /** Power-ups collected this tower. */
+  powersCaught = 0;
 
   constructor(cfg: SimConfig) {
     this.cfg = cfg;
@@ -109,6 +137,7 @@ export class TowerSim {
 
   /** Gust strength at time t: 1 is calm, up to about 1.55 or down to about 0.45. */
   gustAt(m: Mover, t: number): number {
+    if (this.powers.steady > 0) return 1;
     return 1 + this.windFor(m.y) * 0.55 * Math.sin(t * 2.3 + m.gustPhase) * Math.sin(t * 0.9 + m.gustPhase * 2);
   }
 
@@ -118,38 +147,54 @@ export class TowerSim {
 
   /** Picks the kind of the next floor. Always draws the same number of random values so
    *  seeded towers (daily, challenges) stay identical whatever the player does. */
-  private nextKind(n: number): FloorKind {
+  private nextKind(n: number): { kind: FloorKind; power?: PowerUp } {
     const { rng, mode, event, challenge, goldBoost } = this.cfg;
     const rGold = rng(), rIce = rng(), rGarden = rng();
+    // Rules 2 draws three more values, always, so seeded towers stay identical.
+    const v2 = (this.cfg.rules ?? 1) >= 2;
+    const [rNew, rPow, rPowKind] = v2 ? [rng(), rng(), rng()] : [1, 1, 0];
+    const power: PowerUp | undefined = v2 && mode !== "zen" && n >= 4 && rPow < 0.09
+      ? (["slow", "wide", "steady"] as const)[Math.floor(rPowKind * 3)] : undefined;
+    const pick = (kind: FloorKind) => ({ kind, power });
     const prev = this.top.kind;
-    if (mode === "zen") return n >= 6 && prev !== "gold" && rGold < 0.14 ? "gold" : "normal";
+    if (mode === "zen") return { kind: n >= 6 && prev !== "gold" && rGold < 0.14 ? "gold" : "normal" };
 
     let gold = challenge?.rules.goldChance ?? 0.14;
     gold *= (event?.gold ?? 1) * (goldBoost ? 2 : 1);
-    if (n >= 6 && prev !== "gold" && rGold < Math.min(0.5, gold)) return "gold";
+    if (n >= 6 && prev !== "gold" && rGold < Math.min(0.5, gold)) return pick("gold");
 
     if (challenge?.rules.iceEvery) {
-      if (n % challenge.rules.iceEvery === 0) return "ice";
+      if (n % challenge.rules.iceEvery === 0) return pick("ice");
     } else {
       const iceFrom = event?.ice ? 8 : 20;
-      if (n >= iceFrom && prev !== "ice" && rIce < 0.08 * (event?.ice ?? 1)) return "ice";
+      if (n >= iceFrom && prev !== "ice" && rIce < 0.08 * (event?.ice ?? 1)) return pick("ice");
     }
 
     // Garden terraces turn up more often when your floors have shrunk.
     const narrow = peopleIn(this.top) < 10;
-    if (n >= 15 && prev !== "garden" && rGarden < (narrow ? 0.14 : 0.05) * (event?.garden ?? 1)) return "garden";
-    return "normal";
+    if (n >= 15 && prev !== "garden" && rGarden < (narrow ? 0.14 : 0.05) * (event?.garden ?? 1)) return pick("garden");
+
+    // Rules 2: magnet floors (easy perfects) early on, shrinking floors (tap early) and
+    // foggy floors (hard to see) higher up. One draw splits between them.
+    if (v2 && prev === "normal") {
+      if (n >= 5 && rNew < 0.06) return pick("magnet");
+      if (n >= 10 && rNew >= 0.06 && rNew < 0.13) return pick("shrink");
+      if (n >= 25 && rNew >= 0.13 && rNew < 0.19) return pick("ghost");
+    }
+    return pick("normal");
   }
 
   newMover(): void {
     const top = this.top, n = this.stack.length;
     const axis = n % 2 ? "x" : "z";
-    const kind = this.nextKind(n);
-    const speed = this.speedFor(n) * SPEED[kind];
+    const { kind, power } = this.nextKind(n);
+    const speed = this.speedFor(n) * SPEED[kind] * (this.powers.slow > 0 ? 0.65 : 1);
     const m: Mover = {
       x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, y: n, kind,
       axis, dir: 1, speed, v: speed, gustPhase: this.cfg.rng() * Math.PI * 2,
+      age: 0, width: axis === "x" ? top.x1 - top.x0 : top.z1 - top.z0,
     };
+    if (power) m.power = power;
     if (axis === "x") { m.x0 -= RANGE; m.x1 -= RANGE; } else { m.z0 -= RANGE; m.z1 -= RANGE; }
     this.mover = m;
   }
@@ -168,6 +213,12 @@ export class TowerSim {
     m.v = m.speed * this.gustAt(m, this.time);
     const step = m.dir * m.v * dt;
     if (m.axis === "x") { m.x0 += step; m.x1 += step; } else { m.z0 += step; m.z1 += step; }
+    m.age += dt;
+    if (m.kind === "shrink") {
+      // Its far edge creeps in: the sooner you drop it, the wider it lands.
+      const w = m.width * (1 - SHRINK_BY * Math.min(1, m.age / SHRINK_TIME));
+      if (m.axis === "x") m.x1 = m.x0 + w; else m.z1 = m.z0 + w;
+    }
     const offset = (m.axis === "x" ? m.x0 : m.z0) - (m.axis === "x" ? this.top.x0 : this.top.z0);
     if (offset > RANGE) m.dir = -1;
     if (offset < -RANGE) m.dir = 1;
@@ -182,7 +233,10 @@ export class TowerSim {
 
   /** Would a drop right now be perfect? */
   wouldBePerfect(): boolean {
-    return !!this.mover && Math.abs(this.offset()) <= perfectWindow(this.mover.v);
+    const m = this.mover;
+    if (!m) return false;
+    const k = (m.kind === "magnet" ? 2.5 : 1) * (this.powers.wide > 0 ? 2 : 1);
+    return Math.abs(this.offset()) <= perfectWindow(m.v) * k;
   }
 
   drop(): DropOutcome | null {
@@ -254,6 +308,13 @@ export class TowerSim {
     if (this.windFor(placed.y) > 0) this.windFloors++;
 
     const outcome: DropOutcome = { type: "land", perfect, floor: placed, points, combo: this.combo, piece, side: piece ? side : undefined };
+    // Power-ups in effect count down one floor; a power-up riding on this floor starts now.
+    for (const k of ["slow", "wide", "steady"] as const) if (this.powers[k] > 0) this.powers[k]--;
+    if (m.power) {
+      this.powers[m.power] = POWER_FLOORS[m.power];
+      this.powersCaught++;
+      outcome.power = m.power;
+    }
     const lm = landmarkIndex(this.meters);
     if (lm > this.lastLandmark) { this.lastLandmark = lm; outcome.landmark = lm; }
     this.newMover();

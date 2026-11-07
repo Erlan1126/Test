@@ -7,7 +7,9 @@ import type { Shape } from "../data/shapes";
 import { footprint, type XZ } from "./footprint";
 import { Skyline } from "./skyline";
 import type { SkylineTower } from "../logic/skyline";
-import type { Floor, TowerSim } from "../logic/sim";
+import type { Floor, PowerUp, TowerSim } from "../logic/sim";
+
+const POWER_ICON: Record<PowerUp, string> = { slow: "⏳", wide: "🎯", steady: "🍃" };
 import { drawBlock, drawRoof, floorColor, lookFor } from "./buildings";
 import { drawGuide, drawLandingShadow, Effects } from "./effects";
 import { ISO_X, View, type Env, type Paint } from "./paint";
@@ -206,7 +208,10 @@ export class Renderer {
     if (f.shot === "over" && n > 1) drawRoof(p, f.shape.id === "square" ? top : shrinkBox(top, 0.72), f.skin);
     scenery.drawFront(p);
     if (m && f.showMover) {
-      drawBlock(p, m, m.y, m.y + 1, floorColor(f.skin, m.y, m.kind), lookFor(f.skin, m.kind), { kind: m.kind, foot: this.foot(f, m) });
+      // Foggy floors fade in and out as they slide.
+      const alpha = m.kind === "ghost" ? 0.1 + 0.9 * Math.max(0, Math.sin(env.time * 4.2)) ** 0.6 : 1;
+      drawBlock(p, m, m.y, m.y + 1, floorColor(f.skin, m.y, m.kind), lookFor(f.skin, m.kind), { kind: m.kind, foot: this.foot(f, m), alpha });
+      if (m.power || m.kind === "magnet") this.drawBadge(m, m.power ? POWER_ICON[m.power] : "🧲");
       if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect());
     }
     fx.drawDebris(p, false, f.shape);
@@ -278,6 +283,27 @@ export class Renderer {
     }
     p.ctx.drawImage(c, dx, dy - this.cacheMargin, view.W, c.height / this.dpr);
     drawFloor(p, n - 1, false);
+  }
+
+  /** A round badge floating over the sliding floor: its power-up, or a magnet. */
+  private drawBadge(m: Box & { y: number }, icon: string): void {
+    const { ctx, view, env } = this;
+    const [x, y] = view.project((m.x0 + m.x1) / 2, m.y + 1.9 + Math.sin(env.time * 3) * 0.15, (m.z0 + m.z1) / 2);
+    const r = Math.max(14, 20 * view.zoom);
+    const g = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 1.8);
+    g.addColorStop(0, "rgba(124,245,255,0.55)");
+    g.addColorStop(1, "rgba(124,245,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r * 1.8, y - r * 1.8, r * 3.6, r * 3.6);
+    ctx.fillStyle = "rgba(14,18,48,0.85)";
+    ctx.strokeStyle = "#7cf5ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.font = `${Math.round(r * 1.1)}px ${UI_FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(icon, x, y + 1);
+    ctx.textBaseline = "alphabetic";
   }
 
   /** A shaped floor's outline, or nothing for plain box floors. */

@@ -608,6 +608,11 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 #floor-tag { letter-spacing: 0.04em; animation: hint-in 0.3s ease-out; }
 #floor-tag.gold { background: linear-gradient(180deg, #ffe066, var(--gold-deep)); color: var(--gold-ink); }
 #floor-tag.ice { background: rgba(166, 228, 255, 0.92); color: #0d3550; }
+#floor-tag.shrink { background: rgba(255, 138, 61, 0.94); color: #3a1600; }
+#floor-tag.magnet { background: rgba(232, 69, 95, 0.94); color: #fff; }
+#floor-tag.ghost { background: rgba(200, 205, 230, 0.9); color: #1c2040; }
+#floor-tag.power { background: rgba(124, 245, 255, 0.92); color: #06303a; }
+#powers { align-self: center; margin-top: 6px; display: flex; gap: 6px; padding: 4px 12px; border-radius: 999px; background: rgba(6, 48, 58, 0.78); color: #bff8ff; font-size: 13px; font-weight: 800; pointer-events: none; }
 #floor-tag.garden { background: rgba(111, 191, 90, 0.92); color: #10300c; }
 .shop-list, .challenge-list, .history { display: grid; gap: 8px; }
 .shop-item, .challenge {

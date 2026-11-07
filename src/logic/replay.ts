@@ -4,7 +4,7 @@
 import { challengeById } from "../data/challenges";
 import { EVENTS } from "../data/events";
 import { seeded } from "../core/rng";
-import { TowerSim } from "./sim";
+import { RULES, TowerSim } from "./sim";
 import type { Mode, RunSummary } from "./types";
 
 /** In the log: a drop is the step number it happened at; a rewind is -1. */
@@ -20,6 +20,8 @@ export interface RunRecord {
   day: number;
   challenge?: string;
   boosts: { rewind: boolean; gold: boolean };
+  /** Rules version it was played with (see RULES in sim.ts); 1 when missing. */
+  rules?: number;
   log: number[];
 }
 
@@ -27,7 +29,7 @@ export interface RunRecord {
 const MAX_TICKS = 120 * 60 * 60;
 const MAX_EVENTS = 5000;
 
-export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challenge" | "boosts">, xpMultiplier = 1): TowerSim {
+export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challenge" | "boosts" | "rules">, xpMultiplier = 1): TowerSim {
   const event = rec.mode === "classic" || rec.mode === "daily"
     ? EVENTS[((rec.week % EVENTS.length) + EVENTS.length) % EVENTS.length] : null;
   const challenge = rec.mode === "challenge" ? challengeById(rec.challenge ?? "") ?? null : null;
@@ -39,6 +41,7 @@ export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challeng
     rewinds: 1 + (rec.boosts.rewind ? 1 : 0),
     goldBoost: rec.boosts.gold,
     xpMultiplier,
+    rules: rec.rules ?? 1,
   });
 }
 
@@ -47,6 +50,7 @@ export type ReplayResult = { ok: true; summary: RunSummary; ticks: number } | { 
 /** Rebuilds a tower from its record. Anything a real game couldn't produce is rejected. */
 export function replayRun(rec: RunRecord): ReplayResult {
   if (rec?.v !== 1 || !Array.isArray(rec.log)) return { ok: false, reason: "bad record" };
+  if (rec.rules !== undefined && (!Number.isInteger(rec.rules) || rec.rules < 1 || rec.rules > RULES)) return { ok: false, reason: "unknown rules" };
   if (!["classic", "daily", "challenge", "zen"].includes(rec.mode)) return { ok: false, reason: "bad mode" };
   if (!Number.isInteger(rec.seed) || !Number.isInteger(rec.week) || !Number.isInteger(rec.day)) return { ok: false, reason: "bad numbers" };
   if (rec.mode === "challenge" && !challengeById(rec.challenge ?? "")) return { ok: false, reason: "bad challenge" };
@@ -70,7 +74,7 @@ export function replayRun(rec: RunRecord): ReplayResult {
 export class RunRecorder {
   readonly rec: RunRecord;
   constructor(base: Omit<RunRecord, "v" | "log">) {
-    this.rec = { v: 1, ...base, log: [] };
+    this.rec = { v: 1, rules: RULES, ...base, log: [] };
   }
   drop(ticks: number): void { this.rec.log.push(ticks); }
   rewind(): void { this.rec.log.push(REWIND); }
