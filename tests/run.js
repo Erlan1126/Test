@@ -23,6 +23,7 @@ const section = name => console.log(`\n${name}`);
 
 async function openGame(browser, size = { width: 390, height: 844 }) {
   const page = await browser.newPage({ viewport: size, deviceScaleFactor: 2 });
+  page.setDefaultNavigationTimeout(120000);  // the 3D view is slow without a graphics chip
   // Three.js for the 3D view comes from a CDN in the game; tests serve the same version from
   // node_modules (npm install), so they run offline and exercise the 3D renderer too.
   await page.route(/cdn\.jsdelivr\.net\/npm\/three@0\.128\.0\//, route => {

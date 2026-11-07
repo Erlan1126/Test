@@ -37,15 +37,22 @@ const R3D = (() => {
   // ---------- Darkness: what hasn't been revealed stays dark ----------
   let visData = new Uint8Array(4), visTex = new T.DataTexture(visData, 1, 1, T.RGBAFormat);
   const uVis = { value: visTex }, uDims = { value: new T.Vector2(1, 1) }, uLumi = { value: new T.Vector3() };
-  // cut: buildings between the camera and Lumi are cut down to their ground floor, like a
-  // doll's house, so Lumi is never hidden behind a wall.
+  // cut: buildings between the camera and Lumi fade to a see-through dither, so Lumi is never
+  // hidden behind a wall.
   function withVis(mat, floor = 0.035, cut = false) {
     mat.onBeforeCompile = sh => {
       sh.uniforms.uVis = uVis; sh.uniforms.uDims = uDims; sh.uniforms.uLumi = uLumi;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;")
         .replace("#include <project_vertex>", "#include <project_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;");
       sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;\nuniform sampler2D uVis;\nuniform vec2 uDims;\nuniform vec3 uLumi;")
-        .replace("#include <fog_fragment>", `${cut ? "if (vWPos.y > 0.62 && vWPos.z > uLumi.z + 0.45 && abs(vWPos.x - uLumi.x) < 2.6 && vWPos.z < uLumi.z + 7.0) discard;" : ""}
+        .replace("#include <fog_fragment>", `${cut ? `if (vWPos.y > 0.35) {
+            // Only what rises above the line of sight from the camera down to Lumi fades.
+            float dzL = vWPos.z - uLumi.z, sight = 0.75 + dzL * 1.45;
+            float fadeK = step(0.05, dzL) * smoothstep(sight - 1.1, sight - 0.2, vWPos.y) * (1.0 - smoothstep(1.2, 2.0, abs(vWPos.x - uLumi.x)));
+            vec2 fc = floor(mod(gl_FragCoord.xy, 4.0));
+            float bayer = mod(fc.x * 2.0 + fc.y * 3.0 + fc.x * fc.y, 4.0) / 4.0 + 0.12;
+            if (fadeK * 0.82 > bayer) discard;
+          }` : ""}
           float visK = texture2D(uVis, vec2(vWPos.x / uDims.x, vWPos.z / uDims.y)).r;
           gl_FragColor.rgb *= mix(${floor.toFixed(3)}, 1.0, smoothstep(0.0, 0.85, visK));
           #include <fog_fragment>`);
@@ -106,29 +113,37 @@ const R3D = (() => {
   };
   const archPath = (g, x, y, w, h) => { g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + w / 2); g.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); g.lineTo(x + w, y + h); g.closePath(); };
   const repeatTex = t => { t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t; };
-  const facade = () => {
-    const lit = [Math.random() < 0.28, Math.random() < 0.22];
+  const plaster = (g, w, h) => {
+    g.fillStyle = "#cfc9be"; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < 140; k++) { const v = 170 + Math.random() * 60; g.fillStyle = `rgba(${v},${v - 4},${v - 12},0.25)`; g.fillRect(Math.random() * w, Math.random() * h, 8 + Math.random() * 40, 4 + Math.random() * 20); }
+    // rain streaks and damp near the top and bottom
+    for (let k = 0; k < 10; k++) { const x = Math.random() * w, gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "rgba(40,40,50,0.22)"); gr.addColorStop(1, "rgba(40,40,50,0)"); g.fillStyle = gr; g.fillRect(x, 0, 6 + Math.random() * 14, h * (0.3 + Math.random() * 0.6)); }
+    // patches where the plaster has fallen and stone shows through
+    for (let k = 0; k < 2; k++) { const x = Math.random() * w, y = Math.random() * h; g.fillStyle = "rgba(120,112,104,0.55)"; g.beginPath(); g.ellipse(x, y, 18 + Math.random() * 20, 10 + Math.random() * 12, Math.random(), 0, Math.PI * 2); g.fill(); }
+  };
+  const facade = (lit, shutters) => {
     const draw = emis => (g, w, h) => {
-      if (emis) { g.fillStyle = "#000"; g.fillRect(0, 0, w, h); } else ashlar(g, w, h, 32, 128);
-      for (let f = 0; f < 2; f++) {
-        const fy = f * 256, x = 76, y = fy + 52, ww = 104, wh = 150;
-        if (!emis) {
-          g.fillStyle = "rgb(150,152,160)"; archPath(g, x - 12, y - 12, ww + 24, wh + 20); g.fill();
-          g.fillStyle = "rgb(120,122,130)"; g.fillRect(x - 20, y + wh + 6, ww + 40, 14);
-          g.fillStyle = "rgba(0,0,0,0.45)"; g.fillRect(0, fy + 236, w, 20);
-          g.fillStyle = "rgb(140,142,150)"; g.fillRect(0, fy + 226, w, 12);
+      if (emis) { g.fillStyle = "#000"; g.fillRect(0, 0, w, h); } else plaster(g, w, h);
+      const x = 78, y = 50, ww = 100, wh = 140;
+      if (!emis) {
+        g.fillStyle = "#9c968c"; archPath(g, x - 12, y - 12, ww + 24, wh + 24); g.fill();          // stone surround
+        g.fillStyle = "#8a847a"; g.fillRect(x - 22, y + wh + 8, ww + 44, 14);                    // sill
+        g.fillStyle = "rgba(0,0,0,0.28)"; g.fillRect(x - 22, y + wh + 22, ww + 44, 6);
+        if (shutters) for (const sx of [x - 50, x + ww + 10]) {
+          g.fillStyle = shutters; g.fillRect(sx, y, 40, wh);
+          g.strokeStyle = "rgba(0,0,0,0.35)"; g.lineWidth = 3; for (let q = 1; q < 7; q++) { g.beginPath(); g.moveTo(sx + 3, y + q * wh / 7); g.lineTo(sx + 37, y + q * wh / 7); g.stroke(); }
         }
-        const glass = g.createLinearGradient(0, y, 0, y + wh);
-        if (lit[f]) { glass.addColorStop(0, "#ffe3a8"); glass.addColorStop(1, "#ff9a3a"); } else { glass.addColorStop(0, emis ? "#000" : "#1a2236"); glass.addColorStop(1, emis ? "#000" : "#06080e"); }
-        g.fillStyle = glass; archPath(g, x, y, ww, wh); g.fill();
-        if (!emis || lit[f]) {
-          g.strokeStyle = emis ? "#000" : "#151319"; g.lineWidth = 7;
-          g.beginPath(); g.moveTo(x + ww / 2, y); g.lineTo(x + ww / 2, y + wh); g.moveTo(x, y + wh * 0.5); g.lineTo(x + ww, y + wh * 0.5); g.stroke();
-        }
-        if (lit[f] && !emis) { g.fillStyle = "rgba(70,30,10,0.5)"; g.fillRect(x + 8, y + wh * 0.62, ww * 0.38, wh * 0.3); }
       }
+      const glass = g.createLinearGradient(0, y, 0, y + wh);
+      if (lit) { glass.addColorStop(0, "#ffe6b0"); glass.addColorStop(1, "#ff9838"); } else { glass.addColorStop(0, emis ? "#000" : "#202a40"); glass.addColorStop(1, emis ? "#000" : "#070910"); }
+      g.fillStyle = glass; archPath(g, x, y, ww, wh); g.fill();
+      if (!emis || lit) {
+        g.strokeStyle = emis ? "#000" : "#2a2622"; g.lineWidth = 6;
+        g.beginPath(); g.moveTo(x + ww / 2, y); g.lineTo(x + ww / 2, y + wh); g.moveTo(x, y + wh * 0.55); g.lineTo(x + ww, y + wh * 0.55); g.stroke();
+      }
+      if (lit && !emis) { g.fillStyle = "rgba(80,34,10,0.5)"; g.fillRect(x + 6, y + wh * 0.66, ww * 0.4, wh * 0.28); }
     };
-    return { map: repeatTex(tex(256, 512, draw(false))), em: repeatTex(tex(256, 512, draw(true))) };
+    return { map: repeatTex(tex(256, 256, draw(false))), em: repeatTex(tex(256, 256, draw(true))) };
   };
   const groundFloor = kind => {
     const draw = emis => (g, w, h) => {
@@ -150,18 +165,28 @@ const R3D = (() => {
     };
     return { map: repeatTex(tex(256, 256, draw(false))), em: repeatTex(tex(256, 256, draw(true))) };
   };
+  // Roof tiles: rows of curved clay or slate (tinted per house), with moss in the gaps.
   const ROOF = repeatTex(tex(256, 256, (g, w) => {
-    g.fillStyle = "#3a3d48"; g.fillRect(0, 0, w, w);
-    for (let y = 0; y < w; y += 22) for (let x = -((y / 22) % 2) * 20; x < w; x += 40) { const v = 60 + Math.random() * 30; g.fillStyle = `rgb(${v},${v + 2},${v + 10})`; g.beginPath(); g.ellipse(x + 20, y + 14, 19, 12, 0, 0, Math.PI); g.fill(); }
-    g.fillStyle = "rgba(255,255,255,0.18)"; g.fillRect(0, 0, w, 10); g.fillRect(0, 0, 10, w);
+    g.fillStyle = "#4a4440"; g.fillRect(0, 0, w, w);
+    for (let y = 0; y < w; y += 21) for (let x = -((y / 21) % 2) * 16; x < w; x += 32) {
+      const v = 150 + Math.random() * 70, gr = g.createLinearGradient(0, y, 0, y + 21);
+      gr.addColorStop(0, `rgb(${v},${v - 6},${v - 14})`); gr.addColorStop(1, `rgb(${v * 0.55},${v * 0.52},${v * 0.5})`);
+      g.fillStyle = gr; g.beginPath(); g.moveTo(x + 1, y); g.lineTo(x + 31, y); g.lineTo(x + 31, y + 16); g.quadraticCurveTo(x + 16, y + 24, x + 1, y + 16); g.fill();
+      if (Math.random() < 0.06) { g.fillStyle = "rgba(60,90,50,0.6)"; g.fillRect(x + 4, y + 14, 20, 6); }
+    }
   }));
+  const TRIM = repeatTex(tex(128, 128, (g, w) => { ashlar(g, w, w, 32, 150); }));
   const COBBLE = repeatTex(tex(512, 512, (g, w) => {
     g.fillStyle = "#121318"; g.fillRect(0, 0, w, w);
     const rows = 16, rh = w / rows;
     for (let y = 0; y < rows; y++) { let x = -Math.random() * 20; while (x < w) { const sw = rh * (0.9 + Math.random() * 0.8), v = 70 + Math.random() * 50; g.fillStyle = `rgb(${v},${v + 2},${v + 8})`; g.beginPath(); if (g.roundRect) g.roundRect(x + 2, y * rh + 2, sw - 4, rh - 4, rh * 0.3); else g.rect(x + 2, y * rh + 2, sw - 4, rh - 4); g.fill(); x += sw; } }
   }));
   COBBLE.anisotropy = 8;
-  const FACADES = [facade(), facade(), facade()], GROUNDS = [groundFloor(0), groundFloor(1), groundFloor(2)];
+  const FACADES = [facade(true, "#5a6a5e"), facade(false, "#6a4e3a"), facade(false, null), facade(true, null), facade(false, "#4a5a72")];
+  const GROUNDS = [groundFloor(0), groundFloor(1), groundFloor(2)];
+  // Faded plaster colours for the houses: ochre, rose, blue-grey, sage, chalk.
+  const PLASTERS = [[0.86, 0.74, 0.56], [0.82, 0.64, 0.6], [0.62, 0.68, 0.78], [0.66, 0.74, 0.62], [0.84, 0.82, 0.78], [0.74, 0.6, 0.5]];
+  const ROOFS = [[0.72, 0.38, 0.28], [0.42, 0.44, 0.52], [0.5, 0.36, 0.3], [0.36, 0.42, 0.4]];
   const MIST = repeatTex(tex(256, 256, (g, w) => {
     for (let k = 0; k < 60; k++) { const x = Math.random() * w, y = Math.random() * w, r = 20 + Math.random() * 60, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(255,255,255,0.18)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
   }));
@@ -252,7 +277,7 @@ const R3D = (() => {
   renderer.shadowMap.type = T.PCFSoftShadowMap;
   const lumiSpot = new T.SpotLight(0xa8f0ff, 3.2, 11, 1.25, 0.65, 1.4);
   lumiSpot.castShadow = true;
-  lumiSpot.shadow.mapSize.set(1024, 1024); lumiSpot.shadow.camera.near = 0.2; lumiSpot.shadow.camera.far = 12; lumiSpot.shadow.bias = -0.002;
+  lumiSpot.shadow.mapSize.set(512, 512); lumiSpot.shadow.camera.near = 0.2; lumiSpot.shadow.camera.far = 12; lumiSpot.shadow.bias = -0.002;
   scene.add(lumiSpot); scene.add(lumiSpot.target);
   // Fireflies and dust: the dark is never quite still.
   const FLIES = 160, flyGeo = new T.BufferGeometry(), flyPos = new Float32Array(FLIES * 3), flyCol = new Float32Array(FLIES * 3), flySeed = new Float32Array(FLIES * 4);
@@ -267,7 +292,8 @@ const R3D = (() => {
   });
   let cityMats = [];
   const songLight = new T.PointLight(0xb0f2ff, 0, 1, 1.2); scene.add(songLight);
-  const lumiCard = card(LUMI_T, 0.95, 0.95); lumiCard.renderOrder = 5; scene.add(lumiCard);
+  // Lumi is always drawn on top, so a roof edge can never hide it.
+  const lumiCard = card(LUMI_T, 0.95, 0.95); lumiCard.renderOrder = 50; lumiCard.material.depthTest = false; scene.add(lumiCard);
   const lumiGlow = glow(0x7ee8ff, 2.2, 0.45); lumiGlow.renderOrder = 2; scene.add(lumiGlow);
   const sparkGeo = new T.BufferGeometry(), SPARKS = 320, sparkPos = new Float32Array(SPARKS * 3), sparkCol = new Float32Array(SPARKS * 3);
   sparkGeo.setAttribute("position", new T.BufferAttribute(sparkPos, 3));
@@ -329,60 +355,119 @@ const R3D = (() => {
     street.receiveShadow = true;
     root.add(street);
 
-    // The city: every rock tile is a stone building, and the city carries on past the cave's
-    // edges into the fog, taller and taller. Walls are only built where they can be seen
-    // (facing a street or a lower neighbour); the ground floor has doors and shop arches.
+    // The city, built as houses: neighbouring rock tiles are grouped into lots one to three
+    // tiles wide, each with its own height, plaster colour and roof (pitched clay or slate
+    // with chimneys, a flat roof with a parapet, or a ruin open to the sky). Stone pilasters,
+    // a ledge over the ground floor and a cornice give every house depth; stone bridges arch
+    // over some narrow streets. The city carries on past the cave's edges into the fog.
     const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
     const inside = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
     const hash = (x, y) => { const h = Math.sin(x * 127.1 + y * 311.7 + levelIndex * 13.7) * 43758.5453; return h - Math.floor(h); };
-    const height = (x, y) => {
-      const n = vnoise(x * 0.35 + 3, y * 0.35), r = hash(x, y);
-      if (inside(x, y)) return 1.25 + n * 1.1 + (r > 0.9 ? 1.2 : 0);
-      const far = Math.max(-x, x - cols + 1, -y, y - rows + 1, 0);
-      return 1.8 + n * 1.8 + far * 0.25 + (r > 0.85 ? 2.5 : 0);
+    const X0 = -PAD, Y0 = -PAD, GW = cols + PAD * 2, GH = rows + PAD * 2, lotOf = new Int32Array(GW * GH).fill(-1), lots = [];
+    const li = (x, y) => (y - Y0) * GW + (x - X0);
+    const inGrid = (x, y) => x >= X0 && y >= Y0 && x < cols + PAD && y < rows + PAD;
+    for (let y = Y0; y < rows + PAD; y++) for (let x = X0; x < cols + PAD; x++) {
+      if (!rock(x, y) || lotOf[li(x, y)] >= 0) continue;
+      const wMax = 1 + Math.floor(hash(x, y) * 3), dMax = 1 + Math.floor(hash(y + 5, x) * 2);
+      let w = 1;
+      while (w < wMax && inGrid(x + w, y) && rock(x + w, y) && lotOf[li(x + w, y)] < 0) w++;
+      let d = 1;
+      while (d < dMax && inGrid(x, y + d) && [...Array(w).keys()].every(k => rock(x + k, y + d) && lotOf[li(x + k, y + d)] < 0)) d++;
+      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) lotOf[li(xx, yy)] = lots.length;
+      let near = false;
+      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) if (inside(xx, yy)) near = true;
+      const far = Math.max(X0 - x, x - cols + 1, Y0 - y, y - rows + 1, -x, -y, 0);
+      const r = hash(x + 3, y + 9), floors = near ? 1 + Math.floor(r * 2.4) : 2 + Math.floor(r * 2.5) + Math.min(3, Math.floor(far * 0.4));
+      const roof = r > 0.92 && near ? "ruin" : hash(x, y + 1) < 0.68 ? "gable" : "flat";
+      const pc = PLASTERS[Math.floor(hash(x + 1, y) * PLASTERS.length)], rc = ROOFS[Math.floor(hash(x, y + 2) * ROOFS.length)];
+      lots.push({ x0: x, z0: y, x1: x + w, z1: y + d, h: 1 + (floors - 1) * 0.92 + (roof === "ruin" ? -0.3 : 0), roof, pc, rc, fv: Math.floor(hash(x + 4, y + 4) * FACADES.length), gv: Math.floor(hash(x + 8, y + 1) * GROUNDS.length) });
+    }
+    // Geometry goes into one buffer per material: position, normal, uv, colour.
+    const bufs = {};
+    const buf = k => bufs[k] || (bufs[k] = { v: [], i: [] });
+    const poly = (k, pts, uvs, c) => {
+      const b = buf(k), base = b.v.length / 11;
+      const [a, p1, p2] = pts, ux = p1[0] - a[0], uy = p1[1] - a[1], uz = p1[2] - a[2], vx = p2[0] - a[0], vy = p2[1] - a[1], vz = p2[2] - a[2];
+      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+      pts.forEach((p, q) => b.v.push(p[0], p[1], p[2], nx, ny, nz, uvs[q][0], uvs[q][1], c[0], c[1], c[2]));
+      for (let q = 1; q < pts.length - 1; q++) b.i.push(base, base + q, base + q + 1);
     };
-    const B = { up: [[], [], []], gf: [[], [], []], roof: [] };
-    const quad = (buf, a, b, c, d, nx, ny, nz, u0, u1, v0, v1) => {
-      const base = buf.length / 8;
-      for (const [p, u, v] of [[a, u0, v0], [b, u1, v0], [c, u1, v1], [d, u0, v1]]) buf.push(p[0], p[1], p[2], nx, ny, nz, u, v);
-      (buf.idx || (buf.idx = [])).push(base, base + 1, base + 2, base, base + 2, base + 3);
+    // A wall from (ax,az) to (bx,bz), facing outward to the right of that direction, y0..y1.
+    const wall = (k, ax, az, bx, bz, y0, y1, c, vScale = 1, vOff = 0) => {
+      const len = Math.hypot(bx - ax, bz - az);
+      poly(k, [[ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az]], [[0, (y0 - vOff) * vScale], [len, (y0 - vOff) * vScale], [len, (y1 - vOff) * vScale], [0, (y1 - vOff) * vScale]], c);
     };
-    const R = PAD;
-    for (let y = -R; y < rows + R; y++) for (let x = -R; x < cols + R; x++) {
-      if (!rock(x, y)) continue;
-      const h = height(x, y), v = Math.floor(hash(y, x) * 3), gv = Math.floor(hash(x + 7, y) * 3);
-      quad(B.roof, [x, h, y + 1], [x + 1, h, y + 1], [x + 1, h, y], [x, h, y], 0, 1, 0, 0, 1, 0, 1);
-      // Four sides: south (+y), north (-y), east (+x), west (-x), each wound to face outward.
-      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-        const nx = x + dx, ny = y + dy, nh = rock(nx, ny) ? height(nx, ny) : 0;
-        if (nh >= h - 0.01) continue;
-        let p0, p1;
-        if (dy === 1) { p0 = [x, y + 1]; p1 = [x + 1, y + 1]; }
-        else if (dy === -1) { p0 = [x + 1, y]; p1 = [x, y]; }
-        else if (dx === 1) { p0 = [x + 1, y + 1]; p1 = [x + 1, y]; }
-        else { p0 = [x, y]; p1 = [x, y + 1]; }
-        const wall = (buf, y0, y1) => quad(buf, [p0[0], y0, p0[1]], [p1[0], y0, p1[1]], [p1[0], y1, p1[1]], [p0[0], y1, p0[1]], dx, 0, dy, 0, 1, y0 / 2, y1 / 2);
-        const streetSide = nh === 0;
-        if (streetSide) quad(B.gf[gv], [p0[0], 0, p0[1]], [p1[0], 0, p1[1]], [p1[0], Math.min(1, h), p1[1]], [p0[0], Math.min(1, h), p0[1]], dx, 0, dy, 0, 1, 0, Math.min(1, h));
-        const from = streetSide ? Math.min(1, h) : nh;
-        if (h > from) wall(B.up[v], from, h);
+    // An axis-aligned box (all six sides), for trim, chimneys, parapets and bridges.
+    const box = (k, x0, y0, z0, x1, y1, z1, c) => {
+      wall(k, x0, z1, x1, z1, y0, y1, c); wall(k, x1, z0, x0, z0, y0, y1, c); wall(k, x1, z1, x1, z0, y0, y1, c); wall(k, x0, z0, x0, z1, y0, y1, c);
+      poly(k, [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], [[0, 0], [x1 - x0, 0], [x1 - x0, z1 - z0], [0, z1 - z0]], c);
+    };
+    const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+    const stoneC = [0.62, 0.6, 0.58];
+    for (const l of lots) {
+      const { x0, z0, x1, z1, h } = l, pc = l.pc;
+      // Ground floor (stone, doors and shop arches) and the plaster floors above.
+      const sides = [[x0, z1, x1, z1], [x1, z0, x0, z0], [x1, z1, x1, z0], [x0, z0, x0, z1]];
+      for (const [ax, az, bx, bz] of sides) {
+        wall("gf" + l.gv, ax, az, bx, bz, 0, Math.min(1, h), shade(pc, 0.8));
+        if (h > 1) wall("fa" + l.fv, ax, az, bx, bz, 1, h, pc, 1 / 0.92, 1);
+      }
+      // Pilasters at the corners, a ledge over the ground floor, a cornice at the top.
+      const t = 0.06;
+      for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) box("trim", cx - t, 0, cz - t, cx + t, h, cz + t, stoneC);
+      if (h > 1.2) box("trim", x0 - 0.04, 0.96, z0 - 0.04, x1 + 0.04, 1.04, z1 + 0.04, stoneC);
+      box("trim", x0 - 0.07, h - 0.08, z0 - 0.07, x1 + 0.07, h + 0.03, z1 + 0.07, shade(stoneC, 1.1));
+      const w = x1 - x0, d = z1 - z0, o = 0.14, rc = l.rc;
+      if (l.roof === "gable") {
+        // Pitched roof along the longer side, with overhanging eaves and gable ends.
+        const rise = Math.min(0.85, Math.min(w, d) * 0.42 + 0.15), y = h + 0.03;
+        if (w >= d) {
+          const zm = (z0 + z1) / 2, sl = Math.hypot(d / 2 + o, rise);
+          poly("roof", [[x0 - o, y, z1 + o], [x1 + o, y, z1 + o], [x1 + o, y + rise, zm], [x0 - o, y + rise, zm]], [[0, 0], [w + 2 * o, 0], [w + 2 * o, sl], [0, sl]], rc);
+          poly("roof", [[x1 + o, y, z0 - o], [x0 - o, y, z0 - o], [x0 - o, y + rise, zm], [x1 + o, y + rise, zm]], [[0, 0], [w + 2 * o, 0], [w + 2 * o, sl], [0, sl]], rc);
+          poly("fa" + l.fv, [[x0, y, z0], [x0, y, z1], [x0, y + rise, zm]], [[0, 0], [d, 0], [d / 2, rise]], pc);
+          poly("fa" + l.fv, [[x1, y, z1], [x1, y, z0], [x1, y + rise, zm]], [[0, 0], [d, 0], [d / 2, rise]], pc);
+        } else {
+          const xm = (x0 + x1) / 2, sl = Math.hypot(w / 2 + o, rise);
+          poly("roof", [[x1 + o, y, z1 + o], [x1 + o, y, z0 - o], [xm, y + rise, z0 - o], [xm, y + rise, z1 + o]], [[0, 0], [d + 2 * o, 0], [d + 2 * o, sl], [0, sl]], rc);
+          poly("roof", [[x0 - o, y, z0 - o], [x0 - o, y, z1 + o], [xm, y + rise, z1 + o], [xm, y + rise, z0 - o]], [[0, 0], [d + 2 * o, 0], [d + 2 * o, sl], [0, sl]], rc);
+          poly("fa" + l.fv, [[x0, y, z1], [x1, y, z1], [xm, y + rise, z1]], [[0, 0], [w, 0], [w / 2, rise]], pc);
+          poly("fa" + l.fv, [[x1, y, z0], [x0, y, z0], [xm, y + rise, z0]], [[0, 0], [w, 0], [w / 2, rise]], pc);
+        }
+        if (hash(x0 + 2, z0 + 7) < 0.6) { const cx = x0 + w * (0.25 + hash(x0, z0) * 0.5), cz = z0 + d * 0.3; box("trim", cx - 0.09, h, cz - 0.09, cx + 0.09, h + rise + 0.35, cz + 0.09, shade(stoneC, 0.75)); }
+      } else if (l.roof === "flat") {
+        poly("roof", [[x0, h + 0.03, z1], [x1, h + 0.03, z1], [x1, h + 0.03, z0], [x0, h + 0.03, z0]], [[0, 0], [w, 0], [w, d], [0, d]], shade(rc, 0.7));
+        const p = 0.05, ph = h + 0.22;
+        box("trim", x0, h, z0, x1, ph, z0 + p, stoneC); box("trim", x0, h, z1 - p, x1, ph, z1, stoneC);
+        box("trim", x0, h, z0, x0 + p, ph, z1, stoneC); box("trim", x1 - p, h, z0, x1, ph, z1, stoneC);
+      } else {
+        // A ruin: the roof fell in long ago; broken walls stand up in places.
+        poly("roof", [[x0, h - 0.4, z1], [x1, h - 0.4, z1], [x1, h - 0.4, z0], [x0, h - 0.4, z0]], [[0, 0], [w, 0], [w, d], [0, d]], [0.15, 0.15, 0.18]);
+        for (let q = 0; q < 3; q++) { const bx = x0 + hash(x0 + q, z0) * (w - 0.3); box("trim", bx, h, z1 - 0.08, bx + 0.25, h + 0.2 + hash(q, x0) * 0.5, z1, stoneC); }
       }
     }
-    const mesh = (buf, matl) => {
-      if (!buf.length) return;
-      const a = new Float32Array(buf), g = new T.BufferGeometry();
-      const ib = new T.InterleavedBuffer(a, 8);
+    // Stone bridges over some narrow streets, high enough to swim under.
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      if (rock(x, y) || hash(x * 3, y * 7) > 0.18) continue;
+      if (rock(x - 1, y) && rock(x + 1, y) && !rock(x, y - 1) && !rock(x, y + 1)) box("trim", x - 0.05, 1.55, y + 0.38, x + 1.05, 1.8, y + 0.62, stoneC);
+      else if (rock(x, y - 1) && rock(x, y + 1) && !rock(x - 1, y) && !rock(x + 1, y)) box("trim", x + 0.38, 1.55, y - 0.05, x + 0.62, 1.8, y + 1.05, stoneC);
+    }
+    cityMats = [];
+    const mats = {};
+    FACADES.forEach((f, k) => { mats["fa" + k] = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.3, vertexColors: true, roughness: 0.92 }), 0.16, true); cityMats.push(mats["fa" + k]); });
+    GROUNDS.forEach((f, k) => { mats["gf" + k] = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.1, vertexColors: true, roughness: 0.92 }), 0.16, true); cityMats.push(mats["gf" + k]); });
+    mats.trim = withVis(new T.MeshStandardMaterial({ map: TRIM, vertexColors: true, roughness: 0.85 }), 0.035, true);
+    mats.roof = withVis(new T.MeshStandardMaterial({ map: ROOF, vertexColors: true, roughness: 0.7 }), 0.035, true);
+    for (const [k, b] of Object.entries(bufs)) {
+      if (!b.v.length || !mats[k]) continue;
+      const ib = new T.InterleavedBuffer(new Float32Array(b.v), 11), g = new T.BufferGeometry();
       g.setAttribute("position", new T.InterleavedBufferAttribute(ib, 3, 0));
       g.setAttribute("normal", new T.InterleavedBufferAttribute(ib, 3, 3));
       g.setAttribute("uv", new T.InterleavedBufferAttribute(ib, 2, 6));
-      g.setIndex(buf.idx);
-      const m = new T.Mesh(g, matl); m.castShadow = true; m.receiveShadow = true; root.add(m);
-    };
-    const stoneTint = col(th.rim, 0.5).lerp(new T.Color(0.62, 0.62, 0.66), 0.6);
-    cityMats = [];
-    FACADES.forEach((f, k) => { const m = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.3, color: stoneTint, roughness: 0.9 }), 0.16, true); cityMats.push(m); mesh(B.up[k], m); });
-    GROUNDS.forEach((f, k) => { const m = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.1, color: stoneTint, roughness: 0.9 }), 0.16, true); cityMats.push(m); mesh(B.gf[k], m); });
-    mesh(B.roof, withVis(new T.MeshStandardMaterial({ map: ROOF, color: mat ? col(mat.top, 1.5).lerp(new T.Color(0.75, 0.76, 0.82), 0.45) : new T.Color(0.7, 0.72, 0.8), roughness: 0.85 }), 0.035, true));
+      g.setAttribute("color", new T.InterleavedBufferAttribute(ib, 3, 8));
+      g.setIndex(b.i);
+      const m = new T.Mesh(g, mats[k]); m.castShadow = true; m.receiveShadow = true; root.add(m);
+    }
 
     // Mist over the whole city, and fireflies scattered through it.
     for (const m of mists) { m.scale.set(cols + PAD * 2, rows + PAD * 2, 1); m.position.x = cols / 2; m.position.z = rows / 2; m.material.map.repeat.set((cols + PAD * 2) / 6, (rows + PAD * 2) / 6); m.material.color = col(th.rim, 0.7); }
@@ -436,7 +521,7 @@ const R3D = (() => {
   }
   function render(dt) {
     // Same size as the 2D canvas; the glow costs less at a lower resolution on small screens.
-    const dpr = Math.min(DPR, qualityCap >= 2 ? 2 : 1.25);
+    const dpr = Math.min(DPR, qualityCap >= 2 ? 1.5 : 1.15);
     if (vw !== W || vh !== H || vd !== dpr) resize(W, H, dpr);
     if (built !== L) { build(); camPos.set(L.lumi.x, 8.6, L.lumi.y + 5.4); camLook.set(L.lumi.x, 0.3, L.lumi.y - 0.6); }
     const { cols, rows } = L, lumi = L.lumi;
