@@ -7,6 +7,7 @@ import { BOOSTS, MAX_BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
+import { addToSkyline } from "./logic/skyline";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
@@ -683,6 +684,10 @@ export class App implements DailyHost {
     if (this.mode === "daily") run.day = this.runDay;
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
+    // Tall towers join your skyline island for good.
+    if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square" })) {
+      this.outcome.rewards.push({ kind: "island", text: t("Your tower joined your skyline island") });
+    }
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
@@ -1261,6 +1266,7 @@ export class App implements DailyHost {
       showMover: this.state === "playing" || this.state === "paused",
       // A finished tower keeps the skin it was built in.
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
+      skyline: save.skyline,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
       theme: currentTheme(save),
       islandLevel: islandLevel(save),

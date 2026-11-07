@@ -291,6 +291,7 @@ export const ES: Record<string, string> = {
   "Towers": "Torres",
   "Islands": "Islas",
   "Shapes": "Formas",
+  "Your tower joined your skyline island": "Tu torre se unió a tu isla horizonte",
   "Yesterday's chest opened for you: +{stars} ★ and {coins} coins": "Abrimos tu cofre de ayer: +{stars} ★ y {coins} monedas",
   "Last season's reward was added: {names}": "Se añadió tu premio de la temporada pasada: {names}",
   "Last season's rewards were added: {names}": "Se añadieron tus premios de la temporada pasada: {names}",

@@ -5,6 +5,8 @@ import type { IslandTheme } from "../data/islands";
 import type { Skin } from "../data/skins";
 import type { Shape } from "../data/shapes";
 import { footprint, type XZ } from "./footprint";
+import { Skyline } from "./skyline";
+import type { SkylineTower } from "../logic/skyline";
 import type { Floor, TowerSim } from "../logic/sim";
 import { drawBlock, drawRoof, floorColor, lookFor } from "./buildings";
 import { drawGuide, drawLandingShadow, Effects } from "./effects";
@@ -26,6 +28,8 @@ export interface Frame {
   showMover: boolean;
   skin: Skin;
   shape: Shape;
+  /** Your tallest towers, on the skyline island behind. */
+  skyline: SkylineTower[];
   theme: IslandTheme;
   islandLevel: number;
   /** Beginner guide outline. */
@@ -54,6 +58,7 @@ export class Renderer {
   readonly scenery = new Scenery();
   readonly traffic = new SkyTraffic();
   readonly weather = new Weather();
+  private readonly skyline = new Skyline();
   private readonly ctx: CanvasRenderingContext2D;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };
   /** The finished floors, drawn once per landing instead of every frame. */
@@ -168,6 +173,7 @@ export class Renderer {
 
     scenery.drawSky(p, n, dt);
     drawAurora(p, n);
+    this.skyline.draw(p, f.skyline, f.theme, this.dpr);
     // The landmark you're racing, beside the tower at its real height.
     if (f.shot === "play") drawLandmark(p, landmarkIndex(f.sim.meters) + 1, 1);
 

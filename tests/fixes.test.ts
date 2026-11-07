@@ -56,3 +56,21 @@ describe("rewards are never lost at rollover", () => {
     }
   });
 });
+
+import { addToSkyline } from "../src/logic/skyline";
+import { normalize } from "../src/logic/save";
+
+describe("skyline island", () => {
+  it("keeps your nine tallest towers and survives a save round trip", () => {
+    const save = defaultSave();
+    expect(addToSkyline(save, { f: 5, s: "glass", h: "square" })).toBe(false); // too short
+    for (let f = 10; f < 22; f++) addToSkyline(save, { f, s: "glass", h: "round" });
+    expect(save.skyline.length).toBe(9);
+    expect(save.skyline[8].f).toBe(13);
+    expect(addToSkyline(save, { f: 12, s: "glass", h: "round" })).toBe(false);
+    expect(addToSkyline(save, { f: 40, s: "neon", h: "twist" })).toBe(true);
+    const back = normalize(JSON.parse(JSON.stringify(save)));
+    expect(back.skyline[0]).toEqual({ f: 40, s: "neon", h: "twist" });
+    expect(normalize({ skyline: [{ f: 9, s: "nope", h: "blob" }] }).skyline[0]).toEqual({ f: 9, s: "glass", h: "square" });
+  });
+});
