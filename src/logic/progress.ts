@@ -1,5 +1,6 @@
 // What a finished tower changes in the save: bests, missions, trophies, XP and levels,
 // stars, challenges, history and unlocks. Pure functions over SaveData, so they're tested.
+import { HOLIDAYS } from "../data/holidays";
 import { fmt, listNames } from "../core/util";
 import { t, tn } from "../i18n";
 import { challengeById, CHALLENGES } from "../data/challenges";
@@ -25,7 +26,7 @@ export function isSkinUnlocked(save: SaveData, skin: Skin): boolean {
   if ("price" in skin.unlock) return save.ownedSkins.includes(skin.id);
   if ("streak" in skin.unlock) return save.streak.best >= skin.unlock.streak;
   if ("product" in skin.unlock) return premiumGrants(save).skins.has(skin.id);
-  if ("pass" in skin.unlock) return save.ownedSkins.includes(skin.id);
+  if ("pass" in skin.unlock || "event" in skin.unlock) return save.ownedSkins.includes(skin.id);
   return save.bestMeters > MILESTONES[skin.unlock.at].m;
 }
 
@@ -37,6 +38,10 @@ export function skinUnlockText(skin: Skin): string {
   if ("streak" in skin.unlock) return t("Play {n} days in a row", { n: skin.unlock.streak });
   if ("product" in skin.unlock) return t("Get it with Sky Crystals in the shop");
   if ("pass" in skin.unlock) return t("A Sky Pass reward ({season} season)", { season: t(skin.unlock.pass) });
+  if ("event" in skin.unlock) {
+    const h = HOLIDAYS.find(x => x.id === (skin.unlock as { event: string }).event);
+    return t("Earn it during the {event} event", { event: h ? `${h.emoji} ${t(h.name)}` : "" });
+  }
   const ms = MILESTONES[skin.unlock.at];
   return t("Build taller than {name} ({m} m)", { name: t(ms.name), m: ms.m });
 }

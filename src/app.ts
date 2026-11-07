@@ -8,6 +8,8 @@ import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline } from "./logic/skyline";
+import { holidayProgress, holidayTower } from "./logic/holidays";
+import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
@@ -110,6 +112,7 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  private holidayNow: ReturnType<typeof holidayProgress> = null;
   private postcardsThisRun: PostcardGain[] = [];
   /** The day the current tower started (a Daily belongs to that day even past midnight). */
   private runDay = 0;
@@ -577,7 +580,8 @@ export class App implements DailyHost {
     this.renderer.fx.clear();
     // Weather for this tower: snow on the snowy island, sometimes rain or snow elsewhere.
     const r = Math.random(), snowy = currentTheme(this.save).id === "snow";
-    this.renderer.weather.set(snowy ? (r < 0.55 ? "snow" : "clear") : r < 0.16 ? "rain" : r < 0.22 ? "snow" : "clear");
+    const hol = holidayAt();
+    this.renderer.weather.set(snowy || hol?.weather === "snow" ? (r < 0.55 ? "snow" : "clear") : r < 0.16 ? "rain" : r < 0.22 ? "snow" : "clear");
     this.peek = false;
     $("unpeek").hidden = true;
     this.builtSkin = this.save.skin;
@@ -687,6 +691,12 @@ export class App implements DailyHost {
     if (this.mode === "daily") run.day = this.runDay;
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
+    if (this.mode !== "zen" && run.floors >= 3) {
+      const won = holidayTower(this.save);
+      const hp = holidayProgress(this.save);
+      if (won) this.outcome.rewards.push({ kind: "skin", text: t("{emoji} Holiday skin unlocked: {name}!", { emoji: won.emoji, name: t(skinById(won.skin).name) }) });
+      else if (hp && !hp.done) this.outcome.rewards.push({ kind: "star", text: t("{emoji} {name}: {n} of {total} towers", { emoji: hp.h.emoji, name: t(hp.h.name), n: hp.towers, total: hp.h.towers }) });
+    }
     for (const c of this.postcardsThisRun) {
       this.outcome.rewards.push({ kind: "star", text: c.album ? t("Postcard album complete! +{n} 💎", { n: ALBUM_CRYSTALS })
         : c.set ? t("Postcard set complete! +{n} ★", { n: SET_STARS + POSTCARD_STARS }) : t("New postcard (+{n} ★)", { n: POSTCARD_STARS }) });
@@ -1005,6 +1015,10 @@ export class App implements DailyHost {
     if (save.profile.towers >= 1 && sv.atRisk) {
       kind = "risk";
       text = sv.needsFreeze ? t("🧊 Build today: a freeze will save your {n}-day streak", { n: sv.count }) : t("🔥 Build today to keep your {n}-day streak", { n: sv.count });
+    } else if (save.profile.towers >= 1 && (this.holidayNow = holidayProgress(save, now)) && !this.holidayNow.done) {
+      const hp = this.holidayNow;
+      kind = "holiday";
+      text = t("{emoji} {name}: {left} towers to a holiday skin", { emoji: hp.h.emoji, name: t(hp.h.name), left: hp.h.towers - hp.towers });
     } else {
       const r = this.online.ready && save.profile.towers >= 1 ? this.online.rival(dayNumber(now), weekIndex(now)) : null;
       if (r) {
@@ -1028,6 +1042,10 @@ export class App implements DailyHost {
     const kind = $("status-line").dataset.kind;
     if (kind === "risk") this.daily.openStreak();
     else if (kind === "rival") this.daily.openRanks();
+    else if (kind === "holiday" && this.holidayNow) {
+      const hp = this.holidayNow;
+      toast(t("{emoji} {name} is on for {days} more days. Build {total} towers to keep the {skin} skin for good.", { emoji: hp.h.emoji, name: t(hp.h.name), days: holidayDaysLeft(hp.h), total: hp.h.towers, skin: t(skinById(hp.h.skin).name) }));
+    }
     else if (kind === "event") {
       this.sound.ensure();
       this.sound.click();
@@ -1280,6 +1298,7 @@ export class App implements DailyHost {
       // A finished tower keeps the skin it was built in.
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       skyline: save.skyline,
+      tint: holidayAt()?.tint ?? null,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
       theme: currentTheme(save),
       islandLevel: islandLevel(save),

@@ -25,7 +25,9 @@ export type SkinUnlock =
   /** A premium skin, unlocked by buying the named product. */
   | { product: string }
   /** A Sky Pass reward from the named season theme. */
-  | { pass: string };
+  | { pass: string }
+  /** Earned during the named holiday event. */
+  | { event: string };
 
 export interface Skin extends Look {
   id: string;
@@ -108,6 +110,21 @@ export const SKINS: Skin[] = [
     floors: ["#0b3d3a", "#0f4f4a", "#0a3431"],
     glass: "#0a2624", frame: "#1d6b62", slab: "#08201e", slabH: 0.08,
     lit: ["#3ee6c4", "#7cf5ff", "#b48cff"], alwaysLit: true, swatch: ["#0b3d3a", "#3ee6c4", "#b48cff"] },
+  // Holiday skins: only earned while their holiday event is on (see data/holidays.ts).
+  { id: "pumpkin", name: "Pumpkin Spire", unlock: { event: "halloween" }, kind: "punched",
+    floors: ["#2b1d3a", "#ff7b1c", "#231833", "#e8630a"],
+    glass: "#1a1026", frame: "#ff9f43", slab: "#140c1e", slabH: 0.12,
+    lit: ["#ffb347", "#ff7b1c", "#b7ff5c"], alwaysLit: true, swatch: ["#2b1d3a", "#ff7b1c", "#b7ff5c"] },
+  { id: "frost", name: "Frosted Pine", unlock: { event: "winter" }, kind: "punched",
+    floors: ["#1f6b45", "#f2f7ff", "#1a5c3b", "#c8102e"],
+    glass: "#d9ecff", frame: "#ffffff", slab: "#ffffff", slabH: 0.14,
+    lit: ["#ffd76a", "#ff5a5a", "#8fe3ff"], swatch: ["#1f6b45", "#ffffff", "#c8102e"] },
+  { id: "sweetheart", name: "Sweetheart", unlock: { event: "valentine" }, kind: "ribbon",
+    floors: ["#ff8fb1", "#ffc2d4", "#e5487a"],
+    glass: "#fff0f5", frame: "#ffffff", slab: "#ffe3ec", slabH: 0.1, lit: ["#ff4d88", "#ffd1e0"], swatch: ["#ff8fb1", "#e5487a", "#ffffff"] },
+  { id: "beach", name: "Beach Club", unlock: { event: "summer" }, kind: "ribbon",
+    floors: ["#2ec4b6", "#ffe8b0", "#20a39e", "#ff9f68"],
+    glass: "#cff7f2", frame: "#ffffff", slab: "#fff4d6", slabH: 0.12, lit: ["#ffe28a", "#ff9f68"], swatch: ["#2ec4b6", "#ffe8b0", "#ff9f68"] },
 ];
 
 // Sky Pass skins, three per season theme (see data/pass.ts).

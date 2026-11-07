@@ -107,3 +107,22 @@ describe("daily deals", () => {
     expect(buyDeal(poor, 40, dealsFor(poor, 40)[0])).toBe("short");
   });
 });
+
+import { holidayAt, holidayKey, HOLIDAYS } from "../src/data/holidays";
+import { holidayTower } from "../src/logic/holidays";
+
+describe("holiday events", () => {
+  it("finds the event on now, including one that wraps over New Year", () => {
+    expect(holidayAt(new Date(2026, 9, 31).getTime())?.id).toBe("halloween");
+    expect(holidayAt(new Date(2027, 0, 3).getTime())?.id).toBe("winter");
+    expect(holidayKey(HOLIDAYS[1], new Date(2027, 0, 3).getTime())).toBe("winter-2026");
+    expect(holidayAt(new Date(2026, 10, 7).getTime())).toBeNull();
+  });
+  it("gives the holiday skin after enough towers, once", () => {
+    const save = defaultSave(), now = new Date(2026, 11, 20).getTime();
+    for (let i = 0; i < 9; i++) expect(holidayTower(save, now)).toBeNull();
+    expect(holidayTower(save, now)?.skin).toBe("frost");
+    expect(save.ownedSkins).toContain("frost");
+    expect(holidayTower(save, now)).toBeNull();
+  });
+});

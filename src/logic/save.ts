@@ -54,6 +54,8 @@ export interface SaveData {
   postcards: string[];
   /** Today's deals already bought (see logic/deals.ts). */
   deals: { day: number; bought: string[] };
+  /** Towers built during this year's holiday event. */
+  holiday: { key: string; towers: number };
   boosts: Record<BoostId, number>;
   missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
@@ -127,6 +129,7 @@ export function defaultSave(): SaveData {
     skyline: [],
     postcards: [],
     deals: { day: 0, bought: [] },
+    holiday: { key: "", towers: 0 },
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -210,6 +213,7 @@ export function normalize(raw: unknown): SaveData {
       .filter(x => x.f > 0),
     postcards: strList(r.postcards, ALL_POSTCARDS),
     deals: { day: int(obj(r.deals).day, 0), bought: strList(obj(r.deals).bought).slice(0, 10) },
+    holiday: { key: str(obj(r.holiday).key, "").slice(0, 40), towers: int(obj(r.holiday).towers, 0, 0, 9999) },
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {

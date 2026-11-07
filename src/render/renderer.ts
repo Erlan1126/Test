@@ -30,6 +30,8 @@ export interface Frame {
   shape: Shape;
   /** Your tallest towers, on the skyline island behind. */
   skyline: SkylineTower[];
+  /** A holiday event's color, mixed into the sky. */
+  tint: [number, number, number] | null;
   theme: IslandTheme;
   islandLevel: number;
   /** Beginner guide outline. */
@@ -161,6 +163,7 @@ export class Renderer {
     env.time += dt;
     env.low = f.low;
     [env.skyTop, env.skyBot] = skyAt(n);
+    if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     // The finished tower is seen from far away, from the ground up, so the lower sky keeps
     // its daytime color instead of the sunset at the top.
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0)[1], 0.6);

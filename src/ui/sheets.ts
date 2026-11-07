@@ -119,7 +119,8 @@ export class Sheets {
       const b = this.skinCard(st, open || isShopSkin(st) || premium || pass, on, on ? esc(t("Equipped")) : open ? esc(t("Tap to use")) : isShopSkin(st) ? `<span class="price">${priceOf(st)} ★</span>`
         : premium ? `<span class="premium-tag">💎 ${esc(t("Crystals"))}</span>`
         : pass ? `<span class="premium-tag">Sky Pass</span>`
-        : st.unlock && "streak" in st.unlock ? esc(t("🔥 {n}-day streak", { n: st.unlock.streak })) : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
+        : st.unlock && "streak" in st.unlock ? esc(t("🔥 {n}-day streak", { n: st.unlock.streak }))
+        : st.unlock && "event" in st.unlock ? `<span class="premium-tag">${esc(t("Holiday event"))}</span>` : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
       b.setAttribute("aria-label", open ? (on ? t("{name}, equipped", { name }) : name) : t("{name}, locked. {how}", { name, how: skinUnlockText(st) }));
       b.addEventListener("click", () => {
         if (!open) {
