@@ -10,6 +10,7 @@
 import { SERVER_URL } from "./data/server";
 import type { RunRecord } from "./logic/replay";
 import type { SaveData } from "./logic/save";
+import { newPlayerId } from "./logic/premium";
 
 /** Just the parts of the claude.ai page runtime this file uses. */
 interface Snap { id: string; data(): Record<string, unknown> | undefined }
@@ -161,7 +162,14 @@ export class Online {
    *  Returns false if the server can't be reached. */
   private async ensureAccount(save: SaveData, persist: () => void): Promise<boolean> {
     if (!save.onlineToken) {
-      const res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
+      let res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
+      if (res.status === 409) {
+        // This id was registered but the reply never arrived (or another device took it
+        // over). Start over with a fresh id instead of being locked out for good.
+        save.playerId = newPlayerId();
+        save.recoveryCode = "";
+        res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
+      }
       if (!res.ok) return false;
       save.onlineToken = String((await res.json() as { token?: string }).token ?? "");
       persist();
@@ -179,6 +187,8 @@ export class Online {
   /** Worldwide board: sends a finished Classic or Daily tower, or keeps it for later if
    *  there's no connection. */
   async submit(save: SaveData, rec: RunRecord, persist: () => void): Promise<void> {
+    // Ranks shown on the results card must belong to this tower, never an older one.
+    this.lastRanks = null;
     if (this.kind !== "global" || (rec.mode !== "classic" && rec.mode !== "daily") || !rec.log.length) return;
     save.pendingRuns.push(rec);
     if (save.pendingRuns.length > 5) save.pendingRuns.splice(0, save.pendingRuns.length - 5);
@@ -202,13 +212,24 @@ export class Online {
           headers: JSON_HEADERS,
           body: JSON.stringify({ player: save.playerId, token: save.onlineToken, name: save.nickname, level: save.profile.level, record: rec }),
         });
-        // Too fast: try again a little later. Anything else is final (ranked or refused).
-        if (res.status === 429) { setTimeout(() => void this.flush(save, persist), 6000); break; }
+        // Too fast, or a hiccup on the server: keep the tower and try again later.
+        if (res.status === 429 || res.status >= 500) { setTimeout(() => void this.flush(save, persist), res.status === 429 ? 6000 : 60000); break; }
+        if (res.status === 403) {
+          // This device's sign-in was replaced (restored on another phone): get a fresh
+          // one, and the queued towers go up with it next time.
+          save.onlineToken = "";
+          save.playerId = newPlayerId();
+          save.recoveryCode = "";
+          persist();
+          setTimeout(() => void this.flush(save, persist), 3000);
+          break;
+        }
+        // Anything else is final: ranked, or refused as invalid.
         save.pendingRuns.shift();
         persist();
         if (res.ok) {
           const ranks = (await res.json() as { ranks?: Online["lastRanks"] }).ranks ?? null;
-          if (!current || rec === current) this.lastRanks = ranks;
+          if (rec === current) this.lastRanks = ranks;
           this.cache.clear();
         }
       }

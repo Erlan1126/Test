@@ -3,7 +3,7 @@ import { clamp, fmt, shortName } from "./core/util";
 import { challengeById, type Challenge } from "./data/challenges";
 import { GOLD, MILESTONES } from "./data/constants";
 import { eventEndsIn, eventFor, weekIndex } from "./data/events";
-import { BOOSTS } from "./data/shop";
+import { BOOSTS, MAX_BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
@@ -27,10 +27,11 @@ import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
 import { choosePayments, purchaseReturn } from "./payments";
 import { buyWithCrystals, grantPack, newPlayerId } from "./logic/premium";
-import { refreshPass, unclaimed } from "./logic/pass";
+import { carriedOver, refreshPass, rewardText, unclaimed } from "./logic/pass";
 import type { CrystalPack, Product } from "./data/premium";
 import type { PackPurchase } from "./payments";
-import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, lateChest, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { CHEST } from "./data/daily";
 import { resolveLang, setLang, t, tn, translateDom } from "./i18n";
 import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 
@@ -107,6 +108,10 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  /** The day the current tower started (a Daily belongs to that day even past midnight). */
+  private runDay = 0;
+  /** The app is in the background or lost focus. */
+  private away = false;
   private readonly calmMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   private tag = "";
   /** The current tower's taps, for the online rankings. */
@@ -412,6 +417,7 @@ export class App implements DailyHost {
     window.addEventListener("resize", () => this.resize());
     this.canvas.addEventListener("pointerdown", e => {
       e.preventDefault();
+      if (!e.isPrimary) return; // a second finger on the screen isn't a new tap
       if (this.state === "playing") this.drop();
       else if (this.peek) this.setPeek(false);
       // Impatient? A tap brings the results card (and its Build again button) right away.
@@ -463,7 +469,10 @@ export class App implements DailyHost {
 
     // Leaving the app mid-tower pauses it.
     document.addEventListener("visibilitychange", () => { if (document.hidden) this.pause(); });
-    window.addEventListener("blur", () => this.pause());
+    window.addEventListener("blur", () => { this.away = true; this.pause(); });
+    window.addEventListener("focus", () => { this.away = false; });
+    document.addEventListener("pointerdown", () => { this.away = false; }, true);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) this.away = true; else if (document.hasFocus()) this.away = false; });
     window.addEventListener("keydown", e => this.key(e));
     window.addEventListener("skyrise:sheet", () => this.sound.whoosh());
     this.renderer.weather.onThunder = () => this.sound.thunder();
@@ -543,6 +552,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.slowmo = 0;
+    this.runDay = dayNumber();
     this.sound.ensure();
     const challenge = mode === "challenge" ? challengeById(challengeId ?? "") ?? null : null;
     if (mode === "challenge" && (!challenge || !challengeOpen(this.save, challenge.id))) return;
@@ -584,6 +594,15 @@ export class App implements DailyHost {
   }
 
   private goToMenu(): void {
+    // Quitting a tower mid-way earns nothing, so the boosts it took go back.
+    if (this.state === "playing" || this.state === "paused" || this.state === "rescue") {
+      const b = this.save.boosts, B = this.boosts, cap = (n: number) => Math.min(n, MAX_BOOSTS);
+      if (B.xp) b.xp = cap(b.xp + 1);
+      if (B.gold) b.gold = cap(b.gold + 1);
+      if (B.rewind && this.sim.rewindsUsed < 2) b.rewind = cap(b.rewind + 1);
+      this.boosts = NO_BOOSTS;
+      this.persist();
+    }
     this.sound.ensure();
     this.sound.click();
     this.sound.duck(false);
@@ -661,6 +680,7 @@ export class App implements DailyHost {
     for (const id of ["hud", "pause", "banner"]) $(id).hidden = true;
     this.sound.intensity = 0;
     const run = this.sim.summary();
+    if (this.mode === "daily") run.day = this.runDay;
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
@@ -688,6 +708,9 @@ export class App implements DailyHost {
     // Was the tap early or late? The floor was still heading toward its spot if it moves
     // toward zero offset.
     const m = this.sim.mover, off = this.sim.offset();
+    // A floor that's still sliding in and hasn't reached the tower yet can only miss, so a
+    // quick double tap right after a landing is ignored instead of throwing it away.
+    if (m && Math.abs(off) >= (m.axis === "x" ? m.x1 - m.x0 : m.z1 - m.z0) && Math.sign(off) !== m.dir) return;
     this.timing = m && Math.abs(off) > 0.05 ? (Math.sign(off) === m.dir ? "late" : "early") : "";
     if (this.sim.mover) this.recorder?.drop(this.sim.ticks);
     const out = this.sim.drop();
@@ -888,6 +911,16 @@ export class App implements DailyHost {
     // Skins and the shop are one place now; it opens with the first skins.
     show("shop-btn", isOpen(save, "skins"), fresh("skins") || (isOpen(save, "shop") && fresh("shop")));
     refreshPass(save, now);
+    if (carriedOver.length) {
+      toast(tn(carriedOver.length, "Last season's reward was added: {names}", "Last season's rewards were added: {names}", { names: carriedOver.map(rewardText).join(", ") }));
+      carriedOver.length = 0;
+      this.persist();
+    }
+    if (lateChest.opened) {
+      lateChest.opened = false;
+      toast(t("Yesterday's chest opened for you: +{stars} ★ and {coins} coins", { stars: CHEST.stars, coins: CHEST.coins }));
+      this.persist();
+    }
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && p.towers >= 1, false);
     $("daily-title").textContent = t("Daily #{n}", { n: dayNumber(now) });
@@ -986,7 +1019,7 @@ export class App implements DailyHost {
 
   /** " · #2 of 5 today" once the leaderboard has this tower. */
   private dailyRank(): string {
-    const p = this.online.ready ? this.online.dailyPlace(dayNumber(), this.save.daily.best) : null;
+    const p = this.online.ready ? this.online.dailyPlace(this.runDay, this.save.daily.best) : null;
     return p && p.of > 1 ? t(" · #{rank} of {of} today", { rank: fmt(p.rank), of: fmt(p.of) }) : "";
   }
 
@@ -998,7 +1031,7 @@ export class App implements DailyHost {
     const won = !!c && sim.goalReached();
     const eyebrow = $("over-eyebrow");
     eyebrow.textContent = c ? (won ? t("Challenge complete!") : t("Challenge failed"))
-      : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: dayNumber() }) : o.newBest ? t("New best!") : t("Tower complete");
+      : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: this.runDay }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
@@ -1101,7 +1134,7 @@ export class App implements DailyHost {
   private shareText(): string {
     const sim = this.sim;
     const ms = sim.lastLandmark >= 0 ? t(", taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) }) : "";
-    if (this.mode === "daily") return t("Skyrise Daily #{day}: {n} people in a {m} m tower{landmark}. Can you beat it today?", { day: dayNumber(), n: fmt(sim.score), m: sim.meters, landmark: ms });
+    if (this.mode === "daily") return t("Skyrise Daily #{day}: {n} people in a {m} m tower{landmark}. Can you beat it today?", { day: this.runDay, n: fmt(sim.score), m: sim.meters, landmark: ms });
     return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
   }
 
@@ -1188,7 +1221,8 @@ export class App implements DailyHost {
         if ($("wind-label").textContent !== label) $("wind-label").textContent = label;
       }
     }
-    if (this.state === "rescue") {
+    // The "rewind?" countdown waits while you're away (notification shade, a call).
+    if (this.state === "rescue" && !this.away) {
       this.rescueLeft -= dt;
       $("countdown").style.transform = `scaleX(${clamp(this.rescueLeft / RESCUE_TIME, 0, 1)})`;
       if (this.rescueLeft <= 0) this.endFromRescue();
@@ -1239,10 +1273,10 @@ export class App implements DailyHost {
     });
     if (this.captureShare) {
       this.captureShare = false;
-      const sim = this.sim, tag = this.mode === "daily" ? t("Daily #{n}", { n: dayNumber() }) : "";
+      const sim = this.sim, tag = this.mode === "daily" ? t("Daily #{n}", { n: this.runDay }) : "", forSim = sim;
       void makeShareImage(this.renderer.output, this.renderer.view, {
         score: sim.score, meters: sim.meters, floors: sim.level, landmark: sim.lastLandmark, tag,
-      }).then(b => { this.shareBlob = b; });
+      }).then(b => { if (this.sim === forSim) this.shareBlob = b; }); // not if a new tower started meanwhile
     }
   }
 }

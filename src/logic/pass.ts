@@ -7,10 +7,16 @@ import { fmt } from "../core/util";
 import { t } from "../i18n";
 import type { SaveData } from "./save";
 
-/** Starts a fresh pass when a new season begins. */
+/** Rewards from last season that were reached but never claimed, handed out at the switch.
+ *  The menu shows them once and clears this. */
+export const carriedOver: PassReward[] = [];
+
+/** Starts a fresh pass when a new season begins. Anything reached but not claimed in the
+ *  old season is given to the player first, so nothing earned is ever lost. */
 export function refreshPass(save: SaveData, now = Date.now()): boolean {
   const season = seasonIndex(now);
   if (save.pass.season === season) return false;
+  carriedOver.push(...claimAll(save));
   save.pass = { season, xp: 0, premium: false, free: [], prem: [] };
   return true;
 }

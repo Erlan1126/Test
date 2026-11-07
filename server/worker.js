@@ -237,7 +237,13 @@ async function rankings(request, url, env, now) {
     // Only current towers: this week (or last, for towers finished just after midnight
     // Monday), and today's or yesterday's Daily with its real seed.
     const week = weekIndex(now), day = dayNumber(now);
-    if (record.week !== week && record.week !== week - 1) return json({ error: "old tower" }, 400);
+    // Last week is only accepted in the first two hours of a new week (a tower that was
+    // still going at midnight), so nobody can pick an easier week's rules.
+    const lastWeekOk = record.week === week - 1 && weekIndex(now - 2 * 3600e3) === week - 1;
+    if (record.week !== week && !lastWeekOk) return json({ error: "old tower" }, 400);
+    if (record.mode === "daily" && record.boosts && (record.boosts.rewind || record.boosts.gold)) {
+      return json({ error: "boosts aren't used on the Daily" }, 400);
+    }
     if (record.mode === "daily" && ((record.day !== day && record.day !== day - 1) || record.seed !== dailySeed(record.day))) {
       return json({ error: "not today's Daily" }, 400);
     }

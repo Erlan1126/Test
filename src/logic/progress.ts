@@ -70,11 +70,11 @@ export function swapMission(save: SaveData, index: number, now = Date.now(), rng
   save.missions.slots.splice(index, 1);
   // Deal until the replacement differs from the one swapped out (when possible).
   for (let tries = 0; tries < 8; tries++) {
-    dealMissions(save, rng);
+    dealMissions(save, rng, now);
     if (save.missions.slots[save.missions.slots.length - 1].t !== old) break;
     save.missions.slots.pop();
   }
-  dealMissions(save, rng);
+  dealMissions(save, rng, now);
   save.profile.swapDay = dayKey(0, now);
   return true;
 }
@@ -107,7 +107,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
 
   let dailyBest = 0;
   if (run.mode === "daily") {
-    const day = dayNumber(now);
+    const day = run.day ?? dayNumber(now);
     if (save.daily.day !== day) save.daily = { day, best: 0, plays: 0 };
     save.daily.plays++;
     save.daily.best = Math.max(save.daily.best, run.score);

@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+import { defaultSave } from "../src/logic/save";
+import { addPassXp, carriedOver, passTier, refreshPass } from "../src/logic/pass";
+import { claimChest, lateChest, pendingLeagueReward, refreshMissions, rollLeague } from "../src/logic/daily";
+import { eventFor, weekIndex } from "../src/data/events";
+import { XP_PER_TIER } from "../src/data/pass";
+
+const DAY = 864e5;
+
+describe("rewards are never lost at rollover", () => {
+  it("unclaimed Sky Pass tiers are given out when a new season starts", () => {
+    const save = defaultSave(), nov = Date.UTC(2026, 10, 20), dec = Date.UTC(2026, 11, 2);
+    refreshPass(save, nov);
+    addPassXp(save, XP_PER_TIER * 3, nov);
+    expect(passTier(save)).toBe(3);
+    const coins = save.coins, stars = save.stars;
+    carriedOver.length = 0;
+    expect(refreshPass(save, dec)).toBe(true);
+    expect(carriedOver.length).toBe(3);
+    expect(save.coins + save.stars).toBeGreaterThan(coins + stars);
+    expect(passTier(save)).toBe(0);
+  });
+
+  it("a finished chest that wasn't opened opens itself the next day", () => {
+    const save = defaultSave(), day1 = Date.UTC(2026, 10, 5, 12), day2 = day1 + DAY;
+    refreshMissions(save, day1, () => 0.3);
+    save.missions.slots.forEach(m => { m.d = true; m.p = m.n; });
+    const stars = save.stars;
+    lateChest.opened = false;
+    refreshMissions(save, day2, () => 0.3);
+    expect(lateChest.opened).toBe(true);
+    expect(save.stars).toBeGreaterThan(stars);
+    // And never twice: today's chest is a new one.
+    expect(claimChest(save, day2)).toBeNull();
+  });
+
+  it("launch week (week 0) league points still pay out", () => {
+    const save = defaultSave();
+    let t = 0;
+    while (weekIndex(t) < 0) t += DAY;
+    while (weekIndex(t) > 0) t -= DAY;
+    rollLeague(save, t);
+    expect(save.league.week).toBe(0);
+    save.league.points = 5000;
+    expect(pendingLeagueReward(save, t + 7 * DAY)).not.toBeNull();
+  });
+
+  it("no wind missions in a week without wind", () => {
+    let t = Date.UTC(2026, 10, 1);
+    while (!eventFor(t).noWind) t += DAY;
+    for (let i = 0; i < 30; i++) {
+      const save = defaultSave();
+      let r = i / 30;
+      refreshMissions(save, t, () => (r = (r * 7.31 + 0.17) % 1));
+      expect(save.missions.slots.map(m => m.t)).not.toContain("wind");
+    }
+  });
+});

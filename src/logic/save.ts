@@ -132,7 +132,7 @@ export function defaultSave(): SaveData {
     coins: 0,
     rent: { last: 0 },
     city: [],
-    league: { week: 0, points: 0, lastWeek: 0, lastPoints: 0, rewarded: 0 },
+    league: { week: -1, points: 0, lastWeek: -1, lastPoints: 0, rewarded: -1 },
     nickname: "",
     onlineToken: "",
     recoveryCode: "",
@@ -226,8 +226,8 @@ export function normalize(raw: unknown): SaveData {
     rent: { last: num(obj(r.rent).last, 0) },
     city: strList(r.city, CITY.map(c => c.id)),
     league: {
-      week: int(lg.week, 0, -1e6), points: int(lg.points, 0), lastWeek: int(lg.lastWeek, 0, -1e6),
-      lastPoints: int(lg.lastPoints, 0), rewarded: int(lg.rewarded, 0, -1e6),
+      week: int(lg.week, -1, -1e6), points: int(lg.points, 0), lastWeek: int(lg.lastWeek, -1, -1e6),
+      lastPoints: int(lg.lastPoints, 0), rewarded: int(lg.rewarded, -1, -1e6),
     },
     // Letters, digits, spaces and a little punctuation, up to 16 characters.
     onlineToken: /^[a-f0-9]{48}$/.test(String(r.onlineToken ?? "")) ? String(r.onlineToken) : "",

@@ -147,7 +147,9 @@ export function drawLandmark(p: Paint, index: number, alpha: number): void {
   ctx.save();
   ctx.globalAlpha = alpha * 0.82;
   ctx.fillStyle = g;
-  if (!env.low) {
+  // The soft glow is a blurred shadow, which is costly to draw every frame; phones (no
+  // shader pass) skip it.
+  if (!env.low && env.post) {
     ctx.shadowColor = `rgba(255, 236, 200, ${0.35 + env.nf * 0.25})`;
     ctx.shadowBlur = 14;
   }

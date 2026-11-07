@@ -1,6 +1,7 @@
 // Daily habits: the play streak with freezes and milestone rewards, daily missions and
 // their chest, island rent and city buildings, and the weekly league. Pure functions
 // over SaveData, so they're tested.
+import { eventFor } from "../data/events";
 import { addPassXp } from "./pass";
 import { CHEST_PASS_XP } from "../data/pass";
 import { CHEST, CITY, LEAGUES, MAX_FREEZES, MIN_RENT_PER_HOUR, RENT_BONUS_PER_BUILD, RENT_CAP_HOURS, STREAK_REWARDS } from "../data/daily";
@@ -89,23 +90,40 @@ export function tickStreak(save: SaveData, now = Date.now()): Reward[] {
 const missionTier = (save: SaveData): number => (save.profile.level < 5 ? 0 : save.profile.level < 12 ? 1 : 2);
 
 /** Fills empty mission slots with types not already in use. */
-export function dealMissions(save: SaveData, rng: () => number = Math.random): void {
+export function dealMissions(save: SaveData, rng: () => number = Math.random, now = Date.now()): void {
   const tier = missionTier(save);
+  // No wind missions in a week without wind: they couldn't be finished.
+  const calm = !!eventFor(now).noWind;
   while (save.missions.slots.length < 3) {
     const taken = save.missions.slots.map(m => m.t);
-    const pool = MISSION_KEYS.filter(t => !taken.includes(t));
+    const pool = MISSION_KEYS.filter(t => !taken.includes(t) && !(calm && t === "wind"));
     const t = pool[Math.floor(rng() * pool.length)];
     save.missions.slots.push({ t, n: MISSION_TYPES[t].tiers[tier], r: tier + 1, p: 0, d: false });
   }
 }
 
+/** Set when yesterday's unopened chest was opened for the player, so the menu can say so. */
+export const lateChest = { opened: false };
+
 /** Three fresh missions every day. Returns true when it dealt a new set. */
 export function refreshMissions(save: SaveData, now = Date.now(), rng: () => number = Math.random): boolean {
   const today = dayKey(0, now);
   if (save.missions.day === today && save.missions.slots.length === 3) return false;
-  if (save.missions.day !== today) save.missions.slots = [];
+  if (save.missions.day !== today) {
+    // Finished all three yesterday but never opened the chest? It opens itself now.
+    const m = save.missions;
+    if (m.day && m.slots.length === 3 && m.slots.every(x => x.d) && m.chest !== m.day) {
+      m.chest = m.day;
+      save.stars += CHEST.stars;
+      save.starsEarned += CHEST.stars;
+      save.coins += CHEST.coins;
+      addPassXp(save, CHEST_PASS_XP, now);
+      lateChest.opened = true;
+    }
+    save.missions.slots = [];
+  }
   save.missions.day = today;
-  dealMissions(save, rng);
+  dealMissions(save, rng, now);
   return true;
 }
 
@@ -180,7 +198,8 @@ export function leaguePoints(run: RunSummary): number {
 export function rollLeague(save: SaveData, now = Date.now()): void {
   const w = weekIndex(now), L = save.league;
   if (L.week === w) return;
-  if (L.points > 0 && L.week !== 0 && L.rewarded !== L.week) {
+  // Week 0 is a real week (launch week); -1 means no week yet.
+  if (L.points > 0 && L.week >= 0 && L.rewarded !== L.week) {
     L.lastWeek = L.week;
     L.lastPoints = L.points;
   }
@@ -201,7 +220,7 @@ export function addLeague(save: SaveData, run: RunSummary, now = Date.now()): st
 export function pendingLeagueReward(save: SaveData, now = Date.now()): { league: string; stars: number } | null {
   rollLeague(save, now);
   const L = save.league;
-  if (!L.lastWeek || L.rewarded === L.lastWeek) return null;
+  if (L.lastWeek < 0 || L.rewarded === L.lastWeek) return null;
   const l = leagueFor(L.lastPoints);
   return l.stars > 0 ? { league: l.name, stars: l.stars } : null;
 }

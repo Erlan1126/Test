@@ -5,6 +5,8 @@ export type Mode = "classic" | "daily" | "zen" | "challenge";
 /** Everything the rules need to know about a finished tower. */
 export interface RunSummary {
   mode: Mode;
+  /** For a Daily: the day it was started on (it can end after midnight). */
+  day?: number;
   score: number;
   floors: number;
   meters: number;
