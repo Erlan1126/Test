@@ -100,7 +100,7 @@ const LEVELS = [
     "#^#####.v.#",
     "#^<<<<<<<.#",
     "#.#######.#",
-    "#...o.....#",
+    "#...o..t..#",
     "#####.#####",
     "#####S#####",
     "###########",
@@ -133,7 +133,7 @@ const LEVELS = [
     "###.z.z.###",
     "###.....###",
     "#####.#####",
-    "#o....#...#",
+    "#o.t..#...#",
     "#.###.#.#.#",
     "#.#.....#.#",
     "#.#.z.z.#.#",
@@ -175,7 +175,7 @@ const LEVELS = [
     "###D###D###",
     "#<<<<<<<<<#",
     "#.#######.#",
-    "#o#.....#.#",
+    "#o#..t..#.#",
     "#.#.###.#.#",
     "#.#.#o#.#.#",
     "#...#.#...#",
@@ -201,7 +201,7 @@ const LEVELS = [
     "#.#z#.#.#v#",
     "#...#.#.<<#",
     "###.#.#####",
-    "#c..#.....#",
+    "#c..#..t..#",
     "#####S#..o#",
     "###########",
   ]},
@@ -210,7 +210,8 @@ const LEVELS = [
 // ---------- Worlds ----------
 // 50 worlds of 20 levels. The first 10 levels are handmade; the rest are built from a seed,
 // so every player gets the same cave for the same level number.
-const PER_WORLD = 20, WORLDS = 50, TOTAL = PER_WORLD * WORLDS;
+// Eight worlds of twenty caves: fewer than before, but each one with a job of its own.
+const PER_WORLD = 20, WORLDS = 8, TOTAL = PER_WORLD * WORLDS;
 const THEMES = [
   { name: "Moonlit Grotto",  floor: [18, 46, 58], floor2: [30, 30, 72], rock: [62, 82, 128],   deep: [14, 18, 32], rim: [80, 160, 200] },
   { name: "Mossy Hollow",    floor: [16, 44, 36], floor2: [28, 40, 34], rock: [56, 92, 70],    deep: [12, 22, 18], rim: [110, 200, 140] },
@@ -222,14 +223,14 @@ const THEMES = [
   { name: "Starlight Abyss", floor: [16, 16, 40], floor2: [30, 18, 52], rock: [52, 52, 100],   deep: [8, 8, 22],   rim: [255, 150, 220] },
 ];
 const STORY = [
-  "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way.",
+  "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way. But the Hush lives down here too, and its Hushlings hate every song.",
   "Soft moss hums back whenever Lumi sings. The cave is alive, and it seems to be listening.",
   "Purple crystals ring like little bells. Lumi feels braver now, and every song travels further.",
   "Warm air rises from glowing cracks in the rock. The lost lights down here burn brighter than ever.",
   "Everything is quiet and cold. Each song echoes for a long, long time before it fades.",
   "An old underground sea. Tiny creatures glow in the water, and some of them want to be friends.",
   "Someone lived here long ago. Their lanterns are gone, but the tunnels still remember their songs.",
-  "The deepest place of all. Far above, Lumi can almost hear the stars singing back.",
+  "The deepest place of all, where the Great Hush was born. Far above, Lumi can almost hear the stars singing back.",
 ];
 const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
 const DAILY = -1;
@@ -237,16 +238,39 @@ const worldOf = i => Math.floor(i / PER_WORLD);
 // The daily cave changes at midnight UTC, so everyone in the world gets the same one.
 const dayNumber = () => Math.floor(Date.now() / 86400000);
 const dayKey = (n = dayNumber()) => new Date(n * 86400000).toISOString().slice(0, 10);
-const themeIndex = i => (i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
+const WEEKLY = -2;
+const weekNumber = () => Math.floor((dayNumber() + 3) / 7);  // weeks start on Monday (UTC)
+const isChallenge = i => i < 0;
+const themeIndex = i => (i === WEEKLY ? weekNumber() + 3 : i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
 const themeOf = i => THEMES[themeIndex(i)];
-// Energy and Gloomlings get gently harder with depth; the daily cave sits in the middle.
-const depthOf = i => (i < 0 ? 0.5 : Math.min(1, Math.max(0, (i - 10) / 400)));
+// Energy and Hushlings get gently harder with depth; the daily cave sits in the middle.
+const depthOf = i => (i === WEEKLY ? 0.8 : i < 0 ? 0.5 : Math.min(1, Math.max(0, 0.1 + (i - 19) / 160)));
 const worldName = w => THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)];
 
 // Handmade levels that introduce each new idea, placed where it first appears. Each one opens
 // with a picture card (see CARDS in ui.js) the first time it's played.
-const INTRO = {
-  10: { name: "Fading Light", par: 6, card: "energy", map: [
+const INTRO_DEFS = {
+  thorns: { name: "Thorn Alley", par: 5, card: "thorns", hint: "Listen for the rattle. Sing to see what's moving", map: [
+    "###########",
+    "#####E#####",
+    "####...####",
+    "#####.#####",
+    "#o...t...o#",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "#.....t...#",
+    "#.###.###.#",
+    "#.#.....#.#",
+    "#.#.#t#.#.#",
+    "#...#.#...#",
+    "#####.#####",
+    "####...####",
+    "####S..####",
+    "###########",
+    "###########",
+  ]},
+  energy: { name: "Fading Light", par: 6, card: "energy", map: [
     "###########",
     "#####E#####",
     "####...####",
@@ -266,7 +290,7 @@ const INTRO = {
     "###########",
     "###########",
   ]},
-  20: { name: "Lost and Found", par: 6, card: "rescue", goal: "rescue", map: [
+  rescue: { name: "Lost and Found", par: 6, card: "rescue", goal: "rescue", map: [
     "###########",
     "#E..#.....#",
     "###.#.###.#",
@@ -286,7 +310,7 @@ const INTRO = {
     "###########",
     "###########",
   ]},
-  40: { name: "Listening Stones", par: 6, card: "runes", map: [
+  runes: { name: "Listening Stones", par: 6, card: "runes", map: [
     "###########",
     "####.E.####",
     "####...####",
@@ -306,7 +330,7 @@ const INTRO = {
     "###########",
     "###########",
   ]},
-  60: { name: "Shadows", par: 7, card: "gloom", map: [
+  gloom: { name: "Shadows", par: 7, card: "gloom", map: [
     "###########",
     "###..E..###",
     "###.....###",
@@ -326,7 +350,7 @@ const INTRO = {
     "###########",
     "###########",
   ]},
-  64: { name: "Hush", par: 6, songs: 8, card: "quiet", goal: "quiet", map: [
+  quiet: { name: "Hush", par: 6, songs: 8, card: "quiet", goal: "quiet", map: [
     "###########",
     "#E....#...#",
     "#####.#.#.#",
@@ -346,7 +370,7 @@ const INTRO = {
     "###########",
     "###########",
   ]},
-  80: { name: "Into the Dark", par: 8, card: "dark", dark: true, map: [
+  dark: { name: "Into the Dark", par: 8, card: "dark", dark: true, map: [
     "###########",
     "#...#...#E#",
     "#.#.#.#.#.#",
@@ -366,7 +390,7 @@ const INTRO = {
     "####.S.####",
     "###########",
   ]},
-  84: { name: "The Long Climb", par: 9, card: "tall", map: [
+  tall: { name: "The Long Climb", par: 9, card: "tall", map: [
     "###########",
     "#....E....#",
     "#.#######.#",
@@ -394,7 +418,7 @@ const INTRO = {
     "###########",
     "###########",
   ]},
-  100: { name: "Race the Tide", par: 5, time: 30, card: "race", goal: "race", map: [
+  race: { name: "Race the Tide", par: 5, time: 30, card: "race", goal: "race", map: [
     "###########",
     "#####E#####",
     "####...####",
@@ -415,8 +439,17 @@ const INTRO = {
     "###########",
   ]},
 };
-// Level numbers (from 1) where each world's handmade introductions sit, for the README and tests.
-const INTRO_LEVELS = Object.keys(INTRO).map(Number);
+// The first levels, in order: a two-level tutorial, then something new every level or two, so
+// the game gets interesting (and dangerous) fast.
+const FIXED_ORDER = [
+  LEVELS[0], LEVELS[1], INTRO_DEFS.energy, LEVELS[3], INTRO_DEFS.thorns, LEVELS[4], INTRO_DEFS.gloom, LEVELS[6],
+  INTRO_DEFS.rescue, LEVELS[9], INTRO_DEFS.quiet, LEVELS[2], INTRO_DEFS.runes, LEVELS[5], INTRO_DEFS.dark, LEVELS[7],
+  INTRO_DEFS.tall, LEVELS[8], INTRO_DEFS.race,
+];
+// Every handmade level by its index, and the ones that introduce something with a card.
+const INTRO = {};
+FIXED_ORDER.forEach((d, i) => { INTRO[i] = d; });
+const INTRO_LEVELS = Object.keys(INTRO).map(Number).filter(i => INTRO[i].card);
 
 // Every generated cave gets its own name in its world's style.
 const NAME_ADJ = ["Whispering", "Hidden", "Silent", "Glimmering", "Winding", "Sleeping", "Forgotten", "Echoing", "Misty", "Gentle",
@@ -442,15 +475,154 @@ function caveName(n) {
 
 const levelCache = new Map();
 function getLevel(i) {
-  if (i === DAILY) {
-    const day = dayNumber(), key = "daily" + day;
-    if (!levelCache.has(key)) levelCache.set(key, generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }));
+  if (i === WEEKLY) {
+    const week = weekNumber(), key = "weekly" + week;
+    if (!levelCache.has(key)) levelCache.set(key, generateLevel(90000 + week * 17, { hard: 0.8, name: "Weekly Cave" }));
     return levelCache.get(key);
   }
-  if (i < LEVELS.length) return LEVELS[i];
-  if (INTRO[i]) return INTRO[i];
-  if (!levelCache.has(i)) levelCache.set(i, generateLevel(i));
+  if (i === DAILY) {
+    const day = dayNumber(), key = "daily" + day;
+    if (!levelCache.has(key)) levelCache.set(key, withChimes(withLamps(applyTwist(withHushlings(generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }), 50000 + day), day), 50000 + day), 50000 + day));
+    return levelCache.get(key);
+  }
+  if (!levelCache.has(i)) levelCache.set(i, withChimes(withLamps(withHushlings(INTRO[i] || generateLevel(i), i), i), i));
   return levelCache.get(i);
+}
+
+// Relight the city: the old street lamps (an "l" in the map) stand dark along the streets.
+// Sing close to each one and it burns again; when they're all lit, the district wakes and
+// the portal opens. Three lamps, four from World 4, five in the last worlds.
+function withLamps(def, i) {
+  if (def.goal !== "relight") return def;
+  const n = i >= 0 && i < 60 ? 3 : i >= 0 && i < 120 ? 4 : 5, g = def.map.map(row => row.split("")), r = seeded(i * 6151 + 29);
+  let S = [0, 0];
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "S") S = [x, y]; }));
+  const seen = new Set([S + ""]), q = [S];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, c = g[ny] && g[ny][nx];
+      if (!c || c === "#" || c === "W" || c === "z" || seen.has(nx + "," + ny)) continue;
+      seen.add(nx + "," + ny); q.push([nx, ny]);
+    }
+  }
+  // Lamps stand on the street: open tiles with rock below, spread apart.
+  const spots = [];
+  g.forEach((row, y) => row.forEach((c, x) => {
+    if (c !== "." || !seen.has(x + "," + y) || !g[y + 1] || g[y + 1][x] !== "#" || Math.abs(x - S[0]) + Math.abs(y - S[1]) < 4) return;
+    for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (g[yy] && "SEomfrztnakwjgBl".includes(g[yy][xx])) return;
+    spots.push([x, y]);
+  }));
+  const picked = [];
+  while (picked.length < n && spots.length) {
+    let best = Math.floor(r() * spots.length);
+    if (picked.length) {
+      const score = s => Math.min(...picked.map(p => Math.abs(p[0] - s[0]) + Math.abs(p[1] - s[1]))) + r() * 3;
+      for (let k = 0; k < spots.length; k++) if (score(spots[k]) > score(spots[best])) best = k;
+    }
+    picked.push(spots.splice(best, 1)[0]);
+  }
+  if (picked.length < 2) return Object.assign({}, def, { goal: "explore" });
+  picked.forEach(([x, y]) => { g[y][x] = "l"; });
+  return Object.assign({}, def, { map: g.map(row => row.join("")), par: def.par + picked.length, walk: (def.walk || 0) + picked.length * 6 });
+}
+
+// The song puzzle: from level 4, chime stones hide in every cave, written in the map as 1-4 in
+// the order they must be rung. Two at first, three from World 2, four from level 101. Not in
+// caves that already have a job of their own (Run! and Relight the city). They're spread
+// out and shuffled, so finding them and choosing a route is the puzzle. Each true note gives
+// Lumi back some light. (Not in the story's
+// finale, which has its own song.)
+const CHIMES_FROM = 3;
+function withChimes(def, i) {
+  if (i < CHIMES_FROM || i === PER_WORLD * 8 - 1 || def.goal === "escape" || def.goal === "relight") return def;
+  const n = i < 19 ? 2 : i < 100 ? 3 : 4, g = def.map.map(row => row.split("")), r = seeded(i * 7717 + 13);
+  let S = [0, 0];
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "S") S = [x, y]; }));
+  // Tiles Lumi can reach (rune gates open, so they count; Snoozles and echo walls don't).
+  const seen = new Set([S + ""]), q = [S];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, c = g[ny] && g[ny][nx];
+      if (!c || c === "#" || c === "W" || c === "z" || seen.has(nx + "," + ny)) continue;
+      seen.add(nx + "," + ny); q.push([nx, ny]);
+    }
+  }
+  const spots = [];
+  g.forEach((row, y) => row.forEach((c, x) => {
+    if (c !== "." || !seen.has(x + "," + y) || Math.abs(x - S[0]) + Math.abs(y - S[1]) < 4) return;
+    for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (g[yy] && "SEomfrztnakwjgB".includes(g[yy][xx])) return;
+    spots.push([x, y]);
+  }));
+  if (spots.length < n) return def;
+  // Spread them out: each new chime goes far from the others, with a little chance.
+  const picked = [spots.splice(Math.floor(r() * spots.length), 1)[0]];
+  while (picked.length < n && spots.length) {
+    const score = s => Math.min(...picked.map(p => Math.abs(p[0] - s[0]) + Math.abs(p[1] - s[1]))) + r() * 3;
+    let best = 0;
+    for (let k = 1; k < spots.length; k++) if (score(spots[k]) > score(spots[best])) best = k;
+    picked.push(spots.splice(best, 1)[0]);
+  }
+  // Shuffle the ringing order so the nearest chime isn't always first.
+  for (let k = picked.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [picked[k], picked[j]] = [picked[j], picked[k]]; }
+  picked.forEach(([x, y], k) => { g[y][x] = String(k + 1); });
+  // The route now runs past every chime in order: the walk, songs, and any timer grow to match,
+  // so the light budget and par stay fair.
+  const dist = (a, b) => {
+    const d = new Map([[a + "", 0]]), qq = [a];
+    while (qq.length) {
+      const [x, y] = qq.shift(), k = d.get(x + "," + y);
+      if (x === b[0] && y === b[1]) return k;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, c = g[ny] && g[ny][nx];
+        if (!c || c === "#" || c === "W" || c === "z" || d.has(nx + "," + ny)) continue;
+        d.set(nx + "," + ny, k + 1); qq.push([nx, ny]);
+      }
+    }
+    return 0;
+  };
+  let E = S;
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "E") E = [x, y]; }));
+  const stops = [S, ...picked, E];
+  let walk = 0;
+  for (let k = 1; k < stops.length; k++) walk += dist(stops[k - 1], stops[k]);
+  const out = Object.assign({}, def, { map: g.map(row => row.join("")) });
+  const extra = Math.max(0, walk - (def.walk || 0));
+  out.walk = (def.walk || 0) + extra;
+  out.par = def.par + picked.length;
+  if (def.songs) out.songs = def.songs + picked.length;
+  if (def.time) out.time = def.time + Math.ceil(extra / 2.2) + picked.length * 2;
+  return out;
+}
+
+// From level 6 on, every cave has at least three Hushlings (the Great Hush counts as one).
+// The generator places them itself; this tops up the handmade caves and any cave too cramped.
+const MIN_HUSHLINGS = 3, HUSHLINGS_FROM = 5;
+function withHushlings(def, i) {
+  if (i < HUSHLINGS_FROM) return def;
+  const g = def.map.map(row => row.split("")), r = seeded(i * 4211 + 77);
+  const count = () => g.flat().filter(c => c === "g" || c === "B").length;
+  // In a Run! cave the hunter chasing you is the third.
+  const want = def.goal === "escape" ? MIN_HUSHLINGS - 1 : MIN_HUSHLINGS;
+  if (count() >= want) return def;
+  let S = [0, 0];
+  g.forEach((row, y) => row.forEach((c, x) => { if (c === "S") S = [x, y]; }));
+  for (const near of [6, 4]) {
+    while (count() < want) {
+      const spots = [];
+      g.forEach((row, y) => row.forEach((c, x) => {
+        if (c !== "." || Math.abs(x - S[0]) + Math.abs(y - S[1]) < near) return;
+        for (let yy = y - 2; yy <= y + 2; yy++) for (let xx = x - 2; xx <= x + 2; xx++)
+          if (g[yy] && "tnakwjgBmfEo".includes(g[yy][xx])) return;  // and never guarding a light
+        spots.push([x, y]);
+      }));
+      if (!spots.length) break;
+      const [x, y] = spots[Math.floor(r() * spots.length)];
+      g[y][x] = "g";
+    }
+  }
+  return Object.assign({}, def, { map: g.map(row => row.join("")) });
 }
 
 function seeded(a) {
@@ -468,52 +640,70 @@ function seeded(a) {
 // finale at the end of each world.
 const isBreather = n => n % 5 === 3 && n % PER_WORLD !== PER_WORLD - 1;
 const isFinale = n => n % PER_WORLD === PER_WORLD - 1;
+// The level in each world where one of Lumi's little lights is hiding.
+const familyLevel = w => w * PER_WORLD + (w === 0 ? 19 : 9);
 
 // Each world leans on one or two ideas it introduces, so worlds feel different from each
 // other. A level only uses ideas that have been introduced by then, and never more than
 // three big ones at once.
-const BASICS = ["doors", "currents", "snoozles"];
+const BASICS = ["doors", "currents", "snoozles", "thorns"];
 const SIGNATURE = [
-  [],                         // 1 Moonlit Grotto: the basics, then light energy
+  ["thorns", "gloom"],        // 1 Moonlit Grotto: Thornlings and the first Hushlings
   ["rescue"],                 // 2 Mossy Hollow: lost baby moths
-  ["runes"],                  // 3 Amethyst Deep: rune stones and gates
-  ["gloom", "quiet"],         // 4 Ember Caverns: Gloomlings and quiet caves
+  ["runes", "echo"],          // 3 Amethyst Deep: rune stones, gates and echo crystals
+  ["gloom", "quiet", "thorns"], // 4 Ember Caverns: Hushlings, quiet caves and Thornlings
   ["dark", "tall"],           // 5 Frost Tunnels: dark caves and long climbs
   ["race", "currents"],       // 6 Coral Depths: races on the tide
   ["runes", "doors", "tall"], // 7 Golden Mines
-  ["gloom", "dark", "race"],  // 8 Starlight Abyss
+  ["gloom", "dark", "race", "echo"], // 8 Starlight Abyss
 ];
 // Where each idea is first introduced (by a handmade level in INTRO).
-const UNLOCK = { doors: 3, currents: 4, snoozles: 6, rescue: 20, runes: 40, gloom: 60, quiet: 64, dark: 80, tall: 84, race: 100 };
-const GOALS = ["rescue", "quiet", "race"];
+const UNLOCK = { doors: 3, thorns: 4, currents: 5, gloom: 6, snoozles: 7, rescue: 8, quiet: 10, runes: 12, dark: 14, tall: 16, race: 18, echo: 24 };
+const GOALS = ["rescue", "quiet", "race", "escape", "relight"];
+// What each cave in a world asks of you, by its place in the world (finales are index 19), so
+// one cave never plays like the last: explore, relight the city, run, rescue, sneak, race...
+const SLOT_GOALS = ["explore", "relight", "explore", "explore", "escape", "rescue", "explore", "quiet", "explore", "relight",
+  "race", "escape", "explore", "explore", "rescue", "relight", "quiet", "escape", "race", "explore"];
+const GOAL_FROM = { rescue: UNLOCK.rescue, quiet: UNLOCK.quiet, race: UNLOCK.race, escape: 20, relight: 20 };
+// Each world's signature creature, and where each creature first appears.
+const WORLD_MOB = ["t", "n", "a", "k", "w", "j", "k", "a"];
+const MOB_UNLOCK = { t: 4, n: 20, a: 40, k: 60, w: 80, j: 100 };
 function planLevel(n, daily, hard, pre) {
   const w = daily ? dayNumber() % THEMES.length : worldOf(n), sig = SIGNATURE[w % SIGNATURE.length];
-  const open = Object.keys(UNLOCK).filter(k => daily || n >= UNLOCK[k]);
+  // The daily cave stays one screen tall, so it fits a coffee break.
+  const open = Object.keys(UNLOCK).filter(k => (daily ? k !== "tall" : n >= UNLOCK[k]));
   const plan = new Set();
   for (const k of open) {
     const signature = sig.includes(k);
     const chance = GOALS.includes(k) ? (signature ? 0.4 : 0.12) : (signature ? 0.6 : 0.28) + hard * 0.2;
     if (pre() < chance) plan.add(k);
   }
-  // Only one goal per level, preferring the world's own.
-  const goals = [...plan].filter(k => GOALS.includes(k)).sort((a, b) => sig.includes(b) - sig.includes(a));
-  goals.slice(1).forEach(k => plan.delete(k));
+  // Goals come from the cave's place in its world (see SLOT_GOALS), not from chance.
+  for (const k of GOALS) plan.delete(k);
   // At most three big ideas (one on a breather level), keeping the world's signature first.
-  const limit = !daily && isBreather(n) ? 1 : 3;
+  // A cave with a job of its own (see SLOT_GOALS) gets one idea fewer.
+  const slotGoal = !daily && SLOT_GOALS[n % PER_WORLD] !== "explore" && n >= GOAL_FROM[SLOT_GOALS[n % PER_WORLD]];
+  const limit = !daily && isBreather(n) ? 1 : slotGoal ? 2 : 3;
   const ranked = [...plan].sort((a, b) => sig.includes(b) - sig.includes(a) || pre() - 0.5);
-  return new Set(ranked.slice(0, limit));
+  const chosen = new Set(ranked.filter(k => k !== "gloom").slice(0, limit));
+  // Hushlings are the caves' villains: once they've appeared, they're in every cave.
+  if (open.includes("gloom")) chosen.add("gloom");
+  return chosen;
 }
 
 function generateLevel(n, opts = {}) {
   const daily = opts.hard != null;
-  let hard = daily ? opts.hard : Math.min(1, (n - 10) / 400);
+  // Difficulty starts a fifth of the way up as soon as the handmade levels end.
+  let hard = daily ? opts.hard : Math.min(1, 0.2 + Math.max(0, n - 19) / 170);
   if (!daily && isBreather(n)) hard *= 0.4;
   if (!daily && isFinale(n)) hard = Math.min(1, hard + 0.25);
   const pre = seeded(n * 131 + 7);
   const plan = planLevel(n, daily, hard, pre);
-  const C = 11, R = plan.has("tall") ? (pre() < 0.55 ? 26 : 34) : 18;
+  // Big caves are either tall (scrolling up and down) or, from level 101, wide (scrolling sideways).
+  const wide = plan.has("tall") && (daily || n >= 100) && pre() < 0.4;
+  const C = wide ? 17 : 11, R = plan.has("tall") && !wide ? (pre() < 0.55 ? 26 : 34) : 18;
   const dark = plan.has("dark");
-  const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], big = R / 18;
+  const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], big = (R * C) / (18 * 11);
   for (let attempt = 0; ; attempt++) {
     const r = seeded(n * 7919 + attempt * 104729 + 17);
     const pick = a => a[Math.floor(r() * a.length)];
@@ -737,18 +927,97 @@ function generateLevel(n, opts = {}) {
       }
     }
 
-    // Gloomlings: shadows that come looking when they hear you sing.
+    // Hushlings: shadows that come looking when they hear you sing.
     if (plan.has("gloom")) {
-      const want = 1 + Math.floor(r() * (1 + hard * 2));
-      for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
+      // Finales with the Great Hush get at most one ordinary Hushling besides.
+      // Hushlings count toward the cap of five creatures per cave (six in a big one).
+      // Hushlings are the caves' villains: three in every cave (four, sometimes, deep down),
+      // and two beside the Great Hush. Other creatures fill whatever room is left.
+      const want = !daily && isFinale(n) ? 2 : 3 + (hard > 0.6 && r() < 0.4 ? 1 : 0);
+      for (let k = 0, tries = 0; k < want && tries < 200; tries++) {
         const [x, y] = pick(floor);
         if (free(x, y) && Math.abs(x - S[0]) + Math.abs(y - S[1]) >= 6) { g[y][x] = "g"; k++; }
       }
     }
 
+    // Thornlings patrol straight tunnels on the way to the portal.
+    // A patrol lane never passes close to the start, so nothing hits Lumi before it can look.
+    const laneNearStart = (x, y) => {
+      let l = x, rr = x, u = y, dd = y;
+      while (open(l - 1, y) && g[y][l - 1] !== "D") l--;
+      while (open(rr + 1, y) && g[y][rr + 1] !== "D") rr++;
+      while (open(x, u - 1) && g[u - 1][x] !== "D") u--;
+      while (open(x, dd + 1) && g[dd + 1][x] !== "D") dd++;
+      return rr - l >= dd - u ? Math.abs(y - S[1]) <= 1 && S[0] >= l - 1 && S[0] <= rr + 1 : Math.abs(x - S[0]) <= 1 && S[1] >= u - 1 && S[1] <= dd + 1;
+    };
+    if (plan.has("thorns")) {
+      const want = Math.min(3, 1 + Math.floor(r() * (1.5 + hard * 2)));
+      const spots = route.slice(3, -3).filter(([x, y]) => g[y][x] === "." &&
+        ((open(x - 1, y) && open(x + 1, y) && (open(x - 2, y) || open(x + 2, y))) || (open(x, y - 1) && open(x, y + 1) && (open(x, y - 2) || open(x, y + 2)))));
+      for (let k = 0; k < want && spots.length; k++) {
+        const [x, y] = spots.splice(Math.floor(r() * spots.length), 1)[0];
+        if (Math.abs(x - S[0]) + Math.abs(y - S[1]) > 3 && !laneNearStart(x, y)) g[y][x] = "t";
+      }
+    }
+
+    // Every cave beyond the handmade ones has creatures, more the deeper you go: mostly the
+    // world's own, plus ones met in earlier worlds.
+    {
+      const w = (daily ? dayNumber() : worldOf(n)) % WORLD_MOB.length, own = WORLD_MOB[w];
+      const met = Object.keys(MOB_UNLOCK).filter(k => daily || n >= MOB_UNLOCK[k]);
+      const count = Math.max(1, Math.min(6, 1 + Math.floor(hard * 3.5) + (r() < 0.5 ? 1 : 0) + (R * C > 198 ? 1 : 0) - (!daily && isBreather(n) ? 1 : 0)));
+      const fits = (kind, x, y) => {
+        if (!free(x, y) || Math.abs(x - S[0]) + Math.abs(y - S[1]) < 5) return false;
+        // Creatures keep their distance from each other, so no spot needs dodging two at once.
+        for (let yy = y - 2; yy <= y + 2; yy++) for (let xx = x - 2; xx <= x + 2; xx++)
+          if (Math.abs(xx - x) + Math.abs(yy - y) <= 2 && g[yy] && "tnakwjgB".includes(g[yy][xx])) return false;
+        if (kind === "t") return ((open(x - 1, y) && open(x + 1, y)) || (open(x, y - 1) && open(x, y + 1))) && !laneNearStart(x, y);
+        if (kind === "n") return D4.filter(([dx, dy]) => !open(x + dx, y + dy)).length === 1;
+        if (kind === "a") return !open(x, y - 1) && open(x, y + 1);
+        if (kind === "k") return !open(x, y + 1) && open(x - 1, y) && open(x + 1, y) && (open(x - 2, y) || open(x + 2, y)) && Math.abs(y - S[1]) > 1;
+        if (kind === "j") return open(x, y - 1) && open(x, y + 1) && (open(x, y - 2) || open(x, y + 2)) && Math.abs(x - S[0]) > 1;
+        return true;
+      };
+      // Never more than five creatures in a cave (six in a big one), counting Thornlings and Hushlings.
+      const already = g.flat().filter(c => "tgB".includes(c)).length, cap = (R * C > 198 ? 6 : 5) - already;
+      for (let k = 0; k < Math.min(count, cap) && met.length; k++) {
+        const kind = met.includes(own) && r() < 0.6 ? own : pick(met);
+        const spots = floor.filter(([x, y]) => fits(kind, x, y));
+        if (spots.length) { const [x, y] = pick(spots); g[y][x] = kind; }
+      }
+    }
+
+    // Echo crystals: rock faces that bounce a song onward, carrying it around corners.
+    if (plan.has("echo")) {
+      const faces = [];
+      for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) {
+        if (g[y][x] !== "#") continue;
+        const openSides = D4.filter(([dx, dy]) => open(x + dx, y + dy)).length;
+        if (openSides >= 1 && openSides <= 2) faces.push([x, y]);
+      }
+      const want = Math.min(faces.length, 2 + Math.floor(r() * 3) + Math.round(big));
+      for (let k = 0; k < want; k++) { const [x, y] = faces.splice(Math.floor(r() * faces.length), 1)[0]; g[y][x] = "W"; }
+    }
+
+    // The Great Hush guards world finales from World 4, halfway along the way to the portal.
+    if (!daily && isFinale(n) && n >= UNLOCK.gloom) {
+      const mid = route.slice(Math.floor(route.length * 0.35), Math.floor(route.length * 0.7)).filter(([x, y]) => g[y][x] === ".");
+      if (mid.length) { const [x, y] = pick(mid); g[y][x] = "B"; }
+    }
+    // One of Lumi's little lights hides in one level of every world, away from the main path.
+    if (!daily && n === familyLevel(worldOf(n))) {
+      // Reachable without squeezing past a Snoozle, which would block a narrow tunnel.
+      ({ d } = bfs(S[0], S[1], new Set(Object.keys(critterSpots(g)))));
+      const spots = floor.filter(([x, y]) => free(x, y) && !onRoute.has(x + "," + y) && d[y][x] >= 6).sort((a, b) => d[b[1]][b[0]] - d[a[1]][a[0]]);
+      if (!spots.length) continue;
+      const [x, y] = spots[Math.floor(r() * Math.min(4, spots.length))];
+      g[y][x] = "f";
+    }
+
     // Level goal. Most caves are about exploring; some ask for something different.
     let goal = "explore", baby = null;
-    goal = GOALS.find(k => plan.has(k)) || "explore";
+    if (daily) goal = pick(["explore", "explore", "rescue", "quiet", "race", "relight", "escape"]);
+    else { const want = SLOT_GOALS[n % PER_WORLD]; goal = want !== "explore" && n >= GOAL_FROM[want] ? want : "explore"; }
     if (goal === "rescue") {
       ({ d } = bfs(S[0], S[1]));
       const spots = floor.filter(([x, y]) => free(x, y) && d[y][x] >= 8 * big);
@@ -766,11 +1035,12 @@ function generateLevel(n, opts = {}) {
       pos = left.shift();
     }
     walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
-    const parPings = Math.ceil(walk / 5.5) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0);
+    // Tighter than before: in testing a robot that knew the map used under half the target.
+    const parPings = Math.ceil(walk / 8) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0) + (dark ? 2 : 0);
     return {
       name: opts.name || caveName(n), par: parPings, map: g.map(row => row.join("")), style, dark, goal, walk,
       songs: goal === "quiet" ? parPings + 2 : 0,
-      time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3) : 0,
+      time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3 + g.flat().filter(c => "tnakwjgB".includes(c)).length * 2.5) : 0,
     };
   }
 }
@@ -784,8 +1054,8 @@ const WAVE_SPEED = 8.5;   // tiles per second
 const WAVE_RANGE = 7.5;   // tiles the song travels
 const MEMORY = 0.13;      // how bright remembered walls stay
 const TH = 0.55;          // where rock begins in the cave's shape field
-const SWIM_MAX = 4.2;     // tiles per second at full stick
-const SWIM_GRIP = 14;     // how quickly Lumi reaches the speed you ask for
+const SWIM_MAX = 4.6;     // tiles per second at full stick
+const SWIM_GRIP = 18;     // how quickly Lumi reaches the speed you ask for
 const CURRENT_ACC = 14;
 const STICK_SIZES = [36, 46, 60];
 let STICK_R = 46;         // px the thumb travels for full speed (set from settings once loaded)
