@@ -36,14 +36,17 @@ const R3D = (() => {
 
   // ---------- Darkness: what hasn't been revealed stays dark ----------
   let visData = new Uint8Array(4), visTex = new T.DataTexture(visData, 1, 1, T.RGBAFormat);
-  const uVis = { value: visTex }, uDims = { value: new T.Vector2(1, 1) };
-  function withVis(mat, floor = 0.035) {
+  const uVis = { value: visTex }, uDims = { value: new T.Vector2(1, 1) }, uLumi = { value: new T.Vector3() };
+  // cut: buildings between the camera and Lumi are cut down to their ground floor, like a
+  // doll's house, so Lumi is never hidden behind a wall.
+  function withVis(mat, floor = 0.035, cut = false) {
     mat.onBeforeCompile = sh => {
-      sh.uniforms.uVis = uVis; sh.uniforms.uDims = uDims;
+      sh.uniforms.uVis = uVis; sh.uniforms.uDims = uDims; sh.uniforms.uLumi = uLumi;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;")
         .replace("#include <project_vertex>", "#include <project_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;\nuniform sampler2D uVis;\nuniform vec2 uDims;")
-        .replace("#include <fog_fragment>", `float visK = texture2D(uVis, vec2(vWPos.x / uDims.x, vWPos.z / uDims.y)).r;
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;\nuniform sampler2D uVis;\nuniform vec2 uDims;\nuniform vec3 uLumi;")
+        .replace("#include <fog_fragment>", `${cut ? "if (vWPos.y > 0.62 && vWPos.z > uLumi.z + 0.45 && abs(vWPos.x - uLumi.x) < 2.6 && vWPos.z < uLumi.z + 7.0) discard;" : ""}
+          float visK = texture2D(uVis, vec2(vWPos.x / uDims.x, vWPos.z / uDims.y)).r;
           gl_FragColor.rgb *= mix(${floor.toFixed(3)}, 1.0, smoothstep(0.0, 0.85, visK));
           #include <fog_fragment>`);
     };
@@ -86,6 +89,83 @@ const R3D = (() => {
     return t;
   };
   const GRAIN = grain(false), GRAIN_B = grain(true);
+  // ---------- The lost city: stone facades, ground floors, roofs, cobbled streets ----------
+  // Facades are one tile wide and two floors tall; a few windows still glow (the emissive map
+  // holds just the lit glass). Ground floors have doors, shop arches or blind arcades.
+  const ashlar = (g, w, h, rowH, tone) => {
+    g.fillStyle = `rgb(${tone - 30},${tone - 28},${tone - 22})`; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += rowH) {
+      let x = -Math.random() * 40;
+      while (x < w) {
+        const bw = 40 + Math.random() * 46, v = tone + (Math.random() - 0.5) * 28;
+        g.fillStyle = `rgb(${v},${v + 2},${v + 8})`; g.fillRect(x + 2, y + 2, bw - 4, rowH - 4);
+        g.fillStyle = "rgba(255,255,255,0.06)"; g.fillRect(x + 2, y + 2, bw - 4, 3);
+        x += bw;
+      }
+    }
+  };
+  const archPath = (g, x, y, w, h) => { g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + w / 2); g.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); g.lineTo(x + w, y + h); g.closePath(); };
+  const repeatTex = t => { t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t; };
+  const facade = () => {
+    const lit = [Math.random() < 0.28, Math.random() < 0.22];
+    const draw = emis => (g, w, h) => {
+      if (emis) { g.fillStyle = "#000"; g.fillRect(0, 0, w, h); } else ashlar(g, w, h, 32, 128);
+      for (let f = 0; f < 2; f++) {
+        const fy = f * 256, x = 76, y = fy + 52, ww = 104, wh = 150;
+        if (!emis) {
+          g.fillStyle = "rgb(150,152,160)"; archPath(g, x - 12, y - 12, ww + 24, wh + 20); g.fill();
+          g.fillStyle = "rgb(120,122,130)"; g.fillRect(x - 20, y + wh + 6, ww + 40, 14);
+          g.fillStyle = "rgba(0,0,0,0.45)"; g.fillRect(0, fy + 236, w, 20);
+          g.fillStyle = "rgb(140,142,150)"; g.fillRect(0, fy + 226, w, 12);
+        }
+        const glass = g.createLinearGradient(0, y, 0, y + wh);
+        if (lit[f]) { glass.addColorStop(0, "#ffe3a8"); glass.addColorStop(1, "#ff9a3a"); } else { glass.addColorStop(0, emis ? "#000" : "#1a2236"); glass.addColorStop(1, emis ? "#000" : "#06080e"); }
+        g.fillStyle = glass; archPath(g, x, y, ww, wh); g.fill();
+        if (!emis || lit[f]) {
+          g.strokeStyle = emis ? "#000" : "#151319"; g.lineWidth = 7;
+          g.beginPath(); g.moveTo(x + ww / 2, y); g.lineTo(x + ww / 2, y + wh); g.moveTo(x, y + wh * 0.5); g.lineTo(x + ww, y + wh * 0.5); g.stroke();
+        }
+        if (lit[f] && !emis) { g.fillStyle = "rgba(70,30,10,0.5)"; g.fillRect(x + 8, y + wh * 0.62, ww * 0.38, wh * 0.3); }
+      }
+    };
+    return { map: repeatTex(tex(256, 512, draw(false))), em: repeatTex(tex(256, 512, draw(true))) };
+  };
+  const groundFloor = kind => {
+    const draw = emis => (g, w, h) => {
+      if (emis) { g.fillStyle = "#000"; g.fillRect(0, 0, w, h); } else ashlar(g, w, h, 32, 112);
+      if (kind === 0) {           // a wooden door with a lamp above
+        if (!emis) {
+          g.fillStyle = "rgb(140,142,150)"; archPath(g, 70, 70, 116, 186); g.fill(); g.fillStyle = "#3a2414"; archPath(g, 82, 82, 92, 174); g.fill();
+          g.strokeStyle = "#1c0f07"; g.lineWidth = 4; for (let q = 1; q < 4; q++) { g.beginPath(); g.moveTo(82 + q * 23, 110); g.lineTo(82 + q * 23, 256); g.stroke(); }
+        }
+        g.fillStyle = emis ? "#ffb050" : "#ffd27a"; g.fillRect(118, 40, 20, 22);
+      } else if (kind === 1) {    // an open shop arch, dark inside, a warm counter light
+        if (!emis) { g.fillStyle = "rgb(140,142,150)"; archPath(g, 30, 60, 196, 196); g.fill(); }
+        const gr = g.createLinearGradient(0, 80, 0, 256); gr.addColorStop(0, emis ? "#000" : "#07080c"); gr.addColorStop(1, emis ? "#3a1a06" : "#2a1606");
+        g.fillStyle = gr; archPath(g, 44, 74, 168, 182); g.fill();
+      } else if (!emis) {         // a blind arcade
+        for (let q = 0; q < 2; q++) { g.fillStyle = "rgb(96,98,106)"; archPath(g, 20 + q * 118, 90, 98, 166); g.fill(); g.fillStyle = "rgba(0,0,0,0.35)"; archPath(g, 28 + q * 118, 98, 82, 158); g.fill(); }
+      }
+      if (!emis) { g.fillStyle = "rgb(70,72,80)"; g.fillRect(0, 236, w, 20); }
+    };
+    return { map: repeatTex(tex(256, 256, draw(false))), em: repeatTex(tex(256, 256, draw(true))) };
+  };
+  const ROOF = repeatTex(tex(256, 256, (g, w) => {
+    g.fillStyle = "#3a3d48"; g.fillRect(0, 0, w, w);
+    for (let y = 0; y < w; y += 22) for (let x = -((y / 22) % 2) * 20; x < w; x += 40) { const v = 60 + Math.random() * 30; g.fillStyle = `rgb(${v},${v + 2},${v + 10})`; g.beginPath(); g.ellipse(x + 20, y + 14, 19, 12, 0, 0, Math.PI); g.fill(); }
+    g.fillStyle = "rgba(255,255,255,0.18)"; g.fillRect(0, 0, w, 10); g.fillRect(0, 0, 10, w);
+  }));
+  const COBBLE = repeatTex(tex(512, 512, (g, w) => {
+    g.fillStyle = "#121318"; g.fillRect(0, 0, w, w);
+    const rows = 16, rh = w / rows;
+    for (let y = 0; y < rows; y++) { let x = -Math.random() * 20; while (x < w) { const sw = rh * (0.9 + Math.random() * 0.8), v = 70 + Math.random() * 50; g.fillStyle = `rgb(${v},${v + 2},${v + 8})`; g.beginPath(); if (g.roundRect) g.roundRect(x + 2, y * rh + 2, sw - 4, rh - 4, rh * 0.3); else g.rect(x + 2, y * rh + 2, sw - 4, rh - 4); g.fill(); x += sw; } }
+  }));
+  COBBLE.anisotropy = 8;
+  const FACADES = [facade(), facade(), facade()], GROUNDS = [groundFloor(0), groundFloor(1), groundFloor(2)];
+  const MIST = repeatTex(tex(256, 256, (g, w) => {
+    for (let k = 0; k < 60; k++) { const x = Math.random() * w, y = Math.random() * w, r = 20 + Math.random() * 60, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(255,255,255,0.18)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  }));
+  const BLOB = tex(128, 128, (g, w) => { const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, "rgba(0,0,0,0.8)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   const LUMI_T = tex(256, 256, (g, w) => {
     const c = w / 2;
     const gr = g.createRadialGradient(c - 18, c - 4, 6, c, c + 18, 70);
@@ -165,7 +245,27 @@ const R3D = (() => {
   };
   const hideAll = () => { for (const p of Object.values(pools)) for (const o of p) o.visible = false; };
   const lightPool = Array.from({ length: 7 }, () => { const l = new T.PointLight(0xffffff, 0, 6, 1.6); scene.add(l); return l; });
-  const lumiLight = new T.PointLight(0x9feeff, 2.2, 9, 1.5); scene.add(lumiLight);
+  const lumiLight = new T.PointLight(0x9feeff, 1.2, 7, 1.5); scene.add(lumiLight);
+  // Lumi's light also shines down from just above it and casts real shadows: the buildings
+  // throw long shadows across the street as Lumi swims past.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+  const lumiSpot = new T.SpotLight(0xa8f0ff, 3.2, 11, 1.25, 0.65, 1.4);
+  lumiSpot.castShadow = true;
+  lumiSpot.shadow.mapSize.set(1024, 1024); lumiSpot.shadow.camera.near = 0.2; lumiSpot.shadow.camera.far = 12; lumiSpot.shadow.bias = -0.002;
+  scene.add(lumiSpot); scene.add(lumiSpot.target);
+  // Fireflies and dust: the dark is never quite still.
+  const FLIES = 160, flyGeo = new T.BufferGeometry(), flyPos = new Float32Array(FLIES * 3), flyCol = new Float32Array(FLIES * 3), flySeed = new Float32Array(FLIES * 4);
+  flyGeo.setAttribute("position", new T.BufferAttribute(flyPos, 3)); flyGeo.setAttribute("color", new T.BufferAttribute(flyCol, 3));
+  const flies = new T.Points(flyGeo, new T.PointsMaterial({ map: GLOWT, size: 0.13, vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
+  scene.add(flies);
+  // Two thin layers of mist drifting along the streets.
+  const mists = [0.12, 0.45].map((y, k) => {
+    const map = MIST.clone(); map.needsUpdate = true;
+    const m = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map, transparent: true, opacity: 0.16 - k * 0.05, depthWrite: false, blending: T.AdditiveBlending }));
+    m.rotation.x = -Math.PI / 2; m.position.y = y; scene.add(m); return m;
+  });
+  let cityMats = [];
   const songLight = new T.PointLight(0xb0f2ff, 0, 1, 1.2); scene.add(songLight);
   const lumiCard = card(LUMI_T, 0.95, 0.95); lumiCard.renderOrder = 5; scene.add(lumiCard);
   const lumiGlow = glow(0x7ee8ff, 2.2, 0.45); lumiGlow.renderOrder = 2; scene.add(lumiGlow);
@@ -201,21 +301,17 @@ const R3D = (() => {
       const tx = i / S - PAD, ty = j / S - PAD, v = shape.at(tx, ty);
       const rk = smooth(TH - 0.05, TH + 0.2, v), top = smooth(TH + 0.12, TH + 0.4, v);
       const n1 = vnoise(tx * 1.3 + 7, ty * 1.3), n2 = vnoise(tx * 4.1, ty * 4.1 + 3);
-      const h = rk * (WALL + (n1 - 0.5) * 0.45 * top + (n2 - 0.5) * 0.1) + (1 - rk) * (n2 - 0.5) * 0.04;
+      const h = (n2 - 0.5) * 0.015;
       const k = (j * gw + i) * 3;
       posA[k] = tx; posA[k + 1] = h; posA[k + 2] = ty;
-      uvA[(j * gw + i) * 2] = tx * 0.5; uvA[(j * gw + i) * 2 + 1] = ty * 0.5;
+      uvA[(j * gw + i) * 2] = tx * 0.6; uvA[(j * gw + i) * 2 + 1] = ty * 0.6;
       // Floor: the world's ground in patches; walls: banded stone; tops: moss, snow, ash...
       // The floor darkens where it meets the rock, so walls sit firmly in it.
       tmp.copy(floorC).lerp(floor2, vnoise(tx * 0.5, ty * 0.5)).multiplyScalar((0.75 + n2 * 0.4) * (1 - smooth(TH - 0.4, TH, v) * 0.55));
       const band = 0.85 + 0.15 * Math.sin(h * 9 + n1 * 4);
       const rockCol = rockC.clone().lerp(deepC, 0.35 * (1 - top)).multiplyScalar(band * (0.85 + n2 * 0.3));
-      tmp.lerp(rockCol, rk);
-      tmp.lerp(topC.clone().multiplyScalar(0.8 + n1 * 0.4), top * (mat ? mat.top[3] * 0.85 : 0.3));
-      tmp.lerp(rimC, Math.max(0, rk - top) * 0.12);
-      // A bright lip where a wall's top meets its side, so every wall reads crisply from above.
-      const lip = smooth(TH + 0.06, TH + 0.14, v) * (1 - smooth(TH + 0.16, TH + 0.26, v));
-      tmp.lerp(rimC.clone().multiplyScalar(1.6), lip * 0.35);
+      // Moss, snow or ash creeps out from the foot of the walls.
+      tmp.lerp(topC.clone().multiplyScalar(0.7 + n1 * 0.4), smooth(TH - 0.3, TH, v) * (mat ? mat.top[3] * 0.5 : 0.2) * n1);
       colA[k] = tmp.r; colA[k + 1] = tmp.g; colA[k + 2] = tmp.b;
     }
     const idx = [];
@@ -229,7 +325,73 @@ const R3D = (() => {
     geo.setAttribute("uv", new T.BufferAttribute(uvA, 2));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    root.add(new T.Mesh(geo, withVis(new T.MeshStandardMaterial({ vertexColors: true, map: GRAIN, bumpMap: GRAIN_B, bumpScale: 0.018, roughness: 0.8, metalness: 0.02 }))));
+    const street = new T.Mesh(geo, withVis(new T.MeshStandardMaterial({ vertexColors: true, map: COBBLE, bumpMap: COBBLE, bumpScale: 0.012, roughness: 0.55, metalness: 0.08 })));
+    street.receiveShadow = true;
+    root.add(street);
+
+    // The city: every rock tile is a stone building, and the city carries on past the cave's
+    // edges into the fog, taller and taller. Walls are only built where they can be seen
+    // (facing a street or a lower neighbour); the ground floor has doors and shop arches.
+    const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
+    const inside = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
+    const hash = (x, y) => { const h = Math.sin(x * 127.1 + y * 311.7 + levelIndex * 13.7) * 43758.5453; return h - Math.floor(h); };
+    const height = (x, y) => {
+      const n = vnoise(x * 0.35 + 3, y * 0.35), r = hash(x, y);
+      if (inside(x, y)) return 1.25 + n * 1.1 + (r > 0.9 ? 1.2 : 0);
+      const far = Math.max(-x, x - cols + 1, -y, y - rows + 1, 0);
+      return 1.8 + n * 1.8 + far * 0.25 + (r > 0.85 ? 2.5 : 0);
+    };
+    const B = { up: [[], [], []], gf: [[], [], []], roof: [] };
+    const quad = (buf, a, b, c, d, nx, ny, nz, u0, u1, v0, v1) => {
+      const base = buf.length / 8;
+      for (const [p, u, v] of [[a, u0, v0], [b, u1, v0], [c, u1, v1], [d, u0, v1]]) buf.push(p[0], p[1], p[2], nx, ny, nz, u, v);
+      (buf.idx || (buf.idx = [])).push(base, base + 1, base + 2, base, base + 2, base + 3);
+    };
+    const R = PAD;
+    for (let y = -R; y < rows + R; y++) for (let x = -R; x < cols + R; x++) {
+      if (!rock(x, y)) continue;
+      const h = height(x, y), v = Math.floor(hash(y, x) * 3), gv = Math.floor(hash(x + 7, y) * 3);
+      quad(B.roof, [x, h, y + 1], [x + 1, h, y + 1], [x + 1, h, y], [x, h, y], 0, 1, 0, 0, 1, 0, 1);
+      // Four sides: south (+y), north (-y), east (+x), west (-x), each wound to face outward.
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        const nx = x + dx, ny = y + dy, nh = rock(nx, ny) ? height(nx, ny) : 0;
+        if (nh >= h - 0.01) continue;
+        let p0, p1;
+        if (dy === 1) { p0 = [x, y + 1]; p1 = [x + 1, y + 1]; }
+        else if (dy === -1) { p0 = [x + 1, y]; p1 = [x, y]; }
+        else if (dx === 1) { p0 = [x + 1, y + 1]; p1 = [x + 1, y]; }
+        else { p0 = [x, y]; p1 = [x, y + 1]; }
+        const wall = (buf, y0, y1) => quad(buf, [p0[0], y0, p0[1]], [p1[0], y0, p1[1]], [p1[0], y1, p1[1]], [p0[0], y1, p0[1]], dx, 0, dy, 0, 1, y0 / 2, y1 / 2);
+        const streetSide = nh === 0;
+        if (streetSide) quad(B.gf[gv], [p0[0], 0, p0[1]], [p1[0], 0, p1[1]], [p1[0], Math.min(1, h), p1[1]], [p0[0], Math.min(1, h), p0[1]], dx, 0, dy, 0, 1, 0, Math.min(1, h));
+        const from = streetSide ? Math.min(1, h) : nh;
+        if (h > from) wall(B.up[v], from, h);
+      }
+    }
+    const mesh = (buf, matl) => {
+      if (!buf.length) return;
+      const a = new Float32Array(buf), g = new T.BufferGeometry();
+      const ib = new T.InterleavedBuffer(a, 8);
+      g.setAttribute("position", new T.InterleavedBufferAttribute(ib, 3, 0));
+      g.setAttribute("normal", new T.InterleavedBufferAttribute(ib, 3, 3));
+      g.setAttribute("uv", new T.InterleavedBufferAttribute(ib, 2, 6));
+      g.setIndex(buf.idx);
+      const m = new T.Mesh(g, matl); m.castShadow = true; m.receiveShadow = true; root.add(m);
+    };
+    const stoneTint = col(th.rim, 0.5).lerp(new T.Color(0.62, 0.62, 0.66), 0.6);
+    cityMats = [];
+    FACADES.forEach((f, k) => { const m = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.3, color: stoneTint, roughness: 0.9 }), 0.16, true); cityMats.push(m); mesh(B.up[k], m); });
+    GROUNDS.forEach((f, k) => { const m = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.1, color: stoneTint, roughness: 0.9 }), 0.16, true); cityMats.push(m); mesh(B.gf[k], m); });
+    mesh(B.roof, withVis(new T.MeshStandardMaterial({ map: ROOF, color: mat ? col(mat.top, 1.5).lerp(new T.Color(0.75, 0.76, 0.82), 0.45) : new T.Color(0.7, 0.72, 0.8), roughness: 0.85 }), 0.035, true));
+
+    // Mist over the whole city, and fireflies scattered through it.
+    for (const m of mists) { m.scale.set(cols + PAD * 2, rows + PAD * 2, 1); m.position.x = cols / 2; m.position.z = rows / 2; m.material.map.repeat.set((cols + PAD * 2) / 6, (rows + PAD * 2) / 6); m.material.color = col(th.rim, 0.7); }
+    for (let k = 0; k < FLIES; k++) {
+      flySeed[k * 4] = Math.random() * cols; flySeed[k * 4 + 1] = Math.random() * rows; flySeed[k * 4 + 2] = Math.random() * 6.28; flySeed[k * 4 + 3] = 0.3 + Math.random() * 1.6;
+      const c = Math.random() < 0.6 ? col(th.rim, 1.2) : new T.Color(1, 0.8, 0.45);
+      flyCol[k * 3] = c.r; flyCol[k * 3 + 1] = c.g; flyCol[k * 3 + 2] = c.b;
+    }
+    flyGeo.attributes.color.needsUpdate = true;
 
     // Decorations from the 2D plan, made solid.
     const glowMat = (c, k = 1.6) => withVis(new T.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: k, roughness: 0.4 }), 0.0);
@@ -237,7 +399,7 @@ const R3D = (() => {
     const iron = withVis(new T.MeshStandardMaterial({ color: 0x1c2026, roughness: 0.5, metalness: 0.6 }));
     const shroomGeo = new T.SphereGeometry(1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), stemGeo = new T.CylinderGeometry(0.25, 0.32, 1, 8);
     const stemMat = withVis(new T.MeshStandardMaterial({ color: 0xd8d0bc, roughness: 0.7 }));
-    const capA = glowMat(0x2fa888, 0.55), capB = glowMat(0xb04a88, 0.55);
+    const capA = glowMat(0x1f8a6c, 0.35), capB = glowMat(0x8a2e66, 0.35);
     for (const m of L.shrooms || []) {
       const s = m.s * 0.9, g = new T.Group();
       const st = new T.Mesh(stemGeo, stemMat); st.scale.set(s, s * 1.2, s); st.position.y = s * 0.6; g.add(st);
@@ -259,8 +421,6 @@ const R3D = (() => {
       } else if (d.k === "pool") {
         const w = new T.Mesh(new T.CircleGeometry(d.s * 0.7, 24), withVis(new T.MeshStandardMaterial({ color: 0x0e2a3a, roughness: 0.05, metalness: 0.8, emissive: 0x0a3a50, emissiveIntensity: 0.5 })));
         w.rotation.x = -Math.PI / 2; w.position.set(d.x, 0.03, d.y - 0.3); root.add(w);
-      } else if (d.k === "lava") {
-        const l = new T.Mesh(new T.SphereGeometry(0.1, 8, 6), glowMat(0xc8400c, 1.1)); l.position.set(d.x, WALL * 0.85, d.y); l.scale.set(2.4, 0.25, 0.8); root.add(l);
       }
     }
     built = L;
@@ -271,31 +431,45 @@ const R3D = (() => {
   function resize(w, h, dpr) {
     vw = w; vh = h; vd = dpr;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
-    camera.aspect = w / h; camera.fov = w < h ? 54 : 40; camera.updateProjectionMatrix();
+    camera.aspect = w / h; camera.fov = w < h ? 58 : 42; camera.updateProjectionMatrix();
     if (composer) { if (composer.setPixelRatio) composer.setPixelRatio(dpr); composer.setSize(w, h); }
   }
   function render(dt) {
     // Same size as the 2D canvas; the glow costs less at a lower resolution on small screens.
     const dpr = Math.min(DPR, qualityCap >= 2 ? 2 : 1.25);
     if (vw !== W || vh !== H || vd !== dpr) resize(W, H, dpr);
-    if (built !== L) { build(); camPos.set(L.lumi.x, 15.5, L.lumi.y + 5.2); camLook.set(L.lumi.x, 0, L.lumi.y); }
+    if (built !== L) { build(); camPos.set(L.lumi.x, 8.6, L.lumi.y + 5.4); camLook.set(L.lumi.x, 0.3, L.lumi.y - 0.6); }
     const { cols, rows } = L, lumi = L.lumi;
     // Darkness texture from the same visibility the 2D view uses.
     for (let i = 0; i < L.n; i++) { const v = Math.min(255, vis(i) * 255) | 0, k = i * 4; visData[k] = v; visData[k + 1] = v; visData[k + 2] = v; visData[k + 3] = 255; }
     visTex.needsUpdate = true;
 
     // Camera: above and behind Lumi, looking down at an angle, held inside the cave.
-    const tx = Math.max(Math.min(cols / 2, 3.2), Math.min(Math.max(cols / 2, cols - 3.2), lumi.x));
+    const tx = Math.max(Math.min(cols / 2, 2.4), Math.min(Math.max(cols / 2, cols - 2.4), lumi.x));
     const ty = lumi.y + 0.6;
-    camPos.lerp(new T.Vector3(tx, 15.5, ty + 5.2), Math.min(1, dt * 4));
-    camLook.lerp(new T.Vector3(tx, 0, ty - 0.2), Math.min(1, dt * 5));
+    camPos.lerp(new T.Vector3(tx, 8.6, ty + 5.4), Math.min(1, dt * 4));
+    camLook.lerp(new T.Vector3(tx, 0.3, ty - 0.6), Math.min(1, dt * 5));
     camera.position.copy(camPos); camera.lookAt(camLook);
 
     hideAll();
     const bob = Math.sin(clock * 2.4) * 0.06, shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
     lumiCard.position.set(lumi.x, 0.75 + bob, lumi.y); lumiCard.scale.setScalar(0.95 * shrink);
     lumiGlow.position.set(lumi.x, 0.72 + bob, lumi.y - 0.05); lumiGlow.material.opacity = 0.4 + lumi.sing * 0.5;
-    lumiLight.position.set(lumi.x, 1.2, lumi.y); lumiLight.intensity = (2.2 + lumi.sing * 2) * shrink;
+    lumiLight.position.set(lumi.x, 1.0, lumi.y); lumiLight.intensity = (1.2 + lumi.sing * 1.5) * shrink;
+    lumiSpot.position.set(lumi.x + 0.15, 2.6, lumi.y + 0.35); lumiSpot.target.position.set(lumi.x, 0, lumi.y);
+    lumiSpot.intensity = (3.2 + lumi.sing * 3) * shrink;
+    renderer.shadowMap.enabled = bloomOn;  // shadows go with the glow on a struggling phone
+    uLumi.value.set(lumi.x, 0, lumi.y);
+    for (let q = 0; q < cityMats.length; q++) cityMats[q].emissiveIntensity = 1.2 + Math.sin(clock * (1.3 + q * 0.7) + q) * 0.12 + Math.sin(clock * 7.1 + q * 3) * 0.04;
+    mists.forEach((m, q) => { m.material.map.offset.set(clock * (0.012 + q * 0.008), clock * (0.006 - q * 0.004)); });
+    for (let q = 0; q < FLIES; q++) {
+      const sp = flySeed[q * 4 + 3], ph = flySeed[q * 4 + 2];
+      flyPos[q * 3] = flySeed[q * 4] + Math.sin(clock * 0.3 * sp + ph) * 1.2;
+      flyPos[q * 3 + 1] = 0.5 + Math.abs(Math.sin(clock * 0.5 + ph)) * 1.6;
+      flyPos[q * 3 + 2] = flySeed[q * 4 + 1] + Math.cos(clock * 0.23 * sp + ph * 1.3) * 1.2;
+    }
+    flyGeo.attributes.position.needsUpdate = true;
+    flies.material.size = 0.1 + Math.sin(clock * 3) * 0.015;
     // The song: a ring of light rolling out across the floor.
     const RING = pool("ring", () => { const m = new T.Mesh(new T.RingGeometry(0.94, 1, 96), new T.MeshBasicMaterial({ color: 0xa8f0ff, transparent: true, side: T.DoubleSide, blending: T.AdditiveBlending, depthWrite: false, fog: false })); m.rotation.x = -Math.PI / 2; return m; });
     let wk = 0, strongest = 0;
@@ -324,6 +498,12 @@ const R3D = (() => {
       l.position.set(s.x, 1.1, s.y); l.distance = s.r * 1.4; l.intensity = s.i * 1.6; l.color.setRGB(s.c[0], s.c[1], s.c[2]);
     });
 
+    const SHADOW = pool("shadow", () => { const m = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
+    let sk = 0;
+    const blob = (x, y, size, a) => { const m = SHADOW(sk++); m.position.set(x, 0.03, y); m.scale.set(size, size, 1); m.material.opacity = a; };
+    blob(lumi.x, lumi.y + 0.1, 0.9 * shrink, 0.5);
+    for (const g of L.gloom) if (!g.gone && !(g.delay > 0) && sightAt(g.x, g.y) > 0.05) blob(g.x, g.y + 0.1, g.big ? 1.6 : 0.9, 0.55 * sightAt(g.x, g.y));
+    for (const m of L.mobs) if (sightAt(m.x, m.y) > 0.05) blob(m.x, m.y + 0.1, 0.8, 0.5 * sightAt(m.x, m.y));
     // Lost lights: a warm orb bobbing above the floor.
     const ORB = pool("orb", () => glow(0xffd36e, 1, 1));
     let k = 0;
