@@ -8,6 +8,7 @@ import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline } from "./logic/skyline";
+import { setVip } from "./logic/vip";
 import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
@@ -140,7 +141,17 @@ export class App implements DailyHost {
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
-    if (this.payments) { const test = !this.payments.live; this.payments.onPurchase = p => this.packBought(p, test); }
+    if (this.payments) {
+      const test = !this.payments.live;
+      this.payments.onPurchase = p => this.packBought(p, test);
+      this.payments.onVip = on => {
+        if (!setVip(this.save, on)) { this.persist(); return; }
+        this.persist();
+        if (on) { this.sound.purchase(); toast(t("👑 Skyrise VIP is on! Collect your daily gift in the Shop.")); }
+        this.refresh();
+        this.sheets?.refreshShop();
+      };
+    }
     void this.syncPurchases(purchaseReturn());
     // Leaderboards light up only where shared storage is available (the claude.ai page).
     this.online.blocked = new Set(this.save.blocked);
@@ -259,6 +270,14 @@ export class App implements DailyHost {
     if (!pay) return;
     this.sound.ensure();
     const r = await pay.buy(pack, this.save.playerId);
+    if (r === "error") toast(t("Couldn't open the checkout. Check your connection and try again."));
+  }
+
+  async buyVip(): Promise<void> {
+    const pay = this.payments;
+    if (!pay?.buyVip) return;
+    this.sound.ensure();
+    const r = await pay.buyVip();
     if (r === "error") toast(t("Couldn't open the checkout. Check your connection and try again."));
   }
 

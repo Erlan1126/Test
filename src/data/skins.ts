@@ -27,7 +27,9 @@ export type SkinUnlock =
   /** A Sky Pass reward from the named season theme. */
   | { pass: string }
   /** Earned during the named holiday event. */
-  | { event: string };
+  | { event: string }
+  /** Yours while Skyrise VIP is on. */
+  | { vip: true };
 
 export interface Skin extends Look {
   id: string;
@@ -110,6 +112,10 @@ export const SKINS: Skin[] = [
     floors: ["#0b3d3a", "#0f4f4a", "#0a3431"],
     glass: "#0a2624", frame: "#1d6b62", slab: "#08201e", slabH: 0.08,
     lit: ["#3ee6c4", "#7cf5ff", "#b48cff"], alwaysLit: true, swatch: ["#0b3d3a", "#3ee6c4", "#b48cff"] },
+  { id: "platinum", name: "Platinum", unlock: { vip: true }, kind: "ribbon",
+    floors: ["#d9dee8", "#b8c0cf", "#eef1f6"],
+    glass: "#1d2433", frame: "#f4f6fb", slab: "#9aa4b8", slabH: 0.1,
+    lit: ["#e8f0ff", "#ffe9b0"], alwaysLit: true, swatch: ["#d9dee8", "#1d2433", "#ffe9b0"] },
   // Holiday skins: only earned while their holiday event is on (see data/holidays.ts).
   { id: "pumpkin", name: "Pumpkin Spire", unlock: { event: "halloween" }, kind: "punched",
     floors: ["#2b1d3a", "#ff7b1c", "#231833", "#e8630a"],

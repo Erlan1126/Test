@@ -12,7 +12,7 @@ export interface Product {
   kind: "skin" | "island" | "bundle";
   /** Price in Sky Crystals. */
   crystals: number;
-  grants: { skins?: string[]; themes?: string[]; coins?: number };
+  grants: { skins?: string[]; themes?: string[]; shapes?: string[]; coins?: number };
 }
 
 /** A pack of crystals sold for real money. Its id is the store product id. */
@@ -50,6 +50,17 @@ export const PRODUCTS: Product[] = [
   { id: "skin_cyber", name: "Cyber City", kind: "skin", crystals: 300, text: "Black glass with glowing neon edges", grants: { skins: ["cyber"] } },
   { id: "island_volcano", name: "Volcano Island", kind: "island", crystals: 300, text: "Black rock, palm trees and glowing lava", grants: { themes: ["volcano"] } },
   { id: "island_candy", name: "Candy Island", kind: "island", crystals: 300, text: "Pastel lawns and cotton-candy trees", grants: { themes: ["candy"] } },
+  // Themed sets: a skin, an island or shapes that go together, for less than buying each.
+  {
+    id: "set_tokyo", name: "Tokyo Nights", kind: "bundle", crystals: 550,
+    text: "Cyber City skin with the Helix and Twister shapes",
+    grants: { skins: ["cyber"], shapes: ["spiral", "twist"] },
+  },
+  {
+    id: "set_blossom", name: "Cherry Blossom", kind: "bundle", crystals: 600,
+    text: "Sakura Spire skin, Candy Island and the Wave shape",
+    grants: { skins: ["sakura"], themes: ["candy"], shapes: ["wave"] },
+  },
   {
     id: "founders", name: "Founder's Pack", kind: "bundle", crystals: 900,
     text: "Every premium skin and island, plus 5,000 coins. Thank you for supporting Skyrise!",

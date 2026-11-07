@@ -126,3 +126,27 @@ describe("holiday events", () => {
     expect(holidayTower(save, now)).toBeNull();
   });
 });
+
+import { claimVip, setVip, vipActive } from "../src/logic/vip";
+import { buyWithCrystals } from "../src/logic/premium";
+
+describe("VIP and themed bundles", () => {
+  it("VIP gives a daily gift once a day only while on", () => {
+    const save = defaultSave(), now = Date.UTC(2026, 10, 10);
+    expect(claimVip(save, 10, now)).toBe(false);
+    setVip(save, true, now);
+    expect(vipActive(save, now)).toBe(true);
+    expect(claimVip(save, 10, now)).toBe(true);
+    expect(save.crystals).toBe(50);
+    expect(claimVip(save, 10, now)).toBe(false);
+    expect(vipActive(save, now + 4 * 864e5)).toBe(false); // the store hasn't confirmed it in days
+    setVip(save, false, now);
+    expect(claimVip(save, 11, now)).toBe(false);
+  });
+  it("a themed bundle gives its shapes too", () => {
+    const save = defaultSave();
+    save.crystals = 600;
+    expect(buyWithCrystals(save, "set_tokyo")).toBe("ok");
+    expect(save.ownedShapes).toEqual(expect.arrayContaining(["spiral", "twist"]));
+  });
+});

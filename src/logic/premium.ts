@@ -20,7 +20,8 @@ export const ownsProduct = (save: SaveData, id: string): boolean =>
 function covers(bundleId: string, id: string): boolean {
   const b = productById(bundleId), p = productById(id);
   if (!b || !p || b === p) return false;
-  return (p.grants.skins ?? []).every(s => b.grants.skins?.includes(s)) && (p.grants.themes ?? []).every(t => b.grants.themes?.includes(t));
+  return (p.grants.skins ?? []).every(s => b.grants.skins?.includes(s)) && (p.grants.themes ?? []).every(t => b.grants.themes?.includes(t))
+    && (p.grants.shapes ?? []).every(s => b.grants.shapes?.includes(s));
 }
 
 /** Records an owned item. One-off extras (bundle coins) are paid once per product. */
@@ -28,6 +29,7 @@ export function grantPurchase(save: SaveData, id: string): boolean {
   const p = productById(id);
   if (!p) return false;
   if (!save.purchases.includes(id)) save.purchases.push(id);
+  for (const sh of p.grants.shapes ?? []) if (!save.ownedShapes.includes(sh)) save.ownedShapes.push(sh);
   if (p.grants.coins && !save.coinsGranted.includes(id)) {
     save.coinsGranted.push(id);
     save.coins += p.grants.coins;

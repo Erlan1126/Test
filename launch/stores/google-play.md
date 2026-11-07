@@ -76,6 +76,28 @@ the game, so they don't need their own products.
 Product IDs must match exactly. Set up a **payments profile** (Monetize → Monetization
 setup) before you can sell anything.
 
+## Subscription: Skyrise VIP (Monetize → Products → Subscriptions)
+
+Create **one** subscription. The id must match exactly.
+
+| Field | Value |
+|---|---|
+| Product ID | `vip_monthly` |
+| Name | Skyrise VIP |
+| Description | 50 Sky Crystals and a free rewind every day, plus the Platinum skin |
+| Base plan ID | `monthly` |
+| Type | Auto-renewing, billing period **1 month** |
+| Price | $4.99 (Spanish console: 4,99) |
+| Grace period | the default is fine |
+
+Then **Activate** the base plan. Until it's active, the VIP card in the game's shop
+can't open a checkout.
+
+## Themed bundles
+
+Tokyo Nights (550 💎) and Cherry Blossom (600 💎) are bought with crystals inside the game,
+so they need nothing in the Play Console.
+
 ## Testing before release
 
 New personal developer accounts must run a **closed test with at least 12 testers for

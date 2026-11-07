@@ -17,6 +17,7 @@ import { itemPrice, ownsProduct } from "../logic/premium";
 import { buyShape, currentShape, shapeUnlocked } from "../logic/shapes";
 import { SHAPES } from "../data/shapes";
 import { buyDeal, dealBought, dealsFor } from "../logic/deals";
+import { claimVip, VIP_CENTS, VIP_DAILY_CRYSTALS, vipActive, vipClaimReady } from "../logic/vip";
 import { dayNumber } from "../logic/rules";
 import { CRYSTAL_PACKS, formatPrice, PRODUCTS, type CrystalPack, type Product } from "../data/premium";
 import type { PaymentProvider } from "../payments";
@@ -48,6 +49,7 @@ export interface Host {
   /** Starts a premium purchase. */
   /** Buys a crystal pack with real money. */
   buyPack(pack: CrystalPack): Promise<void>;
+  buyVip(): Promise<void>;
   /** Spends crystals on a premium item. */
   buyItem(product: Product): void;
 }
@@ -120,6 +122,7 @@ export class Sheets {
         : premium ? `<span class="premium-tag">💎 ${esc(t("Crystals"))}</span>`
         : pass ? `<span class="premium-tag">Sky Pass</span>`
         : st.unlock && "streak" in st.unlock ? esc(t("🔥 {n}-day streak", { n: st.unlock.streak }))
+        : st.unlock && "vip" in st.unlock ? `<span class="premium-tag">VIP</span>`
         : st.unlock && "event" in st.unlock ? `<span class="premium-tag">${esc(t("Holiday event"))}</span>` : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
       b.setAttribute("aria-label", open ? (on ? t("{name}, equipped", { name }) : name) : t("{name}, locked. {how}", { name, how: skinUnlockText(st) }));
       b.addEventListener("click", () => {
@@ -259,6 +262,7 @@ export class Sheets {
       : t("Test mode: packs are added instantly and nothing is charged.");
     note.classList.toggle("test", !!pay && !pay.live);
 
+    this.renderVip();
     const packs = $("pack-list");
     packs.innerHTML = "";
     for (const pk of CRYSTAL_PACKS) {
@@ -293,7 +297,9 @@ export class Sheets {
       const cv = card.querySelector("canvas")!;
       const skinId = p.grants.skins?.[0], themeId = p.grants.themes?.[0];
       if (p.kind === "island" && themeId) drawThemePreview(cv, ISLAND_THEMES.find(t => t.id === themeId)!);
-      else if (skinId) drawSkinPreview(cv, SKINS.find(s => s.id === (p.kind === "bundle" ? "cyber" : skinId))!);
+      else if (p.id === "founders") drawSkinPreview(cv, SKINS.find(s => s.id === "cyber")!);
+      else if (p.grants.shapes?.length && skinId) drawShapePreview(cv, SHAPES.find(x => x.id === p.grants.shapes![0])!, skinById(skinId));
+      else if (skinId) drawSkinPreview(cv, skinById(skinId));
       const btn = card.querySelector<HTMLButtonElement>(".buy")!;
       btn.disabled = owned;
       btn.setAttribute("aria-label", owned ? t("{name}, owned", { name: t(p.name) }) : t("Buy {name} for {n} Sky Crystals", { name: t(p.name), n: price }));
@@ -307,6 +313,28 @@ export class Sheets {
       });
       list.appendChild(card);
     }
+  }
+
+  /** The VIP card: what it gives, its price, and today's gift once it's on. */
+  private renderVip(): void {
+    const save = this.save, pay = this.host.payments, box = $("vip-card"), day = dayNumber();
+    const on = vipActive(save), canBuy = !!pay?.buyVip;
+    box.hidden = !on && !canBuy;
+    if (box.hidden) return;
+    const price = pay?.vipPrice?.() ?? formatPrice(VIP_CENTS);
+    const ready = vipClaimReady(save, day);
+    box.innerHTML = `<div class="vip-head"><b>👑 Skyrise VIP</b>${on ? `<span class="vip-on">${esc(t("Active"))}</span>` : ""}</div>
+      <ul><li>${esc(t("{n} 💎 every day", { n: VIP_DAILY_CRYSTALS }))}</li><li>${esc(t("A free Extra rewind every day"))}</li><li>${esc(t("The Platinum tower skin"))}</li></ul>
+      <button type="button" class="btn btn-primary wide" id="vip-btn"${on && !ready ? " disabled" : ""}>${on ? (ready ? esc(t("Collect today's VIP gift")) : esc(t("✓ Collected today"))) : esc(t("Join for {price} a month", { price }))}</button>
+      <small>${on ? esc(t("Manage or cancel it any time in your store's subscriptions.")) : esc(t("Renews every month until you cancel. Cancel any time in your store's subscriptions."))}</small>`;
+    $("vip-btn").addEventListener("click", () => {
+      if (on) {
+        if (claimVip(save, day)) this.bought(t("+{n} 💎 and an Extra rewind. See you tomorrow!", { n: VIP_DAILY_CRYSTALS }));
+        return;
+      }
+      this.click();
+      void this.host.buyVip();
+    });
   }
 
   private renderDeals(): void {
