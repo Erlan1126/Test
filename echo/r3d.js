@@ -355,11 +355,11 @@ const R3D = (() => {
     street.receiveShadow = true;
     root.add(street);
 
-    // The city, built as houses: neighbouring rock tiles are grouped into lots one to three
-    // tiles wide, each with its own height, plaster colour and roof (pitched clay or slate
-    // with chimneys, a flat roof with a parapet, or a ruin open to the sky). Stone pilasters,
-    // a ledge over the ground floor and a cornice give every house depth; stone bridges arch
-    // over some narrow streets. The city carries on past the cave's edges into the fog.
+    // The ruins of the city, at the height of the old cave walls: neighbouring rock tiles are
+    // grouped into stretches of wall one to three tiles long, each a little different in
+    // height and colour, with old doorways, shop arches and arcades in their faces, coping
+    // stones along the top, and the world's moss, snow or ash growing over them with fallen
+    // stones lying on top. The ruins carry on past the cave's edges into the dark.
     const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
     const inside = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
     const hash = (x, y) => { const h = Math.sin(x * 127.1 + y * 311.7 + levelIndex * 13.7) * 43758.5453; return h - Math.floor(h); };
@@ -377,10 +377,9 @@ const R3D = (() => {
       let near = false;
       for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) if (inside(xx, yy)) near = true;
       const far = Math.max(X0 - x, x - cols + 1, Y0 - y, y - rows + 1, -x, -y, 0);
-      const r = hash(x + 3, y + 9), floors = near ? 1 + Math.floor(r * 2.4) : 2 + Math.floor(r * 2.5) + Math.min(3, Math.floor(far * 0.4));
-      const roof = r > 0.92 && near ? "ruin" : hash(x, y + 1) < 0.68 ? "gable" : "flat";
+      const r = hash(x + 3, y + 9);
       const pc = PLASTERS[Math.floor(hash(x + 1, y) * PLASTERS.length)], rc = ROOFS[Math.floor(hash(x, y + 2) * ROOFS.length)];
-      lots.push({ x0: x, z0: y, x1: x + w, z1: y + d, h: 1 + (floors - 1) * 0.92 + (roof === "ruin" ? -0.3 : 0), roof, pc, rc, fv: Math.floor(hash(x + 4, y + 4) * FACADES.length), gv: Math.floor(hash(x + 8, y + 1) * GROUNDS.length) });
+      lots.push({ x0: x, z0: y, x1: x + w, z1: y + d, h: 1.08 + r * 0.22 + (near ? 0 : Math.min(0.25, far * 0.03)), pc, rc, gv: Math.floor(hash(x + 8, y + 1) * GROUNDS.length) });
     }
     // Geometry goes into one buffer per material: position, normal, uv, colour.
     const bufs = {};
@@ -403,61 +402,32 @@ const R3D = (() => {
       poly(k, [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], [[0, 0], [x1 - x0, 0], [x1 - x0, z1 - z0], [0, z1 - z0]], c);
     };
     const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
-    const stoneC = [0.62, 0.6, 0.58];
+    const stoneC = [0.62, 0.6, 0.58], capC = mat ? [mat.top[0] / 255 * 0.9, mat.top[1] / 255 * 0.9, mat.top[2] / 255 * 0.9] : [0.35, 0.36, 0.4];
     for (const l of lots) {
-      const { x0, z0, x1, z1, h } = l, pc = l.pc;
-      // Ground floor (stone, doors and shop arches) and the plaster floors above.
+      const { x0, z0, x1, z1, h } = l, pc = l.pc, w = x1 - x0, d = z1 - z0;
       const sides = [[x0, z1, x1, z1], [x1, z0, x0, z0], [x1, z1, x1, z0], [x0, z0, x0, z1]];
       for (const [ax, az, bx, bz] of sides) {
-        wall("gf" + l.gv, ax, az, bx, bz, 0, Math.min(1, h), shade(pc, 0.8));
-        if (h > 1) wall("fa" + l.fv, ax, az, bx, bz, 1, h, pc, 1 / 0.92, 1);
+        wall("gf" + l.gv, ax, az, bx, bz, 0, Math.min(1, h), shade(pc, 0.85));
+        if (h > 1) wall("trim", ax, az, bx, bz, 1, h, shade(stoneC, 0.9));
       }
-      // Pilasters at the corners, a ledge over the ground floor, a cornice at the top.
-      const t = 0.06;
+      // Weathered corner stones and a line of coping along the top.
+      const t = 0.05;
       for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) box("trim", cx - t, 0, cz - t, cx + t, h, cz + t, stoneC);
-      if (h > 1.2) box("trim", x0 - 0.04, 0.96, z0 - 0.04, x1 + 0.04, 1.04, z1 + 0.04, stoneC);
-      box("trim", x0 - 0.07, h - 0.08, z0 - 0.07, x1 + 0.07, h + 0.03, z1 + 0.07, shade(stoneC, 1.1));
-      const w = x1 - x0, d = z1 - z0, o = 0.14, rc = l.rc;
-      if (l.roof === "gable") {
-        // Pitched roof along the longer side, with overhanging eaves and gable ends.
-        const rise = Math.min(0.85, Math.min(w, d) * 0.42 + 0.15), y = h + 0.03;
-        if (w >= d) {
-          const zm = (z0 + z1) / 2, sl = Math.hypot(d / 2 + o, rise);
-          poly("roof", [[x0 - o, y, z1 + o], [x1 + o, y, z1 + o], [x1 + o, y + rise, zm], [x0 - o, y + rise, zm]], [[0, 0], [w + 2 * o, 0], [w + 2 * o, sl], [0, sl]], rc);
-          poly("roof", [[x1 + o, y, z0 - o], [x0 - o, y, z0 - o], [x0 - o, y + rise, zm], [x1 + o, y + rise, zm]], [[0, 0], [w + 2 * o, 0], [w + 2 * o, sl], [0, sl]], rc);
-          poly("fa" + l.fv, [[x0, y, z0], [x0, y, z1], [x0, y + rise, zm]], [[0, 0], [d, 0], [d / 2, rise]], pc);
-          poly("fa" + l.fv, [[x1, y, z1], [x1, y, z0], [x1, y + rise, zm]], [[0, 0], [d, 0], [d / 2, rise]], pc);
-        } else {
-          const xm = (x0 + x1) / 2, sl = Math.hypot(w / 2 + o, rise);
-          poly("roof", [[x1 + o, y, z1 + o], [x1 + o, y, z0 - o], [xm, y + rise, z0 - o], [xm, y + rise, z1 + o]], [[0, 0], [d + 2 * o, 0], [d + 2 * o, sl], [0, sl]], rc);
-          poly("roof", [[x0 - o, y, z0 - o], [x0 - o, y, z1 + o], [xm, y + rise, z1 + o], [xm, y + rise, z0 - o]], [[0, 0], [d + 2 * o, 0], [d + 2 * o, sl], [0, sl]], rc);
-          poly("fa" + l.fv, [[x0, y, z1], [x1, y, z1], [xm, y + rise, z1]], [[0, 0], [w, 0], [w / 2, rise]], pc);
-          poly("fa" + l.fv, [[x1, y, z0], [x0, y, z0], [xm, y + rise, z0]], [[0, 0], [w, 0], [w / 2, rise]], pc);
-        }
-        if (hash(x0 + 2, z0 + 7) < 0.6) { const cx = x0 + w * (0.25 + hash(x0, z0) * 0.5), cz = z0 + d * 0.3; box("trim", cx - 0.09, h, cz - 0.09, cx + 0.09, h + rise + 0.35, cz + 0.09, shade(stoneC, 0.75)); }
-      } else if (l.roof === "flat") {
-        poly("roof", [[x0, h + 0.03, z1], [x1, h + 0.03, z1], [x1, h + 0.03, z0], [x0, h + 0.03, z0]], [[0, 0], [w, 0], [w, d], [0, d]], shade(rc, 0.7));
-        const p = 0.05, ph = h + 0.22;
-        box("trim", x0, h, z0, x1, ph, z0 + p, stoneC); box("trim", x0, h, z1 - p, x1, ph, z1, stoneC);
-        box("trim", x0, h, z0, x0 + p, ph, z1, stoneC); box("trim", x1 - p, h, z0, x1, ph, z1, stoneC);
-      } else {
-        // A ruin: the roof fell in long ago; broken walls stand up in places.
-        poly("roof", [[x0, h - 0.4, z1], [x1, h - 0.4, z1], [x1, h - 0.4, z0], [x0, h - 0.4, z0]], [[0, 0], [w, 0], [w, d], [0, d]], [0.15, 0.15, 0.18]);
-        for (let q = 0; q < 3; q++) { const bx = x0 + hash(x0 + q, z0) * (w - 0.3); box("trim", bx, h, z1 - 0.08, bx + 0.25, h + 0.2 + hash(q, x0) * 0.5, z1, stoneC); }
+      box("trim", x0 - 0.05, h - 0.07, z0 - 0.05, x1 + 0.05, h + 0.02, z1 + 0.05, shade(stoneC, 1.05));
+      // The top: overgrown with the world's moss, snow or ash; a few fallen stones on it.
+      poly("cap", [[x0 - 0.05, h + 0.025, z1 + 0.05], [x1 + 0.05, h + 0.025, z1 + 0.05], [x1 + 0.05, h + 0.025, z0 - 0.05], [x0 - 0.05, h + 0.025, z0 - 0.05]], [[0, 0], [w, 0], [w, d], [0, d]], shade(capC, 0.6 + hash(x0 + 9, z0 + 2) * 0.35));
+      for (let q = 0; q < 2; q++) {
+        if (hash(x0 + q * 5, z0 + 3) < 0.45) continue;
+        const bx = x0 + 0.15 + hash(x0, z0 + q) * (w - 0.45), bz = z0 + 0.15 + hash(z0, x0 + q) * (d - 0.45), sz = 0.12 + hash(q, x0 + z0) * 0.14;
+        box("trim", bx, h, bz, bx + sz * 1.4, h + sz, bz + sz, shade(stoneC, 0.8));
       }
-    }
-    // Stone bridges over some narrow streets, high enough to swim under.
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-      if (rock(x, y) || hash(x * 3, y * 7) > 0.18) continue;
-      if (rock(x - 1, y) && rock(x + 1, y) && !rock(x, y - 1) && !rock(x, y + 1)) box("trim", x - 0.05, 1.55, y + 0.38, x + 1.05, 1.8, y + 0.62, stoneC);
-      else if (rock(x, y - 1) && rock(x, y + 1) && !rock(x - 1, y) && !rock(x + 1, y)) box("trim", x + 0.38, 1.55, y - 0.05, x + 0.62, 1.8, y + 1.05, stoneC);
     }
     cityMats = [];
     const mats = {};
     FACADES.forEach((f, k) => { mats["fa" + k] = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.3, vertexColors: true, roughness: 0.92 }), 0.16, true); cityMats.push(mats["fa" + k]); });
     GROUNDS.forEach((f, k) => { mats["gf" + k] = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.1, vertexColors: true, roughness: 0.92 }), 0.16, true); cityMats.push(mats["gf" + k]); });
     mats.trim = withVis(new T.MeshStandardMaterial({ map: TRIM, vertexColors: true, roughness: 0.85 }), 0.035, true);
-    mats.roof = withVis(new T.MeshStandardMaterial({ map: ROOF, vertexColors: true, roughness: 0.7 }), 0.035, true);
+    mats.cap = withVis(new T.MeshStandardMaterial({ map: GRAIN, bumpMap: GRAIN_B, bumpScale: 0.02, vertexColors: true, roughness: 0.95 }), 0.035, true);
     for (const [k, b] of Object.entries(bufs)) {
       if (!b.v.length || !mats[k]) continue;
       const ib = new T.InterleavedBuffer(new Float32Array(b.v), 11), g = new T.BufferGeometry();
