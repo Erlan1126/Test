@@ -274,10 +274,19 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .stat-grid div { padding: 10px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); text-align: center; }
 .stat-grid b { display: block; font: 400 20px var(--num); }
 .stat-grid span { font-size: 11px; font-weight: 700; color: var(--muted); }
+.deal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.deal { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); text-align: center; }
+.deal canvas { width: 100%; height: auto; aspect-ratio: 120 / 132; border-radius: 10px; }
+.deal b { font-size: 12px; line-height: 1.2; }
+.deal s { color: var(--muted); font-size: 11px; }
+.deal .off { position: absolute; top: 4px; right: 4px; padding: 2px 6px; border-radius: 8px; background: #ff6b6b; color: #fff; font-size: 11px; font-weight: 800; }
+.deal .buy { width: 100%; }
+.deal.done { opacity: 0.55; }
+.boost-pic { display: grid; place-items: center; width: 100%; aspect-ratio: 120 / 132; border-radius: 10px; background: linear-gradient(#4f8fe0, #ffd9b5); font-size: 34px; }
 .postcard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .postcard { margin: 0; padding: 4px 4px 6px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); text-align: center; }
-.postcard canvas { display: block; width: 100%; aspect-ratio: 132 / 92; border-radius: 7px; }
-.postcard figcaption { margin-top: 4px; font-size: 11px; line-height: 1.2; color: var(--muted); }
+.postcard canvas { display: block; width: 100%; height: auto; aspect-ratio: 132 / 92; border-radius: 7px; }
+.postcard figcaption { margin-top: 4px; font-size: 11px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
 .postcard.got figcaption { color: var(--text, #fff); }
 .trophy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .trophy { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }

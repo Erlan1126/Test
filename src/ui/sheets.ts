@@ -16,6 +16,8 @@ import { buyBoost, buySkin } from "../logic/shop";
 import { itemPrice, ownsProduct } from "../logic/premium";
 import { buyShape, currentShape, shapeUnlocked } from "../logic/shapes";
 import { SHAPES } from "../data/shapes";
+import { buyDeal, dealBought, dealsFor } from "../logic/deals";
+import { dayNumber } from "../logic/rules";
 import { CRYSTAL_PACKS, formatPrice, PRODUCTS, type CrystalPack, type Product } from "../data/premium";
 import type { PaymentProvider } from "../payments";
 import { drawPostcard, drawShapePreview, drawSkinPreview, drawThemePreview } from "../render/previews";
@@ -306,9 +308,50 @@ export class Sheets {
     }
   }
 
+  private renderDeals(): void {
+    const save = this.save, day = dayNumber(), list = $("deal-list");
+    const hours = Math.max(1, Math.ceil((86400e3 - (Date.now() % 86400e3)) / 3600e3));
+    $("deals-note").textContent = t("New deals in {n} h", { n: hours });
+    list.innerHTML = "";
+    for (const d of dealsFor(save, day)) {
+      const done = dealBought(save, day, d), cur = d.currency === "stars" ? "★" : "💎";
+      const pct = Math.round((1 - d.price / d.was) * 100);
+      const card = document.createElement("div");
+      card.className = `deal${done ? " done" : ""}`;
+      const name = d.kind === "boosts" ? t("Boost pack") : t(d.name);
+      card.innerHTML = `<span class="off">-${pct}%</span>${d.kind === "boosts" ? `<span class="boost-pic" aria-hidden="true">⏪⚡🏆</span>` : `<canvas aria-hidden="true"></canvas>`}
+        <b>${esc(name)}</b><s>${fmt(d.was)} ${cur}</s>
+        <button type="button" class="buy"${done ? " disabled" : ""}>${done ? esc(t("✓ Owned")) : `${fmt(d.price)} ${cur}`}</button>`;
+      const cv = card.querySelector("canvas");
+      if (cv) {
+        if (d.kind === "skin") drawSkinPreview(cv, skinById(d.ref));
+        else if (d.kind === "shape") drawShapePreview(cv, SHAPES.find(x => x.id === d.ref)!, skinById(save.skin));
+        else {
+          const p = PRODUCTS.find(x => x.id === d.ref)!;
+          if (p.kind === "island" && p.grants.themes?.[0]) drawThemePreview(cv, ISLAND_THEMES.find(x => x.id === p.grants.themes![0])!);
+          else drawSkinPreview(cv, skinById(p.grants.skins?.[0] ?? "glass"));
+        }
+      }
+      const btn = card.querySelector<HTMLButtonElement>(".buy")!;
+      btn.setAttribute("aria-label", t("Buy {name} for {n}", { name, n: `${d.price} ${cur}` }));
+      btn.addEventListener("click", () => {
+        const r = buyDeal(save, day, d);
+        if (r === "short") {
+          if (d.currency === "stars") this.nope(btn, t("You need {n} more ★ for {name}.", { n: d.price - save.stars, name }));
+          else { this.nope(btn, t("You need {n} more 💎. Get a crystal pack above.", { n: fmt(d.price - save.crystals) })); showTab($("shop"), "crystals"); }
+          return;
+        }
+        if (r === "full") { this.nope(btn, t("Your boosts are full. Use some first.")); return; }
+        if (r === "ok") this.bought(t("{name} is yours!", { name }));
+      });
+      list.appendChild(card);
+    }
+  }
+
   private renderShop(): void {
     const save = this.save;
     this.renderCrystals();
+    this.renderDeals();
     $("shop-balance").textContent = t("You have {stars} ★ · {crystals} 💎", { stars: save.stars, crystals: fmt(save.crystals) });
     const list = $("boost-list");
     list.innerHTML = "";

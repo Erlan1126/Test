@@ -90,3 +90,20 @@ describe("postcard album", () => {
     expect(save.crystals).toBe(ALBUM_CRYSTALS);
   });
 });
+
+import { buyDeal, dealsFor } from "../src/logic/deals";
+
+describe("daily deals", () => {
+  it("offers three discounted things you don't own, each bought once a day", () => {
+    const save = defaultSave();
+    save.stars = 500; save.crystals = 1000;
+    const deals = dealsFor(save, 40);
+    expect(deals.length).toBe(3);
+    for (const d of deals) expect(d.price).toBeLessThan(d.was);
+    expect(buyDeal(save, 40, deals[0])).toBe("ok");
+    expect(buyDeal(save, 40, deals[0])).toBe("bought");
+    expect(dealsFor(save, 40)).toEqual(dealsFor(save, 40));
+    const poor = defaultSave();
+    expect(buyDeal(poor, 40, dealsFor(poor, 40)[0])).toBe("short");
+  });
+});
