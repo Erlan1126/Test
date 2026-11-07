@@ -43,7 +43,7 @@ const R3D = (() => {
     mat.onBeforeCompile = sh => {
       sh.uniforms.uVis = uVis; sh.uniforms.uDims = uDims; sh.uniforms.uLumi = uLumi;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;")
-        .replace("#include <project_vertex>", "#include <project_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+        .replace("#include <project_vertex>", "#include <project_vertex>\nvec4 wpV = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\nwpV = instanceMatrix * wpV;\n#endif\nvWPos = (modelMatrix * wpV).xyz;");
       sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWPos;\nuniform sampler2D uVis;\nuniform vec2 uDims;\nuniform vec3 uLumi;")
         .replace("#include <fog_fragment>", `${cut ? `if (vWPos.y > 0.35) {
             // Only what rises above the line of sight from the camera down to Lumi fades.
@@ -291,6 +291,9 @@ const R3D = (() => {
     m.rotation.x = -Math.PI / 2; m.position.y = y; scene.add(m); return m;
   });
   let cityMats = [];
+  const life = { worms: [], wormGeo: new T.BufferGeometry(), drips: [], shafts: [], bugs: [], foot: [] };
+  const wormPts = new T.Points(life.wormGeo, new T.PointsMaterial({ map: GLOWT, size: 0.07, vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
+  scene.add(wormPts);
   const songLight = new T.PointLight(0xb0f2ff, 0, 1, 1.2); scene.add(songLight);
   // Lumi is always drawn on top, so a roof edge can never hide it.
   const lumiCard = card(LUMI_T, 0.95, 0.95); lumiCard.renderOrder = 50; lumiCard.material.depthTest = false; scene.add(lumiCard);
@@ -327,17 +330,21 @@ const R3D = (() => {
       const tx = i / S - PAD, ty = j / S - PAD, v = shape.at(tx, ty);
       const rk = smooth(TH - 0.05, TH + 0.2, v), top = smooth(TH + 0.12, TH + 0.4, v);
       const n1 = vnoise(tx * 1.3 + 7, ty * 1.3), n2 = vnoise(tx * 4.1, ty * 4.1 + 3);
-      const h = (n2 - 0.5) * 0.015;
+      const h = rk * (WALL + (n1 - 0.5) * 0.45 * top + (n2 - 0.5) * 0.1) + (1 - rk) * (n2 - 0.5) * 0.04;
       const k = (j * gw + i) * 3;
       posA[k] = tx; posA[k + 1] = h; posA[k + 2] = ty;
-      uvA[(j * gw + i) * 2] = tx * 0.6; uvA[(j * gw + i) * 2 + 1] = ty * 0.6;
+      uvA[(j * gw + i) * 2] = tx * 0.5; uvA[(j * gw + i) * 2 + 1] = ty * 0.5;
       // Floor: the world's ground in patches; walls: banded stone; tops: moss, snow, ash...
       // The floor darkens where it meets the rock, so walls sit firmly in it.
       tmp.copy(floorC).lerp(floor2, vnoise(tx * 0.5, ty * 0.5)).multiplyScalar((0.75 + n2 * 0.4) * (1 - smooth(TH - 0.4, TH, v) * 0.55));
       const band = 0.85 + 0.15 * Math.sin(h * 9 + n1 * 4);
       const rockCol = rockC.clone().lerp(deepC, 0.35 * (1 - top)).multiplyScalar(band * (0.85 + n2 * 0.3));
-      // Moss, snow or ash creeps out from the foot of the walls.
-      tmp.lerp(topC.clone().multiplyScalar(0.7 + n1 * 0.4), smooth(TH - 0.3, TH, v) * (mat ? mat.top[3] * 0.5 : 0.2) * n1);
+      tmp.lerp(rockCol, rk);
+      tmp.lerp(topC.clone().multiplyScalar(0.8 + n1 * 0.4), top * (mat ? mat.top[3] * 0.85 : 0.3));
+      tmp.lerp(rimC, Math.max(0, rk - top) * 0.12);
+      // A bright lip where a wall's top meets its side, so every wall reads crisply from above.
+      const lip = smooth(TH + 0.06, TH + 0.14, v) * (1 - smooth(TH + 0.16, TH + 0.26, v));
+      tmp.lerp(rimC.clone().multiplyScalar(1.6), lip * 0.35);
       colA[k] = tmp.r; colA[k + 1] = tmp.g; colA[k + 2] = tmp.b;
     }
     const idx = [];
@@ -351,95 +358,75 @@ const R3D = (() => {
     geo.setAttribute("uv", new T.BufferAttribute(uvA, 2));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    const street = new T.Mesh(geo, withVis(new T.MeshStandardMaterial({ vertexColors: true, map: COBBLE, bumpMap: COBBLE, bumpScale: 0.012, roughness: 0.55, metalness: 0.08 })));
-    street.receiveShadow = true;
-    root.add(street);
-
-    // The ruins of the city, at the height of the old cave walls: neighbouring rock tiles are
-    // grouped into stretches of wall one to three tiles long, each a little different in
-    // height and colour, with old doorways, shop arches and arcades in their faces, coping
-    // stones along the top, and the world's moss, snow or ash growing over them with fallen
-    // stones lying on top. The ruins carry on past the cave's edges into the dark.
-    const rock = (x, y) => x < 0 || y < 0 || x >= cols || y >= rows || L.tile[y * cols + x] === "#";
-    const inside = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
-    const hash = (x, y) => { const h = Math.sin(x * 127.1 + y * 311.7 + levelIndex * 13.7) * 43758.5453; return h - Math.floor(h); };
-    const X0 = -PAD, Y0 = -PAD, GW = cols + PAD * 2, GH = rows + PAD * 2, lotOf = new Int32Array(GW * GH).fill(-1), lots = [];
-    const li = (x, y) => (y - Y0) * GW + (x - X0);
-    const inGrid = (x, y) => x >= X0 && y >= Y0 && x < cols + PAD && y < rows + PAD;
-    for (let y = Y0; y < rows + PAD; y++) for (let x = X0; x < cols + PAD; x++) {
-      if (!rock(x, y) || lotOf[li(x, y)] >= 0) continue;
-      const wMax = 1 + Math.floor(hash(x, y) * 3), dMax = 1 + Math.floor(hash(y + 5, x) * 2);
-      let w = 1;
-      while (w < wMax && inGrid(x + w, y) && rock(x + w, y) && lotOf[li(x + w, y)] < 0) w++;
-      let d = 1;
-      while (d < dMax && inGrid(x, y + d) && [...Array(w).keys()].every(k => rock(x + k, y + d) && lotOf[li(x + k, y + d)] < 0)) d++;
-      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) lotOf[li(xx, yy)] = lots.length;
-      let near = false;
-      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) if (inside(xx, yy)) near = true;
-      const far = Math.max(X0 - x, x - cols + 1, Y0 - y, y - rows + 1, -x, -y, 0);
-      const r = hash(x + 3, y + 9);
-      const pc = PLASTERS[Math.floor(hash(x + 1, y) * PLASTERS.length)], rc = ROOFS[Math.floor(hash(x, y + 2) * ROOFS.length)];
-      lots.push({ x0: x, z0: y, x1: x + w, z1: y + d, h: 1.08 + r * 0.22 + (near ? 0 : Math.min(0.25, far * 0.03)), pc, rc, gv: Math.floor(hash(x + 8, y + 1) * GROUNDS.length) });
-    }
-    // Geometry goes into one buffer per material: position, normal, uv, colour.
-    const bufs = {};
-    const buf = k => bufs[k] || (bufs[k] = { v: [], i: [] });
-    const poly = (k, pts, uvs, c) => {
-      const b = buf(k), base = b.v.length / 11;
-      const [a, p1, p2] = pts, ux = p1[0] - a[0], uy = p1[1] - a[1], uz = p1[2] - a[2], vx = p2[0] - a[0], vy = p2[1] - a[1], vz = p2[2] - a[2];
-      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
-      pts.forEach((p, q) => b.v.push(p[0], p[1], p[2], nx, ny, nz, uvs[q][0], uvs[q][1], c[0], c[1], c[2]));
-      for (let q = 1; q < pts.length - 1; q++) b.i.push(base, base + q, base + q + 1);
-    };
-    // A wall from (ax,az) to (bx,bz), facing outward to the right of that direction, y0..y1.
-    const wall = (k, ax, az, bx, bz, y0, y1, c, vScale = 1, vOff = 0) => {
-      const len = Math.hypot(bx - ax, bz - az);
-      poly(k, [[ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az]], [[0, (y0 - vOff) * vScale], [len, (y0 - vOff) * vScale], [len, (y1 - vOff) * vScale], [0, (y1 - vOff) * vScale]], c);
-    };
-    // An axis-aligned box (all six sides), for trim, chimneys, parapets and bridges.
-    const box = (k, x0, y0, z0, x1, y1, z1, c) => {
-      wall(k, x0, z1, x1, z1, y0, y1, c); wall(k, x1, z0, x0, z0, y0, y1, c); wall(k, x1, z1, x1, z0, y0, y1, c); wall(k, x0, z0, x0, z1, y0, y1, c);
-      poly(k, [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], [[0, 0], [x1 - x0, 0], [x1 - x0, z1 - z0], [0, z1 - z0]], c);
-    };
-    const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
-    const stoneC = [0.62, 0.6, 0.58], capC = mat ? [mat.top[0] / 255 * 0.9, mat.top[1] / 255 * 0.9, mat.top[2] / 255 * 0.9] : [0.35, 0.36, 0.4];
-    for (const l of lots) {
-      const { x0, z0, x1, z1, h } = l, pc = l.pc, w = x1 - x0, d = z1 - z0;
-      const sides = [[x0, z1, x1, z1], [x1, z0, x0, z0], [x1, z1, x1, z0], [x0, z0, x0, z1]];
-      for (const [ax, az, bx, bz] of sides) {
-        wall("gf" + l.gv, ax, az, bx, bz, 0, Math.min(1, h), shade(pc, 0.85));
-        if (h > 1) wall("trim", ax, az, bx, bz, 1, h, shade(stoneC, 0.9));
-      }
-      // Weathered corner stones and a line of coping along the top.
-      const t = 0.05;
-      for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) box("trim", cx - t, 0, cz - t, cx + t, h, cz + t, stoneC);
-      box("trim", x0 - 0.05, h - 0.07, z0 - 0.05, x1 + 0.05, h + 0.02, z1 + 0.05, shade(stoneC, 1.05));
-      // The top: overgrown with the world's moss, snow or ash; a few fallen stones on it.
-      poly("cap", [[x0 - 0.05, h + 0.025, z1 + 0.05], [x1 + 0.05, h + 0.025, z1 + 0.05], [x1 + 0.05, h + 0.025, z0 - 0.05], [x0 - 0.05, h + 0.025, z0 - 0.05]], [[0, 0], [w, 0], [w, d], [0, d]], shade(capC, 0.6 + hash(x0 + 9, z0 + 2) * 0.35));
-      for (let q = 0; q < 2; q++) {
-        if (hash(x0 + q * 5, z0 + 3) < 0.45) continue;
-        const bx = x0 + 0.15 + hash(x0, z0 + q) * (w - 0.45), bz = z0 + 0.15 + hash(z0, x0 + q) * (d - 0.45), sz = 0.12 + hash(q, x0 + z0) * 0.14;
-        box("trim", bx, h, bz, bx + sz * 1.4, h + sz, bz + sz, shade(stoneC, 0.8));
-      }
-    }
+    const cave = new T.Mesh(geo, withVis(new T.MeshStandardMaterial({ vertexColors: true, map: GRAIN, bumpMap: GRAIN_B, bumpScale: 0.018, roughness: 0.8, metalness: 0.02 })));
+    cave.castShadow = true; cave.receiveShadow = true;
+    root.add(cave);
     cityMats = [];
-    const mats = {};
-    FACADES.forEach((f, k) => { mats["fa" + k] = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.3, vertexColors: true, roughness: 0.92 }), 0.16, true); cityMats.push(mats["fa" + k]); });
-    GROUNDS.forEach((f, k) => { mats["gf" + k] = withVis(new T.MeshStandardMaterial({ map: f.map, emissiveMap: f.em, emissive: 0xffb860, emissiveIntensity: 1.1, vertexColors: true, roughness: 0.92 }), 0.16, true); cityMats.push(mats["gf" + k]); });
-    mats.trim = withVis(new T.MeshStandardMaterial({ map: TRIM, vertexColors: true, roughness: 0.85 }), 0.035, true);
-    mats.cap = withVis(new T.MeshStandardMaterial({ map: GRAIN, bumpMap: GRAIN_B, bumpScale: 0.02, vertexColors: true, roughness: 0.95 }), 0.035, true);
-    for (const [k, b] of Object.entries(bufs)) {
-      if (!b.v.length || !mats[k]) continue;
-      const ib = new T.InterleavedBuffer(new Float32Array(b.v), 11), g = new T.BufferGeometry();
-      g.setAttribute("position", new T.InterleavedBufferAttribute(ib, 3, 0));
-      g.setAttribute("normal", new T.InterleavedBufferAttribute(ib, 3, 3));
-      g.setAttribute("uv", new T.InterleavedBufferAttribute(ib, 2, 6));
-      g.setAttribute("color", new T.InterleavedBufferAttribute(ib, 3, 8));
-      g.setIndex(b.i);
-      const m = new T.Mesh(g, mats[k]); m.castShadow = true; m.receiveShadow = true; root.add(m);
-    }
 
-    // Mist over the whole city, and fireflies scattered through it.
+    // ---------- Life in the dark ----------
+    // Quiet things that make a cave feel alive without lighting it up: stalagmites and pebbles
+    // that catch Lumi's light and throw shadows, crystals growing from the rock, glow-worms
+    // twinkling at the foot of the walls, water dripping from above, faint shafts of light
+    // from cracks far overhead, and little critters scurrying along the walls.
+    const rand = seeded(levelIndex * 977 + 31 + cols * 7);
+    const open = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && L.tile[y * cols + x] !== "#";
+    const foot = [];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      if (!open(x, y)) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(x + dx, y + dy)) foot.push([x + 0.5 + dx * 0.34, y + 0.5 + dy * 0.34, dx, dy]);
+    }
+    const inst = (geom, material, list, shadow) => {
+      if (!list.length) return null;
+      const m = new T.InstancedMesh(geom, material, list.length), o = new T.Object3D();
+      list.forEach((f, k) => { o.position.set(f.x, f.y, f.z); o.rotation.set(f.rx || 0, f.ry || 0, f.rz || 0); o.scale.set(f.sx, f.sy, f.sz); o.updateMatrix(); m.setMatrixAt(k, o.matrix); });
+      m.castShadow = shadow; m.receiveShadow = true; root.add(m); return m;
+    };
+    const spikes = [], pebbles = [], crystals = [];
+    for (const f of foot) {
+      if (rand() < 0.4) for (let k = 0, n = 1 + Math.floor(rand() * 3); k < n; k++) {
+        const r = 0.05 + rand() * 0.09, hh = r * (0.9 + rand() * 0.8);
+        spikes.push({ x: f[0] + (rand() - 0.5) * 0.35 + f[2] * 0.06, y: hh * 0.3, z: f[1] + (rand() - 0.5) * 0.35 + f[3] * 0.06, sx: r, sy: hh, sz: r, ry: rand() * 3, rx: (rand() - 0.5) * 0.15 });
+      }
+      if (rand() < 0.07) for (let k = 0; k < 5; k++) {
+        const r = 0.03 + rand() * 0.04, hh = r * (4 + rand() * 4);
+        crystals.push({ x: f[0] + f[2] * 0.08 + (rand() - 0.5) * 0.12, y: hh * 0.4, z: f[1] + f[3] * 0.08 + (rand() - 0.5) * 0.12, sx: r, sy: hh, sz: r, rx: -f[3] * 0.5 + (rand() - 0.5) * 0.6, rz: f[2] * 0.5 + (rand() - 0.5) * 0.6 });
+      }
+    }
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      if (!open(x, y)) continue;
+      for (let k = 0, n = Math.floor(rand() * 4); k < n; k++) { const r = 0.02 + rand() * 0.035; pebbles.push({ x: x + rand(), y: r * 0.4, z: y + rand(), sx: r * 1.3, sy: r * 0.7, sz: r, ry: rand() * 3 }); }
+    }
+    inst(new T.DodecahedronGeometry(1, 1), withVis(new T.MeshStandardMaterial({ color: col(th.rock, 0.6), roughness: 0.9, flatShading: true })), spikes, true);
+    inst(new T.IcosahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: col(th.rock, 0.75), roughness: 0.9, flatShading: true })), pebbles, false);
+    const crystalC = col(th.rim, 1.0);
+    inst(new T.OctahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: crystalC, emissive: crystalC, emissiveIntensity: 0.45, roughness: 0.15, metalness: 0.3 }), 0.12), crystals, false);
+    // Glow-worms: tiny specks clinging low on the walls, each twinkling in its own time.
+    const worms = foot.filter(() => rand() < 0.55).flatMap(f => Array.from({ length: 2 + Math.floor(rand() * 3) }, () => [f[0] + f[2] * 0.1 + (rand() - 0.5) * 0.5 * Math.abs(f[3]), 0.08 + rand() * 0.55, f[1] + f[3] * 0.1 + (rand() - 0.5) * 0.5 * Math.abs(f[2]), rand() * 6.28]));
+    life.worms = worms;
+    life.wormBase = col(th.rim, 1.2).lerp(new T.Color(0.55, 1, 0.85), 0.5);
+    life.wormGeo.setAttribute("position", new T.BufferAttribute(new Float32Array(worms.flatMap(w => [w[0], w[1], w[2]])), 3));
+    life.wormGeo.setAttribute("color", new T.BufferAttribute(new Float32Array(worms.length * 3), 3));
+    // Drips: a few spots where water falls from far above and rings out on the floor.
+    const floorSpots = [];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (open(x, y)) floorSpots.push([x + 0.2 + rand() * 0.6, y + 0.2 + rand() * 0.6]);
+    life.drips = Array.from({ length: Math.min(6, floorSpots.length) }, () => ({ at: floorSpots[Math.floor(rand() * floorSpots.length)], t: rand() * 4, period: 2.5 + rand() * 3 }));
+    // Shafts of light from cracks high above, with dust drifting in them.
+    for (const sh of life.shafts) scene.remove(sh);
+    life.shafts = [];
+    for (let k = 0; k < 3 && floorSpots.length; k++) {
+      const [x, y] = floorSpots[Math.floor(rand() * floorSpots.length)];
+      const g = new T.Group();
+      const beam = new T.Mesh(new T.CylinderGeometry(0.12, 0.7, 5, 20, 1, true), new T.MeshBasicMaterial({ color: col(th.rim, 1.1), transparent: true, opacity: 0.022, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide }));
+      beam.position.y = 2.5; g.add(beam);
+      const pool = new T.Mesh(new T.CircleGeometry(0.75, 32), new T.MeshBasicMaterial({ map: GLOWT, color: col(th.rim, 1.1), transparent: true, opacity: 0.1, blending: T.AdditiveBlending, depthWrite: false }));
+      pool.rotation.x = -Math.PI / 2; pool.position.y = 0.03; g.add(pool);
+      g.position.set(x, 0, y); g.rotation.z = (rand() - 0.5) * 0.25; scene.add(g); life.shafts.push(g);
+    }
+    // Critters: small dark beetles that scurry from one spot at the foot of a wall to another.
+    life.foot = foot;
+    life.bugs = Array.from({ length: Math.min(10, Math.floor(foot.length / 6)) }, () => { const f = foot[Math.floor(rand() * foot.length)]; return { x: f[0], z: f[1], tx: f[0], tz: f[1], wait: rand() * 3 }; });
+
+    // Mist over the whole cave, and fireflies and spores drifting through it.
     for (const m of mists) { m.scale.set(cols + PAD * 2, rows + PAD * 2, 1); m.position.x = cols / 2; m.position.z = rows / 2; m.material.map.repeat.set((cols + PAD * 2) / 6, (rows + PAD * 2) / 6); m.material.color = col(th.rim, 0.7); }
     for (let k = 0; k < FLIES; k++) {
       flySeed[k * 4] = Math.random() * cols; flySeed[k * 4 + 1] = Math.random() * rows; flySeed[k * 4 + 2] = Math.random() * 6.28; flySeed[k * 4 + 3] = 0.3 + Math.random() * 1.6;
@@ -520,10 +507,15 @@ const R3D = (() => {
     for (let q = 0; q < FLIES; q++) {
       const sp = flySeed[q * 4 + 3], ph = flySeed[q * 4 + 2];
       flyPos[q * 3] = flySeed[q * 4] + Math.sin(clock * 0.3 * sp + ph) * 1.2;
-      flyPos[q * 3 + 1] = 0.5 + Math.abs(Math.sin(clock * 0.5 + ph)) * 1.6;
+      flyPos[q * 3 + 1] = q % 2 ? 0.2 + ((clock * 0.12 * sp + ph) % 3) : 0.5 + Math.abs(Math.sin(clock * 0.5 + ph)) * 1.6;
       flyPos[q * 3 + 2] = flySeed[q * 4 + 1] + Math.cos(clock * 0.23 * sp + ph * 1.3) * 1.2;
     }
     flyGeo.attributes.position.needsUpdate = true;
+    if (life.worms.length) {
+      const wc = life.wormGeo.attributes.color.array, b = life.wormBase;
+      for (let q = 0; q < life.worms.length; q++) { const k = 0.25 + 0.75 * Math.max(0, Math.sin(clock * 1.3 + life.worms[q][3] * 3)) ** 3; wc[q * 3] = b.r * k; wc[q * 3 + 1] = b.g * k; wc[q * 3 + 2] = b.b * k; }
+      life.wormGeo.attributes.color.needsUpdate = true;
+    }
     flies.material.size = 0.1 + Math.sin(clock * 3) * 0.015;
     // The song: a ring of light rolling out across the floor.
     const RING = pool("ring", () => { const m = new T.Mesh(new T.RingGeometry(0.94, 1, 96), new T.MeshBasicMaterial({ color: 0xa8f0ff, transparent: true, side: T.DoubleSide, blending: T.AdditiveBlending, depthWrite: false, fog: false })); m.rotation.x = -Math.PI / 2; return m; });
@@ -559,6 +551,28 @@ const R3D = (() => {
     blob(lumi.x, lumi.y + 0.1, 0.9 * shrink, 0.5);
     for (const g of L.gloom) if (!g.gone && !(g.delay > 0) && sightAt(g.x, g.y) > 0.05) blob(g.x, g.y + 0.1, g.big ? 1.6 : 0.9, 0.55 * sightAt(g.x, g.y));
     for (const m of L.mobs) if (sightAt(m.x, m.y) > 0.05) blob(m.x, m.y + 0.1, 0.8, 0.5 * sightAt(m.x, m.y));
+    // Drips falling from far above, and the rings they leave on the floor.
+    const DROP = pool("drop", () => glow(0xbfe8ff, 0.14, 0.9));
+    const RIPPLE = pool("ripple", () => { const m = new T.Mesh(new T.RingGeometry(0.9, 1, 48), new T.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, side: T.DoubleSide, blending: T.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
+    let dk = 0, rk2 = 0;
+    for (const d of life.drips) {
+      d.t += dt; if (d.t > d.period) d.t = 0;
+      const fall = d.t / 0.9;
+      if (fall < 1) { const s = DROP(dk++); s.position.set(d.at[0], 3.2 * (1 - fall * fall), d.at[1]); }
+      else if (d.t < 2.2) { const m = RIPPLE(rk2++), k = (d.t - 0.9) / 1.3; m.position.set(d.at[0], 0.04, d.at[1]); m.scale.setScalar(0.05 + k * 0.4); m.material.opacity = 0.35 * (1 - k) * Math.max(0.25, vis(Math.floor(d.at[1]) * cols + Math.floor(d.at[0]))); }
+    }
+    // Beetles scurrying along the foot of the walls; seen only where light falls.
+    const BUG = pool("bug", () => { const m = new T.Mesh(new T.SphereGeometry(0.035, 8, 6), withVis(new T.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4, metalness: 0.3 }))); m.scale.set(1.3, 0.6, 0.9); return m; });
+    let bk = 0;
+    for (const b of life.bugs) {
+      if (b.wait > 0) b.wait -= dt;
+      else {
+        const dx = b.tx - b.x, dz = b.tz - b.z, d = Math.hypot(dx, dz);
+        if (d < 0.05) { const f = life.foot[Math.floor(Math.random() * life.foot.length)]; if (Math.hypot(f[0] - b.x, f[1] - b.z) < 2.5) { b.tx = f[0]; b.tz = f[1]; } b.wait = Math.random() * 2.5; }
+        else { const m = Math.min(d, 0.55 * dt) / d; b.x += dx * m; b.z += dz * m; }
+      }
+      const m = BUG(bk++); m.position.set(b.x, 0.03, b.z); m.rotation.y = Math.atan2(b.tx - b.x, b.tz - b.z);
+    }
     // Lost lights: a warm orb bobbing above the floor.
     const ORB = pool("orb", () => glow(0xffd36e, 1, 1));
     let k = 0;
