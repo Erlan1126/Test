@@ -509,6 +509,15 @@ function drawThings() {
     ctx.globalAlpha = 1;
   }
 
+  // Falling stones in a collapsing cave: a shadow grows on the floor, then the stone lands.
+  for (const r of L.rocks) {
+    const X = sx(r.x), Y = sy(r.y), k = Math.min(1, r.t / 0.55), a = Math.min(1, 6 - r.t) * Math.max(0.35, sightAt(r.x, r.y)), rr = TS * r.s * 1.6;
+    ctx.globalAlpha = a * 0.5 * k; ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(X, Y + rr * 0.3, rr * (0.4 + k * 0.7), rr * 0.5 * (0.4 + k * 0.7), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = a; ctx.fillStyle = "#57525e"; ctx.beginPath(); ctx.arc(X, Y - (1 - k * k) * TS * 3, rr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#7a7484"; ctx.beginPath(); ctx.arc(X - rr * 0.3, Y - (1 - k * k) * TS * 3 - rr * 0.3, rr * 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   // Hushlings: hooded shadows with a smoky tail, ear tufts and almond eyes that follow Lumi.
   // Hunting, their eyes narrow and burn pink and a jagged grin opens. The Great Hush is bigger,
   // wears a crown of shadow spikes and has a second, smaller pair of eyes.
@@ -519,6 +528,18 @@ function drawThings() {
     if (X < -r * 4 || Y < -r * 4 || X > W + r * 4 || Y > H + r * 4) continue;
     // Shadows in the dark: only seen where light falls on them.
     const seenA = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0, g.heal || 0) * (g.variant === "pale" ? 0.7 : 1);
+    // Unlit, a Hushling is only two faint eyes in the dark (closer and hunting: brighter), so a
+    // careful player can spot it before it's on top of them.
+    if (seenA < 0.25 && !g.heal && !(g.delay > 0)) {
+      const gap = Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y);
+      const a = gap < 9 ? (hunting ? 0.75 : 0.42) * Math.min(1, (9 - gap) / 3) * ((t * 0.37) % 4 < 0.1 ? 0.1 : 1) * (1 - seenA * 4) : 0;
+      if (a > 0.02) {
+        const col = v ? GLOW[v.glow] || GLOW.violet : hunting ? GLOW.pink : GLOW.violet;
+        ctx.globalCompositeOperation = "lighter";
+        for (const ox of [-0.36, 0.36]) { glow(col, X + ox * r, Y - r * 0.25, r * 0.5, a); glow(GLOW.white, X + ox * r, Y - r * 0.25, r * 0.16, a * 0.8); }
+        ctx.globalCompositeOperation = "source-over";
+      }
+    }
     if (seenA < 0.02) continue;
     // The Great Hush remembering its song: the shadow thins and a warm light shines through.
     const heal = g.heal || 0;

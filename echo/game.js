@@ -27,7 +27,7 @@ function loadLevel(i, demo = false) {
     timeLeft: save.settings.relaxed ? 0 : def.time || 0, failWhy: "", portalHintCd: 0, runeHinted: false,
     exit: null,
     lumi: { x: 0, y: 0, vx: 0, vy: 0, look: 0, sing: 0, blink: 2, squash: 0 },
-    chimes: [], chimeNext: 1, lamps: [], waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0, mobs: [], slow: 0,
+    chimes: [], chimeNext: 1, lamps: [], waves: [], particles: [], spores: [], trail: [], echoWalls: new Set(), charge: 0, path: [], thorns: [], invuln: 0, mobs: [], slow: 0, rocks: [], shake: 0, closest: 99,
     pings: 0, time: 0, got: 0,
     pingCd: 0, bumpCd: 0,
     ending: 0, done: false,
@@ -776,7 +776,18 @@ function update(dt) {
     // it last saw you, then gives up and drifts home.
     const gap = Math.hypot(lumi.x - g.x, lumi.y - g.y);
     if (g.chaser) {
-      if (g.delay > 0) { g.delay -= dt; if (g.delay <= 0) { sfx.gloomWake(0, true); setHint("Run!", 1.5); } continue; }
+      if (g.delay > 0) { g.delay -= dt; if (g.delay <= 0) { sfx.gloomWake(0, true); sfx.rumble(0); L.shake = 0.6; buzz([30, 40, 60]); setHint("Run! The cave is coming down!", 1.8); } continue; }
+      // The cave gives way behind you: stones crash down around the thing chasing you.
+      if (ctl && (L.quake = (L.quake ?? 1) - dt) <= 0) {
+        L.quake = 0.8 + Math.random() * 1.1;
+        for (let tries = 0; tries < 6; tries++) {
+          const rx = g.x + (lumi.x - g.x) * Math.random() * 0.6 + (Math.random() - 0.5) * 2.4, ry = g.y + (lumi.y - g.y) * Math.random() * 0.6 + (Math.random() - 0.5) * 2.4;
+          if (tileAt(rx, ry) < 0 || L.tile[tileAt(rx, ry)] === "#") continue;
+          L.rocks.push({ x: rx, y: ry, t: 0, s: 0.12 + Math.random() * 0.12, spin: Math.random() * 6 });
+          sfx.rumble(rx - lumi.x); L.shake = Math.max(L.shake || 0, 0.35); buzz(25);
+          break;
+        }
+      }
       if (g.flee > 0) { g.flee -= dt; g.x += (g.x - lumi.x) / (gap || 1) * 3.2 * dt; g.y += (g.y - lumi.y) / (gap || 1) * 3.2 * dt; continue; }
       // It never gives up and passes through rock, but it's slower than Lumi at full speed.
       const spd = 2.3 + depthOf(levelIndex) * 0.7;
@@ -854,6 +865,36 @@ function update(dt) {
       for (let k = 0; k < 16; k++) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.5, Math.sin(a) * 1.5, 0.7, "violet", 0.1); }
     }
   }
+
+  // Dread. Hushlings close by breathe in the dark, from their side (with headphones). While one
+  // hunts you nearby, your heart pounds, the phone thumps with it and the music turns tense.
+  // The Great Hush announces itself the first time you come near it.
+  if (ctl) {
+    let hunted = 0;
+    for (const g of L.gloom) {
+      if (g.gone > 0 || g.delay > 0 || g.heal || g.final) continue;
+      const gap = Math.hypot(g.x - lumi.x, g.y - lumi.y);
+      if (g.hunt > 0) { hunted = Math.max(hunted, Math.max(0, 1 - gap / 6)); L.closest = Math.min(L.closest ?? 99, gap); }
+      if (gap < 6.5) {
+        g.breath = (g.breath ?? Math.random() * 3) - dt;
+        if (g.breath <= 0) { g.breath = (g.big ? 4.5 : 2.6) + Math.random() * 1.6 - (g.hunt > 0 ? 0.9 : 0); g.big ? sfx.deepBreath(g.x - lumi.x) : sfx.breath(g.x - lumi.x, 1 - gap / 6.5); }
+      }
+      if (g.big && !g.chaser && !L.metHush && (gap < 4.5 || sightAt(g.x, g.y) > 0.3)) {
+        L.metHush = true; L.shake = 0.5; buzz([40, 80, 40]); sfx.deepBreath(g.x - lumi.x);
+        setHint("The Great Hush… don't wake it.", 3.2);
+      }
+    }
+    L.dread = (L.dread || 0) + (hunted - (L.dread || 0)) * Math.min(1, dt * 2);
+    music.tension = L.dread;
+    if (L.dread > 0.15 && (L.beat = (L.beat ?? 0) - dt) <= 0) { L.beat = 0.95 - L.dread * 0.5; sfx.heart(L.dread); if (L.dread > 0.45) buzz(15); }
+  }
+  // Falling stones and the shaking they cause.
+  L.shake = Math.max(0, (L.shake || 0) - dt * 1.2);
+  for (const r of L.rocks) {
+    const was = r.t; r.t += dt;
+    if (was < 0.55 && r.t >= 0.55) for (let k = 0; k < 10; k++) { const a = Math.random() * 6.28; spark(r.x, r.y, Math.cos(a) * 1.2, Math.sin(a) * 0.8 - 0.4, 0.8, "white", 0.06); }
+  }
+  L.rocks = L.rocks.filter(r => r.t < 6);
 
   // Light energy: drains slowly, crystals recharge it, and running out ends the try.
   if (L.useEnergy && ctl) {

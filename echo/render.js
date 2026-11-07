@@ -179,6 +179,7 @@ function cameraTargetX() {
 function moveCamera(dt) {
   OY += (cameraTarget() - OY) * Math.min(1, dt * 5);
   OX += (cameraTargetX() - OX) * Math.min(1, dt * 5);
+  if (L.shake > 0) { OX += (Math.random() - 0.5) * L.shake * TS * 0.25; OY += (Math.random() - 0.5) * L.shake * TS * 0.25; }
 }
 
 // ---------- Painted cave ----------

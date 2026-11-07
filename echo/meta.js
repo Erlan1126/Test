@@ -269,7 +269,7 @@ setInterval(() => { if (screen === "title") renderToday(); }, 30000);
 // ---------- Sharing a daily result ----------
 function shareDaily(stars) {
   const tw = twistFor(), secs = Math.round(L.time), n = dailyNumber();
-  const text = `Echo #${n} · ${tw.name} ${tw.ico}\n${"★".repeat(stars)}${"☆".repeat(3 - stars)} · 🎵 ${L.pings} songs · ⏱ ${fmtTime(secs)} · 🔥 ${save.daily.streak}\nCan you beat me? ${GAME_URL}?vs=${n}.${L.pings}.${secs}`;
+  const text = `Echo #${n} · ${tw.name} ${tw.ico}\n${"★".repeat(stars)}${"☆".repeat(3 - stars)} · 🎵 ${L.pings} songs · ⏱ ${fmtTime(secs)} · 🔥 ${save.daily.streak}${L.closest < 1.3 ? ` · 😱 ${L.closest < 0.6 ? "a whisker" : L.closest.toFixed(1) + " tiles"} from a Hushling` : ""}\nCan you beat me? ${GAME_URL}?vs=${n}.${L.pings}.${secs}`;
   if (navigator.share) navigator.share({ text }).catch(() => {});
   else if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast("Copied! Paste it anywhere"), () => toast(text.replace(/\n/g, "<br>")));
   else toast(text.replace(/\n/g, "<br>"));

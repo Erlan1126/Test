@@ -372,7 +372,8 @@ function finish() {
   $("resultSub").textContent = `${caveName} · ${mm}:${String(ss).padStart(2, "0")}`;
   $("newBest").textContent = streakMsg || newBest;
   const worldDone = levelIndex >= 0 && isFinale(levelIndex);
-  $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : ""].filter(Boolean).join(" · ");
+  const close = L.closest < 1.3 ? `😱 Closest call: ${L.closest < 0.6 ? "a whisker" : L.closest.toFixed(1) + " tiles"} from a Hushling` : "";
+  $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : "", close].filter(Boolean).join(" · ");
   $("g1v").textContent = "✓";
   $("g2v").textContent = `${L.got}/${L.lights.length}`;
   $("g3v").textContent = `${L.pings} / ${L.def.par}`;

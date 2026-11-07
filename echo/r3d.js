@@ -295,8 +295,90 @@ const R3D = (() => {
   const wormPts = new T.Points(life.wormGeo, new T.PointsMaterial({ map: GLOWT, size: 0.07, vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
   scene.add(wormPts);
   const songLight = new T.PointLight(0xb0f2ff, 0, 1, 1.2); scene.add(songLight);
-  // Lumi is always drawn on top, so a roof edge can never hide it.
-  const lumiCard = card(LUMI_T, 0.95, 0.95); lumiCard.renderOrder = 50; lumiCard.material.depthTest = false; scene.add(lumiCard);
+  // ---------- Lumi, in 3D ----------
+  // A soft glowing ball with big dark eyes, rosy cheeks and an antenna with a light on the
+  // end. It squashes when it bumps, leans into its swim, blinks and glows brighter as it sings.
+  // Drawn on top of the cave, so rock never hides it.
+  const onTop = (m, o) => { m.renderOrder = o; m.material.depthTest = false; m.material.depthWrite = false; return m; };
+  const lumiM = new T.Group(); scene.add(lumiM);
+  const lumiBodyMat = new T.MeshStandardMaterial({ color: 0xd6f6ff, emissive: 0x6fd9ff, emissiveIntensity: 0.6, roughness: 0.32, metalness: 0, transparent: true });
+  const lumiBody = onTop(new T.Mesh(new T.SphereGeometry(0.3, 40, 28), lumiBodyMat), 50);
+  lumiM.add(lumiBody);
+  // The face looks a little up toward the camera; features sit on the ball's surface.
+  const lumiFace = new T.Group(); lumiFace.rotation.x = -0.55; lumiBody.add(lumiFace);
+  const onBall = (x, y, r = 0.3) => new T.Vector3(x, y, Math.sqrt(Math.max(0, r * r - x * x - y * y)));
+  const lumiEyes = [-1, 1].map(sd => {
+    const e = onTop(new T.Mesh(new T.SphereGeometry(1, 20, 14), new T.MeshBasicMaterial({ color: 0x123049, transparent: true })), 52);
+    e.position.copy(onBall(sd * 0.105, 0.03)); e.scale.set(0.048, 0.066, 0.03); lumiFace.add(e);
+    const hi = onTop(new T.Mesh(new T.SphereGeometry(1, 10, 8), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true })), 53);
+    hi.position.set(-0.3, 0.35, 0.9); hi.scale.setScalar(0.32); e.add(hi);
+    return e;
+  });
+  for (const sd of [-1, 1]) {
+    const c = onTop(new T.Mesh(new T.CircleGeometry(0.045, 20), new T.MeshBasicMaterial({ color: 0xff8cc0, transparent: true, opacity: 0.45 })), 51);
+    c.position.copy(onBall(sd * 0.185, -0.06, 0.302)); c.lookAt(c.position.clone().multiplyScalar(2)); c.scale.y = 0.6; lumiFace.add(c);
+  }
+  const lumiMouth = onTop(new T.Mesh(new T.TorusGeometry(0.04, 0.009, 6, 16, Math.PI * 0.75), new T.MeshBasicMaterial({ color: 0x123049, transparent: true })), 52);
+  lumiMouth.position.copy(onBall(0, -0.075, 0.302)); lumiMouth.rotation.z = Math.PI * 1.125; lumiFace.add(lumiMouth);
+  const lumiAnt = new T.Group(); lumiAnt.position.y = 0.27; lumiBody.add(lumiAnt);
+  const antCurve = new T.QuadraticBezierCurve3(new T.Vector3(0, 0, 0), new T.Vector3(0.04, 0.14, 0), new T.Vector3(0.01, 0.24, 0));
+  lumiAnt.add(onTop(new T.Mesh(new T.TubeGeometry(antCurve, 10, 0.012, 6), new T.MeshBasicMaterial({ color: 0xbfefff, transparent: true })), 49));
+  const antBulb = onTop(new T.Mesh(new T.SphereGeometry(0.04, 14, 10), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true })), 49);
+  antBulb.position.set(0.01, 0.25, 0); lumiAnt.add(antBulb);
+  const antGlow = glow(0xbff4ff, 0.2, 0.55); antGlow.position.copy(antBulb.position); antGlow.renderOrder = 54; antGlow.material.depthTest = false; lumiAnt.add(antGlow);
+  let lumiSkin = -1;
+
+  // ---------- Hushlings, in 3D ----------
+  // A hooded shadow with two ear tufts, a ragged smoky hem of trailing tendrils and almond
+  // eyes. It turns toward Lumi, leans in and narrows its eyes to burning pink when it hunts.
+  // The Great Hush is twice the size with a crown of spikes. Their eyes glow faintly even in
+  // the dark, so a careful player can spot them before they're lit.
+  const HUSH_PROFILE = [[0, 0.56], [0.12, 0.54], [0.24, 0.47], [0.33, 0.33], [0.37, 0.14], [0.36, -0.04], [0.32, -0.2], [0.27, -0.3]].reverse().map(([x, y]) => new T.Vector2(x, y));
+  const hushGeo = new T.LatheGeometry(HUSH_PROFILE, 28);
+  const tendrilGeo = new T.ConeGeometry(0.075, 0.5, 8); tendrilGeo.rotateX(Math.PI); tendrilGeo.translate(0, -0.25, 0);
+  const earGeo = new T.ConeGeometry(0.075, 0.26, 8); earGeo.translate(0, 0.13, 0);
+  const eyeGeo = new T.SphereGeometry(1, 16, 10);
+  // Shadows aren't lit: they're painted dark, a little lighter toward the hood.
+  const paint = (geo, lo, hi, y0, y1) => {
+    const p = geo.attributes.position, c = new Float32Array(p.count * 3), a = new T.Color(lo), b = new T.Color(hi), t = new T.Color();
+    for (let q = 0; q < p.count; q++) { t.copy(a).lerp(b, Math.max(0, Math.min(1, (p.getY(q) - y0) / (y1 - y0)))).convertSRGBToLinear(); c[q * 3] = t.r; c[q * 3 + 1] = t.g; c[q * 3 + 2] = t.b; }
+    geo.setAttribute("color", new T.BufferAttribute(c, 3));
+  };
+  paint(hushGeo, 0x040108, 0x2a1440, -0.3, 0.56);
+  paint(tendrilGeo, 0x000000, 0x0a0412, -0.5, 0);
+  paint(earGeo, 0x1a0c2c, 0x05020a, 0, 0.26);
+  const grinPath = new T.CurvePath();
+  for (let q = 0; q < 6; q++) grinPath.add(new T.LineCurve3(new T.Vector3(-0.13 + q * 0.052, -0.06 + (q % 2) * 0.035 - Math.abs(q / 6 - 0.5) * 0.05, 0), new T.Vector3(-0.13 + (q + 1) * 0.052, -0.06 + ((q + 1) % 2) * 0.035 - Math.abs((q + 1) / 6 - 0.5) * 0.05, 0)));
+  const grinGeo = new T.TubeGeometry(grinPath, 24, 0.011, 5);
+  function makeHush() {
+    const g = new T.Group(), body = new T.Group(); g.add(body);
+    // Nearly black, with a thin glowing rim where its edge turns away from the camera.
+    const mat = new T.MeshBasicMaterial({ vertexColors: true, transparent: true });
+    // A thin glowing outline: a slightly bigger shell drawn from the inside, showing only at the edges.
+    const rim = new T.MeshBasicMaterial({ color: 0x8a5cff, transparent: true, opacity: 0.5, side: T.BackSide, depthWrite: false, toneMapped: false });
+    const outline = new T.Mesh(hushGeo, rim); outline.scale.setScalar(1.05); body.add(outline);
+    const shell = new T.Mesh(hushGeo, mat); shell.castShadow = true; body.add(shell);
+    const tendrils = [];
+    for (let q = 0; q < 6; q++) {
+      const a = q / 6 * Math.PI * 2, t = new T.Mesh(tendrilGeo, mat);
+      t.position.set(Math.cos(a) * 0.2, -0.24, Math.sin(a) * 0.2); t.userData.a = a; body.add(t); tendrils.push(t);
+    }
+    const ears = [-1, 1].map(sd => { const e = new T.Mesh(earGeo, mat); e.position.set(sd * 0.17, 0.47, 0.02); e.rotation.z = -sd * 0.55; body.add(e); return e; });
+    const crown = [-1, 0, 1].map(k => { const c = new T.Mesh(earGeo, mat); c.position.set(k * 0.11, 0.52, -0.02); c.scale.set(0.8, k ? 1.1 : 1.5, 0.8); c.rotation.z = -k * 0.25; body.add(c); return c; });
+    const face = new T.Group(); face.position.set(0, 0.26, 0.29); face.rotation.x = -0.45; body.add(face);
+    const eyeMat = new T.MeshBasicMaterial({ color: 0xc9a8ff, transparent: true, toneMapped: false });
+    const eyes = [-1, 1].map(sd => {
+      const e = new T.Mesh(eyeGeo, eyeMat); e.position.set(sd * 0.13, 0, 0.02); face.add(e);
+      const pu = new T.Mesh(eyeGeo, new T.MeshBasicMaterial({ color: 0xffffff, transparent: true })); pu.position.set(0.1, 0, 0.6); pu.scale.set(0.22, 0.4, 0.5); e.add(pu);
+      return e;
+    });
+    const grin = new T.Mesh(grinGeo, new T.MeshBasicMaterial({ color: 0xff9ad0, transparent: true, toneMapped: false })); grin.position.set(0, -0.13, 0.03); face.add(grin);
+    // Eye glows: seen even in the dark.
+    const glows = [-1, 1].map(sd => { const s = glow(0xc9a8ff, 0.32, 0.5); s.position.set(sd * 0.13, 0, 0.06); face.add(s); return s; });
+    g.userData = { body, mat, rim, tendrils, ears, crown, face, eyeMat, eyes, grin, glows };
+    return g;
+  }
+  const eyeCol = new T.Color();
   const lumiGlow = glow(0x7ee8ff, 2.2, 0.45); lumiGlow.renderOrder = 2; scene.add(lumiGlow);
   const sparkGeo = new T.BufferGeometry(), SPARKS = 320, sparkPos = new Float32Array(SPARKS * 3), sparkCol = new Float32Array(SPARKS * 3);
   sparkGeo.setAttribute("position", new T.BufferAttribute(sparkPos, 3));
@@ -480,7 +562,8 @@ const R3D = (() => {
     // Same size as the 2D canvas; the glow costs less at a lower resolution on small screens.
     const dpr = Math.min(DPR, qualityCap >= 2 ? 1.5 : 1.15);
     if (vw !== W || vh !== H || vd !== dpr) resize(W, H, dpr);
-    if (built !== L) { build(); camPos.set(L.lumi.x, 8.6, L.lumi.y + 5.4); camLook.set(L.lumi.x, 0.3, L.lumi.y - 0.6); }
+    // A new cave opens with the camera sweeping down from high above (higher still on the very first).
+    if (built !== L) { build(); camPos.set(L.lumi.x, levelIndex === 0 ? 24 : 15, L.lumi.y + 2.5); camLook.set(L.lumi.x, 0.3, L.lumi.y - 0.6); }
     const { cols, rows } = L, lumi = L.lumi;
     // Darkness texture from the same visibility the 2D view uses.
     for (let i = 0; i < L.n; i++) { const v = Math.min(255, vis(i) * 255) | 0, k = i * 4; visData[k] = v; visData[k + 1] = v; visData[k + 2] = v; visData[k + 3] = 255; }
@@ -489,13 +572,29 @@ const R3D = (() => {
     // Camera: above and behind Lumi, looking down at an angle, held inside the cave.
     const tx = Math.max(Math.min(cols / 2, 2.4), Math.min(Math.max(cols / 2, cols - 2.4), lumi.x));
     const ty = lumi.y + 0.6;
-    camPos.lerp(new T.Vector3(tx, 8.6, ty + 5.4), Math.min(1, dt * 4));
+    camPos.lerp(new T.Vector3(tx, 8.6, ty + 5.4), Math.min(1, dt * (camPos.y > 10 ? 1.6 : 4)));
     camLook.lerp(new T.Vector3(tx, 0.3, ty - 0.6), Math.min(1, dt * 5));
-    camera.position.copy(camPos); camera.lookAt(camLook);
+    camera.position.copy(camPos);
+    if (L.shake > 0) camera.position.add(new T.Vector3((Math.random() - 0.5) * L.shake * 0.25, (Math.random() - 0.5) * L.shake * 0.15, (Math.random() - 0.5) * L.shake * 0.25));
+    camera.lookAt(camLook);
 
     hideAll();
     const bob = Math.sin(clock * 2.4) * 0.06, shrink = L.ending ? Math.max(0, 1 - L.ending / 0.9) : 1;
-    lumiCard.position.set(lumi.x, 0.75 + bob, lumi.y); lumiCard.scale.setScalar(0.95 * shrink);
+    {
+      // Squash on a bump, stretch along the swim, lean into it, blink, glow when singing.
+      const sq = lumi.squash || 0, sp = Math.hypot(lumi.vx, lumi.vy), st = Math.min(0.12, sp * 0.03);
+      lumiM.position.set(lumi.x, 0.62 + bob, lumi.y);
+      lumiM.scale.set(shrink * (1 + sq * 0.18 + st * 0.5), shrink * (1 - sq * 0.25 - st * 0.3), shrink * (1 + sq * 0.18 + st * 0.5));
+      lumiBody.rotation.set(Math.max(-0.35, Math.min(0.35, lumi.vy * 0.09)), 0, Math.max(-0.35, Math.min(0.35, -lumi.vx * 0.09)));
+      for (const e of lumiEyes) e.scale.y = lumi.blink < 0 ? 0.008 : 0.066;
+      lumiAnt.rotation.z = Math.sin(clock * 3) * 0.08 + Math.max(-0.4, Math.min(0.4, lumi.vx * 0.12));
+      lumiBodyMat.emissiveIntensity = 0.55 + lumi.sing * 0.6;
+      if (lumiSkin !== save.skin) {
+        lumiSkin = save.skin;
+        const sk = SKINS[save.skin] && skinUnlocked(save.skin) && SKINS[save.skin].body ? SKINS[save.skin].body : ["#ffffff", "#c9f6ff", "#6fd9ff"];
+        lumiBodyMat.color.set(sk[1]); lumiBodyMat.emissive.set(sk[2]);
+      }
+    }
     lumiGlow.position.set(lumi.x, 0.72 + bob, lumi.y - 0.05); lumiGlow.material.opacity = 0.4 + lumi.sing * 0.5;
     lumiLight.position.set(lumi.x, 1.0, lumi.y); lumiLight.intensity = (1.2 + lumi.sing * 1.5) * shrink;
     lumiSpot.position.set(lumi.x + 0.15, 2.6, lumi.y + 0.35); lumiSpot.target.position.set(lumi.x, 0, lumi.y);
@@ -573,6 +672,13 @@ const R3D = (() => {
       }
       const m = BUG(bk++); m.position.set(b.x, 0.03, b.z); m.rotation.y = Math.atan2(b.tx - b.x, b.tz - b.z);
     }
+    // Stones crashing down in a collapsing cave.
+    const ROCK = pool("rock", () => { const m = new T.Mesh(new T.DodecahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: 0x6a6470, roughness: 0.9, flatShading: true }))); m.castShadow = true; return m; });
+    let rk3 = 0;
+    for (const r of L.rocks) {
+      const kk = Math.min(1, r.t / 0.55), m = ROCK(rk3++);
+      m.position.set(r.x, r.s * 0.7 + (1 - kk * kk) * 4.5, r.y); m.scale.setScalar(r.s * 1.4); m.rotation.set(r.spin + r.t * (1 - kk) * 6, r.spin, 0);
+    }
     // Lost lights: a warm orb bobbing above the floor.
     const ORB = pool("orb", () => glow(0xffd36e, 1, 1));
     let k = 0;
@@ -589,17 +695,40 @@ const R3D = (() => {
       const a = Math.max(c.on, vis(c.i) * 0.8); if (a < 0.03) continue;
       const m = GEM(k++); m.position.set(c.x, 0.65 + Math.sin(clock * 1.6 + c.x) * 0.05, c.y); m.rotation.y = clock * 0.9 + c.x; m.material.opacity = a; m.material.emissiveIntensity = 0.4 + c.on * 1.6;
     }
-    // Hushlings and the Great Hush.
-    const HU = pool("hush", () => card(HUSH.calm, 1, 1));
+    // Hushlings and the Great Hush, as 3D shadows. Unlit ones show only their eyes, faintly.
+    const HU = pool("hush3d", makeHush);
     k = 0;
     for (const g of L.gloom) {
       if (g.gone > 0 || g.delay > 0) continue;
-      const a = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0, g.heal || 0);
-      if (a < 0.03) continue;
-      const s = HU(k++), hunting = g.hunt > 0, big = g.big, sz = big ? 1.9 : 1.05;
-      s.material.map = big ? (hunting ? HUSH.bigHunt : HUSH.bigCalm) : hunting ? HUSH.hunt : HUSH.calm;
-      s.material.opacity = a * (1 - (g.heal || 0)); s.scale.set(sz, sz * 1.25, 1);
-      s.position.set(g.x, (big ? 1.25 : 0.85) + Math.sin(g.ph * 1.6) * 0.08, g.y);
+      const seen = Math.max(sightAt(g.x, g.y), save.settings.contrast ? 0.75 : 0, g.heal || 0) * (g.variant === "pale" ? 0.7 : 1);
+      const gap = Math.hypot(g.x - lumi.x, g.y - lumi.y), hunting = g.hunt > 0;
+      const blink = (g.ph * 0.37) % 4 < 0.1 ? 0.1 : 1;
+      const dark = gap < 9 && !g.heal ? (hunting ? 0.75 : 0.42) * Math.min(1, (9 - gap) / 3) : 0;
+      if (seen < 0.03 && dark < 0.03) continue;
+      const o = HU(k++), u = o.userData, big = g.big, v = g.variant && VARIANTS[g.variant];
+      const sc = big ? 1.75 : g.variant === "tiny" ? 0.75 : 1;
+      o.scale.setScalar(sc);
+      o.position.set(g.x, (big ? 1.0 : 0.62) + Math.sin(g.ph * 1.6) * 0.07, g.y);
+      // Turn toward Lumi (smoothly) and lean in when hunting; lunge a little when close.
+      const want = Math.max(-0.9, Math.min(0.9, Math.atan2(lumi.x - g.x, lumi.y - g.y) * 0.5));
+      let dA = want - o.rotation.y; dA = Math.atan2(Math.sin(dA), Math.cos(dA)); o.rotation.y += dA * Math.min(1, dt * (hunting ? 8 : 2));
+      u.body.rotation.x = -0.35 + (hunting ? 0.22 + (gap < 1.6 ? 0.15 : 0) : Math.sin(g.ph) * 0.05);
+      const bodyA = seen * (1 - (g.heal || 0));
+      u.body.visible = bodyA > 0.02;
+      u.mat.opacity = Math.min(1, bodyA * 3); u.rim.opacity = Math.min(1, bodyA * 2) * (hunting ? 0.75 : 0.5);
+      u.mat.color.set(v ? v.eye : 0xffffff); if (!v && hunting) u.mat.color.setRGB(1.3, 1, 1.3);
+      u.rim.color.set(v ? v.eye : hunting ? 0xff6ab8 : 0x8a5cff);
+      for (const t of u.tendrils) { t.rotation.x = Math.sin(clock * 2.2 + t.userData.a * 2) * 0.3 * Math.sin(t.userData.a); t.rotation.z = Math.sin(clock * 2.2 + t.userData.a * 2) * 0.3 * Math.cos(t.userData.a) - Math.cos(t.userData.a) * 0.2; }
+      for (const c of u.crown) c.visible = !!big;
+      for (const e of u.ears) e.visible = !big;
+      eyeCol.set(v ? v.eye : hunting ? 0xff9ad0 : 0xc9a8ff);
+      u.eyeMat.color.copy(eyeCol);
+      const eh = (hunting ? 0.032 : 0.05) * blink * (g.variant === "sleepy" ? 0.45 : 1);
+      u.eyes.forEach((e, q) => { e.scale.set(0.085, eh * 1.2, 0.03); e.rotation.z = hunting ? (q ? -0.35 : 0.35) : 0; e.material.opacity = bodyA; e.children[0].material.opacity = bodyA; });
+      u.grin.visible = hunting; u.grin.material.opacity = bodyA;
+      // Lit, the eyes just shine a little; in the dark, two small glowing points are all you see.
+      const ga = Math.max(bodyA * (hunting ? 0.45 : 0.25), dark * blink);
+      u.glows.forEach(gl => { gl.material.color.copy(eyeCol); gl.material.opacity = ga; gl.scale.setScalar(bodyA > 0.3 ? 0.14 : hunting ? 0.3 : 0.25); });
     }
     // Other creatures: their 2D portraits standing in the cave.
     const MO = pool("mob", () => card(mobTexture("k"), 1, 1));
