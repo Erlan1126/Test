@@ -41,16 +41,16 @@ export function sunAt(n: number, W: number, H: number): { x: number; y: number; 
 }
 
 type Neighbor = Box & { h: number; color: RGB };
-const NEIGHBORS: Neighbor[] = [
+export const NEIGHBORS: Neighbor[] = [
   { x0: -15.5, x1: -10, z0: 9, z1: 14.5, h: 4, color: hexRgb("#e8dcc8") },
   { x0: 9.5, x1: 15, z0: -15, z1: -9.5, h: 6, color: hexRgb("#c9d6e6") },
   { x0: -15, x1: -11, z0: 2.2, z1: 6.6, h: 2, color: hexRgb("#f0c9a8") },
 ];
-const EXTRA_NEIGHBORS: Neighbor[] = [
+export const EXTRA_NEIGHBORS: Neighbor[] = [
   { x0: -8.5, x1: -5, z0: 12, z1: 15.5, h: 2, color: hexRgb("#f2d0a4") },
   { x0: 10, x1: 14, z0: -6.5, z1: -3, h: 3, color: hexRgb("#d7e3c9") },
 ];
-const TREES = [
+export const TREES = [
   [-8, 9], [-6.5, 12.5], [-3, 14.5], [8.5, 8.5], [12, 4], [14.5, 1], [4, 12], [-13, -5.5], [-11, -8.5],
   [2.5, -13], [-1, -15], [12.5, 11.5], [15.5, 7], [-14.5, -2.6],
   // The forest along the right-hand edge, and a grove in the far corner
@@ -59,16 +59,16 @@ const TREES = [
 ].map(([x, z], i) => ({ x, z, size: 0.8 + hash(i, 3, 7) * 0.5, hue: hash(i, 9, 1) }));
 type Tree = (typeof TREES)[number];
 
-const FOUNTAIN = { x: -6.2, z: 6.2 }, POND = { x: 12, z: 12, r: 3.2 }, WHEEL = { x: -12, z: -12 };
+export const FOUNTAIN = { x: -6.2, z: 6.2 }, POND = { x: 12, z: 12, r: 3.2 }, WHEEL = { x: -12, z: -12 };
 const LAMPS: [number, number][] = [];
 for (const u of [9, 12.5, 16, 19.5]) for (const side of [-1.9, 1.9]) LAMPS.push([u, side], [side, u], [-u, side]);
-const CARS = [
+export const CARS = [
   { road: "x", lane: -0.65, speed: 2.6, off: 0, color: hexRgb("#ff6b6b") },
   { road: "x", lane: 0.65, speed: -2.1, off: 4, color: hexRgb("#f1f3f5") },
   { road: "z", lane: 0.65, speed: 2.3, off: 2, color: hexRgb("#4dabf7") },
   { road: "z", lane: -0.65, speed: -2.8, off: 7, color: hexRgb("#51cf66") },
 ];
-const BALLOONS = [
+export const BALLOONS = [
   { x: -14, z: 7, level: 7, color: "#ff6b6b", trim: "#ffe3e3", phase: 0 },
   { x: 13, z: -9, level: 10.5, color: "#4dabf7", trim: "#e7f5ff", phase: 2 },
   { x: 7, z: 15, level: 14, color: "#845ef7", trim: "#f3f0ff", phase: 4 },

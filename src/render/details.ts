@@ -21,8 +21,8 @@ const WALKERS = Array.from({ length: 14 }, (_, i) => ({
   side: hash(i, 3, 3) > 0.5 ? 1.95 : -1.95,
 }));
 const BENCHES = [[3.6, 7.95, "x"], [-3.6, 7.95, "x"], [7.95, 3.8, "z"], [7.95, -3.8, "z"], [-3.6, -7.95, "x"]] as const;
-const BEDS = [[-8.3, -4.2, 0], [4.3, -8.3, 1], [-4.6, 8.4, 2], [9.4, 5.6, 3], [-9, 4, 4]] as const;
-const ROCKS = [
+export const BEDS = [[-8.3, -4.2, 0], [4.3, -8.3, 1], [-4.6, 8.4, 2], [9.4, 5.6, 3], [-9, 4, 4]] as const;
+export const ROCKS = [
   { x: -28, z: 5, y: -4, r: 2.8, tree: true },
   { x: 7, z: 29, y: -7, r: 2.2, tree: false },
   { x: 29, z: -6, y: -3, r: 2.4, tree: true },
@@ -56,10 +56,10 @@ export const BUILD_SPOTS: Record<string, { x: number; z: number; r: number }> = 
 };
 
 /** Little houses with pitched roofs along the outer edges. */
-const HOUSES: [number, number, number][] = [[-19.8, -18, 0], [-19.8, -13.6, 1], [-19.8, -9.2, 2], [-19.8, -4.8, 3], [-17.4, 19.4, 4], [-13.2, 19.4, 5]];
-const HOUSE_WALLS: RGB[] = [[246, 231, 200], [207, 227, 242], [243, 209, 209], [217, 236, 210], [239, 224, 245], [251, 227, 196]];
-const HOUSE_ROOFS: RGB[] = [[181, 82, 59], [79, 109, 143], [138, 74, 58], [95, 127, 74], [122, 90, 160], [192, 106, 58]];
-const LAKE = { x: -6.6, z: 18.8, r: 2.4 };
+export const HOUSES: [number, number, number][] = [[-19.8, -18, 0], [-19.8, -13.6, 1], [-19.8, -9.2, 2], [-19.8, -4.8, 3], [-17.4, 19.4, 4], [-13.2, 19.4, 5]];
+export const HOUSE_WALLS: RGB[] = [[246, 231, 200], [207, 227, 242], [243, 209, 209], [217, 236, 210], [239, 224, 245], [251, 227, 196]];
+export const HOUSE_ROOFS: RGB[] = [[181, 82, 59], [79, 109, 143], [138, 74, 58], [95, 127, 74], [122, 90, 160], [192, 106, 58]];
+export const LAKE = { x: -6.6, z: 18.8, r: 2.4 };
 const FIREFLIES = Array.from({ length: 26 }, (_, i) => ({ x: (hash(i, 1, 4) * 2 - 1) * 19, z: (hash(i, 7, 2) * 2 - 1) * 19, ph: hash(i, 3, 8) * 9 }));
 const BUTTERFLIES = Array.from({ length: 7 }, (_, i) => ({ bed: i % 5, ph: hash(i, 4, 1) * 9, color: ["#ffd43b", "#ff8fab", "#74c0fc", "#ffffff", "#b197fc"][i % 5] }));
 const CLOUD_SHADOWS = [{ z: -10, r: 7, v: 0.6, off: 0 }, { z: 6, r: 5.5, v: 0.45, off: 20 }, { z: 15, r: 6.5, v: 0.5, off: 34 }];

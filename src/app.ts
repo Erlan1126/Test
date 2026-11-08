@@ -24,6 +24,7 @@ import { floorColor, lookFor } from "./render/buildings";
 import type { Debris } from "./render/effects";
 import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
+import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { $, closeModal, displayName, esc, openModalEl, replay, swatchHtml, toast, vibrate, wireTabs } from "./ui/dom";
@@ -94,7 +95,7 @@ export class App implements DailyHost {
   private readonly daily: DailySheets;
   private readonly storage = openStorage();
   private readonly canvas = $<HTMLCanvasElement>("game");
-  private readonly renderer: Renderer;
+  private readonly renderer: Renderer | Renderer3D;
   private readonly sheets: Sheets;
   private sim!: TowerSim;
   private state: State = "menu";
@@ -151,7 +152,10 @@ export class App implements DailyHost {
     this.persist();
     this.tutorial = !this.save.tutorialDone;
     this.sound = new Sound(() => this.save.settings);
-    this.renderer = new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
+    // Real 3D on the graphics chip when the device can; the old 2D drawing otherwise.
+    this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d")
+      ? new Renderer3D(this.canvas, $<HTMLCanvasElement>("fx"))
+      : new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
