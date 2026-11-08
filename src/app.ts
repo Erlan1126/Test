@@ -94,6 +94,9 @@ function siteUrl(): string {
 /** How long the landmark slow-motion lasts, in seconds. */
 const SLOWMO = 0.9;
 
+/** Length of the video clip's camera flight. */
+const VIDEO_SECONDS = 4.5;
+
 export class App implements DailyHost {
   save: SaveData;
   readonly sound: Sound;
@@ -135,6 +138,8 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  /** The video clip being recorded, if any. */
+  private video: { t: number; rec: MediaRecorder; ctx: CanvasRenderingContext2D; canvas: HTMLCanvasElement } | null = null;
   private starterTimer = 0;
   /** How smoothly the current tower is running, for the anonymous frame-rate report. */
   private frameStats = { n: 0, time: 0, slow: 0, worst: 0 };
@@ -552,6 +557,7 @@ export class App implements DailyHost {
     $("peek").addEventListener("click", () => this.setPeek(true));
     $("unpeek").addEventListener("click", () => this.setPeek(false));
     $("share").addEventListener("click", () => void this.share());
+    $("share-video").addEventListener("click", () => void this.shareVideo());
 
     $("pause").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); this.pause(); });
     $("resume").addEventListener("click", () => this.resume());
@@ -1310,6 +1316,7 @@ export class App implements DailyHost {
     nb.hidden = !next;
     if (next) nb.textContent = t("Next challenge: {name}", { name: t(next.name) });
     $("share").hidden = mode === "challenge";
+    $("share-video").hidden = mode === "challenge" || !(this.renderer instanceof Renderer3D) || typeof MediaRecorder === "undefined";
     $("over-actions").classList.toggle("single", mode === "challenge");
     this.renderCorners();
     $("over").hidden = false;
@@ -1343,6 +1350,72 @@ export class App implements DailyHost {
     const ms = sim.lastLandmark >= 0 ? t(", taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) }) : "";
     if (this.mode === "daily") return t("Skyrise Daily #{day}: {n} people in a {m} m tower{landmark}. Can you beat it today?", { day: this.runDay, n: fmt(sim.score), m: sim.meters, landmark: ms });
     return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
+  }
+
+  /** Records a short clip of the finished tower and opens the share sheet with it. */
+  private async shareVideo(): Promise<void> {
+    if (this.video || !(this.renderer instanceof Renderer3D) || typeof MediaRecorder === "undefined") return;
+    const mime = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(m => MediaRecorder.isTypeSupported(m));
+    if (!mime) { toast(t("Videos can't be recorded on this device")); return; }
+    this.sound.click();
+    const view = this.renderer.view, W = 720, H = Math.min(1280, Math.round(720 * view.H / view.W / 2) * 2);
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+    const rec = new MediaRecorder(canvas.captureStream(30), { mimeType: mime, videoBitsPerSecond: 5_000_000 });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    const done = new Promise<void>(r => { rec.onstop = () => r(); });
+    const badge = document.createElement("div");
+    badge.className = "rec-badge";
+    badge.textContent = t("● Recording your tower…");
+    document.body.append(badge);
+    document.body.classList.add("recording");
+    this.video = { t: 0, rec, ctx, canvas };
+    rec.start(250);
+    await done;
+    this.video = null;
+    badge.remove();
+    document.body.classList.remove("recording");
+    const blob = new Blob(chunks, { type: mime.split(";")[0] });
+    const ext = mime.startsWith("video/mp4") ? "mp4" : "webm", name = `skyrise-tower.${ext}`;
+    const text = this.shareText();
+    if (await nativeShare(text, blob, name)) return;
+    try {
+      const file = new File([blob], name, { type: blob.type });
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+    }
+    // No share sheet: save the file instead.
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    toast(t("Your video was saved"));
+  }
+
+  /** One frame of the video clip: the 3D scene, the effects on top, and the score. */
+  private paintVideoFrame(): void {
+    const v = this.video!, r = this.renderer as Renderer3D, { ctx, canvas } = v, W = canvas.width, H = canvas.height;
+    ctx.drawImage(r.glCanvas, 0, 0, W, H);
+    ctx.drawImage(this.canvas, 0, 0, W, H);
+    // The score and the game's name, like a TV caption.
+    const g = ctx.createLinearGradient(0, H * 0.78, 0, H);
+    g.addColorStop(0, "rgba(10,12,40,0)");
+    g.addColorStop(1, "rgba(10,12,40,0.75)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, H * 0.78, W, H * 0.22);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `64px "Lilita One", sans-serif`;
+    ctx.fillText(fmt(this.sim.score), W / 2, H - 120);
+    ctx.font = `800 26px Figtree, sans-serif`;
+    ctx.fillText(t("people live in my {m} m tower", { m: this.sim.meters }), W / 2, H - 80);
+    ctx.fillStyle = "#ffe08a";
+    ctx.font = `30px Bungee, sans-serif`;
+    ctx.fillText("SKYRISE", W / 2, H - 32);
   }
 
   private async share(): Promise<void> {
@@ -1414,6 +1487,7 @@ export class App implements DailyHost {
     }
     this.update(dt);
     this.draw(dt);
+    if (this.video) this.paintVideoFrame();
     requestAnimationFrame(t => this.frame(t));
   }
 
@@ -1449,7 +1523,12 @@ export class App implements DailyHost {
     this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(sim.stack.length), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
     const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" ? "over" : "play";
-    this.renderer.camera(dt, shot, sim.level, this.peek);
+    if (this.video && this.renderer instanceof Renderer3D) {
+      // Recording the video clip: the camera flies up the tower, then pulls back.
+      this.video.t += dt / VIDEO_SECONDS;
+      this.renderer.cinematic(Math.min(1, this.video.t), sim.level);
+      if (this.video.t >= 1.15 && this.video.rec.state === "recording") this.video.rec.stop();
+    } else this.renderer.camera(dt, shot, sim.level, this.peek);
 
     if (this.state === "over" && !this.overReady) {
       this.overTimer -= dt;

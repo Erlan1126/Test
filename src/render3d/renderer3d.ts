@@ -249,6 +249,30 @@ export class Renderer3D {
     v.cx = lerp(v.cx, tCx, k);
   }
 
+  /** The video clip's camera, t from 0 to 1: rise up the tower from the street to the
+   *  roof, then pull back to show the whole tower and the city around it. */
+  cinematic(t: number, level: number): void {
+    const v = this.view, ease = (x: number) => x * x * (3 - 2 * x);
+    if (t < 0.65) {
+      const k = ease(t / 0.65);
+      v.zoom = lerp(1.15, 0.95, k);
+      v.level = lerp(-2, Math.max(0, level - 3), k);
+      v.originY = v.H * 0.62;
+      v.cx = v.W / 2;
+    } else {
+      // Ease from the roof into the finished-tower framing.
+      for (let i = 0; i < 60; i++) this.camera(1, "over", level, true);
+      const to = { zoom: v.zoom, level: v.level, originY: v.originY }, k = ease((t - 0.65) / 0.35);
+      v.zoom = lerp(0.95, to.zoom, k);
+      v.level = lerp(Math.max(0, level - 3), to.level, k);
+      v.originY = lerp(v.H * 0.62, to.originY, k);
+      v.cx = v.W / 2;
+    }
+  }
+
+  /** The 3D canvas (for recording the video clip). */
+  get glCanvas(): HTMLCanvasElement { return this.gl.domElement; }
+
   snap(shot: Shot, level: number): void {
     for (let i = 0; i < 60; i++) this.camera(1, shot, level);
   }

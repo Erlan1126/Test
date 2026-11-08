@@ -49,14 +49,14 @@ export function onBackButton(handler: () => boolean): void {
 // ---------- Share ----------
 
 /** The system share sheet. Returns false when it isn't available (the website uses its own). */
-export async function nativeShare(text: string, image: Blob | null): Promise<boolean> {
+export async function nativeShare(text: string, image: Blob | null, fileName = "skyrise-share.png"): Promise<boolean> {
   if (!isNative()) return false;
   try {
     let files: string[] | undefined;
     if (image) {
       // The share sheet needs a real file, so the picture goes to the app's cache first.
       const data = await blobToBase64(image);
-      const saved = await Filesystem.writeFile({ path: "skyrise-share.png", data, directory: Directory.Cache });
+      const saved = await Filesystem.writeFile({ path: fileName, data, directory: Directory.Cache });
       files = [saved.uri];
     }
     await Share.share({ title: "Skyrise", text, files });
