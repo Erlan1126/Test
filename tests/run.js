@@ -69,77 +69,50 @@ const SIM = `
   {
     const { page, errors } = await openGame(browser);
     const r = await page.evaluate(() => {
-      const bad = [], counts = { tall: 0, dark: 0, gates: 0, goals: 0 };
-      let tooBusy = 0;
+      const bad = [];
       const one = (lv, i) => {
         const m = lv.map, R = m.length;
         const Wd = m[0].length;
         if (![11, 17].includes(Wd) || m.some(row => row.length !== Wd)) return bad.push(i + ": wrong width");
         if ([...m[0], ...m[R - 1]].some(c => c !== "#") || m.some(row => row[0] !== "#" || row[Wd - 1] !== "#")) return bad.push(i + ": open border");
-        let S, X, gate = null;
-        const goals = [], runes = [];
+        let S, X;
+        const goals = [];
         m.forEach((row, y) => [...row].forEach((c, x) => {
           if (c === "S") S = [x, y];
           if (c === "E") X = [x, y];
-          if (c === "o" || c === "m" || c === "f" || c === "l" || (c >= "1" && c <= "4")) goals.push([x, y]);
-          if (c === "r") runes.push([x, y]);
-          if (c === "G") gate = [x, y];
+          if ("omfRl1234".includes(c)) goals.push([x, y]);
         }));
         if (!S || !X) return bad.push(i + ": missing start or portal");
-        if (!goals.some(([x, y]) => m[y][x] === "o")) bad.push(i + ": no lights");
-        const reach = blockGate => {
-          const seen = new Set([S + ""]), q = [S];
-          while (q.length) {
-            const [x, y] = q.shift();
-            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-              const nx = x + dx, ny = y + dy, c = m[ny] && m[ny][nx];
-              if (!c || c === "#" || c === "W" || c === "z" || (blockGate && c === "G") || seen.has(nx + "," + ny)) continue;
-              seen.add(nx + "," + ny);
-              q.push([nx, ny]);
-            }
+        const seen = new Set([S + ""]), q = [S];
+        while (q.length) {
+          const [x, y] = q.shift();
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const nx = x + dx, ny = y + dy, c = m[ny] && m[ny][nx];
+            if (!c || c === "#" || c === "W" || c === "z" || c === "G" || seen.has(nx + "," + ny)) continue;
+            seen.add(nx + "," + ny); q.push([nx, ny]);
           }
-          return seen;
-        };
-        const all = reach(false), before = reach(true);
-        for (const g of [X, ...goals]) if (!all.has(g + "")) bad.push(`${i}: ${m[g[1]][g[0]]} at ${g} can't be reached`);
-        for (const g of runes) if (!before.has(g + "")) bad.push(`${i}: rune at ${g} is behind its gate`);
-        if (gate && !runes.length) bad.push(i + ": gate with no runes");
-        if (gate && before.has(X + "")) bad.push(i + ": gate can be skipped");
+        }
+        for (const g of [X, ...goals]) if (!seen.has(g + "")) bad.push(`${i}: ${m[g[1]][g[0]]} at ${g} can't be reached`);
         if (lv.goal === "rescue" && !m.join("").includes("m")) bad.push(i + ": rescue level without a moth");
-        const flat = m.join("");
-        // Hushlings are in every cave once they've appeared, so they don't count as a big idea.
-        const big = [R > 18 || Wd > 11, !!lv.dark, !!gate, flat.includes("D"), /[<>^v]/.test(flat), flat.includes("z"), lv.goal && lv.goal !== "explore"].filter(Boolean).length;
-        if (i >= 10 && !INTRO[i] && big > 3) tooBusy++;
-        if (i >= 5 && (flat.match(/[gB]/g) || []).length < 3) bad.push(i + ": fewer than 3 Hushlings");
-        if (R > 18) counts.tall++;
-        if (Wd > 11) counts.wide = (counts.wide || 0) + 1;
-        if (lv.dark) counts.dark++;
-        if (gate) counts.gates++;
-        if (lv.goal && lv.goal !== "explore") counts.goals++;
       };
       for (let i = 0; i < TOTAL; i++) one(getLevel(i), i);
       one(getLevel(DAILY), "daily");
-      const introsOk = INTRO_LEVELS.every(i => getLevel(i).card && CARDS[getLevel(i).card]);
-      // Each idea should not appear before its introduction level.
-      const early = [];
-      for (let i = 10; i < 160; i++) {
-        const lv = getLevel(i), f = lv.map.join("");
-        if (INTRO[i]) continue;
-        if (f.includes("G") && i < UNLOCK.runes) early.push(i + " runes");
-        if (f.includes("g") && i < UNLOCK.gloom) early.push(i + " gloom");
-        if (lv.dark && i < UNLOCK.dark) early.push(i + " dark");
-        if (lv.map.length > 18 && i < UNLOCK.tall) early.push(i + " tall");
-        if (lv.goal === "race" && i < UNLOCK.race) early.push(i + " race");
-        if (lv.goal === "quiet" && i < UNLOCK.quiet) early.push(i + " quiet");
-        if (lv.goal === "rescue" && i < UNLOCK.rescue) early.push(i + " rescue");
-      }
-      return { bad, counts, tooBusy, introsOk, early };
+      const names = new Set(CORE_LEVELS.map(l => l.name));
+      const flat = i => getLevel(i).map.join("");
+      return {
+        bad, ten: TOTAL === 10 && names.size === 10,
+        startsGentle: [0, 1, 2].every(i => !/[gB]/.test(flat(i))),
+        hushlingsArrive: /g/.test(flat(3)),
+        stonesAppear: /R/.test(flat(4)),
+        endsWithTheGreatHush: /B/.test(flat(9)) && STORY_FINALE === 9,
+      };
     });
-    check("all 160 levels and the daily cave are well formed and completable", r.bad.length === 0, r.bad.slice(0, 5).join("; "));
-    check("no generated level uses more than 3 big ideas", r.tooBusy === 0, r.tooBusy + " too busy");
-    check("every introduction level has a picture card", r.introsOk);
-    check("no idea appears before its introduction level", r.early.length === 0, r.early.slice(0, 5).join(", "));
-    check("the mix includes tall, dark, gate and goal levels", Object.values(r.counts).every(n => n >= 8), JSON.stringify(r.counts));
+    check("the ten caves and the daily cave are well formed and completable", r.bad.length === 0, r.bad.slice(0, 5).join("; "));
+    check("there are ten handmade caves, each with its own name", r.ten);
+    check("the first three caves have no Hushlings", r.startsGentle);
+    check("Hushlings arrive in cave 4", r.hushlingsArrive);
+    check("ring stones arrive in cave 5", r.stonesAppear);
+    check("the last cave is the Great Hush", r.endsWithTheGreatHush);
     check("no page errors", errors.length === 0, errors[0]);
     await page.close();
   }
@@ -162,21 +135,14 @@ const SIM = `
       out.sings = L.pings === 1 && L.waves.length === 1;
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
       out.finishes = screen === "result" && (save.stars[0] || 0) >= 1;
-      startLevel(named("Sound Doors"), true);
-      Object.assign(L.lumi, { x: 5.5, y: 4.5 }); L.pingCd = 0; ping(); __sim(0.3);
-      out.doorOpens = L.door[3 * 11 + 5] > 0;
-      startLevel(named("The Current"), true);
-      Object.assign(L.lumi, { x: 1.5, y: 11.5, vx: 0, vy: 0 }); __sim(0.6);
-      out.currentPushes = L.lumi.y < 11.2;
-      startLevel(named("Sleepy Hollow"), true);
-      const c = L.critters[0];
-      Object.assign(L.lumi, { x: c.x, y: c.y + 0.5, vx: 0, vy: -2 }); __sim(0.1);
-      out.snoozleWakes = c.awake > 0;
       // Tunnel assist: starting half a tile off a narrow opening still gets Lumi through.
       startLevel(0, true);
       Object.assign(L.lumi, { x: 4.4, y: 13.5, vx: 0, vy: 0 });
       keys.arrowup = true; __sim(0.8); keys.arrowup = false;
       out.tunnelAssist = L.lumi.y < 12.2 && Math.abs(L.lumi.x - 5.5) < 0.3;
+      startLevel(0, true);
+      keys.arrowup = true; keys.shift = true; __sim(0.6); const sneak = Math.hypot(L.lumi.vx, L.lumi.vy); keys.arrowup = false; keys.shift = false;
+      out.shiftSneaksAtHalfSpeed = sneak > 1.5 && sneak < SWIM_MAX * 0.6;
       return out;
     });
     for (const [k, v] of Object.entries(g)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
@@ -199,133 +165,104 @@ const SIM = `
     await page.close();
   }
 
-  // ---------------------------------------------------------------- Mechanics
-  section("Mechanics and modes");
+  // ---------------------------------------------------------------- The core rules
+  section("Echoes, sound and blind Hushlings");
   {
     const { page, errors } = await openGame(browser);
     await page.evaluate(SIM);
     const m = await page.evaluate(() => {
-      const out = {}, find = f => { for (let i = 10; i < TOTAL; i++) if (!INTRO[i] && f(getLevel(i))) return i; };
-      startLevel(12, true); L.energy = 0.3; __sim(2);
-      out.energyRunsOut = screen === "fail";
-      startLevel(12, true); L.energy = 30; Object.assign(L.lumi, { x: L.lights[0].x, y: L.lights[0].y }); __sim(0.1);
-      out.lightRefillsEnergy = L.energy > 60;
-      startLevel(cardLevel("gloom"), true);
-      L.gloom = [L.gloom[0]];  // just one, so no other Hushling can get there first
-      const g = L.gloom[0]; g.hunt = 4; Object.assign(L.lumi, { x: g.x + 1.2, y: g.y });
-      const e0 = L.energy; __sim(1.5);
-      out.gloomlingCostsLight = L.hits === 1 && L.energy < e0 - 7;
-      startLevel(cardLevel("runes"), true);
-      out.gateStartsClosed = solidAt(Math.floor(L.gate.x), Math.floor(L.gate.y));
-      const far = L.runes[0]; Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y + 3 }); L.pingCd = 0; ping(); __sim(1.2);
-      out.runeIgnoresFarSongs = !far.on;
-      for (const r of L.runes) { Object.assign(L.lumi, { x: r.x, y: r.y }); L.pingCd = 0; ping(); __sim(0.6); }
-      out.gateOpensWhenAllRunesHear = L.gate.open > 0 && !solidAt(Math.floor(L.gate.x), Math.floor(L.gate.y));
-      startLevel(cardLevel("rescue"), true);
+      const out = {};
+      const only = n => { L.gloom = L.gloom.slice(0, n); };
+      // Echoes light the walls, then the memory of them fades.
+      startLevel(1, true);
+      L.pingCd = 0; ping(); __sim(1);
+      const lit = [...Array(L.n).keys()].filter(i => vis(i) > 0.3 && Math.hypot(i % L.cols + 0.5 - L.lumi.x, ((i / L.cols) | 0) + 0.5 - L.lumi.y) > 3);
+      out.songShowsTheWalls = lit.length >= 8;
+      __sim(13);
+      out.memoryFades = lit.every(i => vis(i) < 0.06);
+      out.songsAreFree = L.energy === 100;
+      // A Hushling hears a song nearby and goes to where it was sung, not to Lumi.
+      startLevel(3, true); only(1);
+      const g = L.gloom[0];
+      Object.assign(L.lumi, { x: 5.5, y: 10.5 }); L.pingCd = 0; ping();
+      out.hushlingHearsNearbySong = g.hunt > 0 && g.lx === 5.5 && g.ly === 10.5;
+      const d0 = Math.hypot(g.x - 5.5, g.y - 10.5);
+      Object.assign(L.lumi, { x: 1.5, y: 4.5 }); __sim(1.2);
+      out.hushlingGoesToTheSong = Math.hypot(g.x - 5.5, g.y - 10.5) < d0 - 1.5;
+      startLevel(3, true); only(1);
+      Object.assign(L.lumi, { x: 5.5, y: 13.5 }); L.pingCd = 0; ping(false);
+      out.farTapIsNotHeard = L.gloom[0].hunt === 0;
+      L.pingCd = 0; ping(true);
+      out.longSongIsHeardFurther = L.gloom[0].hunt > 0;
+      L.waves = []; L.pingCd = 0; ping(false); const shortRange = L.waves[0].range;
+      L.waves = []; L.pingCd = 0; ping(true);
+      out.longSongReachesFurther = L.waves[0].range > shortRange + 3;
+      // Swimming fast is heard; swimming slowly is silent.
+      const pass = speed => {
+        startLevel(5, true);
+        Object.assign(L.lumi, { x: 5.5, y: 11.5, vx: 0, vy: 0 });
+        __sim(0.5, () => { L.lumi.vx = 0; L.lumi.vy = -speed; });
+        return L.gloom.some(q => q.hunt > 0);
+      };
+      out.slowSwimIsSilent = !pass(1.6);
+      out.fastSwimIsHeard = pass(SWIM_MAX);
+      // A song reaching a ring stone makes it ring, and the Hushling goes to the stone.
+      startLevel(4, true);
+      const st = L.stones[0], h = L.gloom[0];
+      Object.assign(L.lumi, { x: 6.5, y: 14.5 }); L.pingCd = 0; ping();
+      out.farFromItTheSongIsNotHeard = h.hunt === 0;
+      __sim(1.6);
+      out.ringStoneRings = st.cd > 0;
+      out.stoneCallsTheHushling = h.hunt > 0 && h.lx === st.x && h.ly === st.y;
+      __sim(4);
+      out.hushlingGoesToTheStone = Math.hypot(h.x - st.x, h.y - st.y) < 1.2;
+      // Light is health: three touches and the try is over.
+      startLevel(3, true); only(1);
+      const hu = L.gloom[0];
+      for (let k = 0; k < 3; k++) { L.invuln = 0; hu.gone = 0; hu.calm = 0; hu.hunt = 2; Object.assign(L.lumi, { x: hu.x + 0.2, y: hu.y }); __sim(0.05); }
+      __sim(2);
+      out.threeTouchesEndTheTry = L.hits === 3 && screen === "fail";
+      // Run!: a Hunter rises behind Lumi and the cave comes down.
+      startLevel(6, true);
+      const hunter = L.gloom.find(q => q.chaser);
+      Object.assign(L.lumi, { x: 5.5, y: 17.5 }); __sim(6, () => { L.invuln = 1; });
+      out.hunterChasesInRunCaves = !!hunter && Math.hypot(hunter.x - hunter.hx, hunter.y - hunter.hy) > 0.5;
+      out.runCaveComesDown = L.rocks.length > 0;
+      // The lost moth.
+      startLevel(7, true);
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
       out.portalSleepsWithoutMoth = !L.ending;
       Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2);
-      L.chimeNext = L.chimes.length + 1;  // the chime puzzle is tested on its own
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.6);
       out.mothRescueFinishes = screen === "result";
-      startLevel(cardLevel("quiet"), true);
-      for (let k = 0; k < 20; k++) { L.pingCd = 0; ping(); }
-      out.quietCaveLimitsSongs = L.pings === L.songLimit;
-      startLevel(cardLevel("race"), true); L.timeLeft = 0.4; __sim(2);
-      out.raceRunsOut = screen === "fail" && L.failWhy === "time";
+      // The Great Hush: sing to it and it remembers.
+      startLevel(9, true);
+      const king = L.gloom.find(q => q.final);
+      Object.assign(L.lumi, { x: king.x, y: king.y + 2 }); L.pingCd = 0; ping(); __sim(10);
+      out.singingToTheGreatHushHealsIt = !!king && king.heal >= 1 && L.healed;
+      // Relaxed: no Hushlings and no light to lose.
       save.settings.relaxed = true;
-      startLevel(cardLevel("race"), true);
-      out.relaxedHasNoTimerOrEnergy = !L.timeLeft && !L.useEnergy;
-      startLevel(cardLevel("gloom"), true);
-      out.relaxedHasNoHushlings = L.gloom.length === 0;
+      startLevel(3, true);
+      out.relaxedHasNoHushlingsOrLightLoss = L.gloom.length === 0 && !L.useEnergy;
       save.settings.relaxed = false;
-      startLevel(cardLevel("dark"), true);
-      out.darkCaveHidesLights = L.dark && L.lights.every(o => !L.seen[o.i]);
-      save.settings.glow = true; startLevel(cardLevel("dark"), true);
-      out.guidingGlowLightsDarkCaves = !L.dark;
-      save.settings.glow = false;
-      const tall = find(lv => lv.map.length === 34);
-      startLevel(tall, true);
-      const oy = OY; L.lumi.y = 3.5; __sim(1.5);
-      out.cameraFollowsInTallCaves = L.scroll && OY > oy + 100;
+      // The daily cave still works underneath (hidden for now).
       startLevel(DAILY, true);
       if (L.baby) { Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2); }
-      L.chimeNext = L.chimes.length + 1; for (const q of L.lamps) q.on = 1;  // tested on their own below
+      L.chimeNext = L.chimes.length + 1; for (const q of L.lamps) q.on = 1;
       Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
-      out.dailyStartsStreak = save.daily.streak >= 1 && save.daily.last === dayKey();
-      // Chimes: the portal stays sealed until they're rung in order; the wrong one does nothing.
-      startLevel(find(lv => lv.goal === "explore" && /[1-4]/.test(lv.map.join(""))), true);
-      out.cavesHaveChimes = L.chimes.length >= 2;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
-      out.portalSealedUntilChimesRing = !L.ending;
-      const last = L.chimes.find(c => c.n === L.chimes.length);
-      Object.assign(L.lumi, { x: last.x, y: last.y }); __sim(0.2);
-      out.wrongChimeDoesNothing = L.chimeNext === 1 && !last.rung;
-      for (const c of L.chimes.slice().sort((a, b) => a.n - b.n)) { Object.assign(L.lumi, { x: c.x, y: c.y }); __sim(0.2); }
-      out.chimesInOrderOpenThePortal = L.chimeNext > L.chimes.length;
-      // Relight the city: a song close to each dark lamp lights it; then the portal opens.
-      startLevel(find(lv => lv.goal === "relight"), true);
-      out.relightCavesHaveLamps = L.lamps.length >= 3;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
-      out.portalWaitsForTheLamps = !L.ending;
-      for (const q of L.lamps) { Object.assign(L.lumi, { x: q.x, y: q.y }); L.pingCd = 0; ping(); __sim(0.2); }
-      out.singingLightsEveryLamp = L.lamps.every(q => q.on) && L.cityLit;
-      // Run!: a Hunter rises behind Lumi and keeps coming.
-      startLevel(find(lv => lv.goal === "escape"), true);
-      const hunter = L.gloom.find(g => g.chaser), h0 = [hunter.x, hunter.y];
-      Object.assign(L.lumi, { x: h0[0] + 5, y: h0[1] }); L.lumi.x = Math.min(L.cols - 1.5, L.lumi.x); __sim(4);
-      out.hunterChasesInRunCaves = !!hunter && Math.hypot(hunter.x - h0[0], hunter.y - h0[1]) > 0.5;
-      // Thornlings patrol and cost light when touched.
-      startLevel(cardLevel("thorns"), true);
-      // A Thornling may be pausing at the end of its lane, so watch it for a while.
-      const th = L.thorns[0], p0 = [th.x, th.y]; let moved = 0;
-      for (let k = 0; k < 12; k++) { __sim(0.25); moved = Math.max(moved, Math.hypot(th.x - p0[0], th.y - p0[1])); }
-      out.thornlingsPatrol = moved > 0.2;
-      L.invuln = 0; L.energy = 100; const e1 = L.energy, h1 = L.hits; Object.assign(L.lumi, { x: th.x, y: th.y }); __sim(0.05);
-      out.thornlingsCostLight = L.hits > h1 && L.energy < e1 - 7;
-      // Long songs reach further than short ones.
-      startLevel(12, true); L.pingCd = 0; ping(false); const shortRange = L.waves[0].range;
-      L.waves = []; L.pingCd = 0; ping(true);
-      out.longSongReachesFurther = L.waves[0].range > shortRange + 3;
-      // Echo crystals sing a song onward.
-      const ew = find(lv => lv.map.join("").includes("W"));
-      startLevel(ew, true);
-      const j = [...L.echoWalls][0], ex = j % L.cols, ey = (j / L.cols) | 0;
-      const spot = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [ex + dx, ey + dy]).find(([x, y]) => !solidAt(x, y));
-      Object.assign(L.lumi, { x: spot[0] + 0.5, y: spot[1] + 0.5 }); L.pingCd = 0; ping(); __sim(0.4);
-      out.echoCrystalBouncesSongs = L.waves.some(w => w.echo);
-      // Sleeping Snoozles snore little pulses of light.
-      startLevel(named("Sleepy Hollow"), true); __sim(5);
-      out.snoozlesSnore = L.critters.some(c => c.snoreT != null) && L.critters.every(c => c.snoreT > 0);
-      // Lumi's family.
-      save.settings.controls = "dual";
-      const fl = familyLevel(1);
-      startLevel(fl, true);
-      out.familyHidesInEachWorld = !!L.family;
-      Object.assign(L.lumi, { x: L.family.x, y: L.family.y }); __sim(0.2);
-      out.familyCanBeFound = !!(save.family && save.family[1]);
-      // The Great Hush guards world finales from World 4.
-      startLevel(79, true);
-      out.greatGloomInFinales = L.gloom.some(g => g.big);
-      // Weekly cave.
-      startLevel(WEEKLY, true);
-      if (L.baby) { Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2); }
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
-      out.weeklyCaveFinishes = screen === "result" && (save.weekly || {})[weekNumber()] >= 1;
+      out.dailyCaveStillWorks = screen === "result";
       out.resultMapIsDrawn = document.getElementById("resultMap").width > 50;
       // Tap to move: Lumi finds its own way to a tapped tile.
       save.settings.controls = "tap";
       startLevel(1, true);
-      travelTo(OX + 1.5 * TS, OY + 4.5 * TS);
-      __sim(12, () => (L.autoPath ? undefined : false));
-      out.tapToMoveArrives = Math.hypot(L.lumi.x - 1.5, L.lumi.y - 4.5) < 0.6;
+      travelTo(OX + 9.5 * TS, OY + 9.5 * TS);
+      __sim(20, () => (L.autoPath ? undefined : false));
+      out.tapToMoveArrives = Math.hypot(L.lumi.x - 9.5, L.lumi.y - 9.5) < 0.6;
       save.settings.controls = "stick";
-      // Wide caves scroll sideways.
-      const wide = find(lv => lv.map[0].length > 11);
-      startLevel(wide, true);
-      L.lumi.x = 1.5; __sim(1.5); const ox = OX;
-      L.lumi.x = L.cols - 1.5; __sim(1.5);
-      out.wideCavesScrollSideways = L.scrollX && OX < ox - 60;
+      // Tall caves scroll.
+      startLevel(6, true);
+      const oy = OY; L.lumi.y = 3.5; __sim(1.5);
+      out.cameraFollowsInTallCaves = L.scroll && OY > oy + 100;
       return out;
     });
     for (const [k, v] of Object.entries(m)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
@@ -341,7 +278,7 @@ const SIM = `
     const s = await page.evaluate(() => {
       const out = {}, on = id => document.getElementById(id).classList.contains("on");
       showTitle(); out.title = on("titleScreen");
-      openMap(); out.map = on("levelScreen") && document.querySelectorAll("#levelGrid .node").length === 20;
+      openMap(); out.map = on("levelScreen") && document.querySelectorAll("#levelGrid .node").length === TOTAL;
       renderLevels(49); out.lastWorld = document.getElementById("worldName").textContent.length > 0;
       renderLooks(); show("looks"); out.looks = document.querySelectorAll("#looksGrid .look").length === SKINS.length;
       renderAwards(); show("awards"); out.awards = document.querySelectorAll("#awardsList .award").length === ACHS.length;
@@ -363,16 +300,12 @@ const SIM = `
       dailyCleared(2); out.missingTooManyDaysResetsTheStreak = save.daily.streak === 1;
       save.daily = d0;
       save.story = {}; startLevel(0); out.story = screen === "story";
-      out.storyHasPicturesAndPages = !!document.querySelector("#storyArt svg") && document.querySelectorAll("#storyDots i").length === CHAPTERS[0].pages.length;
+      out.storyHasPicturesAndPages = !!document.querySelector("#storyArt svg") && document.querySelectorAll("#storyDots i").length === CORE_CHAPTER.pages.length;
       for (let k = 0; k < 10 && screen === "story"; k++) document.getElementById("storyGo").click();
       out.storyLeadsToLevel = screen === "play";
-      const fam0 = save.family; save.family = {};
-      out.partEndingLeavesFlickLost = !endingPages().some(p => p.flick);
-      save.family = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1 };
-      out.wholeLullabyBringsFlickHome = endingPages().some(p => p.flick);
-      save.family = fam0;
-      save.cards = {}; startLevel(cardLevel("runes"), { story: true }); out.card = screen === "card";
-      document.getElementById("cardGo").click(); out.cardLeadsToLevel = screen === "play" && L.def.name === "Listening Stones";
+      out.endingTellsTheWholeStory = endingPages().length === CORE_ENDING.length;
+      save.cards = {}; startLevel(6, { story: true }); out.card = screen === "card";
+      document.getElementById("cardGo").click(); out.cardLeadsToLevel = screen === "play" && L.def.name === "The Hunter";
       pause(); out.pauseShowsGoal = screen === "pause" && document.getElementById("pauseGoal").textContent.length > 5;
       resume();
       return out;
@@ -412,14 +345,11 @@ const SIM = `
     section(`Robot play-through (${ALL ? "every level" : "sample of levels"})`);
     const { page, errors } = await openGame(browser);
     await page.evaluate(SIM);
-    const sample = [];
-    if (ALL) { for (let i = 0; i < 160; i++) sample.push(i); sample.push(-1); }
-    else {
-      for (let i = 0; i < 10; i++) sample.push(i);
-        for (let i = 10; i < 19; i++) sample.push(i);
-      for (let i = 19; i < 160; i += 3) sample.push(i);
-    }
+    const sample = [], TOTAL_LEVELS = await page.evaluate(() => TOTAL);
+    for (let i = 0; i < TOTAL_LEVELS; i++) sample.push(i);
+    sample.push(-1);
     const res = await page.evaluate(list => {
+      const TOTAL_LEVELS = TOTAL;
       // A simple robot: walk tile paths to each light, the lost moth and each rune, then the
       // portal. Sing every few seconds, at closed doors and at runes.
       const out = [];
@@ -484,9 +414,12 @@ const SIM = `
             target = pickTarget(); path = route(Math.floor(target[0]), Math.floor(target[1])) || []; best = Infinity;
           }
           // A careful player sings less when a Hushling is close, so as not to wake it.
-          const gloomNear = L.gloom.some(gl => !gl.gone && !gl.calm && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < 6) ||
+          const gloomNear = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < (CORE ? 5 : 6)) ||
             L.mobs.some(mb => mb.kind === "a" && mb.state === "idle" && Math.hypot(mb.x - L.lumi.x, mb.y - L.lumi.y) < 6.5);
-          if (t - lastSong > (L.songLimit ? 9 : gloomNear ? 7 : 3)) sing(t);
+          if (CORE) {
+            if (!gloomNear && t - lastSong > 1.5) sing(t);
+            keys.shift = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < 3.3);
+          } else if (t - lastSong > (L.songLimit ? 9 : gloomNear ? 7 : 3)) sing(t);
           const cx = Math.floor(L.lumi.x), cy = Math.floor(L.lumi.y);
           let k = path.findIndex(p => p[0] === cx && p[1] === cy);
           const next = path[Math.min(path.length - 1, k + 1)] || [Math.floor(target[0]), Math.floor(target[1])];
@@ -508,7 +441,7 @@ const SIM = `
           if (d < best - 0.05) { best = d; stuckFor = 0; } else stuckFor += 1 / 60;
           if (stuckFor > 12) { reason = `stuck near ${cx},${cy}`; return false; }
         });
-        for (const k of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[k] = false;
+        for (const k of ["arrowright", "arrowleft", "arrowup", "arrowdown", "shift"]) keys[k] = false;
         const done = screen === "result" || (L.ending && (__sim(2), screen === "result"));
         if (!done && !reason) reason = L.failing ? (L.failWhy === "time" ? "ran out of time" : "ran out of light") : "timed out";
         out.push({ n, done, reason, time: Math.round(time), pings: L.pings, par: L.def.par, energy: Math.round(L.energy), goal: L.goal });
@@ -538,7 +471,7 @@ const SIM = `
       let seed = 12345, problems = [];
       const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let k = 0; k < 40; k++) {
-        const n = k < 4 ? [DAILY, 40, 84, 100][k] : Math.floor(rnd() * 160);
+        const n = k < 1 ? DAILY : Math.floor(rnd() * TOTAL);
         startLevel(n, true);
         __sim(20, t => {
           if (rnd() < 0.05) for (const d of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[d] = rnd() < 0.35;
@@ -560,8 +493,8 @@ const SIM = `
   section("Speed (report only; headless browsers have no graphics chip)");
   {
     const { page } = await openGame(browser);
-    for (const rows of [18, 34]) {
-      const i = await page.evaluate(r => { for (let i = 85; i < TOTAL; i++) if (!INTRO[i] && getLevel(i).map.length === r) return i; }, rows);
+    for (const rows of [18, 26]) {
+      const i = await page.evaluate(r => { for (let i = 0; i < TOTAL; i++) if (getLevel(i).map.length === r) return i; }, rows);
       const ms = await page.evaluate(i => { const t = performance.now(); startLevel(i, true); return performance.now() - t; }, i);
       const fps = await page.evaluate(() => new Promise(done => {
         let n = 0; const start = performance.now();

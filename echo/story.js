@@ -6,7 +6,7 @@
 "use strict";
 
 // The last level of World 8, where Lumi sings to the Great Hush.
-const STORY_FINALE = PER_WORLD * 8 - 1;
+const STORY_FINALE = CORE ? TOTAL - 1 : PER_WORLD * 8 - 1;
 
 const LULLABY = [
   "Hush now, little light, the dark is only deep,",
@@ -84,9 +84,28 @@ const CHAPTERS = [
   ] },
 ];
 
+// The core's story: one chapter before the first cave, and an ending after the last.
+const CORE_CHAPTER = { title: "The Last Song", pages: [
+  { text: "Before Lumi remembers anything else, it remembers a voice. Something very big and very warm, humming close by in the dark. Hush now, little light…", memory: 1 },
+  { text: "Then the song stopped. Lumi wakes alone, deep under the world, in a dark so thick it can't even see its own glow.", lumi: 1 },
+  { text: "So Lumi does the only thing a little light can do. It sings. And the dark sings back: every wall, every tunnel answering for a moment, before the silence closes in again.", lumi: 1, notes: 1 },
+  { text: "But Lumi isn't alone. Things live down here with no eyes at all. Hushlings. They can't see a light. They can only hear it.", hushlings: 1 },
+  { text: "Every song shows Lumi the way. Every song tells the Hushlings where it is.", lumi: 1, hushlings: 1 },
+  { text: "And somewhere at the bottom of the dark, the voice that hummed to Lumi is still waiting. Lumi takes a breath, and sings.", lumi: 1, hush: "far" },
+] };
+const CORE_ENDING = [
+  { text: "Lumi swam right up to the Great Hush, so close it could feel the cold of the shadow, and began to sing.", lumi: 1, hush: "big", notes: 1 },
+  { text: "The Hush went still. A hundred years of silence held its breath.", hush: "big" },
+  { text: "Then, very softly, the way it used to every night, it sang the next line back. Its voice was cracked and old. It was the most beautiful thing Lumi had ever heard.", hush: "healing", lumi: 1, notes: 1 },
+  { text: "“You came back,” it said. “I didn't know the way,” said Lumi. “But you found it. You sang, and sang, until you found it.”", hush: "healing", lumi: 1 },
+  { text: "The shadow broke like a shell, and the Singer was inside it all along: warm, and golden, and so very glad. Every Hushling in the dark flew home to it and turned to light.", hush: "healed", fireflies: 1 },
+  { text: "The End. Somebody's always listening.", stars: 1, lumi: 1 },
+];
+
 // The ending changes with the lullaby: only the whole song brings Flick home.
 const flickCanReturn = () => versesFound().every(Boolean);
 function endingPages() {
+  if (CORE) return CORE_ENDING;
   const all = flickCanReturn();
   const pages = [
     { text: "Lumi swam right up to the Great Hush, so close it could feel the cold of the shadow, and began to sing. " + (all ? "Every line, the way its family had taught it." : "Where it didn't know the words, it hummed."), lumi: 1, hush: "big", notes: 1 },
@@ -202,6 +221,7 @@ function storyNext() {
 }
 // The chapter that opens a world, or null after the first eight (and the coda that follows them).
 function worldChapter(w) {
+  if (CORE) return w === 0 ? { name: CORE_CHAPTER.title, pages: CORE_CHAPTER.pages } : null;
   if (w < CHAPTERS.length) return { name: CHAPTERS[w].title, pages: CHAPTERS[w].pages };
   if (w === CHAPTERS.length) return { name: "The Long Echo", pages: AFTER };
   return null;

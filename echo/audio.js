@@ -247,6 +247,11 @@ sfx.rumble = (dx = 0) => {
   noise({ filter: "lowpass", freq: 260, glide: 90, q: 0.5, dur: 1.4, attack: 0.05, vol: 0.18, pan: dx / 5, echo: 0.6 });
   noise({ at: 0.55, filter: "highpass", freq: 1800, q: 0.5, dur: 0.12, attack: 0.003, vol: 0.06, pan: dx / 5, echo: 0.5 });
 };
+// An old ring stone: a deep, ringing bell, heard from its side.
+sfx.stone = (dx = 0) => {
+  note(pitch(0, 0), { dur: 2.2, vol: 0.14, fm: 2.76, fmDepth: 1.8, echo: 1, pan: dx / 5 });
+  note(pitch(4, 1), { at: 0.02, dur: 1.6, vol: 0.05, fm: 3.5, fmDepth: 0.9, echo: 1, pan: dx / 5 });
+};
 // The Great Hush's long, slow breath.
 sfx.deepBreath = (dx = 0) => {
   noise({ freq: 260, glide: 420, q: 0.6, dur: 1.8, attack: 1.0, vol: 0.09, pan: dx / 5, echo: 0.8 });

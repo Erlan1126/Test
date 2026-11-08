@@ -26,7 +26,9 @@ function drawBackground(dt) {
   ctx.globalAlpha = 1;
 }
 
-const vis = i => Math.max(L.lit[i], L.glow[i], L.seen[i] * MEMORY);
+// What Lumi can see: the song's light, glowing things, and its memory of the cave, which
+// fades over a few seconds (in the core), so you have to sing again or remember the way.
+const vis = i => Math.max(L.lit[i], L.glow[i], CORE ? L.mem[i] * 0.32 : L.seen[i] * MEMORY);
 // Nothing shows until Lumi's light or a song reaches it (Guiding glow turns this off).
 // sightAt: things that move, seen only while light is on them. knownAt: things that stay put,
 // which stay known once a song has found them.
@@ -108,6 +110,7 @@ function sceneLights(mx, my) {
   for (const e of L.emitters || []) { const k = L.cityLit && e.color === "gold" ? 2.2 : knownAt(e.x, e.y); if (k > 0) add(e.x, e.y, e.r * 2.6, e.a * 2.4 * k, LIGHT_RGB[e.color]); }
   for (const g of L.gloom) if (g.heal) add(g.x, g.y, 2 + g.heal * 4, g.heal * 1.4, LIGHT_RGB.gold);
   for (const c of L.crystals) if (c.on) add(c.x, c.y, 2.8, c.on * 0.9, LIGHT_RGB.violet);
+  for (const s of L.stones) if (s.ring > 0) add(s.x, s.y, 3, Math.min(1, s.ring) * 1.2, LIGHT_RGB.cyan);
   for (const c of L.chimes) if (c.rung) add(c.x, c.y, 2.2, 0.8, LIGHT_RGB[CHIMES[c.n - 1].glow] || LIGHT_RGB.cyan);
   for (const lp of L.lamps) if (lp.on) add(lp.x + 0.12, lp.y - 0.4, 3.6, 1.1, LIGHT_RGB.gold);
   for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 1.8, 0.6, LIGHT_RGB.gold);
@@ -232,6 +235,25 @@ function drawCaveDetails() {
 function drawThings() {
   const T = TS;
   ctx.globalCompositeOperation = "lighter";
+  // Ring stones: a squat standing stone with a band of rune marks that blaze when it rings.
+  for (const s of L.stones) {
+    const a = Math.max(knownAt(s.x, s.y) * 0.5, vis(s.i), s.ring > 0 ? 1 : 0);
+    if (a < 0.03) continue;
+    const X = sx(s.x), Y = sy(s.y), w = TS * 0.32, h = TS * 0.46, ring = Math.min(1, s.ring);
+    ctx.globalAlpha = a;
+    if (ring > 0) { ctx.globalCompositeOperation = "lighter"; glow(GLOW.cyan, X, Y - h * 0.2, TS * (1 + ring * 1.5), ring * 0.8); ctx.globalCompositeOperation = "source-over"; }
+    ctx.fillStyle = "#4a4f5e"; ctx.beginPath(); ctx.moveTo(X - w, Y + h * 0.5); ctx.lineTo(X - w * 0.75, Y - h * 0.6); ctx.quadraticCurveTo(X, Y - h * 0.95, X + w * 0.75, Y - h * 0.6); ctx.lineTo(X + w, Y + h * 0.5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = ring > 0 ? "#bff4ff" : "rgba(150,210,230,0.45)"; ctx.lineWidth = Math.max(1, TS * 0.04);
+    ctx.beginPath(); for (let k = 0; k < 4; k++) { const x0 = X - w * 0.6 + k * w * 0.4; ctx.moveTo(x0, Y - h * 0.15); ctx.lineTo(x0 + w * 0.15, Y - h * 0.3); ctx.lineTo(x0 + w * 0.3, Y - h * 0.15); } ctx.stroke();
+    if (ring > 0) { ctx.strokeStyle = `rgba(190,240,255,${ring * 0.6})`; ctx.lineWidth = 2; const rr = TS * (0.6 + (1 - (s.next / 0.85)) * 1.6); ctx.beginPath(); ctx.arc(X, Y, rr, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
+  if (CORE && L.noisy > 0 && !L.demo) {
+    ctx.strokeStyle = `rgba(255,190,220,${L.noisy * 0.35})`; ctx.lineWidth = Math.max(1, TS * 0.03);
+    ctx.setLineDash([TS * 0.15, TS * 0.2]); ctx.beginPath(); ctx.arc(sx(L.lumi.x), sy(L.lumi.y), TS * 2.6 * (1.1 - L.noisy * 0.2), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  }
+
   // Crystals.
   for (const c of L.crystals) {
     const a = Math.max(c.on, vis(c.i) * 0.8, hidden(0.05));

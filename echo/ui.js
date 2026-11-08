@@ -184,7 +184,7 @@ const CREATURE_CARDS = new Set(Object.values(CREATURES));
 
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [def.card, def.goal === "relight" && "relight", def.goal === "escape" && "escape", i >= CHIMES_FROM && i !== STORY_FINALE && m.match(/[1-4]/) && "chimes", i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
+  const wants = CORE ? [i >= FLARE_FROM && "flare", i >= 8 && "long"] : [def.card, def.goal === "relight" && "relight", def.goal === "escape" && "escape", i >= CHIMES_FROM && i !== STORY_FINALE && m.match(/[1-4]/) && "chimes", i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
     def.map[0].length > 11 && "tall"];
   return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
 }

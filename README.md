@@ -14,6 +14,20 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Echo, back to its core
+
+Echo has been cut back to its core: **ten handmade caves** (`CORE_LEVELS` in `echo/levels.js`), each built around one idea, played with a few simple rules.
+
+- **Echoes fade.** A song lights the walls it reaches, then Lumi's memory of them fades over about ten seconds. Sing again, or remember the way.
+- **Hushlings are blind.** They hunt by sound. A tap-song is heard about 4 tiles away, a long (held) song about 8, through rock. Every Hushling that hears goes to *where the sound was*, listens there for a moment, then drifts home. Only right up close (about a tile) can one sense Lumi.
+- **Slow is silent.** Swimming fast, or bumping a wall, makes noise nearby Hushlings hear (a faint pink ring shows how far). Push the stick only a little, or hold Shift on a keyboard, to sneak.
+- **Ring stones** (`R` in a map): when a song reaches one, it rings out three times, loud, and every Hushling that hears goes to it. Use them to call Hushlings away.
+- **Light is health.** Songs are free and nothing drains; a Hushling's touch costs a third of Lumi's light, so three touches end the try.
+
+The caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Lights (exploring), 4 Something Listening (the first Hushling), 5 The Ring Stone (luring), 6 Tiptoe (sneaking between four), 7 The Hunter (Run!, the cave collapses), 8 The Lost Moth (rescue past a guard), 9 The Deep Maze (everything together), 10 The Great Hush (sing to it; the ending). A short new story opens the game and closes it.
+
+The daily cave, weekly cave, home, quests and awards are hidden for now, and the 160-level generator, chimes, lamps and the rest stay in the code behind `CORE = false` in `echo/levels.js`. The sections below describe that bigger game.
+
 ## Every cave has a job
 
 There are 160 caves now: eight worlds of twenty, the first nineteen handmade. Fewer than before, but no two in a row play alike, because each cave's place in its world decides what it asks of you (`SLOT_GOALS` in `levels.js`): explore and solve the chimes, **Relight the city**, **Run!**, rescue a lost moth, sneak through a quiet cave, race the clock, and a finale with the Great Hush. A cave with a job gets one other big idea fewer.
@@ -161,7 +175,7 @@ The cave art is painted twice: a quick soft pass so a level starts at once, then
 
 `npm install` once (it installs [Playwright](https://playwright.dev)), then:
 
-- `npm test` checks every level's layout, the gameplay, each mechanic and mode, every screen at several phone sizes, a robot play-through of about 100 levels, and random "chaos" input, then reports speed. It takes about a minute.
+- `npm test` checks the ten caves' layouts, the gameplay, the core rules (fading echoes, blind Hushlings, sneaking, ring stones, light as health, the Hunter, the moth, the Great Hush), every screen at several phone sizes, a robot play-through of all ten caves and the daily cave, and random "chaos" input, then reports speed.
 - `npm test -- --all` has the robot play all 160 levels and the daily cave (about a minute). The robot is a simple player, so the check passes if it finishes at least 99% and lists the caves it lost as the hardest ones.
 - `npm run test:quick` skips the robot and chaos sections.
 

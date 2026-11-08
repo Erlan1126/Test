@@ -632,6 +632,7 @@ const R3D = (() => {
     const add = (x, y, r, i, c) => { if (i > 0.02) lights.push({ x, y, r, i, c, d: Math.hypot(x - lumi.x, y - lumi.y) }); };
     for (const e of L.emitters || []) add(e.x, e.y, e.r * 3, e.a * 3 * (L.cityLit && e.color === "gold" ? 2 : knownAt(e.x, e.y)), LIGHT_RGB[e.color] || LIGHT_RGB.white);
     for (const c of L.crystals) if (c.on) add(c.x, c.y, 3.2, c.on * 1.4, LIGHT_RGB.violet);
+    for (const s of L.stones) if (s.ring > 0) add(s.x, s.y, 4, Math.min(1, s.ring) * 3, LIGHT_RGB.cyan);
     for (const o of L.lights) if (!o.got && (!L.hideLights || L.seen[o.i])) add(o.x, o.y, 2.4, 0.9, LIGHT_RGB.gold);
     for (const q of L.lamps) if (q.on) add(q.x, q.y - 0.3, 5, 2.4, LIGHT_RGB.gold);
     for (const c of L.chimes) if (c.rung) add(c.x, c.y, 2.6, 1.2, LIGHT_RGB[CHIMES[c.n - 1].glow] || LIGHT_RGB.cyan);
@@ -672,6 +673,31 @@ const R3D = (() => {
       }
       const m = BUG(bk++); m.position.set(b.x, 0.03, b.z); m.rotation.y = Math.atan2(b.tx - b.x, b.tz - b.z);
     }
+    // Ring stones: a weathered standing stone with a band of runes that blaze when it rings,
+    // and rings of sound rolling out from it.
+    const STONE = pool("ringstone", () => {
+      const g = new T.Group();
+      const geo = new T.CylinderGeometry(0.2, 0.3, 0.75, 7, 2); geo.translate(0, 0.37, 0);
+      const p = geo.attributes.position; for (let q = 0; q < p.count; q++) p.setXYZ(q, p.getX(q) * (0.9 + Math.random() * 0.2), p.getY(q), p.getZ(q) * (0.9 + Math.random() * 0.2)); geo.computeVertexNormals();
+      const rock = new T.Mesh(geo, withVis(new T.MeshStandardMaterial({ color: 0x5a6070, roughness: 0.85, flatShading: true }))); rock.castShadow = true; g.add(rock);
+      const band = new T.Mesh(new T.TorusGeometry(0.26, 0.025, 6, 24), new T.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, toneMapped: false }));
+      band.rotation.x = Math.PI / 2; band.position.y = 0.42; g.add(band);
+      const wave = new T.Mesh(new T.RingGeometry(0.92, 1, 48), new T.MeshBasicMaterial({ color: 0xbff4ff, transparent: true, side: T.DoubleSide, blending: T.AdditiveBlending, depthWrite: false }));
+      wave.rotation.x = -Math.PI / 2; wave.position.y = 0.06; g.add(wave);
+      return g;
+    });
+    let stk = 0;
+    for (const s of L.stones) {
+      const a = Math.max(knownAt(s.x, s.y) * 0.5, vis(s.i), s.ring > 0 ? 1 : 0); if (a < 0.03) continue;
+      const g = STONE(stk++), ring = Math.min(1, s.ring), band = g.children[1], wave = g.children[2];
+      g.position.set(s.x, 0, s.y);
+      band.material.opacity = 0.25 + ring * 0.75; band.scale.setScalar(1 + ring * 0.08 * Math.sin(clock * 30));
+      const k = 1 - Math.max(0, s.next) / 0.85;
+      wave.visible = ring > 0; wave.scale.setScalar(0.4 + k * 3.5); wave.material.opacity = ring * (1 - k) * 0.6;
+    }
+    // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
+    const NOISE = pool("noise", () => { const m = new T.Mesh(new T.RingGeometry(0.97, 1, 64), new T.MeshBasicMaterial({ color: 0xffbedc, transparent: true, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
+    if (CORE && L.noisy > 0 && !L.demo) { const m = NOISE(0); m.position.set(lumi.x, 0.05, lumi.y); m.scale.setScalar(2.6 * (1.1 - L.noisy * 0.2)); m.material.opacity = Math.min(0.7, L.noisy * 1.2); }
     // Stones crashing down in a collapsing cave.
     const ROCK = pool("rock", () => { const m = new T.Mesh(new T.DodecahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: 0x6a6470, roughness: 0.9, flatShading: true }))); m.castShadow = true; return m; });
     let rk3 = 0;
