@@ -202,17 +202,39 @@ function playStory(pages, { num, name, world, last = "Continue", done }) {
   show("story");
   storyPageShow();
 }
+// The cave behind is the picture; this draws light, eyes, echoes and stars over it.
+function storyFx(p) {
+  const r = seeded(story.k * 31 + 7), out = [];
+  const at = (x, y, cls, extra = "") => out.push(`<i class="${cls}" style="left:${x}%;top:${y}%;${extra}"></i>`);
+  if (p.memory) out.push(`<i class="fx-warm"></i>`);
+  if (p.hush === "healing" || p.hush === "healed") out.push(`<i class="fx-gold"></i>`);
+  if (p.hush === "far" || p.hush === "ghost") at(50, 14, "fx-eyes big", "margin-left:-60px;opacity:.45");
+  if (p.hush === "big") at(50, 18, "fx-eyes big", "margin-left:-60px;transform:scale(1.6)");
+  if (p.hushlings) for (let k = 0; k < 7; k++) at(r() < 0.5 ? 4 + r() * 22 : 70 + r() * 24, 8 + r() * 70, "fx-eyes", `animation-delay:${(r() * 4).toFixed(2)}s,${(k * 0.35).toFixed(2)}s`);
+  if (p.notes || (p.lumi && !p.hush)) for (let k = 0; k < 3; k++) out.push(`<i class="fx-ring" style="animation-delay:${k * 1.2}s"></i>`);
+  if (p.fireflies) for (let k = 0; k < 26; k++) at(r() * 100, 40 + r() * 60, "fx-dot", `animation-delay:${(r() * 7).toFixed(2)}s`);
+  if (p.stars) for (let k = 0; k < 60; k++) at(r() * 100, r() * 55, "fx-star", `animation-delay:${(r() * 3).toFixed(2)}s`);
+  return out.join("");
+}
 function storyPageShow() {
   const st = story, p = st.pages[st.k];
   $("storyNum").textContent = st.num;
   $("storyName").textContent = st.name;
+  $("storyName").classList.toggle("gone", st.k > 0);
   $("storyArt").innerHTML = storyArt(p, st.world);
-  $("storyText").textContent = p.text;
+  $("storyFx").innerHTML = storyFx(p);
+  // Words fade in one after another; a tap shows the rest at once.
+  const words = p.text.split(" ");
+  const t0 = st.k === 0 ? 1.1 : 0.2;
+  $("storyText").className = "story-text";
+  $("storyText").innerHTML = words.map((w, k) => `<span style="animation-delay:${(t0 + k * 0.055).toFixed(2)}s">${w.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span>`).join(" ");
+  st.typingUntil = performance.now() + (t0 + words.length * 0.055 + 0.5) * 1000;
   $("storyDots").innerHTML = st.pages.map((x, k) => `<i class="${k === st.k ? "on" : ""}"></i>`).join("");
-  $("storyGo").textContent = st.k < st.pages.length - 1 ? "Next" : st.last;
+  $("storyGo").textContent = st.k < st.pages.length - 1 ? "Tap to continue" : `Tap to ${st.last.toLowerCase()}`;
 }
-function storyNext() {
+function storyNext(force = false) {
   if (!story) return;
+  if (!force && performance.now() < story.typingUntil && !$("storyText").classList.contains("all")) { $("storyText").classList.add("all"); return; }
   if (story.k < story.pages.length - 1) { story.k++; storyPageShow(); return; }
   clearTimeout(storyTuneT);
   const done = story.done;

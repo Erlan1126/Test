@@ -687,7 +687,15 @@ tap("quitBtn", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("retryBtn", () => startLevel(levelIndex));
 tap("resultLevels", openMap);
 tap("failRetry", () => startLevel(levelIndex));
-tap("storyGo", () => storyNext());
+// The story: tap anywhere to see the rest of the words, then to go on; Skip jumps to the end.
+$("storyScreen").addEventListener("click", () => { audio(); storyNext(); });
+tap("storySkip", () => { if (!story) return; story.k = story.pages.length - 1; storyNext(true); });
+// The title: tap the dark and Lumi sings.
+$("titleScreen").addEventListener("click", e => {
+  if (e.target.closest("button")) return;
+  audio();
+  if (L && L.demo) { L.pingCd = 0; ping(); L.demoT = 4; }
+});
 tap("cardGo", () => startLevel(pendingLevel, { story: true, card: true }));
 tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {

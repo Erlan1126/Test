@@ -577,8 +577,15 @@ const R3D = (() => {
     // Camera: above and behind Lumi, looking down at an angle, held inside the cave.
     const tx = Math.max(Math.min(cols / 2, 2.4), Math.min(Math.max(cols / 2, cols - 2.4), lumi.x));
     const ty = lumi.y + 0.6;
-    camPos.lerp(new T.Vector3(tx, 8.6, ty + 5.4), Math.min(1, dt * (camPos.y > 10 ? 1.6 : 4)));
-    camLook.lerp(new T.Vector3(tx, 0.3, ty - 0.6), Math.min(1, dt * 5));
+    if (screen === "title" || screen === "story") {
+      const a = clock * 0.07, rr = 3.3;
+      camPos.lerp(new T.Vector3(lumi.x + Math.sin(a) * rr, 2.05 + Math.sin(clock * 0.21) * 0.15, lumi.y + Math.cos(a) * rr), Math.min(1, dt * 1.5));
+      // On the title Lumi sits below the name; in the story, above the words.
+      camLook.lerp(new T.Vector3(lumi.x, screen === "title" ? 1.75 : 0.55, lumi.y), Math.min(1, dt * 2));
+    } else {
+      camPos.lerp(new T.Vector3(tx, 8.6, ty + 5.4), Math.min(1, dt * (camPos.y > 10 ? 1.6 : 4)));
+      camLook.lerp(new T.Vector3(tx, 0.3, ty - 0.6), Math.min(1, dt * 5));
+    }
     camera.position.copy(camPos);
     if (L.shake > 0) camera.position.add(new T.Vector3((Math.random() - 0.5) * L.shake * 0.25, (Math.random() - 0.5) * L.shake * 0.15, (Math.random() - 0.5) * L.shake * 0.25));
     camera.lookAt(camLook);

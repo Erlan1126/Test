@@ -30,6 +30,8 @@ Echo has been cut back to its core: **ten handmade caves** (`CORE_LEVELS` in `ec
 
 The caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Lights (exploring), 4 Something Listening (the first Hushling), 5 The Ring Stone (luring), 6 Tiptoe (sneaking between four), 7 The Hunter (Run!, the cave collapses), 8 The Lost Moth (rescue past a guard), 9 The Deep Maze (everything together), 10 The Great Hush (sing to it; the ending). A short new story opens the game and closes it.
 
+**The title** is a slow film shot: the camera drifts low around Lumi in the cave, the name glows above, and Play sits at the bottom with Map, Looks and Settings. Tap the dark and Lumi sings. **The story** is told the same way: the cave is the picture, with warm light, glowing eyes, echo rings, fireflies or stars drawn over it; the words fade in one by one under Lumi; tap anywhere to see the rest, tap again to go on, or Skip.
+
 The daily cave, weekly cave, home, quests and awards are hidden for now, and the 160-level generator, chimes, lamps and the rest stay in the code behind `CORE = false` in `echo/levels.js`. The sections below describe that bigger game.
 
 ## Every cave has a job

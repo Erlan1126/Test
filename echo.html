@@ -470,6 +470,64 @@
   .danger { color: #ff9fb8; border-color: rgba(255, 159, 184, 0.45); background: rgba(255, 159, 184, 0.08); font-size: 16px; margin-top: 16px; }
   /* The core game: the daily cave, home, quests and awards wait until the core is fun. */
   #todayCard, #weekLink, #homeBtn, #awardsBtn { display: none !important; }
+
+  /* ---------- The title, reworked: a quiet film shot ----------
+     The camera drifts low around Lumi in the cave. The name sits high, the cave and Lumi
+     fill the middle, and Play and three small links rest at the bottom. Tap the cave and
+     Lumi sings. */
+  #titleScreen { background: linear-gradient(rgba(2, 3, 9, 0.92), rgba(2, 3, 9, 0.25) 30%, rgba(2, 3, 9, 0) 45%, rgba(2, 3, 9, 0) 62%, rgba(2, 3, 9, 0.9) 88%); }
+  #titleScreen .title-bar { visibility: hidden; }
+  #titleScreen .hero { margin-top: 2vh; gap: 10px; }
+  #titleScreen .divider, #titleScreen .ripple { display: none; }
+  #titleScreen .logo { font-size: clamp(56px, 18vw, 96px); text-shadow: 0 0 40px rgba(126, 232, 255, 0.45), 0 0 90px rgba(126, 232, 255, 0.2); animation: logoBreath 6s ease-in-out infinite; }
+  @keyframes logoBreath { 50% { text-shadow: 0 0 60px rgba(126, 232, 255, 0.6), 0 0 120px rgba(126, 232, 255, 0.3); } }
+  #titleScreen .tagline { font-size: 19px; color: #9fb3d4; letter-spacing: 0.02em; }
+  #titleScreen .title-actions { gap: 20px; }
+  #titleScreen .play { background: rgba(126, 232, 255, 0.1); color: #eef9ff; border: 1px solid rgba(160, 238, 255, 0.55); box-shadow: 0 0 30px rgba(126, 232, 255, 0.22), inset 0 0 24px rgba(126, 232, 255, 0.12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 15px 20px 14px; }
+  #titleScreen .play-label { font-family: "Cinzel", Georgia, serif; font-size: 22px; letter-spacing: 0.22em; margin-right: -0.22em; font-weight: 500; }
+  #titleScreen .play-sub { color: #8fb0cf; }
+  #titleScreen .dock { background: none; border: none; backdrop-filter: none; -webkit-backdrop-filter: none; width: min(300px, 100%); padding: 0; }
+  #titleScreen .dock button { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8aa0c2; gap: 6px; }
+  #titleScreen .dock svg { width: 21px; height: 21px; opacity: 0.85; }
+  #titleScreen .tap-sing { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 15px; color: rgba(180, 200, 230, 0.45); margin: 0; }
+
+  /* ---------- The story, reworked: told like a film ----------
+     No boxes or cartoons: the cave itself is the picture, with light, eyes and echoes
+     drawn over it. Words fade in one by one; tap anywhere to go on. */
+  #storyScreen { background: radial-gradient(ellipse at 50% 45%, rgba(2, 3, 9, 0.15), rgba(2, 3, 9, 0.75) 70%, rgba(2, 3, 9, 0.95)); justify-content: flex-end; padding-bottom: calc(34px + var(--bottom)); cursor: pointer; }
+  .story-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .story-fx i { position: absolute; display: block; }
+  .fx-warm { left: 50%; top: 42%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; border-radius: 50%; background: radial-gradient(circle, rgba(255, 210, 140, 0.5), rgba(255, 170, 90, 0.12) 25%, transparent 50%); animation: fxPulse 5s ease-in-out infinite; }
+  .fx-gold { left: 50%; top: 40%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; border-radius: 50%; background: radial-gradient(circle, rgba(255, 230, 160, 0.85), rgba(255, 190, 100, 0.35) 22%, transparent 55%); animation: fxGrow 6s ease-out both; }
+  .fx-eyes { width: 26px; height: 8px; animation: fxBlink 4s infinite, fxIn 2s ease both; }
+  .fx-eyes::before, .fx-eyes::after { content: ""; position: absolute; top: 0; width: 9px; height: 5px; border-radius: 50%; background: #ff9ad0; box-shadow: 0 0 10px #ff6ab8, 0 0 22px rgba(255, 106, 184, 0.6); }
+  .fx-eyes::before { left: 0; } .fx-eyes::after { right: 0; }
+  .fx-eyes.big { width: 120px; height: 30px; }
+  .fx-eyes.big::before, .fx-eyes.big::after { width: 40px; height: 16px; background: #c9a8ff; box-shadow: 0 0 30px #a070ff, 0 0 80px rgba(160, 112, 255, 0.6); }
+  .fx-ring { left: 50%; top: 46%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 1.5px solid rgba(160, 238, 255, 0.7); animation: fxRing 3.6s ease-out infinite; opacity: 0; }
+  .fx-dot { width: 4px; height: 4px; border-radius: 50%; background: #fff1a8; box-shadow: 0 0 8px #ffd36e; animation: fxRise 7s linear infinite; }
+  .fx-star { width: 2px; height: 2px; border-radius: 50%; background: #fff; animation: fxTwinkle 3s ease-in-out infinite; }
+  @keyframes fxPulse { 50% { opacity: 0.6; transform: scale(1.06); } }
+  @keyframes fxGrow { from { opacity: 0; transform: scale(0.3); } }
+  @keyframes fxIn { from { opacity: 0; } }
+  @keyframes fxBlink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(0.1); } }
+  @keyframes fxRing { 0% { transform: scale(0.3); opacity: 0.9; } 100% { transform: scale(9); opacity: 0; } }
+  @keyframes fxRise { from { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(-60vh); opacity: 0; } }
+  @keyframes fxTwinkle { 50% { opacity: 0.2; } }
+  #storyScreen .story-name { position: absolute; left: 0; right: 0; top: calc(16vh + var(--top)); margin: 0; font-size: 34px; letter-spacing: 0.14em; color: #eef8ff; text-shadow: 0 0 30px rgba(126, 232, 255, 0.4); transition: opacity 1.2s; }
+  #storyScreen .story-name.gone { opacity: 0; }
+  #storyScreen .story-text { position: relative; font-size: 24px; line-height: 1.45; color: #e2eaf8; max-width: 26ch; min-height: 0; margin: 0 auto 26px; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9); }
+  .story-text span { opacity: 0; animation: wordIn 0.7s ease forwards; }
+  .story-text.all span { animation: none; opacity: 1; }
+  @keyframes wordIn { from { opacity: 0; filter: blur(4px); } to { opacity: 1; filter: none; } }
+  .story-foot { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+  #storyScreen .story-dots { margin: 0; }
+  #storyScreen .story-dots i { width: 5px; height: 5px; background: rgba(255, 255, 255, 0.2); }
+  #storyScreen .story-dots i.on { background: rgba(200, 240, 255, 0.85); }
+  .story-tap { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(200, 220, 245, 0.55); animation: tapPulse 2.4s ease-in-out infinite; }
+  @keyframes tapPulse { 50% { opacity: 0.35; } }
+  .story-skip { position: absolute; top: calc(14px + var(--top)); right: 16px; padding: 10px 14px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(200, 220, 245, 0.55); }
+  @media (prefers-reduced-motion: reduce) { .story-fx i, .story-text span, #titleScreen .logo { animation: none !important; opacity: 1; } }
 </style>
 </head>
 <body>
@@ -508,6 +566,7 @@
     <div class="title-meta" id="titleMeta"></div>
     <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
     <button class="link week-link" id="weekLink">This week's cave ›</button>
+    <p class="tap-sing">Tap the dark to sing</p>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
     <nav class="dock glass" aria-label="Menu">
       <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
@@ -567,13 +626,13 @@
   </div>
 </div>
 
-<div class="screen dim-bg" id="storyScreen">
-  <div class="story-num" id="storyNum"></div>
+<div class="screen" id="storyScreen">
+  <div class="story-fx" id="storyFx"></div>
+  <button class="story-skip" id="storySkip">Skip</button>
   <h2 class="story-name" id="storyName"></h2>
-  <div class="story-art" id="storyArt"></div>
   <p class="story-text" id="storyText"></p>
-  <div class="story-dots" id="storyDots"></div>
-  <button class="btn main" id="storyGo">Begin</button>
+  <div class="story-foot"><div class="story-dots" id="storyDots"></div><span class="story-tap" id="storyGo">Tap to continue</span></div>
+  <div id="storyNum" hidden></div><div id="storyArt" hidden></div>
 </div>
 
 <div class="screen dim-bg" id="challengeScreen">
