@@ -6,6 +6,8 @@ export interface IslandTheme {
   name: string;
   /** Builder level that unlocks it. */
   level: number;
+  /** City population that opens this district (see logic/city.ts). */
+  people: number;
   tree: "round" | "pine" | "palm";
   lawn: string;
   lip: string;
@@ -28,23 +30,23 @@ export interface IslandTheme {
 }
 
 export const ISLAND_THEMES: IslandTheme[] = [
-  { id: "meadow", name: "Green Meadow", level: 1, tree: "round", lawn: "#7fc76a", lip: "#5fae4e", lipR: "#4e9640",
+  { id: "meadow", name: "Green Meadow", people: 0, level: 1, tree: "round", lawn: "#7fc76a", lip: "#5fae4e", lipR: "#4e9640",
     dirtL: "#a07a52", dirtR: "#86643f", rockL: "#7a5b43", rockR: "#5a4334", plaza: "#c9cfd8", plaza2: "#e3e7ec",
     road: "#7d8597", leaf: ["#3f9b4a", "#6bbf4e"], trunk: "#7a5536", sky: ["#4f8fe0", "#ffd9b5"] },
-  { id: "snow", name: "Snowy Peaks", level: 3, tree: "pine", lawn: "#eef4fb", lip: "#d6e3f1", lipR: "#c2d2e4",
+  { id: "snow", name: "Snowy Peaks", people: 5000, level: 3, tree: "pine", lawn: "#eef4fb", lip: "#d6e3f1", lipR: "#c2d2e4",
     dirtL: "#8a96a8", dirtR: "#717d90", rockL: "#5f6a7c", rockR: "#4b5566", plaza: "#c3cdd8", plaza2: "#dfe6ee",
     road: "#6b7385", leaf: ["#2f6b4f", "#3f8a63"], trunk: "#6b4a33", sky: ["#6f9fe0", "#e7f1ff"] },
-  { id: "desert", name: "Desert Oasis", level: 6, tree: "palm", lawn: "#ecd29b", lip: "#dcbc7d", lipR: "#c9a866",
+  { id: "desert", name: "Desert Oasis", people: 20000, level: 6, tree: "palm", lawn: "#ecd29b", lip: "#dcbc7d", lipR: "#c9a866",
     dirtL: "#c08a52", dirtR: "#a5733f", rockL: "#94603a", rockR: "#7a4d2d", plaza: "#d8c3a0", plaza2: "#efe0c4",
     road: "#9a8a76", leaf: ["#3f9b4a", "#7cc35a"], trunk: "#a0703c", sky: ["#5aa0e6", "#ffe2b0"] },
-  { id: "blossom", name: "Cherry Blossom", level: 10, tree: "round", lawn: "#a8d88a", lip: "#8cc56e", lipR: "#79b45d",
+  { id: "blossom", name: "Cherry Blossom", people: 60000, level: 10, tree: "round", lawn: "#a8d88a", lip: "#8cc56e", lipR: "#79b45d",
     dirtL: "#a07a52", dirtR: "#86643f", rockL: "#7a5b43", rockR: "#5a4334", plaza: "#e6d3dc", plaza2: "#f6e9ef",
     road: "#8a8296", leaf: ["#f48fb8", "#ffc8dd"], trunk: "#6e4a3a", sky: ["#8f8fe6", "#ffd6e6"] },
   // Premium islands
-  { id: "volcano", name: "Volcano Island", level: 1, product: "island_volcano", tree: "palm", lava: true, lawn: "#3d3a3f", lip: "#2b2830", lipR: "#221f27",
+  { id: "volcano", name: "Volcano Island", people: 150000, level: 1, product: "island_volcano", tree: "palm", lava: true, lawn: "#3d3a3f", lip: "#2b2830", lipR: "#221f27",
     dirtL: "#4a2f2a", dirtR: "#3a231f", rockL: "#2a1d1c", rockR: "#1d1414", plaza: "#55505a", plaza2: "#6b6570",
     road: "#2f2c33", leaf: ["#2f8f4e", "#5fbf5a"], trunk: "#5a3a24", sky: ["#3a1f4a", "#ff7a4a"] },
-  { id: "candy", name: "Candy Island", level: 1, product: "island_candy", tree: "round", lawn: "#ffc8e4", lip: "#ffb0d6", lipR: "#f79ccb",
+  { id: "candy", name: "Candy Island", people: 300000, level: 1, product: "island_candy", tree: "round", lawn: "#ffc8e4", lip: "#ffb0d6", lipR: "#f79ccb",
     dirtL: "#c9a7ff", dirtR: "#b18ef0", rockL: "#9e7fe0", rockR: "#8569c9", plaza: "#fff1f8", plaza2: "#ffffff",
     road: "#c6b8e8", leaf: ["#7ee8d0", "#ffd36e"], trunk: "#ff9cc4", sky: ["#9fd8ff", "#ffd6f0"] },
 ];

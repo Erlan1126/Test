@@ -63,15 +63,18 @@ import { normalize } from "../src/logic/save";
 describe("skyline island", () => {
   it("keeps your nine tallest towers and survives a save round trip", () => {
     const save = defaultSave();
-    expect(addToSkyline(save, { f: 5, s: "glass", h: "square" })).toBe(false); // too short
-    for (let f = 10; f < 22; f++) addToSkyline(save, { f, s: "glass", h: "round" });
+    expect(addToSkyline(save, { f: 5, s: "glass", h: "square", d: "meadow" })).toBe(false); // too short
+    for (let f = 10; f < 22; f++) addToSkyline(save, { f, s: "glass", h: "round", d: "meadow" });
     expect(save.skyline.length).toBe(9);
-    expect(save.skyline[8].f).toBe(13);
-    expect(addToSkyline(save, { f: 12, s: "glass", h: "round" })).toBe(false);
-    expect(addToSkyline(save, { f: 40, s: "neon", h: "twist" })).toBe(true);
+    expect(Math.min(...save.skyline.map(x => x.f))).toBe(13);
+    expect(addToSkyline(save, { f: 12, s: "glass", h: "round", d: "meadow" })).toBe(false);
+    expect(addToSkyline(save, { f: 40, s: "neon", h: "twist", d: "meadow" })).toBe(true);
+    // Another district has its own nine.
+    expect(addToSkyline(save, { f: 9, s: "brick", h: "square", d: "snow" })).toBe(true);
     const back = normalize(JSON.parse(JSON.stringify(save)));
-    expect(back.skyline[0]).toEqual({ f: 40, s: "neon", h: "twist" });
-    expect(normalize({ skyline: [{ f: 9, s: "nope", h: "blob" }] }).skyline[0]).toEqual({ f: 9, s: "glass", h: "square" });
+    expect(back.skyline.find(x => x.f === 40)).toEqual({ f: 40, s: "neon", h: "twist", d: "meadow" });
+    expect(back.skyline.length).toBe(10);
+    expect(normalize({ skyline: [{ f: 9, s: "nope", h: "blob" }] }).skyline[0]).toEqual({ f: 9, s: "glass", h: "square", d: "meadow" });
   });
 });
 
@@ -156,5 +159,22 @@ describe("rent timer survives a reload", () => {
     const now = Date.UTC(2026, 10, 7, 12);
     const back = normalize({ rent: { last: now - 2 * 36e5 } });
     expect(back.rent.last).toBe(now - 2 * 36e5);
+  });
+});
+
+import { addPopulation, districtOpen, DISTRICTS, nextDistrict, peopleFrom } from "../src/logic/city";
+
+describe("sky city", () => {
+  it("grows with every tower and opens districts by population", () => {
+    const save = defaultSave();
+    expect(nextDistrict(save)?.id).toBe("snow");
+    expect(addPopulation(save, peopleFrom(3000, false))).toEqual([]);
+    const opened = addPopulation(save, 2500);
+    expect(opened.map(d => d.id)).toEqual(["snow"]);
+    expect(districtOpen(save, DISTRICTS.find(d => d.id === "snow")!)).toBe(true);
+    expect(peopleFrom(1000, true)).toBe(250);
+    // Old players start with a head start from their best tower.
+    expect(normalize({ best: 2000 }).population).toBe(6000);
+    expect(normalize({ best: 2000, population: 10 }).population).toBe(10);
   });
 });

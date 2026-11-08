@@ -7,7 +7,8 @@ import { BOOSTS, MAX_BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
-import { addToSkyline } from "./logic/skyline";
+import { addToSkyline, districtTowers } from "./logic/skyline";
+import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
 import { setVip } from "./logic/vip";
 import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
@@ -27,13 +28,13 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
-import { $, closeModal, displayName, esc, openModalEl, replay, swatchHtml, toast, vibrate, wireTabs } from "./ui/dom";
+import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
 import { choosePayments, purchaseReturn } from "./payments";
 import { buyWithCrystals, grantPack, newPlayerId } from "./logic/premium";
-import { carriedOver, refreshPass, rewardText, unclaimed } from "./logic/pass";
+import { carriedOver, passTier, refreshPass, rewardText, unclaimed } from "./logic/pass";
 import type { CrystalPack, Product } from "./data/premium";
 import type { PackPurchase } from "./payments";
 import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, lateChest, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
@@ -478,6 +479,11 @@ export class App implements DailyHost {
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
     $("ranks-btn").addEventListener("click", () => this.daily.openRanks());
+    $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
+    wireModal($("goals"));
+    // A goal row closes the Goals sheet first, then its own sheet opens.
+    $("goals").querySelector(".goal-list")!.addEventListener("click", () => closeModal($("goals")), true);
+    $("city-line").addEventListener("click", () => this.daily.openCity());
     $("pass-btn").addEventListener("click", () => this.daily.openPass());
     $("streak-btn").addEventListener("click", () => this.daily.openStreak());
     $("status-line").addEventListener("click", () => this.statusTap());
@@ -744,9 +750,16 @@ export class App implements DailyHost {
         : c.set ? t("Postcard set complete! +{n} ★", { n: SET_STARS + POSTCARD_STARS }) : t("New postcard (+{n} ★)", { n: POSTCARD_STARS }) });
     }
     this.postcardsThisRun = [];
-    // Tall towers join your skyline island for good.
-    if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square" })) {
-      this.outcome.rewards.push({ kind: "island", text: t("Your tower joined your skyline island") });
+    // The tower's people move into the sky city for good, which can open new districts.
+    const district = currentTheme(this.save), people = peopleFrom(run.score, this.mode === "zen");
+    if (people > 0) {
+      const opened = addPopulation(this.save, people);
+      this.outcome.rewards.unshift({ kind: "island", text: t("🏙️ {n} people moved into {city}", { n: fmt(people), city: t(district.name) }) });
+      for (const d of opened) this.outcome.rewards.unshift({ kind: "island", text: t("🎉 New district open: {name}! Build there from your City", { name: t(d.name) }) });
+    }
+    // Tall towers stand in their district for good.
+    if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
+      this.outcome.rewards.push({ kind: "island", text: t("Your tower now stands in {name}", { name: t(district.name) }) });
     }
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
@@ -1004,6 +1017,16 @@ export class App implements DailyHost {
     }
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && p.towers >= 1, false);
+    // Goals gathers missions, the pass and rankings; its dot means one of them has news.
+    const goalIds = ["missions-btn", "pass-btn", "ranks-btn"];
+    show("goals-btn", goalIds.some(id => !$(id).hidden), goalIds.some(id => !$(id).hidden && !$(id).querySelector<HTMLElement>(".dot")!.hidden));
+    const done = save.missions.slots.filter(m => m.d).length;
+    $("goal-missions").textContent = chestReady(save, now) ? t("Your chest is ready to open!") : t("{n} of 3 done today", { n: done });
+    $("goal-pass").textContent = unclaimed(save) > 0 ? tn(unclaimed(save), "{n} reward to claim", "{n} rewards to claim") : t("Tier {n} of 30", { n: passTier(save) });
+    // The sky city: the reason every tower matters.
+    const cl = $("city-line");
+    cl.hidden = p.towers < 1;
+    cl.innerHTML = t("🏙️ {city} · <b>{n}</b> people", { city: esc(t(CITY_NAME)), n: fmt(save.population) });
     $("daily-title").textContent = t("Daily #{n}", { n: dayNumber(now) });
     $("modes").hidden = [...$("modes").children].every(c => (c as HTMLElement).hidden);
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
@@ -1350,7 +1373,9 @@ export class App implements DailyHost {
       showMover: this.state === "playing" || this.state === "paused",
       // A finished tower keeps the skin it was built in.
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
-      skyline: save.skyline,
+      skyline: districtTowers(save, currentTheme(save).id),
+      districts: DISTRICTS.filter(d => d.id !== currentTheme(save).id && districtTowers(save, d.id).length)
+        .map(d => ({ theme: d, towers: districtTowers(save, d.id) })),
       tint: holidayAt()?.tint ?? null,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
       theme: currentTheme(save),

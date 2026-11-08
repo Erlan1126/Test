@@ -13,7 +13,10 @@ import { markSeen } from "../logic/features";
 import { buyPremiumPass, claimable, claimAll, claimTier, passTier, refreshPass, rewardText, unclaimed, type Track } from "../logic/pass";
 import { freeReward, PASS_TIERS, premiumReward, seasonEndsIn, seasonTheme, XP_PER_TIER, type PassReward } from "../data/pass";
 import { PASS_PRICE } from "../data/premium";
-import { islandLevel, swapMission } from "../logic/progress";
+import { currentTheme, islandLevel, swapMission } from "../logic/progress";
+import { CITY_NAME, DISTRICTS, districtOpen, nextDistrict } from "../logic/city";
+import { districtTowers } from "../logic/skyline";
+import { drawThemePreview } from "../render/previews";
 import { dayKey, dayNumber, duration } from "../logic/rules";
 import { isNative, reminderTime, setReminder, type ReminderInfo } from "../native";
 import type { Online, Row } from "../online";
@@ -319,11 +322,44 @@ export class DailySheets {
     this.host.persist();
     this.renderCity();
     this.host.refresh();
-    showTab($("city"), "build");
+    showTab($("city"), "districts");
     openModal($("city"));
   }
 
+  /** Population, the next district, and each district with "Build here". */
+  private renderDistricts(): void {
+    const save = this.save, next = nextDistrict(save), here = currentTheme(save);
+    const prev = next ? [...DISTRICTS].reverse().find(d => d.people < next.people)?.people ?? 0 : 0;
+    const pct = next ? Math.min(1, (save.population - prev) / Math.max(1, next.people - prev)) : 1;
+    $("pop-card").innerHTML = `<span class="pop-ico" aria-hidden="true">🏙️</span>
+      <span><small>${esc(t(CITY_NAME))}</small><b>${esc(t("{n} people", { n: fmt(save.population) }))}</b>
+      <small>${esc(next ? t("{n} more opens {name}", { n: fmt(next.people - save.population), name: t(next.name) }) : t("Every district is open!"))}</small>
+      <span class="bar"><i style="width:${pct * 100}%"></i></span></span>`;
+    const list = $("district-list");
+    list.innerHTML = "";
+    for (const d of DISTRICTS) {
+      const open = districtOpen(save, d), on = d.id === here.id, towers = districtTowers(save, d.id).length;
+      const card = document.createElement("div");
+      card.className = `district${open ? "" : " locked"}${on ? " on" : ""}`;
+      const name = t(d.name);
+      card.innerHTML = `<canvas aria-hidden="true"></canvas><span class="d-text"><b>${esc(name)}</b>
+        <small>${esc(open ? tn(towers, "{n} tower stands here", "{n} towers stand here") : d.product ? t("{n} people, or get it in the Shop", { n: fmt(d.people) }) : t("Opens at {n} people", { n: fmt(d.people) }))}</small></span>
+        <button type="button" class="buy"${open && !on ? "" : " disabled"}>${on ? esc(t("Building here")) : open ? esc(t("Build here")) : LOCK_ICON}</button>`;
+      drawThemePreview(card.querySelector("canvas")!, d);
+      card.querySelector("button")!.addEventListener("click", () => {
+        save.island = d.id;
+        this.host.persist();
+        this.host.sound.click();
+        this.renderCity();
+        this.host.refresh();
+        toast(t("Your next towers go up in {name}", { name }));
+      });
+      list.appendChild(card);
+    }
+  }
+
   private renderCity(): void {
+    this.renderDistricts();
     const save = this.save, waiting = rentWaiting(save), rate = rentPerHour(save);
     $("city-balance").textContent = t("You have {n} ★", { n: fmt(save.stars) });
     const full = rentFullIn(save);

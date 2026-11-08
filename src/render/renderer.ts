@@ -30,8 +30,10 @@ export interface Frame {
   showMover: boolean;
   skin: Skin;
   shape: Shape;
-  /** Your tallest towers, on the skyline island behind. */
+  /** The current district's tallest towers, on the skyline island behind. */
   skyline: SkylineTower[];
+  /** Other districts with towers in them, floating around the city. */
+  districts: { theme: IslandTheme; towers: SkylineTower[] }[];
   /** A holiday event's color, mixed into the sky. */
   tint: [number, number, number] | null;
   theme: IslandTheme;

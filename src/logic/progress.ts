@@ -1,6 +1,7 @@
 // What a finished tower changes in the save: bests, missions, trophies, XP and levels,
 // stars, challenges, history and unlocks. Pure functions over SaveData, so they're tested.
 import { HOLIDAYS } from "../data/holidays";
+import { districtOpen } from "./city";
 import { vipActive } from "./vip";
 import { fmt, listNames } from "../core/util";
 import { t, tn } from "../i18n";
@@ -50,8 +51,7 @@ export function skinUnlockText(skin: Skin): string {
 }
 
 export const islandLevel = (save: SaveData): number => ISLAND_UPGRADES.filter(u => save.bestMeters > MILESTONES[u.at].m).length;
-export const themeUnlocked = (save: SaveData, t: IslandTheme): boolean =>
-  t.product ? premiumGrants(save).themes.has(t.id) : save.profile.level >= t.level;
+export const themeUnlocked = (save: SaveData, t: IslandTheme): boolean => districtOpen(save, t);
 export const currentTheme = (save: SaveData): IslandTheme =>
   ISLAND_THEMES.find(t => t.id === save.island && themeUnlocked(save, t)) ?? ISLAND_THEMES[0];
 

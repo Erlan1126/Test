@@ -49,8 +49,10 @@ export interface SaveData {
   /** The building shape (see data/shapes.ts) and the shapes bought in the shop. */
   shape: string;
   ownedShapes: string[];
-  /** Your tallest towers, standing on the skyline island. */
+  /** Your tallest towers, standing on their district's island. */
   skyline: SkylineTower[];
+  /** People living in your sky city (every tower's people, for good). */
+  population: number;
   /** Postcards collected (see logic/postcards.ts). */
   postcards: string[];
   /** Today's deals already bought (see logic/deals.ts). */
@@ -129,6 +131,7 @@ export function defaultSave(): SaveData {
     shape: "square",
     ownedShapes: [],
     skyline: [],
+    population: 0,
     postcards: [],
     deals: { day: 0, bought: [] },
     holiday: { key: "", towers: 0 },
@@ -211,10 +214,12 @@ export function normalize(raw: unknown): SaveData {
     ownedSkins: strList(r.ownedSkins, skinIds),
     shape: shapeIds.includes(r.shape as string) ? (r.shape as string) : d.shape,
     ownedShapes: strList(r.ownedShapes, shapeIds),
-    skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE).map(x => obj(x))
-      .map(x => ({ f: int(x.f, 0, 0, 9999), s: skinIds.includes(x.s as string) ? (x.s as string) : "glass", h: shapeIds.includes(x.h as string) ? (x.h as string) : "square" }))
+    skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE * 8).map(x => obj(x))
+      .map(x => ({ f: int(x.f, 0, 0, 9999), s: skinIds.includes(x.s as string) ? (x.s as string) : "glass", h: shapeIds.includes(x.h as string) ? (x.h as string) : "square", d: themeIds.includes(x.d as string) ? (x.d as string) : "meadow" }))
       .filter(x => x.f > 0),
     postcards: strList(r.postcards, ALL_POSTCARDS),
+    // Players from before the city get a head start from their best tower.
+    population: r.population === undefined ? int(r.best, 0) * 3 : int(r.population, 0, 0, 1e12),
     deals: { day: int(obj(r.deals).day, 0), bought: strList(obj(r.deals).bought).slice(0, 10) },
     holiday: { key: str(obj(r.holiday).key, "").slice(0, 40), towers: int(obj(r.holiday).towers, 0, 0, 9999) },
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0) },

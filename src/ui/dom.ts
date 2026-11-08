@@ -63,7 +63,7 @@ export function wireModal(el: HTMLElement, onClose: () => void = () => closeModa
   el.querySelector(".close-btn")?.addEventListener("click", onClose);
 }
 
-export const MODAL_IDS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass"] as const;
+export const MODAL_IDS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass", "goals"] as const;
 export const openModalEl = (): HTMLElement | undefined =>
   MODAL_IDS.map(id => $(id)).find(el => !el.hidden);
 

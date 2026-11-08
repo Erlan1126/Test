@@ -32,6 +32,11 @@ const CAM_DIST = 160;
 const ISO_SCALE = ISO_X / Math.SQRT1_2;
 
 const toColor = (c: RGB) => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
+/** Where district islands float around the home island (world units, height in floors). */
+const DISTRICT_SLOTS = [
+  { x: -31, z: -31, y: -6 }, { x: -46, z: -22, y: 1 }, { x: -22, z: -46, y: -3 },
+  { x: -54, z: -44, y: -16 }, { x: -44, z: -56, y: 2 }, { x: -62, z: -60, y: -7 },
+];
 /** Floors merged per block. */
 const CHUNK = 16;
 
@@ -284,7 +289,7 @@ export class Renderer3D {
     this.updateSky(n);
     this.updateLights(n);
     this.updateIsland(f);
-    this.updateSkyline(f.skyline, f.theme);
+    this.updateSkyline(f);
     // Your skyline island is for looking at between towers, not while you build.
     if (this.skyline) this.skyline.visible = f.shot !== "play";
     this.updateTower(f);
@@ -378,14 +383,24 @@ export class Renderer3D {
     this.scene.add(group);
   }
 
-  private updateSkyline(towers: SkylineTower[], theme: Frame["theme"]): void {
-    const key = JSON.stringify(towers) + theme.id;
+  /** The city: the current district's best towers on the island just behind, and every
+   *  other district you've built in floating around it with its own towers. */
+  private updateSkyline(f: Frame): void {
+    const list = [{ theme: f.theme, towers: f.skyline }, ...f.districts].filter(d => d.towers.length).slice(0, DISTRICT_SLOTS.length);
+    const key = JSON.stringify(list.map(d => [d.theme.id, d.towers]));
     if (key === this.skylineKey) return;
     this.skylineKey = key;
     if (this.skyline) { this.scene.remove(this.skyline); disposeTree(this.skyline, false); }
     this.skyline = null;
-    if (!towers.length) return;
-    const CX = -31, CZ = -31, R = 7.2, Y = -6 * FH, g = new THREE.Group();
+    if (!list.length) return;
+    const city = new THREE.Group();
+    list.forEach((d, i) => city.add(this.districtIsland(d.theme, d.towers, DISTRICT_SLOTS[i])));
+    this.skyline = city;
+    this.scene.add(city);
+  }
+
+  private districtIsland(theme: Frame["theme"], towers: SkylineTower[], slot: { x: number; z: number; y: number }): THREE.Group {
+    const { x: CX, z: CZ } = slot, R = 7.2, Y = slot.y * FH, g = new THREE.Group();
     const rockMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.rockL), roughness: 1, flatShading: true });
     g.add(new THREE.Mesh(new THREE.ConeGeometry(R * 1.35, R * 1.6, 4).rotateY(Math.PI / 4).rotateX(Math.PI).translate(CX, Y - R * 0.8, CZ), rockMat));
     g.add(new THREE.Mesh(new THREE.BoxGeometry(R * 2, 0.8, R * 2).translate(CX, Y - 0.4, CZ), new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.lawn), roughness: 0.9 })));
@@ -403,8 +418,7 @@ export class Renderer3D {
       m.castShadow = true;
       g.add(m);
     });
-    this.skyline = g;
-    this.scene.add(g);
+    return g;
   }
 
   // ---------- The tower ----------

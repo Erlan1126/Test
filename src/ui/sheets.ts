@@ -160,12 +160,12 @@ export class Sheets {
       b.className = `skin${open ? "" : " locked"}${on ? " equipped" : ""}`;
       const name = t(th.name);
       b.innerHTML = `<canvas aria-hidden="true"></canvas><span class="skin-name">${esc(name)}</span>
-        <span class="skin-sub">${on ? esc(t("Equipped")) : open ? esc(t("Tap to use")) : th.product ? `<span class="premium-tag">💎 ${esc(t("Crystals"))}</span>` : esc(t("Builder level {n}", { n: th.level }))}</span>${open ? "" : `<span class="lock" aria-hidden="true">${LOCK_ICON}</span>`}`;
-      b.setAttribute("aria-label", open ? (on ? t("{name} island, equipped", { name }) : t("{name} island", { name })) : th.product ? t("{name} island, premium", { name }) : t("{name} island, locked. Reach builder level {n}", { name, n: th.level }));
+        <span class="skin-sub">${on ? esc(t("Equipped")) : open ? esc(t("Tap to use")) : th.product ? `<span class="premium-tag">💎 ${esc(t("Crystals"))}</span>` : esc(t("{n} people", { n: fmt(th.people) }))}</span>${open ? "" : `<span class="lock" aria-hidden="true">${LOCK_ICON}</span>`}`;
+      b.setAttribute("aria-label", open ? (on ? t("{name} island, equipped", { name }) : t("{name} island", { name })) : th.product ? t("{name} island, premium", { name }) : t("{name} island, locked. Opens at {n} people", { name, n: fmt(th.people) }));
       drawThemePreview(b.querySelector("canvas")!, th);
       b.addEventListener("click", () => {
         if (!open && th.product) { showTab($("shop"), "crystals"); this.click(); return; }
-        if (!open) { this.nope(b, t("Reach builder level {n} to unlock the {name} island.", { n: th.level, name })); return; }
+        if (!open) { this.nope(b, t("Your city opens the {name} district at {n} people. Every tower adds its people.", { n: fmt(th.people), name })); return; }
         save.island = th.id;
         this.host.persist();
         this.click();
