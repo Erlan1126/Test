@@ -47,7 +47,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 **Description:**
 
-> Build the tallest skyscraper in the world, one tap at a time.
+> Build the tallest skyscraper in the world, one tap at a time, and grow your own city in the sky.
 >
 > A floor slides back and forth above your tower. Tap to drop it. Whatever hangs over the
 > edge breaks off, so every miss makes your tower narrower. Line it up perfectly and the
@@ -65,6 +65,11 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 > A daily tower that's the same for everyone, three missions and a reward chest, a play
 > streak with freezes for days off, rent from your tower, and a weekly league from Bronze
 > to Legend. Turn on the daily reminder so you never lose your streak.
+>
+> BUILD A SKY CITY
+> Every tower's people move into your city for good. Grow your population to open new
+> districts, from Snowy Peaks to Cherry Blossom, each with its own look, and watch your best
+> towers stand around you.
 >
 > YOUR OWN FLOATING ISLAND
 > Houses, a farm, a lake and a waterfall, and a city you build with stars: a café, a

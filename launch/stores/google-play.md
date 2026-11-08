@@ -18,7 +18,7 @@ changed after that.
 
 **Short description** (80 max):
 
-> Stack floors, nail perfect drops and race the world up the leaderboards.
+> Stack floors in 3D, build your city in the sky and race the world to the top.
 
 **Full description:** use the description in `app-store.md` (the same text works here).
 
