@@ -22,6 +22,10 @@ Echo has been cut back to its core: **ten handmade caves** (`CORE_LEVELS` in `ec
 - **Hushlings are blind.** They hunt by sound. A tap-song is heard about 4 tiles away, a long (held) song about 8, through rock. Every Hushling that hears goes to *where the sound was*, listens there for a moment, then drifts home. Only right up close (about a tile) can one sense Lumi.
 - **Slow is silent.** Swimming fast, or bumping a wall, makes noise nearby Hushlings hear (a faint pink ring shows how far). Push the stick only a little, or hold Shift on a keyboard, to sneak.
 - **Ring stones** (`R` in a map): when a song reaches one, it rings out three times, loud, and every Hushling that hears goes to it. Use them to call Hushlings away.
+- **Two gears.** A short push on the stick sneaks (half speed, silent; Lumi's eyes narrow and its light dims), a long push swims. The phone ticks when you change gear.
+- **You can read them.** A "?" floats over a Hushling that heard something and is going to look; a "!" means it senses Lumi. A pink ring rolls out to show how far each song was heard. A hunting Hushling sweeping close past without finding you whooshes by; being caught slows time for a moment with a flash.
+- **Stay unheard.** In caves with Hushlings, the third star is for never being heard (results say how many times you were).
+- **The echo sweep.** In 3D, walls glow cyan for a moment just as the song reaches them, so you see the echo travel.
 - **Light is health.** Songs are free and nothing drains; a Hushling's touch costs a third of Lumi's light, so three touches end the try.
 
 The caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Lights (exploring), 4 Something Listening (the first Hushling), 5 The Ring Stone (luring), 6 Tiptoe (sneaking between four), 7 The Hunter (Run!, the cave collapses), 8 The Lost Moth (rescue past a guard), 9 The Deep Maze (everything together), 10 The Great Hush (sing to it; the ending). A short new story opens the game and closes it.

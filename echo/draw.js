@@ -248,6 +248,21 @@ function drawThings() {
     if (ring > 0) { ctx.strokeStyle = `rgba(190,240,255,${ring * 0.6})`; ctx.lineWidth = 2; const rr = TS * (0.6 + (1 - (s.next / 0.85)) * 1.6); ctx.beginPath(); ctx.arc(X, Y, rr, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
+  // How far a song is heard: a ring rolls out to that distance, so you learn your own volume.
+  for (const r of L.hearRings) {
+    const k = r.t / 0.9;
+    ctx.strokeStyle = `rgba(255,190,220,${(1 - k) * 0.5})`; ctx.lineWidth = Math.max(1, TS * 0.04);
+    ctx.setLineDash([TS * 0.2, TS * 0.18]); ctx.beginPath(); ctx.arc(sx(r.x), sy(r.y), TS * r.r * Math.min(1, k * 1.6), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // What each Hushling is thinking: "?" it heard something, "!" it senses Lumi.
+  ctx.textAlign = "center"; ctx.font = `700 ${Math.round(TS * 0.55)}px system-ui, sans-serif`;
+  for (const g of L.gloom) {
+    if (!(g.alertT > 0) || g.gone > 0) continue;
+    const a = Math.min(1, g.alertT * 2), up = (1 - Math.min(1, g.alertT)) * TS * 0.15;
+    ctx.fillStyle = g.alert === "!" ? `rgba(255,120,190,${a})` : `rgba(210,190,255,${a})`;
+    ctx.fillText(g.alert, sx(g.x), sy(g.y) - TS * (g.big ? 1.3 : 0.75) - up);
+  }
+  if (L.caughtFlash > 0) { ctx.fillStyle = `rgba(120,40,160,${L.caughtFlash * 0.35})`; ctx.fillRect(0, 0, W, H); }
   // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
   if (CORE && L.noisy > 0 && !L.demo) {
     ctx.strokeStyle = `rgba(255,190,220,${L.noisy * 0.35})`; ctx.lineWidth = Math.max(1, TS * 0.03);
@@ -998,7 +1013,9 @@ function frame(now) {
     }
   }
   clock += dt;
-  if (L && (screen === "play" || (screen === "title" && L.demo))) update(dt);
+  // Caught: the world slows for a heartbeat.
+  if (L && L.slowmo > 0) L.slowmo -= dt;
+  if (L && (screen === "play" || (screen === "title" && L.demo))) update(L.slowmo > 0 ? dt * 0.3 : dt);
   if (L) stepArtJob(screen === "play" ? 5 : 10);
   // The 3D view draws the cave and everything in it on its own canvas underneath; this canvas
   // then only carries the vignette, flashes and fades on top.

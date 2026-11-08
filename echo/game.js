@@ -21,7 +21,7 @@ function loadLevel(i, demo = false) {
     glow: new Float32Array(n),
     seen: new Uint8Array(n),
     mem: new Float32Array(n),   // how well Lumi still remembers each tile; fades in a few seconds
-    stones: [], noisy: 0, noiseT: 0,
+    stones: [], noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
   // Nothing shows until Lumi's light or a song reaches it, unless Guiding glow is on.
@@ -272,8 +272,10 @@ function ping(long = false) {
 // Hushlings are blind: they hunt by sound. Every Hushling within earshot of a sound (through
 // rock) goes to where the sound was, waits there a moment listening, then drifts home.
 const gloomSpeed = g => (g.big ? 1.6 : 1.9 + depthOf(levelIndex) * 0.9) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
-function hear(x, y, r) {
+const SNEAK = 0.5;
+function hear(x, y, r, fromLumi = true) {
   if (L.demo || save.settings.relaxed) return;
+  if (fromLumi && r >= 4) L.hearRings.push({ x, y, r, t: 0 });
   for (const g of L.gloom) {
     if (g.final || g.chaser || g.gone > 0 || g.calm > 0 || g.delay > 0) continue;
     const d = Math.hypot(g.x - x, g.y - y);
@@ -281,6 +283,8 @@ function hear(x, y, r) {
     if (g.hunt <= 0) sfx.gloomWake(g.x - L.lumi.x, g.big);
     g.hunt = Math.max(g.hunt, d / gloomSpeed(g) + 2.2);
     g.lx = x; g.ly = y;
+    g.alert = "?"; g.alertT = 1.6;
+    if (fromLumi) L.heard++;
   }
 }
 // Old ring stones: a song that reaches one makes it ring out three times, loud, and every
@@ -595,7 +599,9 @@ function update(dt) {
   if (p && p.moved && ctl) {
     const dx = p.x - p.ax, dy = p.y - p.ay, d = Math.hypot(dx, dy);
     if (d > STICK_DEAD) {
-      const k = SWIM_MAX * Math.min(1, (d - STICK_DEAD) / (STICK_R - STICK_DEAD)) / d;
+      const f = Math.min(1, (d - STICK_DEAD) / (STICK_R - STICK_DEAD));
+      // In the core the stick has two gears: a short push sneaks (silent), a long push swims.
+      const k = (CORE ? (f < 0.6 ? SNEAK : 1) * SWIM_MAX : SWIM_MAX * f) / d;
       wx = dx * k; wy = dy * k;
     }
   }
@@ -675,7 +681,7 @@ function update(dt) {
     if (s.next <= 0) {
       s.next = 0.85;
       sfx.stone(s.x - lumi.x);
-      hear(s.x, s.y, 9);
+      hear(s.x, s.y, 9, false);
       L.lit[s.i] = 1; eachSolidNeighbour(s.i, j => { L.lit[j] = Math.max(L.lit[j], 0.85); L.seen[j] = 1; }); L.seen[s.i] = 1;
       for (let k = 0; k < 12; k++) { const a = Math.random() * 6.28; spark(s.x, s.y, Math.cos(a) * 1.8, Math.sin(a) * 1.8, 0.7, "cyan", 0.08); }
     }
@@ -875,7 +881,7 @@ function update(dt) {
       continue;
     }
     if (ctl && g.calm <= 0 && gap < (CORE ? (g.big ? 1.5 : 1.1) : g.big ? 2.6 : 1.8)) {
-      if (g.hunt <= 0) sfx.gloomWake(g.x - lumi.x, g.big);
+      if (g.hunt <= 0 || g.alert !== "!") { sfx.gloomWake(g.x - lumi.x, g.big); g.alert = "!"; g.alertT = 1.2; if (CORE) L.heard++; }
       g.hunt = Math.max(g.hunt, CORE ? 1.2 : g.big ? 3 : 2.2);
     }
     const sees = g.hunt > 0 && (CORE ? gap < (g.big ? 1.5 : 1.1) : gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
@@ -900,6 +906,7 @@ function update(dt) {
       lumi.squash = 1;
       if (L.useEnergy) L.energy = Math.max(0, L.energy - (CORE ? 34 : g.big ? 15 : 8));
       L.hits++;
+      if (CORE) { L.slowmo = 0.6; L.caughtFlash = 1; L.shake = Math.max(L.shake || 0, 0.5); sfx.caught(); }
       g.gone = g.big ? 10 : 8;
       g.hunt = 0;
       g.calm = g.big ? 8 : 6;
@@ -930,6 +937,22 @@ function update(dt) {
     L.dread = (L.dread || 0) + (hunted - (L.dread || 0)) * Math.min(1, dt * 2);
     music.tension = L.dread;
     if (L.dread > 0.15 && (L.beat = (L.beat ?? 0) - dt) <= 0) { L.beat = 0.95 - L.dread * 0.5; sfx.heart(L.dread); if (L.dread > 0.45) buzz(15); }
+  }
+  // Close calls: a hunting Hushling sweeping past without finding Lumi.
+  for (const g of L.gloom) {
+    g.alertT = Math.max(0, (g.alertT || 0) - dt);
+    if (!ctl || !CORE || g.gone > 0 || g.final || g.hunt <= 0) continue;
+    const gap = Math.hypot(g.x - lumi.x, g.y - lumi.y);
+    g.missCd = Math.max(0, (g.missCd || 0) - dt);
+    if (gap < 2.2 && gap > 1.15 && g.missCd <= 0) { g.missCd = 3; sfx.whoosh(g.x - lumi.x); buzz(10); }
+  }
+  for (const r of L.hearRings) r.t += dt;
+  L.hearRings = L.hearRings.filter(r => r.t < 0.9);
+  L.caughtFlash = Math.max(0, L.caughtFlash - dt * 1.5);
+  {
+    const sneaking = ctl && Math.hypot(lumi.vx, lumi.vy) > 0.6 && Math.hypot(lumi.vx, lumi.vy) <= SWIM_MAX * 0.62;
+    if (CORE && sneaking !== L.sneaking && Math.hypot(lumi.vx, lumi.vy) > 0.6) buzz(sneaking ? 5 : 8);
+    L.sneaking = sneaking;
   }
   // Falling stones and the shaking they cause.
   L.shake = Math.max(0, (L.shake || 0) - dt * 1.2);

@@ -53,8 +53,11 @@ const R3D = (() => {
             float bayer = mod(fc.x * 2.0 + fc.y * 3.0 + fc.x * fc.y, 4.0) / 4.0 + 0.12;
             if (fadeK * 0.82 > bayer) discard;
           }` : ""}
-          float visK = texture2D(uVis, vec2(vWPos.x / uDims.x, vWPos.z / uDims.y)).r;
+          vec4 visT = texture2D(uVis, vec2(vWPos.x / uDims.x, vWPos.z / uDims.y));
+          float visK = visT.r;
           gl_FragColor.rgb *= mix(${floor.toFixed(3)}, 1.0, smoothstep(0.0, 0.85, visK));
+          // The echo sweeping over the rock: a cyan glow where the song has only just arrived.
+          gl_FragColor.rgb += vec3(0.35, 0.85, 1.0) * visT.g * (0.18 + 0.5 * smoothstep(0.15, 0.9, vWPos.y));
           #include <fog_fragment>`);
     };
     return mat;
@@ -379,6 +382,8 @@ const R3D = (() => {
     return g;
   }
   const eyeCol = new T.Color();
+  const alertT = (ch, col) => tex(128, 128, (g, w) => { g.font = "800 104px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.shadowColor = col; g.shadowBlur = 18; g.fillStyle = col; g.fillText(ch, w / 2, w / 2 + 6); g.shadowBlur = 0; g.fillStyle = "#fff"; g.globalAlpha = 0.55; g.fillText(ch, w / 2, w / 2 + 6); });
+  const ALERT_Q = alertT("?", "#d2beff"), ALERT_X = alertT("!", "#ff78be");
   const lumiGlow = glow(0x7ee8ff, 2.2, 0.45); lumiGlow.renderOrder = 2; scene.add(lumiGlow);
   const sparkGeo = new T.BufferGeometry(), SPARKS = 320, sparkPos = new Float32Array(SPARKS * 3), sparkCol = new Float32Array(SPARKS * 3);
   sparkGeo.setAttribute("position", new T.BufferAttribute(sparkPos, 3));
@@ -566,7 +571,7 @@ const R3D = (() => {
     if (built !== L) { build(); camPos.set(L.lumi.x, levelIndex === 0 ? 24 : 15, L.lumi.y + 2.5); camLook.set(L.lumi.x, 0.3, L.lumi.y - 0.6); }
     const { cols, rows } = L, lumi = L.lumi;
     // Darkness texture from the same visibility the 2D view uses.
-    for (let i = 0; i < L.n; i++) { const v = Math.min(255, vis(i) * 255) | 0, k = i * 4; visData[k] = v; visData[k + 1] = v; visData[k + 2] = v; visData[k + 3] = 255; }
+    for (let i = 0; i < L.n; i++) { const v = Math.min(255, vis(i) * 255) | 0, k = i * 4, fr = L.hideLights ? Math.max(0, (L.lit[i] - 0.86) / 0.14) : 0; visData[k] = v; visData[k + 1] = fr * 255 | 0; visData[k + 2] = v; visData[k + 3] = 255; }
     visTex.needsUpdate = true;
 
     // Camera: above and behind Lumi, looking down at an angle, held inside the cave.
@@ -586,9 +591,9 @@ const R3D = (() => {
       lumiM.position.set(lumi.x, 0.62 + bob, lumi.y);
       lumiM.scale.set(shrink * (1 + sq * 0.18 + st * 0.5), shrink * (1 - sq * 0.25 - st * 0.3), shrink * (1 + sq * 0.18 + st * 0.5));
       lumiBody.rotation.set(Math.max(-0.35, Math.min(0.35, lumi.vy * 0.09)), 0, Math.max(-0.35, Math.min(0.35, -lumi.vx * 0.09)));
-      for (const e of lumiEyes) e.scale.y = lumi.blink < 0 ? 0.008 : 0.066;
+      for (const e of lumiEyes) e.scale.y = lumi.blink < 0 ? 0.008 : L.sneaking ? 0.03 : 0.066;
       lumiAnt.rotation.z = Math.sin(clock * 3) * 0.08 + Math.max(-0.4, Math.min(0.4, lumi.vx * 0.12));
-      lumiBodyMat.emissiveIntensity = 0.55 + lumi.sing * 0.6;
+      lumiBodyMat.emissiveIntensity = (L.sneaking ? 0.35 : 0.55) + lumi.sing * 0.6;
       if (lumiSkin !== save.skin) {
         lumiSkin = save.skin;
         const sk = SKINS[save.skin] && skinUnlocked(save.skin) && SKINS[save.skin].body ? SKINS[save.skin].body : ["#ffffff", "#c9f6ff", "#6fd9ff"];
@@ -694,6 +699,18 @@ const R3D = (() => {
       band.material.opacity = 0.25 + ring * 0.75; band.scale.setScalar(1 + ring * 0.08 * Math.sin(clock * 30));
       const k = 1 - Math.max(0, s.next) / 0.85;
       wave.visible = ring > 0; wave.scale.setScalar(0.4 + k * 3.5); wave.material.opacity = ring * (1 - k) * 0.6;
+    }
+    // How far a song is heard: a dashed ring rolls out to that distance.
+    const HEAR = pool("hear", () => { const m = new T.Mesh(new T.RingGeometry(0.975, 1, 96), new T.MeshBasicMaterial({ color: 0xffbedc, transparent: true, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
+    let hk = 0;
+    for (const r of L.hearRings) { const m = HEAR(hk++), kk = r.t / 0.9; m.position.set(r.x, 0.06, r.y); m.scale.setScalar(Math.max(0.1, r.r * Math.min(1, kk * 1.6))); m.material.opacity = (1 - kk) * 0.55; }
+    // What each Hushling is thinking: "?" it heard something, "!" it senses Lumi.
+    const ALERT = pool("alert", () => card(ALERT_Q, 0.62, 0.62));
+    let ak = 0;
+    for (const g of L.gloom) {
+      if (!(g.alertT > 0) || g.gone > 0) continue;
+      const s = ALERT(ak++); s.material.map = g.alert === "!" ? ALERT_X : ALERT_Q; s.material.depthTest = false; s.renderOrder = 60;
+      s.material.opacity = Math.min(1, g.alertT * 2); s.position.set(g.x, (g.big ? 2.9 : 2.0) + (1 - Math.min(1, g.alertT)) * 0.2, g.y);
     }
     // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
     const NOISE = pool("noise", () => { const m = new T.Mesh(new T.RingGeometry(0.97, 1, 64), new T.MeshBasicMaterial({ color: 0xffbedc, transparent: true, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });

@@ -324,7 +324,9 @@ function checkRewards() {
 let lastStars = 0;
 function finish() {
   const allLights = L.got === L.lights.length;
-  const underPar = L.pings <= L.def.par;
+  // In the core, the third star in a cave with Hushlings is for never being heard.
+  const stealth = CORE && levelIndex >= 0 && L.gloom.some(g => !g.final && !g.chaser);
+  const underPar = stealth ? L.heard === 0 : L.pings <= L.def.par;
   const stars = 1 + (allLights ? 1 : 0) + (underPar ? 1 : 0);
   const st = save.stats;
   st.lights += L.got;
@@ -376,9 +378,9 @@ function finish() {
   $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : "", close].filter(Boolean).join(" · ");
   $("g1v").textContent = "✓";
   $("g2v").textContent = `${L.got}/${L.lights.length}`;
-  $("g3v").textContent = `${L.pings} / ${L.def.par}`;
+  $("g3v").textContent = stealth ? (L.heard ? `heard ${L.heard}×` : "✓") : `${L.pings} / ${L.def.par}`;
   $("goal1").firstElementChild.textContent = L.goal === "rescue" ? "Bring the lost moth home" : L.goal === "race" ? "Beat the clock" : "Reach the portal";
-  $("goal3").firstElementChild.textContent = `Sing ${L.def.par} times or fewer`;
+  $("goal3").firstElementChild.textContent = stealth ? "Never heard by a Hushling" : `Sing ${L.def.par} times or fewer`;
   $("goal1").className = "ok";
   $("goal2").className = allLights ? "ok" : "";
   $("goal3").className = underPar ? "ok" : "";
