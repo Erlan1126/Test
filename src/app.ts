@@ -9,7 +9,7 @@ import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline, districtTowers } from "./logic/skyline";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
-import { titleFor, upcoming } from "./data/titles";
+import { nextTitle, titleFor, titleProgress, upcoming } from "./data/titles";
 import { SHAPES } from "./data/shapes";
 import { setVip } from "./logic/vip";
 import { holidayProgress, holidayTower } from "./logic/holidays";
@@ -133,6 +133,8 @@ export class App implements DailyHost {
   private slowmo = 0;
   /** The level-up celebration was shown for this tower. */
   private levelShown = false;
+  /** The level the level button last showed. */
+  private shownLevel = 0;
   private holidayNow: ReturnType<typeof holidayProgress> = null;
   private postcardsThisRun: PostcardGain[] = [];
   /** The day the current tower started (a Daily belongs to that day even past midnight). */
@@ -962,6 +964,10 @@ export class App implements DailyHost {
     lv.hidden = !isOpen(save, "profile");
     $("level-num").textContent = String(p.level);
     $("level-ico").textContent = titleFor(p.level).icon;
+    $("level-btn").classList.toggle("glow", !!titleFor(p.level).glow);
+    // A quick sparkle on the level button whenever you've gone up a level.
+    if (this.shownLevel && p.level > this.shownLevel) replay($("level-btn"), "lvl-pop");
+    this.shownLevel = p.level;
     $("level-bar").style.width = `${p.xp / xpNeeded(p.level) * 100}%`;
     lv.querySelector<HTMLElement>(".new-dot")!.hidden = !isNew(save, "profile");
     const v = streakView(save), sb = $("streak-btn");
@@ -1045,6 +1051,7 @@ export class App implements DailyHost {
   private showLevelUp(lu: { from: number; to: number; stars: number; crystals: number }): void {
     const ti = titleFor(lu.to), newTitle = ti.min > lu.from;
     const el = $("levelup");
+    el.classList.toggle("glow", !!ti.glow);
     el.style.setProperty("--tier", ti.color);
     $("lu-badge").textContent = ti.icon;
     $("lu-level").textContent = String(lu.to);
@@ -1221,6 +1228,11 @@ export class App implements DailyHost {
     near.textContent = o.near;
     $("xp-level").textContent = t("Builder level {n}", { n: o.xp.level });
     $("xp-gain").textContent = `+${o.xp.gained} XP${sim.cfg.xpMultiplier && sim.cfg.xpMultiplier > 1 ? ` (x${sim.cfg.xpMultiplier})` : ""}`;
+    // Your title and how close the next one is.
+    const pr = save.profile, cur = titleFor(pr.level), nx = nextTitle(pr.level);
+    $("title-track").innerHTML = nx
+      ? `<span>${cur.icon} ${esc(t(cur.name))}</span><span class="tt-bar"><i style="width:${Math.round(titleProgress(pr.level, pr.xp) * 100)}%"></i></span><span>${nx.icon} ${esc(t(nx.name))}</span>`
+      : `<span>${cur.icon} ${esc(t(cur.name))}: ${esc(t("the highest title!"))}</span>`;
     const bar = $("xp-bar");
     bar.style.transition = "none";
     bar.style.width = `${o.xp.startPct * 100}%`;

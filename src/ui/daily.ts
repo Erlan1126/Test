@@ -431,7 +431,7 @@ export class DailySheets {
     const titleChip = (r: Row) => {
       if (!r.level) return "";
       const ti = titleFor(r.level);
-      return `<span class="title-chip" style="--tier:${ti.color}">${ti.icon} ${esc(t("Lv {n}", { n: r.level }))}</span>`;
+      return `<span class="title-chip${ti.glow ? " glow" : ""}" style="--tier:${ti.color}">${ti.icon} ${esc(t("Lv {n}", { n: r.level }))}</span>`;
     };
     const line = (r: Row) => {
       const row = document.createElement("div");

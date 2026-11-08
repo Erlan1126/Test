@@ -178,3 +178,20 @@ describe("sky city", () => {
     expect(normalize({ best: 2000, population: 10 }).population).toBe(10);
   });
 });
+
+import { nextTitle, titleFor, titleProgress, TITLES } from "../src/data/titles";
+import { xpNeeded } from "../src/logic/rules";
+
+describe("builder titles", () => {
+  it("go up to Skyrise Immortal at 100, and track progress to the next one", () => {
+    expect(titleFor(1).name).toBe("Apprentice");
+    expect(titleFor(60).name).toBe("Skyrise Legend");
+    expect(titleFor(85).name).toBe("Cloud Emperor");
+    expect(titleFor(140).name).toBe("Skyrise Immortal");
+    expect(nextTitle(100)).toBeUndefined();
+    expect(TITLES.filter(t => t.glow).map(t => t.min)).toEqual([80, 100]);
+    expect(titleProgress(10, 0)).toBe(0);
+    expect(titleProgress(14, xpNeeded(14) - 1)).toBeGreaterThan(0.95);
+    expect(titleProgress(100, 0)).toBe(1);
+  });
+});
