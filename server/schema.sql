@@ -44,3 +44,15 @@ CREATE TABLE IF NOT EXISTS reports (
   at INTEGER NOT NULL,
   PRIMARY KEY (reporter, target)
 );
+
+-- Anonymous crash and frame-rate reports from players' phones (no player id or name),
+-- so problems on real devices can be found and fixed. Kept to the newest 20,000.
+CREATE TABLE IF NOT EXISTS diag (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  v TEXT NOT NULL DEFAULT '',
+  dev TEXT NOT NULL DEFAULT '',
+  msg TEXT NOT NULL DEFAULT '',
+  data TEXT NOT NULL DEFAULT '{}'
+);

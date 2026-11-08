@@ -48,6 +48,14 @@ your backup deleted, email erlanstudios1@gmail.com with your recovery code.
 If you report a leaderboard name, the server records that you reported it (by random
 player id). Names reported by several players are hidden.
 
+## Crash and performance reports
+
+To find and fix problems on real phones, the game sends anonymous technical reports to the
+Skyrise server: the text of an error if the game crashes, and after each tower how smoothly
+it ran (frames per second). Each report includes the app version, the phone model and the
+graphics chip, and nothing else: no player id, nickname, save or location. Reports are kept
+for at most a few weeks (the newest 20,000) and are never shared or sold.
+
 ## What the game does not do
 
 - No accounts or sign-in (the leaderboard uses the random player id above).

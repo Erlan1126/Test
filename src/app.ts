@@ -28,6 +28,7 @@ import type { Debris } from "./render/effects";
 import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
+import { flushDiag, reportPerf } from "./diag";
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
@@ -131,6 +132,8 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  /** How smoothly the current tower is running, for the anonymous frame-rate report. */
+  private frameStats = { n: 0, time: 0, slow: 0, worst: 0 };
   /** The level-up celebration was shown for this tower. */
   private levelShown = false;
   /** The level the level button last showed. */
@@ -614,6 +617,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.slowmo = 0;
+    this.frameStats = { n: 0, time: 0, slow: 0, worst: 0 };
     this.levelShown = false;
     this.postcardsThisRun = [];
     this.runDay = dayNumber();
@@ -776,6 +780,11 @@ export class App implements DailyHost {
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
     this.postScores();
+    const fs = this.frameStats;
+    if (fs.n > 120) {
+      reportPerf({ fps: Math.round(fs.n / fs.time), slow: fs.slow, worst: Math.round(fs.worst), floors: run.floors, gfx: this.renderer instanceof Renderer3D ? (this.low ? "3d-low" : "3d") : "2d" });
+    }
+    void flushDiag();
     $("over-world").hidden = true;
     void this.submitRun();
     void scheduleReminders(this.reminderInfo());
@@ -1365,6 +1374,12 @@ export class App implements DailyHost {
         this.perf.frames = 0;
         this.perf.time = 0;
       }
+    }
+    if (this.state === "playing" && raw > 0 && raw < 1) {
+      const f = this.frameStats;
+      f.n++; f.time += raw;
+      if (raw > 1 / 30) f.slow++;
+      f.worst = Math.max(f.worst, raw * 1000);
     }
     this.update(dt);
     this.draw(dt);

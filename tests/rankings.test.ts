@@ -54,6 +54,16 @@ async function register(id: string) {
 }
 
 describe("online rankings", () => {
+  it("takes anonymous crash and frame-rate reports, capped in size", async () => {
+    const res = await call("/diag", { v: "1.0 (35)", dev: "SM-A536E · Mali-G68", items: [
+      { kind: "error", msg: "x is undefined", data: { at: "index.js:1:2" } },
+      { kind: "perf", msg: "tower", data: { fps: 58, slow: 3, worst: 80 } },
+      ...Array.from({ length: 20 }, () => ({ kind: "error", msg: "spam" })),
+    ] });
+    expect(res.status).toBe(200);
+    expect((await call("/diag", { items: "nope" })).status).toBe(200);
+  });
+
   it("registers each player id once", async () => {
     await register(P1);
     expect((await call("/players", { player: P1 })).status).toBe(409);

@@ -1,0 +1,33 @@
+# Prints a summary of the anonymous crash and frame-rate reports from players' phones.
+# Run it from Actions > Diagnostics > Run workflow; the summary is in the run's page.
+name: Diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the reports
+        working-directory: server
+        run: |
+          CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '[A-Za-z0-9_-]{35,}' | head -1)
+          CLOUDFLARE_ACCOUNT_ID=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | grep -oiE '[0-9a-f]{32}' | head -1)
+          export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID
+          W="npx --yes wrangler@4"
+          ID=$($W d1 list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);const d=l.find(x=>x.name==="skyrise");process.stdout.write(d?d.uuid:"")})')
+          sed -i "s/PASTE_YOUR_D1_DATABASE_ID/$ID/" wrangler.toml
+          SINCE=$(( ($(date +%s) - 14*86400) * 1000 ))
+          q() { echo "### $1"; $W d1 execute skyrise --remote --json --command "$2" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s)[0]?.results??[];console.table(r)})'; }
+          {
+            q "Errors in the last 14 days (most common first)" "SELECT COUNT(*) AS n, msg, MAX(v) AS version, MAX(dev) AS device FROM diag WHERE kind='error' AND at > $SINCE GROUP BY msg ORDER BY n DESC LIMIT 30"
+            q "Frame rate by device (last 14 days)" "SELECT dev AS device, COUNT(*) AS towers, ROUND(AVG(json_extract(data,'$.fps')),1) AS avg_fps, ROUND(AVG(json_extract(data,'$.slow')),1) AS slow_frames, ROUND(AVG(json_extract(data,'$.worst')),0) AS worst_ms, MAX(json_extract(data,'$.gfx')) AS graphics FROM diag WHERE kind='perf' AND at > $SINCE GROUP BY dev ORDER BY towers DESC LIMIT 30"
+            q "Latest 15 errors with details" "SELECT datetime(at/1000,'unixepoch') AS time, v, dev, msg, substr(data,1,400) AS details FROM diag WHERE kind='error' ORDER BY id DESC LIMIT 15"
+          } 2>&1 | tee report.txt
+          { echo '```'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

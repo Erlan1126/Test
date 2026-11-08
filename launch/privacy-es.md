@@ -54,6 +54,15 @@ tu copia, escribe a erlanstudios1@gmail.com con tu código de recuperación.
 Si reportas un nombre del ranking, el servidor guarda que lo reportaste (con tu id de
 jugador aleatorio). Los nombres reportados por varios jugadores se ocultan.
 
+## Informes de fallos y rendimiento
+
+Para encontrar y corregir problemas en teléfonos reales, el juego envía informes técnicos
+anónimos al servidor de Skyrise: el texto de un error si el juego falla y, después de cada
+torre, qué tan fluido funcionó (imágenes por segundo). Cada informe incluye la versión de la
+app, el modelo del teléfono y el chip gráfico, y nada más: ni id de jugador, ni apodo, ni
+partida guardada, ni ubicación. Se guardan unas semanas como máximo (los 20.000 más recientes)
+y nunca se comparten ni se venden.
+
 ## Qué no hace el juego
 
 - No hay cuentas ni inicio de sesión (el ranking usa el identificador aleatorio de arriba).

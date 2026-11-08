@@ -47,6 +47,9 @@ changed after that.
   - **Personal info → User IDs** (a random player id the game makes)
   - **Personal info → Name** (the optional leaderboard nickname)
   - **App activity → Other actions** (scores and the taps of ranked towers, to check them)
+  - **App info and performance → Crash logs** and **→ Diagnostics** (anonymous error
+    reports and frame rate, to fix bugs). Collected **Yes**, shared **No**, required,
+    purpose **Analytics**, not linked to a person
   For each: collected **Yes**, shared **No**, processed ephemerally **No**, collection
   **Required** (Classic and Daily towers are posted automatically), purpose **App functionality**. Encrypted in transit → **Yes**. Users can request deletion →
   **Yes** (by emailing erlanstudios1@gmail.com). Google Play handles purchases. No ads or analytics.

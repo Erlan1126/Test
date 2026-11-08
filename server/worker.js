@@ -48,7 +48,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/save", "/recovery", "/restore", "/report"].includes(url.pathname);
+    const ranked = ["/players", "/runs", "/board", "/save", "/recovery", "/restore", "/report", "/diag"].includes(url.pathname);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
     try {
@@ -222,6 +222,18 @@ async function rankings(request, url, env, now) {
     if (!me) return json({ error: "not allowed" }, 403);
     if (!PLAYER.test(body.target ?? "") || body.target === me.id) return json({ error: "bad target" }, 400);
     await db.prepare("INSERT OR IGNORE INTO reports (reporter, target, at) VALUES (?, ?, ?)").bind(me.id, body.target, now).run();
+    return json({ ok: true });
+  }
+
+  // Anonymous crash and frame-rate reports. No player id, name or token is taken.
+  if (url.pathname === "/diag" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const items = Array.isArray(body?.items) ? body.items.slice(0, 10) : [];
+    const v = String(body?.v ?? "").slice(0, 24), dev = String(body?.dev ?? "").slice(0, 160);
+    const stmts = items.map(it => db.prepare("INSERT INTO diag (at, kind, v, dev, msg, data) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(now, it?.kind === "perf" ? "perf" : "error", v, dev, String(it?.msg ?? "").slice(0, 300), JSON.stringify(it?.data ?? {}).slice(0, 1500)));
+    if (stmts.length) await db.batch(stmts);
+    if (Math.random() < 0.02) await db.prepare("DELETE FROM diag WHERE id <= (SELECT MAX(id) - 20000 FROM diag)").run();
     return json({ ok: true });
   }
 
