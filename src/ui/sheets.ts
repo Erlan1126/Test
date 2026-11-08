@@ -16,6 +16,7 @@ import { buyBoost, buySkin } from "../logic/shop";
 import { itemPrice, ownsProduct } from "../logic/premium";
 import { buyShape, currentShape, shapeUnlocked } from "../logic/shapes";
 import { SHAPES } from "../data/shapes";
+import { nextTitle, titleFor } from "../data/titles";
 import { buyDeal, dealBought, dealsFor } from "../logic/deals";
 import { claimVip, VIP_CENTS, VIP_DAILY_CRYSTALS, vipActive, vipClaimReady } from "../logic/vip";
 import { dayNumber } from "../logic/rules";
@@ -463,11 +464,11 @@ export class Sheets {
 
   private renderProfile(): void {
     const save = this.save, p = save.profile, need = xpNeeded(p.level);
-    $("profile-title").textContent = t("Builder level {n}", { n: p.level });
+    const ti = titleFor(p.level), nt = nextTitle(p.level);
+    $("profile-title").textContent = `${ti.icon} ${t(ti.name)} · ${t("Lv {n}", { n: p.level })}`;
     $("profile-xp").textContent = t("{xp} of {need} XP to level {n}", { xp: fmt(p.xp), need: fmt(need), n: p.level + 1 });
     $("profile-bar").style.width = `${p.xp / need * 100}%`;
-    const nextTheme = ISLAND_THEMES.find(t => t.level > p.level);
-    $("profile-next").textContent = nextTheme ? t("Level {n} unlocks the {name} island", { n: nextTheme.level, name: t(nextTheme.name) }) : t("Every island theme unlocked");
+    $("profile-next").textContent = nt ? t("Level {n}: you become {icon} {name}", { n: nt.min, icon: nt.icon, name: t(nt.name) }) : t("You hold the highest title!");
     const stats: [string | number, string][] = [
       [fmt(save.best), t("best people")], [`${fmt(save.bestMeters)} m`, t("tallest")], [fmt(p.towers), t("towers")],
       [p.bestStreak, t("best streak")], [fmt(p.perfects), t("perfects")], [`${save.challenges.length}/${CHALLENGES.length}`, t("landmarks")],

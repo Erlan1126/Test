@@ -46,7 +46,7 @@
 </div>
 
 <button id="level-btn" class="corner-btn level-btn" hidden aria-label="Your builder profile">
-  <span class="lv-text">Lv <b id="level-num">1</b></span>
+  <span class="lv-text"><span class="lv-ico" id="level-ico" aria-hidden="true">🧱</span>Lv <b id="level-num">1</b></span>
   <span class="lv-bar"><i id="level-bar"></i></span>
   <span class="new-dot" hidden></span>
 </button>
@@ -96,6 +96,20 @@
       <button type="button" class="tile" id="shop-btn" hidden><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.5 11h-13zM8 9V7a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Shop</span><i class="dot" hidden></i></button>
       <button type="button" class="tile" id="goals-btn" hidden><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v3M8 20h8M9.5 17h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>Goals</span><i class="dot" hidden></i></button>
     </nav>
+  </div>
+</div>
+
+<div id="levelup" class="levelup" hidden role="dialog" aria-modal="true" aria-labelledby="lu-level">
+  <div class="lu-confetti" id="lu-confetti" aria-hidden="true"></div>
+  <div class="lu-card">
+    <div class="lu-badge-wrap"><span class="lu-rays" aria-hidden="true"></span><span class="lu-badge" id="lu-badge">🧱</span></div>
+    <div class="lu-eyebrow">Level up!</div>
+    <div class="lu-level" id="lu-level">2</div>
+    <div class="lu-title" id="lu-title"></div>
+    <div class="lu-new" id="lu-new" hidden>New title!</div>
+    <div class="lu-rewards" id="lu-rewards"></div>
+    <div class="lu-next" id="lu-next"></div>
+    <button type="button" class="btn btn-primary wide" id="lu-ok">Awesome!</button>
   </div>
 </div>
 
@@ -316,6 +330,8 @@
         <button type="button" role="tab" data-tab="best" aria-selected="false">All time</button>
       </div>
     </div>
+    <div class="podium" id="rank-podium" hidden></div>
+    <p class="rank-chase" id="rank-chase" hidden></p>
     <div class="rank-list" id="rank-list"></div>
     <p class="sheet-note" id="ranks-note"></p>
     <h3 class="sheet-sub">Your name</h3>

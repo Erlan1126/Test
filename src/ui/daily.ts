@@ -17,6 +17,7 @@ import { currentTheme, islandLevel, swapMission } from "../logic/progress";
 import { CITY_NAME, DISTRICTS, districtOpen, nextDistrict } from "../logic/city";
 import { districtTowers } from "../logic/skyline";
 import { drawThemePreview } from "../render/previews";
+import { titleFor } from "../data/titles";
 import { dayKey, dayNumber, duration } from "../logic/rules";
 import { isNative, reminderTime, setReminder, type ReminderInfo } from "../native";
 import type { Online, Row } from "../online";
@@ -426,13 +427,18 @@ export class DailySheets {
     if (!board.rows.length) {
       el.innerHTML = `<p class="history-empty">${esc(tab === "daily" ? t("Nobody has built today's Daily yet. Be the first!") : t("No scores yet."))}</p>`;
     }
+    const unit = (r: Row) => esc(r.unit === "pts" ? t("pts") : t("people"));
+    const titleChip = (r: Row) => {
+      if (!r.level) return "";
+      const ti = titleFor(r.level);
+      return `<span class="title-chip" style="--tier:${ti.color}">${ti.icon} ${esc(t("Lv {n}", { n: r.level }))}</span>`;
+    };
     const line = (r: Row) => {
       const row = document.createElement("div");
       const canReport = global && !r.me && !this.save.blocked.includes(r.id);
       row.className = `rank-row${r.me ? " me" : ""}${canReport ? " has-report" : ""}`;
-      const medal = ["🥇", "🥈", "🥉"][r.rank - 1] ?? fmt(r.rank);
-      row.innerHTML = `<span class="rank">${medal}</span><span class="who"></span><span class="fire">${r.streak && r.streak > 1 ? `🔥${r.streak}` : r.level ? esc(t("Lv {n}", { n: r.level })) : ""}</span><b>${fmt(r.value)} ${esc(r.unit === "pts" ? t("pts") : t("people"))}</b>`;
-      row.querySelector(".who")!.textContent = displayName(r.name) + (r.me ? t(" (you)") : "");
+      row.innerHTML = `<span class="rank">${fmt(r.rank)}</span>${avatarHtml(r.id)}<span class="who"><span class="nm"></span>${titleChip(r)}${r.streak && r.streak > 1 ? `<span class="fire">🔥${r.streak}</span>` : ""}</span><b>${fmt(r.value)} <small>${unit(r)}</small></b>`;
+      row.querySelector(".nm")!.textContent = displayName(r.name) + (r.me ? t(" (you)") : "");
       if (canReport) {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -444,7 +450,32 @@ export class DailySheets {
       }
       return row;
     };
-    board.rows.slice(0, 100).forEach(r => el.appendChild(line(r)));
+    // The top three stand on a podium: second, first (with a crown), third.
+    const podium = $("rank-podium"), top3 = board.rows.slice(0, 3);
+    podium.hidden = !top3.length;
+    podium.innerHTML = [top3[1], top3[0], top3[2]].map((r, i) => {
+      if (!r) return `<div class="pod empty"></div>`;
+      const place = [2, 1, 3][i];
+      return `<div class="pod p${place}${r.me ? " me" : ""}">
+        ${place === 1 ? `<span class="crown" aria-hidden="true">👑</span>` : ""}
+        ${avatarHtml(r.id, true)}
+        <span class="pod-name"></span>${titleChip(r)}
+        <b>${fmt(r.value)}</b>
+        <span class="step">${["🥇", "🥈", "🥉"][place - 1]}</span>
+      </div>`;
+    }).join("");
+    podium.querySelectorAll<HTMLElement>(".pod-name").forEach((el, i) => {
+      const r = [top3[1], top3[0], top3[2]].filter(Boolean)[i];
+      if (r) el.textContent = displayName(r.name) + (r.me ? t(" (you)") : "");
+    });
+    // Who to beat next.
+    const me = board.me ?? board.rows.find(r => r.me) ?? null, ahead = me && me.rank > 1 ? board.rows.find(r => r.rank === me.rank - 1) : null;
+    const chase = $("rank-chase");
+    chase.hidden = !me;
+    if (me) chase.textContent = me.rank === 1 ? t("👑 You're #1! Keep building to stay on top.")
+      : ahead ? t("⚔️ You're #{rank}. {gap} more {unit} to pass {name}!", { rank: fmt(me.rank), gap: fmt(Math.max(1, ahead.value - me.value + 1)), unit: me.unit === "pts" ? t("pts") : t("people"), name: displayName(ahead.name) })
+      : t("You're #{rank}. Keep climbing!", { rank: fmt(me.rank) });
+    board.rows.slice(3, 100).forEach(r => el.appendChild(line(r)));
     // Outside the top 100: your own row at the bottom.
     if (board.me && !board.rows.some(r => r.me)) {
       const gap = document.createElement("p");
@@ -501,4 +532,13 @@ function seasonCrystals(season: number): number {
   let n = 0;
   for (let t = 1; t <= PASS_TIERS; t++) n += premiumReward(season, t).crystals ?? 0;
   return n;
+}
+
+/** A little avatar for a player, made from their id: a color and a building. */
+function avatarHtml(id: string, big = false): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const icons = ["🏙️", "🏢", "🏰", "🗼", "🏯", "🌆", "🏗️", "🌇", "🏛️", "🕌", "⛩️", "🎡"];
+  const hue = h % 360;
+  return `<span class="avatar${big ? " avatar-lg" : ""}" style="background:linear-gradient(135deg,hsl(${hue} 70% 62%),hsl(${(hue + 50) % 360} 70% 45%))" aria-hidden="true">${icons[(h >>> 8) % icons.length]}</span>`;
 }

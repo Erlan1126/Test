@@ -1142,3 +1142,54 @@ html.phone .card { background: rgba(16, 20, 52, 0.9); }
 .district.on { outline: 2px solid var(--accent); background: var(--sunset-soft); }
 .district.locked canvas { filter: grayscale(1) brightness(0.55); }
 .mode-chips .mode span { display: inline; }
+
+/* ---------- Level up ---------- */
+.levelup { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at 50% 40%, rgba(60, 30, 120, 0.85), rgba(8, 10, 30, 0.92)); animation: lu-fade 0.25s ease-out; }
+@keyframes lu-fade { from { opacity: 0; } }
+.lu-card { position: relative; width: min(340px, 100%); display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.lu-badge-wrap { position: relative; width: 150px; height: 150px; display: grid; place-items: center; }
+.lu-rays { position: absolute; inset: -40px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255, 224, 138, 0.35) 0 10deg, transparent 10deg 24deg); -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%); mask: radial-gradient(circle, #000 30%, transparent 70%); animation: lu-spin 9s linear infinite; }
+@keyframes lu-spin { to { transform: rotate(360deg); } }
+.lu-badge { position: relative; width: 120px; height: 120px; display: grid; place-items: center; border-radius: 50%; font-size: 64px; background: radial-gradient(circle at 35% 30%, #fff6d6, var(--tier, #ffd23f) 60%, #7a4b00); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.8), 0 0 40px var(--tier, #ffd23f); animation: lu-pop 0.6s cubic-bezier(0.2, 1.7, 0.4, 1); }
+@keyframes lu-pop { from { transform: scale(0.2) rotate(-30deg); opacity: 0; } }
+.lu-eyebrow { margin-top: 8px; color: #ffe08a; font: 400 18px var(--display); letter-spacing: 0.08em; text-transform: uppercase; }
+.lu-level { font: 400 86px/0.9 var(--num); color: #fff; text-shadow: 0 6px 0 rgba(107, 42, 134, 0.8), 0 0 30px rgba(255, 111, 156, 0.6); animation: lu-pop 0.7s 0.1s cubic-bezier(0.2, 1.7, 0.4, 1) both; }
+.lu-title { font-size: 20px; font-weight: 800; color: var(--tier, #ffd23f); }
+.lu-new { padding: 3px 10px; border-radius: 999px; background: #ff4f8b; color: #fff; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; animation: wiggle 1.4s ease-in-out infinite; }
+.lu-rewards { display: flex; gap: 8px; margin: 8px 0 4px; }
+.lu-rewards span { padding: 8px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.12); font: 400 20px var(--num); animation: rise 0.4s 0.4s ease-out both; }
+.lu-next { width: 100%; margin: 6px 0 12px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); font-size: 13px; font-weight: 700; color: var(--muted); text-align: left; }
+.lu-next b { display: block; margin-bottom: 4px; color: #fff; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.lu-next div { display: flex; gap: 8px; padding: 2px 0; }
+.lu-next i { font-style: normal; min-width: 48px; color: #ffe08a; }
+.lu-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.lu-confetti span { position: absolute; top: -20px; width: 9px; height: 14px; border-radius: 2px; animation: lu-fall linear forwards; }
+@keyframes lu-fall { to { transform: translateY(110vh) rotate(720deg); } }
+.title-chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--tier) 22%, transparent); color: var(--tier); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.lv-ico { font-size: 14px; margin-right: 2px; }
+
+/* ---------- Rankings ---------- */
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 8px; margin: 6px 0 12px; }
+.pod { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px 0; border-radius: 16px 16px 6px 6px; text-align: center; min-width: 0; }
+.pod.empty { visibility: hidden; }
+.pod .pod-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; }
+.pod b { font: 400 18px var(--num); }
+.pod .step { width: 100%; margin-top: 6px; padding: 8px 0; border-radius: 12px 12px 0 0; font-size: 22px; }
+.pod.p1 { background: linear-gradient(180deg, rgba(255, 210, 63, 0.28), rgba(255, 210, 63, 0.06)); }
+.pod.p1 .step { height: 64px; background: linear-gradient(180deg, #ffd23f, #c98a00); }
+.pod.p2 { background: linear-gradient(180deg, rgba(201, 211, 230, 0.22), rgba(201, 211, 230, 0.05)); }
+.pod.p2 .step { height: 44px; background: linear-gradient(180deg, #e3e9f3, #8f9bb3); }
+.pod.p3 { background: linear-gradient(180deg, rgba(208, 139, 91, 0.24), rgba(208, 139, 91, 0.05)); }
+.pod.p3 .step { height: 32px; background: linear-gradient(180deg, #e6a274, #9a5a30); }
+.pod.me { outline: 2px solid var(--accent); }
+.pod .crown { position: absolute; top: -18px; font-size: 26px; animation: wiggle 2.4s ease-in-out infinite; }
+.avatar { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 18px; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); }
+.avatar.avatar-lg { width: 52px; height: 52px; font-size: 28px; }
+.pod.p1 .avatar.avatar-lg { width: 62px; height: 62px; font-size: 34px; box-shadow: 0 0 0 3px #ffd23f, 0 0 18px rgba(255, 210, 63, 0.6); }
+.rank-chase { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: var(--sunset-soft); font-size: 13px; font-weight: 800; text-align: center; }
+.rank-row { display: flex; align-items: center; gap: 10px; }
+.rank-row .rank { min-width: 26px; color: var(--muted); font: 400 16px var(--num); text-align: center; }
+.rank-row .who { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.rank-row .who .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.rank-row b small { color: var(--muted); font: 700 11px var(--ui); }
+.rank-row.me { position: sticky; bottom: 0; z-index: 1; background: #3a2a6e; box-shadow: 0 -6px 16px rgba(5, 8, 30, 0.5); }

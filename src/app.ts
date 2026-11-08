@@ -9,6 +9,8 @@ import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline, districtTowers } from "./logic/skyline";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
+import { titleFor, upcoming } from "./data/titles";
+import { SHAPES } from "./data/shapes";
 import { setVip } from "./logic/vip";
 import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
@@ -129,6 +131,8 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  /** The level-up celebration was shown for this tower. */
+  private levelShown = false;
   private holidayNow: ReturnType<typeof holidayProgress> = null;
   private postcardsThisRun: PostcardGain[] = [];
   /** The day the current tower started (a Daily belongs to that day even past midnight). */
@@ -251,6 +255,7 @@ export class App implements DailyHost {
   /** The Android back button: closes what's open, pauses, or steps back to the menu.
    *  Returns false on the main menu, where the app goes to the background. */
   private back(): boolean {
+    if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
     const modal = openModalEl();
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
     if (!$("rewards").hidden) { $("rewards").hidden = true; this.renderMenu(); return true; }
@@ -479,6 +484,7 @@ export class App implements DailyHost {
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
     $("ranks-btn").addEventListener("click", () => this.daily.openRanks());
+    $("lu-ok").addEventListener("click", () => { $("levelup").hidden = true; this.sound.click(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
     // A goal row closes the Goals sheet first, then its own sheet opens.
@@ -606,6 +612,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.slowmo = 0;
+    this.levelShown = false;
     this.postcardsThisRun = [];
     this.runDay = dayNumber();
     this.sound.ensure();
@@ -954,6 +961,7 @@ export class App implements DailyHost {
     const lv = $("level-btn");
     lv.hidden = !isOpen(save, "profile");
     $("level-num").textContent = String(p.level);
+    $("level-ico").textContent = titleFor(p.level).icon;
     $("level-bar").style.width = `${p.xp / xpNeeded(p.level) * 100}%`;
     lv.querySelector<HTMLElement>(".new-dot")!.hidden = !isNew(save, "profile");
     const v = streakView(save), sb = $("streak-btn");
@@ -1031,6 +1039,29 @@ export class App implements DailyHost {
     $("modes").hidden = [...$("modes").children].every(c => (c as HTMLElement).hidden);
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
     void this.renderStatus(now);
+  }
+
+  /** The level-up celebration: badge, new title, rewards, and what's next. */
+  private showLevelUp(lu: { from: number; to: number; stars: number; crystals: number }): void {
+    const ti = titleFor(lu.to), newTitle = ti.min > lu.from;
+    const el = $("levelup");
+    el.style.setProperty("--tier", ti.color);
+    $("lu-badge").textContent = ti.icon;
+    $("lu-level").textContent = String(lu.to);
+    $("lu-title").textContent = t(ti.name);
+    $("lu-new").hidden = !newTitle;
+    $("lu-rewards").innerHTML = [`+${lu.stars} ★`, lu.crystals ? `+${lu.crystals} 💎` : ""].filter(Boolean).map(x => `<span>${x}</span>`).join("");
+    const next = upcoming(lu.to, SHAPES.map(sh => ({ name: sh.name, level: sh.unlock && "level" in sh.unlock ? sh.unlock.level : undefined })));
+    $("lu-next").innerHTML = next.length ? `<b>${esc(t("Coming up"))}</b>` + next.map(n => `<div><i>${esc(t("Lv {n}", { n: n.level }))}</i><span>${n.icon} ${esc(t(n.text))}</span></div>`).join("") : "";
+    // Confetti in the title's color and friends.
+    const box = $("lu-confetti"), colors = [ti.color, "#ff6f9c", "#ffe08a", "#7cf5ff", "#a98bff", "#8ce99a"];
+    box.innerHTML = Array.from({ length: this.calmMotion ? 0 : 60 }, (_, i) =>
+      `<span style="left:${(i * 37) % 100}%;background:${colors[i % colors.length]};animation-duration:${2.2 + (i % 7) * 0.35}s;animation-delay:${(i % 10) * 0.08}s"></span>`).join("");
+    el.hidden = false;
+    this.sound.unlock();
+    setTimeout(() => this.sound.purchase(), 250);
+    vibrate(this.save.settings.vibrate, [30, 40, 60]);
+    $("lu-ok").focus();
   }
 
   /** Labels for everything ready to collect: the daily gift, rent, the chest, the league reward. */
@@ -1145,6 +1176,7 @@ export class App implements DailyHost {
     eyebrow.textContent = c ? (won ? t("Challenge complete!") : t("Challenge failed"))
       : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: this.runDay }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
+    if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => this.showLevelUp(o.levelUp!), 700); }
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
     $("over-people").textContent = fmt(sim.score);

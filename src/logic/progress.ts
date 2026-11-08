@@ -99,6 +99,8 @@ export interface RunOutcome {
   near: string;
   /** Skin to switch to because it was just unlocked. */
   newSkin?: string;
+  /** Set when this tower leveled you up, for the celebration. */
+  levelUp?: { from: number; to: number; stars: number; crystals: number };
 }
 
 export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng: () => number = Math.random): RunOutcome {
@@ -184,6 +186,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   // XP and levels
   const gained = runXp(run, newBest);
   const startPct = p.xp / xpNeeded(p.level);
+  let levelUp: RunOutcome["levelUp"];
   const lv = addXp(p.level, p.xp, gained);
   p.level = lv.level;
   p.xp = lv.xp;
@@ -198,6 +201,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
     addStars(save, stars);
     save.crystals += crystals;
     const extra = [`+${lv.stars + stars} ★`, crystals ? `+${crystals} 💎` : ""].filter(Boolean).join(", ");
+    levelUp = { from: levelBefore, to: p.level, stars: lv.stars + stars, crystals };
     rewards.unshift({ kind: "star", text: t("Level up! You're now builder level {n} ({extra})", { n: p.level, extra }) });
   }
 
@@ -223,6 +227,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   return {
     rewards,
     newBest,
+    levelUp,
     xp: { gained, startPct: lv.ups ? 0 : startPct, endPct: p.xp / xpNeeded(p.level), level: p.level },
     dailyBest,
     near: zen ? "" : nearMiss(save, run, newBest),
