@@ -64,6 +64,8 @@ export interface SimConfig {
   xpMultiplier?: number;
   /** Rules version (see RULES); 1 when missing. */
   rules?: number;
+  /** A new player's first tower: the first six floors slide at 70% speed. */
+  easy?: boolean;
 }
 
 export type DropOutcome =
@@ -142,7 +144,8 @@ export class TowerSim {
   }
 
   speedFor(n: number): number {
-    return this.cfg.mode === "zen" ? floorSpeed(Math.min(n, 12)) : floorSpeed(n);
+    const easy = this.cfg.easy && n <= 6 ? 0.7 : 1;
+    return (this.cfg.mode === "zen" ? floorSpeed(Math.min(n, 12)) : floorSpeed(n)) * easy;
   }
 
   /** Picks the kind of the next floor. Always draws the same number of random values so

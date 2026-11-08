@@ -22,6 +22,8 @@ export interface RunRecord {
   boosts: { rewind: boolean; gold: boolean };
   /** Rules version it was played with (see RULES in sim.ts); 1 when missing. */
   rules?: number;
+  /** A new player's first tower: the first floors slide slower. */
+  easy?: boolean;
   log: number[];
 }
 
@@ -29,7 +31,7 @@ export interface RunRecord {
 const MAX_TICKS = 120 * 60 * 60;
 const MAX_EVENTS = 5000;
 
-export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challenge" | "boosts" | "rules">, xpMultiplier = 1): TowerSim {
+export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challenge" | "boosts" | "rules" | "easy">, xpMultiplier = 1): TowerSim {
   const event = rec.mode === "classic" || rec.mode === "daily"
     ? EVENTS[((rec.week % EVENTS.length) + EVENTS.length) % EVENTS.length] : null;
   const challenge = rec.mode === "challenge" ? challengeById(rec.challenge ?? "") ?? null : null;
@@ -42,6 +44,7 @@ export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challeng
     goldBoost: rec.boosts.gold,
     xpMultiplier,
     rules: rec.rules ?? 1,
+    easy: rec.mode === "classic" && rec.easy === true,
   });
 }
 

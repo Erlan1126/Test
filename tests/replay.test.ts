@@ -115,3 +115,14 @@ describe("rules 2: new floors and power-ups", () => {
     expect(sim.gustAt(m, 1.234)).toBe(1);
   });
 });
+
+describe("a new player's first tower", () => {
+  it("starts slower and still replays exactly", () => {
+    const normal = simFor({ ...base, rules: 2 }), easy = simFor({ ...base, rules: 2, easy: true });
+    expect(easy.mover!.speed).toBeCloseTo(normal.mover!.speed * 0.7);
+    const { rec, summary } = play({ ...base, easy: true }, 0.8, 31);
+    const out = replayRun(JSON.parse(JSON.stringify(rec)));
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.summary.score).toBe(summary.score);
+  });
+});

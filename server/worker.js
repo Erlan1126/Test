@@ -241,6 +241,8 @@ async function rankings(request, url, env, now) {
     // still going at midnight), so nobody can pick an easier week's rules.
     const lastWeekOk = record.week === week - 1 && weekIndex(now - 2 * 3600e3) === week - 1;
     if (record.week !== week && !lastWeekOk) return json({ error: "old tower" }, 400);
+    // A new player's slower first tower is practice, not ranked.
+    if (record.easy) return json({ error: "practice tower" }, 400);
     if (record.mode === "daily" && record.boosts && (record.boosts.rewind || record.boosts.gold)) {
       return json({ error: "boosts aren't used on the Daily" }, 400);
     }

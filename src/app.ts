@@ -631,6 +631,8 @@ export class App implements DailyHost {
     this.recorder = new RunRecorder({
       mode, seed, day, week: weekIndex(), challenge: challenge?.id,
       boosts: { rewind: this.boosts.rewind, gold: this.boosts.gold },
+      // A new player's first towers start a little slower.
+      ...(this.tutorial && mode === "classic" ? { easy: true } : {}),
     });
     this.sim = simFor(this.recorder.rec, (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1));
     this.stepTime = 0;
@@ -820,6 +822,10 @@ export class App implements DailyHost {
 
   private landed(out: Extract<DropOutcome, { type: "land" }>): void {
     const fx = this.renderer.fx, f = out.floor, s = this.sound, vib = this.save.settings.vibrate;
+    if (out.perfect && this.tutorial && this.sim.perfects === 1) {
+      // A new player's first perfect drop deserves a cheer.
+      fx.popup(t("NICE!"), t("That's how it's done!"), f.y + 3, "#ffe08a", 1.6, true);
+    }
     if (out.perfect) {
       fx.punch = Math.max(fx.punch, out.combo >= 5 ? 1 : 0.45);
       fx.flash = 1;
@@ -932,10 +938,12 @@ export class App implements DailyHost {
 
   /** The first towers explain how to play. */
   private updateHint(): void {
-    let text = "";
+    let text = "", now = false;
     if (this.tutorial && this.state === "playing" && this.mode !== "zen") {
       const n = this.sim.stack.length;
-      if (n <= 2) text = t("Tap when the sliding floor lines up with the one below");
+      // For the first floors, a big prompt at exactly the right moment.
+      if (n <= 4 && this.sim.wouldBePerfect()) { text = t("👆 TAP NOW!"); now = true; }
+      else if (n <= 2) text = t("Tap when the sliding floor lines up with the one below");
       else if (n <= 4) text = t("Overhangs break off. Wider floors fit more people!");
       else if (n <= 6) text = t("Perfect drops add bonus people and keep floors wide");
     }
@@ -943,6 +951,7 @@ export class App implements DailyHost {
     this.hint = text;
     $("hint").hidden = !text;
     $("hint").textContent = text;
+    $("hint").classList.toggle("now", now);
   }
 
   private banner(eyebrow: string, title: string): void {
@@ -1038,6 +1047,8 @@ export class App implements DailyHost {
     $("goal-missions").textContent = chestReady(save, now) ? t("Your chest is ready to open!") : t("{n} of 3 done today", { n: done });
     $("goal-pass").textContent = unclaimed(save) > 0 ? tn(unclaimed(save), "{n} reward to claim", "{n} rewards to claim") : t("Tier {n} of 30", { n: passTier(save) });
     // The sky city: the reason every tower matters.
+    // A brand-new player's Play button pulses so it's obvious where to start.
+    $("play").classList.toggle("first", p.towers === 0);
     const cl = $("city-line");
     cl.hidden = p.towers < 1;
     cl.innerHTML = t("🏙️ {city} · <b>{n}</b> people", { city: esc(t(CITY_NAME)), n: fmt(save.population) });
@@ -1366,6 +1377,8 @@ export class App implements DailyHost {
       // Fixed steps, so the same taps always build the same tower.
       this.stepTime = Math.min(this.stepTime + dt, 0.25);
       while (this.stepTime >= TICK) { sim.step(); this.stepTime -= TICK; }
+      // The first tower's "tap now" prompt follows the floor every frame.
+      if (this.tutorial) this.updateHint();
       const m = sim.mover;
       // The wind meter shows the gust half a second ahead, so you can see it coming.
       if (m && sim.windFor(m.y) > 0) {
