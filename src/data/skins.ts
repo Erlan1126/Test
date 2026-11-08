@@ -116,6 +116,9 @@ export const SKINS: Skin[] = [
     floors: ["#d9dee8", "#b8c0cf", "#eef1f6"],
     glass: "#1d2433", frame: "#f4f6fb", slab: "#9aa4b8", slabH: 0.1,
     lit: ["#e8f0ff", "#ffe9b0"], alwaysLit: true, swatch: ["#d9dee8", "#1d2433", "#ffe9b0"] },
+  { id: "sunrise", name: "Sunrise", unlock: { event: "starter" }, kind: "ribbon",
+    floors: ["#ff9a5a", "#ffc46b", "#ff6f9c", "#ffd9a0"],
+    glass: "#fff1d6", frame: "#ffffff", slab: "#fff6e8", slabH: 0.12, lit: ["#fff1b0", "#ffd0a0"], swatch: ["#ff9a5a", "#ffc46b", "#ff6f9c"] },
   // Holiday skins: only earned while their holiday event is on (see data/holidays.ts).
   { id: "pumpkin", name: "Pumpkin Spire", unlock: { event: "halloween" }, kind: "punched",
     floors: ["#2b1d3a", "#ff7b1c", "#231833", "#e8630a"],

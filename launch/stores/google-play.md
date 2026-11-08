@@ -79,6 +79,16 @@ the game, so they don't need their own products.
 Product IDs must match exactly. Set up a **payments profile** (Monetize → Monetization
 setup) before you can sell anything.
 
+## Starter Pack (Monetize → Products → One-time products)
+
+One more consumable product, set up like the crystal packs:
+
+| Product ID | Name | Description | Price |
+|---|---|---|---|
+| starter_pack | Starter Pack | 300 Sky Crystals, the Sunrise skin and one of each boost | $0.99 (Spanish console: 0,99) |
+
+The game only offers it once per player, after their fifth tower, for 48 hours.
+
 ## Subscription: Skyrise VIP (Monetize → Products → Subscriptions)
 
 Create **one** subscription. The id must match exactly.

@@ -1,5 +1,6 @@
 // Sky Crystals: buying packs, spending crystals on premium items, and what those items unlock.
-import { PRODUCTS, packById, productById } from "../data/premium";
+import { PRODUCTS, packById, productById, STARTER_PACK, STARTER_SKIN } from "../data/premium";
+import { MAX_BOOSTS } from "../data/shop";
 import type { SaveData } from "./save";
 
 /** Skin and island ids unlocked by the premium items this player owns. */
@@ -67,6 +68,11 @@ export function grantPack(save: SaveData, packId: string, tx: string): number {
   save.crystalTx.push(tx);
   if (save.crystalTx.length > 300) save.crystalTx.splice(0, save.crystalTx.length - 300);
   save.crystals += pack.crystals;
+  if (pack.id === STARTER_PACK.id) {
+    save.starter.bought = true;
+    if (!save.ownedSkins.includes(STARTER_SKIN)) save.ownedSkins.push(STARTER_SKIN);
+    for (const b of ["rewind", "xp", "gold"] as const) save.boosts[b] = Math.min(MAX_BOOSTS, save.boosts[b] + 1);
+  }
   return pack.crystals;
 }
 

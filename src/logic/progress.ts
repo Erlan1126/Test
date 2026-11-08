@@ -42,6 +42,7 @@ export function skinUnlockText(skin: Skin): string {
   if ("product" in skin.unlock) return t("Get it with Sky Crystals in the shop");
   if ("pass" in skin.unlock) return t("A Sky Pass reward ({season} season)", { season: t(skin.unlock.pass) });
   if ("vip" in skin.unlock) return t("Included with Skyrise VIP");
+  if ("event" in skin.unlock && skin.unlock.event === "starter") return t("Comes with the Starter Pack");
   if ("event" in skin.unlock) {
     const h = HOLIDAYS.find(x => x.id === (skin.unlock as { event: string }).event);
     return t("Earn it during the {event} event", { event: h ? `${h.emoji} ${t(h.name)}` : "" });

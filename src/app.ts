@@ -44,6 +44,9 @@ import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueRe
 import { CHEST } from "./data/daily";
 import { resolveLang, setLang, t, tn, translateDom } from "./i18n";
 import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
+import { maybeOfferStarter, starterLeft } from "./logic/starter";
+import { formatPrice, STARTER_PACK, STARTER_SKIN } from "./data/premium";
+import { drawSkinPreview } from "./render/previews";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
 
@@ -132,6 +135,7 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  private starterTimer = 0;
   /** How smoothly the current tower is running, for the anonymous frame-rate report. */
   private frameStats = { n: 0, time: 0, slow: 0, worst: 0 };
   /** The level-up celebration was shown for this tower. */
@@ -314,6 +318,10 @@ export class App implements DailyHost {
   private packBought(p: PackPurchase, test: boolean): boolean {
     const added = grantPack(this.save, p.pack, p.tx);
     if (!added) return false;
+    if (p.pack === STARTER_PACK.id) {
+      closeModal($("starter"));
+      this.save.skin = STARTER_SKIN;
+    }
     this.persist();
     this.sound.purchase();
     toast(test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }));
@@ -321,6 +329,24 @@ export class App implements DailyHost {
     this.sheets?.refreshShop();
     this.daily?.refreshPass();
     return true;
+  }
+
+  /** The one-time Starter Pack offer. */
+  openStarter(): void {
+    const left = starterLeft(this.save), pay = this.payments;
+    if (!left || !pay) return;
+    const price = pay.price?.(STARTER_PACK) ?? formatPrice(STARTER_PACK.cents);
+    $("starter-buy").textContent = t("Get it for {price}", { price });
+    drawSkinPreview($<HTMLCanvasElement>("starter-preview"), skinById(STARTER_SKIN));
+    const tick = () => {
+      const l = starterLeft(this.save);
+      $("starter-timer").textContent = l ? t("⏳ Ends in {time}", { time: duration(l) }) : t("This offer has ended");
+      if (!l || $("starter").hidden) clearInterval(this.starterTimer);
+    };
+    clearInterval(this.starterTimer);
+    this.starterTimer = window.setInterval(tick, 1000);
+    tick();
+    openModal($("starter"));
   }
 
   openCrystalShop(): void {
@@ -489,6 +515,9 @@ export class App implements DailyHost {
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
     $("ranks-btn").addEventListener("click", () => this.daily.openRanks());
+    wireModal($("starter"));
+    $("starter-later").addEventListener("click", () => closeModal($("starter")));
+    $("starter-buy").addEventListener("click", () => void this.buyPack(STARTER_PACK));
     $("lu-ok").addEventListener("click", () => { $("levelup").hidden = true; this.sound.click(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
@@ -1001,6 +1030,8 @@ export class App implements DailyHost {
   }
 
   private renderMenu(): void {
+    // After the fifth tower, the Starter Pack is offered once (if purchases work here).
+    if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => this.openStarter(), 700); }
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     $("rules").hidden = p.towers >= 3;

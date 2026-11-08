@@ -55,6 +55,8 @@ export interface SaveData {
   population: number;
   /** Postcards collected (see logic/postcards.ts). */
   postcards: string[];
+  /** The one-time Starter Pack: when it was first offered, and whether it was bought. */
+  starter: { offeredAt: number; bought: boolean };
   /** Today's deals already bought (see logic/deals.ts). */
   deals: { day: number; bought: string[] };
   /** Towers built during this year's holiday event. */
@@ -134,6 +136,7 @@ export function defaultSave(): SaveData {
     population: 0,
     postcards: [],
     deals: { day: 0, bought: [] },
+    starter: { offeredAt: 0, bought: false },
     holiday: { key: "", towers: 0 },
     vip: { until: 0, claimed: 0 },
     boosts: { rewind: 0, xp: 0, gold: 0 },
@@ -221,6 +224,7 @@ export function normalize(raw: unknown): SaveData {
     // Players from before the city get a head start from their best tower.
     population: r.population === undefined ? int(r.best, 0) * 3 : int(r.population, 0, 0, 1e12),
     deals: { day: int(obj(r.deals).day, 0), bought: strList(obj(r.deals).bought).slice(0, 10) },
+    starter: { offeredAt: num(obj(r.starter).offeredAt, 0, 0, 1e15), bought: obj(r.starter).bought === true },
     holiday: { key: str(obj(r.holiday).key, "").slice(0, 40), towers: int(obj(r.holiday).towers, 0, 0, 9999) },
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0) },
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },

@@ -195,3 +195,24 @@ describe("builder titles", () => {
     expect(titleProgress(100, 0)).toBe(1);
   });
 });
+
+import { maybeOfferStarter, starterLeft } from "../src/logic/starter";
+import { grantPack } from "../src/logic/premium";
+
+describe("Starter Pack", () => {
+  it("is offered once after the fifth tower, for 48 hours, and gives its extras once", () => {
+    const save = defaultSave(), now = Date.UTC(2026, 10, 9);
+    save.profile.towers = 4;
+    expect(maybeOfferStarter(save, now)).toBe(false);
+    save.profile.towers = 5;
+    expect(maybeOfferStarter(save, now)).toBe(true);
+    expect(maybeOfferStarter(save, now)).toBe(false);
+    expect(starterLeft(save, now + 47 * 36e5)).toBeGreaterThan(0);
+    expect(starterLeft(save, now + 49 * 36e5)).toBe(0);
+    expect(grantPack(save, "starter_pack", "gp:1")).toBe(300);
+    expect(save.ownedSkins).toContain("sunrise");
+    expect(save.boosts).toEqual({ rewind: 1, xp: 1, gold: 1 });
+    expect(starterLeft(save, now)).toBe(0);
+    expect(grantPack(save, "starter_pack", "gp:1")).toBe(0);
+  });
+});

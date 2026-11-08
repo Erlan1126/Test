@@ -99,6 +99,23 @@
   </div>
 </div>
 
+<div id="starter" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="starter-title">
+  <div class="sheet starter-sheet">
+    <button type="button" class="close-btn" aria-label="Close">×</button>
+    <div class="starter-ribbon">One-time offer</div>
+    <h2 id="starter-title">Starter Pack</h2>
+    <canvas id="starter-preview" aria-hidden="true"></canvas>
+    <ul class="starter-list">
+      <li><b>300 💎</b> <span>Sky Crystals</span></li>
+      <li><b>☀️</b> <span>Sunrise tower skin, only in this pack</span></li>
+      <li><b>⚡</b> <span>One of each boost</span></li>
+    </ul>
+    <p class="starter-timer" id="starter-timer"></p>
+    <button type="button" class="btn btn-primary wide" id="starter-buy"></button>
+    <button type="button" class="menu-link" id="starter-later">Not now</button>
+  </div>
+</div>
+
 <div id="levelup" class="levelup" hidden role="dialog" aria-modal="true" aria-labelledby="lu-level">
   <div class="lu-confetti" id="lu-confetti" aria-hidden="true"></div>
   <div class="lu-card">
@@ -174,6 +191,7 @@
     </div>
     <div data-panel="crystals">
       <div class="wallet-card"><span class="gem-big" aria-hidden="true">💎</span><div><b id="crystal-balance">0</b><small>Sky Crystals</small></div></div>
+      <div class="starter-card" id="starter-card" hidden></div>
       <div class="vip-card" id="vip-card" hidden></div>
       <p class="premium-note" id="premium-note"></p>
       <h3 class="sheet-sub">Get Sky Crystals</h3>

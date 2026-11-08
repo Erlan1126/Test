@@ -18,8 +18,9 @@ import { buyShape, currentShape, shapeUnlocked } from "../logic/shapes";
 import { SHAPES } from "../data/shapes";
 import { nextTitle, titleFor } from "../data/titles";
 import { buyDeal, dealBought, dealsFor } from "../logic/deals";
+import { starterLeft } from "../logic/starter";
 import { claimVip, VIP_CENTS, VIP_DAILY_CRYSTALS, vipActive, vipClaimReady } from "../logic/vip";
-import { dayNumber } from "../logic/rules";
+import { dayNumber, duration } from "../logic/rules";
 import { CRYSTAL_PACKS, formatPrice, PRODUCTS, type CrystalPack, type Product } from "../data/premium";
 import type { PaymentProvider } from "../payments";
 import { drawPostcard, drawShapePreview, drawSkinPreview, drawThemePreview } from "../render/previews";
@@ -51,6 +52,7 @@ export interface Host {
   /** Buys a crystal pack with real money. */
   buyPack(pack: CrystalPack): Promise<void>;
   buyVip(): Promise<void>;
+  openStarter(): void;
   /** Spends crystals on a premium item. */
   buyItem(product: Product): void;
 }
@@ -124,7 +126,7 @@ export class Sheets {
         : pass ? `<span class="premium-tag">Sky Pass</span>`
         : st.unlock && "streak" in st.unlock ? esc(t("🔥 {n}-day streak", { n: st.unlock.streak }))
         : st.unlock && "vip" in st.unlock ? `<span class="premium-tag">VIP</span>`
-        : st.unlock && "event" in st.unlock ? `<span class="premium-tag">${esc(t("Holiday event"))}</span>` : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
+        : st.unlock && "event" in st.unlock ? `<span class="premium-tag">${esc(st.unlock.event === "starter" ? t("Starter Pack") : t("Holiday event"))}</span>` : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
       b.setAttribute("aria-label", open ? (on ? t("{name}, equipped", { name }) : name) : t("{name}, locked. {how}", { name, how: skinUnlockText(st) }));
       b.addEventListener("click", () => {
         if (!open) {
@@ -264,6 +266,13 @@ export class Sheets {
     note.classList.toggle("test", !!pay && !pay.live);
 
     this.renderVip();
+    // The Starter Pack, while its offer lasts.
+    const sc = $("starter-card"), left = starterLeft(save);
+    sc.hidden = !left || !pay;
+    if (!sc.hidden) {
+      sc.innerHTML = `<span style="font-size:30px" aria-hidden="true">☀️</span><span><b>${esc(t("Starter Pack"))}</b><small>${esc(t("300 💎, the Sunrise skin and boosts · ends in {time}", { time: duration(left) }))}</small></span><button type="button" class="buy">${esc(t("See offer"))}</button>`;
+      sc.querySelector("button")!.addEventListener("click", () => this.host.openStarter());
+    }
     const packs = $("pack-list");
     packs.innerHTML = "";
     for (const pk of CRYSTAL_PACKS) {

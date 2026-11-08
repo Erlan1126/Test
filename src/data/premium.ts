@@ -38,7 +38,12 @@ export const CRYSTAL_PACKS: CrystalPack[] = [
   { id: "crystals_14000", crystals: 14000, cents: 9999, bonus: "+40%", value: true },
 ];
 
-export const packById = (id: string): CrystalPack | undefined => CRYSTAL_PACKS.find(p => p.id === id);
+/** A one-time welcome offer: crystals, an exclusive skin and one of each boost. Shown once,
+ *  after the fifth tower, for two days (see logic/starter.ts). */
+export const STARTER_PACK: CrystalPack = { id: "starter_pack", crystals: 300, cents: 99 };
+export const STARTER_SKIN = "sunrise";
+
+export const packById = (id: string): CrystalPack | undefined => [...CRYSTAL_PACKS, STARTER_PACK].find(p => p.id === id);
 
 /** The Sky Pass premium track, per season. */
 export const PASS_PRICE = 500;

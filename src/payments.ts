@@ -11,7 +11,7 @@
 // Every completed purchase has a transaction id; the save remembers those ids so a pack
 // is never counted twice (see grantPack in logic/premium.ts).
 import { VIP_ID } from "./logic/vip";
-import { CRYSTAL_PACKS, PAYMENTS_API, type CrystalPack } from "./data/premium";
+import { CRYSTAL_PACKS, PAYMENTS_API, STARTER_PACK, type CrystalPack } from "./data/premium";
 import { isNative, platform } from "./native";
 
 export type BuyResult = "ok" | "redirect" | "cancelled" | "error";
@@ -150,7 +150,7 @@ class StoreProvider implements PaymentProvider {
     const cdv = await purchasePlugin();
     if (!cdv) return null;
     const plat = platform() === "ios" ? cdv.Platform.APPLE_APPSTORE : cdv.Platform.GOOGLE_PLAY;
-    cdv.store.register(CRYSTAL_PACKS.map(p => ({ id: p.id, type: cdv.ProductType.CONSUMABLE, platform: plat })));
+    cdv.store.register([...CRYSTAL_PACKS, STARTER_PACK].map(p => ({ id: p.id, type: cdv.ProductType.CONSUMABLE, platform: plat })));
     cdv.store.register([{ id: VIP_ID, type: cdv.ProductType.PAID_SUBSCRIPTION, platform: plat }]);
     cdv.store.when()
       // The crystals are added (and saved) first, then the store is told the purchase is
@@ -163,7 +163,7 @@ class StoreProvider implements PaymentProvider {
             if (this.waiting?.id === VIP_ID) { this.waiting.done("ok"); this.waiting = null; }
             continue;
           }
-          if (!CRYSTAL_PACKS.some(x => x.id === p.id)) continue;
+          if (![...CRYSTAL_PACKS, STARTER_PACK].some(x => x.id === p.id)) continue;
           this.onPurchase?.({ pack: p.id, tx: `${plat}:${t.transactionId}` });
           if (this.waiting?.id === p.id) { this.waiting.done("ok"); this.waiting = null; }
         }
