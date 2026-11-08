@@ -6,7 +6,7 @@
 "use strict";
 
 // The last level of World 8, where Lumi sings to the Great Hush.
-const STORY_FINALE = CORE ? TOTAL - 1 : PER_WORLD * 8 - 1;
+const STORY_FINALE = CORE ? 9 : PER_WORLD * 8 - 1;  // in the core, the end of act one
 
 const LULLABY = [
   "Hush now, little light, the dark is only deep,",
@@ -99,6 +99,20 @@ const CORE_ENDING = [
   { text: "Then, very softly, the way it used to every night, it sang the next line back. Its voice was cracked and old. It was the most beautiful thing Lumi had ever heard.", hush: "healing", lumi: 1, notes: 1 },
   { text: "“You came back,” it said. “I didn't know the way,” said Lumi. “But you found it. You sang, and sang, until you found it.”", hush: "healing", lumi: 1 },
   { text: "The shadow broke like a shell, and the Singer was inside it all along: warm, and golden, and so very glad. Every Hushling in the dark flew home to it and turned to light.", hush: "healed", fireflies: 1 },
+  { text: "The end of the first song. But not every light has come home…", stars: 1, lumi: 1 },
+];
+const CORE_CHAPTER2 = { title: "The Long Echo", pages: [
+  { text: "The Singer's light filled the caves. For a while, everything was warm.", hush: "healed", fireflies: 1 },
+  { text: "But a few lost Hushlings never heard the song. They're still down there, crying in the dark, looking for a voice they can't find.", hushlings: 1 },
+  { text: "And deeper still, something else woke when the light came back. Things with no ears at all, only one great eye. Lurkers. They hunt light.", lurkers: 1 },
+  { text: "Hushlings hear you. Lurkers see you. Be quiet, and be small.", lumi: 1, hushlings: 1, lurkers: 1 },
+  { text: "Lumi takes three pebbles from the Singer's pocket, and goes back down into the dark, to sing the last ones home.", lumi: 1, notes: 1 },
+] };
+const CORE_ENDING2 = [
+  { text: "The last Hushling heard Lumi's song from very far away, and for the first time in a hundred years, it stopped crying.", lumi: 1, notes: 1, hushlings: 1 },
+  { text: "One by one they rose out of the dark like sparks, and followed the song all the way up.", fireflies: 1 },
+  { text: "The Lurkers drew back into the deepest cracks. The light was too warm for them now.", lurkers: 1, stars: 1 },
+  { text: "Lumi came home last, very tired and very proud. The Singer was waiting at the door, humming.", hush: "healed", lumi: 1 },
   { text: "The End. Somebody's always listening.", stars: 1, lumi: 1 },
 ];
 
@@ -210,6 +224,7 @@ function storyFx(p) {
   if (p.hush === "healing" || p.hush === "healed") out.push(`<i class="fx-gold"></i>`);
   if (p.hush === "far" || p.hush === "ghost") at(50, 14, "fx-eyes big", "margin-left:-60px;opacity:.45");
   if (p.hush === "big") at(50, 18, "fx-eyes big", "margin-left:-60px;transform:scale(1.6)");
+  if (p.lurkers) for (let k = 0; k < 3; k++) at(15 + r() * 70, 6 + r() * 30, "fx-eyes lurk", `animation-delay:${(r() * 4).toFixed(2)}s,${(k * 0.6).toFixed(2)}s`);
   if (p.hushlings) for (let k = 0; k < 7; k++) at(r() < 0.5 ? 4 + r() * 22 : 70 + r() * 24, 8 + r() * 70, "fx-eyes", `animation-delay:${(r() * 4).toFixed(2)}s,${(k * 0.35).toFixed(2)}s`);
   if (p.notes || (p.lumi && !p.hush)) for (let k = 0; k < 3; k++) out.push(`<i class="fx-ring" style="animation-delay:${k * 1.2}s"></i>`);
   if (p.fireflies) for (let k = 0; k < 26; k++) at(r() * 100, 40 + r() * 60, "fx-dot", `animation-delay:${(r() * 7).toFixed(2)}s`);
@@ -243,7 +258,7 @@ function storyNext(force = false) {
 }
 // The chapter that opens a world, or null after the first eight (and the coda that follows them).
 function worldChapter(w) {
-  if (CORE) return w === 0 ? { name: CORE_CHAPTER.title, pages: CORE_CHAPTER.pages } : null;
+  if (CORE) return w === 0 ? { name: CORE_CHAPTER.title, pages: CORE_CHAPTER.pages } : w === 1 ? { name: CORE_CHAPTER2.title, pages: CORE_CHAPTER2.pages } : null;
   if (w < CHAPTERS.length) return { name: CHAPTERS[w].title, pages: CHAPTERS[w].pages };
   if (w === CHAPTERS.length) return { name: "The Long Echo", pages: AFTER };
   return null;

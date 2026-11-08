@@ -28,6 +28,16 @@ function drawBackground(dt) {
 
 // What Lumi can see: the song's light, glowing things, and its memory of the cave, which
 // fades over a few seconds (in the core), so you have to sing again or remember the way.
+// Lurkers: pale, deaf, with one great golden eye.
+const LURKER_LOOK = { body: ["#2e3a3a", "#141c1c", "#060a0a"], eye: "#ffd36e", glow: "gold" };
+// Where the ghost of your best run is now, or null.
+function ghostAt() {
+  if (!CORE || !L || L.demo || levelIndex < 0 || save.settings.ghost === false) return null;
+  const g = save.ghosts && save.ghosts[levelIndex];
+  if (!g || !g.p || g.p.length < 2) return null;
+  const n = g.p.length / 2, f = Math.min(n - 1, L.time * 10), k = Math.floor(f), t = f - k, k2 = Math.min(n - 1, k + 1);
+  return [(g.p[k * 2] + (g.p[k2 * 2] - g.p[k * 2]) * t) / 20, (g.p[k * 2 + 1] + (g.p[k2 * 2 + 1] - g.p[k * 2 + 1]) * t) / 20];
+}
 const vis = i => Math.max(L.lit[i], L.glow[i], CORE ? L.mem[i] * 0.32 : L.seen[i] * MEMORY);
 // Nothing shows until Lumi's light or a song reaches it (Guiding glow turns this off).
 // sightAt: things that move, seen only while light is on them. knownAt: things that stay put,
@@ -248,6 +258,14 @@ function drawThings() {
     if (ring > 0) { ctx.strokeStyle = `rgba(190,240,255,${ring * 0.6})`; ctx.lineWidth = 2; const rr = TS * (0.6 + (1 - (s.next / 0.85)) * 1.6); ctx.beginPath(); ctx.arc(X, Y, rr, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
+  // A hidden memory: a small pink-white glimmer, seen once light has found it.
+  if (L.memory && !L.memory.got) {
+    const m = L.memory, a = Math.max(vis(m.i), knownAt(m.x, m.y) * 0.4);
+    if (a > 0.03) { ctx.globalCompositeOperation = "lighter"; glow(GLOW.pink, sx(m.x), sy(m.y) + Math.sin(clock * 2 + m.ph) * TS * 0.06, TS * 0.7, a * (0.6 + 0.3 * Math.sin(clock * 3))); glow(GLOW.white, sx(m.x), sy(m.y), TS * 0.2, a); ctx.globalCompositeOperation = "source-over"; }
+  }
+  // The ghost of your best run.
+  const gh = ghostAt();
+  if (gh) { ctx.globalAlpha = 0.28; ctx.fillStyle = "#cfefff"; ctx.beginPath(); ctx.arc(sx(gh[0]), sy(gh[1]), TS * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
   // Pebbles in flight.
   for (const pb of L.pebbles) {
     const k = Math.min(1, pb.t / pb.dur), X = sx(pb.x0 + (pb.x1 - pb.x0) * k), Y = sy(pb.y0 + (pb.y1 - pb.y0) * k) - Math.sin(Math.PI * k) * TS * 0.8;
@@ -565,7 +583,7 @@ function drawThings() {
   // wears a crown of shadow spikes and has a second, smaller pair of eyes.
   for (const g of L.gloom) {
     if (g.gone > 0) continue;
-    const v = g.variant && VARIANTS[g.variant];
+    const v = g.lurker ? LURKER_LOOK : g.variant && VARIANTS[g.variant];
     const X = sx(g.x), Y = sy(g.y), r = TS * (g.big ? 0.62 : g.variant === "tiny" ? 0.22 : 0.3), hunting = g.hunt > 0, t = g.ph;
     if (X < -r * 4 || Y < -r * 4 || X > W + r * 4 || Y > H + r * 4) continue;
     // Shadows in the dark: only seen where light falls on them.
@@ -578,7 +596,7 @@ function drawThings() {
       if (a > 0.02) {
         const col = v ? GLOW[v.glow] || GLOW.violet : hunting ? GLOW.pink : GLOW.violet;
         ctx.globalCompositeOperation = "lighter";
-        for (const ox of [-0.36, 0.36]) { glow(col, X + ox * r, Y - r * 0.25, r * 0.5, a); glow(GLOW.white, X + ox * r, Y - r * 0.25, r * 0.16, a * 0.8); }
+        for (const ox of g.lurker ? [0] : [-0.36, 0.36]) { glow(col, X + ox * r, Y - r * 0.25, r * (g.lurker ? 0.8 : 0.5), a); glow(GLOW.white, X + ox * r, Y - r * 0.25, r * 0.16, a * 0.8); }
         ctx.globalCompositeOperation = "source-over";
       }
     }
@@ -639,7 +657,7 @@ function drawThings() {
       // Eyes: almond shapes looking toward Lumi; narrowed and slanted when hunting.
       const look = Math.atan2(L.lumi.y - g.y, L.lumi.x - g.x), lx = Math.cos(look) * r * 0.07, ly = Math.sin(look) * r * 0.05;
       const blink = (t * 0.37) % 4 < 0.08 ? 0.15 : 1, eh = r * (hunting ? 0.1 : 0.17) * blink * (g.variant === "sleepy" ? 0.45 : 1);
-      const eyes = [[-0.36, -0.25, 1], [0.36, -0.25, -1]];
+      const eyes = g.lurker ? [[0, -0.25, 0.001]] : [[-0.36, -0.25, 1], [0.36, -0.25, -1]];
       if (g.big) eyes.push([-0.18, 0.08, 0.6], [0.18, 0.08, -0.6]);
       ctx.globalCompositeOperation = "lighter";
       for (const [ox, oy] of eyes) glow(v ? GLOW[v.glow] || GLOW.violet : hunting ? GLOW.pink : GLOW.violet, X + ox * r, Y + oy * r, r * 0.55, hunting ? 0.7 : 0.4);

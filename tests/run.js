@@ -100,7 +100,7 @@ const SIM = `
       const names = new Set(CORE_LEVELS.map(l => l.name));
       const flat = i => getLevel(i).map.join("");
       return {
-        bad, ten: TOTAL === 10 && names.size === 10,
+        bad, ten: TOTAL === 20 && names.size === 20 && CORE_LEVELS.every(l => l.map.join("").includes("M")),
         startsGentle: [0, 1, 2].every(i => !/[gB]/.test(flat(i))),
         hushlingsArrive: /g/.test(flat(3)),
         stonesAppear: /R/.test(flat(4)),
@@ -108,7 +108,7 @@ const SIM = `
       };
     });
     check("the ten caves and the daily cave are well formed and completable", r.bad.length === 0, r.bad.slice(0, 5).join("; "));
-    check("there are ten handmade caves, each with its own name", r.ten);
+    check("there are twenty handmade caves in two acts, each with its own name and a hidden memory", r.ten);
     check("the first three caves have no Hushlings", r.startsGentle);
     check("Hushlings arrive in cave 4", r.hushlingsArrive);
     check("ring stones arrive in cave 5", r.stonesAppear);
@@ -222,6 +222,35 @@ const SIM = `
       Object.assign(L.lumi, { x: 5.5, y: 13.5, look: -Math.PI / 2 }); throwPebble(); __sim(1);
       const pb = L.gloom.find(q => q.hunt > 0);
       out.pebbleClattersAndIsHeard = L.pebblesLeft === 2 && !!pb && pb.ly < 12 && Math.abs(pb.lx - 5.5) < 0.01;
+      // Lurkers: deaf, but they see Lumi's light; sneaking keeps it small.
+      const watch = sneak => {
+        startLevel(12, true);
+        Object.assign(L.lumi, { x: 5.5, y: 9.5, vx: 0, vy: 0 });
+        __sim(1.2, () => { L.lumi.vx = 0; L.lumi.vy = -(sneak ? 2.2 : SWIM_MAX); L.sneaking = sneak; });
+        return L.gloom.some(q => q.lurker && q.hunt > 0);
+      };
+      out.lurkerSeesANormalLight = watch(false);
+      out.sneakingSlipsPastALurker = !watch(true);
+      startLevel(12, true); Object.assign(L.lumi, { x: 5.5, y: 14.5 }); L.pingCd = 0; ping(true);
+      out.lurkersDontHear = L.gloom.every(q => !q.lurker || q.hunt === 0);
+      // A hidden memory.
+      startLevel(3, true); save.memories = {};
+      Object.assign(L.lumi, { x: L.memory.x, y: L.memory.y }); __sim(0.2);
+      out.findingAMemorySavesIt = !!save.memories[3];
+      // The last cave: a long song sings a Hushling home.
+      startLevel(19, true);
+      const lost = L.gloom.find(q => !q.lurker);
+      Object.assign(L.lumi, { x: lost.x + 1, y: lost.y }); L.pingCd = 0; ping(true); __sim(2.5);
+      out.longSongSingsAHushlingHome = lost.saved === true;
+      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
+      out.portalWaitsUntilAllAreHome = !L.ending;
+      // Ghosts: finishing keeps the run to race next time.
+      startLevel(0, true); save.ghosts = {};
+      keys.arrowup = true; __sim(1); keys.arrowup = false;
+      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
+      out.bestRunIsKeptAsAGhost = !!(save.ghosts[0] && save.ghosts[0].p.length > 10);
+      startLevel(0, true); __sim(0.5);
+      out.ghostRacesAlong = !!ghostAt();
       // Light is health: three touches and the try is over.
       startLevel(3, true); only(1);
       const hu = L.gloom[0];
@@ -284,7 +313,7 @@ const SIM = `
     const s = await page.evaluate(() => {
       const out = {}, on = id => document.getElementById(id).classList.contains("on");
       showTitle(); out.title = on("titleScreen");
-      openMap(); out.map = on("levelScreen") && document.querySelectorAll("#levelGrid .node").length === TOTAL;
+      openMap(); out.map = on("levelScreen") && document.querySelectorAll("#levelGrid .node").length === PER_WORLD;
       renderLevels(49); out.lastWorld = document.getElementById("worldName").textContent.length > 0;
       renderLooks(); show("looks"); out.looks = document.querySelectorAll("#looksGrid .look").length === SKINS.length;
       renderAwards(); show("awards"); out.awards = document.querySelectorAll("#awardsList .award").length === ACHS.length;
@@ -404,6 +433,7 @@ const SIM = `
           if (chime) list.push([chime.x, chime.y]);
           for (const q of L.lamps) if (!q.on) list.push([q.x, q.y]);
           // Running from the Hunter, a player heads for the portal and only grabs what's close.
+          if (L.def.healAll) for (const g of L.gloom) if (!g.lurker && !g.saved && !g.saving) list.push([g.hx, g.hy]);
           if (L.goal === "escape") {
             const must = L.runes.filter(r => !r.on).map(r => [r.x, r.y]);
             const near = list.filter(t => Math.hypot(t[0] - L.lumi.x, t[1] - L.lumi.y) < 3);
@@ -425,7 +455,8 @@ const SIM = `
           const gloomNear = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < (CORE ? 5 : 6)) ||
             L.mobs.some(mb => mb.kind === "a" && mb.state === "idle" && Math.hypot(mb.x - L.lumi.x, mb.y - L.lumi.y) < 6.5);
           if (CORE) {
-            if (!gloomNear && t - lastSong > 1.5) sing(t);
+            if (L.def.healAll && L.pingCd <= 0 && L.gloom.some(g => !g.lurker && !g.saving && !g.saved && g.gone <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 2.2)) { L.pingCd = 0; ping(true); lastSong = t; }
+            else if (!gloomNear && t - lastSong > 1.5) sing(t);
             keys.shift = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < 3.3);
           } else if (t - lastSong > (L.songLimit ? 9 : gloomNear ? 7 : 3)) sing(t);
           const cx = Math.floor(L.lumi.x), cy = Math.floor(L.lumi.y);

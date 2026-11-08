@@ -16,7 +16,7 @@ Sound effects are generated in the browser (there's a mute button). Fonts load f
 
 ## Echo, back to its core
 
-Echo has been cut back to its core: **ten handmade caves** (`CORE_LEVELS` in `echo/levels.js`), each built around one idea, played with a few simple rules.
+Echo has been cut back to its core: **twenty handmade caves in two acts** (`CORE_LEVELS` in `echo/levels.js`), each built around one idea, played with a few simple rules.
 
 - **Echoes fade.** A song lights the walls it reaches, then Lumi's memory of them fades over about ten seconds. Sing again, or remember the way.
 - **Hushlings are blind.** They hunt by sound. A tap-song is heard about 4 tiles away, a long (held) song about 8, through rock. Every Hushling that hears goes to *where the sound was*, listens there for a moment, then drifts home. Only right up close (about a tile) can one sense Lumi.
@@ -29,7 +29,12 @@ Echo has been cut back to its core: **ten handmade caves** (`CORE_LEVELS` in `ec
 - **Pebbles.** From cave 6 Lumi carries three. The pebble button (or E) throws one the way Lumi faces, up to about five tiles or until it hits rock; it clatters where it lands and every Hushling within about six tiles goes to look.
 - **Light is health.** Songs are free and nothing drains; a Hushling's touch costs a third of Lumi's light, so three touches end the try.
 
-The caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Lights (exploring), 4 Something Listening (the first Hushling), 5 The Ring Stone (luring), 6 Tiptoe (sneaking between four), 7 The Hunter (Run!, the cave collapses), 8 The Lost Moth (rescue past a guard), 9 The Deep Maze (everything together), 10 The Great Hush (sing to it; the ending). A short new story opens the game and closes it.
+**Act two, The Long Echo** (caves 11 to 20) adds **Lurkers** (`u`): deaf, with one great golden eye, they see Lumi's light. Lumi's light reaches about 3 tiles, only 1.6 when sneaking, and much further for a moment after a song, so singing where a Lurker can see you is the mistake. Hushlings hear you, Lurkers see you. The caves: 11 Pebble Path, 12 Two Guards, 13 Something Watching (the first Lurker), 14 Light and Sound, 15 Moth in the Mines, 16 Cave-in (a long Run!), 17 The Choir (five Hushlings), 18 Sightlines, 19 Everything Below, 20 Sing Them Home: a long song close to a lost Hushling sings it home, and the portal opens when they all are. Act two has its own opening chapter and ending.
+
+- **Hidden memories** (`M`): one in every cave, a pink glimmer off the main path. Finding it shows a line of Lumi's past; the map counts them (✧ 3/20).
+- **Ghost runs:** your best run of each cave (more stars, then faster) is kept, and the next time you play, a pale ghost Lumi swims it beside you.
+
+Act one's caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Lights (exploring), 4 Something Listening (the first Hushling), 5 The Ring Stone (luring), 6 Tiptoe (sneaking between four), 7 The Hunter (Run!, the cave collapses), 8 The Lost Moth (rescue past a guard), 9 The Deep Maze (everything together), 10 The Great Hush (sing to it; the ending). A short new story opens the game and closes it.
 
 **The rock** is textured from all three sides (no streaks down the walls), darker toward the walls' feet, with damp, shiny floors that catch Lumi's light and deeper shadow where floor meets wall. The play camera sits a little lower for a more filmic view.
 

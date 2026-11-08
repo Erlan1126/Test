@@ -362,6 +362,14 @@ function finish() {
     }
   }
   earnGlow(L.got + stars);
+  // Keep the best run as a ghost to race: more stars wins, then a faster time.
+  L.newGhost = false;
+  if (CORE && levelIndex >= 0 && L.track.length) {
+    save.ghosts = save.ghosts || {};
+    const g = save.ghosts[levelIndex];
+    if (!g || stars > g.s || (stars === g.s && L.time < g.t)) { save.ghosts[levelIndex] = { s: stars, t: Math.round(L.time * 10) / 10, p: L.track }; L.newGhost = !!g; }
+  }
+  if (CORE && levelIndex === TOTAL - 1 && !save.act2Done) save.act2Due = 1;
   // The ending plays the first time, and again once the whole lullaby can bring Flick home.
   if (levelIndex === STORY_FINALE && L.healed && (!save.ended || (flickCanReturn() && !save.flick))) save.endingDue = 1;
   persist();
@@ -376,8 +384,9 @@ function finish() {
   $("resultSub").textContent = `${caveName} · ${mm}:${String(ss).padStart(2, "0")}`;
   $("newBest").textContent = streakMsg || newBest;
   const worldDone = levelIndex >= 0 && isFinale(levelIndex);
+  const memo = L.memNew ? "✧ A memory found" : "", ghost = L.newGhost ? "👻 New best run saved to race" : "";
   const close = L.closest < 1.3 ? `😱 Closest call: ${L.closest < 0.6 ? "a whisker" : L.closest.toFixed(1) + " tiles"} from a Hushling` : "";
-  $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : "", close].filter(Boolean).join(" · ");
+  $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : "", memo, ghost, close].filter(Boolean).join(" · ");
   $("g1v").textContent = "✓";
   $("g2v").textContent = `${L.got}/${L.lights.length}`;
   $("g3v").textContent = stealth ? (L.heard ? `heard ${L.heard}×` : "✓") : `${L.pings} / ${L.def.par}`;
@@ -436,7 +445,7 @@ function renderLevels(world) {
     b.addEventListener("click", () => { if (open) startLevel(i); else note(220, { dur: 0.2, vol: 0.08 }); });
     grid.appendChild(b);
   }
-  $("levelsTotal").textContent = `★ ${totalStars()} stars collected`;
+  $("levelsTotal").textContent = `★ ${totalStars()} stars` + (CORE ? ` · ✧ ${Object.keys(save.memories || {}).length}/${TOTAL} memories` : " collected");
   requestAnimationFrame(drawMapPath);
 }
 function drawMapPath() {
@@ -703,6 +712,11 @@ $("titleScreen").addEventListener("click", e => {
 tap("cardGo", () => startLevel(pendingLevel, { story: true, card: true }));
 tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {
+  if (save.act2Due) {
+    save.act2Due = 0; save.act2Done = 1; persist();
+    playStory(CORE_ENDING2, { num: "The End", name: "Home", world: 1, last: "Continue", done: () => showTitle() });
+    return;
+  }
   // Clearing the Starlight Abyss for the first time plays the ending first.
   if (save.endingDue) {
     save.endingDue = 0; save.ended = 1; if (flickCanReturn()) save.flick = 1; persist();

@@ -513,6 +513,9 @@
   .fx-eyes::before, .fx-eyes::after { content: ""; position: absolute; top: 0; width: 9px; height: 5px; border-radius: 50%; background: #ff9ad0; box-shadow: 0 0 10px #ff6ab8, 0 0 22px rgba(255, 106, 184, 0.6); }
   .fx-eyes::before { left: 0; } .fx-eyes::after { right: 0; }
   .fx-eyes.big { width: 120px; height: 30px; }
+  .fx-eyes.lurk { width: 30px; height: 30px; }
+  .fx-eyes.lurk::after { display: none; }
+  .fx-eyes.lurk::before { left: 0; width: 30px; height: 30px; background: radial-gradient(circle, #fff6c8 15%, #ffd36e 35%, #b87a10 70%); box-shadow: 0 0 24px #ffc94d, 0 0 60px rgba(255, 201, 77, 0.5); }
   .fx-eyes.big::before, .fx-eyes.big::after { width: 40px; height: 16px; background: #c9a8ff; box-shadow: 0 0 30px #a070ff, 0 0 80px rgba(160, 112, 255, 0.6); }
   .fx-ring { left: 50%; top: 46%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 1.5px solid rgba(160, 238, 255, 0.7); animation: fxRing 3.6s ease-out infinite; opacity: 0; }
   .fx-dot { width: 4px; height: 4px; border-radius: 50%; background: #fff1a8; box-shadow: 0 0 8px #ffd36e; animation: fxRise 7s linear infinite; }

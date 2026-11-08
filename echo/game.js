@@ -21,7 +21,7 @@ function loadLevel(i, demo = false) {
     glow: new Float32Array(n),
     seen: new Uint8Array(n),
     mem: new Float32Array(n),   // how well Lumi still remembers each tile; fades in a few seconds
-    stones: [], pebbles: [], pebblesLeft: CORE && i >= PEBBLE_FROM && i < TOTAL ? 3 : 0, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
+    stones: [], pebbles: [], track: [], trackT: 0, memory: null, pebblesLeft: CORE && i >= PEBBLE_FROM && i < TOTAL ? 3 : 0, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
   // Nothing shows until Lumi's light or a song reaches it, unless Guiding glow is on.
@@ -54,6 +54,8 @@ function loadLevel(i, demo = false) {
     if (ch === "l") L.lamps.push({ x: cx, y: cy, i: i2, on: 0, ph: Math.random() * 6 });
     if (ch >= "1" && ch <= "4") L.chimes.push({ x: cx, y: cy, i: i2, n: +ch, rung: 0, cd: 0, ph: Math.random() * 6 });
     if (ch === "G") L.gate = { x: cx, y: cy, i: i2, open: 0 };
+    if (ch === "M" && CORE && i >= 0) L.memory = { x: cx, y: cy, i: i2, got: !!(save.memories || {})[i], ph: Math.random() * 6 };
+    if (ch === "u" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6, lurker: true });
     if (ch === "R") L.stones.push({ x: cx, y: cy, i: i2, ring: 0, cd: 0, next: 0, ph: Math.random() * 6 });
     if (ch === "m") L.baby = { x: cx, y: cy, hx: cx, hy: cy, following: false, ph: Math.random() * 6 };
     if (ch === "g" && !save.settings.relaxed) L.gloom.push({ x: cx, y: cy, hx: cx, hy: cy, hunt: 0, gone: 0, ph: Math.random() * 6 });
@@ -253,6 +255,8 @@ function ping(long = false) {
     const king = L.gloom.find(g => g.final);
     if (king && Math.hypot(king.x - L.lumi.x, king.y - L.lumi.y) < 4.5) singToTheHush(king);
   }
+  // In the last cave a long song, close by, sings a lost Hushling home (even one that's coming for you).
+  if (CORE && long && L.def.healAll) for (const g of L.gloom) if (!g.lurker && !g.saving && g.gone <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 2.4) { g.saving = 0.001; g.hunt = 0; }
   if (CORE) hear(L.lumi.x, L.lumi.y, long ? 8 : 4.5);
   else if (!L.demo) for (const g of L.gloom) {
     if (g.final || g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : hushEar()) * (long ? 1.25 : 1)) continue;
@@ -273,11 +277,13 @@ function ping(long = false) {
 // rock) goes to where the sound was, waits there a moment listening, then drifts home.
 const gloomSpeed = g => (g.big ? 1.6 : 1.9 + depthOf(levelIndex) * 0.9) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
 const SNEAK = 0.5;
+// How far Lumi's light reaches for a Lurker's eye.
+const lumiLightR = () => (L.sneaking ? 1.6 : 3.2) + L.lumi.sing * 3;
 function hear(x, y, r, fromLumi = true) {
   if (L.demo || save.settings.relaxed) return;
   if (fromLumi && r >= 4) L.hearRings.push({ x, y, r, t: 0 });
   for (const g of L.gloom) {
-    if (g.final || g.chaser || g.gone > 0 || g.calm > 0 || g.delay > 0) continue;
+    if (g.final || g.chaser || g.lurker || g.saving || g.gone > 0 || g.calm > 0 || g.delay > 0) continue;
     const d = Math.hypot(g.x - x, g.y - y);
     if (d > r * (g.big ? 1.3 : 1)) continue;
     if (g.hunt <= 0) sfx.gloomWake(g.x - L.lumi.x, g.big);
@@ -853,6 +859,17 @@ function update(dt) {
   for (const g of L.gloom) {
     g.ph += dt;
     if (g.gone > 0) { g.gone -= dt; if (g.gone <= 0) { g.x = g.hx; g.y = g.hy; } continue; }
+    // Sung home: the shadow fills with warm light and rises away.
+    if (g.saving) {
+      g.saving += dt; g.heal = Math.min(1, g.saving / 1.6);
+      if (Math.random() < dt * 20) { const a = Math.random() * 6.28; spark(g.x, g.y, Math.cos(a) * 1.2, Math.sin(a) * 1.2, 1, "gold", 0.1); }
+      if (g.saving > 1.6 && !g.saved) {
+        g.saved = true; g.gone = 1e9; sfx.rune(); buzz([20, 30, 20]);
+        const left = L.gloom.filter(q => !q.lurker && !q.saved).length;
+        setHint(left ? `A Hushling remembers the song and flies home. ${left} still lost` : "Every last one is home. The portal is open!", 3);
+      }
+      continue;
+    }
     // After a touch, a Hushling rests at home for a while before a song can wake it again.
     g.calm = Math.max(0, (g.calm || 0) - dt);
     const was = g.hunt > 0;
@@ -917,11 +934,17 @@ function update(dt) {
       }
       continue;
     }
+    // Lurkers can't hear, but they see Lumi's light: small when sneaking, big when singing.
+    const spotted = g.lurker && ctl && g.calm <= 0 && gap < lumiLightR() && lineOfSight(g.x, g.y, lumi.x, lumi.y);
+    if (spotted) {
+      if (g.hunt <= 0) { sfx.lurk(g.x - lumi.x); g.alert = "!"; g.alertT = 1.2; L.heard++; }
+      g.hunt = Math.max(g.hunt, 1.6); g.lx = lumi.x; g.ly = lumi.y;
+    }
     if (ctl && g.calm <= 0 && gap < (CORE ? (g.big ? 1.5 : 1.1) : g.big ? 2.6 : 1.8)) {
       if (g.hunt <= 0 || g.alert !== "!") { sfx.gloomWake(g.x - lumi.x, g.big); g.alert = "!"; g.alertT = 1.2; if (CORE) L.heard++; }
       g.hunt = Math.max(g.hunt, CORE ? 1.2 : g.big ? 3 : 2.2);
     }
-    const sees = g.hunt > 0 && (CORE ? gap < (g.big ? 1.5 : 1.1) : gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
+    const sees = spotted || g.hunt > 0 && (CORE ? gap < (g.big ? 1.5 : 1.1) : gap < 1.6 || (gap < (g.big ? 9 : 7.5) && lineOfSight(g.x, g.y, lumi.x, lumi.y)));
     if (sees) { g.hunt = Math.max(g.hunt, g.big ? 2 : 1.5); g.lx = lumi.x; g.ly = lumi.y; }
     if (was && g.hunt <= 0 && ctl) { sfx.grumble(); questEvent("escape"); }
     // Flared at: it shrinks back from the light for a moment.
@@ -991,6 +1014,17 @@ function update(dt) {
     if (CORE && sneaking !== L.sneaking && Math.hypot(lumi.vx, lumi.vy) > 0.6) buzz(sneaking ? 5 : 8);
     L.sneaking = sneaking;
   }
+  // A hidden memory: swim into it and Lumi remembers.
+  const mem = L.memory;
+  if (mem && !mem.got && ctl && Math.hypot(mem.x - lumi.x, mem.y - lumi.y) < 0.55) {
+    mem.got = true; L.memNew = true;
+    save.memories = save.memories || {}; save.memories[levelIndex] = 1; persist();
+    sfx.memory(); buzz([10, 40, 10]);
+    setHint(`✧ ${MEMORIES[levelIndex] || ""}`, 5.5);
+    for (let k = 0; k < 18; k++) { const a = Math.random() * 6.28; spark(mem.x, mem.y, Math.cos(a) * 1.4, Math.sin(a) * 1.4, 1, "pink", 0.08); }
+  }
+  // Recording this run, to race next time as a ghost.
+  if (ctl && CORE && levelIndex >= 0 && (L.trackT -= dt) <= 0) { L.trackT = 0.1; L.track.push(Math.round(lumi.x * 20), Math.round(lumi.y * 20)); }
   // Falling stones and the shaking they cause.
   L.shake = Math.max(0, (L.shake || 0) - dt * 1.2);
   for (const r of L.rocks) {
@@ -1118,7 +1152,7 @@ function update(dt) {
   // Portal.
   const chimesLeft = L.chimeNext <= L.chimes.length;
   const lampsLeft = L.lamps.some(q => !q.on);
-  const portalLocked = (L.goal === "rescue" && L.baby && !L.baby.following) || (L.finale && !L.healed) || chimesLeft || lampsLeft;
+  const portalLocked = (L.goal === "rescue" && L.baby && !L.baby.following) || (L.finale && !L.healed) || chimesLeft || lampsLeft || (L.def.healAll && L.gloom.some(g => !g.lurker && !g.saved));
   if (ctl && portalLocked && Math.hypot(L.exit.x - lumi.x, L.exit.y - lumi.y) < 0.6 && L.portalHintCd <= 0) {
     L.portalHintCd = 3;
     setHint(L.finale ? "The portal won't wake while the Great Hush is sad. Sing to it"

@@ -57,7 +57,7 @@ const R3D = (() => {
           float visK = visT.r;
           gl_FragColor.rgb *= mix(${floor.toFixed(3)}, 1.0, smoothstep(0.0, 0.85, visK));
           // The echo sweeping over the rock: a cyan glow where the song has only just arrived.
-          gl_FragColor.rgb += vec3(0.35, 0.85, 1.0) * visT.g * (0.18 + 0.5 * smoothstep(0.15, 0.9, vWPos.y));
+          gl_FragColor.rgb += vec3(0.35, 0.85, 1.0) * visT.g * (0.1 + 0.28 * smoothstep(0.15, 0.9, vWPos.y));
           #include <fog_fragment>`);
     };
     return mat;
@@ -460,7 +460,7 @@ const R3D = (() => {
           // Walls a little rougher and darker toward their feet; floors damp and shiny.
           float wallK = 1.0 - tw.y;
           diffuseColor.rgb *= mix(1.0, 0.72 + 0.28 * smoothstep(0.0, 0.8, vWPos.y), wallK);`)
-        .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = mix(0.42, 0.9, 1.0 - tw.y);");
+        .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = mix(0.45, 0.92, max(1.0 - tw.y, smoothstep(0.12, 0.4, vWPos.y)));");
     };
     const cave = new T.Mesh(geo, caveMat);
     cave.castShadow = true; cave.receiveShadow = true;
@@ -739,6 +739,16 @@ const R3D = (() => {
     // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
     const NOISE = pool("noise", () => { const m = new T.Mesh(new T.RingGeometry(0.97, 1, 64), new T.MeshBasicMaterial({ color: 0xffbedc, transparent: true, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
     if (CORE && L.noisy > 0 && !L.demo) { const m = NOISE(0); m.position.set(lumi.x, 0.05, lumi.y); m.scale.setScalar(2.6 * (1.1 - L.noisy * 0.2)); m.material.opacity = Math.min(0.7, L.noisy * 1.2); }
+    // A hidden memory: a glimmer of pink-white light turning slowly.
+    const MEMO = pool("memory", () => { const g = new T.Group(); const c = new T.Mesh(new T.OctahedronGeometry(0.1), new T.MeshBasicMaterial({ color: 0xffe6f4, transparent: true, toneMapped: false })); c.scale.y = 1.6; g.add(c); g.add(glow(0xff9ad0, 0.9, 0.6)); return g; });
+    if (L.memory && !L.memory.got) {
+      const m = L.memory, a = Math.max(vis(m.i), knownAt(m.x, m.y) * 0.4);
+      if (a > 0.03) { const g = MEMO(0); g.position.set(m.x, 0.6 + Math.sin(clock * 2 + m.ph) * 0.06, m.y); g.children[0].rotation.y = clock * 1.5; g.children[0].material.opacity = a; g.children[1].material.opacity = a * (0.45 + 0.25 * Math.sin(clock * 3)); }
+    }
+    // The ghost of your best run: a pale, see-through Lumi.
+    const GHOST = pool("ghost", () => { const g = new T.Group(); g.add(new T.Mesh(new T.SphereGeometry(0.26, 20, 14), new T.MeshBasicMaterial({ color: 0xcfefff, transparent: true, opacity: 0.22, depthWrite: false }))); g.add(glow(0xbfefff, 0.9, 0.18)); return g; });
+    const gh = ghostAt();
+    if (gh) { const g = GHOST(0); g.position.set(gh[0], 0.62, gh[1]); }
     // Pebbles Lumi throws: a little stone arcing through the air.
     const PEB = pool("pebble", () => { const m = new T.Mesh(new T.DodecahedronGeometry(0.07, 0), new T.MeshStandardMaterial({ color: 0xb8c4d8, emissive: 0x7fd8f5, emissiveIntensity: 0.6, roughness: 0.5 })); m.castShadow = true; return m; });
     let pbk = 0;
@@ -780,7 +790,7 @@ const R3D = (() => {
       const blink = (g.ph * 0.37) % 4 < 0.1 ? 0.1 : 1;
       const dark = gap < 9 && !g.heal ? (hunting ? 0.75 : 0.42) * Math.min(1, (9 - gap) / 3) : 0;
       if (seen < 0.03 && dark < 0.03) continue;
-      const o = HU(k++), u = o.userData, big = g.big, v = g.variant && VARIANTS[g.variant];
+      const o = HU(k++), u = o.userData, big = g.big, v = g.lurker ? LURKER_LOOK : g.variant && VARIANTS[g.variant];
       const sc = big ? 1.75 : g.variant === "tiny" ? 0.75 : 1;
       o.scale.setScalar(sc);
       o.position.set(g.x, (big ? 1.0 : 0.62) + Math.sin(g.ph * 1.6) * 0.07, g.y);
@@ -795,11 +805,14 @@ const R3D = (() => {
       u.rim.color.set(v ? v.eye : hunting ? 0xff6ab8 : 0x8a5cff);
       for (const t of u.tendrils) { t.rotation.x = Math.sin(clock * 2.2 + t.userData.a * 2) * 0.3 * Math.sin(t.userData.a); t.rotation.z = Math.sin(clock * 2.2 + t.userData.a * 2) * 0.3 * Math.cos(t.userData.a) - Math.cos(t.userData.a) * 0.2; }
       for (const c of u.crown) c.visible = !!big;
-      for (const e of u.ears) e.visible = !big;
+      for (const e of u.ears) e.visible = !big && !g.lurker;
+      // A Lurker has one great eye in the middle.
+      u.eyes[1].visible = !g.lurker; u.glows[1].visible = !g.lurker;
+      u.eyes[0].position.x = g.lurker ? 0 : -0.13; u.glows[0].position.x = g.lurker ? 0 : -0.13;
       eyeCol.set(v ? v.eye : hunting ? 0xff9ad0 : 0xc9a8ff);
       u.eyeMat.color.copy(eyeCol);
       const eh = (hunting ? 0.032 : 0.05) * blink * (g.variant === "sleepy" ? 0.45 : 1);
-      u.eyes.forEach((e, q) => { e.scale.set(0.085, eh * 1.2, 0.03); e.rotation.z = hunting ? (q ? -0.35 : 0.35) : 0; e.material.opacity = bodyA; e.children[0].material.opacity = bodyA; });
+      u.eyes.forEach((e, q) => { e.scale.set(g.lurker ? 0.13 : 0.085, g.lurker ? 0.11 * blink : eh * 1.2, 0.03); e.rotation.z = hunting ? (q ? -0.35 : 0.35) : 0; e.material.opacity = bodyA; e.children[0].material.opacity = bodyA; });
       u.grin.visible = hunting; u.grin.material.opacity = bodyA;
       // Lit, the eyes just shine a little; in the dark, two small glowing points are all you see.
       const ga = Math.max(bodyA * (hunting ? 0.45 : 0.25), dark * blink);
