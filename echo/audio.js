@@ -257,6 +257,9 @@ sfx.caught = () => {
   noise({ freq: 1400, glide: 200, q: 0.8, dur: 0.6, attack: 0.01, vol: 0.12, echo: 0.6 });
   note(80, { dur: 0.5, vol: 0.18, glide: 40, echo: 0.3, attack: 0.005 });
 };
+// A pebble: a soft toss, then a bright clatter where it lands.
+sfx.toss = () => noise({ freq: 1800, glide: 900, q: 1, dur: 0.18, attack: 0.02, vol: 0.03 });
+sfx.clatter = (dx = 0) => { for (let k = 0; k < 4; k++) note(1700 + Math.random() * 900, { at: k * 0.06 + Math.random() * 0.03, dur: 0.06, vol: 0.06 - k * 0.012, type: "square", lowpass: 4200, echo: 0.8, pan: dx / 4 }); };
 // A Hushling sweeping past in the dark.
 sfx.whoosh = (dx = 0) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.06, pan: dx / 3, echo: 0.5 });
 // The Great Hush's long, slow breath.

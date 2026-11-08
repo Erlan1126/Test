@@ -26,13 +26,16 @@ Echo has been cut back to its core: **ten handmade caves** (`CORE_LEVELS` in `ec
 - **You can read them.** A "?" floats over a Hushling that heard something and is going to look; a "!" means it senses Lumi. A pink ring rolls out to show how far each song was heard. A hunting Hushling sweeping close past without finding you whooshes by; being caught slows time for a moment with a flash.
 - **Stay unheard.** In caves with Hushlings, the third star is for never being heard (results say how many times you were).
 - **The echo sweep.** In 3D, walls glow cyan for a moment just as the song reaches them, so you see the echo travel.
+- **Pebbles.** From cave 6 Lumi carries three. The pebble button (or E) throws one the way Lumi faces, up to about five tiles or until it hits rock; it clatters where it lands and every Hushling within about six tiles goes to look.
 - **Light is health.** Songs are free and nothing drains; a Hushling's touch costs a third of Lumi's light, so three touches end the try.
 
 The caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Lights (exploring), 4 Something Listening (the first Hushling), 5 The Ring Stone (luring), 6 Tiptoe (sneaking between four), 7 The Hunter (Run!, the cave collapses), 8 The Lost Moth (rescue past a guard), 9 The Deep Maze (everything together), 10 The Great Hush (sing to it; the ending). A short new story opens the game and closes it.
 
+**The rock** is textured from all three sides (no streaks down the walls), darker toward the walls' feet, with damp, shiny floors that catch Lumi's light and deeper shadow where floor meets wall. The play camera sits a little lower for a more filmic view.
+
 **The title** is a slow film shot: the camera drifts low around Lumi in the cave, the name glows above, and Play sits at the bottom with Map, Looks and Settings. Tap the dark and Lumi sings. **The story** is told the same way: the cave is the picture, with warm light, glowing eyes, echo rings, fireflies or stars drawn over it; the words fade in one by one under Lumi; tap anywhere to see the rest, tap again to go on, or Skip.
 
-The daily cave, weekly cave, home, quests and awards are hidden for now, and the 160-level generator, chimes, lamps and the rest stay in the code behind `CORE = false` in `echo/levels.js`. The sections below describe that bigger game.
+The daily and weekly caves come back on the title once the story is finished. Home, quests and awards are hidden for now, and the 160-level generator, chimes, lamps and the rest stay in the code behind `CORE = false` in `echo/levels.js`. The sections below describe that bigger game.
 
 ## Every cave has a job
 

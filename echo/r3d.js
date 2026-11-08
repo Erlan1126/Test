@@ -423,7 +423,7 @@ const R3D = (() => {
       uvA[(j * gw + i) * 2] = tx * 0.5; uvA[(j * gw + i) * 2 + 1] = ty * 0.5;
       // Floor: the world's ground in patches; walls: banded stone; tops: moss, snow, ash...
       // The floor darkens where it meets the rock, so walls sit firmly in it.
-      tmp.copy(floorC).lerp(floor2, vnoise(tx * 0.5, ty * 0.5)).multiplyScalar((0.75 + n2 * 0.4) * (1 - smooth(TH - 0.4, TH, v) * 0.55));
+      tmp.copy(floorC).lerp(floor2, vnoise(tx * 0.5, ty * 0.5)).multiplyScalar((0.75 + n2 * 0.4) * (1 - smooth(TH - 0.55, TH, v) * 0.78));
       const band = 0.85 + 0.15 * Math.sin(h * 9 + n1 * 4);
       const rockCol = rockC.clone().lerp(deepC, 0.35 * (1 - top)).multiplyScalar(band * (0.85 + n2 * 0.3));
       tmp.lerp(rockCol, rk);
@@ -445,7 +445,24 @@ const R3D = (() => {
     geo.setAttribute("uv", new T.BufferAttribute(uvA, 2));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    const cave = new T.Mesh(geo, withVis(new T.MeshStandardMaterial({ vertexColors: true, map: GRAIN, bumpMap: GRAIN_B, bumpScale: 0.018, roughness: 0.8, metalness: 0.02 })));
+    const caveMat = withVis(new T.MeshStandardMaterial({ vertexColors: true, map: GRAIN, roughness: 0.58, metalness: 0.04 }));
+    const visCompile = caveMat.onBeforeCompile;
+    caveMat.onBeforeCompile = sh => {
+      visCompile(sh);
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vWNorm;")
+        .replace("#include <beginnormal_vertex>", "#include <beginnormal_vertex>\nvWNorm = normalize(mat3(modelMatrix) * objectNormal);");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWNorm;")
+        .replace("#include <map_fragment>", `
+          vec3 tw = pow(abs(normalize(vWNorm)), vec3(4.0)); tw /= (tw.x + tw.y + tw.z);
+          vec4 tri = texture2D(map, vWPos.zy * 0.55) * tw.x + texture2D(map, vWPos.xz * 0.5) * tw.y + texture2D(map, vWPos.xy * 0.55) * tw.z;
+          vec4 tri2 = texture2D(map, vWPos.xz * 0.13 + 0.37) * tw.y + texture2D(map, vWPos.zy * 0.15) * tw.x + texture2D(map, vWPos.xy * 0.15) * tw.z;
+          diffuseColor *= mapTexelToLinear(tri) * (0.75 + 0.45 * mapTexelToLinear(tri2).r);
+          // Walls a little rougher and darker toward their feet; floors damp and shiny.
+          float wallK = 1.0 - tw.y;
+          diffuseColor.rgb *= mix(1.0, 0.72 + 0.28 * smoothstep(0.0, 0.8, vWPos.y), wallK);`)
+        .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = mix(0.42, 0.9, 1.0 - tw.y);");
+    };
+    const cave = new T.Mesh(geo, caveMat);
     cave.castShadow = true; cave.receiveShadow = true;
     root.add(cave);
     cityMats = [];
@@ -583,8 +600,8 @@ const R3D = (() => {
       // On the title Lumi sits below the name; in the story, above the words.
       camLook.lerp(new T.Vector3(lumi.x, screen === "title" ? 1.75 : 0.55, lumi.y), Math.min(1, dt * 2));
     } else {
-      camPos.lerp(new T.Vector3(tx, 8.6, ty + 5.4), Math.min(1, dt * (camPos.y > 10 ? 1.6 : 4)));
-      camLook.lerp(new T.Vector3(tx, 0.3, ty - 0.6), Math.min(1, dt * 5));
+      camPos.lerp(new T.Vector3(tx, 7.4, ty + 5.0), Math.min(1, dt * (camPos.y > 10 ? 1.6 : 4)));
+      camLook.lerp(new T.Vector3(tx, 0.3, ty - 0.9), Math.min(1, dt * 5));
     }
     camera.position.copy(camPos);
     if (L.shake > 0) camera.position.add(new T.Vector3((Math.random() - 0.5) * L.shake * 0.25, (Math.random() - 0.5) * L.shake * 0.15, (Math.random() - 0.5) * L.shake * 0.25));
@@ -722,6 +739,14 @@ const R3D = (() => {
     // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
     const NOISE = pool("noise", () => { const m = new T.Mesh(new T.RingGeometry(0.97, 1, 64), new T.MeshBasicMaterial({ color: 0xffbedc, transparent: true, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
     if (CORE && L.noisy > 0 && !L.demo) { const m = NOISE(0); m.position.set(lumi.x, 0.05, lumi.y); m.scale.setScalar(2.6 * (1.1 - L.noisy * 0.2)); m.material.opacity = Math.min(0.7, L.noisy * 1.2); }
+    // Pebbles Lumi throws: a little stone arcing through the air.
+    const PEB = pool("pebble", () => { const m = new T.Mesh(new T.DodecahedronGeometry(0.07, 0), new T.MeshStandardMaterial({ color: 0xb8c4d8, emissive: 0x7fd8f5, emissiveIntensity: 0.6, roughness: 0.5 })); m.castShadow = true; return m; });
+    let pbk = 0;
+    for (const pb of L.pebbles) {
+      const k = Math.min(1, pb.t / pb.dur), m = PEB(pbk++);
+      m.position.set(pb.x0 + (pb.x1 - pb.x0) * k, 0.55 + Math.sin(Math.PI * k) * (0.6 + pb.dur * 1.2) - k * 0.48, pb.y0 + (pb.y1 - pb.y0) * k);
+      m.rotation.set(pb.t * 12, pb.t * 9, 0);
+    }
     // Stones crashing down in a collapsing cave.
     const ROCK = pool("rock", () => { const m = new T.Mesh(new T.DodecahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: 0x6a6470, roughness: 0.9, flatShading: true }))); m.castShadow = true; return m; });
     let rk3 = 0;

@@ -469,7 +469,17 @@
   .backup .row .btn { font-size: 15px; padding: 10px 6px; }
   .danger { color: #ff9fb8; border-color: rgba(255, 159, 184, 0.45); background: rgba(255, 159, 184, 0.08); font-size: 16px; margin-top: 16px; }
   /* The core game: the daily cave, home, quests and awards wait until the core is fun. */
-  #todayCard, #weekLink, #homeBtn, #awardsBtn { display: none !important; }
+  body:not(.core-done) #todayCard, body:not(.core-done) #weekLink, #homeBtn, #awardsBtn { display: none !important; }
+  /* Pebbles: a small round button above the flare. */
+  #pebbleBtn { position: fixed; bottom: calc(190px + var(--bottom)); right: calc(36px + env(safe-area-inset-right, 0px)); width: 50px; height: 50px; border-radius: 50%; z-index: 6;
+    background: rgba(14, 22, 44, 0.6); border: 1px solid rgba(180, 220, 255, 0.45); color: #dff2ff; display: grid; place-items: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #pebbleBtn[hidden] { display: none; }
+  #pebbleBtn i { width: 16px; height: 13px; border-radius: 50% 55% 45% 50%; background: radial-gradient(circle at 35% 35%, #eaf4ff, #8aa0bc); box-shadow: 0 0 10px rgba(126, 232, 255, 0.5); }
+  #pebbleBtn b { position: absolute; right: -2px; top: -2px; min-width: 20px; height: 20px; border-radius: 10px; background: #7ee8ff; color: #062033; font-size: 12px; display: grid; place-items: center; }
+  #pebbleBtn.empty { opacity: 0.4; }
+  #pebbleBtn:active { transform: scale(0.92); }
+  body:not(.sing-on) #pebbleBtn { bottom: calc(108px + var(--bottom)); }
+  body.left-hand #pebbleBtn { right: auto; left: calc(36px + env(safe-area-inset-left, 0px)); }
 
   /* ---------- The title, reworked: a quiet film shot ----------
      The camera drifts low around Lumi in the cave. The name sits high, the cave and Lumi
@@ -546,6 +556,7 @@
 <div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
 <button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
 <button id="flareBtn" aria-label="Flare: burst your light" hidden>✦</button>
+<button id="pebbleBtn" aria-label="Throw a pebble" hidden><i></i><b>3</b></button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
 

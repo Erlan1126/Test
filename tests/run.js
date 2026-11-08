@@ -216,6 +216,12 @@ const SIM = `
       out.stoneCallsTheHushling = h.hunt > 0 && h.lx === st.x && h.ly === st.y;
       __sim(4);
       out.hushlingGoesToTheStone = Math.hypot(h.x - st.x, h.y - st.y) < 1.2;
+      // Pebbles: thrown the way Lumi faces, they clatter where they land and Hushlings go to look.
+      startLevel(5, true);
+      out.lumiCarriesThreePebbles = L.pebblesLeft === 3;
+      Object.assign(L.lumi, { x: 5.5, y: 13.5, look: -Math.PI / 2 }); throwPebble(); __sim(1);
+      const pb = L.gloom.find(q => q.hunt > 0);
+      out.pebbleClattersAndIsHeard = L.pebblesLeft === 2 && !!pb && pb.ly < 12 && Math.abs(pb.lx - 5.5) < 0.01;
       // Light is health: three touches and the try is over.
       startLevel(3, true); only(1);
       const hu = L.gloom[0];

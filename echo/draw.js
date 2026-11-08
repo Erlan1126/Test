@@ -248,6 +248,11 @@ function drawThings() {
     if (ring > 0) { ctx.strokeStyle = `rgba(190,240,255,${ring * 0.6})`; ctx.lineWidth = 2; const rr = TS * (0.6 + (1 - (s.next / 0.85)) * 1.6); ctx.beginPath(); ctx.arc(X, Y, rr, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
+  // Pebbles in flight.
+  for (const pb of L.pebbles) {
+    const k = Math.min(1, pb.t / pb.dur), X = sx(pb.x0 + (pb.x1 - pb.x0) * k), Y = sy(pb.y0 + (pb.y1 - pb.y0) * k) - Math.sin(Math.PI * k) * TS * 0.8;
+    ctx.fillStyle = "#cfe8ff"; ctx.beginPath(); ctx.arc(X, Y, TS * 0.08, 0, Math.PI * 2); ctx.fill();
+  }
   // How far a song is heard: a ring rolls out to that distance, so you learn your own volume.
   for (const r of L.hearRings) {
     const k = r.t / 0.9;

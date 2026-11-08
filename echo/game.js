@@ -21,7 +21,7 @@ function loadLevel(i, demo = false) {
     glow: new Float32Array(n),
     seen: new Uint8Array(n),
     mem: new Float32Array(n),   // how well Lumi still remembers each tile; fades in a few seconds
-    stones: [], noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
+    stones: [], pebbles: [], pebblesLeft: CORE && i >= PEBBLE_FROM && i < TOTAL ? 3 : 0, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
   // Nothing shows until Lumi's light or a song reaches it, unless Guiding glow is on.
@@ -474,6 +474,7 @@ window.addEventListener("keydown", e => {
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) ping(e.shiftKey); }
     if (e.key === "Escape" || e.key.toLowerCase() === "p") pause();
     if (e.key.toLowerCase() === "f" && !e.repeat) flare();
+    if (e.key.toLowerCase() === "e" && !e.repeat) throwPebble();
   } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
 });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
@@ -542,6 +543,40 @@ function flareButton() {
   b.style.setProperty("--cd", String(v / 24));
   b.classList.toggle("ready", v === 0);
 }
+// ---------- Pebbles ----------
+// From cave 6, Lumi carries three pebbles. Throw one and it flies the way Lumi is facing until
+// it hits rock (up to about five tiles) and clatters: every Hushling within earshot goes to look.
+const PEBBLE_FROM = 5;
+let pebbleShown = -1;
+function pebbleButton() {
+  const b = document.getElementById("pebbleBtn"), n = L.demo ? 0 : L.pebblesLeft;
+  const on = !L.demo && CORE && levelIndex >= PEBBLE_FROM && levelIndex < TOTAL;
+  if (b.hidden === on) b.hidden = !on;
+  if (n === pebbleShown) return;
+  pebbleShown = n;
+  b.querySelector("b").textContent = n;
+  b.classList.toggle("empty", n <= 0);
+}
+document.getElementById("pebbleBtn").addEventListener("pointerdown", e => { e.stopPropagation(); audio(); throwPebble(); });
+function throwPebble() {
+  if (!L || L.demo || L.ending || L.failing || screen !== "play" || L.pebblesLeft <= 0) return;
+  const lumi = L.lumi, a = lumi.look ?? -Math.PI / 2, dx = Math.cos(a), dy = Math.sin(a);
+  let d = 0.4;
+  while (d < 5 && !solidAt(Math.floor(lumi.x + dx * (d + 0.15)), Math.floor(lumi.y + dy * (d + 0.15)))) d += 0.1;
+  L.pebblesLeft--;
+  L.pebbles.push({ x0: lumi.x, y0: lumi.y, x1: lumi.x + dx * d, y1: lumi.y + dy * d, t: 0, dur: 0.25 + d * 0.08 });
+  sfx.toss();
+  buzz(6);
+  if (!L.pebbleHinted && levelIndex === PEBBLE_FROM) { L.pebbleHinted = true; setHint("Hear it clatter? Every Hushling nearby goes to look", 3); }
+}
+function landPebble(pb) {
+  hear(pb.x1, pb.y1, 6, false);
+  sfx.clatter(pb.x1 - L.lumi.x);
+  const i = tileAt(pb.x1, pb.y1);
+  if (i >= 0) { L.lit[i] = Math.max(L.lit[i], 0.8); eachSolidNeighbour(i, j => { L.lit[j] = Math.max(L.lit[j], 0.6); L.seen[j] = 1; }); }
+  for (let k = 0; k < 8; k++) { const r = Math.random() * 6.28; spark(pb.x1, pb.y1, Math.cos(r) * 1.2, Math.sin(r) * 1.2, 0.5, "cyan", 0.06); }
+}
+
 const flareBtn = document.getElementById("flareBtn");
 flareBtn.addEventListener("pointerdown", e => { e.stopPropagation(); audio(); flare(); });
 function flare() {
@@ -571,7 +606,9 @@ function update(dt) {
   L.time += dt;
   L.flare = Math.max(0, (L.flare || 0) - dt * 1.8);
   if (L.flareCd > 0) L.flareCd = Math.max(0, L.flareCd - dt);
-  if (!L.demo && screen === "play") flareButton();
+  if (!L.demo && screen === "play") { flareButton(); pebbleButton(); }
+  for (const pb of L.pebbles) { pb.t += dt; if (!pb.landed && pb.t >= pb.dur) { pb.landed = true; landPebble(pb); } }
+  L.pebbles = L.pebbles.filter(pb => pb.t < pb.dur + 0.05);
   moveCamera(dt);
   L.pingCd -= dt;
   L.bumpCd -= dt;
