@@ -1,11 +1,17 @@
 // Echo: the handmade caves, worlds and themes, and the level generator.
 "use strict";
 
-// ---------- Caves ----------
-// # rock   . open   S start   E portal   o lost light   c crystal
-// D sound door   b glow-moth   z sleepy Snoozle   > < ^ v water current
-const LEVELS = [
-  { name: "First Song", par: 4, hint: "first", map: [
+// ---------- Worlds ----------
+// 50 worlds of 20 levels. The first 10 levels are handmade; the rest are built from a seed,
+// so every player gets the same cave for the same level number.
+// Eight worlds of twenty caves: fewer than before, but each one with a job of its own.
+
+// ---------- The core: ten caves made by hand ----------
+// Each one is built around one idea. R is an old ring stone: when a song reaches it, it rings
+// out loud three times, and every Hushling that hears goes to it.
+const CORE = true;
+const CORE_LEVELS = [
+  { name: "First Song", par: 4, theme: 0, hint: "first", map: [
     "###########",
     "###########",
     "####.E.####",
@@ -25,27 +31,27 @@ const LEVELS = [
     "###########",
     "###########",
   ]},
-  { name: "Crystal Path", par: 6, hint: "Crystals keep glowing once your song touches them", map: [
+  { name: "Fading Echoes", par: 10, theme: 0, hint: "Echoes don't last. Sing again when the walls fade, or remember the way", map: [
     "###########",
-    "####.E.####",
-    "####...####",
+    "#E....#...#",
+    "####..#.#.#",
+    "#o#..##.#.#",
+    "#.#.###.#.#",
+    "#...#...#.#",
+    "###.#.###.#",
+    "#...#.#...#",
+    "#.###.#.###",
+    "#.#...#...#",
+    "#.#.#####.#",
+    "#...#o....#",
     "#####.#####",
-    "#c....#####",
-    "#.###....c#",
-    "#.###.##..#",
-    "#...#.##.##",
-    "###.#.o#.##",
-    "#o..#..#.##",
-    "#####.##..#",
-    "#.......#.#",
-    "#.#####.#.#",
-    "#.#c..#...#",
-    "#.#.#.#####",
-    "#...#.S.###",
-    "#####...###",
+    "#.....#...#",
+    "#.###.#.#.#",
+    "#...#...#.#",
+    "###.#####S#",
     "###########",
   ]},
-  { name: "Three Lights", par: 7, hint: "Three lights are hiding in here. Can you find them all?", map: [
+  { name: "Three Lights", par: 7, theme: 0, hint: "Three lights are hiding in here. Can you find them all?", map: [
     "###########",
     "###..E..###",
     "###.....###",
@@ -65,152 +71,420 @@ const LEVELS = [
     "#...#S#...#",
     "###########",
   ]},
-  { name: "Sound Doors", par: 7, hint: "Sound curtains open when your song reaches them, but not for long", map: [
+  { name: "Something Listening", par: 6, theme: 1, hint: "Something is listening. It can't see you, it only hears. Sing, then slip away", map: [
     "###########",
     "####.E.####",
     "####...####",
-    "#####D#####",
-    "##.......##",
-    "##.#####.##",
-    "##.#.o.#.##",
-    "##.#...#.##",
-    "##.##D##.##",
-    "##.......##",
     "#####.#####",
-    "#o..#.#..c#",
-    "#.#.#.#.#.#",
-    "#.#.D.D.#.#",
-    "#.#.#.#.#.#",
-    "#...#S#...#",
-    "###########",
-    "###########",
-  ]},
-  { name: "The Current", par: 6, hint: "Underground rivers carry you along. Go with the flow!", map: [
-    "###########",
-    "#####E#####",
-    "####...####",
-    "####.#.####",
-    "#>>>>>>>v.#",
-    "#^#####.v.#",
-    "#^#.o.#.v.#",
-    "#^#.#.#.v.#",
-    "#^#...#.v.#",
-    "#^###.#.v.#",
-    "#^....#.v.#",
-    "#^#####.v.#",
-    "#^<<<<<<<.#",
+    "#.........#",
     "#.#######.#",
-    "#...o.....#",
+    "#.#.....#.#",
+    "#.#..g..#.#",
+    "#.#..o..#.#",
+    "#.###.###.#",
+    "#.........#",
     "#####.#####",
-    "#####S#####",
+    "####...####",
+    "####.S.####",
+    "####...####",
+    "###########",
+    "###########",
     "###########",
   ]},
-  { name: "Glow Friends", par: 7, hint: "Glow-moths follow you and make your light bigger", map: [
+  { name: "The Ring Stone", par: 6, theme: 1, hint: "Something guards the way. Let your song reach the old ring stone, and it will call it away", map: [
     "###########",
-    "#E..#.....#",
-    "###.#.###.#",
-    "#b..#.#o..#",
-    "#.###.#.###",
-    "#...#...#b#",
-    "###.#.#.#.#",
-    "#o#...#...#",
-    "#.###.#####",
-    "#.....#..o#",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "####...####",
+    "####.g.####",
+    "####...####",
+    "#####.#####",
+    "##....#####",
+    "##.########",
+    "##.########",
+    "##.######R#",
+    "##.######.#",
+    "##.######.#",
+    "##o.......#",
+    "##S########",
+    "###########",
+    "###########",
+  ]},
+  { name: "Tiptoe", par: 5, theme: 2, hint: "No way around them. Push the stick only a little to swim slowly: a slow light makes no sound", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "##......o##",
+    "##.......##",
+    "##.g...g.##",
+    "##.......##",
+    "##.......##",
+    "##.g...g.##",
+    "##.......##",
+    "##o......##",
+    "#####.#####",
+    "####...####",
+    "####.S.####",
+    "####...####",
+    "###########",
+    "###########",
+  ]},
+  { name: "The Hunter", par: 8, theme: 3, goal: "escape", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.#o#.###",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "####.S.####",
+    "###########",
+  ]},
+  { name: "The Lost Moth", par: 9, theme: 5, goal: "rescue", map: [
+    "###########",
+    "#.E.##.m..#",
+    "#...##....#",
+    "##.###.####",
+    "##.###.####",
+    "##.###.g###",
+    "##.###.####",
+    "##.###.####",
+    "##.###.####",
+    "##.###..R##",
+    "##.###.####",
+    "##.###.####",
+    "##.......##",
+    "#####.#####",
+    "####...####",
+    "####.S.####",
+    "###########",
+    "###########",
+  ]},
+  { name: "The Deep Maze", par: 14, theme: 4, hint: "Three of them, two stones, and only your memory", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "#####.#####",
+    "#####.#####",
+    "###..g..###",
+    "#####.#####",
+    "#R........#",
+    "#.###.###.#",
+    "#.#.....#.#",
+    "#.#..g..#.#",
+    "#.#.....#.#",
+    "#.###.###.#",
+    "#....R....#",
+    "#.#######.#",
+    "#.#.o.#...#",
+    "#.#.#.#.#.#",
+    "#...#...#.#",
+    "#####.###.#",
+    "#.g.....#.#",
     "#.#####.#.#",
-    "#...b.#.#.#",
-    "###.#.#.#.#",
-    "#...#...#.#",
-    "#.#######.#",
-    "#....S....#",
-    "###########",
+    "#.........#",
+    "#####.#####",
+    "####.S.####",
     "###########",
   ]},
-  { name: "Sleepy Hollow", par: 6, hint: "Shh… don't bump the sleepy Snoozles", map: [
+  { name: "The Great Hush", par: 8, theme: 7, map: [
+    "###########",
+    "####.E.####",
+    "##.......##",
+    "#.........#",
+    "#....B....#",
+    "#.........#",
+    "##.......##",
+    "####...####",
+    "#####.#####",
+    "##.......##",
+    "##.g...g.##",
+    "##.......##",
+    "#####.#####",
+    "#R.......R#",
+    "#####.#####",
+    "####...####",
+    "####.S.####",
+    "###########",
+  ]},
+  // ---------- Act two: the long echo ----------
+  // Pebbles from cave 11 on, and Lurkers (u): deaf, but they see Lumi's light. Sneaking makes the
+  // light small; singing makes it big. M is a hidden memory.
+  { name: "Pebble Path", par: 6, theme: 4, hint: "A guard in the hall. Throw a pebble along it, and while it looks, slip past", map: [
     "###########",
     "####.E.####",
     "####...####",
-    "###.....###",
-    "###.z.z.###",
+    "#####.#####",
+    "#####.#####",
+    "##...g...##",
+    "##.#####.##",
+    "##.#####.##",
+    "##.......##",
+    "#####.#####",
+    "#M#.....#o#",
+    "#.#.#.#.#.#",
+    "#...#.#...#",
+    "#####.#####",
+    "####...####",
+    "####.S.####",
+    "####...####",
+    "###########",
+  ] },
+  { name: "Two Guards", par: 7, theme: 4, hint: "Two guards, and pebbles to spare. Throw, wait, slip by", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "###..g..###",
+    "#####.#####",
+    "#o.......o#",
+    "#####.#####",
+    "#####.#####",
+    "###..g..###",
+    "#####.#####",
+    "#.........#",
+    "#.###.###.#",
+    "#M#..S..#.#",
+    "###########",
+    "###########",
+    "###########",
+    "###########",
+  ] },
+  { name: "Something Watching", par: 6, theme: 5, hint: "This one has no ears. It sees light. Sneak, and your light grows small", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "#####.#####",
+    "#####.#####",
+    "#####.#####",
+    "###uo.#####",
+    "#####.#####",
+    "#####.#####",
+    "#####.#####",
+    "#####..u###",
+    "#####.#####",
+    "#M....#####",
+    "#####.#####",
+    "####.S.####",
+    "####...####",
+    "###########",
+  ] },
+  { name: "Light and Sound", par: 7, theme: 5, hint: "One hears, one sees. Don't sing where the eye can see you", map: [
+    "###########",
+    "#E.......u#",
+    "#.#######.#",
+    "#.#######.#",
+    "#..g......#",
+    "######.##.#",
+    "######.##.#",
+    "######.##.#",
+    "######.#M.#",
+    "#########.#",
+    "#o........#",
+    "#####.#####",
+    "####...####",
+    "####.S.####",
+    "####...####",
+    "###########",
+    "###########",
+    "###########",
+  ] },
+  { name: "Moth in the Mines", par: 8, theme: 6, goal: "rescue", map: [
+    "###########",
+    "#m.##u##.E#",
+    "#.###.###.#",
+    "#.........#",
+    "#####.#####",
+    "#####.#####",
+    "###..g..###",
+    "#####.#####",
+    "#.........#",
+    "#.###.###.#",
+    "#o#.....#M#",
+    "###.###.###",
     "###.....###",
     "#####.#####",
-    "#o....#...#",
-    "#.###.#.#.#",
-    "#.#.....#.#",
-    "#.#.z.z.#.#",
-    "#.#.....#.#",
-    "#.###.###.#",
-    "#...#.#..o#",
+    "####.S.####",
+    "####...####",
+    "###########",
+    "###########",
+  ] },
+  { name: "Cave-in", par: 9, theme: 3, goal: "escape", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
     "###.....###",
-    "###.z.z.###",
-    "###..S..###",
+    "##o.###.###",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.###.M##",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.###",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "###.....###",
+    "###.###.o##",
+    "###.###.###",
+    "###.....###",
+    "#####.#####",
+    "####.S.####",
     "###########",
-  ]},
-  { name: "Echo Maze", par: 9, hint: "Remember what you hear. The cave keeps a faint map of it", map: [
     "###########",
-    "#E....#...#",
-    "#####.#.#.#",
-    "#o..#...#.#",
-    "#.#.#####.#",
-    "#.#...c...#",
-    "#.#####.###",
-    "#...#...#o#",
-    "###.#.###.#",
-    "#c#.#.....#",
-    "#.#.#####.#",
-    "#...#...#.#",
-    "#.###.#.#.#",
-    "#.....#.#.#",
-    "#######.#.#",
-    "#o......#.#",
-    "#####S....#",
     "###########",
-  ]},
-  { name: "Undertow", par: 9, map: [
     "###########",
-    "#....E....#",
+  ] },
+  { name: "The Choir", par: 7, theme: 2, hint: "Five of them. Thread between them, or call them away with the stones", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "#R...o...R#",
+    "#.........#",
+    "#.g.....g.#",
+    "#.........#",
+    "#....g....#",
+    "#.........#",
+    "#.g.....g.#",
+    "#.........#",
+    "#####.#####",
+    "#M.....####",
+    "####.S.####",
+    "####...####",
+    "###########",
+    "###########",
+  ] },
+  { name: "Sightlines", par: 6, theme: 6, hint: "Every crossing is watched. Small light, slow swim", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "###u...u###",
+    "#####.#####",
+    "#####.#####",
+    "###u...u###",
+    "#####.#####",
+    "#o.......M#",
+    "#####.#####",
+    "###u...u###",
+    "#####.#####",
+    "####...####",
+    "####.S.####",
+    "####...####",
+    "###########",
+    "###########",
+  ] },
+  { name: "Everything Below", par: 14, theme: 3, hint: "Everything you've learned, all the way up", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "###u...u###",
+    "#####.#####",
+    "#R...g...R#",
+    "#.###.###.#",
+    "#.........#",
+    "#####.#####",
+    "#.........#",
+    "#.###.###.#",
+    "#.#..g..#.#",
+    "#.#..o..#.#",
+    "#.###.###.#",
+    "#.......M.#",
+    "#####.#####",
+    "#u........#",
+    "#########.#",
+    "#o........#",
     "#.#######.#",
-    "#.#c.o..#.#",
-    "#.#.###.#.#",
-    "#...###...#",
-    "###D###D###",
-    "#<<<<<<<<<#",
-    "#.#######.#",
-    "#o#.....#.#",
-    "#.#.###.#.#",
-    "#.#.#o#.#.#",
+    "#.g.......#",
+    "#####.#####",
+    "####.S.####",
+    "###########",
+    "###########",
+  ] },
+  { name: "Sing Them Home", par: 10, theme: 7, healAll: true, hint: "The last lost Hushlings. Hold to sing close to each one, and bring them all home", map: [
+    "###########",
+    "####.E.####",
+    "####...####",
+    "#####.#####",
+    "#.........#",
+    "#.g.#.#.g.#",
     "#...#.#...#",
+    "##.##.##.##",
+    "#....u....#",
     "#.###.###.#",
-    "#>>>>.<<<<#",
-    "#.#######.#",
-    "#....S...o#",
-    "###########",
-  ]},
-  { name: "Heart of the Cave", par: 10, hint: "Everything you've learned so far, all in one cave", map: [
-    "###########",
-    "#...#E#...#",
-    "#.#.#D#.#.#",
     "#.#.....#.#",
-    "#b#.z.z.#c#",
+    "#.#.g.g.#.#",
     "#.#.....#.#",
     "#.###.###.#",
-    "#.....#o..#",
-    "#####.#.###",
-    "#o.D..#...#",
-    "#.#.###>>v#",
-    "#.#.....#v#",
-    "#.#z#.#.#v#",
-    "#...#.#.<<#",
-    "###.#.#####",
-    "#c..#.....#",
-    "#####S#..o#",
+    "#....M....#",
+    "#####.#####",
+    "####.S.####",
     "###########",
-  ]},
+  ] },
 ];
-
-// ---------- Worlds ----------
-// 50 worlds of 20 levels. The first 10 levels are handmade; the rest are built from a seed,
-// so every player gets the same cave for the same level number.
-const PER_WORLD = 20, WORLDS = 50, TOTAL = PER_WORLD * WORLDS;
+// A hidden memory (M) in each of the first ten caves too.
+const markTile = (map, x, y, ch) => map.map((r, j) => (j === y ? r.slice(0, x) + ch + r.slice(x + 1) : r));
+[[0, 6, 9], [1, 3, 16], [2, 1, 16], [3, 3, 6], [4, 9, 12], [5, 2, 4], [6, 2, 16], [7, 1, 2], [8, 8, 16], [9, 2, 2]]
+  .forEach(([i, x, y]) => { CORE_LEVELS[i] = Object.assign({}, CORE_LEVELS[i], { map: markTile(CORE_LEVELS[i].map, x, y, "M") }); });
+// Each act is a "world" of ten caves.
+const PER_WORLD = CORE ? 10 : 20, WORLDS = CORE ? CORE_LEVELS.length / 10 : 8, TOTAL = PER_WORLD * WORLDS;
+const ACT_NAMES = ["The Last Song", "The Long Echo"];
+// What Lumi remembers, one memory hidden in each cave.
+const MEMORIES = [
+  "A voice, humming. Something enormous, holding something very small.",
+  "“Count the echoes, little light. Every wall is a word.”",
+  "Little lights asleep in a row, and a big warm shadow keeping watch.",
+  "The first Hushling was a tear. It fell from very high up and never stopped looking.",
+  "The Singer tuned the ring stones, one for every street, so no one would ever get lost.",
+  "“Quiet now. Swim like a feather. The dark is only sleeping.”",
+  "The night of the flood, the water was so loud nobody heard a little voice calling.",
+  "A moth once followed Lumi all the way home. Moths always know the way to the light.",
+  "The Singer carved the maze for the little ones, to play hide and seek in.",
+  "“You came back.” Three words, waited for a hundred years.",
+  "Not every shadow was a tear. Some were already down here, long before the song.",
+  "Pebbles in a pocket: the Singer's old game. Throw one, and the dark looks the other way.",
+  "Lurkers have no ears at all. They drink light, and they are always thirsty.",
+  "Sound for the Hushlings, light for the Lurkers. Be quiet, and be small.",
+  "Down in the mines, a lantern still remembers whose hand held it.",
+  "The deep caves fall in on themselves when something old wakes up.",
+  "The Choir: every Hushling used to sing together, before they forgot the words.",
+  "In the dark, a Lurker's eye looks like a friendly star. It isn't.",
+  "The last of them cry the loudest, because they have waited the longest.",
+  "Somebody's always listening. Now it's Lumi's turn to sing them home.",
+];
 const THEMES = [
   { name: "Moonlit Grotto",  floor: [18, 46, 58], floor2: [30, 30, 72], rock: [62, 82, 128],   deep: [14, 18, 32], rim: [80, 160, 200] },
   { name: "Mossy Hollow",    floor: [16, 44, 36], floor2: [28, 40, 34], rock: [56, 92, 70],    deep: [12, 22, 18], rim: [110, 200, 140] },
@@ -222,14 +496,14 @@ const THEMES = [
   { name: "Starlight Abyss", floor: [16, 16, 40], floor2: [30, 18, 52], rock: [52, 52, 100],   deep: [8, 8, 22],   rim: [255, 150, 220] },
 ];
 const STORY = [
-  "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way.",
+  "Lumi woke up alone, deep under the world. Somewhere far above, the sky is waiting. Only a song can light the way. But the Hush lives down here too, and its Hushlings hate every song.",
   "Soft moss hums back whenever Lumi sings. The cave is alive, and it seems to be listening.",
   "Purple crystals ring like little bells. Lumi feels braver now, and every song travels further.",
   "Warm air rises from glowing cracks in the rock. The lost lights down here burn brighter than ever.",
   "Everything is quiet and cold. Each song echoes for a long, long time before it fades.",
   "An old underground sea. Tiny creatures glow in the water, and some of them want to be friends.",
   "Someone lived here long ago. Their lanterns are gone, but the tunnels still remember their songs.",
-  "The deepest place of all. Far above, Lumi can almost hear the stars singing back.",
+  "The deepest place of all, where the Great Hush was born. Far above, Lumi can almost hear the stars singing back.",
 ];
 const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
 const DAILY = -1;
@@ -237,220 +511,62 @@ const worldOf = i => Math.floor(i / PER_WORLD);
 // The daily cave changes at midnight UTC, so everyone in the world gets the same one.
 const dayNumber = () => Math.floor(Date.now() / 86400000);
 const dayKey = (n = dayNumber()) => new Date(n * 86400000).toISOString().slice(0, 10);
-const themeIndex = i => (i < 0 ? dayNumber() : worldOf(i)) % THEMES.length;
+const WEEKLY = -2;
+const weekNumber = () => Math.floor((dayNumber() + 3) / 7);  // weeks start on Monday (UTC)
+const isChallenge = i => i < 0;
+const themeIndex = i => (CORE && i >= 0 && i < TOTAL ? CORE_LEVELS[i].theme : (i === WEEKLY ? weekNumber() + 3 : i < 0 ? dayNumber() : worldOf(i))) % THEMES.length;
 const themeOf = i => THEMES[themeIndex(i)];
-// Energy and Gloomlings get gently harder with depth; the daily cave sits in the middle.
-const depthOf = i => (i < 0 ? 0.5 : Math.min(1, Math.max(0, (i - 10) / 400)));
-const worldName = w => THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)];
+// Energy and Hushlings get gently harder with depth; the daily cave sits in the middle.
+const depthOf = i => (i === WEEKLY ? 0.8 : i < 0 ? 0.5 : Math.min(1, Math.max(0, 0.1 + (i - 19) / 160)));
+const worldName = w => (CORE && w < ACT_NAMES.length ? ACT_NAMES[w] : THEMES[w % THEMES.length].name + ROMAN[Math.floor(w / THEMES.length)]);
 
-// Handmade levels that introduce each new idea, placed where it first appears. Each one opens
-// with a picture card (see CARDS in ui.js) the first time it's played.
-const INTRO = {
-  10: { name: "Fading Light", par: 6, card: "energy", map: [
-    "###########",
-    "#####E#####",
-    "####...####",
-    "####.#.####",
-    "#o..c#c..o#",
-    "#.###.###.#",
-    "#.#.....#.#",
-    "#.#.###.#.#",
-    "#...#o#...#",
-    "###.#.#.###",
-    "#...#.#...#",
-    "#.###.###.#",
-    "#.c.......#",
-    "#####.#####",
-    "####...####",
-    "####.S.####",
-    "###########",
-    "###########",
-  ]},
-  20: { name: "Lost and Found", par: 6, card: "rescue", goal: "rescue", map: [
-    "###########",
-    "#E..#.....#",
-    "###.#.###.#",
-    "#...#.#...#",
-    "#.###.#.###",
-    "#.....#...#",
-    "#####.###.#",
-    "#m..#.....#",
-    "###.#.#####",
-    "#...#.....#",
-    "#.#####.#.#",
-    "#.....#.#.#",
-    "#.###.#.#.#",
-    "#.#...#.#o#",
-    "#.#.###.###",
-    "#....S....#",
-    "###########",
-    "###########",
-  ]},
-  40: { name: "Listening Stones", par: 6, card: "runes", map: [
-    "###########",
-    "####.E.####",
-    "####...####",
-    "#####G#####",
-    "#.........#",
-    "#.###.###.#",
-    "#.#r#.#.#.#",
-    "#.#.#.#.#.#",
-    "#...#.#...#",
-    "###.#.#.###",
-    "#o..#.#..r#",
-    "#####.#####",
-    "###.....###",
-    "###.....###",
-    "###..S..###",
-    "###########",
-    "###########",
-    "###########",
-  ]},
-  60: { name: "Shadows", par: 7, card: "gloom", map: [
-    "###########",
-    "###..E..###",
-    "###.....###",
-    "#####.#####",
-    "#o....g...#",
-    "#.###.###.#",
-    "#.#.....#.#",
-    "#.#.#.#.#.#",
-    "#...#.#...#",
-    "###.#.#.###",
-    "#...#c#..o#",
-    "#.###.###.#",
-    "#.........#",
-    "#####.#####",
-    "####...####",
-    "####.S.####",
-    "###########",
-    "###########",
-  ]},
-  64: { name: "Hush", par: 6, songs: 8, card: "quiet", goal: "quiet", map: [
-    "###########",
-    "#E....#...#",
-    "#####.#.#.#",
-    "#.....#.#.#",
-    "#.#####.#.#",
-    "#.......#.#",
-    "#########.#",
-    "#o......#.#",
-    "#.#####.#.#",
-    "#...#...#.#",
-    "###.#.###.#",
-    "#...#.....#",
-    "#.#########",
-    "#.........#",
-    "#########.#",
-    "#S........#",
-    "###########",
-    "###########",
-  ]},
-  80: { name: "Into the Dark", par: 8, card: "dark", dark: true, map: [
-    "###########",
-    "#...#...#E#",
-    "#.#.#.#.#.#",
-    "#.#...#...#",
-    "#.#####.###",
-    "#.....#...#",
-    "#####.###.#",
-    "#o..#.....#",
-    "###.#.#####",
-    "#...#.....#",
-    "#.#####.#.#",
-    "#.#...#.#o#",
-    "#.#.#.#.###",
-    "#...#.....#",
-    "#####.#####",
-    "####...####",
-    "####.S.####",
-    "###########",
-  ]},
-  84: { name: "The Long Climb", par: 9, card: "tall", map: [
-    "###########",
-    "#....E....#",
-    "#.#######.#",
-    "#.........#",
-    "#######.###",
-    "#.........#",
-    "#.###.#####",
-    "#...#.....#",
-    "###.#####.#",
-    "#o..#.....#",
-    "#.###.#####",
-    "#.........#",
-    "#####.###.#",
-    "#.......#.#",
-    "#.#####.#.#",
-    "#.#c..#...#",
-    "#.#.#.###.#",
-    "#...#.....#",
-    "#####.###.#",
-    "#o....#...#",
-    "#.###.#.###",
-    "#...#.....#",
-    "###.#####.#",
-    "#.....S...#",
-    "###########",
-    "###########",
-  ]},
-  100: { name: "Race the Tide", par: 5, time: 30, card: "race", goal: "race", map: [
-    "###########",
-    "#####E#####",
-    "####...####",
-    "####.^.####",
-    "#>>>>^<<<<#",
-    "#.###^###.#",
-    "#.#..^..#.#",
-    "#.#.#^#.#.#",
-    "#...#^#...#",
-    "###.#^#.###",
-    "#o..#^#..o#",
-    "#####^#####",
-    "###..^..###",
-    "###.....###",
-    "###..S..###",
-    "###########",
-    "###########",
-    "###########",
-  ]},
-};
-// Level numbers (from 1) where each world's handmade introductions sit, for the README and tests.
-const INTRO_LEVELS = Object.keys(INTRO).map(Number);
-
-// Every generated cave gets its own name in its world's style.
-const NAME_ADJ = ["Whispering", "Hidden", "Silent", "Glimmering", "Winding", "Sleeping", "Forgotten", "Echoing", "Misty", "Gentle",
-  "Ancient", "Shimmering", "Quiet", "Lonely", "Tangled", "Drowsy", "Velvet", "Secret", "Distant", "Humming"];
-const NAME_NOUN = [
-  ["Grotto", "Moonpool", "Burrow", "Nook", "Passage", "Chamber", "Basin", "Hollow"],
-  ["Fernway", "Mossbank", "Thicket", "Rootway", "Glade", "Dell", "Burrow", "Hollow"],
-  ["Geode", "Spire", "Vault", "Crystalway", "Prism", "Hall", "Gallery", "Grotto"],
-  ["Forge", "Hearth", "Cinderway", "Furnace", "Kiln", "Vent", "Crucible", "Hall"],
-  ["Icefall", "Glacier", "Rimeway", "Snowdrift", "Floe", "Frost Hall", "Hollow", "Passage"],
-  ["Reef", "Lagoon", "Tidepool", "Shoal", "Undertow", "Kelpway", "Grotto", "Shell Cave"],
-  ["Mine", "Shaft", "Vein", "Tunnel", "Lantern Hall", "Seam", "Quarry", "Gallery"],
-  ["Abyss", "Rift", "Starwell", "Chasm", "Skyway", "Comet Hall", "Deep", "Hollow"],
+// ---------- Daily and weekly caves ----------
+// Built from handmade rooms, five rows each, stacked between the portal and the start. Each
+// room is one small idea under the same rules as the story caves; rooms join through the
+// middle column, and a room may be mirrored. The same seed gives everyone the same cave.
+const ROOMS = [
+  ["##...g...##", "##.#####.##", "##.#####.##", "##...o...##", "#####.#####"],   // a guard in the hall: pebble it away
+  ["####...####", "####.g.####", "####...####", "#R.......o#", "#####.#####"],   // a guard, and a stone to call it
+  ["#####.#####", "###u...u###", "#####.#####", "#o.......o#", "#####.#####"],   // a crossing two Lurkers watch
+  ["#.........#", "#.g.....g.#", "#....o....#", "#.........#", "#####.#####"],   // two Hushlings: thread between them
+  ["#####.#####", "#####..u###", "###u..#####", "#####.#####", "#####.#####"],   // a crooked corridor, watched
+  ["#####.#####", "#.........#", "#.###g###.#", "#....o....#", "#####.#####"],   // a guard in the middle: go round
+  ["#####.#####", "####...####", "#g...o...g#", "####...####", "#####.#####"],   // a light between two
 ];
-function caveName(n) {
-  const t = worldOf(n) % THEMES.length, r = seeded(n * 389 + 11);
-  if (isFinale(n)) return "Heart of the " + THEMES[t].name.split(" ")[1];
-  const noun = NAME_NOUN[t][Math.floor(r() * 8)];
-  let adj = NAME_ADJ[Math.floor(r() * NAME_ADJ.length)];
-  if (noun.includes(adj) || adj === noun) adj = "Hidden";
-  return `${adj} ${noun}`;
+function buildCave(seed, rooms, name) {
+  const r = seeded(seed), order = [];
+  let bag = [];
+  while (order.length < rooms) { if (!bag.length) bag = ROOMS.map((_, k) => k); order.push(bag.splice(Math.floor(r() * bag.length), 1)[0]); }
+  const map = ["###########", "####.E.####", "####...####"];
+  for (const k of order) { map.push("#####.#####"); map.push(...(r() < 0.5 ? ROOMS[k] : ROOMS[k].map(row => [...row].reverse().join("")))); }
+  map.push("#####.#####", "####.S.####", "####...####", "###########");
+  // How long the swim is, start to portal (twists such as a timer use it).
+  const at = ch => { const y = map.findIndex(row => row.includes(ch)); return [map[y].indexOf(ch), y]; };
+  const [sx, sy] = at("S"), [ex, ey] = at("E"), dist = new Map([[sx + "," + sy, 0]]), q = [[sx, sy]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (map[ny][nx] === "#" || dist.has(nx + "," + ny)) continue;
+      dist.set(nx + "," + ny, dist.get(x + "," + y) + 1); q.push([nx, ny]);
+    }
+  }
+  return { name, par: 4 + rooms * 2, map, walk: dist.get(ex + "," + ey) || 30 };
 }
 
 const levelCache = new Map();
 function getLevel(i) {
-  if (i === DAILY) {
-    const day = dayNumber(), key = "daily" + day;
-    if (!levelCache.has(key)) levelCache.set(key, generateLevel(50000 + day * 13, { hard: 0.35 + (day % 7) * 0.04, name: "Daily Cave" }));
+  if (i === WEEKLY) {
+    const key = "weekly" + weekNumber();
+    if (!levelCache.has(key)) levelCache.set(key, buildCave(90000 + weekNumber() * 17, 5, "Weekly Cave"));
     return levelCache.get(key);
   }
-  if (i < LEVELS.length) return LEVELS[i];
-  if (INTRO[i]) return INTRO[i];
-  if (!levelCache.has(i)) levelCache.set(i, generateLevel(i));
-  return levelCache.get(i);
+  if (i === DAILY) {
+    const day = dayNumber(), key = "daily" + day;
+    if (!levelCache.has(key)) levelCache.set(key, applyTwist(buildCave(50000 + day * 13, 4, "Daily Cave"), day));
+    return levelCache.get(key);
+  }
+  return CORE_LEVELS[i];
 }
 
 function seeded(a) {
@@ -461,331 +577,14 @@ function seeded(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-
-// Builds a cave: a winding maze with extra loops and open chambers, then places the start,
-// the portal far away, lights in dead ends, and features that grow with the level number.
-// Difficulty climbs slowly, with an easy "breather" every fifth level and a bigger
-// finale at the end of each world.
-const isBreather = n => n % 5 === 3 && n % PER_WORLD !== PER_WORLD - 1;
 const isFinale = n => n % PER_WORLD === PER_WORLD - 1;
-
-// Each world leans on one or two ideas it introduces, so worlds feel different from each
-// other. A level only uses ideas that have been introduced by then, and never more than
-// three big ones at once.
-const BASICS = ["doors", "currents", "snoozles"];
-const SIGNATURE = [
-  [],                         // 1 Moonlit Grotto: the basics, then light energy
-  ["rescue"],                 // 2 Mossy Hollow: lost baby moths
-  ["runes"],                  // 3 Amethyst Deep: rune stones and gates
-  ["gloom", "quiet"],         // 4 Ember Caverns: Gloomlings and quiet caves
-  ["dark", "tall"],           // 5 Frost Tunnels: dark caves and long climbs
-  ["race", "currents"],       // 6 Coral Depths: races on the tide
-  ["runes", "doors", "tall"], // 7 Golden Mines
-  ["gloom", "dark", "race"],  // 8 Starlight Abyss
-];
-// Where each idea is first introduced (by a handmade level in INTRO).
-const UNLOCK = { doors: 3, currents: 4, snoozles: 6, rescue: 20, runes: 40, gloom: 60, quiet: 64, dark: 80, tall: 84, race: 100 };
-const GOALS = ["rescue", "quiet", "race"];
-function planLevel(n, daily, hard, pre) {
-  const w = daily ? dayNumber() % THEMES.length : worldOf(n), sig = SIGNATURE[w % SIGNATURE.length];
-  const open = Object.keys(UNLOCK).filter(k => daily || n >= UNLOCK[k]);
-  const plan = new Set();
-  for (const k of open) {
-    const signature = sig.includes(k);
-    const chance = GOALS.includes(k) ? (signature ? 0.4 : 0.12) : (signature ? 0.6 : 0.28) + hard * 0.2;
-    if (pre() < chance) plan.add(k);
-  }
-  // Only one goal per level, preferring the world's own.
-  const goals = [...plan].filter(k => GOALS.includes(k)).sort((a, b) => sig.includes(b) - sig.includes(a));
-  goals.slice(1).forEach(k => plan.delete(k));
-  // At most three big ideas (one on a breather level), keeping the world's signature first.
-  const limit = !daily && isBreather(n) ? 1 : 3;
-  const ranked = [...plan].sort((a, b) => sig.includes(b) - sig.includes(a) || pre() - 0.5);
-  return new Set(ranked.slice(0, limit));
-}
-
-function generateLevel(n, opts = {}) {
-  const daily = opts.hard != null;
-  let hard = daily ? opts.hard : Math.min(1, (n - 10) / 400);
-  if (!daily && isBreather(n)) hard *= 0.4;
-  if (!daily && isFinale(n)) hard = Math.min(1, hard + 0.25);
-  const pre = seeded(n * 131 + 7);
-  const plan = planLevel(n, daily, hard, pre);
-  const C = 11, R = plan.has("tall") ? (pre() < 0.55 ? 26 : 34) : 18;
-  const dark = plan.has("dark");
-  const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], big = R / 18;
-  for (let attempt = 0; ; attempt++) {
-    const r = seeded(n * 7919 + attempt * 104729 + 17);
-    const pick = a => a[Math.floor(r() * a.length)];
-    const g = Array.from({ length: R }, () => Array(C).fill("#"));
-    const open = (x, y) => x > 0 && y > 0 && x < C - 1 && y < R - 1 && g[y][x] !== "#";
-    const inside = (x, y) => x > 0 && y > 0 && x < C - 1 && y < R - 2;
-
-    // Each cave gets one of four shapes so levels don't all feel the same.
-    const style = attempt > 12 ? "maze" : pick(["maze", "maze", "caverns", "chambers", "winding"]);
-    if (style === "caverns") {
-      // Cellular caves: random rock that settles into blobby open caverns.
-      for (let y = 1; y < R - 2; y++) for (let x = 1; x < C - 1; x++) g[y][x] = r() < 0.42 ? "#" : ".";
-      for (let k = 0; k < 4; k++) {
-        const next = g.map(row => row.slice());
-        for (let y = 1; y < R - 2; y++) for (let x = 1; x < C - 1; x++) {
-          let walls = 0;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (g[y + dy][x + dx] === "#") walls++;
-          next[y][x] = walls >= 5 ? "#" : ".";
-        }
-        for (let y = 0; y < R; y++) g[y] = next[y];
-      }
-      // Keep only the biggest connected cavern.
-      const seen = new Set();
-      let best = [];
-      for (let y = 1; y < R - 2; y++) for (let x = 1; x < C - 1; x++) {
-        if (g[y][x] !== "." || seen.has(x + "," + y)) continue;
-        const part = [], q = [[x, y]];
-        seen.add(x + "," + y);
-        while (q.length) {
-          const [cx, cy] = q.pop();
-          part.push([cx, cy]);
-          for (const [dx, dy] of D4) {
-            const nx = cx + dx, ny = cy + dy;
-            if (inside(nx, ny) && g[ny][nx] === "." && !seen.has(nx + "," + ny)) { seen.add(nx + "," + ny); q.push([nx, ny]); }
-          }
-        }
-        if (part.length > best.length) best = part;
-      }
-      const keep = new Set(best.map(p => p + ""));
-      for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) if (!keep.has(x + "," + y)) g[y][x] = "#";
-      if (best.length < 55 * big) continue;
-    } else if (style === "chambers") {
-      // A string of rooms joined by tunnels.
-      const rooms = [];
-      for (let k = 0, tries = 0; rooms.length < Math.round(5 * big) && tries < 90; tries++) {
-        const w = 2 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 2);
-        const x = 1 + Math.floor(r() * (C - 1 - w)), y = 1 + Math.floor(r() * (R - 2 - h));
-        if (rooms.some(o => x < o.x + o.w + 1 && o.x < x + w + 1 && y < o.y + o.h + 1 && o.y < y + h + 1)) continue;
-        rooms.push({ x, y, w, h });
-      }
-      rooms.sort((a, b) => b.y - a.y);
-      for (const o of rooms) for (let y = o.y; y < o.y + o.h; y++) for (let x = o.x; x < o.x + o.w; x++) g[y][x] = ".";
-      for (let k = 1; k < rooms.length; k++) {
-        const a = rooms[k - 1], b = rooms[k];
-        let x = a.x + Math.floor(r() * a.w), y = a.y + Math.floor(r() * a.h);
-        const tx = b.x + Math.floor(r() * b.w), ty = b.y + Math.floor(r() * b.h);
-        const horizFirst = r() < 0.5;
-        while (x !== tx || y !== ty) {
-          if ((horizFirst && x !== tx) || y === ty) x += Math.sign(tx - x); else y += Math.sign(ty - y);
-          g[y][x] = ".";
-        }
-      }
-      if (rooms.length < Math.round(4 * big)) continue;
-    }
-    if (style === "maze" || style === "winding") {
-      // Maze over cells at odd coordinates.
-      const cells = [];
-      for (let y = 1; y < R - 1; y += 2) for (let x = 1; x < C - 1; x += 2) cells.push([x, y]);
-      const visited = new Set();
-      const stack = [pick(cells)];
-      visited.add(stack[0] + "");
-      g[stack[0][1]][stack[0][0]] = ".";
-      while (stack.length) {
-        const [x, y] = stack[stack.length - 1];
-        const nb = D4.map(([dx, dy]) => [x + dx * 2, y + dy * 2, dx, dy])
-          .filter(([nx, ny]) => nx > 0 && ny > 0 && nx < C - 1 && ny < R - 2 && !visited.has(nx + "," + ny));
-        if (!nb.length) { stack.pop(); continue; }
-        const [nx, ny, dx, dy] = pick(nb);
-        g[y + dy][x + dx] = ".";
-        g[ny][nx] = ".";
-        visited.add(nx + "," + ny);
-        stack.push([nx, ny]);
-      }
-      // Loops so there's more than one way around (winding caves get very few).
-      const loops = Math.round((style === "winding" ? 1 : 3 + Math.floor(r() * 5)) * big);
-      for (let k = 0, tries = 0; k < loops && tries < 200; tries++) {
-        const x = 1 + Math.floor(r() * (C - 2)), y = 1 + Math.floor(r() * (R - 3));
-        if (g[y][x] !== "#") continue;
-        if ((open(x - 1, y) && open(x + 1, y) && !open(x, y - 1) && !open(x, y + 1)) ||
-            (open(x, y - 1) && open(x, y + 1) && !open(x - 1, y) && !open(x + 1, y))) { g[y][x] = "."; k++; }
-      }
-      // Open chambers.
-      const rooms = style === "winding" ? 0 : Math.round((1 + Math.floor(r() * 3)) * big);
-      for (let k = 0; k < rooms; k++) {
-        const w = 2 + Math.floor(r() * 2), h = 2 + Math.floor(r() * 2);
-        const rx = 1 + Math.floor(r() * (C - 1 - w)), ry = 1 + Math.floor(r() * (R - 2 - h));
-        for (let y = ry; y < ry + h; y++) for (let x = rx; x < rx + w; x++) g[y][x] = ".";
-      }
-    }
-
-    const bfs = (sx, sy, blocked) => {
-      const d = Array.from({ length: R }, () => Array(C).fill(-1)), par = {};
-      d[sy][sx] = 0;
-      const q = [[sx, sy]];
-      while (q.length) {
-        const [x, y] = q.shift();
-        for (const [dx, dy] of D4) {
-          const nx = x + dx, ny = y + dy;
-          if (!open(nx, ny) || d[ny][nx] >= 0 || (blocked && blocked.has(nx + "," + ny))) continue;
-          d[ny][nx] = d[y][x] + 1;
-          par[nx + "," + ny] = [x, y];
-          q.push([nx, ny]);
-        }
-      }
-      return { d, par };
-    };
-
-    const floor = [];
-    for (let y = 1; y < R - 1; y++) for (let x = 1; x < C - 1; x++) if (g[y][x] === ".") floor.push([x, y]);
-    const low = floor.filter(([, y]) => y >= R - 5);
-    const S = pick(low.length ? low : floor);
-    g[S[1]][S[0]] = "S";
-    let { d, par } = bfs(S[0], S[1]);
-    let E = S, far = 0;
-    for (const [x, y] of floor) if (d[y][x] > far || (d[y][x] === far && y < E[1])) { far = d[y][x]; E = [x, y]; }
-    if (far < (style === "caverns" ? 9 : 12) * big) continue;
-    g[E[1]][E[0]] = "E";
-
-    // Main route from start to portal.
-    const route = [];
-    for (let p = E; p; p = par[p + ""]) route.unshift(p);
-    const onRoute = new Set(route.map(p => p + ""));
-    const free = (x, y) => g[y][x] === "." && Math.abs(x - S[0]) + Math.abs(y - S[1]) > 1 && Math.abs(x - E[0]) + Math.abs(y - E[1]) > 1;
-
-    // Currents along a straight stretch of the route.
-    let doors = 0;
-    if (plan.has("currents")) {
-      for (let k = 1; k < route.length - 4; k++) {
-        const dx = route[k + 1][0] - route[k][0], dy = route[k + 1][1] - route[k][1];
-        let len = 0;
-        while (k + len + 1 < route.length - 1 && route[k + len + 1][0] - route[k + len][0] === dx && route[k + len + 1][1] - route[k + len][1] === dy) len++;
-        if (len >= 3 && r() < 0.6) {
-          const against = r() < 0.15 + hard * 0.2;
-          const ch = { "1,0": ">", "-1,0": "<", "0,1": "v", "0,-1": "^" }[(against ? -dx : dx) + "," + (against ? -dy : dy)];
-          for (let q = 0; q < len; q++) { const [x, y] = route[k + q]; if (g[y][x] === ".") g[y][x] = ch; }
-          break;
-        }
-      }
-    }
-    // Sound doors in narrow spots on the route.
-    if (plan.has("doors")) {
-      const want = 1 + (r() < hard ? 1 : 0);
-      const spots = route.slice(3, -2).filter(([x, y]) => free(x, y) &&
-        ((!open(x - 1, y) && !open(x + 1, y)) || (!open(x, y - 1) && !open(x, y + 1))));
-      for (let k = 0; k < want && spots.length; k++) {
-        const [x, y] = spots.splice(Math.floor(r() * spots.length), 1)[0];
-        g[y][x] = "D";
-        doors++;
-      }
-    }
-    // Rune puzzle: a stone gate on the route that opens for good once every rune stone has
-    // heard a song sung close by. The runes are always reachable without passing the gate.
-    const runes = [];
-    let gate = null;
-    if (plan.has("runes")) {
-      // Only where the gate really blocks the way to the portal, so it can't be skipped.
-      const spots = route.slice(Math.floor(route.length * 0.45), -3).filter(([x, y]) => free(x, y) &&
-        ((!open(x - 1, y) && !open(x + 1, y)) || (!open(x, y - 1) && !open(x, y + 1))) &&
-        bfs(S[0], S[1], new Set([x + "," + y])).d[E[1]][E[0]] < 0);
-      if (spots.length) {
-        gate = pick(spots);
-        const before = bfs(S[0], S[1], new Set([gate + ""])).d;
-        const cand = floor.filter(([x, y]) => free(x, y) && before[y][x] >= 4 && Math.abs(x - gate[0]) + Math.abs(y - gate[1]) >= 3);
-        const want = 1 + (r() < 0.4 + hard * 0.3 ? 1 : 0);
-        for (let k = 0; k < want && cand.length; k++) {
-          const [x, y] = cand.splice(Math.floor(r() * cand.length), 1)[0];
-          g[y][x] = "r";
-          runes.push([x, y]);
-        }
-        if (runes.length) g[gate[1]][gate[0]] = "G"; else gate = null;
-      }
-    }
-    // Lights, mostly hidden in dead ends.
-    const lightCount = Math.min(5, 1 + Math.floor(r() * 2 + hard * 2.5) + (!daily && isFinale(n) ? 1 : 0) + (R > 18 ? 1 : 0));
-    const ends = floor.filter(([x, y]) => free(x, y) && D4.filter(([dx, dy]) => open(x + dx, y + dy)).length === 1);
-    const others = floor.filter(([x, y]) => free(x, y) && !onRoute.has(x + "," + y));
-    const lights = [];
-    for (let k = 0; k < lightCount; k++) {
-      const pool = (ends.length ? ends : others).filter(([x, y]) => free(x, y));
-      if (!pool.length) break;
-      const [x, y] = pick(pool);
-      g[y][x] = "o";
-      lights.push([x, y]);
-    }
-    if (!lights.length) continue;
-    const placeSome = (ch, count, ok) => {
-      for (let k = 0, tries = 0; k < count && tries < 60; tries++) {
-        const [x, y] = pick(floor);
-        if (free(x, y) && (!ok || ok(x, y))) { g[y][x] = ch; k++; }
-      }
-    };
-    if (r() < 0.5) placeSome("c", 1 + Math.floor(r() * 2));
-    if (n >= 5 && r() < (SIGNATURE[worldOf(n) % SIGNATURE.length].includes("rescue") ? 0.5 : 0.25)) placeSome("b", 1 + Math.floor(r() * 2));
-    // Snoozles only where you can get around them.
-    if (plan.has("snoozles")) {
-      const want = 1 + Math.floor(r() * (1 + hard * 3));
-      const goals = [E, ...lights];
-      for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
-        const [x, y] = pick(floor);
-        if (!free(x, y)) continue;
-        let around = 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && open(x + dx, y + dy)) around++;
-        if (around < 4) continue;
-        let crowded = false;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (g[y + dy][x + dx] === "z") crowded = true;
-        if (crowded) continue;
-        const blocked = new Set(Object.keys(critterSpots(g)).concat([x + "," + y]));
-        const t = bfs(S[0], S[1], blocked).d;
-        const tg = gate ? bfs(S[0], S[1], new Set([...blocked, gate + ""])).d : t;
-        if (goals.every(([gx, gy]) => t[gy][gx] >= 0) && runes.every(([gx, gy]) => tg[gy][gx] >= 0)) { g[y][x] = "z"; k++; }
-      }
-    }
-
-    // Gloomlings: shadows that come looking when they hear you sing.
-    if (plan.has("gloom")) {
-      const want = 1 + Math.floor(r() * (1 + hard * 2));
-      for (let k = 0, tries = 0; k < want && tries < 40; tries++) {
-        const [x, y] = pick(floor);
-        if (free(x, y) && Math.abs(x - S[0]) + Math.abs(y - S[1]) >= 6) { g[y][x] = "g"; k++; }
-      }
-    }
-
-    // Level goal. Most caves are about exploring; some ask for something different.
-    let goal = "explore", baby = null;
-    goal = GOALS.find(k => plan.has(k)) || "explore";
-    if (goal === "rescue") {
-      ({ d } = bfs(S[0], S[1]));
-      const spots = floor.filter(([x, y]) => free(x, y) && d[y][x] >= 8 * big);
-      if (spots.length) { baby = pick(spots); g[baby[1]][baby[0]] = "m"; } else goal = "explore";
-    }
-
-    // Par: route length past every light (and the lost moth), plus a little room for doors and runes.
-    ({ d } = bfs(S[0], S[1]));
-    let pos = S, walk = 0;
-    const left = lights.concat(baby ? [baby] : [], runes);
-    while (left.length) {
-      const dd = bfs(pos[0], pos[1]).d;
-      left.sort((a, b) => dd[a[1]][a[0]] - dd[b[1]][b[0]]);
-      walk += Math.max(0, dd[left[0][1]][left[0][0]]);
-      pos = left.shift();
-    }
-    walk += Math.max(0, bfs(pos[0], pos[1]).d[E[1]][E[0]]);
-    const parPings = Math.ceil(walk / 5.5) + 1 + doors + runes.length + (lights.length >= 3 ? 1 : 0);
-    return {
-      name: opts.name || caveName(n), par: parPings, map: g.map(row => row.join("")), style, dark, goal, walk,
-      songs: goal === "quiet" ? parPings + 2 : 0,
-      time: goal === "race" ? Math.ceil(walk / 2.3 + 10 + doors * 3 + runes.length * 3) : 0,
-    };
-  }
-}
-function critterSpots(g) {
-  const out = {};
-  g.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === "z") out[x + "," + y] = 1; }));
-  return out;
-}
 
 const WAVE_SPEED = 8.5;   // tiles per second
 const WAVE_RANGE = 7.5;   // tiles the song travels
 const MEMORY = 0.13;      // how bright remembered walls stay
 const TH = 0.55;          // where rock begins in the cave's shape field
-const SWIM_MAX = 4.2;     // tiles per second at full stick
-const SWIM_GRIP = 14;     // how quickly Lumi reaches the speed you ask for
+const SWIM_MAX = 4.6;     // tiles per second at full stick
+const SWIM_GRIP = 18;     // how quickly Lumi reaches the speed you ask for
 const CURRENT_ACC = 14;
 const STICK_SIZES = [36, 46, 60];
 let STICK_R = 46;         // px the thumb travels for full speed (set from settings once loaded)

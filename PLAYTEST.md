@@ -22,7 +22,8 @@ Watch them play without explaining anything. Where they get confused is the most
 ## What to check
 
 ### First five minutes (levels 1–10)
-- [ ] Do they understand "tap to sing" and "slide to swim" without help?
+- [ ] Do they understand "slide to swim" and the Sing button without help?
+- [ ] Is it challenging by level 5? Too hard for younger players (try Relaxed mode)?
 - [ ] Does swimming feel quick and easy? Does Lumi ever catch on walls?
 - [ ] Is the music and sound pleasant? Too loud or too quiet?
 - [ ] Do they understand the 3 stars on the results screen?
@@ -32,14 +33,25 @@ Play the first level of each idea and note whether the picture card made it clea
 
 | Level | Idea | Check |
 | --- | --- | --- |
-| 11 | Light energy | Do they notice the bar and understand that lights refill it? |
-| 21 | Lost baby moths | Do they find the moth and understand that the portal is asleep until then? |
-| 41 | Rune stones | Do they realise they have to sing close to the stones? |
-| 61 | Gloomlings | Scary or fun? Fair? Can they escape? |
-| 65 | Quiet caves | Is the song limit clear? Too strict? |
-| 81 | Dark caves | Too hard? Would they use Guiding glow? |
-| 85 | Long climbs | Does the scrolling feel smooth? |
-| 101 | Races | Is the timer fair? Too tight or too loose? |
+| 3 | Light energy | Do they notice the bar and understand that lights refill it? |
+| 5 | Thornlings | Do they hear the rattle and sing to spot them? Is dodging fun or frustrating? |
+| 7 | Hushlings | Scary or fun? Fair? Can they escape? |
+| 9 | Lost baby moths and long songs | Do they find the moth? Do they discover holding the Sing button? |
+| 11 | Quiet caves | Is the song limit clear? Too strict? |
+| 13 | Rune stones | Do they realise they have to sing close to the stones? |
+| 15 | Dark caves | Too hard? Would they use Guiding glow? |
+| 17 | Big caves | Does the scrolling feel smooth? |
+| 19 | Races | Is the timer fair? Too tight or too loose? |
+| 21 | Snapvines | Do they notice the shiver before the lunge? |
+| 41 | Shardbats | Do they learn to sing, then move? |
+| 61 | Cinder Crabs | Is crossing during the pause satisfying? |
+| 81 | Frostwisps | Is being frozen fun or annoying? |
+| 101 | Jellyglows | Easy to read when they'll pass? |
+
+### Worlds and looks
+- [ ] Does each world feel different (decorations, creatures, colours, music)?
+- [ ] Does the cave look sharp up close on their phone, a second or two after a level starts?
+- [ ] Do they ever see past the edge of a cave?
 
 ### Difficulty
 For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), write down:
@@ -56,7 +68,20 @@ For a handful of levels in each world (try 5, 15, 25, 50, 75, 120, 200, 400), wr
 - [ ] Close the game in the middle of a level and reopen it. Is progress kept?
 - [ ] Copy the save code in Settings, erase progress, then restore it. Do the stars come back?
 
+### Lighting and looks
+- [ ] Does the rock look solid, with light falling on it from Lumi, crystals, lava and lanterns?
+- [ ] Do any plants, spikes, icicles or mushrooms float in the air instead of sitting on rock?
+- [ ] Do the creatures look like they belong in the cave (lit from Lumi's side, not like stickers)?
+- [ ] If the game feels slow, turn off lighting in Settings. Does it get smoother?
+
+### Story
+- [ ] Do the story pages and narration make you want to keep going? Is the narrator's voice OK on your phone?
+- [ ] Level 160: is singing to the Great Hush a good ending?
+
 ### Daily cave and rewards
+- [ ] Does today's cave card on the title screen make you want to play it? Is the twist clear?
+- [ ] Are the daily quests fun, and is glow worth earning for Lumi's home?
+- [ ] Share a daily result with a friend. Does their game show your score to beat?
 - [ ] Play the daily cave on two different days. Does the streak count up?
 - [ ] Do new looks and awards feel worth chasing?
 
@@ -77,5 +102,5 @@ Before each update, the automated tests check every level and the main features:
 ```
 npm install
 npm test            # about a minute
-npm test -- --all   # the robot plays all 1,000 levels (about 5 minutes)
+npm test -- --all   # the robot plays all 160 levels (about a minute)
 ```

@@ -41,7 +41,7 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  canvas { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  #game, #game3d { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
   button {
     font: inherit;
     color: inherit;
@@ -186,6 +186,34 @@
   #lightsPill { color: var(--gold); }
   #pingsPill small { color: var(--dim); font-size: 13px; }
 
+  /* The first time Lumi meets a creature: its name flashes up, unannounced. */
+  #encounter {
+    position: fixed;
+    left: 50%;
+    top: calc(118px + var(--top));
+    transform: translateX(-50%) scale(0.92);
+    width: max-content;
+    max-width: calc(100% - 32px);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s, transform 0.5s cubic-bezier(.2, 1.4, .4, 1);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+    z-index: 5;
+  }
+  #encounter.on { opacity: 1; transform: translateX(-50%) scale(1); }
+  #encounter small { display: block; font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: #ff9ad0; }
+  #encounter b { display: block; font-family: Cinzel, serif; font-weight: 600; font-size: 34px; color: var(--ink); margin: 2px 0 4px; }
+  #encounter span { display: block; font-size: 15px; color: var(--dim); }
+
+  /* The song puzzle's order, under the HUD. */
+  #chimeBar { position: fixed; top: calc(92px + var(--top)); left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 3; pointer-events: none; }
+  #chimeBar i { font-style: normal; font-size: 15px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: var(--c); background: rgba(10, 14, 32, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); opacity: 0.55; }
+  #chimeBar i.next { opacity: 1; border-color: var(--c); animation: chimePulse 1.4s ease-in-out infinite; }
+  #chimeBar i.rung { opacity: 1; background: var(--c); color: #0b1020; box-shadow: 0 0 12px var(--c); }
+  @keyframes chimePulse { 50% { box-shadow: 0 0 14px var(--c); } }
+  #chimeBar:not(.on) { display: none; }
+
   #hint {
     position: fixed;
     left: 50%;
@@ -307,8 +335,31 @@
   #energy.low i { background: linear-gradient(90deg, #ff6f8f, #ffb3c4); box-shadow: 0 0 10px #ff6f8f; animation: blink 0.8s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: 0.45; } }
 
+  /* Today's daily cave, on the title screen */
+  .today { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 12px; border-radius: 20px; text-align: left; color: var(--ink); border: 1px solid rgba(255, 211, 110, 0.35); }
+  .today.done { border-color: var(--line); opacity: 0.85; }
+  .today-ico { font-size: 26px; }
+  .today-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .today-main b { font-weight: 600; font-size: 15px; }
+  .today-main small, .today-side small { font-size: 12px; color: var(--dim); }
+  .today-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; }
+  .today-side b { color: var(--gold); font-weight: 600; }
+  .week-link { display: block; margin: -4px auto 12px; font-size: 13px; color: var(--dim); }
+  .share-result { margin: 4px 0 10px; border-color: rgba(255, 211, 110, 0.45); }
+  /* Lumi's home */
+  .home-scene svg { width: 100%; height: auto; border-radius: 18px; display: block; border: 1px solid var(--line); }
+  .wallet { margin: 10px 0 4px; color: var(--dim); font-size: 14px; }
+  .wallet b { color: var(--gold); }
+  .quests { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 14px; }
+  .quests li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+  .quests li.done { color: var(--dim); }
+  .shop { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .shop-item { display: flex; justify-content: space-between; gap: 6px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); color: var(--ink); font-size: 13px; text-align: left; }
+  .shop-item span:last-child { color: var(--gold); white-space: nowrap; }
+  .shop-item.owned { opacity: 0.6; }
+
   /* Toasts */
-  #toasts { position: fixed; bottom: calc(110px + var(--bottom)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
+  #toasts { position: fixed; top: calc(64px + var(--top)); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
   .toast { padding: 10px 16px; border-radius: 16px; background: rgba(14, 20, 44, 0.94); border: 1px solid rgba(255, 211, 110, 0.45); color: var(--ink); font-size: 15px; box-shadow: 0 6px 30px rgba(0,0,0,0.5); animation: toast 2.6s ease forwards; max-width: 100%; }
   .toast b { color: var(--gold); font-weight: 600; }
   @keyframes toast { 0% { opacity: 0; transform: translateY(10px); } 10%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(6px); } }
@@ -333,6 +384,15 @@
   .award .ds { font-size: 13px; color: var(--dim); }
   .award .bar { grid-column: 2; height: 5px; border-radius: 9px; background: rgba(255,255,255,0.08); overflow: hidden; }
   .award .bar i { display: block; height: 100%; background: var(--gold); }
+  .set-group { background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(126, 232, 255, 0.1); border-radius: 18px; padding: 4px 14px 6px; margin-bottom: 12px; text-align: left; }
+  .set-group h3 { margin: 10px 0 2px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); opacity: 0.8; }
+  .set-group .set:last-of-type { border-bottom: 0; }
+  details.backup { padding: 10px 0; }
+  details.backup summary { cursor: pointer; font-size: 16px; list-style: none; display: flex; justify-content: space-between; }
+  details.backup summary::after { content: "›"; color: var(--dim); transition: transform 0.2s; }
+  details.backup[open] summary::after { transform: rotate(90deg); }
+  details.backup label { display: block; margin: 8px 0; color: var(--dim); font-size: 14px; }
+  .set-group .btn.danger { margin: 6px 0 8px; width: 100%; }
   .set { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
   .set label { font-size: 16px; }
   .set small { display: block; color: var(--dim); font-size: 13px; }
@@ -345,6 +405,40 @@
   .seg button { padding: 7px 11px; font-size: 14px; color: var(--dim); }
   .seg button[aria-pressed=true] { background: rgba(126, 232, 255, 0.2); color: var(--ink); }
   [hidden] { display: none !important; }
+  #singBtn { position: fixed; bottom: calc(26px + var(--bottom)); right: calc(22px + env(safe-area-inset-right, 0px)); width: 76px; height: 76px; border-radius: 50%;
+    font-size: 32px; color: #0a1a2e; background: radial-gradient(circle at 40% 35%, #ffffff, #bfeaff 70%); box-shadow: 0 8px 26px rgba(0,0,0,0.45), 0 0 30px rgba(126,232,255,0.35); touch-action: none; z-index: 5; }
+  #singBtn:active { transform: scale(0.94); }
+  body.sing-on #hint { max-width: calc(100% - 150px); left: calc(50% - 46px); }
+  body.sing-on.left-hand #hint { left: calc(50% + 46px); }
+  /* The flare button sits above the Sing button (or in its place with slide controls) and fills
+     back up as it recharges. */
+  #flareBtn { position: fixed; bottom: calc(118px + var(--bottom)); right: calc(32px + env(safe-area-inset-right, 0px)); width: 56px; height: 56px; border-radius: 50%;
+    font-size: 26px; color: #fff6d6; z-index: 4; border: 1px solid rgba(255, 220, 140, 0.4);
+    background: conic-gradient(rgba(255, 211, 110, 0.18) calc((1 - var(--cd, 0)) * 360deg), rgba(10, 14, 32, 0.75) 0); }
+  #flareBtn.ready { box-shadow: 0 0 22px rgba(255, 211, 110, 0.55); border-color: rgba(255, 230, 160, 0.8); }
+  #flareBtn:active { transform: scale(0.92); }
+  body:not(.sing-on) #flareBtn { bottom: calc(30px + var(--bottom)); right: calc(26px + env(safe-area-inset-right, 0px)); width: 64px; height: 64px; }
+  body.left-hand #flareBtn { right: auto; left: calc(32px + env(safe-area-inset-left, 0px)); }
+  body.left-hand:not(.sing-on) #flareBtn { left: calc(26px + env(safe-area-inset-left, 0px)); }
+  body.left-hand #singBtn { right: auto; left: calc(22px + env(safe-area-inset-left, 0px)); }
+  body.big-text .panel, body.big-text #hint, body.big-text .title-actions, body.big-text .hero, body.big-text #levelCard, body.big-text .challenge-list { zoom: 1.15; }
+  body.big-text #hud { zoom: 1.1; }
+  .challenge-list { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 10px; }
+  .challenge { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 16px; border-radius: 18px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); text-align: left; }
+  .challenge:active { transform: scale(0.98); }
+  .ch-name { font-family: "Cinzel", Georgia, serif; font-size: 19px; }
+  .ch-info { font-size: 14px; color: var(--dim); }
+  .map-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 8px; }
+  #resultMapImg { border-radius: 10px; background: rgba(0, 0, 0, 0.25); max-width: 100%; -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
+  .tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
+  .tabs button { padding: 8px 18px; border-radius: 99px; font-size: 17px; color: var(--dim); border: 1px solid transparent; }
+  .tabs button[aria-selected=true] { color: var(--ink); background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
+  .looks-head { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 20px; margin: 22px 0 0; }
+  .journal-h { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 18px; margin: 4px 0 10px; text-align: left; }
+  .family { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 6px; }
+  .family span { aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.06); border: 1px dashed rgba(255, 255, 255, 0.18); }
+  .family span.got { background: radial-gradient(circle at 40% 35%, #fff, #ffd1ea 60%, #ff9fcf); border: 0; box-shadow: 0 0 10px rgba(255, 150, 200, 0.6); }
+  .journal-note { color: var(--dim); font-size: 13px; text-align: left; margin: 0 0 18px; }
   /* The level's name, shown for a moment as each cave fades in. */
   #levelCard { position: fixed; left: 0; right: 0; top: 38%; text-align: center; pointer-events: none; opacity: 0; padding: 0 16px; }
   #levelCard.on { animation: levelCard 2.4s ease both; }
@@ -358,12 +452,96 @@
   .pause-goal { margin: 12px 0 18px; padding: 10px 12px; border-radius: 14px; background: rgba(126, 232, 255, 0.07); color: var(--ink); font-size: 15px; }
   .story-num { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--world, var(--cyan)); }
   .story-name { font-family: "Cinzel", Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: 0.08em; margin: 8px 0 18px; text-wrap: balance; }
-  .story-text { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 22px; line-height: 1.45; color: #d4def0; max-width: 30ch; margin: 0 auto 28px; text-wrap: pretty; }
+  .story-text { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 21px; line-height: 1.42; color: #d4def0; max-width: 30ch; margin: 0 auto 14px; text-wrap: pretty; min-height: 4.2em; }
+  .story-art { width: min(340px, 100%); margin: 0 auto 16px; }
+  .story-art svg { width: 100%; height: auto; display: block; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 0 40px rgba(0, 0, 0, 0.5); }
+  .story-name { margin-bottom: 12px !important; }
+  .story-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+  .story-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+  .story-dots i.on { background: var(--world, var(--cyan)); }
+  .lullaby { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 17px; line-height: 1.35; color: #e9e2ff; margin: 8px 0 14px; }
+  .lullaby p { margin: 0 0 4px; }
+  .lullaby .missing { color: var(--dim); opacity: 0.6; }
+  .lullaby b { font-family: Fredoka, sans-serif; font-style: normal; font-size: 12px; font-weight: 500; color: var(--gold); letter-spacing: 0.06em; margin-right: 4px; }
   .backup { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
   .backup textarea { width: 100%; min-height: 64px; resize: vertical; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.3); color: var(--ink); font: 12px ui-monospace, Menlo, monospace; padding: 8px; touch-action: auto; user-select: text; -webkit-user-select: text; }
   .backup .row { width: 100%; }
   .backup .row .btn { font-size: 15px; padding: 10px 6px; }
   .danger { color: #ff9fb8; border-color: rgba(255, 159, 184, 0.45); background: rgba(255, 159, 184, 0.08); font-size: 16px; margin-top: 16px; }
+  /* The core game: the daily cave, home, quests and awards wait until the core is fun. */
+  body:not(.core-done) #todayCard, body:not(.core-done) #weekLink, #homeBtn, #awardsBtn { display: none !important; }
+  /* Pebbles: a small round button above the flare. */
+  #pebbleBtn { position: fixed; bottom: calc(190px + var(--bottom)); right: calc(36px + env(safe-area-inset-right, 0px)); width: 50px; height: 50px; border-radius: 50%; z-index: 6;
+    background: rgba(14, 22, 44, 0.6); border: 1px solid rgba(180, 220, 255, 0.45); color: #dff2ff; display: grid; place-items: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #pebbleBtn[hidden] { display: none; }
+  #pebbleBtn i { width: 16px; height: 13px; border-radius: 50% 55% 45% 50%; background: radial-gradient(circle at 35% 35%, #eaf4ff, #8aa0bc); box-shadow: 0 0 10px rgba(126, 232, 255, 0.5); }
+  #pebbleBtn b { position: absolute; right: -2px; top: -2px; min-width: 20px; height: 20px; border-radius: 10px; background: #7ee8ff; color: #062033; font-size: 12px; display: grid; place-items: center; }
+  #pebbleBtn.empty { opacity: 0.4; }
+  #pebbleBtn.aiming { border-color: #bff4ff; box-shadow: 0 0 22px rgba(126, 232, 255, 0.7); background: rgba(40, 80, 120, 0.7); }
+  #pebbleBtn:active { transform: scale(0.92); }
+  body:not(.sing-on) #pebbleBtn { bottom: calc(108px + var(--bottom)); }
+  body.left-hand #pebbleBtn { right: auto; left: calc(36px + env(safe-area-inset-left, 0px)); }
+
+  /* ---------- The title, reworked: a quiet film shot ----------
+     The camera drifts low around Lumi in the cave. The name sits high, the cave and Lumi
+     fill the middle, and Play and three small links rest at the bottom. Tap the cave and
+     Lumi sings. */
+  #titleScreen { background: linear-gradient(rgba(2, 3, 9, 0.92), rgba(2, 3, 9, 0.25) 30%, rgba(2, 3, 9, 0) 45%, rgba(2, 3, 9, 0) 62%, rgba(2, 3, 9, 0.9) 88%); }
+  #titleScreen .title-bar { visibility: hidden; }
+  #titleScreen .hero { margin-top: 2vh; gap: 10px; }
+  #titleScreen .divider, #titleScreen .ripple { display: none; }
+  #titleScreen .logo { font-size: clamp(56px, 18vw, 96px); text-shadow: 0 0 40px rgba(126, 232, 255, 0.45), 0 0 90px rgba(126, 232, 255, 0.2); animation: logoBreath 6s ease-in-out infinite; }
+  @keyframes logoBreath { 50% { text-shadow: 0 0 60px rgba(126, 232, 255, 0.6), 0 0 120px rgba(126, 232, 255, 0.3); } }
+  #titleScreen .tagline { font-size: 19px; color: #9fb3d4; letter-spacing: 0.02em; }
+  #titleScreen .title-actions { gap: 20px; }
+  #titleScreen .play { background: rgba(126, 232, 255, 0.1); color: #eef9ff; border: 1px solid rgba(160, 238, 255, 0.55); box-shadow: 0 0 30px rgba(126, 232, 255, 0.22), inset 0 0 24px rgba(126, 232, 255, 0.12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 15px 20px 14px; }
+  #titleScreen .play-label { font-family: "Cinzel", Georgia, serif; font-size: 22px; letter-spacing: 0.22em; margin-right: -0.22em; font-weight: 500; }
+  #titleScreen .play-sub { color: #8fb0cf; }
+  #titleScreen .dock { background: none; border: none; backdrop-filter: none; -webkit-backdrop-filter: none; width: min(300px, 100%); padding: 0; }
+  #titleScreen .dock button { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8aa0c2; gap: 6px; }
+  #titleScreen .dock svg { width: 21px; height: 21px; opacity: 0.85; }
+  #titleScreen .tap-sing { font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 15px; color: rgba(180, 200, 230, 0.45); margin: 0; }
+
+  /* ---------- The story, reworked: told like a film ----------
+     No boxes or cartoons: the cave itself is the picture, with light, eyes and echoes
+     drawn over it. Words fade in one by one; tap anywhere to go on. */
+  #storyScreen { background: radial-gradient(ellipse at 50% 45%, rgba(2, 3, 9, 0.15), rgba(2, 3, 9, 0.75) 70%, rgba(2, 3, 9, 0.95)); justify-content: flex-end; padding-bottom: calc(34px + var(--bottom)); cursor: pointer; }
+  .story-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .story-fx i { position: absolute; display: block; }
+  .fx-warm { left: 50%; top: 42%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; border-radius: 50%; background: radial-gradient(circle, rgba(255, 210, 140, 0.5), rgba(255, 170, 90, 0.12) 25%, transparent 50%); animation: fxPulse 5s ease-in-out infinite; }
+  .fx-gold { left: 50%; top: 40%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; border-radius: 50%; background: radial-gradient(circle, rgba(255, 230, 160, 0.85), rgba(255, 190, 100, 0.35) 22%, transparent 55%); animation: fxGrow 6s ease-out both; }
+  .fx-eyes { width: 26px; height: 8px; animation: fxBlink 4s infinite, fxIn 2s ease both; }
+  .fx-eyes::before, .fx-eyes::after { content: ""; position: absolute; top: 0; width: 9px; height: 5px; border-radius: 50%; background: #ff9ad0; box-shadow: 0 0 10px #ff6ab8, 0 0 22px rgba(255, 106, 184, 0.6); }
+  .fx-eyes::before { left: 0; } .fx-eyes::after { right: 0; }
+  .fx-eyes.big { width: 120px; height: 30px; }
+  .fx-eyes.lurk { width: 30px; height: 30px; }
+  .fx-eyes.lurk::after { display: none; }
+  .fx-eyes.lurk::before { left: 0; width: 30px; height: 30px; background: radial-gradient(circle, #fff6c8 15%, #ffd36e 35%, #b87a10 70%); box-shadow: 0 0 24px #ffc94d, 0 0 60px rgba(255, 201, 77, 0.5); }
+  .fx-eyes.big::before, .fx-eyes.big::after { width: 40px; height: 16px; background: #c9a8ff; box-shadow: 0 0 30px #a070ff, 0 0 80px rgba(160, 112, 255, 0.6); }
+  .fx-ring { left: 50%; top: 46%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 1.5px solid rgba(160, 238, 255, 0.7); animation: fxRing 3.6s ease-out infinite; opacity: 0; }
+  .fx-dot { width: 4px; height: 4px; border-radius: 50%; background: #fff1a8; box-shadow: 0 0 8px #ffd36e; animation: fxRise 7s linear infinite; }
+  .fx-star { width: 2px; height: 2px; border-radius: 50%; background: #fff; animation: fxTwinkle 3s ease-in-out infinite; }
+  @keyframes fxPulse { 50% { opacity: 0.6; transform: scale(1.06); } }
+  @keyframes fxGrow { from { opacity: 0; transform: scale(0.3); } }
+  @keyframes fxIn { from { opacity: 0; } }
+  @keyframes fxBlink { 0%, 46%, 50%, 100% { transform: scaleY(1); } 48% { transform: scaleY(0.1); } }
+  @keyframes fxRing { 0% { transform: scale(0.3); opacity: 0.9; } 100% { transform: scale(9); opacity: 0; } }
+  @keyframes fxRise { from { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(-60vh); opacity: 0; } }
+  @keyframes fxTwinkle { 50% { opacity: 0.2; } }
+  #storyScreen .story-name { position: absolute; left: 0; right: 0; top: calc(16vh + var(--top)); margin: 0; font-size: 34px; letter-spacing: 0.14em; color: #eef8ff; text-shadow: 0 0 30px rgba(126, 232, 255, 0.4); transition: opacity 1.2s; }
+  #storyScreen .story-name.gone { opacity: 0; }
+  #storyScreen .story-text { position: relative; font-size: 24px; line-height: 1.45; color: #e2eaf8; max-width: 26ch; min-height: 0; margin: 0 auto 26px; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9); }
+  .story-text span { opacity: 0; animation: wordIn 0.7s ease forwards; }
+  .story-text.all span { animation: none; opacity: 1; }
+  @keyframes wordIn { from { opacity: 0; filter: blur(4px); } to { opacity: 1; filter: none; } }
+  .story-foot { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+  #storyScreen .story-dots { margin: 0; }
+  #storyScreen .story-dots i { width: 5px; height: 5px; background: rgba(255, 255, 255, 0.2); }
+  #storyScreen .story-dots i.on { background: rgba(200, 240, 255, 0.85); }
+  .story-tap { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(200, 220, 245, 0.55); animation: tapPulse 2.4s ease-in-out infinite; }
+  @keyframes tapPulse { 50% { opacity: 0.35; } }
+  .story-skip { position: absolute; top: calc(14px + var(--top)); right: 16px; padding: 10px 14px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(200, 220, 245, 0.55); }
+  @media (prefers-reduced-motion: reduce) { .story-fx i, .story-text span, #titleScreen .logo { animation: none !important; opacity: 1; } }
 </style>
 </head>
 <body>
@@ -377,7 +555,12 @@
   <button class="pill icon-btn" id="muteBtn" aria-label="Mute">🔊</button>
 </div>
 <div id="energy" aria-hidden="true"><i></i></div>
+<div id="chimeBar" hidden aria-label="Chimes to ring, in order"></div>
 <div id="hint"></div>
+<div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
+<button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
+<button id="flareBtn" aria-label="Flare: burst your light" hidden>✦</button>
+<button id="pebbleBtn" aria-label="Throw a pebble" hidden><i></i><b>3</b></button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
 
@@ -396,10 +579,13 @@
   </div>
   <div class="title-actions">
     <div class="title-meta" id="titleMeta"></div>
+    <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
+    <button class="link week-link" id="weekLink">This week's cave ›</button>
+    <p class="tap-sing">Tap the dark to sing</p>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
     <nav class="dock glass" aria-label="Menu">
       <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
-      <button id="dailyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>Daily<i class="dot" id="dailyDot" hidden></i></button>
+      <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
       <button id="settingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</button>
@@ -440,6 +626,8 @@
     <div class="stars" id="resultStars"><span>★</span><span>★</span><span>★</span></div>
     <div class="newbest" id="newBest"></div>
     <div class="unlock" id="unlockMsg"></div>
+    <div class="map-wrap"><canvas id="resultMap" hidden></canvas><img id="resultMapImg" alt="Map of the route Lumi swam"><button class="link" id="shareMapBtn">Share map</button></div>
+    <button class="btn share-result" id="shareResultBtn" hidden>Share result · challenge a friend</button>
     <ul class="goals">
       <li id="goal1"><span>Reach the portal</span><span id="g1v"></span></li>
       <li id="goal2"><span>Find every light</span><span id="g2v"></span></li>
@@ -453,11 +641,25 @@
   </div>
 </div>
 
-<div class="screen dim-bg" id="storyScreen">
-  <div class="story-num" id="storyNum"></div>
+<div class="screen" id="storyScreen">
+  <div class="story-fx" id="storyFx"></div>
+  <button class="story-skip" id="storySkip">Skip</button>
   <h2 class="story-name" id="storyName"></h2>
   <p class="story-text" id="storyText"></p>
-  <button class="btn main" id="storyGo">Begin</button>
+  <div class="story-foot"><div class="story-dots" id="storyDots"></div><span class="story-tap" id="storyGo">Tap to continue</span></div>
+  <div id="storyNum" hidden></div><div id="storyArt" hidden></div>
+</div>
+
+<div class="screen dim-bg" id="challengeScreen">
+  <div class="panel">
+    <h2>Challenges</h2>
+    <p class="sub">Caves that are the same for everyone in the world.</p>
+    <div class="challenge-list">
+      <button class="challenge" id="playDaily"><span class="ch-name">Daily cave</span><span class="ch-info" id="dailyInfo"></span></button>
+      <button class="challenge" id="playWeekly"><span class="ch-name">Weekly cave</span><span class="ch-info" id="weeklyInfo"></span></button>
+    </div>
+    <button class="btn" id="challengesBack">Back</button>
+  </div>
 </div>
 
 <div class="screen dim-bg" id="cardScreen">
@@ -480,20 +682,49 @@
   </div>
 </div>
 
+<div class="screen dim-bg" id="homeScreen">
+  <div class="panel tall">
+    <h2>Lumi's home</h2>
+    <p class="sub" id="homeSub"></p>
+    <div class="scroll">
+      <div class="home-scene" id="homeScene"></div>
+      <p class="wallet" id="homeWallet"></p>
+      <h3 class="looks-head">Today's quests</h3>
+      <ul class="quests" id="homeQuests"></ul>
+      <h3 class="looks-head">Make it cosy</h3>
+      <div class="shop" id="homeShop"></div>
+    </div>
+    <button class="btn" id="homeBack">Done</button>
+  </div>
+</div>
+
+<div class="screen dim-bg" id="installScreen">
+  <div class="panel">
+    <div class="story-num">Keep Lumi close</div>
+    <h2>Add Echo to your home screen</h2>
+    <p class="sub card-text" id="installText"></p>
+    <button class="btn main" id="installGo">Add Echo</button>
+    <button class="btn" id="installLater">Maybe later</button>
+  </div>
+</div>
+
 <div class="screen dim-bg" id="looksScreen">
   <div class="panel tall">
     <h2>Lumi's looks</h2>
     <p class="sub">Collect stars to unlock new colours.</p>
-    <div class="scroll"><div class="looks" id="looksGrid"></div></div>
+    <div class="scroll"><div class="looks" id="looksGrid"></div>
+      <h3 class="looks-head">Accessories</h3>
+      <p class="sub">Earn awards to unlock them.</p>
+      <div class="looks" id="hatsGrid"></div></div>
     <button class="btn" id="looksBack">Done</button>
   </div>
 </div>
 
 <div class="screen dim-bg" id="awardsScreen">
   <div class="panel tall">
-    <h2>Awards</h2>
+    <div class="tabs" role="tablist"><button role="tab" id="tabAwards" aria-selected="true">Awards</button><button role="tab" id="tabJournal" aria-selected="false">Journal</button></div>
     <p class="sub" id="awardsCount"></p>
-    <div class="scroll"><ul class="awards" id="awardsList"></ul></div>
+    <div class="scroll"><ul class="awards" id="awardsList"></ul><div id="journal" hidden></div></div>
     <button class="btn" id="awardsBack">Done</button>
   </div>
 </div>
@@ -502,22 +733,37 @@
   <div class="panel tall">
     <h2 id="settingsTitle">Settings</h2>
     <div class="scroll">
+      <section class="set-group"><h3>Sound</h3>
       <div class="set"><label for="setMusic">Music</label><input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
       <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
       <div class="set"><label>Vibration<small>On phones that support it</small></label><button class="toggle" id="setVibrate" aria-label="Vibration"></button></div>
+      </section>
+      <section class="set-group"><h3>Controls</h3>
+      <div class="set"><label>Controls<small>How you swim and sing</small></label><div class="seg" id="setControls"><button data-v="dual">Button</button><button data-v="stick">Slide</button><button data-v="tap">Tap</button></div></div>
+      <div class="set" id="handRow"><label>Sing button</label><div class="seg" id="setHand"><button data-v="left">Left</button><button data-v="right">Right</button></div></div>
       <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
-      <div class="set"><label>Relaxed mode<small>No light energy, Gloomlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
-      <div class="set"><label>Guiding glow<small>Lights and the portal always glow a little, even in dark caves</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
+      </section>
+      <section class="set-group"><h3>Look &amp; comfort</h3>
+      <div class="set"><label>3D view<small>The caves in 3D. Turn off for the classic flat view</small></label><button class="toggle" id="setView3d" aria-label="3D view"></button></div>
+      <div class="set"><label>Lighting<small>Light and shadow on the rock. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
+      <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
+      <div class="set"><label>Guiding glow<small>Lights, the portal and creatures show a little even before your song finds them</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
+      </section>
+      <section class="set-group"><h3>Play style</h3>
+      <div class="set"><label>Relaxed mode<small>No light energy, Hushlings or race timers. Great for young players</small></label><button class="toggle" id="setRelaxed" aria-label="Relaxed mode"></button></div>
       <div class="set" id="testRow" hidden><label>Unlock all levels<small>For testing. Stars still count normally</small></label><button class="toggle" id="setUnlockAll" aria-label="Unlock all levels"></button></div>
-      <div class="backup">
+      </section>
+      <section class="set-group"><h3>Your progress</h3>
+      <details class="backup"><summary>Back up or move your progress</summary>
         <label for="saveCode">Back up progress<small>Copy this code somewhere safe. Paste it here on any phone to bring your stars back.</small></label>
         <textarea id="saveCode" spellcheck="false" autocomplete="off"></textarea>
         <div class="row"><button class="btn" id="copyCode">Copy code</button><button class="btn" id="restoreCode">Restore</button></div>
-      </div>
+      </details>
       <button class="btn danger" id="setReset">Erase all progress</button>
+      </section>
     </div>
-    <button class="btn" id="settingsBack">Done</button>
+    <button class="btn main" id="settingsBack">Done</button>
   </div>
 </div>
 
@@ -525,8 +771,21 @@
 <script src="echo/save.js"></script>
 <script src="echo/audio.js"></script>
 <script src="echo/render.js"></script>
+<script src="echo/decor.js"></script>
+<script src="echo/gl.js"></script>
 <script src="echo/game.js"></script>
+<script src="echo/mobs.js"></script>
 <script src="echo/draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="echo/r3d.js"></script>
+<script src="echo/story.js"></script>
+<script src="echo/meta.js"></script>
 <script src="echo/ui.js"></script>
 </body>
 </html>
