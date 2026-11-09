@@ -47,8 +47,6 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
 
 // Runs the game's own update loop many times in one go (no waiting for real time).
 const SIM = `
-  window.cardLevel = c => INTRO_LEVELS.find(i => INTRO[i].card === c);
-  window.named = n => Object.keys(INTRO).map(Number).find(i => INTRO[i].name === n);
   window.__sim = (seconds, each) => {
     const steps = Math.round(seconds * 60);
     for (let k = 0; k < steps; k++) {
@@ -222,6 +220,14 @@ const SIM = `
       Object.assign(L.lumi, { x: 5.5, y: 13.5, look: -Math.PI / 2 }); throwPebble(); __sim(1);
       const pb = L.gloom.find(q => q.hunt > 0);
       out.pebbleClattersAndIsHeard = L.pebblesLeft === 2 && !!pb && pb.ly < 12 && Math.abs(pb.lx - 5.5) < 0.01;
+      out.noFlareInTheCore = !flareReady();
+      startLevel(5, true); Object.assign(L.lumi, { x: 5.5, y: 10.5 }); L.aiming = true;
+      const tgt = [7.5, 8.5], scr = window.R3D && save.settings.view3d !== false ? null : [OX + tgt[0] * TS, OY + tgt[1] * TS];
+      if (scr) throwPebbleAt(scr[0], scr[1]); else throwPebble(Math.atan2(tgt[1] - 10.5, tgt[0] - 5.5), Math.hypot(2, 2));
+      __sim(1);
+      out.aimedPebbleLandsWhereTapped = L.pebblesLeft === 2 && !L.aiming;
+      startLevel(DAILY, true);
+      out.dailyCaveIsBuiltFromRoomsWithPebbles = L.pebblesLeft === 3 && getLevel(DAILY).map.length >= 30 && /[gu]/.test(getLevel(DAILY).map.join(""));
       // Lurkers: deaf, but they see Lumi's light; sneaking keeps it small.
       const watch = sneak => {
         startLevel(12, true);
@@ -323,7 +329,7 @@ const SIM = `
       renderHats(); out.accessories = document.querySelectorAll("#hatsGrid .look").length === HATS.length;
       // Daily ritual: today's card, its twist, quests, Lumi's home and the shared result.
       renderTitle(); out.todayCardShowsTheTwist = document.getElementById("todayName").textContent.includes(twistFor().name);
-      out.dailyCaveHasTodaysTwist = getLevel(DAILY).twist === twistFor().id && getLevel(DAILY).map.length === 18;
+      out.dailyCaveHasTodaysTwist = getLevel(DAILY).twist === twistFor().id && getLevel(DAILY).map.length === 31;
       out.threeDistinctQuestsToday = new Set(todayQuests().map(q => q.id)).size === 3;
       save.glow = 100; renderHome(); show("home");
       out.homeShows = on("homeScreen") && document.querySelectorAll("#homeShop .shop-item").length === HOME_ITEMS.length && document.querySelectorAll("#homeQuests li").length === 3;

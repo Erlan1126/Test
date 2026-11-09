@@ -133,7 +133,7 @@ const CARDS = {
     art: `<g transform="translate(112 58)">${LUMI_SVG}</g><path d="M90 50h-14M92 60h-20M90 70h-14" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/><g transform="translate(46 60) scale(1.5)"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".6"/><ellipse cx="-6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/><ellipse cx="6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/></g>` },
   chimes: { title: "Chimes", text: "Every cave from now on hides chime stones. The marks at the top show the order: ring them by swimming into them, one after another, and the sealed portal opens.",
     art: `<g transform="translate(40 58)">${LUMI_SVG}</g><g font-size="16" text-anchor="middle"><text x="84" y="40" fill="#7ee8ff">●</text><text x="106" y="40" fill="#c9a8ff">◆</text><text x="128" y="40" fill="#ffd36e">▲</text></g><g transform="translate(84 76)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#7ee8ff"/></g><g transform="translate(118 80)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#c9a8ff" opacity=".6"/></g><path d="M54 62q14-10 26 6" stroke="#8ea3c8" stroke-dasharray="2 4" fill="none"/>` },
-  pebbles: { title: "Pebbles", text: "From now on Lumi carries three pebbles. Tap the pebble button to throw one the way Lumi is facing. It clatters where it lands, and every Hushling that hears it goes to look. Use them to clear the way.",
+  pebbles: { title: "Pebbles", text: "From now on Lumi carries three pebbles. Tap the pebble button, then tap where it should land. It clatters where it lands, and every Hushling that hears it goes to look. Use them to clear the way.",
     art: `<g transform="translate(32 70)">${LUMI_SVG}</g><path d="M44 58Q80 8 116 62" fill="none" stroke="#bfe8ff" stroke-width="1.6" stroke-dasharray="3 4" opacity=".8"/><circle cx="118" cy="66" r="4" fill="#dff2ff"/><g stroke="#bfe8ff" stroke-width="1.4" opacity=".8"><path d="M108 58l-5-4M128 58l5-4M118 54v-6"/></g><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/><text x="0" y="-8" font-size="12" text-anchor="middle" fill="#d2beff" font-weight="700">?</text></g>` },
   flare: { title: "Flare", text: "Tap the ✦ button to burst your light. Creatures close by are dazzled, and Hushlings shrink back and stop chasing. It needs a few seconds to recharge.",
     art: `<g transform="translate(70 58)"><circle r="40" fill="url(#cardGold)" opacity=".55"/><circle r="30" fill="none" stroke="#fff6d6" stroke-width="2"/>${LUMI_SVG}</g><g transform="translate(132 50) scale(.9)" opacity=".8"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><path d="M-9-5l6 2M9-5l-6 2" stroke="#c9a8ff" stroke-width="1.6" stroke-linecap="round"/></g><path d="M112 36l-6-6M116 70l-7 5" stroke="#fff6d6" stroke-width="2" stroke-linecap="round"/>` },
@@ -186,8 +186,7 @@ const CREATURE_CARDS = new Set(Object.values(CREATURES));
 
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = CORE ? [i >= PEBBLE_FROM && "pebbles", i >= FLARE_FROM && "flare", i >= 8 && "long"] : [def.card, def.goal === "relight" && "relight", def.goal === "escape" && "escape", i >= CHIMES_FROM && i !== STORY_FINALE && m.match(/[1-4]/) && "chimes", i >= FLARE_FROM && "flare", i >= 8 && "long", def.map.join("").includes("t") && "thorns", ...[..."nakwj"].map(k => m.includes(k) && "mob" + k), m.includes("W") && "echo", m.includes("B") && "boss", m.includes("f") && "family",
-    def.map[0].length > 11 && "tall"];
+  const wants = [i >= PEBBLE_FROM && "pebbles", i >= 8 && "long"];
   return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
 }
 
@@ -804,7 +803,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-window.__echo = { LEVELS, TOTAL, DAILY, WEEKLY, getLevel, get L() { return L; }, get screen() { return screen; }, save, startLevel, ping, finish };
+window.__echo = { LEVELS: CORE_LEVELS, TOTAL, DAILY, WEEKLY, getLevel, get L() { return L; }, get screen() { return screen; }, save, startLevel, ping, finish };
 
 resize();
 applyLayoutPrefs();

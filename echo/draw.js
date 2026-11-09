@@ -266,6 +266,8 @@ function drawThings() {
   // The ghost of your best run.
   const gh = ghostAt();
   if (gh) { ctx.globalAlpha = 0.28; ctx.fillStyle = "#cfefff"; ctx.beginPath(); ctx.arc(sx(gh[0]), sy(gh[1]), TS * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+  // Aiming a pebble: a ring shows how far it can fly.
+  if (L.aiming) { ctx.strokeStyle = "rgba(190,240,255,0.45)"; ctx.lineWidth = 2; ctx.setLineDash([TS * 0.12, TS * 0.18]); ctx.beginPath(); ctx.arc(sx(L.lumi.x), sy(L.lumi.y), TS * 6, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
   // Pebbles in flight.
   for (const pb of L.pebbles) {
     const k = Math.min(1, pb.t / pb.dur), X = sx(pb.x0 + (pb.x1 - pb.x0) * k), Y = sy(pb.y0 + (pb.y1 - pb.y0) * k) - Math.sin(Math.PI * k) * TS * 0.8;
@@ -1019,7 +1021,11 @@ function drawTitle(dt) {
 
 // ---------- Loop ----------
 let last = performance.now();
-let bloomOn = true;
+// Phones with few cores or little memory start light: no bloom (and so no shadows), a lower
+// resolution; the adaptive check below still steps down further if frames run slow.
+const modestPhone = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 3;
+let bloomOn = !modestPhone;
+if (modestPhone) qualityCap = 1.5;
 function frame(now) {
   const raw = (now - last) / 1000;
   const dt = Math.max(0, Math.min(1 / 30, raw));

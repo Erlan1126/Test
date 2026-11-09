@@ -736,6 +736,9 @@ const R3D = (() => {
       const s = ALERT(ak++); s.material.map = g.alert === "!" ? ALERT_X : ALERT_Q; s.material.depthTest = false; s.renderOrder = 60;
       s.material.opacity = Math.min(1, g.alertT * 2); s.position.set(g.x, (g.big ? 2.9 : 2.0) + (1 - Math.min(1, g.alertT)) * 0.2, g.y);
     }
+    // Aiming a pebble: a ring shows how far it can fly.
+    const AIM = pool("aim", () => { const m = new T.Mesh(new T.RingGeometry(0.985, 1, 128), new T.MeshBasicMaterial({ color: 0xbff4ff, transparent: true, opacity: 0.5, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
+    if (L.aiming) { const m = AIM(0); m.position.set(lumi.x, 0.06, lumi.y); m.scale.setScalar(6); }
     // Lumi's noise: a faint ring shows how far a fast swim or a bump can be heard.
     const NOISE = pool("noise", () => { const m = new T.Mesh(new T.RingGeometry(0.97, 1, 64), new T.MeshBasicMaterial({ color: 0xffbedc, transparent: true, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
     if (CORE && L.noisy > 0 && !L.demo) { const m = NOISE(0); m.position.set(lumi.x, 0.05, lumi.y); m.scale.setScalar(2.6 * (1.1 - L.noisy * 0.2)); m.material.opacity = Math.min(0.7, L.noisy * 1.2); }
@@ -918,6 +921,13 @@ const R3D = (() => {
   }
   return {
     get ok() { return true; },
+    // Where a point on the screen falls on the cave floor.
+    toCave(px, py) {
+      const rc = view.getBoundingClientRect(), ray = new T.Raycaster();
+      ray.setFromCamera(new T.Vector2(((px - rc.left) / rc.width) * 2 - 1, -((py - rc.top) / rc.height) * 2 + 1), camera);
+      const hit = new T.Vector3();
+      return ray.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), hit) ? [hit.x, hit.z] : null;
+    },
     canvas: view,
     resize,
     render,

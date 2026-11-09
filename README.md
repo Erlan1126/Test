@@ -26,7 +26,7 @@ Echo has been cut back to its core: **twenty handmade caves in two acts** (`CORE
 - **You can read them.** A "?" floats over a Hushling that heard something and is going to look; a "!" means it senses Lumi. A pink ring rolls out to show how far each song was heard. A hunting Hushling sweeping close past without finding you whooshes by; being caught slows time for a moment with a flash.
 - **Stay unheard.** In caves with Hushlings, the third star is for never being heard (results say how many times you were).
 - **The echo sweep.** In 3D, walls glow cyan for a moment just as the song reaches them, so you see the echo travel.
-- **Pebbles.** From cave 6 Lumi carries three. The pebble button (or E) throws one the way Lumi faces, up to about five tiles or until it hits rock; it clatters where it lands and every Hushling within about six tiles goes to look.
+- **Pebbles.** From cave 6 (and in the daily cave) Lumi carries three. Tap the pebble button, then tap where it should land (a ring shows the six-tile reach); E on a keyboard throws the way Lumi faces. It flies until it hits rock, it clatters where it lands and every Hushling within about six tiles goes to look.
 - **Light is health.** Songs are free and nothing drains; a Hushling's touch costs a third of Lumi's light, so three touches end the try.
 
 **Act two, The Long Echo** (caves 11 to 20) adds **Lurkers** (`u`): deaf, with one great golden eye, they see Lumi's light. Lumi's light reaches about 3 tiles, only 1.6 when sneaking, and much further for a moment after a song, so singing where a Lurker can see you is the mistake. Hushlings hear you, Lurkers see you. The caves: 11 Pebble Path, 12 Two Guards, 13 Something Watching (the first Lurker), 14 Light and Sound, 15 Moth in the Mines, 16 Cave-in (a long Run!), 17 The Choir (five Hushlings), 18 Sightlines, 19 Everything Below, 20 Sing Them Home: a long song close to a lost Hushling sings it home, and the portal opens when they all are. Act two has its own opening chapter and ending.
@@ -40,7 +40,11 @@ Act one's caves: 1 First Song (singing), 2 Fading Echoes (memory), 3 Three Light
 
 **The title** is a slow film shot: the camera drifts low around Lumi in the cave, the name glows above, and Play sits at the bottom with Map, Looks and Settings. Tap the dark and Lumi sings. **The story** is told the same way: the cave is the picture, with warm light, glowing eyes, echo rings, fireflies or stars drawn over it; the words fade in one by one under Lumi; tap anywhere to see the rest, tap again to go on, or Skip.
 
-The daily and weekly caves come back on the title once the story is finished. Home, quests and awards are hidden for now, and the 160-level generator, chimes, lamps and the rest stay in the code behind `CORE = false` in `echo/levels.js`. The sections below describe that bigger game.
+There is no Flare in the core: pebbles, ring stones and sneaking are how you deal with the dark.
+
+**Daily and weekly caves** come back on the title once the story is finished. They're built from seven handmade rooms (`ROOMS` in `echo/levels.js`: a guard to pebble away, a guard and a stone, a watched crossing, two Hushlings to thread between, a crooked watched corridor, a guard to go round, a light between two), four a day and five a week, stacked between the start and the portal, some mirrored, with the day's twist on top. Everyone gets the same cave.
+
+The old 160-level generator and its handmade intro levels are gone. Home, quests and awards are hidden; the old chimes, lamps, creatures and story chapters still sit in the code behind `CORE`, unused. Phones with few cores or little memory start with the lighter 3D (no bloom or shadows, lower resolution). The sections below describe the bigger game this grew out of.
 
 ## Every cave has a job
 

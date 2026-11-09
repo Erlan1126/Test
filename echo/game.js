@@ -21,7 +21,7 @@ function loadLevel(i, demo = false) {
     glow: new Float32Array(n),
     seen: new Uint8Array(n),
     mem: new Float32Array(n),   // how well Lumi still remembers each tile; fades in a few seconds
-    stones: [], pebbles: [], track: [], trackT: 0, memory: null, pebblesLeft: CORE && i >= PEBBLE_FROM && i < TOTAL ? 3 : 0, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
+    stones: [], pebbles: [], track: [], trackT: 0, memory: null, pebblesLeft: CORE && (i >= PEBBLE_FROM || i < 0) ? 3 : 0, aiming: false, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
   // Nothing shows until Lumi's light or a song reaches it, unless Guiding glow is on.
@@ -129,7 +129,7 @@ function goalLine() {
   if (i === 2) return "Lights and crystals refill Lumi's glow";
   if (i === DAILY) return "Today's cave is the same for everyone";
   if (i === WEEKLY) return "This week's cave: harder, and the same for everyone";
-  if (i > 0 && isFinale(i)) return "World finale: one extra light to find";
+  if (i > 0 && isFinale(i) && !CORE) return "World finale: one extra light to find";
   if (i > 0 && i % PER_WORLD === 0) return `World ${worldOf(i) + 1}: ${worldName(worldOf(i))}`;
   return "";
 }
@@ -416,7 +416,8 @@ const LONG_HOLD = 380;  // ms of holding still before a long song starts chargin
 // Tap-to-move: Lumi finds its own way to the tapped spot along open tiles.
 function travelTo(px, py) {
   if (!L || L.ending || L.failing) return;
-  let tx = Math.floor((px - OX) / TS), ty = Math.floor((py - OY) / TS);
+  const [cx0, cy0] = screenToCave(px, py);
+  let tx = Math.floor(cx0), ty = Math.floor(cy0);
   if (solidAt(tx, ty)) {
     let best = null, bd = Infinity;
     for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
@@ -462,7 +463,8 @@ function pointerEnd(e) {
   if (!p) return;
   pointers.delete(e.pointerId);
   const held = performance.now() - p.t;
-  if (!p.moved && e.type === "pointerup" && L) {
+  if (!p.moved && e.type === "pointerup" && L && L.aiming) throwPebbleAt(p.x, p.y);
+  else if (!p.moved && e.type === "pointerup" && L) {
     if (controlMode() === "tap") { if (held < LONG_HOLD) travelTo(p.x, p.y); }
     else if (held < LONG_HOLD) ping();
     else if (L.charge >= 1) ping(true);
@@ -537,7 +539,8 @@ function updateChimes(dt, ctl) {
 // A burst of light: nearby Hushlings shrink back and stop chasing for a while, other creatures
 // are stunned, and Lumi is safe for a moment. It costs a little light and needs time to recharge.
 const FLARE_FROM = CORE ? 6 : 5, FLARE_R = 3, FLARE_CD = 6, FLARE_COST = 3;
-const flareReady = () => L && !L.demo && (levelIndex < 0 || levelIndex >= FLARE_FROM);
+// The core has no Flare: pebbles, stones and sneaking are how you deal with the dark.
+const flareReady = () => !CORE && L && !L.demo && (levelIndex < 0 || levelIndex >= FLARE_FROM);
 // The ✦ button: shows how far the flare has recharged.
 let flareShown = -1;
 function flareButton() {
@@ -556,19 +559,38 @@ const PEBBLE_FROM = 5;
 let pebbleShown = -1;
 function pebbleButton() {
   const b = document.getElementById("pebbleBtn"), n = L.demo ? 0 : L.pebblesLeft;
-  const on = !L.demo && CORE && levelIndex >= PEBBLE_FROM && levelIndex < TOTAL;
+  const on = !L.demo && CORE && (levelIndex >= PEBBLE_FROM || levelIndex < 0);
   if (b.hidden === on) b.hidden = !on;
   if (n === pebbleShown) return;
   pebbleShown = n;
   b.querySelector("b").textContent = n;
   b.classList.toggle("empty", n <= 0);
 }
-document.getElementById("pebbleBtn").addEventListener("pointerdown", e => { e.stopPropagation(); audio(); throwPebble(); });
-function throwPebble() {
+function aimButton() { document.getElementById("pebbleBtn").classList.toggle("aiming", !!(L && L.aiming)); }
+// Tap the pebble button, then tap where it should land. Tap the button again to put it away.
+document.getElementById("pebbleBtn").addEventListener("pointerdown", e => {
+  e.stopPropagation(); audio();
+  if (!L || L.demo || screen !== "play" || L.pebblesLeft <= 0) return;
+  L.aiming = !L.aiming; aimButton();
+  if (L.aiming) setHint("Tap where to throw the pebble", 2.5);
+});
+// Where a point on the screen is in the cave (the 3D view has its own camera).
+function screenToCave(px, py) {
+  if (window.R3D && save.settings.view3d !== false && R3D.toCave) { const w = R3D.toCave(px, py); if (w) return w; }
+  return [(px - OX) / TS, (py - OY) / TS];
+}
+function throwPebbleAt(px, py) {
+  const [tx, ty] = screenToCave(px, py), lumi = L.lumi;
+  L.aiming = false; aimButton();
+  const d = Math.hypot(tx - lumi.x, ty - lumi.y);
+  if (d < 0.2) return;
+  throwPebble(Math.atan2(ty - lumi.y, tx - lumi.x), Math.min(6, d));
+}
+function throwPebble(aim, far = 5) {
   if (!L || L.demo || L.ending || L.failing || screen !== "play" || L.pebblesLeft <= 0) return;
-  const lumi = L.lumi, a = lumi.look ?? -Math.PI / 2, dx = Math.cos(a), dy = Math.sin(a);
+  const lumi = L.lumi, a = aim ?? lumi.look ?? -Math.PI / 2, dx = Math.cos(a), dy = Math.sin(a);
   let d = 0.4;
-  while (d < 5 && !solidAt(Math.floor(lumi.x + dx * (d + 0.15)), Math.floor(lumi.y + dy * (d + 0.15)))) d += 0.1;
+  while (d < far && !solidAt(Math.floor(lumi.x + dx * (d + 0.15)), Math.floor(lumi.y + dy * (d + 0.15)))) d += 0.1;
   L.pebblesLeft--;
   L.pebbles.push({ x0: lumi.x, y0: lumi.y, x1: lumi.x + dx * d, y1: lumi.y + dy * d, t: 0, dur: 0.25 + d * 0.08 });
   sfx.toss();
