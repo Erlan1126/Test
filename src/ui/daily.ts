@@ -1,5 +1,6 @@
 // Sheets for the daily features: the streak, today's missions with their chest and the weekly
 // league, the city (rent and buildings), and the leaderboard.
+import { prizeFor, prizeText, tierName, TIERS } from "../logic/tournament";
 import { fmt } from "../core/util";
 import { t, tn } from "../i18n";
 import { MILESTONES } from "../data/constants";
@@ -450,6 +451,7 @@ export class DailySheets {
       }
       return row;
     };
+    this.renderTourney(tab === "week" && global, board);
     // The top three stand on a podium: second, first (with a crown), third.
     const podium = $("rank-podium"), top3 = board.rows.slice(0, 3);
     podium.hidden = !top3.length;
@@ -488,6 +490,18 @@ export class DailySheets {
         : tn(board.total, "{count} builder ranked. Every tower is checked by replaying it.", "{count} builders ranked. Every tower is checked by replaying it.", { count: fmt(board.total) }))
       : !on.canPost ? t("Your scores aren't posted yet: ask whoever shared Skyrise to make you a Contributor.")
       : t("Share this page with friends as Contributors to compete.");
+  }
+
+  /** The weekly tournament: when it ends, the prizes, and what you'd win right now. */
+  private renderTourney(show: boolean, board: { me: Row | null; rows: Row[]; total: number }): void {
+    const el = $("tourney");
+    el.hidden = !show;
+    if (!show) return;
+    const me = board.me ?? board.rows.find(r => r.me) ?? null;
+    const now = me ? prizeFor(me.rank, Math.max(board.total, me.rank)) : null;
+    el.innerHTML = `<div class="tourney-top"><b>${esc(t("🏆 Weekly tournament"))}</b><span>${esc(t("Ends in {time}", { time: duration(eventEndsIn()) }))}</span></div>
+      <div class="tourney-prizes">${TIERS.map(x => `<span class="${now?.label === x.label ? "on" : ""}"><i>${esc(tierName(x.label))}</i>${esc(x.crystals ? `${x.crystals} 💎` : `${x.stars} ★`)}</span>`).join("")}</div>
+      <small>${esc(now ? t("If it ended now: {prize}", { prize: prizeText(now) }) : t("Build a Classic or Daily tower to enter. Your best tower of the week counts."))}</small>`;
   }
 
   /** Reports a rude name and hides it for this player. */

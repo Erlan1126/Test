@@ -1,4 +1,5 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import { claimTournament, prizeText } from "./logic/tournament";
 import { ghostFloors, MAX_GHOST, type Ghost } from "./logic/ghost";
 import { ROOF_STEPS, roofFor, type RoofKind } from "./render3d/rooftops";
 import { clamp, fmt, shortName } from "./core/util";
@@ -209,6 +210,7 @@ export class App implements DailyHost {
       // Towers built offline last time, and a first backup.
       void this.online.flush(this.save, () => this.persist());
       this.scheduleBackup(3000);
+      void this.checkTournament();
     });
 
     preloadLogo(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`);
@@ -416,9 +418,24 @@ export class App implements DailyHost {
     const r = this.online.lastRanks;
     if (!r || this.state !== "over" || this.recorder?.rec !== rec) return;
     const line = rec.mode === "daily" && r.daily ? t("🌍 #{n} worldwide on today's Daily", { n: fmt(r.daily) })
-      : r.week ? t("🌍 Your best this week is #{n} worldwide", { n: fmt(r.week) }) : "";
+      : r.week ? t("🏆 Tournament: #{n} this week", { n: fmt(r.week) }) : "";
     if (line) $("over-world").textContent = line;
     $("over-world").hidden = !line;
+  }
+
+  /** The first time the game opens in a new week: last week's tournament result and prize. */
+  private async checkTournament(): Promise<void> {
+    const last = weekIndex() - 1;
+    if (this.save.tourney >= last) return;
+    const r = await this.online.weekResult(last);
+    if (r === undefined) return; // offline: try next time
+    if (r === null) { this.save.tourney = last; this.persist(); return; }
+    const prize = claimTournament(this.save, last, r.rank, r.total);
+    if (!prize) return;
+    this.persist();
+    this.refresh();
+    this.sound.unlock();
+    toast(t("🏆 Last week's tournament: #{rank} of {total}. Your prize: {prize}", { rank: fmt(r.rank), total: fmt(r.total), prize: prizeText(prize) }));
   }
 
   /** A new day brings new missions; the menu's numbers move with the clock. */

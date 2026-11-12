@@ -1286,3 +1286,15 @@ body.recording #over, body.recording #hud, body.recording #pause, body.recording
 .stage-foot small { flex: 1; color: var(--muted); font-size: 12px; font-weight: 600; }
 .stage-stars { color: #ffd43b; font-size: 18px; letter-spacing: -1px; }
 @media (prefers-reduced-motion: reduce) { .stage-node.current { animation: none; } }
+
+/* Weekly tournament card */
+.tourney { margin: 0 0 10px; padding: 12px 14px; border-radius: 16px; display: grid; gap: 8px;
+  background: linear-gradient(135deg, rgba(255, 196, 64, 0.22), rgba(140, 90, 255, 0.22)); border: 1px solid rgba(255, 214, 102, 0.35); }
+.tourney-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tourney-top b { font-size: 16px; color: #ffe08a; }
+.tourney-top span { font-size: 12px; font-weight: 800; color: var(--muted); }
+.tourney-prizes { display: flex; flex-wrap: wrap; gap: 6px; }
+.tourney-prizes span { display: flex; flex-direction: column; align-items: center; padding: 5px 8px; border-radius: 10px; background: rgba(14, 18, 48, 0.55); font-size: 13px; font-weight: 800; }
+.tourney-prizes span i { font-style: normal; font-size: 10px; color: var(--muted); }
+.tourney-prizes span.on { outline: 2px solid #ffe08a; background: rgba(255, 224, 138, 0.18); }
+.tourney small { color: #fff; font-size: 12px; font-weight: 700; }

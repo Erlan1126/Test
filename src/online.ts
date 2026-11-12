@@ -290,6 +290,21 @@ export class Online {
 
   // ---------- Reading ----------
 
+  /** Your final place on a past week's board: null if you weren't on it, undefined if the
+   *  server couldn't be reached (try again later). */
+  async weekResult(week: number): Promise<{ rank: number; total: number } | null | undefined> {
+    if (this.kind !== "global" || !this.me) return undefined;
+    try {
+      const res = await fetch(`${API}/board?board=week&period=${week}&player=${encodeURIComponent(this.me)}`);
+      if (!res.ok) return undefined;
+      const body = await res.json() as { me?: { rank?: number } | null; total?: number };
+      const rank = num(body.me?.rank);
+      return rank ? { rank, total: Math.max(rank, num(body.total)) } : null;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** The ghost to race on a board: the player just above you, with their tower's pace. */
   async ghost(board: "week" | "daily", period: number): Promise<{ name: string; pace: number[] } | null> {
     if (this.kind !== "global" || !this.me) return null;

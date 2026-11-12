@@ -796,4 +796,13 @@ export const ES: Record<string, string> = {
   "BEAT {name}!": "¡SUPERASTE A {name}!",
   "Taller than their whole tower": "Más alta que toda su torre",
   "👻 Passed {name}": "👻 Pasaste a {name}",
+  "🏆 Tournament": "🏆 Torneo",
+  "🏆 Weekly tournament": "🏆 Torneo semanal",
+  "Ends in {time}": "Termina en {time}",
+  "If it ended now: {prize}": "Si terminara ahora: {prize}",
+  "Build a Classic or Daily tower to enter. Your best tower of the week counts.": "Construye una torre Clásica o Diaria para entrar. Cuenta tu mejor torre de la semana.",
+  "Everyone who plays": "Todos los que juegan",
+  "Top {n}": "Top {n}",
+  "🏆 Tournament: #{n} this week": "🏆 Torneo: #{n} esta semana",
+  "🏆 Last week's tournament: #{rank} of {total}. Your prize: {prize}": "🏆 Torneo de la semana pasada: #{rank} de {total}. Tu premio: {prize}",
 };

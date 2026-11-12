@@ -86,6 +86,8 @@ export interface SaveData {
   daily: { day: number; best: number; plays: number };
   /** Landmark challenges completed. */
   challenges: string[];
+  /** The last week whose tournament prize was collected (or checked with no prize). */
+  tourney: number;
   /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts). */
   ghost: number[];
   /** Skyline Journey: best map stars (1-3) per stage, and chapter chests opened ("chest1"...). */
@@ -158,6 +160,7 @@ export function defaultSave(): SaveData {
     challenges: [],
     journey: {},
     ghost: [],
+    tourney: -1,
     history: [],
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, lang: "auto" },
     tutorialDone: false,
@@ -262,6 +265,7 @@ export function normalize(raw: unknown): SaveData {
     challenges: strList(r.challenges),
     journey: starMap(r.journey),
     ghost: cleanPace(r.ghost),
+    tourney: typeof r.tourney === "number" && Number.isFinite(r.tourney) ? Math.floor(r.tourney) : -1,
     history,
     settings: {
       sound: bool(set.sound, true), music: bool(set.music, true), vibrate: bool(set.vibrate, true),
