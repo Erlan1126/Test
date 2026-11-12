@@ -174,7 +174,10 @@ export class Renderer3D {
     }));
     this.envScene.add(this.envSky);
     // A soft glow on the brightest things (sun glints on glass, lit windows at night).
-    this.composer = new EffectComposer(this.gl);
+    // The glow pass draws the scene off screen first; give that image edge smoothing
+    // (multisampling) too, or edges turn jagged whenever the glow is on.
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    this.composer = new EffectComposer(this.gl, target);
     this.composer.addPass(new RenderPass(this.scene, this.cam));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.45, 0.92);
     this.composer.addPass(this.bloom);
@@ -242,12 +245,12 @@ export class Renderer3D {
   resize(low: boolean, scale = 1): void {
     const v = this.view;
     this.low = low;
-    // Sharp on phones without drawing 9x the pixels: the graphics chip's antialiasing
-    // smooths edges, so up to 2x is plenty.
-    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2) * scale);
+    // Full screen sharpness (up to 3x, a phone's native resolution); the game lowers
+    // `scale` by itself if the phone can't keep a smooth frame rate.
+    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, low ? 1.5 : 3) * scale);
     v.W = this.canvas.clientWidth || window.innerWidth;
     v.H = this.canvas.clientHeight || window.innerHeight;
-    const overlayDpr = Math.min(window.devicePixelRatio || 1, 2);
+    const overlayDpr = Math.min(window.devicePixelRatio || 1, 3);
     this.canvas.width = Math.round(v.W * overlayDpr);
     this.canvas.height = Math.round(v.H * overlayDpr);
     this.ctx.setTransform(overlayDpr, 0, 0, overlayDpr, 0, 0);
@@ -258,7 +261,7 @@ export class Renderer3D {
     // Bloom at a quarter of the pixels: it's blurry anyway, and much cheaper.
     this.bloom.resolution.set(Math.round(v.W * this.dpr / 2), Math.round(v.H * this.dpr / 2));
     this.gl.shadowMap.enabled = !low;
-    this.sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
+    this.sun.shadow.mapSize.set(low ? 1024 : 4096, low ? 1024 : 4096);
     this.sun.shadow.map?.dispose();
     this.sun.shadow.map = null;
     v.s = Math.min(v.W * 0.56, v.H * 0.36) / (BLOCK_SIZE * 2 * ISO_X);
@@ -381,8 +384,8 @@ export class Renderer3D {
     if (this.low) this.gl.render(this.scene, this.cam);
     else {
       // Subtle by day (only sun glints), stronger at night when windows glow.
-      this.bloom.strength = 0.18 + env.nf * 0.6;
-      this.bloom.threshold = lerp(0.95, 0.7, env.nf);
+      this.bloom.strength = 0.15 + env.nf * 0.3;
+      this.bloom.threshold = lerp(0.95, 0.82, env.nf);
       this.composer.render();
     }
     this.drawOverlay(dt, f);

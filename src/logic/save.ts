@@ -12,6 +12,10 @@ import { CITY } from "../data/daily";
 import { PRODUCTS } from "../data/premium";
 import type { Mode } from "./types";
 
+/** Graphics version: when the graphics change a lot, every device tests its speed again
+ *  instead of keeping "smooth mode" picked for the old graphics. */
+const GFX = 3;
+
 export interface Settings {
   sound: boolean;
   music: boolean;
@@ -148,7 +152,7 @@ export function defaultSave(): SaveData {
     daily: { day: 0, best: 0, plays: 0 },
     challenges: [],
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: 2, lang: "auto" },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, lang: "auto" },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -244,8 +248,8 @@ export function normalize(raw: unknown): SaveData {
       sound: bool(set.sound, true), music: bool(set.music, true), vibrate: bool(set.vibrate, true),
       quality: (["auto", "high", "low"].includes(set.quality as string) ? set.quality : "auto") as Settings["quality"],
       // Saves from before the sharper graphics re-measure the device once.
-      autoLow: set.gfx === 2 ? bool(set.autoLow, false) : false,
-      gfx: 2,
+      autoLow: set.gfx === GFX ? bool(set.autoLow, false) : false,
+      gfx: GFX,
       lang: (["auto", "en", "es"].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
     },
     tutorialDone: bool(r.tutorialDone, false),

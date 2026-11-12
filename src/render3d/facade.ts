@@ -9,6 +9,7 @@ import type { Look } from "../data/skins";
 const PX = 48;             // pixels per world unit across
 const TILE_W = 8, TILE_F = 4;
 const W = PX * TILE_W, FLOOR_PX = 64, H = FLOOR_PX * TILE_F;
+const RES = 2;
 
 export interface Facade {
   map: THREE.Texture;
@@ -44,9 +45,11 @@ function windows(look: Look): [number, number, number, number, number][] {
 export function facadeFor(look: Look): Facade {
   const hit = cache.get(look);
   if (hit) return hit;
-  const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
+  // Drawn at twice the size (same layout), so windows stay crisp up close and on sharp screens.
+  const mk = () => { const c = document.createElement("canvas"); c.width = W * RES; c.height = H * RES; return c; };
   const base = mk(), lit = mk(), orm = mk();
   const b = base.getContext("2d")!, l = lit.getContext("2d")!, o = orm.getContext("2d")!;
+  for (const g of [b, l, o]) g.setTransform(RES, 0, 0, RES, 0, 0);
   // Walls are white (the floor's color tints them); glass is the look's glass color.
   b.fillStyle = "#ffffff"; b.fillRect(0, 0, W, H);
   l.fillStyle = "#000000"; l.fillRect(0, 0, W, H);
@@ -83,7 +86,7 @@ export function facadeFor(look: Look): Facade {
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(1 / TILE_W * 2, 1 / TILE_F); // geometry u is in 2-unit steps, v in floors
-    t.anisotropy = 4;
+    t.anisotropy = 16;  // three caps this at what the phone supports
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     return t;
   };

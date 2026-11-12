@@ -1469,12 +1469,16 @@ export class App implements DailyHost {
         const fps = this.perf.frames / this.perf.time;
         if (fps < 50 && this.shaders) {
           this.autoNoShaders = true;
+        } else if (fps < 50 && this.renderScale > 0.75 && (window.devicePixelRatio || 1) > 2.2) {
+          // First give up a little of the extra sharpness, before any effects.
+          this.renderScale = 0.75;
+          this.resize();
         } else if (fps < 50 && !st.autoLow) {
           st.autoLow = true;
           this.persist();
           this.resize();
-        } else if (fps < 40 && this.renderScale > 0.8) {
-          this.renderScale = 0.8;
+        } else if (fps < 40 && this.renderScale > 0.6) {
+          this.renderScale = Math.min(this.renderScale, 0.8) - 0.1;
           this.resize();
         }
         this.perf.frames = 0;
