@@ -85,6 +85,8 @@ export interface SaveData {
   daily: { day: number; best: number; plays: number };
   /** Landmark challenges completed. */
   challenges: string[];
+  /** Skyline Journey: best map stars (1-3) per stage, and chapter chests opened ("chest1"...). */
+  journey: Record<string, number>;
   /** Your best towers, highest score first. */
   history: RunRecord[];
   settings: Settings;
@@ -151,6 +153,7 @@ export function defaultSave(): SaveData {
     },
     daily: { day: 0, best: 0, plays: 0 },
     challenges: [],
+    journey: {},
     history: [],
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, lang: "auto" },
     tutorialDone: false,
@@ -182,6 +185,16 @@ const num = (v: unknown, d: number, min = 0, max = 1e9): number =>
 const int = (v: unknown, d: number, min = 0, max = 1e9): number => Math.floor(num(v, d, min, max));
 const bool = (v: unknown, d: boolean): boolean => (typeof v === "boolean" ? v : d);
 const str = (v: unknown, d: string, max = 64): string => (typeof v === "string" && v.length <= max ? v : d);
+/** A { key: 1-3 } map, dropping anything else. */
+const starMap = (v: unknown): Record<string, number> => {
+  const out: Record<string, number> = {};
+  if (v && typeof v === "object") {
+    for (const [k, n] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof n === "number" && n >= 1 && n <= 3 && k.length < 24) out[k] = Math.floor(n);
+    }
+  }
+  return out;
+};
 const strList = (v: unknown, allowed?: string[]): string[] =>
   Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && (!allowed || allowed.includes(x))))] : [];
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -243,6 +256,7 @@ export function normalize(raw: unknown): SaveData {
     },
     daily: { day: int(dl.day, 0), best: int(dl.best, 0), plays: int(dl.plays, 0) },
     challenges: strList(r.challenges),
+    journey: starMap(r.journey),
     history,
     settings: {
       sound: bool(set.sound, true), music: bool(set.music, true), vibrate: bool(set.vibrate, true),

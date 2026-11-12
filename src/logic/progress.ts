@@ -5,7 +5,7 @@ import { districtOpen } from "./city";
 import { vipActive } from "./vip";
 import { fmt, listNames } from "../core/util";
 import { t, tn } from "../i18n";
-import { challengeById, CHALLENGES } from "../data/challenges";
+import { type Challenge, challengeById, CHALLENGES, CHAPTER_CHEST, stageStars, STAGES_PER_CHAPTER } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
 import { ISLAND_THEMES, ISLAND_UPGRADES, type IslandTheme } from "../data/islands";
 import { MISSION_TYPES, missionText } from "../data/missions";
@@ -157,15 +157,8 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   rewards.unshift(...tickStreak(save, now));
   startRent(save, now);
 
-  // Challenge, paid the first time it's won
-  if (run.mode === "challenge" && run.challengeWon && run.challengeId && !save.challenges.includes(run.challengeId)) {
-    const c = challengeById(run.challengeId);
-    if (c) {
-      save.challenges.push(c.id);
-      addStars(save, c.reward);
-      rewards.unshift({ kind: "star", text: t("Challenge complete: {name} (+{n} ★)", { name: t(c.name), n: c.reward }) });
-    }
-  }
+  // Journey stage: paid the first time it's won, plus a star for each new map star.
+  if (run.mode === "challenge" && run.challengeWon && run.challengeId) rewards.unshift(...journeyRewards(save, run));
 
   // Lifetime stats
   const p = save.profile;
@@ -267,4 +260,52 @@ export function nearMiss(save: SaveData, run: RunSummary, newBest: boolean): str
   const close = save.missions.slots.find(m => !m.d && MISSION_TYPES[m.t].game && m.p / m.n >= 0.6 && m.p < m.n);
   if (close) return t("Almost there: {mission} ({p} of {n})", { mission: missionText(close), p: fmt(close.p), n: fmt(close.n) });
   return "";
+}
+
+/** A stage's display name: the hand-made ones have their own; the rest are numbered. */
+export function stageName(id: string): string {
+  const i = CHALLENGES.findIndex(c => c.id === id), c = CHALLENGES[i];
+  if (!c) return "";
+  return c.text ? t(c.name) : t("Stage {n}", { n: i + 1 });
+}
+
+/** Rewards for winning a Journey stage: first-win stars, new map stars, chapter chests. */
+export function journeyRewards(save: SaveData, run: RunSummary): Reward[] {
+  const out: Reward[] = [];
+  const c = challengeById(run.challengeId ?? "");
+  if (!c) return out;
+  const name = stageName(c.id);
+  if (!save.challenges.includes(c.id)) {
+    save.challenges.push(c.id);
+    addStars(save, c.reward);
+    out.push({ kind: "star", text: t("Stage complete: {name} (+{n} ★)", { name, n: c.reward }) });
+  }
+  const stars = stageStars(true, run.floors, run.perfects), before = save.journey[c.id] ?? 0;
+  if (stars > before) {
+    save.journey[c.id] = stars;
+    if (before > 0) {
+      addStars(save, stars - before);
+      out.push({ kind: "star", text: t("{stars} on {name} (+{n} ★)", { stars: "★".repeat(stars), name, n: stars - before }) });
+    } else out.push({ kind: "star", text: t("{stars} on {name}", { stars: "★".repeat(stars) + "☆".repeat(3 - stars), name }) });
+  }
+  // A chest for finishing every stage of a chapter.
+  const chapter = Math.floor(CHALLENGES.indexOf(c) / STAGES_PER_CHAPTER), key = `chest${chapter + 1}`;
+  const all = CHALLENGES.slice(chapter * STAGES_PER_CHAPTER, (chapter + 1) * STAGES_PER_CHAPTER);
+  if (!save.journey[key] && all.length && all.every(x => save.challenges.includes(x.id))) {
+    save.journey[key] = 1;
+    save.crystals += CHAPTER_CHEST;
+    out.push({ kind: "star", text: t("Chapter chest opened! +{n} 💎", { n: CHAPTER_CHEST }) });
+  }
+  return out;
+}
+
+/** Total map stars earned on the Journey. */
+export const journeyStars = (save: SaveData): number =>
+  CHALLENGES.reduce((n, c) => n + (save.journey[c.id] ?? 0), 0);
+
+/** What a stage asks of you, in words. */
+export function stageGoal(c: Challenge): string {
+  if (c.text) return t(c.text);
+  return c.goal.type === "height" ? t("Build taller than {n} m", { n: c.goal.n })
+    : c.goal.type === "streak" ? t("Land {n} perfect drops in a row", { n: c.goal.n }) : t("Land {n} gold penthouses perfectly", { n: c.goal.n });
 }

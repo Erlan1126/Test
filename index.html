@@ -90,7 +90,7 @@
     <div class="boost-note" id="boost-note" hidden></div>
     <div class="mode-chips" id="modes">
       <button type="button" class="mode" id="daily-btn" hidden><span id="daily-title">Daily</span><small>Same tower for everyone</small><i class="dot" hidden></i></button>
-      <button type="button" class="mode" id="challenges-btn" hidden><span>Landmarks</span><small>Beat a goal to win</small><i class="dot" hidden></i></button>
+      <button type="button" class="mode" id="challenges-btn" hidden><span>Journey</span><small>60 stages to climb</small><i class="dot" hidden></i></button>
       <button type="button" class="mode" id="zen-btn" hidden><span>Zen</span><small>Relax, no game over</small><i class="dot" hidden></i></button>
     </div>
     <nav class="tiles" id="dock" aria-label="More">
@@ -209,13 +209,14 @@
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
-        <div><h2 id="challenges-title">Landmark challenges</h2><p id="challenges-count"></p></div>
+        <div><h2 id="challenges-title">Skyline Journey</h2><p id="challenges-count"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
       <div class="bar"><i id="challenges-bar"></i></div>
     </div>
-    <p class="sheet-note">Finish one to unlock the next.</p>
-    <div class="challenge-list" id="challenge-list"></div>
+    <p class="sheet-note">Finish a stage to open the next. More perfect drops earn more stars.</p>
+    <div class="journey-scroll" id="challenge-list"></div>
+    <div class="stage-card" id="stage-card" hidden></div>
   </div>
 </div>
 

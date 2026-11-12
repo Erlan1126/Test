@@ -17,7 +17,7 @@ import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
-import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, type RunOutcome } from "./logic/progress";
+import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
@@ -701,7 +701,7 @@ export class App implements DailyHost {
     this.updateHud(false);
     this.updateHint();
     const used = BOOSTS.filter(b => this.boosts[b.id]).map(b => t(b.name));
-    if (challenge) this.banner(t("Challenge"), t(challenge.text));
+    if (challenge) this.banner(stageName(challenge.id), stageGoal(challenge));
     else if (used.length) this.banner(t("Boosts on"), used.join(" · "));
     else if (mode === "daily") this.banner(t("Daily tower #{n}", { n: dayNumber() }), t("Same tower for everyone"));
   }
@@ -1262,7 +1262,7 @@ export class App implements DailyHost {
     const c = this.challenge, mode = this.mode;
     const won = !!c && sim.goalReached();
     const eyebrow = $("over-eyebrow");
-    eyebrow.textContent = c ? (won ? t("Challenge complete!") : t("Challenge failed"))
+    eyebrow.textContent = c ? (won ? t("Stage complete!") : t("Stage failed"))
       : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: this.runDay }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
     if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => this.showLevelUp(o.levelUp!), 700); }
@@ -1270,7 +1270,7 @@ export class App implements DailyHost {
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
     $("over-people").textContent = fmt(sim.score);
     $("over-sub").textContent = t("people live in your {m} m tower", { m: sim.meters });
-    $("over-landmark").textContent = c ? t(c.text)
+    $("over-landmark").textContent = c ? (won ? `${"★".repeat(save.journey[c.id] ?? 1)}${"☆".repeat(3 - (save.journey[c.id] ?? 1))}  ${stageName(c.id)}` : stageGoal(c))
       : mode === "daily" ? t("Today's best: {n} people", { n: fmt(o.dailyBest) }) + (o.newBest ? t(" · New all-time best!") : "") + this.dailyRank()
       : sim.lastLandmark >= 0 ? t("Taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) })
       : mode === "zen" ? t("Zen towers don't count toward bests") : t("Best: {n} people", { n: fmt(save.best) });
@@ -1339,7 +1339,7 @@ export class App implements DailyHost {
     again.className = `btn ${next ? "btn-secondary" : "btn-primary"}`;
     nb.className = `btn ${next ? "btn-primary" : "btn-secondary"} wide`;
     nb.hidden = !next;
-    if (next) nb.textContent = t("Next challenge: {name}", { name: t(next.name) });
+    if (next) nb.textContent = t("Next: {name}", { name: stageName(next.id) });
     $("share").hidden = mode === "challenge";
     $("share-video").hidden = mode === "challenge" || !(this.renderer instanceof Renderer3D) || typeof MediaRecorder === "undefined";
     $("over-actions").classList.toggle("single", mode === "challenge");

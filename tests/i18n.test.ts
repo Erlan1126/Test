@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { deviceLang, dictionary, setLang, t, tn } from "../src/i18n";
 import { ES } from "../src/i18n/es";
 import { seeded } from "../src/core/rng";
-import { CHALLENGES } from "../src/data/challenges";
+import { CHALLENGES, CHAPTERS } from "../src/data/challenges";
 import { MILESTONES } from "../src/data/constants";
 import { CITY, LEAGUES } from "../src/data/daily";
 import { EVENTS } from "../src/data/events";
@@ -88,7 +88,7 @@ describe("translations", () => {
   it("has Spanish for every name and description players see", () => {
     const names = [
       ...SKINS.map(s => s.name), ...MILESTONES.map(m => m.name), ...LEAGUES.map(l => l.name), ...BOOSTS.flatMap(b => [b.name, b.text]),
-      ...CHALLENGES.flatMap(c => [c.name, c.text]), ...CITY.flatMap(b => [b.name, b.text]), ...EVENTS.flatMap(e => [e.name, e.text]),
+      ...CHALLENGES.flatMap(c => [c.name, c.text]).filter(Boolean), ...CHAPTERS, ...CITY.flatMap(b => [b.name, b.text]), ...EVENTS.flatMap(e => [e.name, e.text]),
       ...ISLAND_THEMES.map(i => i.name), ...ISLAND_UPGRADES.map(u => u.name), ...SEASON_THEMES.flatMap(s => [s.name, s.text]),
       ...PRODUCTS.flatMap(p => [p.name, p.text]), ...TROPHIES.flatMap(tr => [tr.name, tr.text]), ...Object.values(FEATURE_NAMES),
     ];

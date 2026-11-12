@@ -2,14 +2,14 @@
 import { formatRecoveryCode } from "../online";
 import { fmt } from "../core/util";
 import { getLang, t, tn } from "../i18n";
-import { CHALLENGES } from "../data/challenges";
+import { CHALLENGES, CHAPTER_CHEST, CHAPTERS, STAGES_PER_CHAPTER } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
 import { ISLAND_THEMES } from "../data/islands";
 import { BOOSTS, MAX_BOOSTS } from "../data/shop";
 import { skinById, SKINS, type Skin } from "../data/skins";
 import { TROPHIES } from "../data/trophies";
 import { markSeen, type Feature } from "../logic/features";
-import { addStars, awardStandingTrophies, challengeOpen, currentTheme, isSkinUnlocked, skinUnlockText, themeUnlocked, unlockedSkinCount } from "../logic/progress";
+import { addStars, awardStandingTrophies, challengeOpen, journeyStars, stageGoal, stageName, currentTheme, isSkinUnlocked, skinUnlockText, themeUnlocked, unlockedSkinCount } from "../logic/progress";
 import { dayKey, giftAmount, giftState, GIFTS, xpNeeded } from "../logic/rules";
 import { exportCode, importCode, type SaveData } from "../logic/save";
 import { buyBoost, buySkin } from "../logic/shop";
@@ -432,34 +432,83 @@ export class Sheets {
     openModal($("challenges"));
   }
 
+  /** The Skyline Journey: stages on a winding path that climbs up the screen, grouped in
+   *  chapters, with the chosen stage's goal and a Play button underneath. */
+  private stagePick = "";
+
   private renderChallenges(): void {
-    const save = this.save, done = save.challenges.length;
-    $("challenges-count").textContent = t("{n} of {total} complete", { n: done, total: CHALLENGES.length });
-    $("challenges-bar").style.width = `${done / CHALLENGES.length * 100}%`;
+    const save = this.save, done = save.challenges.length, total = CHALLENGES.length;
+    $("challenges-count").textContent = t("{n} of {total} stages · {s} ★", { n: done, total, s: journeyStars(save) });
+    $("challenges-bar").style.width = `${done / total * 100}%`;
     const list = $("challenge-list");
     list.innerHTML = "";
-    for (const c of CHALLENGES) {
-      const won = save.challenges.includes(c.id), open = challengeOpen(save, c.id);
-      const row = document.createElement("div");
-      row.className = `challenge${won ? " done" : ""}${open ? "" : " locked"}`;
-      const rules = [
-        c.rules.iceEvery && (c.rules.iceEvery === 3 ? t("Every third floor is ice") : t("Every {n}th floor is ice", { n: c.rules.iceEvery })),
-        c.rules.windFrom && t("Wind from the start"),
-        c.rules.goldChance && t("Lots of penthouses"),
-        c.rules.noRewind && t("No rewinds"),
-      ].filter(Boolean).join(" · ");
-      row.innerHTML = `<b>${esc(t(c.name))}</b>
-        <button type="button" class="buy"${open ? "" : " disabled"}>${esc(won ? t("Replay") : open ? t("Play") : t("Locked"))}</button>
-        <small>${esc(t(c.text))}</small>
-        ${rules ? `<span class="rule">${esc(rules)}</span>` : ""}
-        <small>${esc(won ? t("Complete") : t("Reward: {n} ★", { n: c.reward }))}</small>`;
-      row.querySelector("button")!.addEventListener("click", () => {
-        if (!open) return;
-        closeModal($("challenges"));
-        this.host.startChallenge(c.id);
-      });
-      list.appendChild(row);
+    const current = CHALLENGES.find(c => !save.challenges.includes(c.id)) ?? CHALLENGES[total - 1];
+    if (!this.stagePick || !challengeOpen(save, this.stagePick)) this.stagePick = current.id;
+    // Stage 1 at the bottom: build the rows top-down from the last chapter.
+    const STEP = 78, HEAD = 64;
+    const rows: { y: number; x: number; i: number }[] = [];
+    let y = 24;
+    const html: string[] = [];
+    for (let ch = CHAPTERS.length - 1; ch >= 0; ch--) {
+      const first = ch * STAGES_PER_CHAPTER, stages = CHALLENGES.slice(first, first + STAGES_PER_CHAPTER);
+      const chStars = stages.reduce((n, c) => n + (save.journey[c.id] ?? 0), 0);
+      const chest = save.journey[`chest${ch + 1}`] ? "✅" : "🎁";
+      for (let k = stages.length - 1; k >= 0; k--) {
+        const i = first + k, c = stages[k];
+        const x = 50 + Math.sin(i * 0.85) * 28;
+        rows.push({ y: y + 28, x, i });
+        const won = save.challenges.includes(c.id), open = challengeOpen(save, c.id), stars = save.journey[c.id] ?? (won ? 1 : 0);
+        const cls = `stage-node${won ? " done" : ""}${open ? "" : " locked"}${c.id === current.id && !won ? " current" : ""}${c.id === this.stagePick ? " picked" : ""}`;
+        html.push(`<button type="button" class="${cls}" data-id="${c.id}" style="top:${y}px;left:calc(${x.toFixed(1)}% - 28px)" aria-label="${esc(stageName(c.id))}">
+          <span>${open ? i + 1 : "🔒"}</span><i>${"★".repeat(stars)}${"☆".repeat(3 - stars)}</i></button>`);
+        y += STEP;
+      }
+      // The chapter's name sits at its start (the bottom, since the path climbs up).
+      html.push(`<div class="chapter-head" style="top:${y}px"><b>${esc(t(CHAPTERS[ch]))}</b><span>${chStars}/${stages.length * 3} ★ · ${chest} ${CHAPTER_CHEST} 💎</span></div>`);
+      y += HEAD;
     }
+    const H = y + 10;
+    // The dotted path joining the stages.
+    const pts = rows.map(r => `${r.x.toFixed(1)},${r.y}`).join(" ");
+    list.innerHTML = `<div class="journey-map" style="height:${H}px">
+      <svg viewBox="0 0 100 ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" /></svg>
+      ${html.join("")}</div>`;
+    list.querySelectorAll<HTMLButtonElement>(".stage-node").forEach(b => b.addEventListener("click", () => {
+      const id = b.dataset.id!;
+      if (!challengeOpen(save, id)) { toast(t("Finish the stage before it to open this one")); return; }
+      this.click();
+      this.stagePick = id;
+      this.renderChallenges();
+    }));
+    this.renderStageCard();
+    // Show the chosen stage in the middle of the map.
+    requestAnimationFrame(() => list.querySelector<HTMLElement>(".stage-node.picked")?.scrollIntoView({ block: "center" }));
+  }
+
+  private renderStageCard(): void {
+    const save = this.save, c = CHALLENGES.find(x => x.id === this.stagePick);
+    const card = $("stage-card");
+    if (!c) { card.hidden = true; return; }
+    card.hidden = false;
+    const i = CHALLENGES.indexOf(c), won = save.challenges.includes(c.id), stars = save.journey[c.id] ?? (won ? 1 : 0);
+    const rules = [
+      c.rules.iceEvery && (c.rules.iceEvery === 3 ? t("Every third floor is ice") : t("Every {n}th floor is ice", { n: c.rules.iceEvery })),
+      c.rules.windFrom && (c.rules.windFrom <= 1 ? t("Wind from the start") : t("Wind from floor {n}", { n: c.rules.windFrom })),
+      c.rules.goldChance && t("Lots of penthouses"),
+      c.rules.noRewind && t("No rewinds"),
+    ].filter(Boolean).join(" · ");
+    const goal = stageGoal(c);
+    const chapter = CHAPTERS[Math.floor(i / STAGES_PER_CHAPTER)];
+    card.innerHTML = `<div class="stage-top"><b>${esc(t("Stage {n}", { n: i + 1 }))}${c.text ? ` · ${esc(t(c.name))}` : ""}</b><span>${esc(t(chapter))}</span></div>
+      <p>${esc(goal)}</p>
+      ${rules ? `<span class="rule">${esc(rules)}</span>` : ""}
+      <div class="stage-foot"><span class="stage-stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</span>
+        <small>${esc(won ? t("More perfect drops, more stars") : t("Reward: {n} ★", { n: c.reward }))}</small>
+        <button type="button" class="buy">${esc(won ? t("Replay") : t("Play"))}</button></div>`;
+    card.querySelector("button")!.addEventListener("click", () => {
+      closeModal($("challenges"));
+      this.host.startChallenge(c.id);
+    });
   }
 
   // ---------- Profile ----------

@@ -1,3 +1,4 @@
+import { CHALLENGES } from "../src/data/challenges";
 import { describe, expect, it } from "vitest";
 import { seeded } from "../src/core/rng";
 import { awardStandingTrophies, dealMissions, isSkinUnlocked, islandLevel, recordRun, swapMission } from "../src/logic/progress";
@@ -73,10 +74,36 @@ describe("finishing a tower", () => {
     const s = fresh();
     const won = run({ mode: "challenge", challengeId: "niagara", challengeWon: true, meters: 55 });
     const first = recordRun(s, won, Date.now(), seeded(2));
-    expect(first.rewards[0].text).toContain("Challenge complete: First Splash");
+    expect(first.rewards[0].text).toContain("Stage complete: First Splash");
     expect(s.challenges).toEqual(["niagara"]);
     const second = recordRun(s, won, Date.now(), seeded(2));
-    expect(second.rewards.some(r => r.text.includes("Challenge complete"))).toBe(false);
+    expect(second.rewards.some(r => r.text.includes("Stage complete"))).toBe(false);
+  });
+
+  it("gives Journey map stars for perfect drops, and pays only for new ones", () => {
+    const s = fresh();
+    const ok = run({ mode: "challenge", challengeId: "niagara", challengeWon: true, meters: 55, floors: 10, perfects: 3 });
+    recordRun(s, ok, Date.now(), seeded(2));
+    expect(s.journey.niagara).toBe(1);
+    const starsBefore = s.stars;
+    const great = run({ mode: "challenge", challengeId: "niagara", challengeWon: true, meters: 55, floors: 10, perfects: 9 });
+    const out = recordRun(s, great, Date.now(), seeded(2));
+    expect(s.journey.niagara).toBe(3);
+    expect(out.rewards.some(r => r.text.includes("★★★"))).toBe(true);
+    expect(s.stars).toBeGreaterThanOrEqual(starsBefore + 2);
+    // A worse run never lowers the stars.
+    recordRun(s, ok, Date.now(), seeded(2));
+    expect(s.journey.niagara).toBe(3);
+  });
+
+  it("opens a chapter chest once every stage in it is won", () => {
+    const s = fresh();
+    const crystals = s.crystals;
+    for (const c of CHALLENGES.slice(0, 10)) recordRun(s, run({ mode: "challenge", challengeId: c.id, challengeWon: true, floors: 10, perfects: 5 }), Date.now(), seeded(3));
+    expect(s.journey.chest1).toBe(1);
+    expect(s.crystals).toBe(crystals + 25);
+    recordRun(s, run({ mode: "challenge", challengeId: CHALLENGES[3].id, challengeWon: true, floors: 10, perfects: 5 }), Date.now(), seeded(3));
+    expect(s.crystals).toBe(crystals + 25);
   });
 
   it("keeps the 10 best towers, highest first", () => {
