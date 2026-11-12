@@ -48,7 +48,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/save", "/recovery", "/restore", "/report", "/diag"].includes(url.pathname);
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag"].includes(url.pathname);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
     try {
@@ -155,6 +155,8 @@ const SAVE_GAP_MS = 5000;
 const HIDE_AFTER = 3;
 /** At most one tower every few seconds per player. */
 const RUN_GAP_MS = 4000;
+/** Floors kept in a ghost. */
+const MAX_GHOST = 1000;
 
 async function rankings(request, url, env, now) {
   const db = env.DB;
@@ -277,9 +279,34 @@ async function rankings(request, url, env, now) {
       db.prepare("UPDATE players SET name = ?, level = ?, last_run = ? WHERE id = ?").bind(name, level, now, player),
       ...boards.map(([b, period]) => db.prepare(up).bind(b, period, player, score, meters, now)),
     ]);
+    // Keep this tower's pace as the player's ghost on each board where it's now their best.
+    const pace = JSON.stringify(out.pace.slice(0, MAX_GHOST));
+    const ghostUp = "INSERT INTO ghosts (board, period, player, pace) SELECT ?, ?, ?, ? WHERE " +
+      "(SELECT score FROM scores WHERE board = ? AND period = ? AND player = ?) = ? " +
+      "ON CONFLICT (board, period, player) DO UPDATE SET pace = excluded.pace";
+    await db.batch(boards.filter(([b]) => b !== "all").map(([b, period]) => db.prepare(ghostUp).bind(b, period, player, pace, b, period, player, score)));
     const ranks = {};
     for (const [b, period] of boards) ranks[b] = await rankOf(db, b, period, player);
     return json({ score, meters, ranks });
+  }
+
+  // A rival to race: the player just above you on the board (or the lowest-ranked score
+  // you haven't got yet), with how fast their best tower grew.
+  if (url.pathname === "/ghost" && request.method === "GET") {
+    const board = url.searchParams.get("board") ?? "";
+    const period = Math.floor(Number(url.searchParams.get("period") ?? "0"));
+    const player = url.searchParams.get("player") ?? "";
+    if (!["week", "daily"].includes(board) || !Number.isFinite(period) || !PLAYER.test(player)) return json({ error: "bad board" }, 400);
+    const mine = await db.prepare("SELECT score FROM scores WHERE board = ? AND period = ? AND player = ?").bind(board, period, player).first();
+    const row = await db.prepare(
+      `SELECT g.player, g.pace, s.score, s.meters, CASE WHEN (SELECT COUNT(*) FROM reports r WHERE r.target = s.player) >= ${HIDE_AFTER} THEN '' ELSE p.name END AS name ` +
+      "FROM ghosts g JOIN scores s ON s.board = g.board AND s.period = g.period AND s.player = g.player JOIN players p ON p.id = g.player " +
+      "WHERE g.board = ? AND g.period = ? AND g.player != ? AND s.score > ? ORDER BY s.score ASC LIMIT 1")
+      .bind(board, period, player, mine?.score ?? 0).first();
+    if (!row) return json({ ghost: null });
+    let pace = [];
+    try { pace = JSON.parse(row.pace); } catch { /* keep empty */ }
+    return json({ ghost: { id: row.player, name: row.name || defaultName(row.player), score: row.score, meters: row.meters, pace: Array.isArray(pace) ? pace.slice(0, MAX_GHOST) : [] } });
   }
 
   if (url.pathname === "/board" && request.method === "GET") {

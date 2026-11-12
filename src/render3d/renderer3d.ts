@@ -857,6 +857,7 @@ export class Renderer3D {
     fx.drawParticles(p);
     this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0);
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
+    if (f.shot === "play" && f.ghost) this.drawGhost(f, f.ghost);
     if (f.shot === "play") drawLandmarkLabel(p, landmarkIndex(sim.meters) + 1, 1, f.hudBottom);
     fx.drawPopups(p, top, f.hudBottom);
     // A soft vignette, so the eye goes to the middle.
@@ -880,6 +881,62 @@ export class Renderer3D {
     ctx.fillStyle = "#fff";
     ctx.fillText(icon, x, y + 1);
     ctx.textBaseline = "alphabetic";
+  }
+
+  /** The ghost you're racing: a see-through floor outline at the height its tower had
+   *  reached by now, with the racer's name. Ahead of you it glows; behind, it fades. */
+  private drawGhost(f: Frame, g: NonNullable<Frame["ghost"]>): void {
+    const { ctx, view, env } = this, sim = f.sim, base = sim.stack[0];
+    if (!base) return;
+    const level = sim.level, ahead = g.floors > level;
+    const y1 = g.floors + 1, P = (x: number, z: number, y = y1) => view.project(x, y, z);
+    const pts = [P(base.x0, base.z0), P(base.x1, base.z0), P(base.x1, base.z1), P(base.x0, base.z1)];
+    const top = Math.min(...pts.map(p => p[1]));
+    ctx.save();
+    const pulse = 0.75 + Math.sin(env.time * 4) * 0.25;
+    if (top > f.hudBottom + 30) {
+      if (ahead) {
+        // A floating see-through floor: its top outline and the front edges down one floor.
+        ctx.globalAlpha = 0.22 * pulse;
+        ctx.fillStyle = "#c7b8ff";
+        ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 0.8 * pulse;
+        ctx.strokeStyle = "#c7b8ff";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 5]);
+        ctx.stroke();
+        ctx.beginPath();
+        for (const [x, z] of [[base.x0, base.z1], [base.x1, base.z1], [base.x1, base.z0]]) {
+          const [ax, ay] = P(x, z), [bx, by] = P(x, z, y1 - 1);
+          ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // The racer's name beside it.
+      // (On the right: the landmark's name is on the left.)
+      const [rx, ry] = P(base.x1, base.z0, y1 - 0.5);
+      this.ghostTag(`👻 ${g.name} · ${g.floors}`, Math.min(view.W - 8, rx + 8), ry, ahead ? 1 : 0.55, "left");
+    } else if (ahead) {
+      // Out of sight above: a tag at the top saying how far ahead it is.
+      this.ghostTag(`👻 ${g.name} ↑ ${g.floors - level}`, view.W - 10, f.hudBottom + 22, 1, "right");
+    }
+    ctx.restore();
+  }
+
+  private ghostTag(label: string, x: number, y: number, alpha: number, align: "left" | "right"): void {
+    const { ctx } = this;
+    ctx.font = `800 12px ${UI_FONT}`;
+    const w = ctx.measureText(label).width + 18, left = align === "right" ? Math.max(6, x - w) : Math.min(x, this.view.W - w - 6);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(76, 58, 160, 0.88)";
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(left, y - 11, w, 22, 11) : ctx.rect(left, y - 11, w, 22); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, left + w / 2, y + 1);
+    ctx.textBaseline = "alphabetic";
+    ctx.globalAlpha = 1;
   }
 
   private drawBestLine(f: Frame): void {

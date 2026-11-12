@@ -789,4 +789,11 @@ export const ES: Record<string, string> = {
   "Finish a stage to open the next. More perfect drops earn more stars.": "Termina una etapa para abrir la siguiente. Más caídas perfectas dan más estrellas.",
   "Journey": "Viaje",
   "60 stages to climb": "60 etapas por subir",
+  "Your best": "Tu mejor torre",
+  "👻 Race {name}": "👻 Compite con {name}",
+  "Their tower: {n} floors. Build past their ghost!": "Su torre: {n} pisos. ¡Supera a su fantasma!",
+  "BEAT YOUR BEST!": "¡SUPERASTE TU RÉCORD!",
+  "BEAT {name}!": "¡SUPERASTE A {name}!",
+  "Taller than their whole tower": "Más alta que toda su torre",
+  "👻 Passed {name}": "👻 Pasaste a {name}",
 };

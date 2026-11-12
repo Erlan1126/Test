@@ -48,7 +48,8 @@ export function simFor(rec: Pick<RunRecord, "mode" | "seed" | "week" | "challeng
   });
 }
 
-export type ReplayResult = { ok: true; summary: RunSummary; ticks: number } | { ok: false; reason: string };
+/** `pace[k]` is the tick at which the tower first reached k + 1 floors: a ghost to race. */
+export type ReplayResult = { ok: true; summary: RunSummary; ticks: number; pace: number[] } | { ok: false; reason: string };
 
 /** Rebuilds a tower from its record. Anything a real game couldn't produce is rejected. */
 export function replayRun(rec: RunRecord): ReplayResult {
@@ -59,6 +60,7 @@ export function replayRun(rec: RunRecord): ReplayResult {
   if (rec.mode === "challenge" && !challengeById(rec.challenge ?? "")) return { ok: false, reason: "bad challenge" };
   if (rec.log.length > MAX_EVENTS) return { ok: false, reason: "too long" };
   const sim = simFor(rec);
+  const pace: number[] = [];
   for (const e of rec.log) {
     if (e === REWIND) {
       if (sim.mover || !sim.canRewind()) return { ok: false, reason: "bad rewind" };
@@ -69,8 +71,9 @@ export function replayRun(rec: RunRecord): ReplayResult {
     if (!sim.mover) return { ok: false, reason: "drop after the end" };
     while (sim.ticks < e) sim.step();
     sim.drop();
+    while (pace.length < sim.level) pace.push(sim.ticks);
   }
-  return { ok: true, summary: sim.summary(), ticks: sim.ticks };
+  return { ok: true, summary: sim.summary(), ticks: sim.ticks, pace };
 }
 
 /** Records taps while a tower is built. */

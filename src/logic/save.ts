@@ -1,5 +1,6 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
+import { cleanPace } from "./ghost";
 import { COINS_PER_STAR } from "../data/daily";
 import { MISSION_KEYS, type Mission } from "../data/missions";
 import { SKINS } from "../data/skins";
@@ -85,6 +86,8 @@ export interface SaveData {
   daily: { day: number; best: number; plays: number };
   /** Landmark challenges completed. */
   challenges: string[];
+  /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts). */
+  ghost: number[];
   /** Skyline Journey: best map stars (1-3) per stage, and chapter chests opened ("chest1"...). */
   journey: Record<string, number>;
   /** Your best towers, highest score first. */
@@ -154,6 +157,7 @@ export function defaultSave(): SaveData {
     daily: { day: 0, best: 0, plays: 0 },
     challenges: [],
     journey: {},
+    ghost: [],
     history: [],
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, lang: "auto" },
     tutorialDone: false,
@@ -257,6 +261,7 @@ export function normalize(raw: unknown): SaveData {
     daily: { day: int(dl.day, 0), best: int(dl.best, 0), plays: int(dl.plays, 0) },
     challenges: strList(r.challenges),
     journey: starMap(r.journey),
+    ghost: cleanPace(r.ghost),
     history,
     settings: {
       sound: bool(set.sound, true), music: bool(set.music, true), vibrate: bool(set.vibrate, true),

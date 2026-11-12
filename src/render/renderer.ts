@@ -50,6 +50,8 @@ export interface Frame {
   bestFloors: number;
   /** City buildings on the island. */
   city: string[];
+  /** A ghost tower to race: how many floors it has built so far, and whose it is. */
+  ghost?: { floors: number; total: number; name: string } | null;
 }
 
 /** A box shrunk toward its middle, so rooftop gear stays on a round or angled roof. */

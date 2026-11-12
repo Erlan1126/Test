@@ -107,6 +107,23 @@ describe("online rankings", () => {
     expect(me.rank).toBe(a.score > b.score ? 2 : 1);
   });
 
+  it("serves the ghost of the player just above you, with their pace", async () => {
+    const t1 = await register(P1), t2 = await register(P2);
+    const a = play("classic", 3, 0.95), b = play("classic", 4, 0.5);
+    await call("/runs", { player: P1, token: t1, name: "Ace", level: 20, record: a.rec });
+    await call("/runs", { player: P2, token: t2, name: "Bo", level: 2, record: b.rec });
+    const [hi, lo, hiScore] = a.score >= b.score ? [P1, P2, a.score] : [P2, P1, b.score];
+    const g = await worker.fetch(new Request(`https://api.example/ghost?board=week&period=${a.rec.week}&player=${lo}`), env as never);
+    const { ghost } = await g.json() as any;
+    expect(ghost.score).toBe(hiScore);
+    expect(ghost.pace.length).toBeGreaterThan(3);
+    expect([...ghost.pace].sort((x: number, y: number) => x - y)).toEqual(ghost.pace); // ticks only go up
+    // The leader has nobody left to chase.
+    const top = await worker.fetch(new Request(`https://api.example/ghost?board=week&period=${a.rec.week}&player=${hi}`), env as never);
+    expect((await top.json() as any).ghost).toBeNull();
+    expect((await worker.fetch(new Request("https://api.example/ghost?board=all&period=0&player=" + lo), env as never)).status).toBe(400);
+  });
+
   it("cleans names", async () => {
     const t = await register(P1);
     await call("/runs", { player: P1, token: t, name: "<b>Sky King!!</b> 12345678", level: 1, record: play("classic", 5).rec });

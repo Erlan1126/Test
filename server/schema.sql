@@ -56,3 +56,13 @@ CREATE TABLE IF NOT EXISTS diag (
   msg TEXT NOT NULL DEFAULT '',
   data TEXT NOT NULL DEFAULT '{}'
 );
+
+-- Ghosts to race: when a player's best on a board improves, how fast that tower grew
+-- (the game tick at which it reached each floor), worked out by the server's replay.
+CREATE TABLE IF NOT EXISTS ghosts (
+  board TEXT NOT NULL,
+  period INTEGER NOT NULL,
+  player TEXT NOT NULL,
+  pace TEXT NOT NULL,
+  PRIMARY KEY (board, period, player)
+);

@@ -7,6 +7,7 @@
 //   today's Daily score, their best tower, this week's league points and their streak.
 //
 // Anywhere else the leaderboard is hidden.
+import { cleanPace } from "./logic/ghost";
 import { SERVER_URL } from "./data/server";
 import type { RunRecord } from "./logic/replay";
 import type { SaveData } from "./logic/save";
@@ -288,6 +289,22 @@ export class Online {
   }
 
   // ---------- Reading ----------
+
+  /** The ghost to race on a board: the player just above you, with their tower's pace. */
+  async ghost(board: "week" | "daily", period: number): Promise<{ name: string; pace: number[] } | null> {
+    if (this.kind !== "global" || !this.me) return null;
+    try {
+      const res = await fetch(`${API}/ghost?board=${board}&period=${period}&player=${encodeURIComponent(this.me)}`);
+      if (!res.ok) return null;
+      const g = (await res.json() as { ghost?: { id?: unknown; name?: unknown; pace?: unknown } | null }).ghost;
+      if (!g) return null;
+      const pace = cleanPace(g.pace);
+      const name = String(g.name ?? "").slice(0, 16);
+      return pace.length >= 3 && name && !this.blocked.has(String(g.id)) ? { name, pace } : null;
+    } catch {
+      return null;
+    }
+  }
 
   /** A leaderboard to show. Worldwide boards are fetched (and kept for 30 seconds). */
   async board(tab: Tab, today: number, week: number): Promise<Board> {

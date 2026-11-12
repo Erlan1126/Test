@@ -1,4 +1,5 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import { ghostFloors, MAX_GHOST, type Ghost } from "./logic/ghost";
 import { ROOF_STEPS, roofFor, type RoofKind } from "./render3d/rooftops";
 import { clamp, fmt, shortName } from "./core/util";
 import { challengeById, type Challenge } from "./data/challenges";
@@ -163,6 +164,11 @@ export class App implements DailyHost {
   private tag = "";
   /** The current tower's taps, for the online rankings. */
   private recorder: RunRecorder | null = null;
+  /** The ghost raced this tower, this tower's own pace so far, and whether you've beaten it. */
+  private ghost: Ghost | null = null;
+  private pace: number[] = [];
+  private ghostBeaten = false;
+  private ghostAhead = false;
   /** Time not yet turned into fixed sim steps. */
   private stepTime = 0;
 
@@ -681,6 +687,7 @@ export class App implements DailyHost {
       ...(this.tutorial && mode === "classic" ? { easy: true } : {}),
     });
     this.sim = simFor(this.recorder.rec, (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1));
+    this.startGhost(mode);
     this.stepTime = 0;
     this.renderer.fx.clear();
     // Weather for this tower: snow on the snowy island, sometimes rain or snow elsewhere.
@@ -704,6 +711,41 @@ export class App implements DailyHost {
     if (challenge) this.banner(stageName(challenge.id), stageGoal(challenge));
     else if (used.length) this.banner(t("Boosts on"), used.join(" · "));
     else if (mode === "daily") this.banner(t("Daily tower #{n}", { n: dayNumber() }), t("Same tower for everyone"));
+  }
+
+  /** Classic and Daily towers race a ghost: the player just above you on this week's (or
+   *  today's) rankings when online, otherwise your own best Classic tower. */
+  private startGhost(mode: Mode): void {
+    this.pace = [];
+    this.ghostBeaten = false;
+    this.ghostAhead = false;
+    this.ghost = mode === "classic" && this.save.ghost.length >= 5 && !this.tutorial
+      ? { name: t("Your best"), pace: this.save.ghost, self: true } : null;
+    if (mode !== "classic" && mode !== "daily") return;
+    const sim = this.sim;
+    void this.online.ghost(mode === "daily" ? "daily" : "week", mode === "daily" ? this.runDay : weekIndex()).then(g => {
+      // Only if this tower is still going and hasn't passed the start yet.
+      if (!g || this.sim !== sim || this.state !== "playing" || sim.level > 3) return;
+      this.ghost = { name: g.name, pace: g.pace, self: false };
+      this.banner(t("👻 Race {name}", { name: g.name }), t("Their tower: {n} floors. Build past their ghost!", { n: g.pace.length }));
+    });
+  }
+
+  /** After each landing: keep this tower's pace, and cheer passing or beating the ghost. */
+  private updateGhost(): void {
+    const sim = this.sim, g = this.ghost, fx = this.renderer.fx;
+    while (this.pace.length < sim.level) this.pace.push(sim.ticks);
+    if (!g || this.ghostBeaten) return;
+    const theirs = ghostFloors(g.pace, sim.ticks);
+    if (sim.level > g.pace.length) {
+      this.ghostBeaten = true;
+      fx.popup(g.self ? t("BEAT YOUR BEST!") : t("BEAT {name}!", { name: g.name.toUpperCase() }), t("Taller than their whole tower"), sim.level + 2.4, "#c7b8ff", 1.6, true);
+      this.sound.streak();
+      return;
+    }
+    const ahead = sim.level > theirs;
+    if (ahead && !this.ghostAhead && sim.level >= 4) fx.popup(t("👻 Passed {name}", { name: g.name }), "", sim.level + 2.2, "#c7b8ff", 1.1);
+    this.ghostAhead = ahead;
   }
 
   private goToMenu(): void {
@@ -832,6 +874,8 @@ export class App implements DailyHost {
         ? t("{roof} rooftop! Next: {next} at {n} floors", { roof: t(ROOF_NAME[kind]), next: t(ROOF_NAME[next[1]]), n: next[0] })
         : t("{roof} rooftop! The grandest of all", { roof: t(ROOF_NAME[kind]) }) });
     }
+    // A new best Classic tower becomes the ghost you race next time.
+    if (this.mode === "classic" && this.outcome.newBest && this.pace.length >= 5) this.save.ghost = this.pace.slice(0, MAX_GHOST);
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
@@ -923,6 +967,7 @@ export class App implements DailyHost {
     }
     if (f.kind === "ice") s.ice();
     if (f.kind === "garden") { s.garden(); fx.popup(t("TERRACE"), t("Your tower grew wider"), f.y + 2.1, "#b8f5a0", 1.2); }
+    this.updateGhost();
     fx.dust(f);
     fx.bounce = 1;
     fx.punch = Math.max(fx.punch, 0.25);
@@ -1601,6 +1646,8 @@ export class App implements DailyHost {
       bestFloors: this.mode === "zen" ? 0 : Math.round(this.save.bestMeters / 5),
       city: save.city,
       hudBottom: this.state === "playing" || this.state === "paused" ? this.hudBottom : 0,
+      ghost: this.ghost && (this.state === "playing" || this.state === "paused")
+        ? { floors: ghostFloors(this.ghost.pace, this.sim.ticks), total: this.ghost.pace.length, name: this.ghost.name } : null,
     });
     if (this.captureShare) {
       this.captureShare = false;
