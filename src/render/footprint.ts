@@ -50,3 +50,31 @@ export function inside(pts: XZ[], x: number, z: number): boolean {
   }
   return true;
 }
+
+/** The overlap of two convex polygons (either winding), by Sutherland–Hodgman. */
+export function clipConvex(subject: XZ[], clip: XZ[]): XZ[] {
+  if (subject.length < 3 || clip.length < 3) return [];
+  let area = 0;
+  for (let i = 0; i < clip.length; i++) {
+    const a = clip[i], b = clip[(i + 1) % clip.length];
+    area += a[0] * b[1] - b[0] * a[1];
+  }
+  const s = area >= 0 ? 1 : -1;
+  let out = subject;
+  for (let i = 0; i < clip.length && out.length; i++) {
+    const p = clip[i], q = clip[(i + 1) % clip.length];
+    const side = (v: XZ) => s * ((q[0] - p[0]) * (v[1] - p[1]) - (q[1] - p[1]) * (v[0] - p[0]));
+    const src = out;
+    out = [];
+    for (let j = 0; j < src.length; j++) {
+      const a = src[j], c = src[(j + 1) % src.length];
+      const da = side(a), dc = side(c);
+      if (da >= -1e-9) out.push(a);
+      if ((da >= -1e-9) !== (dc >= -1e-9)) {
+        const t = da / (da - dc);
+        out.push([a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t]);
+      }
+    }
+  }
+  return out.length >= 3 ? out : [];
+}

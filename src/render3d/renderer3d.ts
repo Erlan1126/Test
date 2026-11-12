@@ -20,7 +20,7 @@ import type { SkylineTower } from "../logic/skyline";
 import { drawLandmarkLabel, drawLandmarkShape, Weather } from "../render/atmosphere";
 import { floorColor, lookFor } from "../render/buildings";
 import { drawGuide, Effects, type Debris } from "../render/effects";
-import { footprint, type XZ } from "../render/footprint";
+import { clipConvex, footprint, type XZ } from "../render/footprint";
 import { ISO_X, View, type Env, type Paint } from "../render/paint";
 import type { Frame, Shot } from "../render/renderer";
 import { nightAt, skyAt, sunAt } from "../render/scenery";
@@ -29,6 +29,8 @@ import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
 
+/** Most triangles the landing shadow can need (round floors have many sides). */
+const SHADOW_MAX = 128;
 const POWER_ICON: Record<PowerUp, string> = { slow: "⏳", wide: "🎯", steady: "🍃" };
 /** The camera sits this far from what it looks at, along (1, 1, 1). */
 const CAM_DIST = 160;
@@ -192,7 +194,11 @@ export class Renderer3D {
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.03;
 
-    this.landShadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a1432, transparent: true, opacity: 0.22, depthWrite: false }));
+    // The landing shadow takes the exact shape of the overlap, so it is rebuilt in place.
+    const shadowGeo = new THREE.BufferGeometry();
+    shadowGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(SHADOW_MAX * 9), 3).setUsage(THREE.DynamicDrawUsage));
+    this.landShadow = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({ color: 0x0a1432, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+    this.landShadow.frustumCulled = false;
     this.landShadow.renderOrder = 2;
     this.scene.add(this.landShadow);
 
@@ -639,11 +645,23 @@ export class Renderer3D {
     }
     // Where it would land, shaded on the top floor.
     const top = f.sim.top;
-    const x0 = Math.max(m.x0, top.x0), x1 = Math.min(m.x1, top.x1), z0 = Math.max(m.z0, top.z0), z1 = Math.min(m.z1, top.z1);
-    this.landShadow.visible = x1 > x0 && z1 > z0;
-    if (this.landShadow.visible) {
-      this.landShadow.scale.set(x1 - x0, 1, z1 - z0);
-      this.landShadow.position.set((x0 + x1) / 2, (top.y + 1) * FH + 0.06 - this.fx.bounce * 0.3 * FH, (z0 + z1) / 2);
+    const foot = (b: Floor): XZ[] => {
+      const p = f.shape.id === "square" ? boxFoot(b) : footprint(f.shape, b, b.y, b.frame);
+      return p.length >= 3 ? p : boxFoot(b);
+    };
+    const over = clipConvex(foot(m), foot(top));
+    const tris = Math.min(SHADOW_MAX, over.length - 2);
+    this.landShadow.visible = tris > 0;
+    if (tris > 0) {
+      const attr = this.landShadow.geometry.getAttribute("position") as THREE.BufferAttribute;
+      const a = attr.array as Float32Array;
+      for (let i = 0; i < tris; i++) {
+        const t = [over[0], over[i + 1], over[i + 2]];
+        for (let k = 0; k < 3; k++) a.set([t[k][0], 0, t[k][1]], (i * 3 + k) * 3);
+      }
+      attr.needsUpdate = true;
+      this.landShadow.geometry.setDrawRange(0, tris * 3);
+      this.landShadow.position.set(0, (top.y + 1) * FH + 0.06 - this.fx.bounce * 0.3 * FH, 0);
     }
   }
 
@@ -727,9 +745,9 @@ export class Renderer3D {
     }
     if (m && f.showMover) {
       if (m.power || m.kind === "magnet") this.drawBadge(m, m.power ? POWER_ICON[m.power] : "🧲");
-      if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect());
+      if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect(), f.shape);
     }
-    fx.drawFlash(p, top);
+    fx.drawFlash(p, top, f.shape);
     fx.drawParticles(p);
     this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0);
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);

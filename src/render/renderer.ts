@@ -214,10 +214,10 @@ export class Renderer {
       const alpha = m.kind === "ghost" ? 0.1 + 0.9 * Math.max(0, Math.sin(env.time * 4.2)) ** 0.6 : 1;
       drawBlock(p, m, m.y, m.y + 1, floorColor(f.skin, m.y, m.kind), lookFor(f.skin, m.kind), { kind: m.kind, foot: this.foot(f, m), alpha });
       if (m.power || m.kind === "magnet") this.drawBadge(m, m.power ? POWER_ICON[m.power] : "🧲");
-      if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect());
+      if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect(), f.shape);
     }
     fx.drawDebris(p, false, f.shape);
-    fx.drawFlash(p, top);
+    fx.drawFlash(p, top, f.shape);
     scenery.drawBandClouds(p, true, f.showMover ? n : null, dt);
     fx.drawParticles(p);
     ctx.restore();

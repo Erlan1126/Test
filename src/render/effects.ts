@@ -170,12 +170,16 @@ export class Effects {
   }
 
   /** A bright outline that expands from a perfect floor. */
-  drawFlash(p: Paint, t: Floor): void {
+  drawFlash(p: Paint, t: Floor, shape?: Shape): void {
     if (this.flash <= 0) return;
     const { ctx, view } = p;
     const g = (1 - this.flash) * 2;
-    const pts = [[t.x0 - g, t.z0 - g], [t.x1 + g, t.z0 - g], [t.x1 + g, t.z1 + g], [t.x0 - g, t.z1 + g]]
-      .map(([x, z]) => view.project(x, t.y + 1, z));
+    // The floor's own outline (round, hexagon...), growing outward from its middle.
+    let foot: [number, number][] = shape && shape.id !== "square" ? footprint(shape, t, t.y, t.frame) : [];
+    if (foot.length < 3) foot = [[t.x0, t.z0], [t.x1, t.z0], [t.x1, t.z1], [t.x0, t.z1]];
+    const cx = (t.x0 + t.x1) / 2, cz = (t.z0 + t.z1) / 2;
+    const kx = 1 + g / Math.max(0.1, (t.x1 - t.x0) / 2), kz = 1 + g / Math.max(0.1, (t.z1 - t.z0) / 2);
+    const pts = foot.map(([x, z]) => view.project(cx + (x - cx) * kx, t.y + 1, cz + (z - cz) * kz));
     ctx.strokeStyle = this.flashGold ? `rgba(255,210,63,${this.flash})` : `rgba(255,255,255,${this.flash})`;
     ctx.lineWidth = 4 * this.flash + 1;
     ctx.beginPath();
@@ -220,11 +224,14 @@ export function drawLandingShadow(p: Paint, mover: Box, top: Floor, bounce: numb
 
 /** Beginner guide: a dashed outline where the sliding floor should land. It turns green
  *  when tapping now would be a perfect drop. */
-export function drawGuide(p: Paint, top: Floor, moverY: number, ready: boolean): void {
+export function drawGuide(p: Paint, top: Floor, moverY: number, ready: boolean, shape?: Shape): void {
   const { ctx, view, env } = p;
   const y0 = moverY, y1 = moverY + 1;
   const P = (x: number, y: number, z: number) => view.project(x, y, z);
-  const pts = [P(top.x0, y1, top.z0), P(top.x1, y1, top.z0), P(top.x1, y1, top.z1), P(top.x0, y1, top.z1)];
+  // The top floor's own outline (round, hexagon...), not just its bounding box.
+  let foot: [number, number][] = shape && shape.id !== "square" ? footprint(shape, top, top.y, top.frame) : [];
+  if (foot.length < 3) foot = [[top.x0, top.z0], [top.x1, top.z0], [top.x1, top.z1], [top.x0, top.z1]];
+  const pts = foot.map(([x, z]) => P(x, y1, z));
   ctx.save();
   ctx.setLineDash([7, 6]);
   ctx.lineWidth = 2.5;
@@ -232,7 +239,10 @@ export function drawGuide(p: Paint, top: Floor, moverY: number, ready: boolean):
   ctx.beginPath();
   pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
   ctx.closePath();
-  for (const [x, z] of [[top.x0, top.z1], [top.x1, top.z1], [top.x1, top.z0]]) {
+  // Drop lines from the outline's left, right and nearest points.
+  const sx = foot.map(([x, z]) => P(x, y1, z)[0]);
+  const near = foot.reduce((b, q) => (q[0] + q[1] > b[0] + b[1] ? q : b));
+  for (const [x, z] of [foot[sx.indexOf(Math.min(...sx))], foot[sx.indexOf(Math.max(...sx))], near]) {
     const [ax, ay] = P(x, y1, z), [bx, by] = P(x, y0, z);
     ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
   }
