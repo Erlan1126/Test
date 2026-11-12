@@ -28,6 +28,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
+import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
 const SHADOW_MAX = 128;
@@ -132,7 +133,17 @@ export class Renderer3D {
   private moverOf: unknown = null;
   private readonly landShadow: THREE.Mesh;
   private readonly roofGear = new THREE.Group();
-  private readonly beacon: THREE.Mesh;
+  private roofKey = "";
+  /** Shared shader inputs: the glass ripple after a perfect drop, rain and snow. */
+  private readonly fxU = {
+    uTime: { value: 0 }, uRipY: { value: -999 }, uRipAmp: { value: 0 }, uWet: { value: 0 }, uSnow: { value: 0 },
+  };
+  /** Materials (the lawn) that turn white when it snows. */
+  private snowable: THREE.MeshStandardMaterial[] = [];
+  /** Home screen camera: a slow sunrise intro, then a gentle sway around the island. */
+  private menuTime = 0;
+  private introDone = false;
+  private azimuth = 0;
 
   // Falling pieces
   private readonly debrisMeshes = new Map<Debris, THREE.Mesh>();
@@ -205,13 +216,7 @@ export class Renderer3D {
     this.landShadow.renderOrder = 2;
     this.scene.add(this.landShadow);
 
-    // Rooftop gear for the finished tower: a machine room, an antenna and its light.
-    const grey = new THREE.MeshStandardMaterial({ color: 0xbec6d2, roughness: 0.7 });
-    this.roofGear.add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 2.4).translate(0, 0.45, 0), grey));
-    this.roofGear.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 5, 6).translate(0, 3.4, 0), new THREE.MeshStandardMaterial({ color: 0xe9ecef, metalness: 0.6, roughness: 0.3 })));
-    this.beacon = new THREE.Mesh(new THREE.SphereGeometry(0.25, 10, 8).translate(0, 6, 0), new THREE.MeshStandardMaterial({ color: 0xff4646, emissive: 0xff2020, emissiveIntensity: 2 }));
-    this.roofGear.add(this.beacon);
-    this.roofGear.traverse(o => { o.castShadow = true; });
+    // The finished tower's rooftop (antenna, garden, helipad, spire or crown).
     this.roofGear.visible = false;
     this.scene.add(this.roofGear);
 
@@ -321,11 +326,98 @@ export class Renderer3D {
     for (let i = 0; i < 60; i++) this.camera(1, shot, level);
   }
 
+  /** The home screen camera: opens swung round to one side and glides into place as the
+   *  sun comes up, then sways slowly so the city feels alive. Straight while playing. */
+  private updateMenuCamera(dt: number, f: Frame): void {
+    if (f.shot === "menu" && !this.calm) {
+      this.menuTime += dt;
+      const t = this.menuTime, k = clamp(t / 4.5, 0, 1), ease = 1 - (1 - k) ** 3;
+      const sway = Math.sin(t * 0.13) * 0.22 * ease;
+      this.azimuth = this.introDone ? lerp(this.azimuth, Math.sin(t * 0.13) * 0.22, Math.min(1, dt * 1.5)) : lerp(-0.75, 0, ease) + sway;
+      if (k >= 1 && !this.introDone) this.introDone = true;
+    } else {
+      if (f.shot !== "menu") this.introDone = true;
+      this.azimuth = Math.abs(this.azimuth) < 0.002 ? 0 : lerp(this.azimuth, 0, Math.min(1, dt * 7));
+    }
+  }
+
+  /** The finished tower's rooftop: grander the taller the tower. */
+  private updateRoof(f: Frame): void {
+    const top = f.sim.top, n = f.sim.stack.length;
+    const show = f.shot === "over" && n > 1;
+    this.roofGear.visible = show;
+    if (!show) return;
+    const kind: RoofKind = roofFor(n - 1);
+    const square = f.shape.id === "square";
+    const half = Math.min(top.x1 - top.x0, top.z1 - top.z0) / 2 * (square ? 0.95 : 0.7);
+    const key = `${kind}|${half.toFixed(1)}`;
+    if (key !== this.roofKey) {
+      this.roofKey = key;
+      for (const c of [...this.roofGear.children]) { this.roofGear.remove(c); disposeTree(c); }
+      this.roofGear.add(buildRoof(kind, half));
+    }
+    this.roofGear.position.set((top.x0 + top.x1) / 2, (top.y + 1) * FH, (top.z0 + top.z1) / 2);
+    const t = this.env.time;
+    this.roofGear.traverse(o => {
+      const m = o as THREE.Mesh;
+      if (o.userData.blink) (m.material as THREE.MeshStandardMaterial).emissiveIntensity = Math.floor(t / 0.6) % 2 ? 0.2 : 3;
+      if (o.userData.spin) o.rotation.y = t * 0.8;
+    });
+  }
+
+  /** Drives the shared shader inputs: a shimmer that runs down the glass after a perfect
+   *  drop, rain streaks and a wet sheen in the rain, and snow settling on roofs and lawn. */
+  private updateShaderFx(dt: number, f: Frame): void {
+    const u = this.fxU, r = this.fx.ripple, kind = this.weather.kind;
+    u.uTime.value = this.env.time;
+    const top = f.sim.top;
+    const life = 1.1;
+    if (r.age < life && !this.calm) {
+      u.uRipY.value = (top.y + 1) * FH - r.age * 30;
+      u.uRipAmp.value = r.strength * 1.6 * (1 - r.age / life);
+    } else u.uRipAmp.value = 0;
+    const ease = Math.min(1, dt * 0.6);
+    u.uWet.value = lerp(u.uWet.value, kind === "rain" ? 1 : 0, ease);
+    u.uSnow.value = lerp(u.uSnow.value, kind === "snow" ? 1 : 0, ease);
+    const snow = u.uSnow.value;
+    for (const m of this.snowable) {
+      m.color.setScalar(1 - 0.5 * snow);
+      m.emissive.setScalar(0.62 * snow);
+    }
+  }
+
+  /** Adds the ripple, rain and snow effects to a building material's shader. */
+  private addFx(m: THREE.Material, part: "wall" | "roof"): void {
+    m.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, this.fxU);
+      const decl = "uniform float uTime; uniform float uRipY; uniform float uRipAmp; uniform float uWet; uniform float uSnow; varying vec3 vFxW;\n";
+      shader.vertexShader = "varying vec3 vFxW;\n" + shader.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\nvFxW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+      shader.fragmentShader = decl + (part === "wall"
+        ? shader.fragmentShader.replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+          // A bright band sweeping down the glass after a perfect drop.
+          totalEmissiveRadiance += vec3(0.55, 0.85, 1.0) * uRipAmp * exp(-pow((vFxW.y - uRipY) / 1.3, 2.0));
+          // Raindrops running down the glass.
+          if (uWet > 0.01) {
+            float u = (vFxW.x - vFxW.z) * 2.2;
+            float h = fract(sin(floor(u) * 12.9898) * 43758.5453);
+            float run = fract((vFxW.y + uTime * (2.0 + h * 3.0)) * 0.09 + h * 7.0);
+            float line = 1.0 - smoothstep(0.0, 0.07, abs(fract(u) - 0.5));
+            totalEmissiveRadiance += vec3(0.8, 0.9, 1.0) * smoothstep(0.75, 1.0, run) * line * step(0.4, h) * uWet * 0.45;
+          }`)
+        : shader.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.96, 0.97, 1.0), uSnow * 0.9);")
+          .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n roughnessFactor *= 1.0 - 0.65 * uWet;"));
+    };
+    m.customProgramCacheKey = () => `skyfx-${part}`;
+  }
+
   /** Points the 3D camera so world points land exactly where View.project puts them. */
   private placeCamera(shake: number): void {
     const v = this.view, S = ISO_SCALE * v.s * v.zoom;
     const target = new THREE.Vector3(0, v.level * FH, 0);
-    this.cam.position.copy(target).addScalar(CAM_DIST / Math.sqrt(3));
+    // Straight isometric while playing; on the home screen the camera can swing around the
+    // island (nothing on the overlay needs to line up there).
+    const d = CAM_DIST / Math.sqrt(3), a = this.azimuth;
+    this.cam.position.copy(target).add(new THREE.Vector3(d * (Math.cos(a) + Math.sin(a)), d, d * (Math.cos(a) - Math.sin(a))));
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(target);
     const sx = shake ? rand(-1, 1) * 10 * shake : 0, sy = shake ? rand(-1, 1) * 10 * shake : 0;
@@ -344,12 +436,19 @@ export class Renderer3D {
 
   draw(dt: number, f: Frame): void {
     const { view, env, fx } = this;
-    const sim = f.sim, stack = sim.stack, n = stack.length, top = sim.top;
+    const sim = f.sim, stack = sim.stack, n = stack.length;
     env.time += dt;
     env.low = f.low;
     [env.skyTop, env.skyBot] = skyAt(n);
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0)[1], 0.6);
+    // The first home screen opens on a sunrise that warms into the day.
+    const dawn = this.introDone || f.shot !== "menu" ? 0 : clamp(1 - this.menuTime / 4.5, 0, 1);
+    if (dawn > 0) {
+      const k = dawn * dawn * (3 - 2 * dawn);
+      env.skyTop = mixRgb(env.skyTop, [255, 170, 120], 0.55 * k);
+      env.skyBot = mixRgb(env.skyBot, [255, 214, 150], 0.7 * k);
+    }
     env.nf = nightAt(n);
     env.climb = view.level * view.th * view.zoom;
     if (f.low !== this.low) this.resize(f.low);
@@ -372,12 +471,9 @@ export class Renderer3D {
     // Top floor squash when it lands
     if (this.topMesh) this.topMesh.scale.y = n > 1 ? 1 - fx.bounce * 0.3 : 1;
 
-    // Rooftop gear on the finished tower
-    this.roofGear.visible = f.shot === "over" && n > 1;
-    if (this.roofGear.visible) {
-      this.roofGear.position.set((top.x0 + top.x1) / 2, (top.y + 1) * FH, (top.z0 + top.z1) / 2);
-      (this.beacon.material as THREE.MeshStandardMaterial).emissiveIntensity = Math.floor(env.time / 0.6) % 2 ? 0.2 : 3;
-    }
+    this.updateRoof(f);
+    this.updateShaderFx(dt, f);
+    this.updateMenuCamera(dt, f);
 
     this.placeCamera(fx.shake > 0 && !this.calm ? fx.shake : 0);
     this.updateEnvironment(n);
@@ -473,6 +569,11 @@ export class Renderer3D {
     const { group, anim } = buildIsland({ theme: f.theme, level: f.islandLevel, city: f.city });
     this.island = group;
     this.islandAnim = anim;
+    this.snowable = [];
+    group.traverse(o => {
+      const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if (m && !Array.isArray(m) && m.userData?.snowable && !this.snowable.includes(m)) this.snowable.push(m);
+    });
     this.scene.add(group);
   }
 
@@ -531,8 +632,10 @@ export class Renderer3D {
       clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 1.3,
     });
     wall.userData.alwaysLit = !!look.alwaysLit || !!look.neon;
+    this.addFx(wall, "wall");
     this.wallMats.add(wall);
     const roof = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: gold ? 0.35 : 0.8, metalness: gold ? 0.7 : 0 });
+    this.addFx(roof, "roof");
     m = { wall, roof };
     this.mats.set(key, m);
     return m;
@@ -631,7 +734,7 @@ export class Renderer3D {
       this.moverMesh = this.floorMesh(m, f, true);
       // Its own copy of the materials, so a foggy floor can fade without fading the tower.
       const mats = this.moverMesh.material as THREE.MeshStandardMaterial[];
-      this.moverMesh.material = mats.map(x => { const c = x.clone(); c.transparent = m.kind === "ghost"; this.wallMats.add(c); return c; });
+      this.moverMesh.material = mats.map((x, i) => { const c = x.clone(); c.transparent = m.kind === "ghost"; this.addFx(c, i === 0 ? "wall" : "roof"); if (i === 0) this.wallMats.add(c); return c; });
       this.moverOf = m;
       this.moverMesh.userData.width = m.width;
       this.scene.add(this.moverMesh);

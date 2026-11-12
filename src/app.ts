@@ -1,4 +1,5 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import { ROOF_STEPS, roofFor, type RoofKind } from "./render3d/rooftops";
 import { clamp, fmt, shortName } from "./core/util";
 import { challengeById, type Challenge } from "./data/challenges";
 import { GOLD, MILESTONES } from "./data/constants";
@@ -92,7 +93,10 @@ function siteUrl(): string {
 }
 
 /** How long the landmark slow-motion lasts, in seconds. */
+const ROOF_NAME: Record<RoofKind, string> = { antenna: "Antenna", garden: "Garden", helipad: "Helipad", spire: "Spire", crown: "Crown" };
 const SLOWMO = 0.9;
+/** Seconds (real time) the camera lingers in slow motion on the floor that fell. */
+const FALL_CAM = 1.4;
 
 /** Length of the video clip's camera flight. */
 const VIDEO_SECONDS = 4.5;
@@ -138,6 +142,8 @@ export class App implements DailyHost {
   private builtSkin = "";
   private builtShape = "";
   private slowmo = 0;
+  /** Slow-motion moment on the falling floor after the last miss. */
+  private fallCam = 0;
   /** The video clip being recorded, if any. */
   private video: { t: number; rec: MediaRecorder; ctx: CanvasRenderingContext2D; canvas: HTMLCanvasElement } | null = null;
   private starterTimer = 0;
@@ -511,7 +517,7 @@ export class App implements DailyHost {
       if (this.state === "playing") this.drop();
       else if (this.peek) this.setPeek(false);
       // Impatient? A tap brings the results card (and its Build again button) right away.
-      else if (this.state === "over" && !this.overReady) this.overTimer = Math.min(this.overTimer, 0.12);
+      else if (this.state === "over" && !this.overReady) { this.fallCam = 0; this.overTimer = Math.min(this.overTimer, 0.12); }
     });
     $("play").addEventListener("click", () => this.start("classic"));
     $("daily-btn").addEventListener("click", () => this.start("daily"));
@@ -652,6 +658,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.slowmo = 0;
+    this.fallCam = 0;
     this.frameStats = { n: 0, time: 0, slow: 0, worst: 0 };
     this.levelShown = false;
     this.postcardsThisRun = [];
@@ -783,6 +790,13 @@ export class App implements DailyHost {
     this.sim.combo = 0;
     this.sim.mover = null;
     this.renderer.fx.shake = Math.max(this.renderer.fx.shake, 0.6);
+    // Losing on a miss: watch the floor tumble away in slow motion before the camera
+    // pulls back to show the whole tower.
+    if (!silent && !this.calmMotion && this.renderer.fx.debris.length) {
+      this.fallCam = FALL_CAM;
+      this.overTimer += FALL_CAM;
+      this.sound.whoosh();
+    }
     for (const id of ["hud", "pause", "banner", "powers"]) $(id).hidden = true;
     this.sound.intensity = 0;
     const run = this.sim.summary();
@@ -810,6 +824,13 @@ export class App implements DailyHost {
     // Tall towers stand in their district for good.
     if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
       this.outcome.rewards.push({ kind: "island", text: t("Your tower now stands in {name}", { name: t(district.name) }) });
+    }
+    // Taller towers earn grander rooftops; say which one this tower got and what's next.
+    if (this.mode !== "zen" && run.floors >= 10) {
+      const kind = roofFor(run.floors), next = ROOF_STEPS.find(([n]) => n > run.floors);
+      this.outcome.rewards.push({ kind: "star", text: next
+        ? t("{roof} rooftop! Next: {next} at {n} floors", { roof: t(ROOF_NAME[kind]), next: t(ROOF_NAME[next[1]]), n: next[0] })
+        : t("{roof} rooftop! The grandest of all", { roof: t(ROOF_NAME[kind]) }) });
     }
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
@@ -872,6 +893,8 @@ export class App implements DailyHost {
     }
     if (out.perfect) {
       fx.punch = Math.max(fx.punch, out.combo >= 5 ? 1 : 0.45);
+      // A short kick of the camera that grows with the streak.
+      fx.shake = Math.max(fx.shake, (f.kind === "gold" ? 0.3 : 0.08 + Math.min(out.combo, 10) * 0.014));
       fx.flash = 1;
       fx.flashGold = f.kind === "gold";
       const view = this.renderer.view, [rx, ry] = view.project((f.x0 + f.x1) / 2, f.y + 1, (f.z0 + f.z1) / 2);
@@ -1458,6 +1481,10 @@ export class App implements DailyHost {
       this.slowmo = Math.max(0, this.slowmo - dt);
       dt *= 0.3 + 0.7 * (1 - this.slowmo / SLOWMO) ** 2;
     }
+    if (this.fallCam > 0) {
+      this.fallCam = Math.max(0, this.fallCam - Math.min(0.05, Math.max(0, raw)));
+      dt *= 0.25 + 0.75 * (1 - this.fallCam / FALL_CAM) ** 3;
+    }
     // Auto graphics: if a tower plays below about 50 fps, drop the costly extras one step
     // at a time: shaders, then smooth mode (fewer details), and only as a last resort a
     // slightly lower resolution, so the picture stays sharp.
@@ -1528,7 +1555,7 @@ export class App implements DailyHost {
     const lvl = this.state === "over" || this.state === "menu" ? 0 : sim.level;
     this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(sim.stack.length), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
-    const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" ? "over" : "play";
+    const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" && this.fallCam <= 0 ? "over" : "play";
     if (this.video && this.renderer instanceof Renderer3D) {
       // Recording the video clip: the camera flies up the tower, then pulls back.
       this.video.t += dt / VIDEO_SECONDS;
@@ -1557,7 +1584,7 @@ export class App implements DailyHost {
     const save = this.save;
     this.renderer.draw(dt, {
       sim: this.sim,
-      shot: this.state === "menu" ? "menu" : this.state === "over" ? "over" : "play",
+      shot: this.state === "menu" ? "menu" : this.state === "over" && this.fallCam <= 0 ? "over" : "play",
       showMover: this.state === "playing" || this.state === "paused",
       // A finished tower keeps the skin it was built in.
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),

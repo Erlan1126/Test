@@ -376,6 +376,9 @@ export class Sound {
     this.bell(f, 0.9, 0.12);
     this.bell(f * 2, 0.5, 0.03, 0.02, 0.4);
     if (combo >= 5) this.bell(f * 1.5, 0.7, 0.04, 0.05, -0.4);
+    // A glassy shimmer that rises with the streak, like the light running down the tower.
+    const steps = Math.min(combo, 6);
+    for (let i = 0; i < steps; i++) this.bell(f * 2 * Math.pow(2, (i * 2) / 12), 0.28, 0.012 + i * 0.002, 0.05 + i * 0.035, (i / 5) * 1.2 - 0.6);
   }
   ice(): void { this.bell(1760, 0.5, 0.05, 0, -0.3); this.bell(2637, 0.4, 0.035, 0.06, 0.3); this.noise(0.25, 0.03, 6000, "highpass", 0.5); }
   garden(): void { [0, 5, 9].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.4, 0.05, i * 0.06, i - 1)); }

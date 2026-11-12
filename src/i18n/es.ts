@@ -758,4 +758,11 @@ export const ES: Record<string, string> = {
   "Daily tower": "Torre diaria",
   "Star shop": "Tienda de estrellas",
   "Zen mode": "Modo Zen",
+  "Antenna": "Antena",
+  "Garden": "Jardín",
+  "Helipad": "Helipuerto",
+  "Spire": "Aguja",
+  "Crown": "Corona",
+  "{roof} rooftop! Next: {next} at {n} floors": "¡Azotea con {roof}! Siguiente: {next} a los {n} pisos",
+  "{roof} rooftop! The grandest of all": "¡Azotea con {roof}! La más grandiosa de todas",
 };

@@ -11,6 +11,7 @@ import { BALLOONS, CARS, EXTRA_NEIGHBORS, FOUNTAIN, NEIGHBORS, POND, TREES, WHEE
 import { BEDS, BUILD_SPOTS, HOUSE_ROOFS, HOUSE_WALLS, HOUSES, LAKE, ROCKS } from "../render/details";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
+import { addCityLife } from "./citylife";
 
 const I = ISLAND;
 const col = (c: string | number[]) => (typeof c === "string" ? new THREE.Color(c) : new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255));
@@ -38,7 +39,9 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   const anims: ((time: number, night: number) => void)[] = [];
 
   // ---- Ground: lawn on a slab of dirt with a grassy lip, rock tapering below ----
-  g.add(shadowed(new THREE.Mesh(new THREE.PlaneGeometry(I * 2, I * 2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lawnTexture(t), roughness: 0.95 })), false));
+  const lawn = new THREE.MeshStandardMaterial({ map: lawnTexture(t), roughness: 0.95 });
+  lawn.userData.snowable = true;   // turns white when it snows
+  g.add(shadowed(new THREE.Mesh(new THREE.PlaneGeometry(I * 2, I * 2).rotateX(-Math.PI / 2), lawn), false));
   const dirt = new THREE.Mesh(new THREE.BoxGeometry(I * 2, 3 * FH, I * 2).translate(0, -1.5 * FH - 0.08, 0), [
     std(t.dirtR), std(t.dirtL), std(t.lawn), std(t.dirtL), std(t.dirtL), std(t.dirtR),
   ]);
@@ -146,8 +149,9 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   }
 
   // ---- Upgrades: street lights and cars, Ferris wheel, balloons ----
-  if (has(3)) {
-    const cars = CARS.map(c => {
+  {
+    // A couple of cars from the start; the traffic upgrade fills the streets.
+    const cars = CARS.slice(0, has(3) ? CARS.length : 2).map(c => {
       const car = new THREE.Group();
       car.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.8).translate(0, 0.35, 0), std(c.color as unknown as number[], { roughness: 0.4, metalness: 0.3 })));
       car.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.35, 0.7).translate(-0.1, 0.72, 0), std("#bfe3ff", { roughness: 0.1 })));
@@ -199,6 +203,9 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     b.position.set(s.x, 0, s.z);
     g.add(shadowed(b));
   }
+
+  // ---- People, a boat and birds ----
+  anims.push(addCityLife(g));
 
   mergeStatic(g);
   return { group: g, anim: { update: (time, night) => anims.forEach(a => a(time, night)) } };
