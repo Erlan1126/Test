@@ -1030,8 +1030,10 @@ export class App implements DailyHost {
     sb.querySelector<HTMLElement>(".new-dot")!.hidden = !v.atRisk;
     const st = $("stars-btn");
     st.hidden = save.starsEarned <= 0 && !isOpen(save, "shop");
-    $("stars-num").textContent = String(save.stars);
-    $("crystals-num").textContent = fmt(save.crystals);
+    $("stars-num").textContent = save.stars >= 10000 ? `${(save.stars / 1000).toFixed(1)}K` : String(save.stars);
+    // Big balances are shortened (26.6K) so the top bar always fits.
+    const short = (n: number) => (n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}K` : fmt(n));
+    $("crystals-num").textContent = short(save.crystals);
     st.querySelector<HTMLElement>(".new-dot")!.hidden = true;
   }
 

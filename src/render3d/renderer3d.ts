@@ -5,6 +5,10 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { clamp, lerp, mixRgb, rand, rgb, type RGB } from "../core/util";
 import { BLOCK_SIZE, ISLAND, MILESTONES, UI_FONT } from "../data/constants";
 import type { Look } from "../data/skins";
@@ -34,7 +38,7 @@ const ISO_SCALE = ISO_X / Math.SQRT1_2;
 const toColor = (c: RGB) => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
 /** Where district islands float around the home island (world units, height in floors). */
 const DISTRICT_SLOTS = [
-  { x: -31, z: -31, y: -6 }, { x: -46, z: -22, y: 1 }, { x: -22, z: -46, y: -3 },
+  { x: -38, z: -38, y: 3 }, { x: -46, z: -22, y: 1 }, { x: -22, z: -46, y: -3 },
   { x: -54, z: -44, y: -16 }, { x: -44, z: -56, y: 2 }, { x: -62, z: -60, y: -7 },
 ];
 /** Floors merged per block. */
@@ -86,9 +90,18 @@ export class Renderer3D {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly gl: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, CAM_DIST * 3);
+  // A tight near/far range keeps depth precise on phones (some have 16-bit depth
+  // buffers), so flat things like roads and water don't flicker against the lawn.
+  private readonly cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 20, CAM_DIST + 260);
   private readonly hemi = new THREE.HemisphereLight(0xffffff, 0x6a5a4a, 1.2);
   private readonly sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  private readonly pmrem: THREE.PMREMGenerator;
+  private readonly envScene = new THREE.Scene();
+  private readonly envSky: THREE.Mesh;
+  private envTarget: THREE.WebGLRenderTarget | null = null;
+  private envKey = "";
+  private readonly composer: EffectComposer;
+  private readonly bloom: UnrealBloomPass;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };
   private readonly paint: Paint;
   private readonly calm = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -137,15 +150,33 @@ export class Renderer3D {
     glCanvas.hidden = false;
     this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: "high-performance" });
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
-    this.gl.toneMapping = THREE.ACESFilmicToneMapping;
-    this.gl.toneMappingExposure = 1.05;
+    // Neutral tone mapping keeps colors rich instead of washing them out.
+    this.gl.toneMapping = THREE.NeutralToneMapping;
+    this.gl.toneMappingExposure = 1;
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
-    // Reflections: a soft studio environment, so glass and metal catch light.
-    const pmrem = new THREE.PMREMGenerator(this.gl);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.35;
-    pmrem.dispose();
+    // Reflections start from a soft studio light; once the sky is known, the glass
+    // reflects the real sky instead (see updateEnvironment).
+    this.pmrem = new THREE.PMREMGenerator(this.gl);
+    this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.9;
+    this.envSky = new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false,
+      uniforms: { top: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sun: { value: new THREE.Vector3(0.3, 0.6, -0.7) }, sunCol: { value: new THREE.Color(1, 0.95, 0.85) } },
+      vertexShader: "varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: "uniform vec3 top; uniform vec3 bot; uniform vec3 sun; uniform vec3 sunCol; varying vec3 vDir;" +
+        "void main() { float h = vDir.y; vec3 c = mix(bot, top, smoothstep(-0.1, 0.7, h));" +
+        "c = mix(c, bot * 0.55, smoothstep(0.0, -0.4, h));" +
+        "float s = max(dot(normalize(vDir), normalize(sun)), 0.0); c += sunCol * (pow(s, 400.0) * 18.0 + pow(s, 12.0) * 0.5);" +
+        "gl_FragColor = vec4(c, 1.0); }",
+    }));
+    this.envScene.add(this.envSky);
+    // A soft glow on the brightest things (sun glints on glass, lit windows at night).
+    this.composer = new EffectComposer(this.gl);
+    this.composer.addPass(new RenderPass(this.scene, this.cam));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.45, 0.92);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
 
     this.skyCanvas.width = 64; this.skyCanvas.height = 256;
     this.skyTex = new THREE.CanvasTexture(this.skyCanvas);
@@ -216,6 +247,10 @@ export class Renderer3D {
     this.ctx.setTransform(overlayDpr, 0, 0, overlayDpr, 0, 0);
     this.gl.setPixelRatio(this.dpr);
     this.gl.setSize(v.W, v.H, false);
+    this.composer.setPixelRatio(this.dpr);
+    this.composer.setSize(v.W, v.H);
+    // Bloom at a quarter of the pixels: it's blurry anyway, and much cheaper.
+    this.bloom.resolution.set(Math.round(v.W * this.dpr / 2), Math.round(v.H * this.dpr / 2));
     this.gl.shadowMap.enabled = !low;
     this.sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
     this.sun.shadow.map?.dispose();
@@ -336,8 +371,33 @@ export class Renderer3D {
     }
 
     this.placeCamera(fx.shake > 0 && !this.calm ? fx.shake : 0);
-    this.gl.render(this.scene, this.cam);
+    this.updateEnvironment(n);
+    if (this.low) this.gl.render(this.scene, this.cam);
+    else {
+      // Subtle by day (only sun glints), stronger at night when windows glow.
+      this.bloom.strength = 0.18 + env.nf * 0.6;
+      this.bloom.threshold = lerp(0.95, 0.7, env.nf);
+      this.composer.render();
+    }
     this.drawOverlay(dt, f);
+  }
+
+  /** The glass reflects the real sky: rebuilt as the sky changes color with height. */
+  private updateEnvironment(n: number): void {
+    const { env } = this;
+    const key = `${Math.round(env.skyTop[0] / 8)},${Math.round(env.skyTop[1] / 8)},${Math.round(env.skyTop[2] / 8)}|${Math.round(env.skyBot[0] / 8)},${Math.round(env.skyBot[1] / 8)},${Math.round(env.skyBot[2] / 8)}|${Math.round(env.nf * 10)}`;
+    if (key === this.envKey) return;
+    this.envKey = key;
+    const u = (this.envSky.material as THREE.ShaderMaterial).uniforms;
+    u.top.value.copy(toColor(env.skyTop)).convertSRGBToLinear();
+    u.bot.value.copy(toColor(env.skyBot)).convertSRGBToLinear();
+    const sunset = clamp((n - 18) / 30, 0, 1);
+    u.sun.value.set(0.35, lerp(0.6, 0.12, sunset), -1).normalize();
+    u.sunCol.value.setRGB(1, lerp(0.95, 0.6, sunset), lerp(0.85, 0.4, sunset)).multiplyScalar(1 - env.nf * 0.85);
+    const old = this.envTarget;
+    this.envTarget = this.pmrem.fromScene(this.envScene, 0);
+    this.scene.environment = this.envTarget.texture;
+    old?.dispose();
   }
 
   // ---------- Sky and light ----------
@@ -455,9 +515,11 @@ export class Renderer3D {
     if (m) return m;
     const fa = facadeFor(look);
     const gold = kind === "gold";
-    const wall = new THREE.MeshStandardMaterial({
+    // Glossy facades: glass is mirror-like (it reflects the sky), walls get a clear coat.
+    const wall = new THREE.MeshPhysicalMaterial({
       vertexColors: true, map: fa.map, emissiveMap: fa.lit, emissive: 0xffffff, emissiveIntensity: 0,
-      roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 1, metalness: gold ? 1 : 0.85,
+      roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 1, metalness: gold ? 1 : 1,
+      clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 1.3,
     });
     wall.userData.alwaysLit = !!look.alwaysLit || !!look.neon;
     this.wallMats.add(wall);
@@ -581,7 +643,7 @@ export class Renderer3D {
     this.landShadow.visible = x1 > x0 && z1 > z0;
     if (this.landShadow.visible) {
       this.landShadow.scale.set(x1 - x0, 1, z1 - z0);
-      this.landShadow.position.set((x0 + x1) / 2, (top.y + 1) * FH + 0.02 - this.fx.bounce * 0.3 * FH, (z0 + z1) / 2);
+      this.landShadow.position.set((x0 + x1) / 2, (top.y + 1) * FH + 0.06 - this.fx.bounce * 0.3 * FH, (z0 + z1) / 2);
     }
   }
 

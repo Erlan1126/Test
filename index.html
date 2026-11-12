@@ -45,6 +45,7 @@
   <div id="hint" hidden></div>
 </div>
 
+<div class="corner-left">
 <button id="level-btn" class="corner-btn level-btn" hidden aria-label="Your builder profile">
   <span class="lv-text"><span class="lv-ico" id="level-ico" aria-hidden="true">🧱</span>Lv <b id="level-num">1</b></span>
   <span class="lv-bar"><i id="level-bar"></i></span>
@@ -54,6 +55,7 @@
   <span class="flame" aria-hidden="true">🔥</span><b id="streak-num">0</b>
   <span class="new-dot" hidden></span>
 </button>
+</div>
 <button id="stars-btn" class="corner-btn stars-btn" hidden aria-label="Stars, Sky Crystals and shop">
   <span class="star-ico" aria-hidden="true">★</span><b id="stars-num">0</b>
   <span class="gem-ico" aria-hidden="true">💎</span><b id="crystals-num">0</b>
@@ -87,9 +89,9 @@
     <button type="button" class="link-btn" id="restore-link" hidden>Played before? Restore your progress</button>
     <div class="boost-note" id="boost-note" hidden></div>
     <div class="mode-chips" id="modes">
-      <button type="button" class="mode" id="daily-btn" hidden><span id="daily-title">Daily</span><i class="dot" hidden></i></button>
-      <button type="button" class="mode" id="challenges-btn" hidden><span>Landmarks</span><i class="dot" hidden></i></button>
-      <button type="button" class="mode" id="zen-btn" hidden><span>Zen</span><i class="dot" hidden></i></button>
+      <button type="button" class="mode" id="daily-btn" hidden><span id="daily-title">Daily</span><small>Same tower for everyone</small><i class="dot" hidden></i></button>
+      <button type="button" class="mode" id="challenges-btn" hidden><span>Landmarks</span><small>Beat a goal to win</small><i class="dot" hidden></i></button>
+      <button type="button" class="mode" id="zen-btn" hidden><span>Zen</span><small>Relax, no game over</small><i class="dot" hidden></i></button>
     </div>
     <nav class="tiles" id="dock" aria-label="More">
       <button type="button" class="tile" id="city-btn" hidden><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13M13 10h3M13 14h3M13 18h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><span>City</span><i class="dot" hidden></i></button>

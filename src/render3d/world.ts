@@ -39,7 +39,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
 
   // ---- Ground: lawn on a slab of dirt with a grassy lip, rock tapering below ----
   g.add(shadowed(new THREE.Mesh(new THREE.PlaneGeometry(I * 2, I * 2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lawnTexture(t), roughness: 0.95 })), false));
-  const dirt = new THREE.Mesh(new THREE.BoxGeometry(I * 2, 3 * FH, I * 2).translate(0, -1.5 * FH - 0.01, 0), [
+  const dirt = new THREE.Mesh(new THREE.BoxGeometry(I * 2, 3 * FH, I * 2).translate(0, -1.5 * FH - 0.08, 0), [
     std(t.dirtR), std(t.dirtL), std(t.lawn), std(t.dirtL), std(t.dirtL), std(t.dirtR),
   ]);
   g.add(dirt);
@@ -53,7 +53,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   // ---- Roads, plaza and flower beds ----
   const roadMat = new THREE.MeshStandardMaterial({ map: roadTexture(t.road), roughness: 0.9 });
   const road = (x0: number, x1: number, z0: number, z1: number, along: "x" | "z") => {
-    const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0.012, (z0 + z1) / 2);
+    const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0.06, (z0 + z1) / 2);
     const uv = geo.attributes.uv as THREE.BufferAttribute;
     const len = along === "x" ? x1 - x0 : z1 - z0;
     for (let i = 0; i < uv.count; i++) {
@@ -63,13 +63,13 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     const m = new THREE.Mesh(geo, roadMat); m.receiveShadow = true; g.add(m);
   };
   road(7, I, -1.4, 1.4, "x"); road(-1.4, 1.4, 7, I, "z"); road(-I, -7, -1.4, 1.4, "x");
-  const slab = (r: number, y: number, c: string) => { const m = new THREE.Mesh(new THREE.BoxGeometry(r * 2, 0.04, r * 2).translate(0, y, 0), std(c, { roughness: 0.7 })); m.receiveShadow = true; g.add(m); };
-  slab(7.4, 0.02, t.plaza); slab(6.8, 0.045, t.plaza2);
+  const slab = (r: number, top: number, c: string) => { const m = new THREE.Mesh(new THREE.BoxGeometry(r * 2, top, r * 2).translate(0, top / 2, 0), std(c, { roughness: 0.7 })); m.receiveShadow = true; g.add(m); };
+  slab(7.4, 0.12, t.plaza); slab(6.8, 0.22, t.plaza2);
   const flowerColors = ["#ff6b6b", "#ffd43b", "#f783ac", "#ffffff", "#b197fc"];
   for (const [x, z, k] of BEDS) {
     const bed = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.25, 0.35, 16).translate(x, 0.17, z), std("#8a6a4a"));
     g.add(shadowed(bed, false));
-    const soil = new THREE.Mesh(new THREE.CircleGeometry(1.05, 16).rotateX(-Math.PI / 2).translate(x, 0.36, z), std(t.leaf[0]));
+    const soil = new THREE.Mesh(new THREE.CircleGeometry(1.05, 16).rotateX(-Math.PI / 2).translate(x, 0.42, z), std(t.leaf[0]));
     g.add(soil);
     for (let i = 0; i < 9; i++) {
       const a = i * 2.4 + k, r = 0.25 + (i % 3) * 0.28;
@@ -81,8 +81,8 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   // ---- Lake (always), fountain and duck pond (upgrades) ----
   const water = new THREE.MeshStandardMaterial({ color: col("#5ec8f2"), roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.92 });
   const pool = (x: number, z: number, r: number, rim: string) => {
-    g.add(shadowed(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.35, r + 0.45, 0.3, 28).translate(x, 0.15, z), std(rim)), false));
-    const w = new THREE.Mesh(new THREE.CircleGeometry(r, 28).rotateX(-Math.PI / 2).translate(x, 0.31, z), water);
+    g.add(shadowed(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.35, r + 0.45, 0.2, 28).translate(x, 0.1, z), std(rim)), false));
+    const w = new THREE.Mesh(new THREE.CircleGeometry(r, 28).rotateX(-Math.PI / 2).translate(x, 0.27, z), water);
     w.receiveShadow = true;
     g.add(w);
   };

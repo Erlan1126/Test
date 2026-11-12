@@ -50,7 +50,7 @@ export function facadeFor(look: Look): Facade {
   // Walls are white (the floor's color tints them); glass is the look's glass color.
   b.fillStyle = "#ffffff"; b.fillRect(0, 0, W, H);
   l.fillStyle = "#000000"; l.fillRect(0, 0, W, H);
-  o.fillStyle = "rgb(0,215,0)"; o.fillRect(0, 0, W, H);   // matte, not metal
+  o.fillStyle = "rgb(0,170,0)"; o.fillRect(0, 0, W, H);   // satin walls, not metal
   for (let f = 0; f < TILE_F; f++) {
     // Floor slab at the bottom of each floor, and a darker line where floors meet.
     const yb = (f + 1) * FLOOR_PX;
@@ -71,7 +71,7 @@ export function facadeFor(look: Look): Facade {
     b.fillStyle = g; b.fillRect(x, y, w, h);
     b.fillStyle = "rgba(255,255,255,0.18)"; b.fillRect(x, y, w * 0.3, h); // a reflection streak
     if (look.kind === "ribbon") { b.fillStyle = look.frame; b.fillRect(x - 3, y, 3, h); }
-    o.fillStyle = "rgb(0,40,170)"; o.fillRect(x, y, w, h);          // glossy, a little metallic
+    o.fillStyle = "rgb(0,14,235)"; o.fillRect(x, y, w, h);          // mirror-like glass
     // About half the windows glow at night (all of them for always-lit skins).
     if (look.alwaysLit || r < 0.5) {
       const c = litColors[Math.floor(r * 97) % litColors.length];

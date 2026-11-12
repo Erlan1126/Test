@@ -1233,3 +1233,23 @@ html.phone .card { background: rgba(16, 20, 52, 0.9); }
 .video-btn { flex: 0 0 56px; padding: 0; font-size: 22px; }
 body.recording #over, body.recording #hud, body.recording #pause, body.recording #unpeek { visibility: hidden; }
 .rec-badge { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 50; padding: 6px 14px; border-radius: 999px; background: rgba(220, 30, 60, 0.9); color: #fff; font-weight: 800; font-size: 13px; }
+
+/* Level and streak sit side by side in a row, so they never overlap. */
+.corner-left { position: fixed; z-index: 2; top: calc(12px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); display: flex; gap: 8px; pointer-events: none; }
+.corner-left .corner-btn { position: relative; top: auto; left: auto; pointer-events: auto; }
+.corner-left .corner-btn[hidden] { display: none; }
+
+/* Each mode says what it is. */
+.mode-chips { gap: 6px; }
+.mode-chips .mode { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 8px; border-radius: 14px; }
+.mode-chips .mode span { font-size: 13px; }
+.mode-chips .mode small { max-width: 100%; color: var(--muted); font-size: 10px; font-weight: 700; line-height: 1.15; white-space: normal; text-align: center; }
+/* A tighter top bar so everything fits on narrow phones. */
+@media (max-width: 400px) {
+  .stars-btn { right: calc(60px + env(safe-area-inset-right, 0px)); padding: 0 9px; gap: 3px; }
+  .stars-btn b { font-size: 16px; }
+  .stars-btn .gem-ico { margin-left: 4px; }
+  .corner-left { gap: 6px; }
+  .corner-left .level-btn { padding: 0 9px; min-width: 0; }
+  .corner-left .streak-btn { padding: 0 8px; }
+}

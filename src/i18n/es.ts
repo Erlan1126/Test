@@ -291,6 +291,8 @@ export const ES: Record<string, string> = {
   "Towers": "Torres",
   "Islands": "Islas",
   "Shapes": "Formas",
+  "Beat a goal to win": "Cumple una meta para ganar",
+  "Relax, no game over": "Relájate, sin perder",
   "Videos can't be recorded on this device": "No se pueden grabar videos en este dispositivo",
   "● Recording your tower…": "● Grabando tu torre…",
   "Your video was saved": "Tu video se guardó",
