@@ -374,7 +374,6 @@ export const ES: Record<string, string> = {
   "Build {name} for {n} stars, adds {pct}% rent": "Construir {name} por {n} estrellas, suma {pct}% de renta",
   "You need {n} more ★. Collect rent and open daily chests to earn more.": "Te faltan {n} ★. Recoge la renta y abre cofres diarios para ganar más.",
   "Every premium skin and island, plus 50 stars. Thank you for supporting Skyrise!": "Todos los aspectos e islas premium, más 50 estrellas. ¡Gracias por apoyar Skyrise!",
-  "Shrinking floor · drop it early, it gets narrower": "Piso que se encoge · suéltalo pronto, se hace más angosto",
   "🧲 Magnet floor · snaps into a perfect drop": "🧲 Piso imán · se ajusta a un perfecto",
   "Foggy floor · fades in and out, holds 40% more": "Piso de niebla · aparece y desaparece, 40% más gente",
   "⏳ Land it: the next 4 floors slide slower": "⏳ Colócalo: los próximos 4 pisos van más lento",
@@ -817,4 +816,7 @@ export const ES: Record<string, string> = {
   "Your best tower": "Tu mejor torre",
   "👻 {name} · {m} m now": "👻 {name} · {m} m ahora",
   "👻 {name} · {m} m ahead": "👻 {name} · {m} m por delante",
+  "⏱ Shrinking floor · drop it fast before it narrows": "⏱ Piso que se encoge · suéltalo rápido antes de que se estreche",
+  "WIDER!": "¡MÁS ANCHA!",
+  "Perfect drops rebuild a narrow tower": "Las caídas perfectas reconstruyen una torre estrecha",
 };

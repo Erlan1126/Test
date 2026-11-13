@@ -380,6 +380,10 @@ export class Sound {
     const steps = Math.min(combo, 6);
     for (let i = 0; i < steps; i++) this.bell(f * 2 * Math.pow(2, (i * 2) / 12), 0.28, 0.012 + i * 0.002, 0.05 + i * 0.035, (i / 5) * 1.2 - 0.6);
   }
+  /** A soft clock tick while a shrinking floor slides (higher as it gets narrower). */
+  clockTick(urgency: number): void { this.tone(1400 + urgency * 900, 0.03, "square", 0.025); }
+  /** A narrow tower winning width back: a bright two-note lift. */
+  widen(): void { this.bell(784, 0.35, 0.06, 0, -0.3); this.bell(1175, 0.45, 0.06, 0.07, 0.3); }
   ice(): void { this.bell(1760, 0.5, 0.05, 0, -0.3); this.bell(2637, 0.4, 0.035, 0.06, 0.3); this.noise(0.25, 0.03, 6000, "highpass", 0.5); }
   garden(): void { [0, 5, 9].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.4, 0.05, i * 0.06, i - 1)); }
   streak(): void { [0, 4, 7, 12, 16, 19].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.5, 0.06, i * 0.045, (i / 5) * 1.2 - 0.6)); }

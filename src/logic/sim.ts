@@ -24,8 +24,10 @@ export type PowerUp = "slow" | "wide" | "steady";
 export const POWER_FLOORS: Record<PowerUp, number> = { slow: 4, wide: 4, steady: 6 };
 
 /** Rules versions: 1 is the original game; 2 adds shrinking, magnet and foggy floors and
- *  power-ups. Every recorded tower says which rules it was played with. */
-export const RULES = 2;
+ *  power-ups. Every recorded tower says which rules it was played with. *  3 softens shrinking floors (they lose at most 25% of their width, not 45%) and lets a
+ *  narrow tower win width back on both sides with perfect drops in a row.
+ */
+export const RULES = 3;
 
 export interface Floor extends Box {
   y: number;
@@ -83,6 +85,8 @@ export type DropOutcome =
       landmark?: number;
       /** First floor in the wind. */
       windStarts?: boolean;
+      /** A narrow tower won some width back (rules 3). */
+      recovered?: boolean;
       /** A power-up this floor carried. */
       power?: PowerUp;
     };
@@ -94,7 +98,11 @@ export const TICK = 1 / 120;
 const SPEED: Record<FloorKind, number> = { normal: 1, gold: 1.35, ice: 1.45, garden: 0.75, shrink: 0.95, magnet: 1.2, ghost: 1 };
 const PEOPLE: Record<FloorKind, number> = { normal: 1, gold: 1, ice: 1.5, garden: 0.5, shrink: 1.3, magnet: 1, ghost: 1.4 };
 /** A shrinking floor loses this share of its width over SHRINK_TIME seconds. */
-const SHRINK_BY = 0.45, SHRINK_TIME = 4;
+const SHRINK_BY = 0.45, SHRINK_BY_3 = 0.25, SHRINK_TIME = 4;
+/** Rules 3: a floor smaller than this share of a full one counts as narrow... */
+const NARROW = 0.45;
+/** ...and from its second perfect drop in a row grows back this much on each side. */
+const RECOVER = 0.8;
 
 export class TowerSim {
   readonly cfg: SimConfig;
@@ -219,7 +227,7 @@ export class TowerSim {
     m.age += dt;
     if (m.kind === "shrink") {
       // Its far edge creeps in: the sooner you drop it, the wider it lands.
-      const w = m.width * (1 - SHRINK_BY * Math.min(1, m.age / SHRINK_TIME));
+      const w = m.width * (1 - ((this.cfg.rules ?? 1) >= 3 ? SHRINK_BY_3 : SHRINK_BY) * Math.min(1, m.age / SHRINK_TIME));
       if (m.axis === "x") m.x1 = m.x0 + w; else m.z1 = m.z0 + w;
     }
     const offset = (m.axis === "x" ? m.x0 : m.z0) - (m.axis === "x" ? this.top.x0 : this.top.z0);
@@ -266,6 +274,7 @@ export class TowerSim {
     };
     const topLo = m.axis === "x" ? top.x0 : top.z0, topHi = m.axis === "x" ? top.x1 : top.z1;
     const perfect = this.wouldBePerfect();
+    let recovered = false;
     let piece: (Floor & { axis: "x" | "z" }) | undefined;
 
     if (perfect) {
@@ -274,7 +283,17 @@ export class TowerSim {
       if (m.kind === "gold") this.penthouses++;
       this.bestStreak = Math.max(this.bestStreak, this.combo);
       set(topLo, topHi);
-      if (this.combo >= 3) {
+      const area = (placed.x1 - placed.x0) * (placed.z1 - placed.z0);
+      if ((this.cfg.rules ?? 1) >= 3 && area < NARROW * BLOCK_SIZE * BLOCK_SIZE && this.combo >= 2) {
+        // A narrow tower wins width back on both sides with perfect drops in a row, so a
+        // skilled player can recover; the rest of the time narrow floors stay narrow.
+        for (const [a, b] of [["x0", "x1"], ["z0", "z1"]] as const) {
+          const grow = clamp(BLOCK_SIZE - (placed[b] - placed[a]), 0, RECOVER);
+          placed[a] -= grow / 2;
+          placed[b] += grow / 2;
+        }
+        recovered = true;
+      } else if (this.combo >= 3) {
         const grow = Math.min(GROW, BLOCK_SIZE - (topHi - topLo));
         set(topLo - grow / 2, topHi + grow / 2);
       }
@@ -310,7 +329,7 @@ export class TowerSim {
     this.score += points;
     if (this.windFor(placed.y) > 0) this.windFloors++;
 
-    const outcome: DropOutcome = { type: "land", perfect, floor: placed, points, combo: this.combo, piece, side: piece ? side : undefined };
+    const outcome: DropOutcome = { type: "land", perfect, floor: placed, points, combo: this.combo, piece, side: piece ? side : undefined, recovered };
     // Power-ups in effect count down one floor; a power-up riding on this floor starts now.
     for (const k of ["slow", "wide", "steady"] as const) if (this.powers[k] > 0) this.powers[k]--;
     if (m.power) {

@@ -61,7 +61,7 @@ const NO_BOOSTS: ActiveBoosts = { rewind: false, xp: false, gold: false };
 const floorTag = (kind: Exclude<FloorKind, "normal">): string =>
   kind === "gold" ? t("Gold penthouse · a perfect drop pays 5x")
   : kind === "ice" ? t("Icy floor · slides fast, holds 50% more people")
-  : kind === "shrink" ? t("Shrinking floor · drop it early, it gets narrower")
+  : kind === "shrink" ? t("⏱ Shrinking floor · drop it fast before it narrows")
   : kind === "magnet" ? t("🧲 Magnet floor · snaps into a perfect drop")
   : kind === "ghost" ? t("Foggy floor · fades in and out, holds 40% more")
   : t("Garden terrace · slow, and widens your tower");
@@ -182,6 +182,7 @@ export class App implements DailyHost {
   /** A landmark just passed, shown on the progress bar until `until`. */
   private passed: { name: string; until: number } | null = null;
   private passedTimer = 0;
+  private lastTick = 0;
   /** Time not yet turned into fixed sim steps. */
   private stepTime = 0;
 
@@ -1012,6 +1013,12 @@ export class App implements DailyHost {
     if (f.kind === "ice") s.ice();
     if (f.kind === "garden") { s.garden(); fx.popup(t("TERRACE"), t("Your tower grew wider"), f.y + 2.1, "#b8f5a0", 1.2); }
     this.updateGhost();
+    if (out.recovered) {
+      // A narrow tower winning width back: make it obvious.
+      fx.popup(t("WIDER!"), t("Perfect drops rebuild a narrow tower"), f.y + 2.4, "#8ce99a", 1.2, true);
+      fx.sparkle(f, 26, "#8ce99a");
+      s.widen();
+    }
     fx.dust(f);
     fx.bounce = 1;
     fx.punch = Math.max(fx.punch, 0.25);
@@ -1653,6 +1660,12 @@ export class App implements DailyHost {
       // Fixed steps, so the same taps always build the same tower.
       this.stepTime = Math.min(this.stepTime + dt, 0.25);
       while (this.stepTime >= TICK) { sim.step(); this.stepTime -= TICK; }
+      // A shrinking floor ticks like a clock, faster and higher as it narrows.
+      const sm = sim.mover;
+      if (sm?.kind === "shrink") {
+        const k = Math.min(1, sm.age / 4), every = 0.42 - k * 0.24;
+        if (sm.age - this.lastTick >= every || sm.age < this.lastTick) { this.lastTick = sm.age; this.sound.clockTick(k); }
+      }
       // The first tower's "tap now" prompt follows the floor every frame.
       if (this.tutorial) this.updateHint();
       const m = sim.mover;

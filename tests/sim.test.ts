@@ -37,6 +37,33 @@ describe("tower simulation", () => {
     expect(s.combo).toBe(0);
   });
 
+  it("lets a narrow tower win width back with perfect drops in a row (rules 3)", () => {
+    const narrowTower = (rules: number) => {
+      const s = sim({ rules });
+      // Two sloppy drops (one along each axis) leave a narrow tower: 4 x 4.
+      dropAt(s, 6); dropAt(s, 6);
+      return s;
+    };
+    const area = (s: TowerSim) => (s.top.x1 - s.top.x0) * (s.top.z1 - s.top.z0);
+    const skilled = narrowTower(3), start = area(skilled);
+    expect(start).toBeCloseTo(16);
+    const first = dropAt(skilled, 0);
+    expect(first.type === "land" && first.recovered).toBe(false); // one perfect isn't enough
+    let recovered = 0;
+    for (let i = 0; i < 6; i++) { const o = dropAt(skilled, 0); if (o.type === "land" && o.recovered) recovered++; }
+    // A few boosts until it's out of the narrow zone (4 x 4 grows to about 7.2 x 7.2),
+    // then the usual perfect-streak growth carries on.
+    expect(recovered).toBe(4);
+    expect(area(skilled)).toBeGreaterThan(start * 3);
+    // Without perfect drops it stays narrow, and older towers keep the old rules.
+    const sloppy = narrowTower(3);
+    for (let i = 0; i < 4; i++) dropAt(sloppy, 0.6);
+    expect(area(sloppy)).toBeLessThan(start);
+    const old = narrowTower(2);
+    for (let i = 0; i < 7; i++) dropAt(old, 0);
+    expect(area(old)).toBeLessThan(area(skilled) * 0.75);  // the old rules recover much less
+  });
+
   it("ends on a complete miss, but Zen keeps going", () => {
     const s = sim();
     expect(dropAt(s, 11).type).toBe("miss");
