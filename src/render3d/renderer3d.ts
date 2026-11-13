@@ -37,8 +37,6 @@ const POWER_ICON: Record<PowerUp, string> = { slow: "⏳", wide: "🎯", steady:
 const CAM_DIST = 160;
 /** Seconds the first home screen's sunrise takes to warm into the day. */
 const DAWN = 2.5;
-/** Floors the district islands sit lower on the home screen. */
-const MENU_SINK = 22;
 /** Pixels per world unit, relative to the 2D view's scale (true isometric). */
 const ISO_SCALE = ISO_X / Math.SQRT1_2;
 
@@ -154,6 +152,9 @@ export class Renderer3D {
   };
   /** Materials (the lawn) that turn white when it snows. */
   private snowable: THREE.MeshStandardMaterial[] = [];
+  /** Little floating rocks under the island: hidden on the home screen, where they
+   *  peeked through the glass buttons at the bottom. */
+  private floaters: THREE.Object3D[] = [];
   /** Home screen camera: a slow sunrise intro, then a gentle sway around the island. */
   private menuTime = 0;
   private introDone = false;
@@ -473,10 +474,9 @@ export class Renderer3D {
     this.updateSkyline(f);
     // Your skyline island is for looking at between towers, not while you build.
     if (this.skyline) {
-      this.skyline.visible = f.shot !== "play";
-      // On the home screen the district islands float lower, beside the main island, so
-      // their towers stay clear of the title and the counters at the top.
-      this.skyline.position.y = f.shot === "menu" ? -MENU_SINK * FH : 0;
+      // Shown around a finished tower. Not while building, and not on the home screen,
+      // where their towers crowded the title and showed through the glass buttons.
+      this.skyline.visible = f.shot === "over";
     }
     this.updateTower(f);
     this.updateMover(f);
@@ -490,6 +490,7 @@ export class Renderer3D {
     // Top floor squash when it lands
     if (this.topMesh) this.topMesh.scale.y = n > 1 ? 1 - fx.bounce * 0.3 : 1;
 
+    for (const o of this.floaters) o.visible = f.shot !== "menu";
     this.updateRoof(f);
     this.updateShaderFx(dt, f);
     this.updateMenuCamera(dt, f);
@@ -596,6 +597,8 @@ export class Renderer3D {
     this.island = group;
     this.islandAnim = anim;
     this.snowable = [];
+    this.floaters = [];
+    group.traverse(o => { if (o.userData.floater) this.floaters.push(o); });
     group.traverse(o => {
       const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
       if (m && !Array.isArray(m) && m.userData?.snowable && !this.snowable.includes(m)) this.snowable.push(m);

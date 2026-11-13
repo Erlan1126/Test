@@ -1534,3 +1534,56 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 .close-btn { background: rgba(255, 255, 255, 0.16); box-shadow: none; }
 .goal-row { box-shadow: none; border: 1px solid rgba(255, 255, 255, 0.12); }
 .buy { box-shadow: none; }
+
+/* ======================================================================
+   Buttons, take four: glass, like the iPhone. Each button is a pane of
+   frosted glass: it blurs and brightens what's behind it, with a bright
+   rim of light on its top edge and a soft shadow. No icons inside pills.
+   ====================================================================== */
+:root {
+  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.16) 55%, rgba(255, 255, 255, 0.26) 100%);
+  --glass-rim: inset 0 1.5px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 10px 30px rgba(20, 24, 70, 0.16);
+  --glass-ink: #1b1f4a;
+}
+#play::before { display: none !important; }
+#play::after, .btn-primary::after { display: none; }
+
+/* The main button: glass tinted pink, white label. */
+.btn-primary, #play {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.12) 100%), rgba(246, 52, 118, 0.86);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
+  border: 0;
+  box-shadow: var(--glass-rim), 0 12px 30px rgba(255, 70, 130, 0.3);
+  color: #fff; text-shadow: 0 1px 2px rgba(120, 0, 50, 0.25);
+}
+#play { min-height: 60px; border-radius: 30px; font-size: 21px; font-weight: 800; letter-spacing: 0.01em; }
+.btn-primary:active, #play:active { transform: scale(0.97); box-shadow: var(--glass-rim), 0 6px 16px rgba(255, 70, 130, 0.25); }
+
+/* Everything else: clear glass with dark labels. */
+.btn-secondary {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
+  border: 0; box-shadow: var(--glass-rim), var(--glass-shadow);
+  color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.tile, #modes-btn, #city-btn, #shop-btn, #goals-btn {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
+  border: 0; border-radius: 22px;
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  color: var(--glass-ink); text-shadow: none; font-size: 13px; font-weight: 700; min-height: 70px;
+}
+.tile:active { transform: scale(0.95); }
+.tile svg, #goals-btn svg { width: 26px; height: 26px; padding: 0; border-radius: 0; background: none; color: var(--glass-ink); box-shadow: none; }
+.corner-btn, .city-line {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
+  border: 0; box-shadow: var(--glass-rim), var(--glass-shadow); color: var(--glass-ink);
+}
+.corner-btn b, .corner-btn span, .city-line { color: var(--glass-ink); }
+.collect-chip, .status-line, .rank-line {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.12) 55%, rgba(255, 255, 255, 0.22)), rgba(255, 196, 64, 0.55) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
+  border: 0 !important; box-shadow: var(--glass-rim), 0 8px 22px rgba(150, 90, 0, 0.18) !important; color: #3a2400;
+}

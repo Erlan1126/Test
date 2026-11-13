@@ -144,6 +144,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     if (k.tree) r.add(treeInstances([{ x: 0, z: 0, size: 1, hue: hash(i, 1, 1) }], t));
     r.position.set(k.x, k.y * FH, k.z);
     r.userData.dynamic = true;
+    r.userData.floater = true; // hidden on the home screen (see Renderer3D)
     g.add(shadowed(r));
     anims.push(time => { r.position.y = k.y * FH + Math.sin(time * 0.5 + i * 1.7) * 0.45; });
   }
