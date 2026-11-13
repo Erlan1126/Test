@@ -34,8 +34,8 @@ export const SKY = [
   { at: 0, top: "#3d9be0", bottom: "#bfe8fb" },
   { at: 22, top: "#4f7fd6", bottom: "#ffe0b0" },
   { at: 42, top: "#5a3f93", bottom: "#ff9468" },
-  { at: 62, top: "#22195a", bottom: "#8a3f78" },
-  { at: 90, top: "#060a1e", bottom: "#1b1f50" },
+  { at: 62, top: "#2c2a7a", bottom: "#9a4f8c" },
+  { at: 90, top: "#1c2a6e", bottom: "#4458a8" },
 ];
 
 /** Each island's own sky through the same climb (same heights as SKY): a cold, clear sky
@@ -43,23 +43,23 @@ export const SKY = [
 export const ISLAND_SKIES: Record<string, { top: string; bottom: string }[]> = {
   snow: [
     { top: "#7fb2e8", bottom: "#eef6ff" }, { top: "#8aa6d8", bottom: "#ffe6dc" }, { top: "#5b6aa8", bottom: "#c9b6e6" },
-    { top: "#202b5e", bottom: "#5f86c4" }, { top: "#070c24", bottom: "#1d3560" },
+    { top: "#2a3a80", bottom: "#6f96d4" }, { top: "#1a2c70", bottom: "#4a6cb0" },
   ],
   desert: [
     { top: "#2f8fe6", bottom: "#ffe3ad" }, { top: "#4f72cc", bottom: "#ffbf73" }, { top: "#6a3f86", bottom: "#ff7a45" },
-    { top: "#2a1a50", bottom: "#a8486a" }, { top: "#0b0a22", bottom: "#3a2340" },
+    { top: "#36256e", bottom: "#b4587a" }, { top: "#262470", bottom: "#5e4486" },
   ],
   blossom: [
     { top: "#8fa8ee", bottom: "#ffe0ee" }, { top: "#a08ee0", bottom: "#ffc2d9" }, { top: "#6b4fa0", bottom: "#ff9cb8" },
-    { top: "#2e2266", bottom: "#a2508a" }, { top: "#0b0a26", bottom: "#3a2252" },
+    { top: "#3a2e80", bottom: "#b2609a" }, { top: "#272672", bottom: "#64489a" },
   ],
   volcano: [
     { top: "#5a4a7a", bottom: "#ffb48a" }, { top: "#4a2a5a", bottom: "#ff8a5a" }, { top: "#3a1a40", bottom: "#ff5a3a" },
-    { top: "#1e0f2a", bottom: "#a0302a" }, { top: "#08060f", bottom: "#4a1414" },
+    { top: "#2e1a46", bottom: "#b0403a" }, { top: "#221a4a", bottom: "#6a2a2e" },
   ],
   candy: [
     { top: "#9fd8ff", bottom: "#ffe0f4" }, { top: "#b8b0ff", bottom: "#ffd0ea" }, { top: "#9a7ae6", bottom: "#ffb0d8" },
-    { top: "#4a3a9a", bottom: "#e080c0" }, { top: "#1a1648", bottom: "#6a3a90" },
+    { top: "#5446aa", bottom: "#e890c8" }, { top: "#2e2a78", bottom: "#7a4aa6" },
   ],
 };
 

@@ -819,4 +819,9 @@ export const ES: Record<string, string> = {
   "⏱ Shrinking floor · drop it fast before it narrows": "⏱ Piso que se encoge · suéltalo rápido antes de que se estreche",
   "WIDER!": "¡MÁS ANCHA!",
   "Perfect drops rebuild a narrow tower": "Las caídas perfectas reconstruyen una torre estrecha",
+  "🏆 Tournament: build a tower to get ranked": "🏆 Torneo: construye una torre para entrar al ranking",
+  "👑 <b>#1</b> in this week's tournament!": "👑 ¡<b>#1</b> en el torneo de esta semana!",
+  "🏆 <b>#{rank}</b> this week · {gap} to pass {name}": "🏆 <b>#{rank}</b> esta semana · {gap} para pasar a {name}",
+  "🏆 <b>#{rank}</b> of {total} this week": "🏆 <b>#{rank}</b> de {total} esta semana",
+  "🎁 {n} new things": "🎁 {n} novedades",
 };

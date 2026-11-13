@@ -409,7 +409,8 @@ export class DailySheets {
 
   // ---------- Leaderboard ----------
 
-  openRanks(): void {
+  openRanks(tab?: "daily" | "week" | "best"): void {
+    if (tab) this.tab = tab;
     this.click();
     $<HTMLInputElement>("nick").value = this.save.nickname;
     void this.renderRanks();

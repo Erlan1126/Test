@@ -434,7 +434,8 @@ export class App implements DailyHost {
     const line = rec.mode === "daily" && r.daily ? t("🌍 #{n} worldwide on today's Daily", { n: fmt(r.daily) })
       : r.week ? t("🏆 Tournament: #{n} this week", { n: fmt(r.week) }) : "";
     if (line) $("over-world").textContent = line;
-    $("over-world").hidden = !line;
+    $("over-world").dataset.ok = line ? "1" : "";
+    this.pickHighlight();
   }
 
   /** The first time the game opens in a new week: last week's tournament result and prize. */
@@ -579,6 +580,7 @@ export class App implements DailyHost {
     $("pass-btn").addEventListener("click", () => this.daily.openPass());
     $("streak-btn").addEventListener("click", () => this.daily.openStreak());
     $("status-line").addEventListener("click", () => this.statusTap());
+    $("rank-line").addEventListener("click", () => { this.sound.ensure(); this.daily.openRanks("week"); });
     $("collect-chip").addEventListener("click", () => this.collectAll());
     $("rewards-ok").addEventListener("click", () => { $("rewards").hidden = true; this.renderMenu(); });
     $("shop-btn").addEventListener("click", () => this.sheets.openShop());
@@ -601,6 +603,12 @@ export class App implements DailyHost {
       if (next) this.start("challenge", next.id);
     });
     $("to-menu").addEventListener("click", () => this.goToMenu());
+    $("over-more").addEventListener("click", () => {
+      const r = $("over-rewards"), open = r.hidden;
+      r.hidden = !open;
+      $("over-more").setAttribute("aria-expanded", String(open));
+      this.sound.click();
+    });
     $("peek").addEventListener("click", () => this.setPeek(true));
     $("unpeek").addEventListener("click", () => this.setPeek(false));
     $("share").addEventListener("click", () => void this.share());
@@ -931,6 +939,7 @@ export class App implements DailyHost {
     }
     void flushDiag();
     $("over-world").hidden = true;
+    $("over-world").dataset.ok = "";
     void this.submitRun();
     void scheduleReminders(this.reminderInfo());
     if (run.challengeWon) this.sound.win();
@@ -1239,6 +1248,7 @@ export class App implements DailyHost {
     show("modes-btn", modeIds.some(id => !$(id).hidden), modeIds.some(id => !$(id).hidden && !$(id).querySelector<HTMLElement>(".dot")!.hidden));
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
     void this.renderStatus(now);
+    void this.renderRankLine(now);
   }
 
   /** The level-up celebration: badge, new title, rewards, and what's next. */
@@ -1317,6 +1327,23 @@ export class App implements DailyHost {
   }
 
   /** One line of news above the play button: a streak at risk, a rival, or the week's event. */
+  /** Your place in this week's tournament, always on the home screen: who to pass next
+   *  and by how much. Tapping it opens the tournament board. */
+  private rankToken = 0;
+  private async renderRankLine(now: number): Promise<void> {
+    const el = $("rank-line"), token = ++this.rankToken;
+    if (this.online.kind !== "global" || this.save.profile.towers < 1) { el.hidden = true; return; }
+    const board = await this.online.board("week", dayNumber(now), weekIndex(now));
+    if (token !== this.rankToken) return;
+    const me = board.me ?? board.rows.find(r => r.me) ?? null;
+    const ahead = me && me.rank > 1 ? board.rows.find(r => r.rank === me.rank - 1) : null;
+    el.innerHTML = !me ? t("🏆 Tournament: build a tower to get ranked")
+      : me.rank === 1 ? t("👑 <b>#1</b> in this week's tournament!")
+      : ahead ? t("🏆 <b>#{rank}</b> this week · {gap} to pass {name}", { rank: fmt(me.rank), gap: fmt(Math.max(1, ahead.value - me.value + 1)), name: esc(displayName(ahead.name)) })
+      : t("🏆 <b>#{rank}</b> of {total} this week", { rank: fmt(me.rank), total: fmt(board.total) });
+    el.hidden = false;
+  }
+
   private statusToken = 0;
   private async renderStatus(now: number): Promise<void> {
     const el = $("status-line"), save = this.save, token = ++this.statusToken;
@@ -1440,7 +1467,14 @@ export class App implements DailyHost {
       });
       rewards.appendChild(b);
     }
-    rewards.hidden = !lines.length;
+    // Everything else that happened is one tap away instead of all on the card: a single
+    // line shows as it is, more than one folds behind "N new things".
+    const extras = rewards.children.length, more = $("over-more");
+    const folded = extras > 1;
+    more.hidden = !folded;
+    more.textContent = t("🎁 {n} new things", { n: extras });
+    more.setAttribute("aria-expanded", "false");
+    rewards.hidden = !extras || folded;
 
     const near = $("over-near");
     near.hidden = !o.near || !!c;
@@ -1462,6 +1496,7 @@ export class App implements DailyHost {
 
     const versus = $("over-versus");
     versus.hidden = !this.friendScore || mode === "zen" || !!c;
+    versus.dataset.ok = versus.hidden ? "" : "1";
     if (!versus.hidden) {
       const beat = sim.score > this.friendScore;
       versus.classList.toggle("won", beat);
@@ -1480,8 +1515,25 @@ export class App implements DailyHost {
     $("share").hidden = mode === "challenge";
     $("share-video").hidden = mode === "challenge" || !(this.renderer instanceof Renderer3D) || typeof MediaRecorder === "undefined";
     $("over-actions").classList.toggle("single", mode === "challenge");
+    this.pickHighlight();
     this.renderCorners();
     $("over").hidden = false;
+  }
+
+  /** The results card shows one highlight line, not five: the first that has something to
+   *  say, in this order. Your tournament place comes early (it arrives once the server has
+   *  checked the tower, so the line can change then). */
+  private pickHighlight(): void {
+    const order = ["over-versus", "over-landmark-goal", "over-world", "over-near", "over-landmark"];
+    const challenge = !!this.challenge;
+    let shown = false;
+    for (const id of order) {
+      const el = id === "over-landmark-goal" ? (challenge ? $("over-landmark") : null) : $(id);
+      if (!el) continue;
+      const has = !!el.textContent?.trim() && (id !== "over-world" || el.dataset.ok === "1") && (id !== "over-near" || !challenge) && (id !== "over-versus" || el.dataset.ok === "1");
+      el.hidden = shown || !has;
+      if (!el.hidden) shown = true;
+    }
   }
 
   /** Groups the outcome into a few short lines so the card stays compact on phones. */
@@ -1705,6 +1757,7 @@ export class App implements DailyHost {
       if (this.overTimer <= 0) {
         this.overReady = true;
         this.renderer.fx.debris = []; // keep the fallen floor out of the share picture
+        this.renderer.fx.popups = []; // and no "PERFECT" labels floating over the card
         this.showOver();
         this.shareTimer = 1.2;
       }

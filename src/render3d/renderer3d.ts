@@ -567,12 +567,12 @@ export class Renderer3D {
   private updateLights(n: number): void {
     const nf = this.env.nf, sunset = clamp((n - 18) / 30, 0, 1) * (1 - nf);
     this.sun.color.setRGB(1, 0.97, 0.9).lerp(this.tmpC.setRGB(1, 0.62, 0.38), sunset).lerp(this.tmpC.setRGB(0.55, 0.65, 1), nf);
-    this.sun.intensity = lerp(2.4, 0.45, nf);
+    this.sun.intensity = lerp(2.4, 0.95, nf);   // moonlight, not darkness
     const top = this.env.skyTop;
     this.hemi.color.setRGB(top[0] / 255, top[1] / 255, top[2] / 255).lerp(this.tmpC.setRGB(1, 1, 1), 0.5);
-    this.hemi.groundColor.set(0x6a5a4a).lerp(this.tmpC.set(0x101830), nf);
-    this.hemi.intensity = lerp(0.85, 0.35, nf);
-    this.gl.toneMappingExposure = lerp(0.95, 0.85, nf);
+    this.hemi.groundColor.set(0x6a5a4a).lerp(this.tmpC.set(0x2a3466), nf);
+    this.hemi.intensity = lerp(0.85, 0.62, nf);
+    this.gl.toneMappingExposure = lerp(0.95, 1, nf);
   }
 
   private updateClouds(dt: number): void {

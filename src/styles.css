@@ -1299,16 +1299,9 @@ body.recording #over, body.recording #hud, body.recording #pause, body.recording
 .tourney-prizes span.on { outline: 2px solid #ffe08a; background: rgba(255, 224, 138, 0.18); }
 .tourney small { color: #fff; font-size: 12px; font-weight: 700; }
 
-/* Home screen, simplified: the bottom menu sits on a solid panel that reaches the bottom
-   edge (under the gesture bar), so nothing in the scene can show through between the
-   buttons. Four even tiles: Modes, City, Shop, Goals. */
+/* Home screen: four even tiles (Modes, City, Shop, Goals). */
 #menu { padding-bottom: 0; }
-#menu .menu-bottom { position: relative; padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-#menu .menu-bottom::before {
-  content: ""; position: absolute; z-index: -1; left: 50%; bottom: 0; transform: translateX(-50%);
-  width: 100vw; height: calc(100% + 40px); pointer-events: none;
-  background: linear-gradient(180deg, rgba(14, 18, 48, 0) 0%, rgba(14, 18, 48, 0.82) 34%, #0e1230 62%);
-}
+#menu .menu-bottom { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
 .tiles { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
 .tile { min-height: 70px; font-size: 13px; background: #1f2552; }
 .goal-row .mode-ico { flex: none; width: 28px; font-style: normal; font-size: 24px; text-align: center; }
@@ -1338,3 +1331,92 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 .card { max-height: calc(100vh - 108px - env(safe-area-inset-top, 0px)); max-height: calc(100dvh - 108px - env(safe-area-inset-top, 0px)); }
 #over-actions .btn-secondary { font-size: 15px; white-space: nowrap; }
 @media (max-width: 380px) { #over-actions .btn-secondary { font-size: 14px; padding: 0 8px; } }
+
+/* This week's place in the tournament, on the home screen */
+.rank-line { margin-top: 8px; padding: 7px 14px; border: 2px solid #ffd43b; border-radius: 999px; background: linear-gradient(180deg, #ffe58a, #ffc53d);
+  color: #4a2a00; font-size: 14px; font-weight: 800; box-shadow: 0 4px 0 #c98a00, 0 10px 20px rgba(120, 70, 0, 0.25); }
+.rank-line b { font: 400 17px var(--num); }
+.rank-line:active { transform: translateY(2px); box-shadow: 0 2px 0 #c98a00; }
+
+/* Results, simplified: one highlight line, a slim level bar, extras behind one button. */
+#over .stats, #over .title-track { display: none; }
+#over .xp { padding: 8px 12px; }
+#over .xp-row { font-size: 13px; }
+.more-chip { justify-self: center; align-self: center; margin: 2px auto 0; display: block; padding: 8px 16px; border: 0; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 14px; font-weight: 800; }
+.more-chip[aria-expanded="true"] { background: rgba(255, 255, 255, 0.2); }
+#over-actions { grid-template-columns: 1fr auto auto; }
+#over-actions #again { grid-column: 1 / -1; }
+#over-actions .home-btn, #over-actions .video-btn { min-width: 56px; padding: 0 12px; font-size: 20px; }
+#over-actions.single #share { display: none; }
+
+
+/* ======================================================================
+   Bright and playful: crisp logo, chunky candy buttons, colourful tiles and
+   menus. Buttons sit on a darker "ledge" and press down when tapped.
+   ====================================================================== */
+
+/* Logo: solid layered letters with a dark outline, no blurry glow. */
+.logo {
+  color: #fff;
+  -webkit-text-stroke: 3px #2d1a6b;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #ff4f8b, 0 6px 0 #8b5cff, 0 9px 0 #2d1a6b;
+  filter: none;
+}
+
+/* Buttons */
+.btn { border-radius: 20px; font-weight: 900; letter-spacing: 0.01em; transition: transform 0.08s, box-shadow 0.08s; }
+.btn-primary {
+  background: linear-gradient(180deg, #ffb35a 0%, #ff5f8f 55%, #ff3d7f 100%);
+  border: 2px solid #fff3;
+  box-shadow: 0 6px 0 #b8265e, 0 12px 24px rgba(184, 38, 94, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.55);
+  text-shadow: 0 2px 0 rgba(120, 10, 60, 0.45);
+}
+.btn-primary:active { transform: translateY(4px); box-shadow: 0 2px 0 #b8265e, 0 4px 10px rgba(184, 38, 94, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.5); }
+.btn-secondary {
+  background: linear-gradient(180deg, #6f7bff, #5162f0);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 5px 0 #2f3bb0, inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.btn-secondary:hover { background: linear-gradient(180deg, #7b86ff, #5a6af5); }
+.btn-secondary:active { transform: translateY(3px); box-shadow: 0 2px 0 #2f3bb0, inset 0 2px 0 rgba(255, 255, 255, 0.3); }
+.btn:active { scale: 1; }
+
+/* The four home tiles, each its own colour */
+.tile {
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.tile svg { color: #fff; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.25)); }
+.tile:active { transform: translateY(3px); }
+#modes-btn { background: linear-gradient(180deg, #a07bff, #7a4ff0); box-shadow: 0 5px 0 #4f2bb0, inset 0 2px 0 rgba(255, 255, 255, 0.4); }
+#city-btn { background: linear-gradient(180deg, #3fd8c6, #19a99a); box-shadow: 0 5px 0 #0f7469, inset 0 2px 0 rgba(255, 255, 255, 0.4); }
+#shop-btn { background: linear-gradient(180deg, #ffb24a, #ff8a1f); box-shadow: 0 5px 0 #bf5a00, inset 0 2px 0 rgba(255, 255, 255, 0.45); }
+#goals-btn { background: linear-gradient(180deg, #ffd84a, #f5b400); box-shadow: 0 5px 0 #b37f00, inset 0 2px 0 rgba(255, 255, 255, 0.5); color: #4a2f00; text-shadow: none; }
+#goals-btn svg { color: #4a2f00; filter: none; }
+.tile .dot { background: #ff3b5c; box-shadow: 0 0 0 2px #fff; }
+
+/* Top corner buttons and chips: light and friendly */
+.corner-btn { background: rgba(255, 255, 255, 0.92); color: #2d1a6b; border: 2px solid #fff; box-shadow: 0 4px 0 rgba(45, 26, 107, 0.35); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.corner-btn b, .corner-btn span { color: #2d1a6b; }
+.city-line { background: rgba(255, 255, 255, 0.92); color: #2d1a6b; box-shadow: 0 3px 0 rgba(45, 26, 107, 0.3); }
+.city-line b { color: #ff4f8b; }
+
+/* Menus (sheets): a bright header band and lighter cards */
+.sheet { background: linear-gradient(180deg, #3a2c9c 0%, #2a2380 180px, #211d66 100%); border: 2px solid rgba(255, 255, 255, 0.18); }
+.sheet-top { background: linear-gradient(180deg, #4a37c4, #3a2c9c); margin: 0 -16px; padding-left: 16px; padding-right: 16px; border-radius: 22px 22px 0 0; }
+.sheet-head h2 { color: #fff; -webkit-text-stroke: 1.5px #2d1a6b; paint-order: stroke fill; text-shadow: 0 3px 0 #2d1a6b; }
+.close-btn { background: #ff5f8f; color: #fff; box-shadow: 0 3px 0 #b8265e; font-weight: 900; }
+.goal-row, .shop-item, .challenge, .mission, .district, .reward { background: rgba(255, 255, 255, 0.12); border: 2px solid rgba(255, 255, 255, 0.12); }
+.goal-row { box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18); }
+.goal-row:active { transform: translateY(2px); }
+.buy { border-radius: 14px; font-weight: 900; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25); }
+
+/* Results card: brighter too */
+.card { background: linear-gradient(180deg, rgba(74, 55, 196, 0.92), rgba(42, 35, 128, 0.94)); border: 2px solid rgba(255, 255, 255, 0.22); }
+#over-actions { background: linear-gradient(180deg, rgba(42, 35, 128, 0), rgba(42, 35, 128, 0.97) 30%); }
