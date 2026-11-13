@@ -542,6 +542,80 @@
   @keyframes tapPulse { 50% { opacity: 0.35; } }
   .story-skip { position: absolute; top: calc(14px + var(--top)); right: 16px; padding: 10px 14px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(200, 220, 245, 0.55); }
   @media (prefers-reduced-motion: reduce) { .story-fx i, .story-text span, #titleScreen .logo { animation: none !important; opacity: 1; } }
+
+  /* ---------- The Singer's city ---------- */
+  #cityScreen { padding: 0; justify-content: space-between; background: #03040b; }
+  #cityCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .city-top { position: relative; width: 100%; padding: calc(16px + var(--top)) 18px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+  .city-title { font-family: "Cinzel", Georgia, serif; font-size: 26px; letter-spacing: 0.18em; margin: 0; color: #eef8ff; text-shadow: 0 0 24px rgba(126, 232, 255, 0.4); }
+  .city-sub { margin: 0; font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 17px; color: #b8c8e4; }
+  .city-stats { display: flex; gap: 14px; font-size: 13px; color: #cfe0f5; letter-spacing: 0.04em; margin-top: 4px; }
+  .city-stats b { color: #ffd98a; font-weight: 600; }
+  .city-actions { position: relative; width: min(420px, 100%); padding: 0 18px calc(18px + var(--bottom)); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  #cityScreen .play { background: rgba(126, 232, 255, 0.12); color: #eef9ff; border: 1px solid rgba(160, 238, 255, 0.55); box-shadow: 0 0 30px rgba(126, 232, 255, 0.22); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #cityScreen .play-label { font-family: "Cinzel", Georgia, serif; letter-spacing: 0.16em; font-size: 19px; font-weight: 500; }
+  #cityScreen .play-sub { color: #8fb0cf; }
+  .city-nav { display: flex; gap: 10px; width: min(300px, 100%); }
+  .city-nav button { flex: 1; padding: 10px 0; border-radius: 14px; font-size: 13px; letter-spacing: 0.06em; color: #cfe0f5; background: rgba(12, 18, 40, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); }
+  .shop { position: absolute; left: 50%; bottom: calc(150px + var(--bottom)); transform: translateX(-50%); width: min(360px, calc(100% - 32px)); padding: 14px; border-radius: 18px; background: rgba(10, 14, 32, 0.94); border: 1px solid rgba(160, 238, 255, 0.25); text-align: left; }
+  .shop[hidden] { display: none; }
+  .shop h3 { margin: 0 0 4px; font-family: "Cinzel", Georgia, serif; font-weight: 500; letter-spacing: 0.1em; font-size: 16px; }
+  .shop p { margin: 0 0 10px; font-size: 12px; color: #9fb3d4; }
+  .shop ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .shop li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+  .shop li b { font-weight: 600; } .shop li small { display: block; font-size: 11px; color: #8fa6c8; }
+  .shop li button { padding: 7px 12px; border-radius: 12px; background: #ffd98a; color: #2a1a06; font-weight: 600; font-size: 13px; }
+  .shop li button:disabled { background: rgba(255, 255, 255, 0.1); color: #7f8db0; }
+  .shop li em { font-style: normal; font-size: 12px; color: #9fe8ff; }
+  /* Dash: a round button above the pebbles. */
+  #dashBtn { position: fixed; bottom: calc(252px + var(--bottom)); right: calc(36px + env(safe-area-inset-right, 0px)); width: 50px; height: 50px; border-radius: 50%; z-index: 6; display: grid; place-items: center;
+    background: rgba(14, 22, 44, 0.6); border: 1px solid rgba(180, 220, 255, 0.45); color: #dff2ff; font-size: 20px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #dashBtn[hidden] { display: none; }
+  #dashBtn.cool { opacity: 0.4; }
+  #dashBtn:active { transform: scale(0.92); }
+  body:not(.sing-on) #dashBtn { bottom: calc(170px + var(--bottom)); }
+  body.left-hand #dashBtn { right: auto; left: calc(36px + env(safe-area-inset-left, 0px)); }
+
+  /* ---------- The films ---------- */
+  #movieScreen { padding: 0; background: #000; cursor: pointer; justify-content: flex-end; }
+  #movieCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .movie-cap { position: relative; margin: 0 auto calc(56px + var(--bottom)); max-width: 24ch; padding: 0 16px; font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 25px; line-height: 1.35; color: #f0f4fc; text-align: center; text-shadow: 0 2px 18px #000, 0 0 2px #000; opacity: 0; transform: translateY(8px); transition: opacity 0.8s, transform 0.8s; }
+  .movie-cap.on { opacity: 1; transform: none; }
+  .movie-skip { position: absolute; top: calc(14px + var(--top)); right: 16px; padding: 10px 14px; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(220, 230, 250, 0.6); }
+  .movie-dots { position: absolute; left: 0; right: 0; bottom: calc(24px + var(--bottom)); display: flex; gap: 6px; justify-content: center; }
+  .movie-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+  .movie-dots i.on { background: rgba(220, 240, 255, 0.85); }
+
+  /* A circle of light opens into each cave and closes on the way out. */
+  #iris { position: fixed; inset: 0; pointer-events: none; z-index: 5; display: none; }
+
+  /* ---------- The endless run ---------- */
+  #runScreen { padding: 0; background: #000; justify-content: flex-start; touch-action: none; }
+  #runCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .run-hud { position: relative; width: 100%; padding: calc(12px + var(--top)) 16px 0; display: flex; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+  .run-hud .score { font-family: "Cinzel", Georgia, serif; font-size: 30px; color: #f2f8ff; text-shadow: 0 0 16px rgba(126, 232, 255, 0.4); line-height: 1; }
+  .run-hud .sub { display: flex; gap: 10px; margin-top: 6px; font-size: 14px; color: #ffd98a; }
+  .run-hud .sub span:last-child { color: #9fe8ff; }
+  .run-hud .hearts { font-size: 15px; letter-spacing: 3px; color: #bff4ff; text-align: right; margin-top: 8px; }
+  #runPauseBtn { pointer-events: auto; width: 40px; height: 40px; border-radius: 50%; background: rgba(12, 18, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.15); color: #dfefff; font-size: 14px; }
+  .run-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(360px, calc(100% - 32px)); padding: 22px 18px; border-radius: 22px; background: rgba(8, 12, 30, 0.92); border: 1px solid rgba(160, 238, 255, 0.25); text-align: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .run-panel[hidden] { display: none; }
+  .run-panel h2 { margin: 0; font-family: "Cinzel", Georgia, serif; font-weight: 500; letter-spacing: 0.12em; font-size: 20px; color: #cfe0f5; }
+  .run-panel .big { font-family: "Cinzel", Georgia, serif; font-size: 44px; color: #fff; margin: 6px 0 2px; }
+  .run-panel .best { color: #ffd98a; font-size: 14px; margin: 0; }
+  .run-panel .info { color: #9fb3d4; font-size: 13px; margin: 6px 0 12px; }
+  .run-panel ul { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; font-size: 13px; color: #d6e2f5; display: flex; flex-direction: column; gap: 6px; }
+  .run-panel ul li::before { content: "◇ "; color: #9fe8ff; }
+  .run-panel ul li.mult { color: #ffd98a; } .run-panel ul li.mult::before { content: "✦ "; color: #ffd98a; }
+  .run-panel .shop-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .run-panel .shop-list li::before { content: none; }
+  .run-panel .shop-list small { display: block; font-size: 11px; color: #8fa6c8; }
+  .run-panel .shop-list button { padding: 6px 10px; border-radius: 10px; background: #ffd98a; color: #2a1a06; font-weight: 600; font-size: 12px; }
+  .run-panel .shop-list button:disabled { background: rgba(255, 255, 255, 0.1); color: #7f8db0; }
+  .run-panel .row { display: flex; gap: 10px; }
+  .run-panel .row button { flex: 1; padding: 13px 0; border-radius: 16px; font-size: 15px; background: rgba(255, 255, 255, 0.08); color: #e6f0ff; border: 1px solid rgba(255, 255, 255, 0.12); }
+  .run-panel .row button.main { background: linear-gradient(180deg, #ffffff, #d9f1ff); color: #0a1a2e; font-weight: 600; }
+  .run-panel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8fa6c8; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -560,6 +634,7 @@
 <div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
 <button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
 <button id="flareBtn" aria-label="Flare: burst your light" hidden>✦</button>
+<button id="dashBtn" aria-label="Dash" hidden>➶</button>
 <button id="pebbleBtn" aria-label="Throw a pebble" hidden><i></i><b>3</b></button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
@@ -581,10 +656,10 @@
     <div class="title-meta" id="titleMeta"></div>
     <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
     <button class="link week-link" id="weekLink">This week's cave ›</button>
-    <p class="tap-sing">Tap the dark to sing</p>
+    <p class="tap-sing" id="tapSing">Tap the dark to sing</p>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
     <nav class="dock glass" aria-label="Menu">
-      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
+      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Story</button>
       <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
@@ -638,6 +713,43 @@
       <button class="btn" id="retryBtn">Retry</button>
       <button class="btn" id="resultLevels">Map</button>
     </div>
+  </div>
+</div>
+
+<div id="iris"></div>
+<div class="screen" id="runScreen">
+  <canvas id="runCanvas" aria-label="Lumi gliding up through the cave"></canvas>
+  <div class="run-hud">
+    <div><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">✦ 0</span><span id="runMult">×1</span></div></div>
+    <div><button id="runPauseBtn" aria-label="Pause">❚❚</button><div class="hearts" id="runHearts"></div></div>
+  </div>
+  <div class="run-panel" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer. Tap to sing: shadows your song reaches turn back into light.</p><div class="row"><button id="runQuit">Quit</button><button class="main" id="runResume">Resume</button></div></div>
+  <div class="run-panel" id="runOver" hidden>
+    <h2>Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
+    <h3>Missions</h3><ul id="runOverMissions"></ul>
+    <h3>Upgrades · ✦ <span id="runGlowLeft">0</span></h3><ul class="shop-list" id="runShopList"></ul>
+    <div class="row"><button id="runCity">City</button><button class="main" id="runAgain">Run again</button></div>
+  </div>
+</div>
+
+<div class="screen" id="movieScreen">
+  <canvas id="movieCanvas" aria-hidden="true"></canvas>
+  <button class="movie-skip" id="movieSkip">Skip</button>
+  <p class="movie-cap" id="movieCap" aria-live="polite"></p>
+  <div class="movie-dots" id="movieDots"></div>
+</div>
+
+<div class="screen" id="cityScreen">
+  <canvas id="cityCanvas" aria-label="The Singer's city"></canvas>
+  <div class="city-top">
+    <h2 class="city-title">The City</h2>
+    <p class="city-sub" id="citySub"></p>
+    <div class="city-stats"><span>✦ <b id="cityCount">0</b> lights home</span><span>Glow <b id="cityGlow">0</b></span></div>
+  </div>
+  <div class="shop" id="shopPanel" hidden><h3>Songs</h3><p>Glow from the caves makes Lumi's songs stronger.</p><ul id="shopList"></ul></div>
+  <div class="city-actions">
+    <button class="play" id="cityGo"><span class="play-label">Into the dark</span><span class="play-sub" id="cityGoName"></span></button>
+    <div class="city-nav"><button id="cityMap">Map</button><button id="cityShop">Songs</button><button id="cityStory">Story</button><button id="cityBack">Title</button></div>
   </div>
 </div>
 
@@ -785,7 +897,10 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="echo/r3d.js"></script>
 <script src="echo/story.js"></script>
+<script src="echo/movie.js"></script>
 <script src="echo/meta.js"></script>
+<script src="echo/city.js"></script>
+<script src="echo/run.js"></script>
 <script src="echo/ui.js"></script>
 </body>
 </html>

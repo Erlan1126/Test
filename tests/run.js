@@ -257,6 +257,44 @@ const SIM = `
       out.bestRunIsKeptAsAGhost = !!(save.ghosts[0] && save.ghosts[0].p.length > 10);
       startLevel(0, true); __sim(0.5);
       out.ghostRacesAlong = !!ghostAt();
+      // Dash: a burst of speed, heard close by.
+      startLevel(3, true); Object.assign(L.lumi, { x: 5.5, y: 13.5, vx: 0, vy: -1 }); __sim(0.05); dash(); __sim(0.05);
+      out.dashBurstsForward = Math.hypot(L.lumi.vx, L.lumi.vy) > SWIM_MAX * 1.5 && L.dashCd > 0;
+      // Hum: a sneaking tap is a short, quiet song.
+      startLevel(7, true); L.sneaking = true; Object.assign(L.lumi, { x: 6.5, y: 12.5 }); L.pingCd = 0; ping();
+      out.humIsShortAndQuiet = L.waves[0].range < WAVE_RANGE && L.gloom.every(q => q.hunt === 0);
+      // Followers: a found light swims behind Lumi; a touch sends the last one back.
+      startLevel(8, true); L.gloom = [L.gloom[0]];
+      const o = L.lights[0]; Object.assign(L.lumi, { x: o.x, y: o.y }); __sim(0.1);
+      Object.assign(L.lumi, { x: o.x, y: o.y + 0.01 }); __sim(0.6);
+      out.foundLightsFollowLumi = L.followers.length === 1 && L.got === 1;
+      const gg = L.gloom[0]; L.invuln = 0; gg.gone = 0; gg.calm = 0; gg.hunt = 2; Object.assign(L.lumi, { x: gg.x + 0.2, y: gg.y }); __sim(0.05);
+      out.caughtSendsTheLastLightBack = L.followers.length === 0 && L.got === 0 && !o.got;
+      // Shield: from act two the first touch costs no light.
+      startLevel(12, true);
+      const lk = L.gloom[0], e0 = L.energy; L.invuln = 0; lk.hunt = 2; Object.assign(L.lumi, { x: lk.x + 0.2, y: lk.y }); __sim(0.05);
+      out.shieldTakesTheFirstTouch = L.shields === 0 && L.hits === 0 && L.energy >= e0;
+      // The city: lights you bring out come home; glow buys upgrades.
+      save.got = { 0: 1, 1: 2 }; save.stars[0] = 3; save.stars[1] = 2; save.stars[2] = 1; save.stars[3] = 1; save.glow = 50; save.upg = {};
+      showCity(true);
+      out.cityShowsLightsHome = screen === "city" && lightsHome() === 3 && document.getElementById("cityCount").textContent.startsWith("3");
+      renderShop(); document.querySelector("#shopList button[data-up='dash']").click();
+      out.glowBuysAFasterDash = upg("dash") === 1 && save.glow === 40;
+      startLevel(3, true); dash(); out.upgradedDashRechargesFaster = L.dashCd < DASH_CD;
+      // The endless run: lights play and count, songs free shadows, touches dim Lumi, the best is kept.
+      save.seenIntro = 1; save.run = null; startRun();
+      out.runStarts = screen === "run" && run.hearts === 3;
+      run.items = [{ type: "light", at: run.dist + 5, x: run.x, trail: 1, of: 1 }]; run.next = 1e9; runUpdate(1 / 60); runUpdate(1 / 60);
+      out.runGathersLights = run.lights === 1;
+      run.items = [{ type: "shadow", at: run.dist + 60, x: run.x, ph: 0, amp: 0 }]; runUpdate(1 / 60); runSing(); for (let q = 0; q < 30; q++) runUpdate(1 / 60);
+      out.runSongFreesShadows = run.freed === 1 && run.lights >= 4;
+      run.items = [{ type: "shadow", at: run.dist + 2, x: run.x, ph: 0, amp: 0 }]; run.inv = 0; runUpdate(1 / 60); runUpdate(1 / 60);
+      out.runShadowTouchDims = run.hearts === 2;
+      for (let q = 0; q < 600; q++) runUpdate(1 / 60);
+      out.runCaveScrollsAndSpeedsUp = runMetres() > 40 && run.speed > 200;
+      run.hearts = 1; run.inv = 0; runHit();
+      out.runEndsAndKeepsTheBest = !!run.over && save.run.best > 0 && save.glow >= run.lights;
+      showTitle();
       // Light is health: three touches and the try is over.
       startLevel(3, true); only(1);
       const hu = L.gloom[0];
@@ -340,11 +378,8 @@ const SIM = `
       save.daily = { last: dayKey(dayNumber() - 3), streak: 9, best: 9, stars: {}, shields: 1 };
       dailyCleared(2); out.missingTooManyDaysResetsTheStreak = save.daily.streak === 1;
       save.daily = d0;
-      save.story = {}; startLevel(0); out.story = screen === "story";
-      out.storyHasPicturesAndPages = document.querySelectorAll("#storyFx i").length > 0 && document.querySelectorAll("#storyDots i").length === CORE_CHAPTER.pages.length;
-      document.getElementById("storyGo").click();
-      out.storyTapShowsTheWholePageFirst = story && story.k === 0 && document.getElementById("storyText").classList.contains("all");
-      for (let k = 0; k < 20 && screen === "story"; k++) document.getElementById("storyGo").click();
+      save.story = {}; startLevel(0); out.storyIsAFilm = screen === "movie" && movie && movie.scenes.length === 8;
+      document.getElementById("movieSkip").click();
       out.storyLeadsToLevel = screen === "play";
       out.endingTellsTheWholeStory = endingPages().length === CORE_ENDING.length;
       save.cards = {}; startLevel(6, { story: true }); out.card = screen === "card";
@@ -460,6 +495,27 @@ const SIM = `
           // A careful player sings less when a Hushling is close, so as not to wake it.
           const gloomNear = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < (CORE ? 5 : 6)) ||
             L.mobs.some(mb => mb.kind === "a" && mb.state === "idle" && Math.hypot(mb.x - L.lumi.x, mb.y - L.lumi.y) < 6.5);
+          if (CORE && L.pebblesLeft > 0 && !(L.robotWait > 0)) {
+            const ki = path.findIndex(p => p[0] === Math.floor(L.lumi.x) && p[1] === Math.floor(L.lumi.y));
+            const ahead = path.slice(Math.max(0, ki), Math.max(0, ki) + 14);
+            const guard = L.gloom.find(g => !g.lurker && !g.chaser && !g.final && !(g.gone > 0) && g.hunt <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 5.5 &&
+              ahead.some(p => Math.hypot(p[0] + 0.5 - g.x, p[1] + 0.5 - g.y) < 1.5));
+            if (guard) {
+              let best = null, bestScore = 3;
+              for (let y = 0; y < L.rows; y++) for (let x = 0; x < L.cols; x++) {
+                if (solidAt(x, y)) continue;
+                const tx = x + 0.5, ty = y + 0.5, d = Math.hypot(tx - L.lumi.x, ty - L.lumi.y);
+                if (d > 6 || d < 1 || Math.hypot(tx - guard.x, ty - guard.y) > 5.5) continue;
+                const a2 = Math.atan2(ty - L.lumi.y, tx - L.lumi.x); let r = 0.4;
+                while (r < d && !solidAt(Math.floor(L.lumi.x + Math.cos(a2) * (r + 0.15)), Math.floor(L.lumi.y + Math.sin(a2) * (r + 0.15)))) r += 0.1;
+                if (r < d - 0.3) continue;
+                const score = Math.min(...ahead.map(p => Math.hypot(p[0] + 0.5 - tx, p[1] + 0.5 - ty)), Math.hypot(tx - L.lumi.x, ty - L.lumi.y));
+                if (score > bestScore) { bestScore = score; best = [a2, d]; }
+              }
+              if (best) { throwPebble(best[0], best[1]); L.robotWait = 1.6; }
+            }
+          }
+          if (L.robotWait > 0) { L.robotWait -= 1 / 60; for (const d of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[d] = false; return; }
           if (CORE) {
             if (L.def.healAll && L.pingCd <= 0 && L.gloom.some(g => !g.lurker && !g.saving && !g.saved && g.gone <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 2.2)) { L.pingCd = 0; ping(true); lastSong = t; }
             else if (!gloomNear && t - lastSong > 1.5) sing(t);

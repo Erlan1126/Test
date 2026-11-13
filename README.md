@@ -14,6 +14,48 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Play: the endless run
+
+Echo's main mode is now a calm, beautiful endless run (`echo/run.js`), in the spirit of Alto's Adventure with Subway Surfers' "one more run" hook. **Play** on the title starts it (after the opening film, the first time).
+
+- **Glide home.** Lumi glides up an endless winding cave toward the surface. Slide a finger anywhere to steer (arrow keys on a keyboard); the cave slowly speeds up and narrows.
+- **Lights make music.** Trails of golden lights play the old lullaby, a note for each light you gather.
+- **Sing shadows back into light.** Hushlings drift in the cave. Tap to sing: every shadow the song's ring reaches turns back into light (three bonus lights each). If one touches you first, Lumi's light dims; after three touches the run rests. Rocks just bump you aside; a ✦ gives a light back.
+- **New worlds.** Every 350 m the cave becomes the next world (Moonlit Grotto, Mossy Hollow, Amethyst Deep…), its colours blending in, with its name as you arrive.
+- **Score and missions.** Score is distance plus lights, times your multiplier. Three missions at a time (gather 40 lights in one run, reach 400 m, sing 6 shadows free, reach 300 m untouched, gather whole light trails, reach world 2); each one done raises the multiplier (up to ×10) and is replaced by a harder one. Your best score shows under Play.
+- **Upgrades and the city.** The lights you gather are glow: spend it after a run on a Magnet (lights drift to you), a Bigger song (reaches further, recharges faster) and a Brighter heart (an extra light to start with). Every fifteen lights gathered in runs also light a window in the Singer's city.
+
+**How it looks and moves.** Steering is springy, with momentum: Lumi leans into its turns, stretches as it speeds, its antenna swaying the other way, and leaves a smooth tapering comet tail; its eyes squint happily as it gathers a light. The camera drifts a little after Lumi, pulls back as the run speeds up, and shakes when you're hit or bump a rock. The walls are layered dark rock with broken edges and fainter ledges behind them, their edges glowing in the world's colour and brighter where Lumi's light falls; crystals and glow-worms grow on them. Behind, three layers of hanging and rising spires drift at different speeds, with fog bands and light shafts from far above, and dark rock rushes past close to the eye. Each world has its own air: motes, pollen, sparkles, rising embers, snow, bubbles, gold dust, stars. Lights are little turning stars joined by golden threads, streaking into Lumi when gathered; shadows are drifting knots of smoke with eyes that watch you and drift your way; songs roll out as a bright ring with echoes and sparkles, and freed shadows burst into gold with a "+3 ✦".
+
+**Story** on the title (and in the city) holds the films and the twenty handmade caves.
+
+## The story is told as short films
+
+The story is no longer pages of text. It's told in short animated films (`echo/movie.js`), each scene painted and moving, with a single line of text under it, music and sound, tap for the next scene or Skip:
+
+- **The opening** (before cave 1, about a minute): a city made of light beneath the world; the great Singer singing its little lights to sleep; its littlest light, Lumi; the flood that swept Lumi away; the Singer searching until its voice broke and its light went out; its tears becoming Hushlings; Lumi waking alone in the dark, singing its first echo; and the goal: find the lost lights, find your way home.
+- **Act two** (before cave 11): the city glowing again, the Hushlings still lost, a Lurker's eye opening, and bringing every last light home.
+- **The end of each act**: Lumi singing the Singer back to itself; then the lost lights rising home, the whole city lit, and Lumi with the Singer.
+
+The opening can be watched again from the city (Story).
+
+In the caves, Lumi leaves a trail of light and looks where it swims, hunting Hushlings trail dark smoke, and each cave opens and closes with a circle of light.
+
+## The Singer's city (the hub)
+
+Play now goes home first, to the Singer's ruined city in the dark (`echo/city.js`). Every light you bring out of a cave comes home and lights a street lamp or a window, one by one, with a chime, the next time you return; the most you've ever found in each cave counts. Each cleared cave sends a neighbour home: twenty little lights with names (Pip, Moss, Tilly, Bram…, the Singer, Little Hush) who bob along the street; tap one to hear what it says. Clearing act one lights the Singer's tower; clearing act two opens the sky above the city. "Into the dark" goes to the next cave; Map and Title are there too.
+
+**Songs** (in the city): glow earned in the caves upgrades what Lumi has learned. Dash recharges faster (three steps), the pebble pouch holds more (two), Hum shows further (two), the Shield takes an extra touch (one).
+
+## Lumi's songs and the lights that follow
+
+- **Dash** (from cave 4; the ➶ button, or Q): a burst of speed the way Lumi is swimming. It makes a little noise (heard about 3.5 tiles away).
+- **Hum** (from cave 8): while sneaking, a tap is a hum instead of a song. It shows only the walls close by, and only a Hushling within a tile and a half hears it.
+- **Shield** (from cave 11, and in the daily cave): the first touch in a cave breaks the shield (a ring around Lumi) instead of costing light.
+- **Lights follow you home.** A light you find swims along behind Lumi. Each one makes Lumi's light bigger, which helps you see and helps Lurkers see you. When something catches you, the last one takes fright and flies back to where you found it.
+- **The art:** rock in silhouette, nearly black, its edges catching a glow in each world's colour wherever light has found it, inside a haze tinted the same way.
+- **A bigger cave:** The Deep Maze (cave 9) is now 17 tiles wide with three ways up: the quick middle lane is guarded twice, the left is watched by a Lurker, the right has a Hushling in an alcove.
+
 ## Echo, back to its core
 
 Echo has been cut back to its core: **twenty handmade caves in two acts** (`CORE_LEVELS` in `echo/levels.js`), each built around one idea, played with a few simple rules.

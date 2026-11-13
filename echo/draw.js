@@ -266,6 +266,10 @@ function drawThings() {
   // The ghost of your best run.
   const gh = ghostAt();
   if (gh) { ctx.globalAlpha = 0.28; ctx.fillStyle = "#cfefff"; ctx.beginPath(); ctx.arc(sx(gh[0]), sy(gh[1]), TS * 0.28, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+  // Lights following Lumi home.
+  for (const f of L.followers || []) { ctx.globalCompositeOperation = "lighter"; glow(GLOW.gold, sx(f.x), sy(f.y), TS * 0.5, 0.7); glow(GLOW.white, sx(f.x), sy(f.y), TS * 0.15, 0.9); ctx.globalCompositeOperation = "source-over"; }
+  // Lumi's shield: a thin ring of light.
+  if (L.shields > 0 && !L.demo) { ctx.strokeStyle = "rgba(160,235,255,0.55)"; ctx.lineWidth = Math.max(1.5, TS * 0.05); ctx.beginPath(); ctx.arc(sx(L.lumi.x), sy(L.lumi.y), TS * 0.48, 0, Math.PI * 2); ctx.stroke(); }
   // Aiming a pebble: a ring shows how far it can fly.
   if (L.aiming) { ctx.strokeStyle = "rgba(190,240,255,0.45)"; ctx.lineWidth = 2; ctx.setLineDash([TS * 0.12, TS * 0.18]); ctx.beginPath(); ctx.arc(sx(L.lumi.x), sy(L.lumi.y), TS * 6, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
   // Pebbles in flight.
@@ -1042,6 +1046,14 @@ function frame(now) {
     }
   }
   clock += dt;
+  // The iris: opening into a cave, closing as Lumi goes through the portal.
+  {
+    const el = document.getElementById("iris");
+    let r = 200;
+    if (L && !L.demo && screen === "play") { const o = Math.min(1, L.time / 0.9), c = L.ending ? Math.min(1, L.ending / 1.1) : 0; r = (1 - Math.pow(1 - o, 3)) * 160 * (1 - c * c); }
+    if (r >= 150) { if (el.style.display !== "none") el.style.display = "none"; }
+    else { el.style.display = "block"; el.style.background = `radial-gradient(circle at 50% 52%, transparent ${r.toFixed(1)}vmax, rgba(0,0,0,0.96) ${(r + 6).toFixed(1)}vmax)`; }
+  }
   // Caught: the world slows for a heartbeat.
   if (L && L.slowmo > 0) L.slowmo -= dt;
   if (L && (screen === "play" || (screen === "title" && L.demo))) update(L.slowmo > 0 ? dt * 0.3 : dt);
