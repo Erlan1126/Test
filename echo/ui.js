@@ -4,7 +4,7 @@
 // ---------- UI ----------
 const screens = {
   title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  challenges: $("challengeScreen"), city: $("cityScreen"), movie: $("movieScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  challenges: $("challengeScreen"), city: $("cityScreen"), movie: $("movieScreen"), run: $("runScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
 };
 let backTo = "title";
 function applyLayoutPrefs() {
@@ -489,8 +489,9 @@ function renderTitle() {
   document.body.classList.toggle("core-done", !CORE || (save.stars[TOTAL - 1] || 0) > 0);
   const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
   $("starCount").textContent = t;
-  $("playLabel").textContent = started ? "Continue" : "Play";
-  $("playSub").textContent = `Level ${next + 1} · ${getLevel(next).name}`;
+  $("playLabel").textContent = "Play";
+  const best = (save.run || {}).best || 0;
+  $("playSub").textContent = best ? `Best ${best.toLocaleString()}` : "Glide home through the dark";
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
   renderToday();
@@ -676,13 +677,14 @@ async function shareGame() {
 
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
 // Play goes home to the city first; from there, into the next cave.
-tap("playBtn", () => (CORE ? showCity() : startLevel(nextUnplayed())));
+// Play starts an endless run (after the opening film, the first time); Story is the city and its caves.
+tap("playBtn", () => { if (!save.seenIntro) { save.seenIntro = 1; persist(); playMovie("intro", startRun); } else startRun(); });
 tap("cityGo", () => startLevel(nextUnplayed()));
 tap("cityMap", openMap);
 tap("cityBack", showTitle);
 tap("cityStory", () => playMovie("intro", () => showCity()));
 tap("cityShop", () => { $("shopPanel").hidden = !$("shopPanel").hidden; renderShop(); });
-tap("levelsBtn", openMap);
+tap("levelsBtn", () => (CORE ? showCity() : openMap()));
 // A soft tick when a switch or option changes, so settings feel alive.
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
 tap("weekLink", () => { renderChallenges(); show("challenges"); });

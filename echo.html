@@ -588,6 +588,34 @@
 
   /* A circle of light opens into each cave and closes on the way out. */
   #iris { position: fixed; inset: 0; pointer-events: none; z-index: 5; display: none; }
+
+  /* ---------- The endless run ---------- */
+  #runScreen { padding: 0; background: #000; justify-content: flex-start; touch-action: none; }
+  #runCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .run-hud { position: relative; width: 100%; padding: calc(12px + var(--top)) 16px 0; display: flex; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+  .run-hud .score { font-family: "Cinzel", Georgia, serif; font-size: 30px; color: #f2f8ff; text-shadow: 0 0 16px rgba(126, 232, 255, 0.4); line-height: 1; }
+  .run-hud .sub { display: flex; gap: 10px; margin-top: 6px; font-size: 14px; color: #ffd98a; }
+  .run-hud .sub span:last-child { color: #9fe8ff; }
+  .run-hud .hearts { font-size: 15px; letter-spacing: 3px; color: #bff4ff; text-align: right; margin-top: 8px; }
+  #runPauseBtn { pointer-events: auto; width: 40px; height: 40px; border-radius: 50%; background: rgba(12, 18, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.15); color: #dfefff; font-size: 14px; }
+  .run-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(360px, calc(100% - 32px)); padding: 22px 18px; border-radius: 22px; background: rgba(8, 12, 30, 0.92); border: 1px solid rgba(160, 238, 255, 0.25); text-align: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .run-panel[hidden] { display: none; }
+  .run-panel h2 { margin: 0; font-family: "Cinzel", Georgia, serif; font-weight: 500; letter-spacing: 0.12em; font-size: 20px; color: #cfe0f5; }
+  .run-panel .big { font-family: "Cinzel", Georgia, serif; font-size: 44px; color: #fff; margin: 6px 0 2px; }
+  .run-panel .best { color: #ffd98a; font-size: 14px; margin: 0; }
+  .run-panel .info { color: #9fb3d4; font-size: 13px; margin: 6px 0 12px; }
+  .run-panel ul { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; font-size: 13px; color: #d6e2f5; display: flex; flex-direction: column; gap: 6px; }
+  .run-panel ul li::before { content: "◇ "; color: #9fe8ff; }
+  .run-panel ul li.mult { color: #ffd98a; } .run-panel ul li.mult::before { content: "✦ "; color: #ffd98a; }
+  .run-panel .shop-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .run-panel .shop-list li::before { content: none; }
+  .run-panel .shop-list small { display: block; font-size: 11px; color: #8fa6c8; }
+  .run-panel .shop-list button { padding: 6px 10px; border-radius: 10px; background: #ffd98a; color: #2a1a06; font-weight: 600; font-size: 12px; }
+  .run-panel .shop-list button:disabled { background: rgba(255, 255, 255, 0.1); color: #7f8db0; }
+  .run-panel .row { display: flex; gap: 10px; }
+  .run-panel .row button { flex: 1; padding: 13px 0; border-radius: 16px; font-size: 15px; background: rgba(255, 255, 255, 0.08); color: #e6f0ff; border: 1px solid rgba(255, 255, 255, 0.12); }
+  .run-panel .row button.main { background: linear-gradient(180deg, #ffffff, #d9f1ff); color: #0a1a2e; font-weight: 600; }
+  .run-panel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8fa6c8; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -628,10 +656,10 @@
     <div class="title-meta" id="titleMeta"></div>
     <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
     <button class="link week-link" id="weekLink">This week's cave ›</button>
-    <p class="tap-sing">Tap the dark to sing</p>
+    <p class="tap-sing" id="tapSing">Tap the dark to sing</p>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
     <nav class="dock glass" aria-label="Menu">
-      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Map</button>
+      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Story</button>
       <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
@@ -689,6 +717,21 @@
 </div>
 
 <div id="iris"></div>
+<div class="screen" id="runScreen">
+  <canvas id="runCanvas" aria-label="Lumi gliding up through the cave"></canvas>
+  <div class="run-hud">
+    <div><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">✦ 0</span><span id="runMult">×1</span></div></div>
+    <div><button id="runPauseBtn" aria-label="Pause">❚❚</button><div class="hearts" id="runHearts"></div></div>
+  </div>
+  <div class="run-panel" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer. Tap to sing: shadows your song reaches turn back into light.</p><div class="row"><button id="runQuit">Quit</button><button class="main" id="runResume">Resume</button></div></div>
+  <div class="run-panel" id="runOver" hidden>
+    <h2>Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
+    <h3>Missions</h3><ul id="runOverMissions"></ul>
+    <h3>Upgrades · ✦ <span id="runGlowLeft">0</span></h3><ul class="shop-list" id="runShopList"></ul>
+    <div class="row"><button id="runCity">City</button><button class="main" id="runAgain">Run again</button></div>
+  </div>
+</div>
+
 <div class="screen" id="movieScreen">
   <canvas id="movieCanvas" aria-hidden="true"></canvas>
   <button class="movie-skip" id="movieSkip">Skip</button>
@@ -857,6 +900,7 @@
 <script src="echo/movie.js"></script>
 <script src="echo/meta.js"></script>
 <script src="echo/city.js"></script>
+<script src="echo/run.js"></script>
 <script src="echo/ui.js"></script>
 </body>
 </html>

@@ -30,7 +30,7 @@ const RESIDENTS = [
 ];
 
 // How many lights are home: the most found in each cave, added up.
-const lightsHome = () => CORE_LEVELS.reduce((a, _, i) => a + ((save.got || {})[i] || 0), 0);
+const lightsHome = () => Math.min(lightsInAll(), CORE_LEVELS.reduce((a, _, i) => a + ((save.got || {})[i] || 0), 0) + Math.floor(((save.run || {}).lights || 0) / 15));
 const lightsInAll = () => CORE_LEVELS.reduce((a, lv) => a + (lv.map.join("").match(/o/g) || []).length, 0);
 const residentsHome = () => RESIDENTS.filter((_, i) => save.stars[i]);
 

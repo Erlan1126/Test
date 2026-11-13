@@ -281,6 +281,20 @@ const SIM = `
       renderShop(); document.querySelector("#shopList button[data-up='dash']").click();
       out.glowBuysAFasterDash = upg("dash") === 1 && save.glow === 40;
       startLevel(3, true); dash(); out.upgradedDashRechargesFaster = L.dashCd < DASH_CD;
+      // The endless run: lights play and count, songs free shadows, touches dim Lumi, the best is kept.
+      save.seenIntro = 1; save.run = null; startRun();
+      out.runStarts = screen === "run" && run.hearts === 3;
+      run.items = [{ type: "light", at: run.dist + 5, x: run.x, trail: 1, of: 1 }]; run.next = 1e9; runUpdate(1 / 60); runUpdate(1 / 60);
+      out.runGathersLights = run.lights === 1;
+      run.items = [{ type: "shadow", at: run.dist + 60, x: run.x, ph: 0, amp: 0 }]; runUpdate(1 / 60); runSing(); for (let q = 0; q < 30; q++) runUpdate(1 / 60);
+      out.runSongFreesShadows = run.freed === 1 && run.lights >= 4;
+      run.items = [{ type: "shadow", at: run.dist + 2, x: run.x, ph: 0, amp: 0 }]; run.inv = 0; runUpdate(1 / 60); runUpdate(1 / 60);
+      out.runShadowTouchDims = run.hearts === 2;
+      for (let q = 0; q < 600; q++) runUpdate(1 / 60);
+      out.runCaveScrollsAndSpeedsUp = runMetres() > 40 && run.speed > 200;
+      run.hearts = 1; run.inv = 0; runHit();
+      out.runEndsAndKeepsTheBest = !!run.over && save.run.best > 0 && save.glow >= run.lights;
+      showTitle();
       // Light is health: three touches and the try is over.
       startLevel(3, true); only(1);
       const hu = L.gloom[0];

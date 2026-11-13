@@ -14,6 +14,19 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Play: the endless run
+
+Echo's main mode is now a calm, beautiful endless run (`echo/run.js`), in the spirit of Alto's Adventure with Subway Surfers' "one more run" hook. **Play** on the title starts it (after the opening film, the first time).
+
+- **Glide home.** Lumi glides up an endless winding cave toward the surface. Slide a finger anywhere to steer (arrow keys on a keyboard); the cave slowly speeds up and narrows.
+- **Lights make music.** Trails of golden lights play the old lullaby, a note for each light you gather.
+- **Sing shadows back into light.** Hushlings drift in the cave. Tap to sing: every shadow the song's ring reaches turns back into light (three bonus lights each). If one touches you first, Lumi's light dims; after three touches the run rests. Rocks just bump you aside; a ✦ gives a light back.
+- **New worlds.** Every 350 m the cave becomes the next world (Moonlit Grotto, Mossy Hollow, Amethyst Deep…), its colours blending in, with its name as you arrive.
+- **Score and missions.** Score is distance plus lights, times your multiplier. Three missions at a time (gather 40 lights in one run, reach 400 m, sing 6 shadows free, reach 300 m untouched, gather whole light trails, reach world 2); each one done raises the multiplier (up to ×10) and is replaced by a harder one. Your best score shows under Play.
+- **Upgrades and the city.** The lights you gather are glow: spend it after a run on a Magnet (lights drift to you), a Bigger song (reaches further, recharges faster) and a Brighter heart (an extra light to start with). Every fifteen lights gathered in runs also light a window in the Singer's city.
+
+**Story** on the title (and in the city) holds the films and the twenty handmade caves.
+
 ## The story is told as short films
 
 The story is no longer pages of text. It's told in short animated films (`echo/movie.js`), each scene painted and moving, with a single line of text under it, music and sound, tap for the next scene or Skip:
