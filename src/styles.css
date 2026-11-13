@@ -1298,3 +1298,20 @@ body.recording #over, body.recording #hud, body.recording #pause, body.recording
 .tourney-prizes span i { font-style: normal; font-size: 10px; color: var(--muted); }
 .tourney-prizes span.on { outline: 2px solid #ffe08a; background: rgba(255, 224, 138, 0.18); }
 .tourney small { color: #fff; font-size: 12px; font-weight: 700; }
+
+/* Home screen, simplified: the bottom menu sits on a solid panel that reaches the bottom
+   edge (under the gesture bar), so nothing in the scene can show through between the
+   buttons. Four even tiles: Modes, City, Shop, Goals. */
+#menu { padding-bottom: 0; }
+#menu .menu-bottom { position: relative; padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+#menu .menu-bottom::before {
+  content: ""; position: absolute; z-index: -1; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: 100vw; height: calc(100% + 40px); pointer-events: none;
+  background: linear-gradient(180deg, rgba(14, 18, 48, 0) 0%, rgba(14, 18, 48, 0.82) 34%, #0e1230 62%);
+}
+.tiles { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.tile { min-height: 70px; font-size: 13px; background: #1f2552; }
+.goal-row .mode-ico { flex: none; width: 28px; font-style: normal; font-size: 24px; text-align: center; }
+/* The 3D scene fades in once its first full frame is ready (see Renderer3D.draw). */
+body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 0; }
+#game, #fx { transition: opacity 0.45s ease-out; }

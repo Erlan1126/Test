@@ -805,4 +805,8 @@ export const ES: Record<string, string> = {
   "Top {n}": "Top {n}",
   "🏆 Tournament: #{n} this week": "🏆 Torneo: #{n} esta semana",
   "🏆 Last week's tournament: #{rank} of {total}. Your prize: {prize}": "🏆 Torneo de la semana pasada: #{rank} de {total}. Tu premio: {prize}",
+  "Modes": "Modos",
+  "Other ways to build": "Otras formas de construir",
+  "👑 Collect your VIP gift": "👑 Recoge tu regalo VIP",
+  "👑 VIP gift · +{n} 💎 · +1 rewind": "👑 Regalo VIP · +{n} 💎 · +1 retroceso",
 };

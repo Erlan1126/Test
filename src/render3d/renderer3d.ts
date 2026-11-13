@@ -35,6 +35,10 @@ const SHADOW_MAX = 128;
 const POWER_ICON: Record<PowerUp, string> = { slow: "⏳", wide: "🎯", steady: "🍃" };
 /** The camera sits this far from what it looks at, along (1, 1, 1). */
 const CAM_DIST = 160;
+/** Seconds the first home screen's sunrise takes to warm into the day. */
+const DAWN = 2.5;
+/** Floors the district islands sit lower on the home screen. */
+const MENU_SINK = 22;
 /** Pixels per world unit, relative to the 2D view's scale (true isometric). */
 const ISO_SCALE = ISO_X / Math.SQRT1_2;
 
@@ -154,6 +158,7 @@ export class Renderer3D {
   private menuTime = 0;
   private introDone = false;
   private azimuth = 0;
+  private shown = false;
 
   // Falling pieces
   private readonly debrisMeshes = new Map<Debris, THREE.Mesh>();
@@ -173,6 +178,7 @@ export class Renderer3D {
     this.ctx = canvas.getContext("2d")!;
     this.paint = { ctx: this.ctx, view: this.view, env: this.env };
     glCanvas.hidden = false;
+    document.body.classList.add("webgl"); // the scene fades in on its first full frame
     this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: "high-performance" });
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
     // Neutral tone mapping keeps colors rich instead of washing them out.
@@ -338,19 +344,14 @@ export class Renderer3D {
     for (let i = 0; i < 60; i++) this.camera(1, shot, level);
   }
 
-  /** The home screen camera: opens swung round to one side and glides into place as the
-   *  sun comes up, then sways slowly so the city feels alive. Straight while playing. */
+  /** The home screen camera stays put. (It used to open swung round to one side and then
+   *  sway, which brought the floating district islands into view behind the title and
+   *  between the bottom buttons.) The first home screen still opens on a short sunrise. */
   private updateMenuCamera(dt: number, f: Frame): void {
-    if (f.shot === "menu" && !this.calm) {
-      this.menuTime += dt;
-      const t = this.menuTime, k = clamp(t / 4.5, 0, 1), ease = 1 - (1 - k) ** 3;
-      const sway = Math.sin(t * 0.13) * 0.22 * ease;
-      this.azimuth = this.introDone ? lerp(this.azimuth, Math.sin(t * 0.13) * 0.22, Math.min(1, dt * 1.5)) : lerp(-0.75, 0, ease) + sway;
-      if (k >= 1 && !this.introDone) this.introDone = true;
-    } else {
-      if (f.shot !== "menu") this.introDone = true;
-      this.azimuth = Math.abs(this.azimuth) < 0.002 ? 0 : lerp(this.azimuth, 0, Math.min(1, dt * 7));
-    }
+    if (f.shot === "menu") this.menuTime += dt;
+    else this.introDone = true;
+    if (this.menuTime > DAWN) this.introDone = true;
+    this.azimuth = 0;
   }
 
   /** The finished tower's rooftop: grander the taller the tower. */
@@ -456,7 +457,7 @@ export class Renderer3D {
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
     // The first home screen opens on a sunrise that warms into the day.
-    const dawn = this.introDone || f.shot !== "menu" ? 0 : clamp(1 - this.menuTime / 4.5, 0, 1);
+    const dawn = this.introDone || f.shot !== "menu" ? 0 : clamp(1 - this.menuTime / DAWN, 0, 1);
     if (dawn > 0) {
       const k = dawn * dawn * (3 - 2 * dawn);
       env.skyTop = mixRgb(env.skyTop, [255, 170, 120], 0.55 * k);
@@ -471,7 +472,12 @@ export class Renderer3D {
     this.updateIsland(f);
     this.updateSkyline(f);
     // Your skyline island is for looking at between towers, not while you build.
-    if (this.skyline) this.skyline.visible = f.shot !== "play";
+    if (this.skyline) {
+      this.skyline.visible = f.shot !== "play";
+      // On the home screen the district islands float lower, beside the main island, so
+      // their towers stay clear of the title and the counters at the top.
+      this.skyline.position.y = f.shot === "menu" ? -MENU_SINK * FH : 0;
+    }
     this.updateTower(f);
     this.updateMover(f);
     this.updateDebris(f.shape);
@@ -499,6 +505,9 @@ export class Renderer3D {
       this.composer.render();
     }
     this.drawOverlay(dt, f);
+    // Show the scene only once its first complete frame is drawn, so the island, camera and
+    // layout never appear half-set-up.
+    if (!this.shown) { this.shown = true; requestAnimationFrame(() => document.body.classList.add("scene-ready")); }
   }
 
   /** The glass reflects the real sky: rebuilt as the sky changes color with height. */
@@ -930,6 +939,11 @@ export class Renderer3D {
     const { ctx, view, fx, paint: p, env } = this;
     const sim = f.sim, top = sim.top, m = sim.mover;
     ctx.clearRect(0, 0, view.W, view.H);
+    // One invisible pixel every frame. A frame that only clears the canvas can be skipped
+    // by the browser, which then keeps showing the last picture (gameplay labels and rain
+    // stayed on the home screen after a tower).
+    ctx.fillStyle = "rgba(0,0,0,0.004)";
+    ctx.fillRect(0, 0, 1, 1);
     // A warm glow around the top of the tower during a perfect streak.
     if (sim.combo >= 5 && f.showMover) {
       const [gx, gy] = view.project((top.x0 + top.x1) / 2, top.y + 0.5, (top.z0 + top.z1) / 2);

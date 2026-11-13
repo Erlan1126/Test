@@ -16,7 +16,7 @@ import { addToSkyline, districtTowers } from "./logic/skyline";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
 import { nextTitle, titleFor, titleProgress, upcoming } from "./data/titles";
 import { SHAPES } from "./data/shapes";
-import { setVip } from "./logic/vip";
+import { claimVip, setVip, VIP_DAILY_CRYSTALS, vipClaimReady } from "./logic/vip";
 import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
@@ -560,6 +560,10 @@ export class App implements DailyHost {
     $("lu-ok").addEventListener("click", () => { $("levelup").hidden = true; this.sound.click(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
+    $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });
+    wireModal($("modes"));
+    // Picking a mode closes the list first (its own button then starts it or opens it).
+    $("modes").querySelector(".goal-list")!.addEventListener("click", () => closeModal($("modes")), true);
     // A goal row closes the Goals sheet first, then its own sheet opens.
     $("goals").querySelector(".goal-list")!.addEventListener("click", () => closeModal($("goals")), true);
     $("city-line").addEventListener("click", () => this.daily.openCity());
@@ -1196,7 +1200,9 @@ export class App implements DailyHost {
     cl.hidden = p.towers < 1;
     cl.innerHTML = t("🏙️ {city} · <b>{n}</b> people", { city: esc(t(CITY_NAME)), n: fmt(save.population) });
     $("daily-title").textContent = t("Daily #{n}", { n: dayNumber(now) });
-    $("modes").hidden = [...$("modes").children].every(c => (c as HTMLElement).hidden);
+    // Daily, Journey and Zen live behind one Modes button; its dot means one of them has news.
+    const modeIds = ["daily-btn", "challenges-btn", "zen-btn"];
+    show("modes-btn", modeIds.some(id => !$(id).hidden), modeIds.some(id => !$(id).hidden && !$(id).querySelector<HTMLElement>(".dot")!.hidden));
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
     void this.renderStatus(now);
   }
@@ -1234,6 +1240,7 @@ export class App implements DailyHost {
     if (chestReady(save, now)) out.push(t("🧰 Open today's chest"));
     const lr = pendingLeagueReward(save, now);
     if (lr) out.push(t("🏆 Claim your {league} league reward", { league: t(lr.league) }));
+    if (vipClaimReady(save, dayNumber(now))) out.push(t("👑 Collect your VIP gift"));
     return out;
   }
 
@@ -1255,6 +1262,7 @@ export class App implements DailyHost {
     if (c) lines.push(t("🧰 Mission chest · +{stars} ★ · +100 pass XP", { stars: c.stars }));
     const lr = claimLeagueReward(save);
     if (lr) lines.push(t("🏆 {league} league · +{n} ★", { league: t(lr.league), n: lr.stars }));
+    if (claimVip(save, dayNumber())) lines.push(t("👑 VIP gift · +{n} 💎 · +1 rewind", { n: VIP_DAILY_CRYSTALS }));
     this.persist();
     if (lines.length) {
       const list = $("reward-lines");
