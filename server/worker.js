@@ -27,6 +27,7 @@
 //   PRICE_<pack id>         the Stripe price id for each pack, e.g. PRICE_crystals_650
 // Storage: a KV namespace bound as ENTITLEMENTS.
 import { replayRun } from "../src/logic/replay";
+import { RULES } from "../src/logic/sim";
 import { dailySeed, dayNumber } from "../src/logic/rules";
 import { weekIndex } from "../src/data/events";
 
@@ -264,6 +265,9 @@ async function rankings(request, url, env, now) {
       return json({ error: "not today's Daily" }, 400);
     }
     if (JSON.stringify(record).length > 60000) return json({ error: "too long" }, 413);
+    // Ranked towers use the current rules, or the previous ones (phones that haven't
+    // updated yet), not any older set a player might find easier.
+    if (!Number.isInteger(record.rules) || record.rules < RULES - 1) return json({ error: "old rules" }, 400);
 
     const out = replayRun(record);
     if (!out.ok) return json({ error: `rejected: ${out.reason}` }, 422);

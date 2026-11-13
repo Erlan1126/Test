@@ -49,6 +49,13 @@ export function initDiag(): void {
   });
 }
 
+/** An error the game caught and survived (so the window "error" event never saw it). */
+export function reportError(e: unknown): void {
+  if (!SERVER_URL) return;
+  const r = e as { message?: string; stack?: string } | undefined;
+  add({ kind: "error", msg: String(r?.message ?? e).slice(0, 200), data: { caught: true, stack: String(r?.stack ?? "").slice(0, 900) } });
+}
+
 /** How a tower ran: frames per second, frames slower than 1/30 s, and the worst frame. */
 export function reportPerf(data: { fps: number; slow: number; worst: number; floors: number; gfx: string }): void {
   if (SERVER_URL) add({ kind: "perf", msg: "tower", data });

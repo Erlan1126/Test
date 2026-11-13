@@ -63,6 +63,7 @@ export function buildRoof(kind: RoofKind, half: number): THREE.Group {
     c.fillStyle = "#ffffff"; c.font = "900 150px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
     c.fillText("H", 128, 136);
     const tex = new THREE.CanvasTexture(pad);
+    tex.userData.own = true; // freed with the rooftop
     tex.colorSpace = THREE.SRGBColorSpace;
     const r = s * 0.92;
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.35, r * 0.35, 0.6, 12).translate(0, 0.3, 0), mat(0x9aa3b0)));

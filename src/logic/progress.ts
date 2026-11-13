@@ -283,10 +283,13 @@ export function journeyRewards(save: SaveData, run: RunSummary): Reward[] {
   const stars = stageStars(true, run.floors, run.perfects), before = save.journey[c.id] ?? 0;
   if (stars > before) {
     save.journey[c.id] = stars;
-    if (before > 0) {
-      addStars(save, stars - before);
-      out.push({ kind: "star", text: t("{stars} on {name} (+{n} ★)", { stars: "★".repeat(stars), name, n: stars - before }) });
-    } else out.push({ kind: "star", text: t("{stars} on {name}", { stars: "★".repeat(stars) + "☆".repeat(3 - stars), name }) });
+    // The first map star comes with the first win; each one beyond it pays a star, so
+    // three stars on the first try pays the same as working up to them.
+    const extra = stars - Math.max(before, 1);
+    if (extra > 0) addStars(save, extra);
+    out.push({ kind: "star", text: extra > 0
+      ? t("{stars} on {name} (+{n} ★)", { stars: "★".repeat(stars) + "☆".repeat(3 - stars), name, n: extra })
+      : t("{stars} on {name}", { stars: "★".repeat(stars) + "☆".repeat(3 - stars), name }) });
   }
   // A chest for finishing every stage of a chapter.
   const chapter = Math.floor(CHALLENGES.indexOf(c) / STAGES_PER_CHAPTER), key = `chest${chapter + 1}`;

@@ -355,6 +355,7 @@ function lawnTexture(t: IslandTheme): THREE.Texture {
     g.fillRect(hash(i, 5, 1) * 256, hash(i, 1, 7) * 256, 2, 2);
   }
   const tex = new THREE.CanvasTexture(c);
+  tex.userData.own = true; // freed with the island
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -367,6 +368,7 @@ function roadTexture(color: string): THREE.Texture {
   g.fillStyle = "#f1f3f5"; g.fillRect(0, 30, 32, 4);
   g.fillStyle = "rgba(255,255,255,0.5)"; g.fillRect(0, 2, 64, 2); g.fillRect(0, 60, 64, 2);
   const tex = new THREE.CanvasTexture(c);
+  tex.userData.own = true; // freed with the island
   tex.wrapS = THREE.RepeatWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

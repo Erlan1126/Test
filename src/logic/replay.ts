@@ -53,7 +53,7 @@ export type ReplayResult = { ok: true; summary: RunSummary; ticks: number; pace:
 
 /** Rebuilds a tower from its record. Anything a real game couldn't produce is rejected. */
 export function replayRun(rec: RunRecord): ReplayResult {
-  if (rec?.v !== 1 || !Array.isArray(rec.log)) return { ok: false, reason: "bad record" };
+  if (rec?.v !== 1 || !Array.isArray(rec.log) || !rec.boosts || typeof rec.boosts !== "object") return { ok: false, reason: "bad record" };
   if (rec.rules !== undefined && (!Number.isInteger(rec.rules) || rec.rules < 1 || rec.rules > RULES)) return { ok: false, reason: "unknown rules" };
   if (!["classic", "daily", "challenge", "zen"].includes(rec.mode)) return { ok: false, reason: "bad mode" };
   if (!Number.isInteger(rec.seed) || !Number.isInteger(rec.week) || !Number.isInteger(rec.day)) return { ok: false, reason: "bad numbers" };

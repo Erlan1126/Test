@@ -1,5 +1,6 @@
 // Builder titles: every few levels you earn a new title and badge, shown on your profile,
 // the level button and next to your name in the rankings.
+import { xpNeeded } from "../logic/rules";
 
 export interface Title {
   /** First level with this title. */
@@ -23,8 +24,8 @@ export const TITLES: Title[] = [
   { min: 100, name: "Skyrise Immortal", icon: "🌟", color: "#fff3a8", glow: true },
 ];
 
-/** Total XP earned to reach `level` (the XP curve is in logic/rules.ts: 150 + 75 per level). */
-const xpTo = (level: number) => 150 * (level - 1) + 75 * ((level - 1) * (level - 2)) / 2;
+/** Total XP earned to reach `level`, from xpNeeded in logic/rules.ts. */
+const xpTo = (level: number) => { let n = 0; for (let l = 1; l < level; l++) n += xpNeeded(l); return n; };
 
 /** How far you are from your title to the next one, 0 to 1. */
 export function titleProgress(level: number, xp: number): number {

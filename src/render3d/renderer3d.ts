@@ -107,6 +107,7 @@ export class Renderer3D {
   private envKey = "";
   /** The island whose sky colors are showing (each island has its own sky). */
   private skyTheme = "";
+  private skyExtra = "";
   private readonly composer: EffectComposer;
   private readonly bloom: UnrealBloomPass;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };
@@ -190,7 +191,11 @@ export class Renderer3D {
     // Reflections start from a soft studio light; once the sky is known, the glass
     // reflects the real sky instead (see updateEnvironment).
     this.pmrem = new THREE.PMREMGenerator(this.gl);
-    this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    // (At the same small size as the sky ones, so shaders prepared now stay valid.)
+    const room = new RoomEnvironment();
+    this.envTarget = this.pmrem.fromScene(room, 0.04, 0.1, 100, { size: 64 });
+    this.scene.environment = this.envTarget.texture;
+    room.dispose();
     this.scene.environmentIntensity = 0.9;
     this.envSky = new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false,
@@ -453,12 +458,15 @@ export class Renderer3D {
     const sim = f.sim, stack = sim.stack, n = stack.length;
     env.time += dt;
     env.low = f.low;
+    if (!view.s || !view.W || !view.H) { if (view.W && view.H) this.resize(f.low); return; } // hidden / not laid out yet
     [env.skyTop, env.skyBot] = skyAt(n, f.theme.id);
     this.skyTheme = f.theme.id;
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
     // The first home screen opens on a sunrise that warms into the day.
     const dawn = this.introDone || f.shot !== "menu" ? 0 : clamp(1 - this.menuTime / DAWN, 0, 1);
+    // What else colours the sky right now, so the glass reflection follows it too.
+    this.skyExtra = `${dawn > 0 ? Math.round(dawn * 4) : ""}|${f.shot === "over" ? "o" : ""}|${f.tint ? f.tint.join(",") : ""}`;
     if (dawn > 0) {
       const k = dawn * dawn * (3 - 2 * dawn);
       env.skyTop = mixRgb(env.skyTop, [255, 170, 120], 0.55 * k);
@@ -478,6 +486,7 @@ export class Renderer3D {
       // where their towers crowded the title and showed through the glass buttons.
       this.skyline.visible = f.shot === "over";
     }
+    this.updateEnvironment(n); // before the tower, so its shaders are prepared against it
     this.updateTower(f);
     this.updateMover(f);
     this.updateDebris(f.shape);
@@ -517,7 +526,7 @@ export class Renderer3D {
     // Rebuilt only when the sky moves to a new stage (a handful of times in a tall tower):
     // rebuilding is a heavy job, and doing it every few floors made the game stutter.
     const sunset = clamp((n - 18) / 30, 0, 1);
-    const key = `${Math.round(sunset * 3)}|${Math.round(env.nf * 4)}|${this.skyTheme}`;
+    const key = `${Math.round(sunset * 3)}|${Math.round(env.nf * 4)}|${this.skyTheme}|${this.skyExtra}`;
     if (key === this.envKey) return;
     this.envKey = key;
     const u = (this.envSky.material as THREE.ShaderMaterial).uniforms;
@@ -628,8 +637,11 @@ export class Renderer3D {
   private districtIsland(theme: Frame["theme"], towers: SkylineTower[], slot: { x: number; z: number; y: number }): THREE.Group {
     const { x: CX, z: CZ } = slot, R = 7.2, Y = slot.y * FH, g = new THREE.Group();
     const rockMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.rockL), roughness: 1, flatShading: true });
+    rockMat.userData.own = true;
+    const lawnMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.lawn), roughness: 0.9 });
+    lawnMat.userData.own = true;
     g.add(new THREE.Mesh(new THREE.ConeGeometry(R * 1.35, R * 1.6, 4).rotateY(Math.PI / 4).rotateX(Math.PI).translate(CX, Y - R * 0.8, CZ), rockMat));
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(R * 2, 0.8, R * 2).translate(CX, Y - 0.4, CZ), new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.lawn), roughness: 0.9 })));
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(R * 2, 0.8, R * 2).translate(CX, Y - 0.4, CZ), lawnMat));
     const spots = [-4.4, 0, 4.4].flatMap(a => [-4.4, 0, 4.4].map(b => [CX + a, CZ + b] as const)).sort((p, q) => p[0] + p[1] - (q[0] + q[1]));
     [...towers].sort((a, b) => b.f - a.f).forEach((tw, i) => {
       const spot = spots[i];
@@ -864,9 +876,10 @@ export class Renderer3D {
     if (tris > 0) {
       const attr = this.landShadow.geometry.getAttribute("position") as THREE.BufferAttribute;
       const a = attr.array as Float32Array;
+      const put = (j: number, p: XZ) => { a[j] = p[0]; a[j + 1] = 0; a[j + 2] = p[1]; };
       for (let i = 0; i < tris; i++) {
-        const t = [over[0], over[i + 1], over[i + 2]];
-        for (let k = 0; k < 3; k++) a.set([t[k][0], 0, t[k][1]], (i * 3 + k) * 3);
+        const o = i * 9;
+        put(o, over[0]); put(o + 3, over[i + 1]); put(o + 6, over[i + 2]);
       }
       attr.needsUpdate = true;
       this.landShadow.geometry.setDrawRange(0, tris * 3);
@@ -1092,12 +1105,21 @@ function makeCloudTexture(): THREE.Texture {
   return tex;
 }
 
+/** Frees a group's GPU memory: geometry, instance buffers, and its materials (all of them,
+ *  or with `materials` false only those marked as its own). Textures marked as its own
+ *  (not the shared facade ones) go too. */
 function disposeTree(o: THREE.Object3D, materials = true): void {
   o.traverse(c => {
     const m = c as THREE.Mesh;
     if (!m.isMesh) return;
     m.geometry.dispose();
-    if (materials) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => x.dispose());
+    if ((m as unknown as THREE.InstancedMesh).isInstancedMesh) (m as unknown as THREE.InstancedMesh).dispose();
+    for (const x of Array.isArray(m.material) ? m.material : [m.material]) {
+      if (!materials && !x.userData.own) continue;
+      const map = (x as THREE.MeshStandardMaterial).map;
+      if (map?.userData.own) map.dispose();
+      x.dispose();
+    }
   });
 }
 

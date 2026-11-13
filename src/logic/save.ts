@@ -92,8 +92,9 @@ export interface SaveData {
   lastTower: { f: number; m: number; p: number; d: string } | null;
   /** The last week whose tournament prize was collected (or checked with no prize). */
   tourney: number;
-  /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts). */
+  /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts), and its score. */
   ghost: number[];
+  ghostScore: number;
   /** Skyline Journey: best map stars (1-3) per stage, and chapter chests opened ("chest1"...). */
   journey: Record<string, number>;
   /** Your best towers, highest score first. */
@@ -164,6 +165,7 @@ export function defaultSave(): SaveData {
     challenges: [],
     journey: {},
     ghost: [],
+    ghostScore: 0,
     tourney: -1,
     lastTower: null,
     history: [],
@@ -275,6 +277,7 @@ export function normalize(raw: unknown): SaveData {
     challenges: strList(r.challenges),
     journey: starMap(r.journey),
     ghost: cleanPace(r.ghost),
+    ghostScore: typeof r.ghostScore === "number" && Number.isFinite(r.ghostScore) ? Math.max(0, Math.floor(r.ghostScore)) : 0,
     lastTower: lastTower(r.lastTower),
     tourney: typeof r.tourney === "number" && Number.isFinite(r.tourney) ? Math.floor(r.tourney) : -1,
     history,

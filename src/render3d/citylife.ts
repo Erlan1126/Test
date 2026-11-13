@@ -82,6 +82,8 @@ export function addCityLife(g: THREE.Group): (time: number, night: number) => vo
       body.setMatrixAt(i, m4);
       head.setMatrixAt(i, m4);
     }
+    // Only the people still out are drawn (the rest aren't just moved out of sight).
+    body.count = head.count = out;
     body.instanceMatrix.needsUpdate = true;
     head.instanceMatrix.needsUpdate = true;
 

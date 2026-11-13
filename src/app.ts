@@ -33,7 +33,7 @@ import type { Debris } from "./render/effects";
 import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
-import { flushDiag, reportPerf } from "./diag";
+import { flushDiag, reportError, reportPerf } from "./diag";
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
@@ -183,6 +183,7 @@ export class App implements DailyHost {
   private passed: { name: string; until: number } | null = null;
   private passedTimer = 0;
   private lastTick = 0;
+  private frameErrorShown = false;
   /** Time not yet turned into fixed sim steps. */
   private stepTime = 0;
 
@@ -297,6 +298,7 @@ export class App implements DailyHost {
   /** The Android back button: closes what's open, pauses, or steps back to the menu.
    *  Returns false on the main menu, where the app goes to the background. */
   private back(): boolean {
+    if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
     const modal = openModalEl();
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
@@ -659,6 +661,7 @@ export class App implements DailyHost {
   }
 
   private key(e: KeyboardEvent): void {
+    if (this.video) return; // recording the clip
     const modal = openModalEl();
     if (modal) {
       if (e.code === "Escape") { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); }
@@ -805,7 +808,7 @@ export class App implements DailyHost {
     this.sound.ensure();
     this.sound.click();
     this.sound.duck(false);
-    for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek", "powers"]) $(id).hidden = true;
+    for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek", "powers", "banner", "levelup"]) $(id).hidden = true;
     this.renderer.weather.set("clear");
     this.peek = false;
     this.mode = "classic";
@@ -923,7 +926,11 @@ export class App implements DailyHost {
         : t("{roof} rooftop! The grandest of all", { roof: t(ROOF_NAME[kind]) }) });
     }
     // A new best Classic tower becomes the ghost you race next time.
-    if (this.mode === "classic" && this.outcome.newBest && this.pace.length >= 5) this.save.ghost = this.pace.slice(0, MAX_GHOST);
+    // (Its own record: a high Daily score mustn't stop better Classic towers replacing it.)
+    if (this.mode === "classic" && run.score > this.save.ghostScore && this.pace.length >= 5) {
+      this.save.ghost = this.pace.slice(0, MAX_GHOST);
+      this.save.ghostScore = run.score;
+    }
     this.opened = openedBetween(towersBefore, this.save.profile.towers);
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
@@ -1181,7 +1188,7 @@ export class App implements DailyHost {
 
   private renderMenu(): void {
     // After the fifth tower, the Starter Pack is offered once (if purchases work here).
-    if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => this.openStarter(), 700); }
+    if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => { if (this.state === "menu") this.openStarter(); }, 700); }
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     $("rules").hidden = p.towers >= 3;
@@ -1428,7 +1435,7 @@ export class App implements DailyHost {
     eyebrow.textContent = c ? (won ? t("Stage complete!") : t("Stage failed"))
       : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: this.runDay }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
-    if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => this.showLevelUp(o.levelUp!), 700); }
+    if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => { if (this.state === "over") this.showLevelUp(o.levelUp!); }, 700); }
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
     $("over-people").textContent = fmt(sim.score);
@@ -1528,6 +1535,8 @@ export class App implements DailyHost {
     const challenge = !!this.challenge;
     let shown = false;
     for (const id of order) {
+      // In a stage, its goal line is the landmark element: handled once, as the goal.
+      if (id === "over-landmark" && challenge) continue;
       const el = id === "over-landmark-goal" ? (challenge ? $("over-landmark") : null) : $(id);
       if (!el) continue;
       const has = !!el.textContent?.trim() && (id !== "over-world" || el.dataset.ok === "1") && (id !== "over-near" || !challenge) && (id !== "over-versus" || el.dataset.ok === "1");
@@ -1586,11 +1595,18 @@ export class App implements DailyHost {
     document.body.append(badge);
     document.body.classList.add("recording");
     this.video = { t: 0, rec, ctx, canvas };
-    rec.start(250);
-    await done;
-    this.video = null;
-    badge.remove();
-    document.body.classList.remove("recording");
+    try {
+      rec.start(250);
+      await done;
+    } catch {
+      toast(t("Videos can't be recorded on this device"));
+      return;
+    } finally {
+      // Always back to normal, even if the recorder failed.
+      this.video = null;
+      badge.remove();
+      document.body.classList.remove("recording");
+    }
     const blob = new Blob(chunks, { type: mime.split(";")[0] });
     const ext = mime.startsWith("video/mp4") ? "mp4" : "webm", name = `skyrise-tower.${ext}`;
     const text = this.shareText();
@@ -1701,10 +1717,16 @@ export class App implements DailyHost {
       if (raw > 1 / 30) f.slow++;
       f.worst = Math.max(f.worst, raw * 1000);
     }
-    this.update(dt);
-    this.draw(dt);
-    if (this.video) this.paintVideoFrame();
+    // The next frame is booked first, so one error can never freeze the game for good.
     requestAnimationFrame(t => this.frame(t));
+    try {
+      this.update(dt);
+      this.draw(dt);
+      if (this.video) this.paintVideoFrame();
+    } catch (e) {
+      // Reported (the first time) and the game carries on next frame.
+      if (!this.frameErrorShown) { this.frameErrorShown = true; reportError(e); console.error(e); }
+    }
   }
 
   private update(dt: number): void {
