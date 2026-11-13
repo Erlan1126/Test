@@ -29,7 +29,8 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  background: var(--ink);
+  /* Bright under everything, so any edge the game doesn't cover isn't a dark band. */
+  background: #d6f0fc;
   color: var(--text);
   font-family: var(--ui);
 }

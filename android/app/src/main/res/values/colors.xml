@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The bright sky colour behind the game, so the strip Android keeps for its gesture
+         bar at the bottom (and any edge the game doesn't cover) is bright, not dark. -->
+    <color name="skyBright">#D6F0FC</color>
+</resources>

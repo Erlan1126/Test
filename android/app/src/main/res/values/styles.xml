@@ -13,6 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Bright behind the system bars (with a dark gesture handle on top). -->
+        <item name="android:windowBackground">@color/skyBright</item>
+        <item name="android:navigationBarColor">@color/skyBright</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
 

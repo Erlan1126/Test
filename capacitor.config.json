@@ -2,7 +2,7 @@
   "appId": "com.erlanstudios.skyrise",
   "appName": "Skyrise",
   "webDir": "dist",
-  "backgroundColor": "#1b1446",
+  "backgroundColor": "#d6f0fc",
   "loggingBehavior": "debug",
   "android": {
     "allowMixedContent": false,
@@ -12,7 +12,7 @@
   "ios": {
     "contentInset": "never",
     "scrollEnabled": false,
-    "backgroundColor": "#1b1446"
+    "backgroundColor": "#d6f0fc"
   },
   "plugins": {
     "SplashScreen": {
