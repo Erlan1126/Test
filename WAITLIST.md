@@ -41,6 +41,23 @@ the go-ahead comes.
 - A clear "shrinking" label and a ticking sound.
 - Needs a new rules version so older ranked towers still replay.
 
+## 7. Home screen island glitch (from video 66493.mp4)
+- **Island showing through the bottom menu:** around 2–8 s after launch, purple island
+  corners appear in the gaps around and below City, Shop and Goals, near the gesture bar.
+  Find which mesh or layer draws them (scene bounds, camera framing, render order,
+  safe-area inset). Keep the moving scenery inside a set area and give the bottom menu a
+  solid background, with all three buttons visible and tappable.
+- **Scenery popping in on launch:** around 1–3 s, an island edge comes in from the upper
+  left and tall towers sweep behind the title and top counters. Set the home camera and
+  layout before showing the scene; if the entrance move stays, make it smooth and keep the
+  islands clear of the title and counters.
+- Likely suspect: the sunrise intro added in build 47 starts the camera swung round to one
+  side, which brings the floating district islands into view.
+- **Checks:** a cold launch plus 15 s idle; coming back from a tower; going to the
+  background and reopening; short and tall phones with gesture navigation. The bottom edge
+  stays clean, the title and counters stay readable, and Start Building, rewards and every
+  bottom button respond. Report the cause and which checks passed.
+
 ## Final check (after 1–5)
 Play one complete run into the city, start another, and check the population totals, the
 landmark change, the record label and the new home screen.
