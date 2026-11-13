@@ -161,7 +161,7 @@ function runUpdate(dt) {
   for (const it of R.items) {
     if (it.gone) continue;
     const dy = it.at - R.dist;
-    if (it.type === "shadow" && !it.freed) { it.ph += dt; if (dy > 0 && dy < 260) it.x += Math.sign(R.x - it.cx) * dt * 22; it.cx = it.x + Math.sin(it.ph * 0.9) * it.amp; it.at -= dt * 18; }
+    if (it.type === "shadow" && !it.freed) { it.ph += dt; if (dy > 0 && dy < 260) it.x += Math.sign(R.x - (it.cx ?? it.x)) * dt * 22; it.cx = it.x + Math.sin(it.ph * 0.9) * it.amp; it.at -= dt * 18; }
     if (it.got != null) { it.got += dt; if (it.got > 0.16) it.gone = true; continue; }
     const ix = it.type === "shadow" ? it.cx : it.x, d = Math.hypot(ix - R.x, dy);
     if (it.type === "light" && magnet && d < magnet) { it.x += (R.x - it.x) * Math.min(1, dt * 8); it.at += (R.dist - it.at) * Math.min(1, dt * 8); }
