@@ -4,7 +4,7 @@
 // ---------- UI ----------
 const screens = {
   title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  challenges: $("challengeScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  challenges: $("challengeScreen"), city: $("cityScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
 };
 let backTo = "title";
 function applyLayoutPrefs() {
@@ -13,6 +13,8 @@ function applyLayoutPrefs() {
 }
 function show(name) {
   screen = name;
+  if (name !== "play") { const d = $("dashBtn"); if (d) d.hidden = true; }
+  if (name !== "city") { const sp = $("shopPanel"); if (sp) sp.hidden = true; }
   $("singBtn").hidden = name !== "play" || controlMode() === "stick";
   if (name !== "play") $("flareBtn").hidden = true;
   document.body.classList.toggle("sing-on", !$("singBtn").hidden);
@@ -133,6 +135,12 @@ const CARDS = {
     art: `<g transform="translate(112 58)">${LUMI_SVG}</g><path d="M90 50h-14M92 60h-20M90 70h-14" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/><g transform="translate(46 60) scale(1.5)"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".6"/><ellipse cx="-6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/><ellipse cx="6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/></g>` },
   chimes: { title: "Chimes", text: "Every cave from now on hides chime stones. The marks at the top show the order: ring them by swimming into them, one after another, and the sealed portal opens.",
     art: `<g transform="translate(40 58)">${LUMI_SVG}</g><g font-size="16" text-anchor="middle"><text x="84" y="40" fill="#7ee8ff">●</text><text x="106" y="40" fill="#c9a8ff">◆</text><text x="128" y="40" fill="#ffd36e">▲</text></g><g transform="translate(84 76)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#7ee8ff"/></g><g transform="translate(118 80)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#c9a8ff" opacity=".6"/></g><path d="M54 62q14-10 26 6" stroke="#8ea3c8" stroke-dasharray="2 4" fill="none"/>` },
+  dash: { title: "Dash", text: "Lumi has learned to dash. Tap the ➶ button for a quick burst of speed the way you're swimming. It makes a little noise, so save it for escapes. It recharges in a few seconds.",
+    art: `<g transform="translate(96 60)">${LUMI_SVG}</g><g stroke="#bfe8ff" stroke-width="2" stroke-linecap="round" opacity=".8"><path d="M30 52h36M22 62h40M30 72h36"/></g>` },
+  hum: { title: "Hum", text: "Lumi has learned to hum. While sneaking (a short push), a tap is a hum instead of a song: it shows only the walls close by, but it's so quiet that only a Hushling right next to you hears it.",
+    art: `<g transform="translate(80 60)">${LUMI_SVG}</g><circle cx="80" cy="60" r="26" fill="none" stroke="#bfe8ff" stroke-width="1.5" stroke-dasharray="3 4" opacity=".7"/><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/></g>` },
+  shield: { title: "Shield", text: "Lumi carries a shield of light now. The first time anything catches you in a cave, the shield breaks instead of your light. You can see it as a ring around Lumi.",
+    art: `<g transform="translate(80 60)">${LUMI_SVG}</g><circle cx="80" cy="60" r="24" fill="none" stroke="#9fe8ff" stroke-width="3" opacity=".8"/>` },
   pebbles: { title: "Pebbles", text: "From now on Lumi carries three pebbles. Tap the pebble button, then tap where it should land. It clatters where it lands, and every Hushling that hears it goes to look. Use them to clear the way.",
     art: `<g transform="translate(32 70)">${LUMI_SVG}</g><path d="M44 58Q80 8 116 62" fill="none" stroke="#bfe8ff" stroke-width="1.6" stroke-dasharray="3 4" opacity=".8"/><circle cx="118" cy="66" r="4" fill="#dff2ff"/><g stroke="#bfe8ff" stroke-width="1.4" opacity=".8"><path d="M108 58l-5-4M128 58l5-4M118 54v-6"/></g><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/><text x="0" y="-8" font-size="12" text-anchor="middle" fill="#d2beff" font-weight="700">?</text></g>` },
   flare: { title: "Flare", text: "Tap the ✦ button to burst your light. Creatures close by are dazzled, and Hushlings shrink back and stop chasing. It needs a few seconds to recharge.",
@@ -186,7 +194,7 @@ const CREATURE_CARDS = new Set(Object.values(CREATURES));
 
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [i >= PEBBLE_FROM && "pebbles", i >= 8 && "long"];
+  const wants = [i >= DASH_FROM && "dash", i >= PEBBLE_FROM && "pebbles", i >= HUM_FROM && "hum", i >= SHIELD_FROM && "shield", i >= 8 && "long"];
   return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
 }
 
@@ -361,6 +369,8 @@ function finish() {
     }
   }
   earnGlow(L.got + stars);
+  // The lights you brought out of this cave go home to the city.
+  if (levelIndex >= 0) { save.got = save.got || {}; save.got[levelIndex] = Math.max(save.got[levelIndex] || 0, L.got); }
   // Keep the best run as a ghost to race: more stars wins, then a faster time.
   L.newGhost = false;
   if (CORE && levelIndex >= 0 && L.track.length) {
@@ -663,7 +673,12 @@ async function shareGame() {
 }
 
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
-tap("playBtn", () => startLevel(nextUnplayed()));
+// Play goes home to the city first; from there, into the next cave.
+tap("playBtn", () => (CORE ? showCity() : startLevel(nextUnplayed())));
+tap("cityGo", () => startLevel(nextUnplayed()));
+tap("cityMap", openMap);
+tap("cityBack", showTitle);
+tap("cityShop", () => { $("shopPanel").hidden = !$("shopPanel").hidden; renderShop(); });
 tap("levelsBtn", openMap);
 // A soft tick when a switch or option changes, so settings feel alive.
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
@@ -723,6 +738,7 @@ tap("nextBtn", () => {
     return;
   }
   if (isChallenge(levelIndex)) showTitle();
+  else if (CORE) showCity(true);
   else if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
   else openMap();
 });

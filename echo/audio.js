@@ -264,6 +264,10 @@ sfx.clatter = (dx = 0) => { for (let k = 0; k < 4; k++) note(1700 + Math.random(
 sfx.lurk = (dx = 0) => { note(95, { dur: 0.7, vol: 0.12, type: "sawtooth", lowpass: 300, glide: 140, attack: 0.15, echo: 0.6, pan: dx / 5 }); noise({ freq: 300, glide: 900, q: 3, dur: 0.5, attack: 0.2, vol: 0.05, pan: dx / 5 }); };
 // A memory: a soft, high music-box phrase.
 sfx.memory = () => [0, 4, 7, 11, 14].forEach((d, i) => note(pitch(d, 2), { at: i * 0.12, dur: 1.6, vol: 0.05, fm: 3.5, fmDepth: 0.7, echo: 1 }));
+// Dash: a quick rising whoosh. Hum: a low, soft tone. Shield: a glassy crack.
+sfx.dash = () => noise({ freq: 600, glide: 2400, q: 0.9, dur: 0.3, attack: 0.02, vol: 0.07 });
+sfx.hum = () => note(pitch(0, -1), { dur: 0.9, vol: 0.05, type: "sine", attack: 0.15, echo: 0.2 });
+sfx.shield = () => { [0, 4, 7].forEach((d, i) => note(pitch(d, 2), { at: i * 0.03, dur: 0.5, vol: 0.06, type: "triangle", echo: 0.6 })); noise({ filter: "highpass", freq: 3000, q: 0.5, dur: 0.15, attack: 0.002, vol: 0.06 }); };
 // A Hushling sweeping past in the dark.
 sfx.whoosh = (dx = 0) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.06, pan: dx / 3, echo: 0.5 });
 // The Great Hush's long, slow breath.

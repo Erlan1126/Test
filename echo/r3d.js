@@ -403,7 +403,7 @@ const R3D = (() => {
     visTex = new T.DataTexture(visData, cols, rows, T.RGBAFormat);
     visTex.magFilter = visTex.minFilter = T.LinearFilter;
     uVis.value = visTex; uDims.value.set(cols, rows);
-    const fogCol = col(th.deep, 0.55);
+    const fogCol = col(th.deep, 0.5).lerp(col(th.rim, 0.22), 0.25);
     scene.fog = new T.FogExp2(fogCol, 0.014);
     renderer.setClearColor(fogCol);
     hemi.color = col(th.rim, 0.55); hemi.groundColor = col(th.deep, 0.5);
@@ -447,11 +447,18 @@ const R3D = (() => {
     geo.computeVertexNormals();
     const caveMat = withVis(new T.MeshStandardMaterial({ vertexColors: true, map: GRAIN, roughness: 0.58, metalness: 0.04 }));
     const visCompile = caveMat.onBeforeCompile;
+    const caveRim = col(th.rim, 1.0);
     caveMat.onBeforeCompile = sh => {
       visCompile(sh);
+      sh.uniforms.uRimC = { value: caveRim };
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vWNorm;")
         .replace("#include <beginnormal_vertex>", "#include <beginnormal_vertex>\nvWNorm = normalize(mat3(modelMatrix) * objectNormal);");
-      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWNorm;")
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWNorm;\nuniform vec3 uRimC;\nfloat wallKeep;")
+        .replace("#include <fog_fragment>", `
+          // The art style: rock in silhouette, its edges catching a glow in the world's colour.
+          float rimK = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 3.2);
+          gl_FragColor.rgb += uRimC * rimK * smoothstep(0.02, 0.7, visK) * (0.25 + 0.75 * wallKeep) * 1.0;
+          #include <fog_fragment>`)
         .replace("#include <map_fragment>", `
           vec3 tw = pow(abs(normalize(vWNorm)), vec3(4.0)); tw /= (tw.x + tw.y + tw.z);
           vec4 tri = texture2D(map, vWPos.zy * 0.55) * tw.x + texture2D(map, vWPos.xz * 0.5) * tw.y + texture2D(map, vWPos.xy * 0.55) * tw.z;
@@ -459,7 +466,10 @@ const R3D = (() => {
           diffuseColor *= mapTexelToLinear(tri) * (0.75 + 0.45 * mapTexelToLinear(tri2).r);
           // Walls a little rougher and darker toward their feet; floors damp and shiny.
           float wallK = 1.0 - tw.y;
-          diffuseColor.rgb *= mix(1.0, 0.72 + 0.28 * smoothstep(0.0, 0.8, vWPos.y), wallK);`)
+          diffuseColor.rgb *= mix(1.0, 0.72 + 0.28 * smoothstep(0.0, 0.8, vWPos.y), wallK);
+          // Walls and their tops almost black; the floor a little lighter so Lumi's light pools on it.
+          wallKeep = max(wallK, smoothstep(0.15, 0.5, vWPos.y));
+          diffuseColor.rgb *= mix(0.55, 0.16, wallKeep);`)
         .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor = mix(0.45, 0.92, max(1.0 - tw.y, smoothstep(0.12, 0.4, vWPos.y)));");
     };
     const cave = new T.Mesh(geo, caveMat);
@@ -500,8 +510,8 @@ const R3D = (() => {
       if (!open(x, y)) continue;
       for (let k = 0, n = Math.floor(rand() * 4); k < n; k++) { const r = 0.02 + rand() * 0.035; pebbles.push({ x: x + rand(), y: r * 0.4, z: y + rand(), sx: r * 1.3, sy: r * 0.7, sz: r, ry: rand() * 3 }); }
     }
-    inst(new T.DodecahedronGeometry(1, 1), withVis(new T.MeshStandardMaterial({ color: col(th.rock, 0.6), roughness: 0.9, flatShading: true })), spikes, true);
-    inst(new T.IcosahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: col(th.rock, 0.75), roughness: 0.9, flatShading: true })), pebbles, false);
+    inst(new T.DodecahedronGeometry(1, 1), withVis(new T.MeshStandardMaterial({ color: col(th.rock, 0.22), roughness: 0.9, flatShading: true })), spikes, true);
+    inst(new T.IcosahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: col(th.rock, 0.35), roughness: 0.9, flatShading: true })), pebbles, false);
     const crystalC = col(th.rim, 1.0);
     inst(new T.OctahedronGeometry(1, 0), withVis(new T.MeshStandardMaterial({ color: crystalC, emissive: crystalC, emissiveIntensity: 0.45, roughness: 0.15, metalness: 0.3 }), 0.12), crystals, false);
     // Glow-worms: tiny specks clinging low on the walls, each twinkling in its own time.
@@ -736,6 +746,12 @@ const R3D = (() => {
       const s = ALERT(ak++); s.material.map = g.alert === "!" ? ALERT_X : ALERT_Q; s.material.depthTest = false; s.renderOrder = 60;
       s.material.opacity = Math.min(1, g.alertT * 2); s.position.set(g.x, (g.big ? 2.9 : 2.0) + (1 - Math.min(1, g.alertT)) * 0.2, g.y);
     }
+    // Lights following Lumi home: little warm orbs bobbing in a line behind it.
+    const FOL = pool("follower", () => { const g = new T.Group(); g.add(new T.Mesh(new T.SphereGeometry(0.09, 12, 8), new T.MeshBasicMaterial({ color: 0xfff1c8, toneMapped: false }))); g.add(glow(0xffd36e, 0.8, 0.7)); return g; });
+    (L.followers || []).forEach((f, q) => { const g = FOL(q); g.position.set(f.x, 0.6 + Math.sin(clock * 3 + q) * 0.06, f.y); });
+    // Lumi's shield: a thin ring of light around it.
+    const SHI = pool("shield", () => { const m = new T.Mesh(new T.TorusGeometry(0.42, 0.018, 8, 48), new T.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.6, toneMapped: false, depthTest: false })); m.renderOrder = 55; return m; });
+    if (L.shields > 0 && !L.demo) { const m = SHI(0); m.position.set(lumi.x, 0.62, lumi.y); m.rotation.set(Math.PI / 2 + Math.sin(clock) * 0.3, clock * 0.8, 0); }
     // Aiming a pebble: a ring shows how far it can fly.
     const AIM = pool("aim", () => { const m = new T.Mesh(new T.RingGeometry(0.985, 1, 128), new T.MeshBasicMaterial({ color: 0xbff4ff, transparent: true, opacity: 0.5, side: T.DoubleSide, depthWrite: false })); m.rotation.x = -Math.PI / 2; return m; });
     if (L.aiming) { const m = AIM(0); m.position.set(lumi.x, 0.06, lumi.y); m.scale.setScalar(6); }

@@ -14,6 +14,21 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## The Singer's city (the hub)
+
+Play now goes home first, to the Singer's ruined city in the dark (`echo/city.js`). Every light you bring out of a cave comes home and lights a street lamp or a window, one by one, with a chime, the next time you return; the most you've ever found in each cave counts. Each cleared cave sends a neighbour home: twenty little lights with names (Pip, Moss, Tilly, Bram…, the Singer, Little Hush) who bob along the street; tap one to hear what it says. Clearing act one lights the Singer's tower; clearing act two opens the sky above the city. "Into the dark" goes to the next cave; Map and Title are there too.
+
+**Songs** (in the city): glow earned in the caves upgrades what Lumi has learned. Dash recharges faster (three steps), the pebble pouch holds more (two), Hum shows further (two), the Shield takes an extra touch (one).
+
+## Lumi's songs and the lights that follow
+
+- **Dash** (from cave 4; the ➶ button, or Q): a burst of speed the way Lumi is swimming. It makes a little noise (heard about 3.5 tiles away).
+- **Hum** (from cave 8): while sneaking, a tap is a hum instead of a song. It shows only the walls close by, and only a Hushling within a tile and a half hears it.
+- **Shield** (from cave 11, and in the daily cave): the first touch in a cave breaks the shield (a ring around Lumi) instead of costing light.
+- **Lights follow you home.** A light you find swims along behind Lumi. Each one makes Lumi's light bigger, which helps you see and helps Lurkers see you. When something catches you, the last one takes fright and flies back to where you found it.
+- **The art:** rock in silhouette, nearly black, its edges catching a glow in each world's colour wherever light has found it, inside a haze tinted the same way.
+- **A bigger cave:** The Deep Maze (cave 9) is now 17 tiles wide with three ways up: the quick middle lane is guarded twice, the left is watched by a Lurker, the right has a Hushling in an alcove.
+
 ## Echo, back to its core
 
 Echo has been cut back to its core: **twenty handmade caves in two acts** (`CORE_LEVELS` in `echo/levels.js`), each built around one idea, played with a few simple rules.
