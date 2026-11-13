@@ -1421,3 +1421,59 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 /* Results card: brighter too */
 .card { background: linear-gradient(180deg, rgba(74, 55, 196, 0.92), rgba(42, 35, 128, 0.94)); border: 2px solid rgba(255, 255, 255, 0.22); }
 #over-actions { background: linear-gradient(180deg, rgba(42, 35, 128, 0), rgba(42, 35, 128, 0.97) 30%); }
+
+/* ======================================================================
+   Logo and buttons, take two.
+   ====================================================================== */
+
+/* The name: a vector wordmark (sunset letters, dark outline, purple 3D base, a shine
+   across the top), sharp on every screen. */
+.logo { width: min(92vw, 440px); margin: 0 auto; line-height: 0; -webkit-text-stroke: 0; text-shadow: none; }
+.logo-art { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 8px 14px rgba(42, 18, 112, 0.3)); }
+.logo-spark { transform-origin: 548px 36px; animation: logo-twinkle 2.6s ease-in-out infinite; }
+@keyframes logo-twinkle { 0%, 100% { transform: scale(0.75) rotate(0deg); opacity: 0.85; } 50% { transform: scale(1.1) rotate(20deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .logo-spark { animation: none; } }
+
+/* Glossy candy buttons: a soft shine over the top half, a dark ledge underneath. */
+.btn-primary {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.12) 46%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, #ffb35a 0%, #ff6a8c 55%, #ff3d7f 100%);
+  border: 3px solid #fff;
+  box-shadow: 0 6px 0 #c22a63, 0 7px 0 #7a1240, 0 14px 26px rgba(122, 18, 64, 0.35);
+  text-shadow: 0 2px 0 #b8265e;
+}
+.btn-primary:active { transform: translateY(5px); box-shadow: 0 1px 0 #c22a63, 0 2px 0 #7a1240, 0 6px 12px rgba(122, 18, 64, 0.3); }
+.btn-secondary {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, #7d88ff, #5162f0);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 5px 0 #2f3bb0, 0 10px 18px rgba(47, 59, 176, 0.3);
+  text-shadow: 0 2px 0 #2f3bb0;
+}
+/* The big Start building button: taller, with a play badge. */
+#play { min-height: 70px; font-size: 25px; letter-spacing: 0.02em; gap: 12px; }
+#play::before {
+  content: ""; flex: none; width: 38px; height: 38px; border-radius: 50%;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 6.5v11l9-5.5z' fill='%23ff3d7f' stroke='%23ff3d7f' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") center / 24px no-repeat;
+  box-shadow: 0 3px 0 #c22a63;
+}
+
+/* Home tiles: glossy, with the icon in a white badge in the tile's colour. */
+.tile { --c: #7a4ff0; --ledge: #4f2bb0; border: 3px solid #fff; gap: 5px; min-height: 84px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.1) 46%, rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, color-mix(in srgb, var(--c) 78%, #fff), var(--c));
+  box-shadow: 0 5px 0 var(--ledge), 0 10px 18px color-mix(in srgb, var(--ledge) 35%, transparent);
+  color: #fff; text-shadow: 0 2px 0 var(--ledge); font-size: 14px; font-weight: 900; }
+.tile:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ledge); }
+.tile svg { width: 36px; height: 36px; padding: 7px; box-sizing: border-box; border-radius: 50%; background: #fff; color: var(--c); filter: none; box-shadow: 0 2px 0 var(--ledge); }
+#modes-btn { --c: #7a4ff0; --ledge: #4f2bb0; }
+#city-btn { --c: #17a596; --ledge: #0b6d63; }
+#shop-btn { --c: #ff8a1f; --ledge: #b85400; }
+#goals-btn { --c: #f0aa00; --ledge: #a87400; color: #fff; text-shadow: 0 2px 0 #a87400; }
+#goals-btn svg { color: #f0aa00; }
+#modes-btn, #city-btn, #shop-btn, #goals-btn { background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.1) 46%, rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, color-mix(in srgb, var(--c) 72%, #fff), var(--c)); box-shadow: 0 5px 0 var(--ledge), 0 10px 18px rgba(0, 0, 0, 0.18); }
+.tile .dot { top: 6px; right: 6px; width: 14px; height: 14px; border: 2px solid #fff; box-shadow: none; }
+
+/* The gift / rewards chip and the tournament line: glossy pills to match. */
+.collect-chip, .status-line { border: 3px solid #fff !important; box-shadow: 0 4px 0 rgba(150, 90, 0, 0.45) !important; }

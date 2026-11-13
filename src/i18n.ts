@@ -74,7 +74,7 @@ function collect(): void {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode: n => {
       const p = n.parentElement;
-      if (!p || p.closest("script,style,[data-i18n-html]")) return NodeFilter.FILTER_REJECT;
+      if (!p || p.closest("script,style,svg,[data-i18n-html]")) return NodeFilter.FILTER_REJECT;
       return n.nodeValue?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
     },
   });
