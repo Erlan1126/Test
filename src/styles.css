@@ -1327,3 +1327,14 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 /* The progress bar celebrating a landmark just passed */
 .alt.passed .alt-row span { color: #ffe08a; }
 .alt.passed .bar i { background: linear-gradient(90deg, #ffd43b, #ffe08a); box-shadow: 0 0 12px rgba(255, 212, 59, 0.8); }
+
+/* Results card: Build again always in reach. It comes first, full width, and the button
+   row stays pinned to the bottom of the card while the rest scrolls. The card also keeps
+   clear of the counters at the top. */
+.card { max-height: calc(100vh - 96px - env(safe-area-inset-top, 0px)); max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px)); }
+#over-actions { position: sticky; bottom: -16px; z-index: 1; margin: 0 -18px -16px; padding: 12px 18px 16px;
+  background: linear-gradient(180deg, rgba(14, 18, 48, 0), rgba(14, 18, 48, 0.96) 30%); }
+#over-actions #again { grid-column: 1 / -1; order: -1; }
+.card { max-height: calc(100vh - 108px - env(safe-area-inset-top, 0px)); max-height: calc(100dvh - 108px - env(safe-area-inset-top, 0px)); }
+#over-actions .btn-secondary { font-size: 15px; white-space: nowrap; }
+@media (max-width: 380px) { #over-actions .btn-secondary { font-size: 14px; padding: 0 8px; } }

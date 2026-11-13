@@ -900,7 +900,7 @@ export class App implements DailyHost {
     this.save.lastTower = { f: run.floors, m: run.meters, p: people, d: district.id };
     if (people > 0) {
       const opened = addPopulation(this.save, people);
-      this.outcome.rewards.unshift({ kind: "island", text: t("🏙️ {n} people moved into {city}", { n: fmt(people), city: t(district.name) }) });
+      // (The card's '+N residents' line shows the move into the city.)
       for (const d of opened) this.outcome.rewards.unshift({ kind: "island", text: t("🎉 New district open: {name}! Build there from your City", { name: t(d.name) }) });
     }
     // Tall towers stand in their district for good.
@@ -1034,6 +1034,7 @@ export class App implements DailyHost {
       this.passed = { name: MILESTONES[out.landmark].name, until: performance.now() + PASSED_MS };
       clearTimeout(this.passedTimer);
       this.passedTimer = window.setTimeout(() => { if (this.state === "playing" || this.state === "paused") this.updateHud(false); }, PASSED_MS + 20);
+      this.updateHud(false); // show the celebration on this landing, not the next
       if (!this.calmMotion) this.slowmo = SLOWMO;
       const card = this.mode === "zen" ? null : collectPostcard(this.save, out.landmark, this.renderer.weather.kind);
       this.banner(card?.fresh ? t("📮 New postcard!") : t("Landmark passed"), t("Taller than {name}!", { name: t(MILESTONES[out.landmark].name) }));
