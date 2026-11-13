@@ -575,9 +575,9 @@ export class App implements DailyHost {
     $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });
     wireModal($("modes"));
     // Picking a mode closes the list first (its own button then starts it or opens it).
-    $("modes").querySelector(".goal-list")!.addEventListener("click", () => closeModal($("modes")), true);
+    $("modes").querySelector(".goal-list")!.addEventListener("click", e => { if ((e.target as Element).closest(".goal-row")) closeModal($("modes")); }, true);
     // A goal row closes the Goals sheet first, then its own sheet opens.
-    $("goals").querySelector(".goal-list")!.addEventListener("click", () => closeModal($("goals")), true);
+    $("goals").querySelector(".goal-list")!.addEventListener("click", e => { if ((e.target as Element).closest(".goal-row")) closeModal($("goals")); }, true);
     $("city-line").addEventListener("click", () => this.daily.openCity());
     $("pass-btn").addEventListener("click", () => this.daily.openPass());
     $("streak-btn").addEventListener("click", () => this.daily.openStreak());
