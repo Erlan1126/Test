@@ -336,7 +336,8 @@ export class DailySheets {
     $("pop-card").innerHTML = `<span class="pop-ico" aria-hidden="true">🏙️</span>
       <span><small>${esc(t(CITY_NAME))}</small><b>${esc(t("{n} people", { n: fmt(save.population) }))}</b>
       <small>${esc(next ? t("{n} more opens {name}", { n: fmt(next.people - save.population), name: t(next.name) }) : t("Every district is open!"))}</small>
-      <span class="bar"><i style="width:${pct * 100}%"></i></span></span>`;
+      <span class="bar"><i style="width:${pct * 100}%"></i></span>
+      ${save.lastTower ? `<small class="last-tower">${esc(t("Latest tower: {m} m · {f} floors · +{p} residents", { m: save.lastTower.m, f: save.lastTower.f, p: fmt(save.lastTower.p) }))}</small>` : ""}</span>`;
     const list = $("district-list");
     list.innerHTML = "";
     for (const d of DISTRICTS) {

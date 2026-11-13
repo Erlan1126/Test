@@ -88,6 +88,8 @@ export interface SaveData {
   daily: { day: number; best: number; plays: number };
   /** Landmark challenges completed. */
   challenges: string[];
+  /** Your most recent finished tower: floors, metres, residents it added, district. */
+  lastTower: { f: number; m: number; p: number; d: string } | null;
   /** The last week whose tournament prize was collected (or checked with no prize). */
   tourney: number;
   /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts). */
@@ -163,6 +165,7 @@ export function defaultSave(): SaveData {
     journey: {},
     ghost: [],
     tourney: -1,
+    lastTower: null,
     history: [],
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto" },
     tutorialDone: false,
@@ -194,6 +197,11 @@ const num = (v: unknown, d: number, min = 0, max = 1e9): number =>
 const int = (v: unknown, d: number, min = 0, max = 1e9): number => Math.floor(num(v, d, min, max));
 const bool = (v: unknown, d: boolean): boolean => (typeof v === "boolean" ? v : d);
 const str = (v: unknown, d: string, max = 64): string => (typeof v === "string" && v.length <= max ? v : d);
+const lastTower = (v: unknown): SaveData["lastTower"] => {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>, n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? Math.max(0, Math.floor(x)) : 0);
+  return { f: n(o.f), m: n(o.m), p: n(o.p), d: typeof o.d === "string" ? o.d.slice(0, 24) : "" };
+};
 /** A { key: 1-3 } map, dropping anything else. */
 const starMap = (v: unknown): Record<string, number> => {
   const out: Record<string, number> = {};
@@ -267,6 +275,7 @@ export function normalize(raw: unknown): SaveData {
     challenges: strList(r.challenges),
     journey: starMap(r.journey),
     ghost: cleanPace(r.ghost),
+    lastTower: lastTower(r.lastTower),
     tourney: typeof r.tourney === "number" && Number.isFinite(r.tourney) ? Math.floor(r.tourney) : -1,
     history,
     settings: {

@@ -1315,3 +1315,15 @@ body.recording #over, body.recording #hud, body.recording #pause, body.recording
 /* The 3D scene fades in once its first full frame is ready (see Renderer3D.draw). */
 body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 0; }
 #game, #fx { transition: opacity 0.45s ease-out; }
+
+/* Results: what the tower added to the city */
+.city-gain { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.city-gain .gain { padding: 4px 10px; border-radius: 999px; background: rgba(140, 233, 154, 0.18); color: #8ce99a; font-weight: 800; font-size: 14px; }
+.city-gain .total { font-weight: 800; font-size: 14px; color: #fff; }
+.city-gain .total b { font: 400 18px var(--num); color: #ffe08a; }
+.city-gain.done .total b { animation: gain-pop 0.4s ease-out; }
+@keyframes gain-pop { 50% { transform: scale(1.18); } }
+
+/* The progress bar celebrating a landmark just passed */
+.alt.passed .alt-row span { color: #ffe08a; }
+.alt.passed .bar i { background: linear-gradient(90deg, #ffd43b, #ffe08a); box-shadow: 0 0 12px rgba(255, 212, 59, 0.8); }

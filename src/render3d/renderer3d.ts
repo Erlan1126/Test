@@ -15,7 +15,7 @@ import type { Look } from "../data/skins";
 import { shapeById, type Shape } from "../data/shapes";
 import { skinById } from "../data/skins";
 import type { Floor, FloorKind, PowerUp } from "../logic/sim";
-import { landmarkIndex, type Box } from "../logic/rules";
+import { landmarkIndex, metersFor, type Box } from "../logic/rules";
 import type { SkylineTower } from "../logic/skyline";
 import { drawLandmarkLabel, drawLandmarkShape, Weather } from "../render/atmosphere";
 import { floorColor, lookFor } from "../render/buildings";
@@ -1021,10 +1021,12 @@ export class Renderer3D {
       // The racer's name beside it.
       // (On the right: the landmark's name is on the left.)
       const [rx, ry] = P(base.x1, base.z0, y1 - 0.5);
-      this.ghostTag(`👻 ${g.name} · ${g.floors}`, Math.min(view.W - 8, rx + 8), ry, ahead ? 1 : 0.55, "left");
+      // Where the ghost's tower is right now (it keeps climbing at its own pace, even
+      // while you wait), in metres like everything else on screen.
+      this.ghostTag(t("👻 {name} · {m} m now", { name: g.name, m: metersFor(g.floors) }), Math.min(view.W - 8, rx + 8), ry, ahead ? 1 : 0.55, "left");
     } else if (ahead) {
       // Out of sight above: a tag at the top saying how far ahead it is.
-      this.ghostTag(`👻 ${g.name} ↑ ${g.floors - level}`, view.W - 10, f.hudBottom + 22, 1, "right");
+      this.ghostTag(t("👻 {name} · {m} m ahead", { name: g.name, m: metersFor(g.floors) - metersFor(level) }), view.W - 10, f.hudBottom + 22, 1, "right");
     }
     ctx.restore();
   }

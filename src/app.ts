@@ -99,6 +99,8 @@ function siteUrl(): string {
 /** How long the landmark slow-motion lasts, in seconds. */
 const ROOF_NAME: Record<RoofKind, string> = { antenna: "Antenna", garden: "Garden", helipad: "Helipad", spire: "Spire", crown: "Crown" };
 const SLOWMO = 0.9;
+/** How long the progress bar celebrates a landmark before showing the next one. */
+const PASSED_MS = 1800;
 /** Seconds (real time) the camera lingers in slow motion on the floor that fell. */
 const FALL_CAM = 1.4;
 
@@ -174,6 +176,12 @@ export class App implements DailyHost {
   private pace: number[] = [];
   private ghostBeaten = false;
   private ghostAhead = false;
+  /** What the finished tower added to the city, for the results card's count-up. */
+  private cityGain: { before: number; people: number; district: string } | null = null;
+  private countTimer = 0;
+  /** A landmark just passed, shown on the progress bar until `until`. */
+  private passed: { name: string; until: number } | null = null;
+  private passedTimer = 0;
   /** Time not yet turned into fixed sim steps. */
   private stepTime = 0;
 
@@ -691,6 +699,7 @@ export class App implements DailyHost {
   private start(mode: Mode, challengeId?: string): void {
     this.slowmo = 0;
     this.fallCam = 0;
+    this.passed = null;
     this.frameStats = { n: 0, time: 0, slow: 0, worst: 0 };
     this.levelShown = false;
     this.postcardsThisRun = [];
@@ -746,7 +755,7 @@ export class App implements DailyHost {
     this.ghostBeaten = false;
     this.ghostAhead = false;
     this.ghost = mode === "classic" && this.save.ghost.length >= 5 && !this.tutorial
-      ? { name: t("Your best"), pace: this.save.ghost, self: true } : null;
+      ? { name: t("Your best tower"), pace: this.save.ghost, self: true } : null;
     if (mode !== "classic" && mode !== "daily") return;
     const sim = this.sim;
     void this.online.ghost(mode === "daily" ? "daily" : "week", mode === "daily" ? this.runDay : weekIndex()).then(g => {
@@ -852,6 +861,8 @@ export class App implements DailyHost {
   }
 
   private gameOver(silent: boolean): void {
+    // Each tower is finished (and paid into the city) exactly once.
+    if (this.state === "over" || this.state === "menu") return;
     this.state = "over";
     this.overTimer = 0.55;
     this.overReady = false;
@@ -884,6 +895,8 @@ export class App implements DailyHost {
     this.postcardsThisRun = [];
     // The tower's people move into the sky city for good, which can open new districts.
     const district = currentTheme(this.save), people = peopleFrom(run.score, this.mode === "zen");
+    this.cityGain = { before: this.save.population, people, district: district.name };
+    this.save.lastTower = { f: run.floors, m: run.meters, p: people, d: district.id };
     if (people > 0) {
       const opened = addPopulation(this.save, people);
       this.outcome.rewards.unshift({ kind: "island", text: t("🏙️ {n} people moved into {city}", { n: fmt(people), city: t(district.name) }) });
@@ -1010,6 +1023,10 @@ export class App implements DailyHost {
       setTimeout(() => this.sound.unlock(), 80);
     }
     if (out.landmark !== undefined) {
+      // The progress bar celebrates it for a moment on its own clock, whatever you tap.
+      this.passed = { name: MILESTONES[out.landmark].name, until: performance.now() + PASSED_MS };
+      clearTimeout(this.passedTimer);
+      this.passedTimer = window.setTimeout(() => { if (this.state === "playing" || this.state === "paused") this.updateHud(false); }, PASSED_MS + 20);
       if (!this.calmMotion) this.slowmo = SLOWMO;
       const card = this.mode === "zen" ? null : collectPostcard(this.save, out.landmark, this.renderer.weather.kind);
       this.banner(card?.fresh ? t("📮 New postcard!") : t("Landmark passed"), t("Taller than {name}!", { name: t(MILESTONES[out.landmark].name) }));
@@ -1039,12 +1056,21 @@ export class App implements DailyHost {
     if (bump) replay(people, "bump");
     const m = sim.meters;
     $("height").textContent = `${m} m`;
+    // The next landmark to pass (passing means taller than it, see landmarkIndex).
     const i = MILESTONES.findIndex(ms => ms.m >= m);
-    if (i >= 0) {
-      const prev = i > 0 ? MILESTONES[i - 1].m : 0;
-      $("next").textContent = `${shortName(t(MILESTONES[i].name))} · ${MILESTONES[i].m} m`;
+    const alt = $("hud").querySelector<HTMLElement>(".alt")!;
+    if (this.passed && performance.now() < this.passed.until) {
+      // Just passed one: celebrate it on the bar for a moment before showing the next.
+      $("next").textContent = t("🎉 Taller than {name}!", { name: shortName(t(this.passed.name)) });
+      $("bar").style.width = "100%";
+      alt.classList.add("passed");
+    } else if (i >= 0) {
+      alt.classList.remove("passed");
+      const prev = i > 0 ? MILESTONES[i - 1].m : 0, left = MILESTONES[i].m - m;
+      $("next").textContent = left > 0 ? t("{n} m to {name}", { n: left, name: shortName(t(MILESTONES[i].name)) }) : t("Level with {name}", { name: shortName(t(MILESTONES[i].name)) });
       $("bar").style.width = `${clamp((m - prev) / (MILESTONES[i].m - prev), 0, 1) * 100}%`;
     } else {
+      alt.classList.remove("passed");
       $("next").textContent = t("Taller than every landmark");
       $("bar").style.width = "100%";
     }
@@ -1337,6 +1363,28 @@ export class App implements DailyHost {
 
   // ---------- Game over ----------
 
+  /** "+1,340 residents" and the city total counting up from before the tower to after. */
+  private showCityGain(): void {
+    const g = this.cityGain, el = $("over-city");
+    el.hidden = !g || g.people <= 0;
+    if (!g || g.people <= 0) return;
+    const after = g.before + g.people;
+    el.innerHTML = `<span class="gain">${esc(t("+{n} residents", { n: fmt(g.people) }))}</span>
+      <span class="total">🏙️ ${esc(t(CITY_NAME))} <b>${fmt(g.before)}</b></span>`;
+    const num = el.querySelector("b")!;
+    cancelAnimationFrame(this.countTimer);
+    if (this.peek) { num.textContent = fmt(after); return; }
+    const t0 = performance.now(), dur = 1200;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0 - 350) / dur), e = k <= 0 ? 0 : 1 - (1 - k) ** 3;
+      num.textContent = fmt(Math.round(g.before + g.people * e));
+      if (k < 1) this.countTimer = requestAnimationFrame(step);
+      else el.classList.add("done");
+    };
+    el.classList.remove("done");
+    this.countTimer = requestAnimationFrame(step);
+  }
+
   private showOver(): void {
     const save = this.save, sim = this.sim, o = this.outcome!;
     const c = this.challenge, mode = this.mode;
@@ -1349,11 +1397,12 @@ export class App implements DailyHost {
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
     $("over-people").textContent = fmt(sim.score);
-    $("over-sub").textContent = t("people live in your {m} m tower", { m: sim.meters });
+    $("over-sub").textContent = t("people live in your {m} m tower · {n} floors", { m: sim.meters, n: sim.level });
     $("over-landmark").textContent = c ? (won ? `${"★".repeat(save.journey[c.id] ?? 1)}${"☆".repeat(3 - (save.journey[c.id] ?? 1))}  ${stageName(c.id)}` : stageGoal(c))
       : mode === "daily" ? t("Today's best: {n} people", { n: fmt(o.dailyBest) }) + (o.newBest ? t(" · New all-time best!") : "") + this.dailyRank()
       : sim.lastLandmark >= 0 ? t("Taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) })
       : mode === "zen" ? t("Zen towers don't count toward bests") : t("Best: {n} people", { n: fmt(save.best) });
+    this.showCityGain();
     $("stat-floors").textContent = String(sim.level);
     $("stat-perfect").textContent = String(sim.perfects);
     $("stat-streak").textContent = String(sim.bestStreak);
