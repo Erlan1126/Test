@@ -1477,3 +1477,60 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 
 /* The gift / rewards chip and the tournament line: glossy pills to match. */
 .collect-chip, .status-line { border: 3px solid #fff !important; box-shadow: 0 4px 0 rgba(150, 90, 0, 0.45) !important; }
+
+/* ======================================================================
+   Buttons, take three: clean and modern. No thick rims or hard ledges; soft
+   shadows, frosted white surfaces, one vivid main button.
+   ====================================================================== */
+.btn-primary {
+  background: linear-gradient(135deg, #ff9a4d 0%, #ff4f8b 55%, #c04dff 100%);
+  border: 0;
+  box-shadow: 0 10px 24px rgba(255, 79, 139, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  text-shadow: none;
+}
+.btn-primary:active { transform: scale(0.98); box-shadow: 0 5px 14px rgba(255, 79, 139, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 6px 16px rgba(10, 14, 50, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  text-shadow: none;
+}
+.btn-secondary:active { transform: scale(0.98); }
+
+#play { min-height: 64px; font-size: 22px; font-weight: 800; letter-spacing: 0.01em; border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(255, 79, 139, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+#play:active { transform: scale(0.98); box-shadow: 0 6px 16px rgba(255, 79, 139, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+#play::before {
+  width: 30px; height: 30px; box-shadow: none; background-color: rgba(255, 255, 255, 0.95); background-size: 20px;
+}
+
+/* Home tiles: frosted white cards, coloured icon, dark label. */
+.tile, #modes-btn, #city-btn, #shop-btn, #goals-btn {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(20, 24, 70, 0.16);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  color: #2b2f5a; text-shadow: none; font-size: 13px; font-weight: 800; min-height: 76px;
+}
+.tile:active { transform: scale(0.96); box-shadow: 0 4px 12px rgba(20, 24, 70, 0.16); }
+.tile svg { width: 34px; height: 34px; padding: 7px; border-radius: 12px; box-shadow: none; color: #fff; background: var(--c); }
+#modes-btn { --c: linear-gradient(135deg, #a07bff, #6a3fe0); }
+#city-btn { --c: linear-gradient(135deg, #3fd8c6, #12998b); }
+#shop-btn { --c: linear-gradient(135deg, #ffb24a, #ff7a1a); }
+#goals-btn { --c: linear-gradient(135deg, #ffd84a, #f0a000); color: #2b2f5a; }
+#goals-btn svg { color: #fff; }
+.tile .dot { top: 7px; right: 8px; width: 11px; height: 11px; border: 2px solid #fff; }
+
+/* Chips on the home screen: plain soft pills. */
+.collect-chip, .status-line { border: 0 !important; box-shadow: 0 6px 16px rgba(150, 90, 0, 0.22) !important; }
+.rank-line { border: 0; box-shadow: 0 6px 16px rgba(150, 90, 0, 0.25); }
+.rank-line:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(150, 90, 0, 0.25); }
+.corner-btn { border: 0; box-shadow: 0 4px 14px rgba(20, 24, 70, 0.16); }
+.city-line { box-shadow: 0 4px 14px rgba(20, 24, 70, 0.14); }
+
+/* Menus: calmer too. */
+.close-btn { background: rgba(255, 255, 255, 0.16); box-shadow: none; }
+.goal-row { box-shadow: none; border: 1px solid rgba(255, 255, 255, 0.12); }
+.buy { box-shadow: none; }
