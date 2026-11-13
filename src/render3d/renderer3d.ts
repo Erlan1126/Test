@@ -451,9 +451,10 @@ export class Renderer3D {
     const sim = f.sim, stack = sim.stack, n = stack.length;
     env.time += dt;
     env.low = f.low;
-    [env.skyTop, env.skyBot] = skyAt(n);
+    [env.skyTop, env.skyBot] = skyAt(n, f.theme.id);
+    this.skyTheme = f.theme.id;
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
-    if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0)[1], 0.6);
+    if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
     // The first home screen opens on a sunrise that warms into the day.
     const dawn = this.introDone || f.shot !== "menu" ? 0 : clamp(1 - this.menuTime / 4.5, 0, 1);
     if (dawn > 0) {

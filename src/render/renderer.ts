@@ -168,11 +168,11 @@ export class Renderer {
     const sim = f.sim, stack = sim.stack, n = stack.length, top = sim.top;
     env.time += dt;
     env.low = f.low;
-    [env.skyTop, env.skyBot] = skyAt(n);
+    [env.skyTop, env.skyBot] = skyAt(n, f.theme.id);
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     // The finished tower is seen from far away, from the ground up, so the lower sky keeps
     // its daytime color instead of the sunset at the top.
-    if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0)[1], 0.6);
+    if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
     env.post = this.postOn;
     env.nf = nightAt(n);
     env.climb = view.level * view.th * view.zoom;

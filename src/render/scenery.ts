@@ -1,6 +1,6 @@
 // Scenery: the sky, clouds, wind, the floating island and its upgrades.
 import { clamp, hash, hexRgb, lerp, mixRgb, rand, rgb, type RGB } from "../core/util";
-import { BLOCK_SIZE, ISLAND, SKY } from "../data/constants";
+import { BLOCK_SIZE, ISLAND, ISLAND_SKIES, SKY } from "../data/constants";
 import type { IslandTheme } from "../data/islands";
 import { NEIGHBOR_LOOK } from "../data/skins";
 import type { Box } from "../logic/rules";
@@ -25,10 +25,13 @@ const cloudSprite = (() => {
   return c;
 })();
 
-export function skyAt(n: number): [RGB, RGB] {
+/** Sky colors (top, bottom) at a tower height of n floors, in the island's own palette. */
+export function skyAt(n: number, island = ""): [RGB, RGB] {
+  const own = ISLAND_SKIES[island];
+  const stops = own ? SKY.map((s, k) => ({ at: s.at, top: own[k].top, bottom: own[k].bottom })) : SKY;
   let i = 0;
-  while (i < SKY.length - 2 && n > SKY[i + 1].at) i++;
-  const a = SKY[i], b = SKY[i + 1];
+  while (i < stops.length - 2 && n > stops[i + 1].at) i++;
+  const a = stops[i], b = stops[i + 1];
   const t = clamp((n - a.at) / (b.at - a.at), 0, 1);
   return [mixRgb(hexRgb(a.top), hexRgb(b.top), t), mixRgb(hexRgb(a.bottom), hexRgb(b.bottom), t)];
 }

@@ -38,6 +38,31 @@ export const SKY = [
   { at: 90, top: "#060a1e", bottom: "#1b1f50" },
 ];
 
+/** Each island's own sky through the same climb (same heights as SKY): a cold, clear sky
+ *  over the snow, a hot one over the desert, a pink dawn over the cherry trees... */
+export const ISLAND_SKIES: Record<string, { top: string; bottom: string }[]> = {
+  snow: [
+    { top: "#7fb2e8", bottom: "#eef6ff" }, { top: "#8aa6d8", bottom: "#ffe6dc" }, { top: "#5b6aa8", bottom: "#c9b6e6" },
+    { top: "#202b5e", bottom: "#5f86c4" }, { top: "#070c24", bottom: "#1d3560" },
+  ],
+  desert: [
+    { top: "#2f8fe6", bottom: "#ffe3ad" }, { top: "#4f72cc", bottom: "#ffbf73" }, { top: "#6a3f86", bottom: "#ff7a45" },
+    { top: "#2a1a50", bottom: "#a8486a" }, { top: "#0b0a22", bottom: "#3a2340" },
+  ],
+  blossom: [
+    { top: "#8fa8ee", bottom: "#ffe0ee" }, { top: "#a08ee0", bottom: "#ffc2d9" }, { top: "#6b4fa0", bottom: "#ff9cb8" },
+    { top: "#2e2266", bottom: "#a2508a" }, { top: "#0b0a26", bottom: "#3a2252" },
+  ],
+  volcano: [
+    { top: "#5a4a7a", bottom: "#ffb48a" }, { top: "#4a2a5a", bottom: "#ff8a5a" }, { top: "#3a1a40", bottom: "#ff5a3a" },
+    { top: "#1e0f2a", bottom: "#a0302a" }, { top: "#08060f", bottom: "#4a1414" },
+  ],
+  candy: [
+    { top: "#9fd8ff", bottom: "#ffe0f4" }, { top: "#b8b0ff", bottom: "#ffd0ea" }, { top: "#9a7ae6", bottom: "#ffb0d8" },
+    { top: "#4a3a9a", bottom: "#e080c0" }, { top: "#1a1648", bottom: "#6a3a90" },
+  ],
+};
+
 export const DISPLAY_FONT = '"Bungee", Impact, "Arial Black", sans-serif';
 export const NUM_FONT = '"Lilita One", "Arial Black", sans-serif';
 export const UI_FONT = '"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif';
