@@ -13,7 +13,9 @@ function singleFile(): Plugin {
       for (const [name, file] of Object.entries(bundle)) {
         if (file.type === "chunk" && file.isEntry) {
           src = src.replace(new RegExp(`<script[^>]*src="[^"]*${name}"[^>]*></script>`), () =>
-            `<script type="module">${file.code.replace(/<\/script/gi, "<\\/script")}</script>`);
+            // With everything in one file there's nothing to preload; Vite leaves this
+            // placeholder behind for code that loads later, which throws on phones.
+            `<script type="module">${file.code.replace(/__VITE_PRELOAD__/g, "void 0").replace(/<\/script/gi, "<\\/script")}</script>`);
           delete bundle[name];
         } else if (file.type === "asset" && name.endsWith(".css")) {
           src = src.replace(new RegExp(`<link[^>]*href="[^"]*${name}"[^>]*>`), () => `<style>${String(file.source)}</style>`);

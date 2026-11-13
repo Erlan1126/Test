@@ -1,4 +1,6 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import type { SkylineTower } from "./logic/skyline";
+import type { IslandTheme } from "./data/islands";
 import { claimTournament, prizeText } from "./logic/tournament";
 import { ghostFloors, MAX_GHOST, type Ghost } from "./logic/ghost";
 import { ROOF_STEPS, roofFor, type RoofKind } from "./render3d/rooftops";
@@ -130,7 +132,9 @@ export class App implements DailyHost {
   private friendScore = 0;
   private readonly site = siteUrl();
   private last = performance.now();
-  private perf = { frames: 0, time: 0 };
+  private perf = { frames: 0, time: 0, bad: 0 };
+  /** The city's towers by district, worked out once per change instead of every frame. */
+  private cityView: { theme: string; skyline: SkylineTower[]; districts: { theme: IslandTheme; towers: SkylineTower[] }[] } | null = null;
   /** Resolution multiplier, lowered step by step if the device can't keep up. */
   private renderScale = 1;
   private hudBottom = 0;
@@ -185,7 +189,7 @@ export class App implements DailyHost {
     this.tutorial = !this.save.tutorialDone;
     this.sound = new Sound(() => this.save.settings);
     // Real 3D on the graphics chip when the device can; the old 2D drawing otherwise.
-    this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d")
+    this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d") && !(this.save.settings.quality === "auto" && this.save.settings.flat)
       ? new Renderer3D(this.canvas, $<HTMLCanvasElement>("fx"))
       : new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
     this.sheets = new Sheets(this);
@@ -245,6 +249,7 @@ export class App implements DailyHost {
   // ---------- Host (used by the sheets) ----------
 
   persist(): void {
+    this.cityView = null; // the city may have changed
     writeSave(this.storage, this.save);
     this.scheduleBackup();
     // The phone apps keep a second copy in native storage (a moment later, so a burst of
@@ -898,6 +903,11 @@ export class App implements DailyHost {
     this.persist();
     this.postScores();
     const fs = this.frameStats;
+    // Still under 24 fps in smooth mode: next time, use the flat graphics instead.
+    if (fs.n > 120 && fs.n / fs.time < 24 && this.low && this.save.settings.quality === "auto" && this.renderer instanceof Renderer3D) {
+      this.save.settings.flat = true;
+      this.persist();
+    }
     if (fs.n > 120) {
       reportPerf({ fps: Math.round(fs.n / fs.time), slow: fs.slow, worst: Math.round(fs.worst), floors: run.floors, gfx: this.renderer instanceof Renderer3D ? (this.low ? "3d-low" : "3d") : "2d" });
     }
@@ -1547,28 +1557,22 @@ export class App implements DailyHost {
       this.fallCam = Math.max(0, this.fallCam - Math.min(0.05, Math.max(0, raw)));
       dt *= 0.25 + 0.75 * (1 - this.fallCam / FALL_CAM) ** 3;
     }
-    // Auto graphics: if a tower plays below about 50 fps, drop the costly extras one step
-    // at a time: shaders, then smooth mode (fewer details), and only as a last resort a
-    // slightly lower resolution, so the picture stays sharp.
+    // Auto graphics: if a tower plays below about 50 fps for two checks in a row (one
+    // hiccup isn't enough), drop the costly extras one step at a time: a little sharpness
+    // first, then smooth mode (no glow or shadows), then a little more sharpness.
     const st = this.save.settings;
-    if (this.state === "playing" && st.quality === "auto" && raw < 0.5) {
+    if (this.state === "playing" && st.quality === "auto" && raw < 0.5 && this.sim.ticks > 240) {
       this.perf.frames++;
       this.perf.time += raw;
       if (this.perf.time > 3) {
         const fps = this.perf.frames / this.perf.time;
-        if (fps < 50 && this.shaders) {
-          this.autoNoShaders = true;
-        } else if (fps < 50 && this.renderScale > 0.75 && (window.devicePixelRatio || 1) > 2.2) {
-          // First give up a little of the extra sharpness, before any effects.
-          this.renderScale = 0.75;
-          this.resize();
-        } else if (fps < 50 && !st.autoLow) {
-          st.autoLow = true;
-          this.persist();
-          this.resize();
-        } else if (fps < 40 && this.renderScale > 0.6) {
-          this.renderScale = Math.min(this.renderScale, 0.8) - 0.1;
-          this.resize();
+        this.perf.bad = fps < 50 ? this.perf.bad + 1 : 0;
+        if (this.perf.bad >= 2) {
+          this.perf.bad = 0;
+          if (this.shaders) this.autoNoShaders = true;
+          else if (this.renderScale > 0.85) { this.renderScale = 0.85; this.resize(); }
+          else if (!st.autoLow) { st.autoLow = true; this.persist(); this.resize(); }
+          else if (this.renderScale > 0.6) { this.renderScale -= 0.1; this.resize(); }
         }
         this.perf.frames = 0;
         this.perf.time = 0;
@@ -1642,6 +1646,18 @@ export class App implements DailyHost {
     this.renderer.fx.update(dt);
   }
 
+  private city(): NonNullable<App["cityView"]> {
+    const save = this.save, here = currentTheme(save).id;
+    if (!this.cityView || this.cityView.theme !== here) {
+      this.cityView = {
+        theme: here,
+        skyline: districtTowers(save, here),
+        districts: DISTRICTS.filter(d => d.id !== here && districtTowers(save, d.id).length).map(d => ({ theme: d, towers: districtTowers(save, d.id) })),
+      };
+    }
+    return this.cityView;
+  }
+
   private draw(dt: number): void {
     const save = this.save;
     this.renderer.draw(dt, {
@@ -1650,9 +1666,8 @@ export class App implements DailyHost {
       showMover: this.state === "playing" || this.state === "paused",
       // A finished tower keeps the skin it was built in.
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
-      skyline: districtTowers(save, currentTheme(save).id),
-      districts: DISTRICTS.filter(d => d.id !== currentTheme(save).id && districtTowers(save, d.id).length)
-        .map(d => ({ theme: d, towers: districtTowers(save, d.id) })),
+      skyline: this.city().skyline,
+      districts: this.city().districts,
       tint: holidayAt()?.tint ?? null,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
       theme: currentTheme(save),

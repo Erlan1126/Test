@@ -14,7 +14,7 @@ import { BLOCK_SIZE, ISLAND, MILESTONES, UI_FONT } from "../data/constants";
 import type { Look } from "../data/skins";
 import { shapeById, type Shape } from "../data/shapes";
 import { skinById } from "../data/skins";
-import type { Floor, PowerUp } from "../logic/sim";
+import type { Floor, FloorKind, PowerUp } from "../logic/sim";
 import { landmarkIndex, type Box } from "../logic/rules";
 import type { SkylineTower } from "../logic/skyline";
 import { drawLandmarkLabel, drawLandmarkShape, Weather } from "../render/atmosphere";
@@ -103,10 +103,17 @@ export class Renderer3D {
   private readonly envSky: THREE.Mesh;
   private envTarget: THREE.WebGLRenderTarget | null = null;
   private envKey = "";
+  /** The island whose sky colors are showing (each island has its own sky). */
+  private skyTheme = "";
   private readonly composer: EffectComposer;
   private readonly bloom: UnrealBloomPass;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };
   private readonly paint: Paint;
+  // Scratch objects reused every frame (making new ones each frame makes the phone pause
+  // now and then to clean up).
+  private readonly tmpA = new THREE.Vector3();
+  private readonly tmpB = new THREE.Vector3();
+  private readonly tmpC = new THREE.Color();
   private readonly calm = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   private dpr = 1;
   private low = false;
@@ -124,6 +131,9 @@ export class Renderer3D {
   // Tower
   private readonly tower = new THREE.Group();
   private chunks: { floors: Floor[]; obj: THREE.Group }[] = [];
+  private tail: { floor: Floor; mesh: THREE.Mesh }[] = [];
+  private firstBuilt: Floor | null = null;
+  private warmMats: THREE.Material[] = [];
   private topMesh: THREE.Mesh | null = null;
   private topOf: Floor | null = null;
   private towerKey = "";
@@ -156,6 +166,8 @@ export class Renderer3D {
   // Skyline island
   private skyline: THREE.Group | null = null;
   private skylineKey = "";
+  private skylineIn: unknown = null;
+  private districtsIn: unknown = null;
 
   constructor(private readonly canvas: HTMLCanvasElement, glCanvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -250,12 +262,12 @@ export class Renderer3D {
   resize(low: boolean, scale = 1): void {
     const v = this.view;
     this.low = low;
-    // Full screen sharpness (up to 3x, a phone's native resolution); the game lowers
-    // `scale` by itself if the phone can't keep a smooth frame rate.
-    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, low ? 1.5 : 3) * scale);
+    // Up to 2x: on a phone it looks the same as 3x for less than half the pixels. The game
+    // lowers `scale` by itself if the phone can't keep a smooth frame rate.
+    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2) * scale);
     v.W = this.canvas.clientWidth || window.innerWidth;
     v.H = this.canvas.clientHeight || window.innerHeight;
-    const overlayDpr = Math.min(window.devicePixelRatio || 1, 3);
+    const overlayDpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(v.W * overlayDpr);
     this.canvas.height = Math.round(v.H * overlayDpr);
     this.ctx.setTransform(overlayDpr, 0, 0, overlayDpr, 0, 0);
@@ -266,7 +278,7 @@ export class Renderer3D {
     // Bloom at a quarter of the pixels: it's blurry anyway, and much cheaper.
     this.bloom.resolution.set(Math.round(v.W * this.dpr / 2), Math.round(v.H * this.dpr / 2));
     this.gl.shadowMap.enabled = !low;
-    this.sun.shadow.mapSize.set(low ? 1024 : 4096, low ? 1024 : 4096);
+    this.sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
     this.sun.shadow.map?.dispose();
     this.sun.shadow.map = null;
     v.s = Math.min(v.W * 0.56, v.H * 0.36) / (BLOCK_SIZE * 2 * ISO_X);
@@ -413,11 +425,11 @@ export class Renderer3D {
   /** Points the 3D camera so world points land exactly where View.project puts them. */
   private placeCamera(shake: number): void {
     const v = this.view, S = ISO_SCALE * v.s * v.zoom;
-    const target = new THREE.Vector3(0, v.level * FH, 0);
+    const target = this.tmpA.set(0, v.level * FH, 0);
     // Straight isometric while playing; on the home screen the camera can swing around the
     // island (nothing on the overlay needs to line up there).
     const d = CAM_DIST / Math.sqrt(3), a = this.azimuth;
-    this.cam.position.copy(target).add(new THREE.Vector3(d * (Math.cos(a) + Math.sin(a)), d, d * (Math.cos(a) - Math.sin(a))));
+    this.cam.position.copy(target).add(this.tmpB.set(d * (Math.cos(a) + Math.sin(a)), d, d * (Math.cos(a) - Math.sin(a))));
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(target);
     const sx = shake ? rand(-1, 1) * 10 * shake : 0, sy = shake ? rand(-1, 1) * 10 * shake : 0;
@@ -426,9 +438,9 @@ export class Renderer3D {
     this.cam.top = cy / S; this.cam.bottom = -(v.H - cy) / S;
     this.cam.updateProjectionMatrix();
     // The sun follows what the camera looks at, so shadows stay sharp where you are.
-    const focus = new THREE.Vector3(0, Math.max(0, v.level) * FH, 0);
+    const focus = this.tmpA.set(0, Math.max(0, v.level) * FH, 0);
     this.sun.target.position.copy(focus);
-    this.sun.position.copy(focus).add(new THREE.Vector3(35, 120, -100));
+    this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
     const span = Math.max(34, (v.H / S) * 0.75);
     const sc = this.sun.shadow.camera;
     if (Math.abs(sc.top - span) > 2) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); }
@@ -477,7 +489,8 @@ export class Renderer3D {
 
     this.placeCamera(fx.shake > 0 && !this.calm ? fx.shake : 0);
     this.updateEnvironment(n);
-    if (this.low) this.gl.render(this.scene, this.cam);
+    // By day the glow barely shows, so it's skipped there: a cheaper frame.
+    if (this.low || env.nf < 0.12) this.gl.render(this.scene, this.cam);
     else {
       // Subtle by day (only sun glints), stronger at night when windows glow.
       this.bloom.strength = 0.15 + env.nf * 0.3;
@@ -490,17 +503,19 @@ export class Renderer3D {
   /** The glass reflects the real sky: rebuilt as the sky changes color with height. */
   private updateEnvironment(n: number): void {
     const { env } = this;
-    const key = `${Math.round(env.skyTop[0] / 8)},${Math.round(env.skyTop[1] / 8)},${Math.round(env.skyTop[2] / 8)}|${Math.round(env.skyBot[0] / 8)},${Math.round(env.skyBot[1] / 8)},${Math.round(env.skyBot[2] / 8)}|${Math.round(env.nf * 10)}`;
+    // Rebuilt only when the sky moves to a new stage (a handful of times in a tall tower):
+    // rebuilding is a heavy job, and doing it every few floors made the game stutter.
+    const sunset = clamp((n - 18) / 30, 0, 1);
+    const key = `${Math.round(sunset * 3)}|${Math.round(env.nf * 4)}|${this.skyTheme}`;
     if (key === this.envKey) return;
     this.envKey = key;
     const u = (this.envSky.material as THREE.ShaderMaterial).uniforms;
     u.top.value.copy(toColor(env.skyTop)).convertSRGBToLinear();
     u.bot.value.copy(toColor(env.skyBot)).convertSRGBToLinear();
-    const sunset = clamp((n - 18) / 30, 0, 1);
     u.sun.value.set(0.35, lerp(0.6, 0.12, sunset), -1).normalize();
     u.sunCol.value.setRGB(1, lerp(0.95, 0.6, sunset), lerp(0.85, 0.4, sunset)).multiplyScalar(1 - env.nf * 0.85);
     const old = this.envTarget;
-    this.envTarget = this.pmrem.fromScene(this.envScene, 0);
+    this.envTarget = this.pmrem.fromScene(this.envScene, 0, 0.1, 100, { size: 64 });
     this.scene.environment = this.envTarget.texture;
     old?.dispose();
   }
@@ -541,10 +556,11 @@ export class Renderer3D {
 
   private updateLights(n: number): void {
     const nf = this.env.nf, sunset = clamp((n - 18) / 30, 0, 1) * (1 - nf);
-    this.sun.color.copy(new THREE.Color(1, 0.97, 0.9).lerp(new THREE.Color(1, 0.62, 0.38), sunset).lerp(new THREE.Color(0.55, 0.65, 1), nf));
+    this.sun.color.setRGB(1, 0.97, 0.9).lerp(this.tmpC.setRGB(1, 0.62, 0.38), sunset).lerp(this.tmpC.setRGB(0.55, 0.65, 1), nf);
     this.sun.intensity = lerp(2.4, 0.45, nf);
-    this.hemi.color.copy(toColor(this.env.skyTop).lerp(new THREE.Color(1, 1, 1), 0.5));
-    this.hemi.groundColor.set(0x6a5a4a).lerp(new THREE.Color(0x101830), nf);
+    const top = this.env.skyTop;
+    this.hemi.color.setRGB(top[0] / 255, top[1] / 255, top[2] / 255).lerp(this.tmpC.setRGB(1, 1, 1), 0.5);
+    this.hemi.groundColor.set(0x6a5a4a).lerp(this.tmpC.set(0x101830), nf);
     this.hemi.intensity = lerp(0.85, 0.35, nf);
     this.gl.toneMappingExposure = lerp(0.95, 0.85, nf);
   }
@@ -580,6 +596,9 @@ export class Renderer3D {
   /** The city: the current district's best towers on the island just behind, and every
    *  other district you've built in floating around it with its own towers. */
   private updateSkyline(f: Frame): void {
+    if (f.skyline === this.skylineIn && f.districts === this.districtsIn) return;
+    this.skylineIn = f.skyline;
+    this.districtsIn = f.districts;
     const list = [{ theme: f.theme, towers: f.skyline }, ...f.districts].filter(d => d.towers.length).slice(0, DISTRICT_SLOTS.length);
     const key = JSON.stringify(list.map(d => [d.theme.id, d.towers]));
     if (key === this.skylineKey) return;
@@ -626,10 +645,11 @@ export class Renderer3D {
     const fa = facadeFor(look);
     const gold = kind === "gold";
     // Glossy facades: glass is mirror-like (it reflects the sky), walls get a clear coat.
-    const wall = new THREE.MeshPhysicalMaterial({
+    // Glossy facades: the glass is mirror-like and reflects the sky. (A clear coat on top
+    // looked a little richer but cost every wall a second lighting pass on phones.)
+    const wall = new THREE.MeshStandardMaterial({
       vertexColors: true, map: fa.map, emissiveMap: fa.lit, emissive: 0xffffff, emissiveIntensity: 0,
-      roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 1, metalness: gold ? 1 : 1,
-      clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 1.3,
+      roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 1, metalness: 1, envMapIntensity: 1.45,
     });
     wall.userData.alwaysLit = !!look.alwaysLit || !!look.neon;
     this.addFx(wall, "wall");
@@ -687,27 +707,51 @@ export class Renderer3D {
     return g;
   }
 
+  /** Finished floors: full blocks of CHUNK merged into a few meshes, plus the newest
+   *  floors (fewer than CHUNK) as single meshes. A landing adds one small mesh; only every
+   *  CHUNK floors are the newest ones merged into a block. */
   private updateTower(f: Frame): void {
-    const stack = f.sim.stack, n = stack.length;
+    const stack = f.sim.stack, n = stack.length, settled = Math.max(0, n - 1);
     const key = `${f.skin.id}|${f.shape.id}`;
     if (key !== this.towerKey) {
       this.towerKey = key;
-      for (const c of this.chunks) { this.tower.remove(c.obj); disposeTree(c.obj, false); }
-      this.chunks = [];
-      if (this.topMesh) { this.tower.remove(this.topMesh); this.topMesh.geometry.dispose(); this.topMesh = null; this.topOf = null; }
+      this.clearTower();
+      this.warmUp(f);
     }
-    const settled = stack.slice(0, Math.max(0, n - 1));
-    const built = this.chunks.flatMap(c => c.floors);
-    let first = 0;
-    while (first < built.length && first < settled.length && built[first] === settled[first]) first++;
-    if (first < built.length || first < settled.length) {
-      const ci = Math.floor(first / CHUNK);
-      for (const c of this.chunks.splice(ci)) { this.tower.remove(c.obj); disposeTree(c.obj, false); }
-      for (let i = ci * CHUNK; i < settled.length; i += CHUNK) {
-        const floors = settled.slice(i, i + CHUNK), obj = this.buildChunk(floors, f);
-        this.chunks.push({ floors, obj });
-        this.tower.add(obj);
+    const covered = this.chunks.length * CHUNK + this.tail.length;
+    const lastBuilt = this.tail.length ? this.tail[this.tail.length - 1].floor : this.chunks.length ? this.chunks[this.chunks.length - 1].floors[CHUNK - 1] : null;
+    // Nothing changed (the usual case): no work at all.
+    const same = covered === settled && (settled === 0 || stack[settled - 1] === lastBuilt) && (covered === 0 || this.firstBuilt === stack[0]);
+    if (!same) {
+      // Find the first floor that differs (a new tower, a rewind, or new floors on top).
+      let first = 0;
+      const at = (i: number) => (i < this.chunks.length * CHUNK ? this.chunks[Math.floor(i / CHUNK)].floors[i % CHUNK] : this.tail[i - this.chunks.length * CHUNK].floor);
+      while (first < covered && first < settled && at(first) === stack[first]) first++;
+      if (first < this.chunks.length * CHUNK) {
+        for (const c of this.chunks.splice(Math.floor(first / CHUNK))) { this.tower.remove(c.obj); disposeTree(c.obj, false); }
+        this.dropTail(0);
+      } else this.dropTail(first - this.chunks.length * CHUNK);
+      let idx = this.chunks.length * CHUNK + this.tail.length;
+      while (idx < settled) {
+        if (!this.tail.length && idx + CHUNK <= settled) {
+          const floors = stack.slice(idx, idx + CHUNK), obj = this.buildChunk(floors, f);
+          this.chunks.push({ floors, obj });
+          this.tower.add(obj);
+          idx += CHUNK;
+          continue;
+        }
+        const mesh = this.floorMesh(stack[idx], f, false);
+        this.tower.add(mesh);
+        this.tail.push({ floor: stack[idx], mesh });
+        idx++;
+        if (this.tail.length === CHUNK) {
+          const floors = this.tail.map(x => x.floor), obj = this.buildChunk(floors, f);
+          this.dropTail(0);
+          this.chunks.push({ floors, obj });
+          this.tower.add(obj);
+        }
       }
+      this.firstBuilt = settled ? stack[0] : null;
     }
     const top = stack[n - 1];
     if (top !== this.topOf) {
@@ -716,6 +760,52 @@ export class Renderer3D {
       this.topOf = top ?? null;
       if (this.topMesh) this.tower.add(this.topMesh);
     }
+  }
+
+  private dropTail(from: number): void {
+    for (const t of this.tail.splice(from)) { this.tower.remove(t.mesh); t.mesh.geometry.dispose(); }
+  }
+
+  private clearTower(): void {
+    for (const c of this.chunks) { this.tower.remove(c.obj); disposeTree(c.obj, false); }
+    this.chunks = [];
+    this.dropTail(0);
+    this.firstBuilt = null;
+    if (this.topMesh) { this.tower.remove(this.topMesh); this.topMesh.geometry.dispose(); this.topMesh = null; this.topOf = null; }
+  }
+
+  /** Prepares everything a tower in this skin can show (every floor kind's look, the
+   *  see-through foggy floor, falling pieces) before play, so the first gold or icy floor
+   *  doesn't freeze the game for a moment while the phone gets its shaders ready. */
+  private warmUp(f: Frame): void {
+    const g = new THREE.Group(), box = new THREE.BoxGeometry(0.01, 0.01, 0.01);
+    box.addGroup(0, box.index!.count, 0);
+    const kinds: FloorKind[] = ["normal", "gold", "ice", "garden", "shrink", "magnet", "ghost"];
+    for (const kind of kinds) {
+      const look = lookFor(f.skin, kind), mats = this.floorMats(look, kind);
+      g.add(new THREE.Mesh(box, [mats.wall, mats.roof]));
+      const see = [mats.wall.clone(), mats.roof.clone()];
+      see.forEach((m, i) => { m.transparent = true; this.addFx(m, i === 0 ? "wall" : "roof"); });
+      g.add(new THREE.Mesh(box, see));
+      const piece = new THREE.MeshStandardMaterial({ color: 0xffffff, map: facadeFor(look).map, roughness: 0.8, transparent: true });
+      g.add(new THREE.Mesh(box, piece));
+    }
+    g.position.set(0, -500, 0);
+    this.scene.add(g);
+    try { this.gl.compile(this.scene, this.cam); } catch { /* best effort */ }
+    this.scene.remove(g);
+    // The extra materials are kept (not thrown away) until the next skin: throwing one away
+    // would also throw away the ready shader it was made for.
+    const extra: THREE.Material[] = [];
+    g.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) for (const x of [m.material].flat()) if (!this.isShared(x)) extra.push(x); });
+    this.warmMats.forEach(m => m.dispose());
+    this.warmMats = extra;
+    box.dispose();
+  }
+
+  private isShared(m: THREE.Material): boolean {
+    for (const v of this.mats.values()) if (v.wall === m || v.roof === m) return true;
+    return false;
   }
 
   private updateMover(f: Frame): void {

@@ -15,7 +15,7 @@ import type { Mode } from "./types";
 
 /** Graphics version: when the graphics change a lot, every device tests its speed again
  *  instead of keeping "smooth mode" picked for the old graphics. */
-const GFX = 3;
+const GFX = 4;
 
 export interface Settings {
   sound: boolean;
@@ -26,6 +26,8 @@ export interface Settings {
   autoLow: boolean;
   /** Version of the automatic graphics choice; older choices are redone once. */
   gfx: number;
+  /** Auto mode found even smooth 3D too slow here: use the simpler flat graphics. */
+  flat: boolean;
   /** Language: "auto" follows the device. */
   lang: "auto" | "en" | "es";
 }
@@ -162,7 +164,7 @@ export function defaultSave(): SaveData {
     ghost: [],
     tourney: -1,
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, lang: "auto" },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto" },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -273,6 +275,7 @@ export function normalize(raw: unknown): SaveData {
       // Saves from before the sharper graphics re-measure the device once.
       autoLow: set.gfx === GFX ? bool(set.autoLow, false) : false,
       gfx: GFX,
+      flat: set.gfx === GFX ? bool(set.flat, false) : false,
       lang: (["auto", "en", "es"].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
     },
     tutorialDone: bool(r.tutorialDone, false),

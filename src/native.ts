@@ -11,6 +11,7 @@ import { Preferences } from "@capacitor/preferences";
 import { Share } from "@capacitor/share";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar } from "@capacitor/status-bar";
+import { InAppReview } from "@capacitor-community/in-app-review";
 import { t } from "./i18n";
 
 export const isNative = (): boolean => Capacitor.isNativePlatform();
@@ -194,5 +195,7 @@ export function askForReview(towers: number): void {
     if (Date.now() - last < 90 * 864e5) return;
     localStorage.setItem(REVIEW_KEY, String(Date.now()));
   } catch { return; }
-  void import("@capacitor-community/in-app-review").then(m => m.InAppReview.requestReview()).catch(() => {});
+  // A plain import: the one-file build can't load code later (it threw "__VITE_PRELOAD__ is
+  // not defined" on phones, so the rating card never showed).
+  InAppReview.requestReview().catch(() => {});
 }
