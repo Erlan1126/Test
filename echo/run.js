@@ -85,7 +85,7 @@ function runSing() {
   runMission("songs", run.songs);
 }
 function runHit() {
-  run.hearts--; run.inv = 1.6; run.flash = 1; run.nohit = false; run.hitAt = runMetres();
+  run.hearts--; run.inv = 1.6; run.flash = 1; run.nohit = false; run.hitAt = runMetres(); run.shake = 1;
   sfx.caught(); buzz([30, 40, 30]);
   if (run.hearts <= 0) runEnd();
 }
@@ -143,11 +143,16 @@ function runUpdate(dt) {
   if (keys.arrowright || keys.d) R.tx += 320 * dt;
   const mid = caveMid(R.dist), hw = caveHalf(R.dist, R.dist), lo = mid - hw + 16, hi = mid + hw - 16;
   R.tx = Math.max(lo - 30, Math.min(hi + 30, R.tx));
-  R.x += (R.tx - R.x) * Math.min(1, dt * 10);
+  R.vx = (R.vx || 0) + ((R.tx - R.x) * 70 - R.vx * 15) * dt;
+  R.x += R.vx * dt;
+  R.tilt = (R.tilt || 0) + (Math.max(-0.5, Math.min(0.5, R.vx * 0.0035)) - (R.tilt || 0)) * Math.min(1, dt * 10);
+  R.camX = (R.camX || 0) + ((R.x - 200) * 0.3 - (R.camX || 0)) * Math.min(1, dt * 3);
+  R.shake = Math.max(0, (R.shake || 0) - dt * 2.5); R.happy = Math.max(0, (R.happy || 0) - dt);
+  for (const p of R.pops || []) p.t += dt; R.pops = (R.pops || []).filter(p => p.t < 1.2);
   // The walls nudge Lumi back softly.
-  if (R.x < lo) { R.x += (lo - R.x) * Math.min(1, dt * 14); R.tx = Math.max(R.tx, lo); }
-  if (R.x > hi) { R.x += (hi - R.x) * Math.min(1, dt * 14); R.tx = Math.min(R.tx, hi); }
-  R.trail.unshift([R.x, R.dist]); if (R.trail.length > 22) R.trail.pop();
+  if (R.x < lo) { R.x += (lo - R.x) * Math.min(1, dt * 14); R.tx = Math.max(R.tx, lo); R.vx = Math.max(R.vx, 0); }
+  if (R.x > hi) { R.x += (hi - R.x) * Math.min(1, dt * 14); R.tx = Math.min(R.tx, hi); R.vx = Math.min(R.vx, 0); }
+  R.trail.unshift([R.x, R.dist]); if (R.trail.length > 26) R.trail.pop();
   // A new world every few hundred metres.
   const b = Math.floor(runMetres() / RUN.BIOME_M);
   if (b !== R.biome) { R.biome = b; R.banner = 3; mood = MOODS[b % MOODS.length]; sfx.gate(); runMission("biome", b + 1); }
@@ -156,20 +161,21 @@ function runUpdate(dt) {
   for (const it of R.items) {
     if (it.gone) continue;
     const dy = it.at - R.dist;
-    if (it.type === "shadow" && !it.freed) { it.ph += dt; it.cx = it.x + Math.sin(it.ph * 0.9) * it.amp; it.at -= dt * 18; }
+    if (it.type === "shadow" && !it.freed) { it.ph += dt; if (dy > 0 && dy < 260) it.x += Math.sign(R.x - it.cx) * dt * 22; it.cx = it.x + Math.sin(it.ph * 0.9) * it.amp; it.at -= dt * 18; }
+    if (it.got != null) { it.got += dt; if (it.got > 0.16) it.gone = true; continue; }
     const ix = it.type === "shadow" ? it.cx : it.x, d = Math.hypot(ix - R.x, dy);
     if (it.type === "light" && magnet && d < magnet) { it.x += (R.x - it.x) * Math.min(1, dt * 8); it.at += (R.dist - it.at) * Math.min(1, dt * 8); }
-    if (it.type === "light" && d < 20) {
-      it.gone = true; R.lights++;
+    if (it.type === "light" && it.got == null && d < 20) {
+      it.got = 0; R.lights++; R.happy = 0.25;
       // Each light is the next note of a melody.
       const tune = LULLABY_TUNE[R.note++ % LULLABY_TUNE.length][0];
       note(261.63 * Math.pow(2, (tune + 12) / 12), { dur: 0.7, vol: 0.05, fm: 3, fmDepth: 0.6, echo: 0.8 });
       for (let k = 0; k < 6; k++) R.parts.push({ x: it.x, at: it.at, vx: (Math.random() - 0.5) * 60, va: (Math.random() - 0.3) * 60, life: 0.6, gold: true });
-      if (!R.items.some(o => o.trail === it.trail && o.type === "light" && !o.gone)) { R.trails++; runMission("trail", R.trails); }
+      if (!R.items.some(o => o.trail === it.trail && o.type === "light" && !o.gone && o.got == null)) { R.trails++; runMission("trail", R.trails); R.pops = R.pops || []; R.pops.push({ text: "Whole trail!", x: R.x, at: R.dist + 40, t: 0 }); }
       runMission("lights", R.lights);
     }
     if (it.type === "heart" && d < 22) { it.gone = true; R.hearts = Math.min(3 + runUpg("heart"), R.hearts + 1); sfx.light(); }
-    if (it.type === "rock" && d < it.r + 12 && R.inv <= 0) { R.tx += ix < R.x ? 40 : -40; R.speed *= 0.85; R.inv = 0.4; sfx.bump(); buzz(15); }
+    if (it.type === "rock" && d < it.r + 12 && R.inv <= 0) { R.tx += ix < R.x ? 40 : -40; R.vx += ix < R.x ? 260 : -260; R.speed *= 0.85; R.inv = 0.4; R.shake = 0.5; sfx.bump(); buzz(15); }
     if (it.type === "shadow" && !it.freed && d < 24 && R.inv <= 0) { it.freed = true; it.gone = true; runHit(); }
     if (dy < -500) it.gone = true;
   }
@@ -178,7 +184,7 @@ function runUpdate(dt) {
   for (const ring of R.rings) {
     ring.r += dt * 380; ring.at = R.dist;
     for (const it of R.items) if (it.type === "shadow" && !it.freed && Math.hypot(it.cx - ring.x, it.at - ring.at) < ring.r) {
-      it.freed = true; R.freed++; R.lights += 3;
+      it.freed = true; R.freed++; R.lights += 3; R.pops = R.pops || []; R.pops.push({ text: "+3 ✦", x: it.cx, at: it.at, t: 0 });
       for (let k = 0; k < 16; k++) R.parts.push({ x: it.cx, at: it.at, vx: (Math.random() - 0.5) * 120, va: Math.random() * 120, life: 1.2, gold: true });
       sfx.rune(); runMission("free", R.freed); runMission("lights", R.lights);
       it.gone = true;
@@ -203,107 +209,188 @@ function runGlow(rgb) {
   return (runGlowCache[rgb] = c);
 }
 const mixC = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
+// Rough rock: the smooth passage edge plus two finer ripples, so walls look broken, not drawn.
+const rockEdge = a => Math.sin(a * 0.045) * 7 + Math.sin(a * 0.11 + 2) * 3.2 + Math.sin(a * 0.27) * 1.1;
+// What floats in each world's air: motes, pollen, sparkles, embers, snow, bubbles, gold dust, stars.
+const RUN_AIR = [
+  { rgb: "200,225,255", vy: 0.25, size: 5 }, { rgb: "170,255,170", vy: 0.1, size: 5 }, { rgb: "210,170,255", vy: 0.3, size: 6, twinkle: 1 },
+  { rgb: "255,150,80", vy: -0.6, size: 6 }, { rgb: "240,248,255", vy: 0.9, size: 6 }, { rgb: "150,235,255", vy: -0.4, size: 7, bubble: 1 },
+  { rgb: "255,215,120", vy: 0.15, size: 5 }, { rgb: "255,190,240", vy: 0.3, size: 6, twinkle: 1 },
+];
 function runDraw(ctx, W, H) {
-  const R = run, S = W / 400, LY = H / S * 0.72, t = R.t;
-  // The world's colours, blending into the next world near the border.
+  const R = run, t = R.t;
+  // The camera: follows Lumi a little sideways, pulls back as you speed up, shakes when you're hit.
+  const zoom = 1 - Math.min(0.1, (R.speed - 200) / 2000), S = W / 400 * zoom;
+  const LY = H / S * (0.7 + Math.min(0.05, (R.speed - 200) / 4000));
+  const shake = R.shake > 0 ? R.shake * 6 : 0, camX = R.camX || 0;
   const m = R.dist / RUN.M, b = Math.floor(m / RUN.BIOME_M), f = Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const th = THEMES[b % THEMES.length], th2 = THEMES[(b + 1) % THEMES.length];
-  const rim = mixC(th.rim, th2.rim, f), deep = mixC(th.deep, th2.deep, f), floor = mixC(th.floor2, th2.floor2, f);
+  const rim = mixC(th.rim, th2.rim, f), deep = mixC(th.deep, th2.deep, f), floor = mixC(th.floor2, th2.floor2, f), rock = mixC(th.rock, th2.rock, f);
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, `rgb(${mixC(deep, [0, 0, 0], 0.4)})`); sky.addColorStop(0.55, `rgb(${mixC(floor, deep, 0.4)})`); sky.addColorStop(1, `rgb(${mixC(deep, [0, 0, 0], 0.5)})`);
+  sky.addColorStop(0, `rgb(${mixC(deep, [0, 0, 0], 0.5)})`); sky.addColorStop(0.5, `rgb(${mixC(floor, deep, 0.35)})`); sky.addColorStop(1, `rgb(${mixC(deep, [0, 0, 0], 0.55)})`);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.scale(S, S);
-  const Wu = 400, Hu = H / S, yOf = at => LY - (at - R.dist);
-  // Light shafts from far above.
+  ctx.save();
+  ctx.translate(W / 2 + (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); ctx.scale(S, S); ctx.translate(-200 - camX, 0);
+  const Hu = H / S, yOf = at => LY - (at - R.dist), left = -60 + camX, right = 460 + camX;
+  // A soft light high above: home.
   ctx.globalCompositeOperation = "lighter";
-  for (let q = 0; q < 3; q++) { const x = 60 + q * 140 + Math.sin(t * 0.2 + q) * 30, g = ctx.createLinearGradient(x, 0, x + 60, Hu); g.addColorStop(0, `rgba(${rim},0.08)`); g.addColorStop(1, `rgba(${rim},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - 20, 0); ctx.lineTo(x + 30, 0); ctx.lineTo(x + 110, Hu); ctx.lineTo(x + 40, Hu); ctx.fill(); }
+  ctx.globalAlpha = 0.5; ctx.drawImage(runGlow(rim.join(",")), 200 + camX * 0.5 - 260, -260, 520, 520); ctx.globalAlpha = 1;
+  // Light shafts.
+  for (let q = 0; q < 3; q++) { const x = 60 + q * 140 + Math.sin(t * 0.2 + q) * 30 + camX * 0.6, g = ctx.createLinearGradient(x, 0, x + 60, Hu); g.addColorStop(0, `rgba(${rim},0.09)`); g.addColorStop(1, `rgba(${rim},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - 20, 0); ctx.lineTo(x + 30, 0); ctx.lineTo(x + 110, Hu); ctx.lineTo(x + 40, Hu); ctx.fill(); }
   ctx.globalCompositeOperation = "source-over";
-  // Far rock columns, drifting slowly (parallax).
-  ctx.fillStyle = `rgba(${mixC(deep, [0, 0, 0], 0.25)},0.9)`;
-  for (let q = -1; q < 8; q++) { const base = Math.floor(R.dist * 0.35 / 160) + q, y = LY - (base * 160 - R.dist * 0.35), r = seeded(base * 7 + 3), x = r() * 400, w = 30 + r() * 50; ctx.beginPath(); ctx.ellipse(x, y, w, 110 + r() * 60, 0, 0, Math.PI * 2); ctx.fill(); }
-  // Drifting motes.
-  for (let q = 0; q < 50; q++) { const r = seeded(q * 13), x = (r() * 400 + Math.sin(t * 0.3 + q) * 10), y = ((r() * Hu + R.dist * (0.2 + r() * 0.5)) % Hu); ctx.globalAlpha = 0.25 + 0.4 * Math.abs(Math.sin(t + q)); ctx.drawImage(runGlow(rim), x - 3, y - 3, 6, 6); }
+  // Three layers of far cave, each moving slower the further away it is: hanging and rising spires.
+  [[0.18, 0.55, 260], [0.32, 0.4, 200], [0.5, 0.25, 150]].forEach(([par, fog, gap], layer) => {
+    ctx.fillStyle = `rgb(${mixC(mixC(deep, [0, 0, 0], 0.3), mixC(floor, deep, 0.4), fog)})`;
+    for (let q = -1; q < Hu / gap + 2; q++) {
+      const base = Math.floor(R.dist * par / gap) + q, r = seeded(base * 13 + layer * 101), y = LY - (base * gap - R.dist * par);
+      const x = left + r() * (right - left) + camX * (par - 1), w = 18 + r() * 34 * (1 + layer * 0.3), h = 90 + r() * 140, up = r() < 0.5;
+      ctx.beginPath(); ctx.moveTo(x - w, y); ctx.quadraticCurveTo(x - w * 0.3, y + (up ? -h * 0.6 : h * 0.6), x, y + (up ? -h : h)); ctx.quadraticCurveTo(x + w * 0.3, y + (up ? -h * 0.6 : h * 0.6), x + w, y); ctx.closePath(); ctx.fill();
+    }
+  });
+  // Drifting bands of fog.
+  for (let q = 0; q < 3; q++) { const y = ((q * 0.37 + t * 0.012 + R.dist * 0.0004) % 1.2 - 0.1) * Hu, g = ctx.createLinearGradient(0, y - 60, 0, y + 60); g.addColorStop(0, `rgba(${rim},0)`); g.addColorStop(0.5, `rgba(${mixC(rim, deep, 0.5)},0.07)`); g.addColorStop(1, `rgba(${rim},0)`); ctx.fillStyle = g; ctx.fillRect(left, y - 60, right - left, 120); }
+  // The world's air.
+  const air = RUN_AIR[b % RUN_AIR.length];
+  for (let q = 0; q < 60; q++) {
+    const r = seeded(q * 13 + 1), x = left + r() * (right - left) + Math.sin(t * 0.5 + q) * 8, y = (((r() * Hu + R.dist * (0.25 + r() * 0.4) + t * 40 * air.vy) % Hu) + Hu) % Hu;
+    ctx.globalAlpha = (0.3 + 0.5 * (air.twinkle ? Math.abs(Math.sin(t * 2 + q)) : r())) * 0.9; const s = air.size * (0.5 + r());
+    if (air.bubble) { ctx.strokeStyle = `rgba(${air.rgb},0.7)`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, s * 0.5, 0, Math.PI * 2); ctx.stroke(); }
+    else { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(air.rgb), x - s, y - s, s * 2, s * 2); ctx.globalCompositeOperation = "source-over"; }
+  }
   ctx.globalAlpha = 1;
-  // The cave walls: dark silhouettes with glowing edges.
-  const edge = side => { const pts = []; for (let y = -20; y <= Hu + 20; y += 10) { const a = R.dist + (LY - y); pts.push([caveMid(a) + side * caveHalf(a, R.dist), y]); } return pts; };
+  // Speed: faint streaks when the cave is really moving.
+  const fast = Math.max(0, (R.speed - 260) / 140);
+  if (fast > 0) { ctx.strokeStyle = `rgba(${rim},${0.18 * fast})`; ctx.lineWidth = 1; for (let q = 0; q < 14; q++) { const r = seeded(q * 7), x = left + r() * (right - left), y = ((r() * Hu + R.dist * 1.4) % (Hu + 80)) - 40; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 30 + fast * 30); ctx.stroke(); } }
+  // The cave walls: layered dark rock with broken edges that catch the world's glow, brighter
+  // where Lumi's light falls on them.
+  const edge = (side, inset = 0) => { const pts = []; for (let y = -30; y <= Hu + 30; y += 7) { const a = R.dist + (LY - y); pts.push([caveMid(a) + side * (caveHalf(a, R.dist) + rockEdge(a + side * 500) + inset), y]); } return pts; };
+  const line = pts => { ctx.beginPath(); pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); };
   for (const side of [-1, 1]) {
-    const pts = edge(side), outer = side < 0 ? -40 : 440;
-    const g = ctx.createLinearGradient(side < 0 ? 0 : 400, 0, side < 0 ? 200 : 200, 0); g.addColorStop(0, "#020208"); g.addColorStop(1, `rgb(${mixC(deep, [0, 0, 0], 0.55)})`);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(outer, -20); for (const p of pts) ctx.lineTo(p[0], p[1]); ctx.lineTo(outer, Hu + 20); ctx.fill();
+    const pts = edge(side), outer = side < 0 ? left - 20 : right + 20;
+    const g = ctx.createLinearGradient(side < 0 ? left : right, 0, 200 + side * 60, 0); g.addColorStop(0, "#010104"); g.addColorStop(1, `rgb(${mixC(rock, [0, 0, 0], 0.82)})`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(outer, -30); for (const p of pts) ctx.lineTo(p[0], p[1]); ctx.lineTo(outer, Hu + 30); ctx.fill();
+    // Strata: fainter ledges further into the rock.
     ctx.lineJoin = "round";
-    for (const [w, a] of [[9, 0.08], [4, 0.22], [1.6, 0.9]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = w; ctx.beginPath(); pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.stroke(); }
+    for (const [inset, a] of [[16, 0.13], [38, 0.06]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = 1.2; line(edge(side, inset)); ctx.stroke(); }
+    for (const [w, a] of [[10, 0.06], [4, 0.2], [1.6, 0.85]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = w; line(pts); ctx.stroke(); }
+    // Lumi lights the rock near it.
+    const lg = ctx.createLinearGradient(0, LY - 150, 0, LY + 150); lg.addColorStop(0, "rgba(190,245,255,0)"); lg.addColorStop(0.5, `rgba(190,245,255,${0.55 + 0.2 * Math.sin(t * 3)})`); lg.addColorStop(1, "rgba(190,245,255,0)");
+    ctx.strokeStyle = lg; ctx.lineWidth = 3; line(pts.filter(p => Math.abs(p[1] - LY) < 160)); ctx.stroke();
     // Crystals growing from the walls.
-    for (let q = -2; q < 12; q++) { const base = Math.floor(R.dist / 120) + q, r = seeded(base * 31 + (side > 0 ? 7 : 0)); if (r() < 0.55) continue; const a = base * 120, y = yOf(a), x = caveMid(a) + side * caveHalf(a, R.dist), s = 6 + r() * 8;
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(rim), x - s * 3, y - s * 3, s * 6, s * 6); ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = `rgba(${mixC(rim, [255, 255, 255], 0.5)},0.9)`; ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x - side * s * 0.9, y); ctx.lineTo(x, y + s * 0.6); ctx.fill(); }
+    for (let q = -2; q < 12; q++) { const base = Math.floor(R.dist / 120) + q, r = seeded(base * 31 + (side > 0 ? 7 : 0)); if (r() < 0.55) continue; const a = base * 120, y = yOf(a), x = caveMid(a) + side * (caveHalf(a, R.dist) + rockEdge(a + side * 500)), s = 6 + r() * 9, tilt = (r() - 0.5) * 0.8;
+      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(rim.join(",")), x - s * 3, y - s * 3, s * 6, s * 6); ctx.globalCompositeOperation = "source-over";
+      for (let c = 0; c < 3; c++) { const cs = s * (1 - c * 0.28), ang = tilt + (c - 1) * 0.5; ctx.fillStyle = `rgba(${mixC(rim, [255, 255, 255], 0.35 + c * 0.2)},0.9)`; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - side * Math.cos(ang) * cs * 1.4 - Math.sin(ang) * cs * 0.3, y - Math.sin(ang) * cs * 1.4); ctx.lineTo(x - side * cs * 0.3, y + cs * 0.3); ctx.fill(); } }
   }
   // Glow-worms: threads of tiny lights hanging from the walls.
   for (let q = -2; q < 16; q++) {
     const base = Math.floor(R.dist / 90) + q, r = seeded(base * 17 + 5); if (r() < 0.5) continue;
-    const side = r() < 0.5 ? -1 : 1, a = base * 90, y0 = yOf(a), x0 = caveMid(a) + side * (caveHalf(a, R.dist) - 2), len = 3 + Math.floor(r() * 5);
+    const side = r() < 0.5 ? -1 : 1, a = base * 90, y0 = yOf(a), x0 = caveMid(a) + side * (caveHalf(a, R.dist) + rockEdge(a + side * 500) - 2), len = 3 + Math.floor(r() * 5);
     for (let k = 0; k < len; k++) { const x = x0 - side * (2 + k * 0.6), y = y0 + k * 7 + Math.sin(t * 1.5 + base) * 1.5; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 2 + k + base); ctx.drawImage(runGlow("170,255,220"), x - 3, y - 3, 6, 6); }
   }
   ctx.globalAlpha = 1;
+  // Golden threads between the lights of a trail.
+  ctx.strokeStyle = "rgba(255,215,130,0.18)"; ctx.lineWidth = 1;
+  let prev = null;
+  for (const it of R.items) { if (it.type !== "light" || it.gone || it.got) { prev = null; continue; } const y = yOf(it.at); if (prev && prev.trail === it.trail) { ctx.beginPath(); ctx.moveTo(prev.x, yOf(prev.at)); ctx.lineTo(it.x, y); ctx.stroke(); } prev = it; }
   // Things in the cave.
   for (const it of R.items) {
     if (it.gone) continue;
     const y = yOf(it.at); if (y < -60 || y > Hu + 60) continue;
     if (it.type === "light") {
-      const bob = Math.sin(t * 3 + it.at * 0.05) * 3;
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,210,120"), it.x - 18, y - 18 + bob, 36, 36); ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "#fff6d6"; ctx.beginPath(); ctx.arc(it.x, y + bob, 4, 0, Math.PI * 2); ctx.fill();
+      // A little star; once gathered, it streaks into Lumi.
+      let x = it.x, yy = y + Math.sin(t * 3 + it.at * 0.05) * 3, s = 1;
+      if (it.got) { const k = Math.min(1, it.got / 0.16); x += (R.x - x) * k; yy += (LY - yy) * k; s = 1 - k * 0.6; }
+      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,205,110"), x - 20 * s, yy - 20 * s, 40 * s, 40 * s); ctx.globalCompositeOperation = "source-over";
+      ctx.save(); ctx.translate(x, yy); ctx.rotate(t * 1.2 + it.at); ctx.fillStyle = "#fff6d6"; ctx.beginPath();
+      for (let p = 0; p < 8; p++) { const rr = (p % 2 ? 1.6 : 5.5) * s, a = p / 8 * Math.PI * 2; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      ctx.fill(); ctx.restore();
     } else if (it.type === "heart") {
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("160,235,255"), it.x - 26, y - 26, 52, 52); ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "#e6fbff"; ctx.font = "20px system-ui"; ctx.textAlign = "center"; ctx.fillText("✦", it.x, y + 7);
+      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("160,235,255"), it.x - 28, y - 28, 56, 56); ctx.globalCompositeOperation = "source-over";
+      ctx.save(); ctx.translate(it.x, y); ctx.rotate(Math.sin(t * 2) * 0.2); ctx.fillStyle = "#e6fbff"; ctx.beginPath(); for (let p = 0; p < 8; p++) { const rr = p % 2 ? 3 : 10, a = p / 8 * Math.PI * 2 - Math.PI / 2; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.fill(); ctx.restore();
     } else if (it.type === "rock") {
-      const r = seeded(it.seed); ctx.fillStyle = "#05050c"; ctx.beginPath();
-      for (let q = 0; q < 9; q++) { const a = q / 9 * Math.PI * 2, rr = it.r * (0.8 + r() * 0.35); ctx.lineTo(it.x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
-      ctx.closePath(); ctx.fill(); ctx.strokeStyle = `rgba(${rim},0.7)`; ctx.lineWidth = 1.4; ctx.stroke();
+      const r = seeded(it.seed); ctx.fillStyle = `rgb(${mixC(rock, [0, 0, 0], 0.85)})`; ctx.beginPath();
+      const pts = []; for (let q = 0; q < 10; q++) { const a = q / 10 * Math.PI * 2, rr = it.r * (0.78 + r() * 0.4); pts.push([it.x + Math.cos(a) * rr, y + Math.sin(a) * rr]); }
+      pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = `rgba(${rim},0.75)`; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.strokeStyle = `rgba(${rim},0.15)`; ctx.lineWidth = 6; ctx.stroke();
     } else if (it.type === "shadow") {
-      const x = it.cx;
-      for (let q = 0; q < 4; q++) { const sx = x + Math.sin(t * 2 + q * 1.7) * 6, sy = y - 6 + q * 9; ctx.fillStyle = `rgba(6,3,14,${0.55 - q * 0.1})`; ctx.beginPath(); ctx.ellipse(sx, sy, 18 - q * 3, 14 - q * 2, 0, 0, Math.PI * 2); ctx.fill(); }
-      const blink = (t * 0.6 + it.ph) % 3 < 0.1 ? 0.15 : 1;
-      for (const sd of [-1, 1]) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,120,190"), x + sd * 7 - 9, y - 12, 18, 18); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ffb0d8"; ctx.beginPath(); ctx.ellipse(x + sd * 7, y - 3, 3.4, 2.2 * blink, sd * -0.3, 0, Math.PI * 2); ctx.fill(); }
+      // A drifting knot of smoke with two eyes that watch Lumi.
+      const x = it.cx, look = Math.max(-2, Math.min(2, (R.x - x) * 0.03));
+      ctx.globalAlpha = 0.9; ctx.drawImage(runGlow("90,40,140"), x - 34, y - 38, 68, 68); ctx.globalAlpha = 1;
+      for (let q = 0; q < 6; q++) { const a = t * (1.2 + q * 0.2) + q * 1.1, sx = x + Math.cos(a) * 5, sy = y - 4 + q * 5 + Math.sin(a) * 3, rr = 17 - q * 2.3; ctx.fillStyle = `rgba(5,2,12,${0.62 - q * 0.08})`; ctx.beginPath(); ctx.ellipse(sx, sy, rr, rr * 0.85, a * 0.2, 0, Math.PI * 2); ctx.fill(); }
+      for (let q = 0; q < 3; q++) { ctx.strokeStyle = "rgba(10,4,20,0.5)"; ctx.lineWidth = 3 - q * 0.6; ctx.beginPath(); const bx = x + (q - 1) * 8; ctx.moveTo(bx, y + 12); ctx.quadraticCurveTo(bx + Math.sin(t * 3 + q) * 8, y + 24, bx + Math.sin(t * 2 + q) * 5, y + 34); ctx.stroke(); }
+      const blink = (t * 0.6 + it.ph) % 3 < 0.1 ? 0.15 : 1, near = Math.max(0, 1 - Math.abs(it.at - R.dist) / 260);
+      for (const sd of [-1, 1]) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6 + near * 0.4; ctx.drawImage(runGlow("255,110,185"), x + sd * 7 + look - 10, y - 13, 20, 20); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ffc0e0"; ctx.beginPath(); ctx.ellipse(x + sd * 7 + look, y - 3, 3.6, 2.4 * blink, sd * -0.3, 0, Math.PI * 2); ctx.fill(); }
     }
   }
-  // Song rings.
-  for (const ring of R.rings) { const k = ring.r / ring.max, y = yOf(ring.at); ctx.strokeStyle = `rgba(170,240,255,${0.8 * (1 - k)})`; ctx.lineWidth = 3 * (1 - k) + 1; ctx.beginPath(); ctx.arc(ring.x, y, ring.r, 0, Math.PI * 2); ctx.stroke(); }
+  // Song rings: a bright ring with a softer echo behind it, sparkling where it runs.
+  for (const ring of R.rings) {
+    const k = ring.r / ring.max, y = yOf(ring.at);
+    for (const [rr, a, w] of [[ring.r, 0.85, 3], [ring.r * 0.82, 0.35, 2], [ring.r * 0.6, 0.15, 1.5]]) { ctx.strokeStyle = `rgba(175,240,255,${a * (1 - k)})`; ctx.lineWidth = w * (1 - k) + 0.6; ctx.beginPath(); ctx.arc(ring.x, y, rr, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 1 - k;
+    for (let q = 0; q < 12; q++) { const a = q / 12 * Math.PI * 2 + t; ctx.drawImage(runGlow("190,245,255"), ring.x + Math.cos(a) * ring.r - 5, y + Math.sin(a) * ring.r - 5, 10, 10); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
   // Sparkles.
   ctx.globalCompositeOperation = "lighter";
-  for (const p of R.parts) { const y = yOf(p.at); ctx.globalAlpha = Math.min(1, p.life * 2); ctx.drawImage(runGlow(p.gold ? "255,215,130" : "170,240,255"), p.x - 8, y - 8, 16, 16); }
+  for (const p of R.parts) { const y = yOf(p.at); ctx.globalAlpha = Math.min(1, p.life * 2); const s = p.size || 8; ctx.drawImage(runGlow(p.gold ? "255,215,130" : "170,240,255"), p.x - s, y - s, s * 2, s * 2); }
   ctx.globalAlpha = 1;
-  // Lumi and its trail.
-  R.trail.forEach((p, q) => { if (!q) return; const k = 1 - q / R.trail.length; ctx.globalAlpha = k * 0.6; const s = 8 + k * 22; ctx.drawImage(runGlow("150,235,255"), p[0] - s, yOf(p[1]) - s, s * 2, s * 2); });
-  ctx.globalAlpha = 1;
-  ctx.drawImage(runGlow("150,235,255"), R.x - 60, LY - 60, 120, 120);
+  // Lumi's trail: a smooth ribbon of light that thins and fades behind it.
+  // One tapered shape, filled with a gradient that fades toward the tail (no overlapping beads).
+  const ribbon = (wide, rgb, a) => {
+    const n = R.trail.length; if (n < 3) return;
+    const L2 = [], R2 = [];
+    for (let q = 0; q < n; q++) {
+      const p = R.trail[q], pn = R.trail[Math.min(n - 1, q + 1)], pp = R.trail[Math.max(0, q - 1)];
+      const dx = pn[0] - pp[0], dy = yOf(pn[1]) - yOf(pp[1]), len = Math.hypot(dx, dy) || 1, w = wide * (1 - q / n) + 0.5;
+      L2.push([p[0] - dy / len * w, yOf(p[1]) + dx / len * w]); R2.push([p[0] + dy / len * w, yOf(p[1]) - dx / len * w]);
+    }
+    const g = ctx.createLinearGradient(0, yOf(R.trail[0][1]), 0, yOf(R.trail[n - 1][1]));
+    g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); L2.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); for (let q = n - 1; q >= 0; q--) ctx.lineTo(R2[q][0], R2[q][1]); ctx.closePath(); ctx.fill();
+  };
+  ribbon(14, "150,235,255", 0.35); ribbon(5, "235,252,255", 0.7);
+  // Lumi: a halo, a soft pulsing ring, the body leaning into its turns and stretching with speed.
+  const pulse = 1 + Math.sin(t * 3) * 0.06 + (R.songCd > 0.8 ? 0.25 : 0);
+  ctx.drawImage(runGlow("150,235,255"), R.x - 70 * pulse, LY - 70 * pulse, 140 * pulse, 140 * pulse);
   ctx.globalCompositeOperation = "source-over";
-  if (!(R.inv > 0 && Math.floor(R.inv * 10) % 2)) {
-    const lean = Math.max(-0.4, Math.min(0.4, (R.tx - R.x) * 0.01));
-    ctx.save(); ctx.translate(R.x, LY); ctx.rotate(lean);
-    const g = ctx.createRadialGradient(-4, -5, 1, 0, 0, 13); g.addColorStop(0, "#ffffff"); g.addColorStop(0.7, "#d6f6ff"); g.addColorStop(1, "#7fd8f5");
+  if (!(R.inv > 0.4 && Math.floor(R.inv * 12) % 2)) {
+    const tilt = R.tilt || 0, stretch = 1 + Math.min(0.18, Math.abs(R.vx || 0) * 0.0007) + fast * 0.06, bob = Math.sin(t * 2.6) * 1.5;
+    ctx.save(); ctx.translate(R.x, LY + bob); ctx.rotate(tilt);
+    ctx.strokeStyle = `rgba(200,245,255,${0.35 + 0.25 * Math.sin(t * 3)})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, 17 * pulse, 0, Math.PI * 2); ctx.stroke();
+    // The antenna sways the other way.
+    ctx.strokeStyle = "#bfefff"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(0, -11); ctx.quadraticCurveTo(-tilt * 14 + 2, -20, -tilt * 18 + 1, -25); ctx.stroke();
+    ctx.drawImage(runGlow("220,250,255"), -tilt * 18 + 1 - 7, -32, 14, 14);
+    ctx.scale(1 / Math.sqrt(stretch), stretch);
+    const g = ctx.createRadialGradient(-4, -5, 1, 0, 0, 13); g.addColorStop(0, "#ffffff"); g.addColorStop(0.65, "#d6f6ff"); g.addColorStop(1, "#7fd8f5");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
-    const look = Math.max(-2, Math.min(2, (R.tx - R.x) * 0.05)), blink = (t % 3.4) < 0.12 ? 0.15 : 1;
-    ctx.fillStyle = "#123049"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * 4.5 + look, -1, 1.7, 2.6 * blink, 0, 0, Math.PI * 2); ctx.fill(); }
+    const look = Math.max(-2.2, Math.min(2.2, (R.vx || 0) * 0.012)), blink = (t % 3.4) < 0.12 ? 0.15 : 1, happy = R.happy > 0;
+    ctx.fillStyle = "#123049";
+    for (const sd of [-1, 1]) { ctx.beginPath(); if (happy) { ctx.lineWidth = 1.6; ctx.strokeStyle = "#123049"; ctx.arc(sd * 4.5 + look, 0, 2.2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); } else { ctx.ellipse(sd * 4.5 + look, -1, 1.8, 2.7 * blink, 0, 0, Math.PI * 2); ctx.fill(); } }
+    ctx.fillStyle = "rgba(255,150,190,0.45)"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * 7.5, 4, 2.4, 1.4, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
   }
   ctx.restore();
-  // Dark rock rushing past close to the eye, faster than the cave: depth.
-  ctx.save(); ctx.scale(S, S);
-  ctx.fillStyle = "rgba(1,1,4,0.92)";
-  for (let q = -1; q < 4; q++) { const base = Math.floor(R.dist * 1.6 / 420) + q, r = seeded(base * 29 + 11); if (r() < 0.4) continue; const side = r() < 0.5 ? -1 : 1, y = LY - (base * 420 - R.dist * 1.6), x = side < 0 ? -20 + r() * 20 : 420 - r() * 20, w = 50 + r() * 40, h = 120 + r() * 90;
+  // Close dark rock rushing past at the edges: depth.
+  ctx.save(); ctx.scale(S, S); ctx.fillStyle = "rgba(1,1,4,0.92)";
+  for (let q = -1; q < 4; q++) { const base = Math.floor(R.dist * 1.6 / 420) + q, r = seeded(base * 29 + 11); if (r() < 0.4) continue; const side = r() < 0.5 ? -1 : 1, y = LY - (base * 420 - R.dist * 1.6), x = side < 0 ? -20 + r() * 20 : W / S + 20 - r() * 20, w = 50 + r() * 40, h = 120 + r() * 90;
     ctx.beginPath(); ctx.ellipse(x, y, w, h, side * 0.2, 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
   // Touched: a flash of violet.
   if (R.flash > 0) { ctx.fillStyle = `rgba(120,40,160,${R.flash * 0.3})`; ctx.fillRect(0, 0, W, H); }
   // A vignette.
   const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  // Floating "+3" when a shadow is sung free.
+  ctx.textAlign = "center";
+  for (const p of R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px system-ui, sans-serif`; ctx.fillText(p.text, W / 2 + (p.x - 200 - camX) * S, (yOf(p.at) - k * 40) * S); }
+  ctx.globalAlpha = 1;
   // The world's name as you enter it; mission messages.
   if (R.banner > 0) {
-    ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center"; ctx.fillStyle = "#eef8ff";
+    ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.fillStyle = "#eef8ff";
     ctx.font = `500 ${Math.round(W * 0.075)}px Cinzel, Georgia, serif`; ctx.fillText(THEMES[R.biome % THEMES.length].name, W / 2, H * 0.3);
     ctx.font = `italic ${Math.round(W * 0.045)}px "Cormorant Garamond", Georgia, serif`; ctx.fillStyle = "#b8c8e4"; ctx.fillText(`World ${R.biome + 1}`, W / 2, H * 0.3 + W * 0.07); ctx.globalAlpha = 1;
   }
-  if (R.missionMsg && R.missionMsg.t > 0) { ctx.globalAlpha = Math.min(1, R.missionMsg.t); ctx.textAlign = "center"; ctx.fillStyle = "#ffd98a"; ctx.font = `600 ${Math.round(W * 0.05)}px system-ui, sans-serif`; ctx.fillText(R.missionMsg.text, W / 2, H * 0.4); ctx.globalAlpha = 1; }
+  if (R.missionMsg && R.missionMsg.t > 0) { ctx.globalAlpha = Math.min(1, R.missionMsg.t); ctx.fillStyle = "#ffd98a"; ctx.font = `600 ${Math.round(W * 0.05)}px system-ui, sans-serif`; ctx.fillText(R.missionMsg.text, W / 2, H * 0.4); ctx.globalAlpha = 1; }
 }
 
 function runLoop(now) {
