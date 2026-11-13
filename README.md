@@ -14,6 +14,18 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## The story is told as short films
+
+The story is no longer pages of text. It's told in short animated films (`echo/movie.js`), each scene painted and moving, with a single line of text under it, music and sound, tap for the next scene or Skip:
+
+- **The opening** (before cave 1, about a minute): a city made of light beneath the world; the great Singer singing its little lights to sleep; its littlest light, Lumi; the flood that swept Lumi away; the Singer searching until its voice broke and its light went out; its tears becoming Hushlings; Lumi waking alone in the dark, singing its first echo; and the goal: find the lost lights, find your way home.
+- **Act two** (before cave 11): the city glowing again, the Hushlings still lost, a Lurker's eye opening, and bringing every last light home.
+- **The end of each act**: Lumi singing the Singer back to itself; then the lost lights rising home, the whole city lit, and Lumi with the Singer.
+
+The opening can be watched again from the city (Story).
+
+In the caves, Lumi leaves a trail of light and looks where it swims, hunting Hushlings trail dark smoke, and each cave opens and closes with a circle of light.
+
 ## The Singer's city (the hub)
 
 Play now goes home first, to the Singer's ruined city in the dark (`echo/city.js`). Every light you bring out of a cave comes home and lights a street lamp or a window, one by one, with a chime, the next time you return; the most you've ever found in each cave counts. Each cleared cave sends a neighbour home: twenty little lights with names (Pip, Moss, Tilly, Bram…, the Singer, Little Hush) who bob along the street; tap one to hear what it says. Clearing act one lights the Singer's tower; clearing act two opens the sky above the city. "Into the dark" goes to the next cave; Map and Title are there too.

@@ -1046,6 +1046,14 @@ function frame(now) {
     }
   }
   clock += dt;
+  // The iris: opening into a cave, closing as Lumi goes through the portal.
+  {
+    const el = document.getElementById("iris");
+    let r = 200;
+    if (L && !L.demo && screen === "play") { const o = Math.min(1, L.time / 0.9), c = L.ending ? Math.min(1, L.ending / 1.1) : 0; r = (1 - Math.pow(1 - o, 3)) * 160 * (1 - c * c); }
+    if (r >= 150) { if (el.style.display !== "none") el.style.display = "none"; }
+    else { el.style.display = "block"; el.style.background = `radial-gradient(circle at 50% 52%, transparent ${r.toFixed(1)}vmax, rgba(0,0,0,0.96) ${(r + 6).toFixed(1)}vmax)`; }
+  }
   // Caught: the world slows for a heartbeat.
   if (L && L.slowmo > 0) L.slowmo -= dt;
   if (L && (screen === "play" || (screen === "title" && L.demo))) update(L.slowmo > 0 ? dt * 0.3 : dt);

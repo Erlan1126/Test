@@ -575,6 +575,19 @@
   #dashBtn:active { transform: scale(0.92); }
   body:not(.sing-on) #dashBtn { bottom: calc(170px + var(--bottom)); }
   body.left-hand #dashBtn { right: auto; left: calc(36px + env(safe-area-inset-left, 0px)); }
+
+  /* ---------- The films ---------- */
+  #movieScreen { padding: 0; background: #000; cursor: pointer; justify-content: flex-end; }
+  #movieCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .movie-cap { position: relative; margin: 0 auto calc(56px + var(--bottom)); max-width: 24ch; padding: 0 16px; font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-size: 25px; line-height: 1.35; color: #f0f4fc; text-align: center; text-shadow: 0 2px 18px #000, 0 0 2px #000; opacity: 0; transform: translateY(8px); transition: opacity 0.8s, transform 0.8s; }
+  .movie-cap.on { opacity: 1; transform: none; }
+  .movie-skip { position: absolute; top: calc(14px + var(--top)); right: 16px; padding: 10px 14px; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(220, 230, 250, 0.6); }
+  .movie-dots { position: absolute; left: 0; right: 0; bottom: calc(24px + var(--bottom)); display: flex; gap: 6px; justify-content: center; }
+  .movie-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+  .movie-dots i.on { background: rgba(220, 240, 255, 0.85); }
+
+  /* A circle of light opens into each cave and closes on the way out. */
+  #iris { position: fixed; inset: 0; pointer-events: none; z-index: 5; display: none; }
 </style>
 </head>
 <body>
@@ -675,6 +688,14 @@
   </div>
 </div>
 
+<div id="iris"></div>
+<div class="screen" id="movieScreen">
+  <canvas id="movieCanvas" aria-hidden="true"></canvas>
+  <button class="movie-skip" id="movieSkip">Skip</button>
+  <p class="movie-cap" id="movieCap" aria-live="polite"></p>
+  <div class="movie-dots" id="movieDots"></div>
+</div>
+
 <div class="screen" id="cityScreen">
   <canvas id="cityCanvas" aria-label="The Singer's city"></canvas>
   <div class="city-top">
@@ -685,7 +706,7 @@
   <div class="shop" id="shopPanel" hidden><h3>Songs</h3><p>Glow from the caves makes Lumi's songs stronger.</p><ul id="shopList"></ul></div>
   <div class="city-actions">
     <button class="play" id="cityGo"><span class="play-label">Into the dark</span><span class="play-sub" id="cityGoName"></span></button>
-    <div class="city-nav"><button id="cityMap">Map</button><button id="cityShop">Songs</button><button id="cityBack">Title</button></div>
+    <div class="city-nav"><button id="cityMap">Map</button><button id="cityShop">Songs</button><button id="cityStory">Story</button><button id="cityBack">Title</button></div>
   </div>
 </div>
 
@@ -833,6 +854,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="echo/r3d.js"></script>
 <script src="echo/story.js"></script>
+<script src="echo/movie.js"></script>
 <script src="echo/meta.js"></script>
 <script src="echo/city.js"></script>
 <script src="echo/ui.js"></script>

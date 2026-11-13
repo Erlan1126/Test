@@ -330,6 +330,8 @@ const R3D = (() => {
   antBulb.position.set(0.01, 0.25, 0); lumiAnt.add(antBulb);
   const antGlow = glow(0xbff4ff, 0.2, 0.55); antGlow.position.copy(antBulb.position); antGlow.renderOrder = 54; antGlow.material.depthTest = false; lumiAnt.add(antGlow);
   let lumiSkin = -1;
+  const lumiTrail = [];
+  const SMOKE = tex(64, 64, (g, w) => { const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, "rgba(8,4,16,0.9)"); gr.addColorStop(1, "rgba(8,4,16,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
 
   // ---------- Hushlings, in 3D ----------
   // A hooded shadow with two ear tufts, a ragged smoky hem of trailing tendrils and almond
@@ -626,6 +628,11 @@ const R3D = (() => {
       lumiM.scale.set(shrink * (1 + sq * 0.18 + st * 0.5), shrink * (1 - sq * 0.25 - st * 0.3), shrink * (1 + sq * 0.18 + st * 0.5));
       lumiBody.rotation.set(Math.max(-0.35, Math.min(0.35, lumi.vy * 0.09)), 0, Math.max(-0.35, Math.min(0.35, -lumi.vx * 0.09)));
       for (const e of lumiEyes) e.scale.y = lumi.blink < 0 ? 0.008 : L.sneaking ? 0.03 : 0.066;
+      lumiFace.rotation.y += (Math.max(-0.45, Math.min(0.45, lumi.vx * 0.1)) - lumiFace.rotation.y) * Math.min(1, dt * 8);
+      lumiFace.rotation.x += (-0.55 + Math.max(-0.3, Math.min(0.3, lumi.vy * 0.07)) - lumiFace.rotation.x) * Math.min(1, dt * 8);
+      const last = lumiTrail[0];
+      if (!last || Math.hypot(last[0] - lumi.x, last[1] - lumi.y) > 0.07) { lumiTrail.unshift([lumi.x, lumi.y]); if (lumiTrail.length > 18) lumiTrail.pop(); }
+      else if (Math.hypot(lumi.vx, lumi.vy) < 0.3 && lumiTrail.length) lumiTrail.pop();
       lumiAnt.rotation.z = Math.sin(clock * 3) * 0.08 + Math.max(-0.4, Math.min(0.4, lumi.vx * 0.12));
       lumiBodyMat.emissiveIntensity = (L.sneaking ? 0.35 : 0.55) + lumi.sing * 0.6;
       if (lumiSkin !== save.skin) {
@@ -745,6 +752,20 @@ const R3D = (() => {
       if (!(g.alertT > 0) || g.gone > 0) continue;
       const s = ALERT(ak++); s.material.map = g.alert === "!" ? ALERT_X : ALERT_Q; s.material.depthTest = false; s.renderOrder = 60;
       s.material.opacity = Math.min(1, g.alertT * 2); s.position.set(g.x, (g.big ? 2.9 : 2.0) + (1 - Math.min(1, g.alertT)) * 0.2, g.y);
+    }
+    // Lumi's trail: a stream of fading light behind it as it swims.
+    const TR = pool("trail", () => { const s = glow(0x9feeff, 0.4, 0.4); s.renderOrder = 3; return s; });
+    if (!L.demo || screen === "title") lumiTrail.forEach((p, q) => { if (q === 0) return; const s = TR(q), f = 1 - q / lumiTrail.length; s.position.set(p[0], 0.62, p[1]); s.scale.setScalar(0.12 + f * 0.32); s.material.opacity = f * (L.sneaking ? 0.25 : 0.55); });
+    // Hunting Hushlings trail dark smoke.
+    const SM = pool("smoke", () => new T.Sprite(new T.SpriteMaterial({ map: SMOKE, transparent: true, depthWrite: false, fog: false })));
+    let smk = 0;
+    for (const g of L.gloom) {
+      g.smoke = g.smoke || [];
+      if (g.gone > 0 || g.saving) { g.smoke.length = 0; continue; }
+      if (g.hunt > 0 && (!g.smoke[0] || Math.hypot(g.smoke[0][0] - g.x, g.smoke[0][1] - g.y) > 0.12)) { g.smoke.unshift([g.x, g.y, 0]); if (g.smoke.length > 9) g.smoke.pop(); }
+      else if (g.hunt <= 0 && g.smoke.length) g.smoke.pop();
+      const seen = sightAt(g.x, g.y);
+      g.smoke.forEach((p, q) => { if (seen < 0.05) return; const s = SM(smk++), f = 1 - q / 9; s.position.set(p[0], (g.big ? 0.9 : 0.55) + q * 0.03, p[1]); s.scale.setScalar((g.big ? 1.4 : 0.8) * (0.6 + (1 - f) * 0.8)); s.material.opacity = 0.45 * f * seen; });
     }
     // Lights following Lumi home: little warm orbs bobbing in a line behind it.
     const FOL = pool("follower", () => { const g = new T.Group(); g.add(new T.Mesh(new T.SphereGeometry(0.09, 12, 8), new T.MeshBasicMaterial({ color: 0xfff1c8, toneMapped: false }))); g.add(glow(0xffd36e, 0.8, 0.7)); return g; });

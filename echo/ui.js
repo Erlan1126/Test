@@ -4,7 +4,7 @@
 // ---------- UI ----------
 const screens = {
   title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  challenges: $("challengeScreen"), city: $("cityScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  challenges: $("challengeScreen"), city: $("cityScreen"), movie: $("movieScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
 };
 let backTo = "title";
 function applyLayoutPrefs() {
@@ -239,6 +239,8 @@ function startLevel(i, skip = false) {
   if (!skipStory && i >= 0 && i % PER_WORLD === 0 && !save.story[w]) {
     save.story[w] = 1;
     persist();
+    // In the core, each act opens with a short film.
+    if (CORE && w < 2) { playMovie(w === 0 ? "intro" : "act2", () => startLevel(i, { story: true })); return; }
     const ch = worldChapter(w);
     const pages = ch ? ch.pages : [{ text: "The caves twist and change, but Lumi keeps singing. " + STORY[w % STORY.length], lumi: 1, notes: 1 }];
     playStory(pages, { num: `World ${w + 1} · ${worldName(w)}`, name: ch ? ch.name : worldName(w), world: w, last: w === 0 ? "Begin" : "Continue",
@@ -678,6 +680,7 @@ tap("playBtn", () => (CORE ? showCity() : startLevel(nextUnplayed())));
 tap("cityGo", () => startLevel(nextUnplayed()));
 tap("cityMap", openMap);
 tap("cityBack", showTitle);
+tap("cityStory", () => playMovie("intro", () => showCity()));
 tap("cityShop", () => { $("shopPanel").hidden = !$("shopPanel").hidden; renderShop(); });
 tap("levelsBtn", openMap);
 // A soft tick when a switch or option changes, so settings feel alive.
@@ -728,12 +731,13 @@ tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {
   if (save.act2Due) {
     save.act2Due = 0; save.act2Done = 1; persist();
-    playStory(CORE_ENDING2, { num: "The End", name: "Home", world: 1, last: "Continue", done: () => showTitle() });
+    playMovie("end2", () => showCity(true));
     return;
   }
   // Clearing the Starlight Abyss for the first time plays the ending first.
   if (save.endingDue) {
     save.endingDue = 0; save.ended = 1; if (flickCanReturn()) save.flick = 1; persist();
+    if (CORE) { playMovie("end1", () => showCity(true)); return; }
     playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => (levelIndex + 1 < TOTAL ? startLevel(levelIndex + 1) : showTitle()) });
     return;
   }

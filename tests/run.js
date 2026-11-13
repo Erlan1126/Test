@@ -364,11 +364,8 @@ const SIM = `
       save.daily = { last: dayKey(dayNumber() - 3), streak: 9, best: 9, stars: {}, shields: 1 };
       dailyCleared(2); out.missingTooManyDaysResetsTheStreak = save.daily.streak === 1;
       save.daily = d0;
-      save.story = {}; startLevel(0); out.story = screen === "story";
-      out.storyHasPicturesAndPages = document.querySelectorAll("#storyFx i").length > 0 && document.querySelectorAll("#storyDots i").length === CORE_CHAPTER.pages.length;
-      document.getElementById("storyGo").click();
-      out.storyTapShowsTheWholePageFirst = story && story.k === 0 && document.getElementById("storyText").classList.contains("all");
-      for (let k = 0; k < 20 && screen === "story"; k++) document.getElementById("storyGo").click();
+      save.story = {}; startLevel(0); out.storyIsAFilm = screen === "movie" && movie && movie.scenes.length === 8;
+      document.getElementById("movieSkip").click();
       out.storyLeadsToLevel = screen === "play";
       out.endingTellsTheWholeStory = endingPages().length === CORE_ENDING.length;
       save.cards = {}; startLevel(6, { story: true }); out.card = screen === "card";
