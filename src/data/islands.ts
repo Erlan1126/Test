@@ -54,10 +54,19 @@ export const ISLAND_THEMES: IslandTheme[] = [
 
 /** Upgrades in build order; `at` is the landmark index your best tower must pass. */
 export const ISLAND_UPGRADES = [
-  { at: msAt("house"), name: "Fountain plaza" },
-  { at: msAt("niagara"), name: "Duck pond" },
-  { at: msAt("liberty"), name: "New neighbors" },
-  { at: msAt("pyramid"), name: "Street lights and traffic" },
-  { at: msAt("needle"), name: "Ferris wheel" },
-  { at: msAt("goldengate"), name: "Hot-air balloons" },
+  { at: msAt("niagara"), name: "Fountain plaza" },
+  { at: msAt("liberty"), name: "Duck pond" },
+  { at: msAt("pyramid"), name: "New neighbors" },
+  { at: msAt("goldengate"), name: "Street lights and traffic" },
+  { at: msAt("eiffel"), name: "Ferris wheel" },
+  { at: msAt("empire"), name: "Hot-air balloons" },
+  { at: msAt("taipei"), name: "Cable car" },
+  { at: msAt("cntower"), name: "Waterfall" },
+  { at: msAt("skytree"), name: "Floating gardens" },
+  { at: msAt("merdeka"), name: "Fireworks" },
+  { at: msAt("burj"), name: "Rainbow" },
+  { at: msAt("jeddah"), name: "Sky beacon" },
 ];
+/** Before upgrades needed taller towers, the first six came at these heights (meters).
+ *  Saves from then keep every upgrade they had already built. */
+export const OLD_UPGRADE_HEIGHTS = [15, 51, 93, 139, 184, 227];

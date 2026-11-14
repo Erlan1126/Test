@@ -32,7 +32,7 @@ describe("finishing a tower", () => {
     const out = recordRun(s, run({ meters: 60, floors: 12 }), Date.now(), seeded(2));
     expect(isSkinUnlocked(s, SKINS.find(x => x.id === "brick")!)).toBe(true);
     expect(isSkinUnlocked(s, SKINS.find(x => x.id === "ocean")!)).toBe(true);
-    expect(islandLevel(s)).toBe(2);
+    expect(islandLevel(s)).toBe(1); // 60 m clears Niagara Falls (51 m): the fountain plaza
     expect(out.rewards.some(r => r.text.includes("Brick Block and Ocean Breeze"))).toBe(true);
     const again = recordRun(s, run({ meters: 60, floors: 12 }), Date.now(), seeded(2));
     expect(again.rewards.some(r => r.kind === "skin")).toBe(false);
@@ -149,5 +149,18 @@ describe("missions and trophies outside a tower", () => {
     s.profile.gift.streak = 7;
     expect(awardStandingTrophies(s)).toEqual(["Dedicated"]);
     expect(awardStandingTrophies(s)).toEqual([]);
+  });
+});
+
+describe("island upgrades", () => {
+  it("need taller towers now, but old saves keep what they had built", async () => {
+    const { normalize } = await import("../src/logic/save");
+    const old = normalize({ bestMeters: 250 }); // had all six under the old heights
+    expect(old.islandKept).toBe(6);
+    expect(islandLevel(old)).toBe(6);
+    const fresh = normalize({ bestMeters: 250, islandKept: 0 });
+    expect(islandLevel(fresh)).toBe(4); // fountain, pond, neighbors, street lights
+    fresh.bestMeters = 1001;
+    expect(islandLevel(fresh)).toBe(12);
   });
 });

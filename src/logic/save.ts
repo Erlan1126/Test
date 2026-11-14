@@ -8,7 +8,7 @@ import { SHAPES } from "../data/shapes";
 import { SKYLINE_SIZE, type SkylineTower } from "./skyline";
 import { ALL_POSTCARDS, migratePostcard } from "./postcards";
 import type { BoostId } from "../data/shop";
-import { ISLAND_THEMES } from "../data/islands";
+import { ISLAND_THEMES, OLD_UPGRADE_HEIGHTS } from "../data/islands";
 import { CITY } from "../data/daily";
 import { PRODUCTS } from "../data/premium";
 import type { Mode } from "./types";
@@ -45,6 +45,8 @@ export interface SaveData {
   v: 2;
   best: number;
   bestMeters: number;
+  /** Island upgrades kept from before they needed taller towers (see islandLevel). */
+  islandKept: number;
   /** Spendable stars. */
   stars: number;
   /** All stars ever earned. */
@@ -141,6 +143,7 @@ export function defaultSave(): SaveData {
     v: 2,
     best: 0,
     bestMeters: 0,
+    islandKept: 0,
     stars: 0,
     starsEarned: 0,
     skin: "glass",
@@ -245,6 +248,10 @@ export function normalize(raw: unknown): SaveData {
     v: 2,
     best: int(r.best, 0),
     bestMeters: int(r.bestMeters, 0),
+    // Saves from before carry the upgrades their best tower had built under the old heights.
+    islandKept: r.islandKept === undefined
+      ? OLD_UPGRADE_HEIGHTS.filter(m => int(r.bestMeters, 0) > m).length
+      : Math.min(OLD_UPGRADE_HEIGHTS.length, int(r.islandKept, 0)),
     // Coins were folded into stars: old saves get theirs converted once.
     stars: int(r.stars, 0) + Math.floor(int(r.coins, 0) / COINS_PER_STAR),
     starsEarned: int(r.starsEarned, 0),

@@ -131,6 +131,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   const trees = TREES.filter(tr =>
     !(has(0) && near(tr.x, tr.z, FOUNTAIN.x, FOUNTAIN.z, 2)) && !(has(1) && near(tr.x, tr.z, POND.x, POND.z, POND.r + 1))
     && !(has(4) && near(tr.x, tr.z, WHEEL.x, WHEEL.z, 3))
+    && !(has(6) && near(tr.x, tr.z, 20.5, 4.5, 1.8)) && !(has(7) && Math.abs(tr.x - POND.x) < 1.8 && tr.z > POND.z) && !(has(11) && near(tr.x, tr.z, -16, -9.5, 2))
     && !o.city.some(id => { const s = BUILD_SPOTS[id]; return s && near(tr.x, tr.z, s.x, s.z, s.r + 0.6); })
     && !(has(2) && EXTRA_NEIGHBORS.some(b => tr.x > b.x0 - 1 && tr.x < b.x1 + 1 && tr.z > b.z0 - 1 && tr.z < b.z1 + 1)));
   g.add(treeInstances(trees, t));
@@ -196,6 +197,124 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     }
   }
 
+  if (has(6)) {
+    // A cable car from a station on the island's edge out to the floating rock beside it.
+    const [ax, ay, az] = [20.5, 5.2, 4.5], rk = ROCKS[2], [bx, by, bz] = [rk.x, rk.y + 4.2, rk.z];
+    const station = (x: number, y0: number, z: number, h: number) => {
+      g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.4, h, 1.4).translate(x, y0 + h / 2, z), std("#e9ecef"))));
+      g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, 1.8).translate(x, y0 + h + 0.12, z), std("#ff6b6b"))));
+    };
+    station(ax, 0, az, ay - 0.3);
+    station(bx, rk.y + 0.2, bz, by - rk.y - 0.5);
+    const len = Math.hypot(bx - ax, by - ay, bz - az);
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, len, 4), std("#343a40"));
+    cable.position.set((ax + bx) / 2, (ay + by) / 2 + 0.3, (az + bz) / 2);
+    cable.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(bx - ax, by - ay, bz - az).normalize());
+    g.add(cable);
+    const cab = new THREE.Group();
+    cab.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.75, 0.7).translate(0, -0.7, 0), std("#ffd43b", { roughness: 0.4 })));
+    cab.add(new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.3, 0.72).translate(0, -0.55, 0), std("#bfe3ff", { roughness: 0.1 })));
+    cab.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4).translate(0, -0.1, 0), std("#343a40")));
+    cab.userData.dynamic = true;
+    g.add(shadowed(cab));
+    anims.push(time => {
+      const k = (1 - Math.cos(time * 0.25)) / 2; // eases to a stop at each station
+      cab.position.set(ax + (bx - ax) * k, ay + (by - ay) * k + 0.3, az + (bz - az) * k);
+    });
+  }
+  if (has(7)) {
+    // A stream from the duck pond running off the front edge of the island as a waterfall.
+    const wx = POND.x, edge = I + 0.02;
+    const tex = waterTexture();
+    const fall = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+    fall.userData.dynamic = true;
+    g.add(new THREE.Mesh(new THREE.PlaneGeometry(2, edge - POND.z - POND.r + 0.4).rotateX(-Math.PI / 2).translate(wx, 0.28, (edge + POND.z + POND.r - 0.4) / 2), water));
+    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 26).translate(wx, -13 + 0.28, edge + 0.08), fall);
+    g.add(sheet);
+    const mist = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 8).scale(1.4, 0.7, 0.8).translate(wx, -24, edge + 0.6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
+    g.add(mist);
+    anims.push(time => { tex.offset.y = time * 0.9; });
+  }
+  if (has(8)) {
+    // Three little islands of garden floating around the big one.
+    const spots: [number, number, number, string][] = [[-31, 2, -14, "#ff8fab"], [-12, -2, -33, "#ffd43b"], [33, 1, 12, "#b197fc"]];
+    spots.forEach(([x, y, z, flower], i) => {
+      const isl = new THREE.Group();
+      const rock = new THREE.Mesh(new THREE.ConeGeometry(3, 4.5, 7).rotateX(Math.PI).translate(0, -2.25, 0), new THREE.MeshStandardMaterial({ color: col(t.rockL), roughness: 1, flatShading: true }));
+      isl.add(rock);
+      isl.add(new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.4, 14).translate(0, 0.2, 0), std(t.lawn)));
+      isl.add(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.4, 6).translate(-0.8, 1.1, 0), std(t.trunk)));
+      isl.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 1).translate(-0.8, 2.3, 0), std(t.leaf[0], { flatShading: true })));
+      for (let k = 0; k < 6; k++) isl.add(new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 4).translate(0.9 + Math.cos(k) * 0.9, 0.5, Math.sin(k) * 0.9), std(k % 2 ? flower : "#ffffff")));
+      isl.userData.dynamic = true;
+      g.add(shadowed(isl));
+      anims.push(time => { isl.position.set(x, y + Math.sin(time * 0.4 + i * 2) * 0.7, z); });
+    });
+  }
+  if (has(9)) {
+    // Fireworks over the island at night: a few bursts of glowing sparks, one after another.
+    const N = 3, SP = 28;
+    const sparks = new THREE.InstancedMesh(new THREE.SphereGeometry(0.28, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), N * SP);
+    sparks.frustumCulled = false;
+    sparks.userData.dynamic = true;
+    const hues = [0xff5d8f, 0xffd43b, 0x63e6be, 0x74c0fc, 0xb197fc];
+    const m4 = new THREE.Matrix4(), c = new THREE.Color(), dirs = Array.from({ length: SP }, (_, i) => {
+      const yv = 1 - (2 * (i + 0.5)) / SP, r = Math.sqrt(1 - yv * yv), a = i * 2.4;
+      return new THREE.Vector3(Math.cos(a) * r, yv, Math.sin(a) * r);
+    });
+    g.add(sparks);
+    anims.push((time, night) => {
+      const mat = sparks.material as THREE.MeshBasicMaterial;
+      mat.opacity = Math.max(0, night - 0.3) * 1.4;
+      sparks.visible = mat.opacity > 0.01;
+      if (!sparks.visible) return;
+      for (let b = 0; b < N; b++) {
+        const cyc = time / 3.2 + b / N, n = Math.floor(cyc), k = cyc - n;
+        const cx = (hash(n, b, 1) - 0.5) * 30, cz = (hash(n, b, 2) - 0.5) * 30, cy = 24 + hash(n, b, 3) * 10;
+        const rad = 5 * Math.sqrt(k), sz = k < 0.85 ? 1 : (1 - k) / 0.15;
+        c.setHex(hues[Math.floor(hash(n, b, 4) * hues.length)]);
+        for (let i = 0; i < SP; i++) {
+          const d = dirs[i];
+          m4.makeScale(sz, sz, sz).setPosition(cx + d.x * rad, cy + d.y * rad - k * k * 3, cz + d.z * rad);
+          sparks.setMatrixAt(b * SP + i, m4);
+          sparks.setColorAt(b * SP + i, c);
+        }
+      }
+      sparks.instanceMatrix.needsUpdate = true;
+      if (sparks.instanceColor) sparks.instanceColor.needsUpdate = true;
+    });
+  }
+  if (has(10)) {
+    // A soft rainbow arching behind the island.
+    const colors = [0xff6b6b, 0xffa94d, 0xffd43b, 0x69db7c, 0x4dabf7, 0x9775fa];
+    const bow = new THREE.Group();
+    colors.forEach((cl, i) => {
+      bow.add(new THREE.Mesh(new THREE.TorusGeometry(34 - i * 1.1, 0.55, 6, 48, Math.PI), new THREE.MeshBasicMaterial({ color: cl, transparent: true, opacity: 0.3, depthWrite: false })));
+    });
+    bow.rotation.y = Math.PI / 4;
+    bow.position.set(-30, -14, -30);
+    bow.userData.dynamic = true;
+    g.add(bow);
+    anims.push((_t, night) => bow.children.forEach(m => { ((m as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.3 * (1 - night * 0.8); }));
+  }
+  if (has(11)) {
+    // A golden obelisk whose beam of light reaches up into the night sky.
+    const [x, z] = [-16, -9.5];
+    g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 2.2).translate(x, 0.25, z), std("#e9ecef"))));
+    g.add(shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.75, 5.5, 4).rotateY(Math.PI / 4).translate(x, 3.25, z), std("#ffc94a", { metalness: 0.9, roughness: 0.25 }))));
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.9, 4).rotateY(Math.PI / 4).translate(x, 6.45, z), std("#fff3bf", { emissive: col("#ffd23f"), emissiveIntensity: 0.6 }));
+    tip.userData.dynamic = true;
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.35, 90, 12, 1, true).translate(x, 6.9 + 45, z), beamMat);
+    beam.userData.dynamic = true;
+    g.add(tip, beam);
+    anims.push((time, night) => {
+      (tip.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6 + night * 2.5;
+      beamMat.opacity = night * (0.22 + Math.sin(time * 1.5) * 0.04);
+      beam.visible = night > 0.05;
+    });
+  }
+
   // ---- City buildings ----
   for (const id of o.city) {
     const s = BUILD_SPOTS[id];
@@ -246,6 +365,24 @@ function mergeStatic(root: THREE.Group): void {
     mesh.receiveShadow = true;
     root.add(mesh);
   }
+}
+
+/** Falling-water streaks that scroll down the waterfall. */
+function waterTexture(): THREE.CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 128;
+  const x = c.getContext("2d")!;
+  x.fillStyle = "#7fd3f7"; x.fillRect(0, 0, 64, 128);
+  for (let i = 0; i < 26; i++) {
+    x.fillStyle = `rgba(255,255,255,${0.25 + hash(i, 1, 2) * 0.5})`;
+    x.fillRect(hash(i, 3, 4) * 62, hash(i, 5, 6) * 128, 1.5 + hash(i, 7, 8) * 2, 18 + hash(i, 9, 1) * 40);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 4);
+  tex.userData.own = true; // freed with the island
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 function cityBuilding(id: string, anims: ((t: number, n: number) => void)[]): THREE.Group {

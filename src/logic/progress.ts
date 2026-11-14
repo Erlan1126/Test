@@ -51,7 +51,10 @@ export function skinUnlockText(skin: Skin): string {
   return t("Build taller than {name} ({m} m)", { name: t(ms.name), m: ms.m });
 }
 
-export const islandLevel = (save: SaveData): number => ISLAND_UPGRADES.filter(u => save.bestMeters > MILESTONES[u.at].m).length;
+/** Island upgrades built: those your best tower has earned, and never fewer than you
+ *  had before upgrades got harder. */
+export const islandLevel = (save: SaveData): number =>
+  Math.max(save.islandKept, ISLAND_UPGRADES.filter(u => save.bestMeters > MILESTONES[u.at].m).length);
 export const themeUnlocked = (save: SaveData, t: IslandTheme): boolean => districtOpen(save, t);
 export const currentTheme = (save: SaveData): IslandTheme =>
   ISLAND_THEMES.find(t => t.id === save.island && themeUnlocked(save, t)) ?? ISLAND_THEMES[0];
