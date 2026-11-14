@@ -1,5 +1,6 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
+import { LANGS, type LangSetting } from "../i18n";
 import { cleanPace } from "./ghost";
 import { COINS_PER_STAR } from "../data/daily";
 import { MISSION_KEYS, type Mission } from "../data/missions";
@@ -29,7 +30,7 @@ export interface Settings {
   /** Auto mode found even smooth 3D too slow here: use the simpler flat graphics. */
   flat: boolean;
   /** Language: "auto" follows the device. */
-  lang: "auto" | "en" | "es";
+  lang: LangSetting;
 }
 
 export interface RunRecord {
@@ -295,7 +296,7 @@ export function normalize(raw: unknown): SaveData {
       autoLow: set.gfx === GFX ? bool(set.autoLow, false) : false,
       gfx: GFX,
       flat: set.gfx === GFX ? bool(set.flat, false) : false,
-      lang: (["auto", "en", "es"].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
+      lang: (["auto", ...LANGS].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
     },
     tutorialDone: bool(r.tutorialDone, false),
     seenFeatures: strList(r.seenFeatures),

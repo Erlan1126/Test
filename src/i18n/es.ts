@@ -769,7 +769,7 @@ export const ES: Record<string, string> = {
   "Seasoned": "Veterano",
   "Reach builder level 15": "Llega al nivel de constructor 15",
   "Metropolis": "Metrópolis",
-  "Grow Skyhaven to 100,000 people": "Haz crecer Skyhaven hasta 100 000 personas",
+  "Grow Skyhaven to 100,000 people": "Haz crecer Cielópolis hasta 100 000 personas",
   "Build your first tower": "Construye tu primera torre",
   "Getting Tall": "Creciendo",
   "Build 25 floors in one tower": "Construye 25 pisos en una torre",

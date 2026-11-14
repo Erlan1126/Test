@@ -1,7 +1,7 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
 import { formatRecoveryCode } from "../online";
 import { fmt } from "../core/util";
-import { getLang, t, tn } from "../i18n";
+import { getLang, t, tn, type LangSetting } from "../i18n";
 import { CHALLENGES, CHAPTER_CHEST, CHAPTERS, STAGES_PER_CHAPTER } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
 import { ISLAND_THEMES } from "../data/islands";
@@ -551,7 +551,7 @@ export class Sheets {
     if (day === dayKey(-1)) return t("Yesterday");
     const [y, m, d] = day.split("-").map(Number);
     if (!y || !m || !d) return "";
-    return new Date(y, m - 1, d).toLocaleDateString(getLang() === "es" ? "es" : undefined, { month: "short", day: "numeric" });
+    return new Date(y, m - 1, d).toLocaleDateString(getLang() === "en" ? undefined : getLang(), { month: "short", day: "numeric" });
   }
 
   // ---------- Settings ----------
@@ -646,7 +646,7 @@ export class Sheets {
       this.host.applyQuality();
     }));
     document.querySelectorAll<HTMLButtonElement>("[data-lang]").forEach(b => b.addEventListener("click", () => {
-      st().lang = b.dataset.lang as "auto" | "en" | "es";
+      st().lang = b.dataset.lang as LangSetting;
       this.host.persist();
       this.click();
       this.renderSettings();

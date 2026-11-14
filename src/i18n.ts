@@ -1,11 +1,15 @@
 // Translations. English text is the key, so English needs no dictionary and any string
 // without a translation falls back to English. `{name}` placeholders are filled from `vars`.
+import { DE } from "./i18n/de";
 import { ES } from "./i18n/es";
+import { FR } from "./i18n/fr";
+import { PT } from "./i18n/pt";
 
-export type Lang = "en" | "es";
+export type Lang = "en" | "es" | "pt" | "fr" | "de";
+export const LANGS: Lang[] = ["en", "es", "pt", "fr", "de"];
 export type LangSetting = "auto" | Lang;
 
-const DICTS: Record<Lang, Record<string, string> | null> = { en: null, es: ES };
+const DICTS: Record<Lang, Record<string, string> | null> = { en: null, es: ES, pt: PT, fr: FR, de: DE };
 
 // English until the app picks a language, so the rules and tests always start the same.
 let lang: Lang = "en";
@@ -16,8 +20,7 @@ export const getLang = (): Lang => lang;
 export function deviceLang(list: readonly string[] = browserLangs()): Lang {
   for (const l of list) {
     const code = l.toLowerCase().split(/[-_]/)[0];
-    if (code === "es") return "es";
-    if (code === "en") return "en";
+    if ((LANGS as string[]).includes(code)) return code as Lang;
   }
   return "en";
 }

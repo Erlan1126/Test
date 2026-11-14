@@ -95,14 +95,25 @@ describe("translations", () => {
     expect(names.filter(n => !(n in dictionary("es")))).toEqual([]);
   });
 
-  it("picks Spanish for any Spanish locale and English otherwise", () => {
+  it("picks the first device language the game speaks, else English", () => {
     expect(deviceLang(["es-MX"])).toBe("es");
     expect(deviceLang(["es-US", "en-US"])).toBe("es");
-    expect(deviceLang(["es"])).toBe("es");
     expect(deviceLang(["en-US", "es-MX"])).toBe("en");
-    expect(deviceLang(["fr-FR", "es-ES"])).toBe("es");
-    expect(deviceLang(["de-DE"])).toBe("en");
+    expect(deviceLang(["pt-BR"])).toBe("pt");
+    expect(deviceLang(["fr-FR", "es-ES"])).toBe("fr");
+    expect(deviceLang(["de-DE"])).toBe("de");
+    expect(deviceLang(["ja-JP", "it-IT"])).toBe("en");
     expect(deviceLang([])).toBe("en");
+  });
+
+  it("has every Spanish key in Portuguese, French and German, with the same placeholders", () => {
+    for (const l of ["pt", "fr", "de"] as const) {
+      const d = dictionary(l);
+      for (const [key] of Object.entries(ES)) {
+        expect(d[key], `${l}: ${key}`).toBeTruthy();
+        expect(placeholders(d[key]), `${l}: ${key}`).toEqual(placeholders(key));
+      }
+    }
   });
 
   it("writes reward lines in the chosen language", () => {
