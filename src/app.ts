@@ -35,6 +35,9 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower } from "./stats";
+
+/** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
+const EASY_TOWERS = 5;
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
@@ -739,8 +742,8 @@ export class App implements DailyHost {
     this.recorder = new RunRecorder({
       mode, seed, day, week: weekIndex(), challenge: challenge?.id,
       boosts: { rewind: this.boosts.rewind, gold: this.boosts.gold },
-      // A new player's first towers start a little slower.
-      ...(this.tutorial && mode === "classic" ? { easy: true } : {}),
+      // A new player's first five towers are gentler practice towers (not ranked).
+      ...((this.tutorial || this.save.profile.towers < EASY_TOWERS) && mode === "classic" ? { easy: true } : {}),
     });
     this.sim = simFor(this.recorder.rec, (this.boosts.xp ? 2 : 1) * (event?.xp ?? 1));
     this.startGhost(mode);

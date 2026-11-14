@@ -156,7 +156,9 @@ export class TowerSim {
   speedFor(n: number): number {
     const easy = this.cfg.easy && n <= 6 ? 0.7 : 1;
     if (this.cfg.mode === "zen") return floorSpeed(Math.min(n, 12)) * easy;
-    return ((this.cfg.rules ?? 1) >= 4 ? floorSpeed4(n) : floorSpeed(n)) * easy;
+    // Rules 4 is faster, except a new player's practice towers keep the gentle curve.
+    const fast = (this.cfg.rules ?? 1) >= 4 && !this.cfg.easy;
+    return (fast ? floorSpeed4(n) : floorSpeed(n)) * easy;
   }
 
   /** Picks the kind of the next floor. Always draws the same number of random values so
