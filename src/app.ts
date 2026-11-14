@@ -1779,6 +1779,7 @@ export class App implements DailyHost {
     this.sound.intensity = active ? 1 + (sim.level >= 12 ? 1 : 0) + (sim.combo >= 5 ? 1 : 0) : 0;
     // Ambience follows the camera: city and birds near the ground, wind higher up.
     const lvl = this.state === "over" || this.state === "menu" ? 0 : sim.level;
+    this.sound.setSong(currentTheme(this.save).id);
     this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(sim.stack.length), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
     const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" && this.fallCam <= 0 ? "over" : "play";

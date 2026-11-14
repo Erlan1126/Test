@@ -6,14 +6,16 @@
 // shared reverb "room" and a compressor that keeps loud moments from distorting.
 import type { Settings } from "./logic/save";
 
+import { degreeToSemi, melody, sectionAt, songFor, type Song } from "./music";
+
 const SCALE = [0, 2, 4, 7, 9];
-/** Bright daytime chords (C, G, Am, F) and softer night ones (Am, F, C, Em), as semitones from C. */
-const DAY = [[0, 4, 7, 11], [7, 11, 14, 17], [9, 12, 16, 19], [5, 9, 12, 16]];
-const NIGHT = [[9, 12, 16, 19], [5, 9, 12, 14], [0, 4, 7, 14], [4, 7, 11, 14]];
 
 export class Sound {
-  /** 0 to 3: how much of the music plays (pad, bass, melody, drums and sparkles). */
+  /** 0 to 3: how much of the music plays (pad and a soft tune, then bass, then the full
+   *  melody and drums, then bells on top). */
   intensity = 0;
+  /** The island's song (see music.ts). */
+  private song: Song = songFor("meadow");
   private ac: AudioContext | null = null;
   private sfx: GainNode | null = null;
   private mus: GainNode | null = null;
@@ -77,7 +79,7 @@ export class Sound {
 
     // A gentle echo for the melody.
     const echo = ac.createDelay(1);
-    echo.delayTime.value = (60 / 84) * 0.75;
+    echo.delayTime.value = (60 / this.song.bpm) * 0.75;
     const fb = ac.createGain();
     fb.gain.value = 0.32;
     const tone = ac.createBiquadFilter();
@@ -263,11 +265,19 @@ export class Sound {
   // Gentle generative music. A pad always plays; bass, a plucked melody with an echo, soft
   // drums and high sparkles join as `intensity` rises. Night swaps to softer chords.
 
+  /** Switches to an island's song (it starts at the top of its next bar). */
+  setSong(id: string): void {
+    if (this.song.id === id) return;
+    this.song = songFor(id);
+    if (this.echo) this.echo.delayTime.value = (60 / this.song.bpm) * 0.75;
+    this.step = Math.ceil(this.step / 8) * 8;
+  }
+
   private tick(): void {
     const ac = this.ac;
     if (!ac || ac.state !== "running") { if (ac) this.next = ac.currentTime + 0.1; return; }
     this.ambientEvents();
-    const eighth = 60 / 84 / 2;
+    const eighth = 60 / this.song.bpm / 2;
     if (this.next < ac.currentTime) this.next = ac.currentTime + 0.05;
     while (this.next < ac.currentTime + 0.3) {
       if (this.settings.music) this.playStep(this.step, this.next - ac.currentTime, eighth);
@@ -277,20 +287,53 @@ export class Sound {
   }
 
   private playStep(step: number, delay: number, e: number): void {
-    const prog = this.night > 0.5 ? NIGHT : DAY;
-    const chord = prog[Math.floor(step / 16) % 4], beat = step % 8;
+    const song = this.song, bar = Math.floor(step / 8), beat = step % 8;
+    const { section, barInSection, lastBarOfSection } = sectionAt(bar);
+    const chord = song[section][barInSection];
     const f = (semi: number) => 130.81 * Math.pow(2, semi / 12);
-    if (step % 16 === 0) chord.forEach((n, i) => this.pad(f(n + 12), e * 16, delay, i % 2 ? 0.3 : -0.3));
-    if (this.intensity >= 1 && beat % 4 === 0) this.tone(f(chord[0] - 12), e * 3.5, "sine", 0.18, delay, 0, this.mus);
-    if (this.intensity >= 2) {
-      const n = chord[[0, 1, 2, 3, 2, 1, 0, 2][beat]] + 24;
-      this.pluck(f(n), e * 1.6, delay);
-      if (beat % 4 === 0) this.kick(delay);
-      if (beat % 2 === 1) this.hat(delay);
+    const semi = (deg: number) => degreeToSemi(song, deg);
+    const night = this.night > 0.5, lvl = this.intensity;
+    // Pad: the chord, held for the bar.
+    if (beat === 0) chord.forEach((d, i) => this.pad(f(semi(d) + 12), e * 8, delay, i % 2 ? 0.3 : -0.3));
+    // Bass: root on the beat, a passing note into the next bar.
+    if (lvl >= 1) {
+      if (beat === 0 || (beat === 4 && song.drive > 0)) this.tone(f(semi(chord[0]) - 12), e * 3.5, "sine", 0.17, delay, 0, this.mus);
+      if (beat === 6 && song.drive > 0) this.tone(f(semi(chord[2]) - 12), e * 1.6, "sine", 0.1, delay, 0, this.mus);
     }
-    if (this.intensity >= 3 && beat % 2 === 1 && Math.random() < 0.6) {
-      this.bell(f(chord[Math.floor(Math.random() * 4)] + 36), e * 3, 0.025, delay, Math.random() * 1.4 - 0.7, this.mus);
+    // Melody: on the home screen just a few notes (softly), in play the whole tune.
+    const note = melody(song, section)[barInSection * 8 + beat];
+    if (note && (lvl >= 2 || (beat % 4 === 0 && !night))) {
+      this.pluck(f(semi(note.deg) + 12), e * (lvl >= 2 ? note.len * 1.1 + 0.5 : 2.5), delay);
     }
+    // Drums.
+    if (lvl >= 2 && song.drive > 0 && !night) {
+      if (beat === 0 || (beat === 4 && song.drive > 1) || (beat === 5 && song.drive === 1 && bar % 2)) this.kick(delay);
+      if (beat === 4 || (song.drive > 1 && beat === 6 && bar % 2)) this.snare(delay, 1);
+      if (beat % 2 === 1 || (song.drive > 1 && lvl >= 3)) this.hat(delay);
+      // A little fill into each new section.
+      if (lastBarOfSection && beat >= 5) this.snare(delay, 0.5 + (beat - 5) * 0.25);
+    } else if (lvl >= 2 && beat % 4 === 2) this.hat(delay); // the quiet songs just tick
+    // Bells sparkle over the top at full intensity.
+    if (lvl >= 3 && song.sparkle && beat % 2 === 1 && Math.random() < 0.5) {
+      const d = chord[Math.floor(Math.random() * chord.length)];
+      this.bell(f(semi(d) + 36), e * 3, 0.022, delay, Math.random() * 1.4 - 0.7, this.mus);
+    }
+  }
+
+  /** A soft snare: a short burst of filtered noise. */
+  private snare(delay: number, level: number): void {
+    const ac = this.ac;
+    if (!ac || !this.mus || !this.noiseBuf) return;
+    const t = ac.currentTime + delay;
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = this.noiseBuf;
+    f.type = "bandpass"; f.frequency.value = 1800; f.Q.value = 0.7;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.035 * level, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    src.connect(f).connect(g).connect(this.mus);
+    src.start(t, Math.random());
+    src.stop(t + 0.18);
   }
 
   private pad(freq: number, dur: number, delay: number, pan: number): void {
