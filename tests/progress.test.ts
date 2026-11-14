@@ -146,7 +146,7 @@ describe("missions and trophies outside a tower", () => {
 
   it("awards gift-streak trophies without a tower", () => {
     const s = fresh();
-    s.profile.gift.streak = 7;
+    s.profile.gift.streak = 14;
     expect(awardStandingTrophies(s)).toEqual(["Dedicated"]);
     expect(awardStandingTrophies(s)).toEqual([]);
   });

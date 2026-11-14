@@ -238,6 +238,11 @@ export function trophyContext(save: SaveData): TrophyContext {
     giftStreak: save.profile.gift.streak,
     skinsUnlocked: unlockedSkinCount(save),
     challengesDone: save.challenges.length,
+    towers: save.profile.towers,
+    floors: save.profile.floors,
+    perfects: save.profile.perfects,
+    level: save.profile.level,
+    population: save.population,
   };
 }
 

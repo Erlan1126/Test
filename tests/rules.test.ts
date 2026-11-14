@@ -61,7 +61,7 @@ describe("XP and levels", () => {
     expect(runXp({ ...base, mode: "daily" }, false)).toBeGreaterThan(classic);
     expect(runXp({ ...base, mode: "zen" }, false)).toBeLessThan(classic);
     expect(runXp({ ...base, xpMultiplier: 2 }, false)).toBe(classic * 2);
-    expect(runXp(base, true)).toBe(classic + 20);
+    expect(runXp(base, true)).toBe(classic + 15);
   });
 });
 

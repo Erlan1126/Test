@@ -39,13 +39,15 @@ export function landmarkIndex(meters: number): number {
 // ---------- XP and builder levels ----------
 
 /** XP needed to go from level l to the next one. */
-export const xpNeeded = (l: number): number => 200 + (l - 1) * 50;
+export const xpNeeded = (l: number): number => 300 + (l - 1) * 100;
 
 /** XP for a finished tower. Every tower earns some; daily towers earn more, Zen towers less. */
 export function runXp(run: RunSummary, newBest: boolean): number {
   // Floors and perfect drops, plus a small capped share of the score: scores run into the
   // thousands on tall towers, and an uncapped share let players gain many levels a minute.
-  let xp = run.floors + run.perfects + Math.min(60, Math.floor(run.score / 100)) + (newBest ? 20 : 0);
+  // A small base for every tower, then floors and perfect drops (each capped, so one
+  // enormous tower can't jump several levels), a little for the score and a new best.
+  let xp = 10 + Math.min(run.floors, 120) * 0.5 + Math.min(run.perfects, 120) * 0.2 + Math.min(20, Math.floor(run.score / 500)) + (newBest ? 15 : 0);
   if (run.mode === "daily") xp *= 1.5;
   // Zen can't be lost, so it earns much less.
   if (run.mode === "zen") xp *= 0.3;
