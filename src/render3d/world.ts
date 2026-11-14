@@ -83,12 +83,34 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   }
 
   // ---- Lake (always), fountain and duck pond (upgrades) ----
-  const water = new THREE.MeshStandardMaterial({ color: col("#5ec8f2"), roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.92 });
+  // Water: a clear, rippling surface over a basin that is pale at the edges and deep blue
+  // in the middle, with a stone coping and a thin line of foam where it meets the stone.
+  const ripples = waterNormals();
+  const water = new THREE.MeshStandardMaterial({
+    color: col("#3aa7d8"), roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.8,
+    normalMap: ripples, normalScale: new THREE.Vector2(0.35, 0.35), envMapIntensity: 1.6,
+  });
+  water.userData.dynamic = true;
+  anims.push(time => { ripples.offset.set(time * 0.018, time * 0.011); });
+  const basin = new THREE.MeshStandardMaterial({ map: basinTexture(), roughness: 0.9 });
+  const foam = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
   const pool = (x: number, z: number, r: number, rim: string) => {
-    g.add(shadowed(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.35, r + 0.45, 0.2, 28).translate(x, 0.1, z), std(rim)), false));
-    const w = new THREE.Mesh(new THREE.CircleGeometry(r, 28).rotateX(-Math.PI / 2).translate(x, 0.27, z), water);
+    const stone = std(rim, { roughness: 0.75 });
+    // Coping: an outer wall, a flat ring on top and the inner wall down to the basin.
+    g.add(shadowed(new THREE.Mesh(new THREE.CylinderGeometry(r + 0.45, r + 0.5, 0.34, 40, 1, true).translate(x, 0.17, z), stone), false));
+    g.add(shadowed(new THREE.Mesh(new THREE.RingGeometry(r, r + 0.45, 40).rotateX(-Math.PI / 2).translate(x, 0.34, z), stone), false));
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.34, 40, 1, true).translate(x, 0.17, z), std(rim, { roughness: 0.8, side: THREE.BackSide }));
+    g.add(shadowed(inner, false));
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2).translate(x, 0.02, z), basin);
+    floor.receiveShadow = true;
+    g.add(floor);
+    const w = new THREE.Mesh(new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2).translate(x, 0.27, z), water);
     w.receiveShadow = true;
+    w.userData.dynamic = true;
     g.add(w);
+    const f = new THREE.Mesh(new THREE.RingGeometry(r - 0.12, r, 40).rotateX(-Math.PI / 2).translate(x, 0.28, z), foam);
+    f.userData.dynamic = true;
+    g.add(f);
   };
   pool(LAKE.x, LAKE.z, LAKE.r, "#d9cfc0");
   if (has(0)) {
@@ -102,20 +124,62 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   if (has(1)) pool(POND.x, POND.z, POND.r, "#8a7a5a");
 
   // ---- Houses and the neighbors' buildings ----
+  // Little houses: clapboard walls on a stone footing, a gabled roof with eaves, framed
+  // windows with sills and shutters, and a front door with a step and a porch light.
+  const siding = sidingTexture();
+  const winLit = std("#9fc8e8", { roughness: 0.1, metalness: 0.4, emissive: col("#ffcf7a"), emissiveIntensity: 0 });
+  winLit.userData.dynamic = true;
+  const frameMat = std("#fbfaf6", { roughness: 0.6 });
+  const footing = std("#9a948a", { roughness: 0.95 });
+  anims.push((_t, night) => { winLit.emissiveIntensity = night * 1.5; });
   for (const [x, z, i] of HOUSES) {
     const h = new THREE.Group();
-    h.add(new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.6, 2.2).translate(0, 0.8, 0), std(HOUSE_WALLS[i % 6])));
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.2, 4).rotateY(Math.PI / 4).scale(1.05, 1, 0.9).translate(0, 2.2, 0), new THREE.MeshStandardMaterial({ color: col(HOUSE_ROOFS[i % 6]), roughness: 0.8, flatShading: true }));
-    h.add(roof);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.05).translate(0, 0.45, 1.12), std("#5a3e2b"));
-    const win = std("#9fd3ff", { emissive: col("#ffd27a"), emissiveIntensity: 0 });
-    win.userData.dynamic = true;
-    h.add(door, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.05).translate(0.8, 1, 1.12), win), new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.05).translate(-0.8, 1, 1.12), win));
-    anims.push((_t, night) => { win.emissiveIntensity = night * 1.4; });
+    const W = 2.6, D = 2.2, H = 1.6, wall = new THREE.MeshStandardMaterial({ color: col(HOUSE_WALLS[i % 6]), map: siding, roughness: 0.8 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: col(HOUSE_ROOFS[i % 6]), roughness: 0.7, flatShading: true });
+    h.add(new THREE.Mesh(new THREE.BoxGeometry(W + 0.12, 0.2, D + 0.12).translate(0, 0.1, 0), footing));
+    h.add(new THREE.Mesh(new THREE.BoxGeometry(W, H - 0.2, D).translate(0, 0.2 + (H - 0.2) / 2, 0), wall));
+    // Gable ends: triangles of wall under the roof.
+    const gable = new THREE.Shape([new THREE.Vector2(-D / 2, 0), new THREE.Vector2(D / 2, 0), new THREE.Vector2(0, 0.95)]);
+    const gableGeo = new THREE.ExtrudeGeometry(gable, { depth: W, bevelEnabled: false }).rotateY(Math.PI / 2).translate(-W / 2, H, 0);
+    h.add(new THREE.Mesh(gableGeo, wall));
+    // Roof: two slabs with an overhang, meeting at a ridge.
+    const slope = Math.atan2(0.95, D / 2), len = Math.hypot(0.95, D / 2) + 0.35;
+    for (const sd of [-1, 1]) {
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(W + 0.5, 0.12, len), roofMat);
+      slab.rotation.x = sd * slope;
+      slab.position.set(0, H + 0.95 / 2 - 0.02, sd * (D / 4 + 0.06));
+      h.add(slab);
+    }
+    h.add(new THREE.Mesh(new THREE.BoxGeometry(W + 0.55, 0.1, 0.16).translate(0, H + 0.97, 0), roofMat));
+    // Front door with a frame, a step and a little light.
+    h.add(new THREE.Mesh(new THREE.BoxGeometry(0.66, 1.0, 0.06).translate(0, 0.2 + 0.5, D / 2 + 0.01), frameMat));
+    h.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.06).translate(0, 0.2 + 0.45, D / 2 + 0.03), std(["#5a3e2b", "#2f5d8a", "#8a2f3b", "#2f6b4f"][i % 4], { roughness: 0.5 })));
+    h.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.35).translate(0, 0.06, D / 2 + 0.2), footing));
+    const porch = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4).translate(0.42, 1.2, D / 2 + 0.06), winLit);
+    h.add(porch);
+    // Windows: front pair and one on each side, framed, with sills and shutters.
+    const shutter = std(HOUSE_ROOFS[i % 6], { roughness: 0.7 });
+    const windowAt = (wx: number, wz: number, rotY: number) => {
+      const w = new THREE.Group();
+      w.add(new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.56, 0.05), frameMat));
+      w.add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.44, 0.06), winLit));
+      w.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.44, 0.07), frameMat), new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.03, 0.07), frameMat));
+      w.add(new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.05, 0.14).translate(0, -0.3, 0.04), frameMat));
+      for (const sd of [-1, 1]) w.add(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.56, 0.04).translate(sd * 0.39, 0, 0), shutter));
+      w.position.set(wx, 1.05, wz); w.rotation.y = rotY;
+      h.add(w);
+    };
+    windowAt(-0.85, D / 2 + 0.01, 0); windowAt(0.85, D / 2 + 0.01, 0);
+    windowAt(W / 2 + 0.01, 0, Math.PI / 2); windowAt(-W / 2 - 0.01, 0, -Math.PI / 2);
     h.position.set(x, 0, z);
     g.add(shadowed(h));
   }
   const facade = facadeFor(NEIGHBOR_LOOK);
+  const shopGlass = std("#3d5470", { roughness: 0.15, metalness: 0.6 });
+  const corniceMat = std("#eae6dd", { roughness: 0.7 });
+  const balcony = std("#e3e0d8", { roughness: 0.7 });
+  const railing = std("#5f6b7a", { roughness: 0.4, metalness: 0.5 });
+  const AWNINGS = ["#d9534f", "#2f7d6d", "#e8a33d", "#3b6fb6", "#8e5aa8"];
   const nbMat = (c: number[]) => [new THREE.MeshStandardMaterial({ color: col(c), map: facade.map, emissiveMap: facade.lit, emissive: 0xffffff, emissiveIntensity: 0, roughnessMap: facade.orm, metalnessMap: facade.orm, roughness: 1, metalness: 1 }), std(c.map(v => Math.min(255, v * 1.1)))];
   const neighbors = [...NEIGHBORS, ...(has(2) ? EXTRA_NEIGHBORS : [])];
   for (const nb of neighbors) {
@@ -125,6 +189,29 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     g.add(shadowed(m));
     // Rooftop parapet
     g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(nb.x1 - nb.x0 - 0.6, 0.2, nb.z1 - nb.z0 - 0.6).translate((nb.x0 + nb.x1) / 2, nb.h * FH + 0.1, (nb.z0 + nb.z1) / 2), std("#c9ced6"))));
+    // A shopfront ground floor (dark glass, a colored awning over each street side), a
+    // cornice at the roofline and balconies up the two faces you see.
+    const cx = (nb.x0 + nb.x1) / 2, cz = (nb.z0 + nb.z1) / 2, w = nb.x1 - nb.x0, d = nb.z1 - nb.z0, top = nb.h * FH;
+    g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, FH * 0.78, d + 0.06).translate(cx, FH * 0.39, cz), shopGlass), false));
+    g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.16, d + 0.3).translate(cx, top - 0.08, cz), corniceMat)));
+    g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(w + 0.16, 0.12, d + 0.16).translate(cx, FH * 0.84, cz), corniceMat)));
+    const awnMat = std(AWNINGS[neighbors.indexOf(nb) % AWNINGS.length], { roughness: 0.7 });
+    const awnZ = new THREE.Mesh(new THREE.BoxGeometry(w * 0.8, 0.06, 0.7).translate(0, 0, 0.35), awnMat);
+    awnZ.rotation.x = 0.35; awnZ.position.set(cx, FH * 0.95, nb.z1 + 0.02);
+    const awnX = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, d * 0.8).translate(0.35, 0, 0), awnMat);
+    awnX.rotation.z = -0.35; awnX.position.set(nb.x1 + 0.02, FH * 0.95, cz);
+    g.add(shadowed(awnZ), shadowed(awnX));
+    for (let f = 1; f < nb.h; f++) {
+      const y = f * FH + 0.05;
+      for (const k of [-0.25, 0.25]) {
+        // On the +z face...
+        g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 0.5).translate(cx + k * w, y, nb.z1 + 0.25), balcony)));
+        g.add(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.36, 0.04).translate(cx + k * w, y + 0.22, nb.z1 + 0.48), railing));
+        // ...and on the +x face.
+        g.add(shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 1.1).translate(nb.x1 + 0.25, y, cz + k * d), balcony)));
+        g.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 1.1).translate(nb.x1 + 0.48, y + 0.22, cz + k * d), railing));
+      }
+    }
   }
 
   // ---- Trees: instanced, styled by the island theme ----
@@ -641,18 +728,115 @@ function treeInstances(list: { x: number; z: number; size: number; hue: number }
 
 /** Mown stripes and a little noise on the lawn. */
 function lawnTexture(t: IslandTheme): THREE.Texture {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
+  // 1024 px over the whole island (about 23 px a unit), so blades stay crisp up close.
+  const N = 1024, c = document.createElement("canvas");
+  c.width = c.height = N;
   const g = c.getContext("2d")!;
-  g.fillStyle = t.lawn; g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 11; i++) { g.fillStyle = i % 2 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"; g.fillRect(0, i * 256 / 11, 256, 256 / 11); }
-  for (let i = 0; i < 1800; i++) {
-    g.fillStyle = `rgba(${i % 2 ? "255,255,255" : "0,40,0"},${0.04 + hash(i, 2, 3) * 0.05})`;
-    g.fillRect(hash(i, 5, 1) * 256, hash(i, 1, 7) * 256, 2, 2);
+  const base = new THREE.Color(t.lawn), hsl = { h: 0, s: 0, l: 0 };
+  base.getHSL(hsl);
+  const tone = (dl: number, ds = 0, dh = 0, a = 1) => `hsla(${Math.round((hsl.h + dh) * 360)},${Math.round(Math.min(1, Math.max(0, hsl.s + ds)) * 100)}%,${Math.round(Math.min(0.97, Math.max(0.03, hsl.l + dl)) * 100)}%,${a})`;
+  g.fillStyle = t.lawn; g.fillRect(0, 0, N, N);
+  // Soft patches: some sunnier and yellower, some lusher and darker, like a real lawn.
+  for (let i = 0; i < 70; i++) {
+    const x = hash(i, 3, 1) * N, y = hash(i, 3, 2) * N, r = 40 + hash(i, 3, 3) * 150, light = hash(i, 3, 4) > 0.5;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, light ? tone(0.06, -0.05, -0.025, 0.35) : tone(-0.07, 0.05, 0.01, 0.35));
+    gr.addColorStop(1, tone(0, 0, 0, 0));
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Faint mowing stripes.
+  for (let i = 0; i < 22; i++) { g.fillStyle = i % 2 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.025)"; g.fillRect(0, i * N / 22, N, N / 22); }
+  const grassy = t.id === "meadow" || t.id === "blossom" || t.id === "candy";
+  if (grassy) {
+    // Thousands of short blades, each a thin stroke leaning a little, in many greens.
+    g.lineCap = "round";
+    for (let i = 0; i < 26000; i++) {
+      const x = hash(i, 7, 1) * N, y = hash(i, 7, 2) * N, len = 3 + hash(i, 7, 3) * 6, lean = (hash(i, 7, 4) - 0.5) * 3;
+      const k = hash(i, 7, 5);
+      g.strokeStyle = k < 0.45 ? tone(-0.08 - k * 0.1, 0.05) : k < 0.85 ? tone(0.04 + (k - 0.45) * 0.12, -0.02, -0.01) : tone(0.14, -0.1, -0.03);
+      g.globalAlpha = 0.35 + hash(i, 7, 6) * 0.45;
+      g.lineWidth = 0.8 + hash(i, 7, 7) * 0.8;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + lean, y - len); g.stroke();
+    }
+    g.globalAlpha = 1;
+    // Tiny clover leaves and specks of soil.
+    for (let i = 0; i < 900; i++) {
+      g.fillStyle = i % 3 ? tone(-0.12, 0.08, 0.02, 0.5) : "rgba(90,60,30,0.18)";
+      g.beginPath(); g.arc(hash(i, 9, 1) * N, hash(i, 9, 2) * N, 1 + hash(i, 9, 3) * 1.6, 0, Math.PI * 2); g.fill();
+    }
+  } else {
+    // Snow, sand and ash: fine grains with a sparkle here and there.
+    for (let i = 0; i < 30000; i++) {
+      const k = hash(i, 11, 3);
+      g.fillStyle = k < 0.5 ? tone(-0.06 - k * 0.08, 0, 0, 0.5) : k < 0.95 ? tone(0.05, -0.05, 0, 0.45) : "rgba(255,255,255,0.8)";
+      g.fillRect(hash(i, 11, 1) * N, hash(i, 11, 2) * N, 1.5, 1.5);
+    }
+    // Wind ripples across sand and snow.
+    g.strokeStyle = tone(-0.05, 0, 0, 0.25); g.lineWidth = 2;
+    for (let i = 0; i < 90; i++) {
+      const y = hash(i, 13, 1) * N, x = hash(i, 13, 2) * N, w = 60 + hash(i, 13, 3) * 140;
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + w / 2, y - 8, x + w, y); g.stroke();
+    }
   }
   const tex = new THREE.CanvasTexture(c);
   tex.userData.own = true; // freed with the island
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Clapboard siding: soft horizontal boards with a shadow line under each. */
+function sidingTexture(): THREE.Texture {
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 64;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, 64, 64);
+  for (let y = 0; y < 64; y += 8) {
+    const gr = g.createLinearGradient(0, y, 0, y + 8);
+    gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.8, "rgba(0,0,0,0.06)"); gr.addColorStop(1, "rgba(0,0,0,0.2)");
+    g.fillStyle = gr; g.fillRect(0, y, 64, 8);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.own = true;
+  return tex;
+}
+
+/** A tiling ripple normal map, made once and shared by every pool. */
+let rippleCache: THREE.Texture | null = null;
+function waterNormals(): THREE.Texture {
+  if (rippleCache) return rippleCache;
+  const N = 256, c = document.createElement("canvas");
+  c.width = c.height = N;
+  const g = c.getContext("2d")!, img = g.createImageData(N, N);
+  // Height: a few sine waves with whole-number frequencies, so the tile repeats seamlessly.
+  const waves = [[3, 1, 0.5], [-2, 4, 1.7], [5, -3, 2.9], [1, 6, 4.1], [7, 2, 5.3], [-6, 5, 0.9]];
+  const h = (x: number, y: number) => waves.reduce((a, [fx, fy, ph], i) => a + Math.sin(((fx * x + fy * y) / N) * Math.PI * 2 + ph) / (1 + i * 0.6), 0);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const dx = h(x + 1, y) - h(x - 1, y), dy = h(x, y + 1) - h(x, y - 1);
+    const nx = -dx * 3, ny = -dy * 3, nz = 1, l = Math.hypot(nx, ny, nz), o = (y * N + x) * 4;
+    img.data[o] = (nx / l * 0.5 + 0.5) * 255; img.data[o + 1] = (ny / l * 0.5 + 0.5) * 255; img.data[o + 2] = (nz / l * 0.5 + 0.5) * 255; img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+  rippleCache = tex;
+  return tex;
+}
+
+/** A pool's floor: pale sand at the edge sinking to deep blue in the middle. */
+function basinTexture(): THREE.Texture {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d")!, gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  gr.addColorStop(0, "#0f5f8f"); gr.addColorStop(0.6, "#2a8fbf"); gr.addColorStop(0.9, "#9fd6df"); gr.addColorStop(1, "#d9e8d0");
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.own = true;
   return tex;
 }
 

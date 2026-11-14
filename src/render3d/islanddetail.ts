@@ -213,8 +213,9 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
   // Grass tufts: three thin blades each.
   const blade = new THREE.ConeGeometry(0.05, 0.42, 3).translate(0, 0.21, 0);
   const tuft = mergeTuft(blade);
-  const tufts = pick(160, 23, 0.25, () => true);
-  scatter(tuft, new THREE.MeshStandardMaterial({ color: col(t.lip), roughness: 1 }), tufts, k => [0.8 + k * 0.6, 0.8 + k * 0.7], undefined, false);
+  const tufts = pick(420, 23, 0.2, () => true);
+  const tuftTints = [t.lip, t.lipR, t.leaf[1]];
+  scatter(tuft, new THREE.MeshStandardMaterial({ roughness: 1 }), tufts, k => [0.7 + k * 0.7, 0.7 + k * 0.9], (k) => tuftTints[Math.floor(k * 2.99)], false);
 
   // Wild flowers in small clusters.
   const flowerSpots: [number, number, number][] = [];
