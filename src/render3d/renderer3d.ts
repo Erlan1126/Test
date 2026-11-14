@@ -187,7 +187,7 @@ export class Renderer3D {
     this.gl.toneMapping = THREE.NeutralToneMapping;
     this.gl.toneMappingExposure = 1;
     this.gl.shadowMap.enabled = true;
-    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.gl.shadowMap.type = THREE.PCFShadowMap; // soft enough with a small radius, and cheaper
     // Reflections start from a soft studio light; once the sky is known, the glass
     // reflects the real sky instead (see updateEnvironment).
     this.pmrem = new THREE.PMREMGenerator(this.gl);
@@ -230,6 +230,7 @@ export class Renderer3D {
     const sc = this.sun.shadow.camera;
     sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 1; sc.far = 260;
     this.sun.shadow.bias = -0.0004;
+    this.sun.shadow.radius = 2;
     this.sun.shadow.normalBias = 0.03;
 
     // The landing shadow takes the exact shape of the overlap, so it is rebuilt in place.
@@ -418,6 +419,11 @@ export class Renderer3D {
         ? shader.fragmentShader.replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
           // A bright band sweeping down the glass after a perfect drop.
           totalEmissiveRadiance += vec3(0.55, 0.85, 1.0) * uRipAmp * exp(-pow((vFxW.y - uRipY) / 1.3, 2.0));
+          // Every few seconds a soft glint of sunlight slides diagonally across the glass
+          // (only the mirror-like windows catch it, not the walls).
+          float glintD = gl_FragCoord.x + gl_FragCoord.y * 0.55;
+          float glintAt = mod(uTime * 520.0, 4200.0) - 600.0;
+          totalEmissiveRadiance += vec3(1.0, 0.97, 0.9) * metalnessFactor * 0.32 * exp(-pow((glintD - glintAt) / 70.0, 2.0));
           // Raindrops running down the glass.
           if (uWet > 0.01) {
             float u = (vFxW.x - vFxW.z) * 2.2;
@@ -677,7 +683,7 @@ export class Renderer3D {
     // looked a little richer but cost every wall a second lighting pass on phones.)
     const wall = new THREE.MeshStandardMaterial({
       vertexColors: true, map: fa.map, emissiveMap: fa.lit, emissive: 0xffffff, emissiveIntensity: 0,
-      roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 1, metalness: 1, envMapIntensity: 1.45,
+      roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 0.85, metalness: 1, envMapIntensity: 1.75,
     });
     wall.userData.alwaysLit = !!look.alwaysLit || !!look.neon;
     this.addFx(wall, "wall");
