@@ -1641,3 +1641,149 @@ body.busy .alt, body.busy .corner-btn, body.busy .card, body.busy .sheet { backg
    your best tower needs. */
 .build-card.locked .build-ico { filter: grayscale(1) opacity(0.55); }
 .build-card.locked .buy { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.85); box-shadow: none; }
+
+/* ======================================================================
+   Inner menus, glass: every menu (Modes, City, Shop, Goals, Missions, Sky
+   Pass, Rankings, Journey, Profile, Streak, Settings, pause and pop-ups)
+   matches the home screen: a bright frosted sheet with dark text, white
+   cards with a soft shadow, an iPhone-style segmented control and the
+   same pink glass for the main actions. No purple bands, no outlined titles.
+   ====================================================================== */
+.modal, .dialog {
+  --text: #1b1f4a;
+  --muted: #646a92;
+  --line: rgba(27, 31, 74, 0.12);
+  --card: #ffffff;
+  --card-shadow: 0 1px 2px rgba(27, 31, 74, 0.06), 0 6px 18px rgba(27, 31, 74, 0.07);
+  --soft: rgba(27, 31, 74, 0.06);
+  --mint: #23955a;
+  color: var(--text);
+}
+.modal { background: rgba(160, 190, 230, 0.32); }
+.modal .sheet {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(243, 245, 252, 0.95) 220px, rgba(238, 241, 250, 0.96) 100%);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  border: 0;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 1), inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 -12px 40px rgba(20, 24, 70, 0.22);
+  color: var(--text);
+}
+body.busy .modal .sheet { background-color: transparent; }
+.modal .sheet-top { background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 248, 253, 0.97)); }
+.modal .sheet-top::after { height: 12px; }
+.modal .sheet-head h2, .dialog h2 {
+  font: 800 27px/1.1 var(--ui); letter-spacing: -0.02em; text-transform: none;
+  color: var(--text); -webkit-text-stroke: 0; text-shadow: none;
+  background: none; -webkit-background-clip: border-box; background-clip: border-box;
+}
+.modal .sheet-head p, .modal .sheet-note, .modal .sheet-sub, .dialog p { color: var(--muted); }
+.modal .sheet-sub { letter-spacing: 0.08em; font-size: 11.5px; }
+.modal .close-btn, .dialog .close-btn {
+  background: var(--soft); color: #4a4f7a; box-shadow: none; border: 0; font-weight: 800;
+}
+.modal .close-btn:active { background: rgba(27, 31, 74, 0.12); }
+
+/* Segmented tabs, like iOS: a grey track with a white pill on the chosen one. */
+.modal .seg, .modal .tabs, .dialog .seg { background: rgba(27, 31, 74, 0.07); border: 0; box-shadow: none; }
+.modal .seg button, .modal .tabs button, .dialog .seg button { color: #4f557f; background: none; text-shadow: none; }
+.modal .tabs button[aria-selected="true"], .modal .seg button[aria-checked="true"], .dialog .seg button[aria-checked="true"] {
+  background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(27, 31, 74, 0.1), 0 3px 10px rgba(27, 31, 74, 0.1);
+}
+
+/* Cards and rows: white, soft shadow, no borders. */
+.modal :is(.goal-row, .shop-item, .challenge, .mission, .district, .reward, .row-item, .stat-grid div, .deal, .postcard, .trophy,
+  .skin, .history-row, .streak-step, .reminder-row, .chest-card, .rent-card, .league-card, .rank-row, .build-card, .premium-card,
+  .wallet-card, .pack-card, .pass-premium, .pass-cell, .pop-card, .stat, .xp, .group, .vip-card, .reward-line, .gift-day, #restore-box),
+.dialog :is(.stat, .xp, .reward-line, .gift-day, .lu-next, .group) {
+  background: var(--card); color: var(--text); border: 0; box-shadow: var(--card-shadow); text-shadow: none;
+}
+.modal .group .setting, .modal .group .setting + .setting { background: none; box-shadow: none; }
+.modal .group .setting + .setting { border-top: 1px solid var(--line); }
+.modal .setting:not(.group .setting) { background: var(--card); box-shadow: var(--card-shadow); }
+.modal :is(.set-ico, .trophy .t-ico, .pass-num) { background: var(--soft); color: var(--text); }
+.modal .goal-row:active, .modal .row-item:active { transform: scale(0.985); }
+.modal .chest-card.opened { background: rgba(255, 255, 255, 0.6); }
+.modal .pass-cell.locked { background: rgba(255, 255, 255, 0.6); }
+.modal .skin.equipped, .modal .skin.on, .modal .district.on { box-shadow: 0 0 0 2px #ff4f8b, var(--card-shadow); }
+.modal :is(.goal-row, .district, .rank-row, .history-row) b { color: var(--text); }
+.modal .rank-row.me, .modal .rank-row.you { background: #fff2f7; box-shadow: 0 0 0 1.5px rgba(255, 79, 139, 0.45), var(--card-shadow); }
+
+/* Progress bars, switches, inputs. */
+.modal :is(.bar, .m-bar, .pass-bar, .tt-bar, .countdown, .lv-bar), .dialog :is(.bar, .countdown) { background: rgba(27, 31, 74, 0.09); }
+.modal .switch { background: rgba(27, 31, 74, 0.16); }
+.modal .switch:checked { background: #34c759; }
+.modal :is(input[type="text"], input[type="time"], input:not([type]), textarea), .dialog input {
+  background: #fff; color: var(--text); border: 1px solid var(--line); box-shadow: inset 0 1px 2px rgba(27, 31, 74, 0.06);
+}
+.modal input::placeholder { color: #9aa0bf; }
+.modal .chev, .modal .rank-gap, .modal .link-btn, .modal .report { color: var(--muted); }
+.modal .chest-dots i { background: rgba(27, 31, 74, 0.14); }
+.modal .league-ladder span { background: var(--soft); color: var(--muted); }
+.modal .league-ladder span.on { color: var(--text); }
+.modal .streak-step.done, .modal .streak-step.next { box-shadow: 0 0 0 2px #ff9a4d, var(--card-shadow); }
+
+/* Buttons: the main actions are the same pink glass as Start building; quiet ones are grey. */
+.modal .buy, .modal .btn-primary, .dialog .btn-primary {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.02) 55%, rgba(255, 255, 255, 0.1) 100%), #f63476;
+  color: #fff; border: 0; text-shadow: none;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.6), 0 6px 16px rgba(246, 52, 118, 0.25);
+}
+.modal .buy:disabled, .modal .build-card.locked .buy { background: var(--soft); color: var(--muted); box-shadow: none; }
+.modal .build-card.owned { background: #f1fbf4; }
+.modal .build-card.owned .buy:disabled { color: var(--mint); }
+.modal .btn-secondary, .modal .swap, .dialog .btn-secondary {
+  background: var(--soft); color: var(--text); border: 0; box-shadow: none; text-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.modal .btn-secondary:hover, .dialog .btn-secondary:hover { background: rgba(27, 31, 74, 0.1); }
+
+/* Pop-up dialogs (pause, level up, rescue, rewards): the same bright glass. */
+.dialog {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(243, 245, 252, 0.96));
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  border: 0; box-shadow: inset 0 1.5px 0 #fff, 0 20px 50px rgba(20, 24, 70, 0.25);
+}
+.dialog .lu-level { color: #ff4f8b; text-shadow: 0 4px 0 rgba(255, 79, 139, 0.18); }
+.dialog .lu-rewards span { background: var(--soft); color: var(--text); }
+.dialog .lu-next b { color: var(--text); }
+
+/* Inner menus, glass: the odd pieces. */
+.modal .premium-note { background: #f1ecff; color: #5b3fb8; }
+.modal .premium-note.test { background: #fff4dc; color: #8a5a00; }
+.modal .streak-hero b { background: linear-gradient(180deg, #ff9a4d, #ff4f8b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* The Journey map is a bright sky climbing up to dusk. */
+.modal .journey-scroll { background: linear-gradient(180deg, #8f8ff0 0%, #a9c8ff 45%, #d7efff 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); }
+.modal .journey-map polyline { stroke: rgba(255, 255, 255, 0.85); }
+.modal .chapter-head { background: rgba(255, 255, 255, 0.85); color: var(--text); box-shadow: 0 4px 12px rgba(27, 31, 74, 0.1); }
+.modal .chapter-head b { color: #c2410c; }
+.modal .stage-node { box-shadow: 0 4px 10px rgba(27, 31, 74, 0.2); border-color: #fff; }
+.modal .stage-node.locked { background: rgba(255, 255, 255, 0.55); color: #6b7194; border-color: rgba(255, 255, 255, 0.8); }
+.modal .stage-node i { text-shadow: 0 1px 2px rgba(27, 31, 74, 0.5); }
+.modal .stage-card { background: var(--card); box-shadow: var(--card-shadow); }
+.modal .stage-card .rule { color: #0b7bc0; }
+.modal .stage-stars { color: #f5a524; }
+
+/* The results card: the same bright glass as the menus. */
+.card, html.phone .card, body.busy .card {
+  --text: #1b1f4a; --muted: #646a92; --line: rgba(27, 31, 74, 0.12); --mint: #23955a;
+  --card-shadow: 0 1px 2px rgba(27, 31, 74, 0.06), 0 6px 18px rgba(27, 31, 74, 0.07);
+  background: linear-gradient(180deg, #ffffff, #f3f5fc);
+  border: 0; box-shadow: inset 0 1.5px 0 #fff, 0 20px 50px rgba(20, 24, 70, 0.25);
+  color: var(--text);
+}
+.card .big { background: linear-gradient(180deg, #ff7a59, #f63476 60%, #b23cff); -webkit-background-clip: text; background-clip: text; color: transparent; filter: none; }
+.card .eyebrow, .card .versus { color: var(--muted); }
+.card .landmark { color: #c26a00; }
+.card .landmark.world { color: #0b7bc0; }
+.card .near { color: #e8590c; }
+.card :is(.stat, .xp, .reward, .more-chip) { background: #fff; color: var(--text); border: 0; box-shadow: var(--card-shadow); }
+.card .reward.star { background: #fff7dd; color: #8a5a00; }
+.card .reward.new { background: #fff0f5; color: #c2185b; }
+.card .bar, .card .tt-bar { background: rgba(27, 31, 74, 0.09); }
+.card .city-gain .gain { background: #e6f7ec; color: #1f7a45; }
+.card .peek-btn { background: rgba(27, 31, 74, 0.06); color: #4a4f7a; border: 0; box-shadow: none; }
+#over-actions { background: linear-gradient(180deg, rgba(243, 245, 252, 0), rgba(243, 245, 252, 0.97) 30%); }
+.card .btn-secondary { background: rgba(27, 31, 74, 0.07); color: var(--text); border: 0; box-shadow: none; text-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.card .btn-primary {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.02) 55%, rgba(255, 255, 255, 0.1) 100%), #f63476;
+  border: 0; box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.6), 0 8px 20px rgba(246, 52, 118, 0.28); text-shadow: none;
+}

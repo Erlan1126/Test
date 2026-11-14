@@ -132,9 +132,12 @@ export class Renderer {
 
   /** Eases the camera toward the framing for the current shot. */
   /** `full` frames the finished tower on the whole screen (results card hidden). */
-  camera(dt: number, shot: Shot, level: number, full = false): void {
+  camera(dt: number, shot: Shot, level: number, full = false, follow = 0): void {
     const v = this.view, { W, H, s, th } = v;
     let tZoom = 1, tLevel = Math.max(0, level - Math.floor(H * 0.2 / th)), tOrigin = H * 0.6, tCx = W / 2;
+    // follow: how far the top floor sits off the middle (x - z, world units). Past the last
+    // landmark the camera slides over to keep the tower centered.
+    if (shot === "play" && follow) tCx = W / 2 - follow * ISO_X * s * tZoom;
     if (shot === "menu") { tZoom = 0.64; tOrigin = H * 0.56; tLevel = 0; }
     if (shot === "over") {
       // Frame whichever reaches higher, the antenna or the island's back corner, down to the island's front.

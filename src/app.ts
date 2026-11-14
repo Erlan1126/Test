@@ -22,7 +22,7 @@ import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
-import { dailySeed, dayNumber, duration, giftState, xpNeeded } from "./logic/rules";
+import { dailySeed, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
@@ -1782,7 +1782,12 @@ export class App implements DailyHost {
       this.video.t += dt / VIDEO_SECONDS;
       this.renderer.cinematic(Math.min(1, this.video.t), sim.level);
       if (this.video.t >= 1.15 && this.video.rec.state === "recording") this.video.rec.stop();
-    } else this.renderer.camera(dt, shot, sim.level, this.peek);
+    } else {
+      // Past the last landmark there's nothing left beside the tower: keep it centered.
+      const top = sim.top, pastAll = landmarkIndex(sim.meters) >= MILESTONES.length - 1;
+      const follow = shot === "play" && pastAll ? (top.x0 + top.x1) / 2 - (top.z0 + top.z1) / 2 : 0;
+      this.renderer.camera(dt, shot, sim.level, this.peek, follow);
+    }
 
     if (this.state === "over" && !this.overReady) {
       this.overTimer -= dt;
