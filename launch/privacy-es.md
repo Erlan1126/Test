@@ -1,7 +1,7 @@
 # Política de privacidad de Skyrise
 
 Skyrise es un juego de Erlan Studios (contacto: erlanstudios1@gmail.com).
-Última actualización: 5 de noviembre de 2026.
+Última actualización: 14 de noviembre de 2026.
 
 En resumen: Skyrise no tiene cuentas, ni anuncios, ni rastreo. Tu progreso se guarda en
 tu dispositivo y se respalda en nuestro servidor con un id de jugador aleatorio, para que
@@ -85,7 +85,8 @@ puntuación se guardan con él para que veas quién lo intentó.
 
 - No hay cuentas ni inicio de sesión (el ranking usa el identificador aleatorio de arriba).
 - No hay anuncios.
-- No hay analíticas, píxeles de seguimiento ni rastreadores de terceros.
+- No hay analíticas de terceros, píxeles de seguimiento ni rastreadores (solo las
+  estadísticas de juego anónimas del propio juego descritas arriba).
 
 ## Compras de cristales en el sitio web
 

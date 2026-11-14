@@ -1,7 +1,7 @@
 # Skyrise privacy policy
 
 Skyrise is made by Erlan Studios (contact: erlanstudios1@gmail.com).
-Last updated: November 5, 2026.
+Last updated: November 14, 2026.
 
 Short version: Skyrise has no accounts, no ads and no tracking. Your progress is saved on
 your device and backed up to our server under a random player id, so you can get it back
@@ -77,7 +77,8 @@ saved with it so you can see who tried.
 
 - No accounts or sign-in (the leaderboard uses the random player id above).
 - No ads.
-- No analytics, tracking pixels or third-party trackers.
+- No third-party analytics, tracking pixels or trackers (only the game's own anonymous
+  play statistics described above).
 
 ## Crystal purchases on the website
 
