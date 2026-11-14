@@ -82,3 +82,22 @@ CREATE TABLE IF NOT EXISTS stats (
   data TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS stats_kind ON stats (kind, at);
+
+-- "Beat my tower" challenges: a shared tower's numbers and pace (for the ghost), and who
+-- has tried it. Names are the leaderboard nicknames players chose; nothing else.
+CREATE TABLE IF NOT EXISTS challenges (
+  id TEXT PRIMARY KEY,
+  at INTEGER NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  score INTEGER NOT NULL,
+  meters INTEGER NOT NULL,
+  floors INTEGER NOT NULL,
+  pace TEXT NOT NULL DEFAULT '[]'
+);
+CREATE TABLE IF NOT EXISTS challenge_tries (
+  challenge TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  score INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS challenge_tries_by ON challenge_tries (challenge, at);

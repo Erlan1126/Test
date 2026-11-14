@@ -47,6 +47,15 @@ export function onBackButton(handler: () => boolean): void {
   void CapApp.addListener("backButton", () => { if (!handler()) void CapApp.minimizeApp().catch(() => CapApp.exitApp()); });
 }
 
+// ---------- Links into the app ----------
+
+/** Calls `cb` with a skyrise:// link that opened the app (at launch or while running). */
+export function onOpenUrl(cb: (url: string) => void): void {
+  if (!isNative()) return;
+  void CapApp.addListener("appUrlOpen", e => cb(e.url));
+  void CapApp.getLaunchUrl().then(r => { if (r?.url) cb(r.url); }).catch(() => {});
+}
+
 // ---------- Share ----------
 
 /** The system share sheet. Returns false when it isn't available (the website uses its own). */

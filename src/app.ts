@@ -35,6 +35,16 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower } from "./stats";
+import { challengeIdFrom, createChallenge, fetchChallenge, fetchTries, postTry, type Challenge as FriendChallenge } from "./challenge";
+
+/** This phone's own shared challenges, to hear when friends try them. */
+const SENT_KEY = "skyrise.sentChallenges";
+interface Sent { ids: string[]; since: number }
+function loadSent(): Sent {
+  try { const v = JSON.parse(localStorage.getItem(SENT_KEY) ?? "null") as Sent | null; if (v && Array.isArray(v.ids)) return { ids: v.ids.slice(-20), since: Number(v.since) || 0 }; } catch { /* none */ }
+  return { ids: [], since: 0 };
+}
+function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.stringify(s)); } catch { /* private mode */ } }
 
 /** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
 const EASY_TOWERS = 5;
@@ -52,7 +62,7 @@ import type { PackPurchase } from "./payments";
 import { chestReady, claimChest, collectRent, lateChest, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 import { CHEST } from "./data/daily";
 import { getLang, resolveLang, setLang, t, tn, translateDom } from "./i18n";
-import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
+import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, onOpenUrl, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 import { maybeOfferStarter, starterLeft } from "./logic/starter";
 import { formatPrice, STARTER_PACK, STARTER_SKIN } from "./data/premium";
 import { drawSkinPreview } from "./render/previews";
@@ -136,6 +146,8 @@ export class App implements DailyHost {
   private outcome: RunOutcome | null = null;
   private opened: Feature[] = [];
   private friendScore = 0;
+  /** A friend's tower to beat, from a challenge link (its ghost races you). */
+  private vs: FriendChallenge | null = null;
   private readonly site = siteUrl();
   private last = performance.now();
   private perf = { frames: 0, time: 0, bad: 0 };
@@ -248,6 +260,10 @@ export class App implements DailyHost {
     requestAnimationFrame(() => requestAnimationFrame(() => nativeReady()));
     void this.restoreBackup();
     onBackButton(() => this.back());
+    // Challenge links: skyrise://c/ID in the app, ?vs=ID on the website.
+    onOpenUrl(u => this.openChallengeLink(u));
+    if (challengeIdFrom(location.search)) this.openChallengeLink(location.search);
+    setTimeout(() => void this.checkTries(), 6000);
     onAppHidden(() => {
       void scheduleReminders(this.reminderInfo());
       this.scheduleBackup(0);
@@ -780,6 +796,11 @@ export class App implements DailyHost {
     this.ghostAhead = false;
     this.ghost = mode === "classic" && this.save.ghost.length >= 5 && !this.tutorial
       ? { name: t("Your best tower"), pace: this.save.ghost, self: true } : null;
+    // A friend's challenge: race their tower instead of anyone else.
+    if (mode === "classic" && this.vs && this.vs.pace.length >= 3) {
+      this.ghost = { name: this.vs.name || t("Your friend"), pace: this.vs.pace, self: false };
+      return;
+    }
     if (mode !== "classic" && mode !== "daily") return;
     const sim = this.sim;
     void this.online.ghost(mode === "daily" ? "daily" : "week", mode === "daily" ? this.runDay : weekIndex()).then(g => {
@@ -907,6 +928,7 @@ export class App implements DailyHost {
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
     statsTower(run, this.save.profile.towers, this.save.profile.level);
+    if (this.vs && this.mode === "classic") void postTry(this.vs.id, this.save.nickname, run.score);
     if (this.mode !== "zen" && run.floors >= 3) {
       const won = holidayTower(this.save);
       const hp = holidayProgress(this.save);
@@ -1208,7 +1230,9 @@ export class App implements DailyHost {
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");
-    friend.innerHTML = t("A friend housed <b>{n}</b> people. Can you beat them?", { n: fmt(this.friendScore) });
+    friend.innerHTML = this.vs?.name
+      ? t("{name} housed <b>{n}</b> people. Can you beat them?", { name: esc(this.vs.name), n: fmt(this.friendScore) })
+      : t("A friend housed <b>{n}</b> people. Can you beat them?", { n: fmt(this.friendScore) });
     $("install-chip").hidden = !this.installPrompt || p.towers < 3;
     $("restore-link").hidden = p.towers > 0 || this.online.kind !== "global";
     const n = boostCount(save), note = $("boost-note");
@@ -1659,10 +1683,49 @@ export class App implements DailyHost {
     ctx.fillText("SKYRISE", W / 2, H - 32);
   }
 
+  /** Opens a friend's challenge from a link: their tower becomes the one to beat. */
+  private openChallengeLink(link: string): void {
+    const id = challengeIdFrom(link);
+    if (!id || this.vs?.id === id) return;
+    void fetchChallenge(id).then(c => {
+      if (!c) return;
+      this.vs = c;
+      this.friendScore = c.score;
+      toast(t("{name} challenges you: beat {n} people!", { name: c.name || t("A friend"), n: fmt(c.score) }));
+      if (this.state === "menu") this.renderMenu();
+    });
+  }
+
+  /** Tells you when friends have tried your shared towers. */
+  private async checkTries(): Promise<void> {
+    const sent = loadSent();
+    if (!sent.ids.length) return;
+    const tries = await fetchTries(sent.ids, sent.since);
+    if (!tries.length) return;
+    sent.since = Math.max(sent.since, ...tries.map(x => x.at));
+    storeSent(sent);
+    const best = tries.find(x => x.beat) ?? tries[tries.length - 1];
+    const who = best.name || t("A friend");
+    toast(best.beat
+      ? t("🏆 {name} beat your tower with {n} people! Build a taller one?", { name: who, n: fmt(best.score) })
+      : t("👻 {name} tried to beat your tower ({n} people). You're still ahead!", { name: who, n: fmt(best.score) }));
+  }
+
   private async share(): Promise<void> {
     const sim = this.sim;
     // Zen towers aren't a fair target, so their links carry no score to beat.
-    const url = this.site ? (this.mode === "zen" ? this.site : `${this.site}?beat=${sim.score}`) : "";
+    let url = this.site ? (this.mode === "zen" ? this.site : `${this.site}?beat=${sim.score}`) : "";
+    // A "beat my tower" link: friends race this tower's ghost, and you hear how they did.
+    if (this.mode !== "zen" && this.pace.length >= 3) {
+      const c = await createChallenge({ name: this.save.nickname, score: sim.score, meters: sim.meters, floors: sim.level, pace: this.pace.slice(0, MAX_GHOST) });
+      if (c) {
+        url = c.url;
+        const sent = loadSent();
+        sent.ids = [...sent.ids, c.id].slice(-20);
+        if (!sent.since) sent.since = Date.now();
+        storeSent(sent);
+      }
+    }
     const text = this.shareText();
     const full = url ? `${text} ${url}` : text;
     if (await nativeShare(full, this.shareBlob)) return;

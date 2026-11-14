@@ -49,7 +49,8 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag"].includes(url.pathname);
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats"].includes(url.pathname)
+      || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
     try {
@@ -240,6 +241,47 @@ async function rankings(request, url, env, now) {
     return json({ ok: true });
   }
 
+  // ---------- "Beat my tower" challenges ----------
+  if (url.pathname === "/challenge" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const score = Math.floor(Number(body?.score)), meters = Math.floor(Number(body?.meters)), floors = Math.floor(Number(body?.floors));
+    if (![score, meters, floors].every(n => Number.isFinite(n) && n >= 0 && n < 1e8)) return json({ error: "bad tower" }, 400);
+    const pace = cleanChallengePace(body?.pace);
+    const id = randomId(8);
+    await db.prepare("INSERT INTO challenges (id, at, name, score, meters, floors, pace) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, now, cleanName(body?.name), score, meters, floors, JSON.stringify(pace)).run();
+    return json({ id });
+  }
+  if (url.pathname === "/challenge" && request.method === "GET") {
+    const id = (url.searchParams.get("id") ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 16);
+    const row = await db.prepare("SELECT name, score, meters, floors, pace FROM challenges WHERE id = ?").bind(id).first();
+    if (!row) return json({ error: "not found" }, 404);
+    return json({ id, name: row.name, score: row.score, meters: row.meters, floors: row.floors, pace: JSON.parse(row.pace) });
+  }
+  if (url.pathname === "/challenge/try" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const id = String(body?.id ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 16), score = Math.floor(Number(body?.score));
+    if (!id || !Number.isFinite(score) || score < 0 || score > 1e8) return json({ error: "bad try" }, 400);
+    const ok = await db.prepare("SELECT 1 FROM challenges WHERE id = ?").bind(id).first();
+    if (!ok) return json({ error: "not found" }, 404);
+    await db.prepare("INSERT INTO challenge_tries (challenge, at, name, score) VALUES (?, ?, ?, ?)").bind(id, now, cleanName(body?.name), score).run();
+    return json({ ok: true });
+  }
+  if (url.pathname === "/challenge/tries" && request.method === "GET") {
+    const ids = (url.searchParams.get("ids") ?? "").split(",").map(x => x.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)).filter(Boolean).slice(0, 20);
+    if (!ids.length) return json({ tries: [] });
+    const since = Math.floor(Number(url.searchParams.get("since") ?? "0")) || 0;
+    const { results } = await db.prepare(`SELECT t.challenge AS id, t.at, t.name, t.score, c.score AS target FROM challenge_tries t JOIN challenges c ON c.id = t.challenge WHERE t.challenge IN (${ids.map(() => "?").join(",")}) AND t.at > ? ORDER BY t.at LIMIT 50`)
+      .bind(...ids, since).all();
+    return json({ tries: results.map(r => ({ id: r.id, at: r.at, name: r.name, score: r.score, beat: r.score > r.target })) });
+  }
+  // The page a challenge link opens: who's challenging you, open the game or get it.
+  const page = /^\/c\/([A-Za-z0-9]{4,16})$/.exec(url.pathname);
+  if (page && request.method === "GET") {
+    const row = await db.prepare("SELECT name, score, meters FROM challenges WHERE id = ?").bind(page[1]).first();
+    return new Response(challengePage(page[1], row), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+  }
+
   // Anonymous play statistics (src/stats.ts). The install id is random and not a player id.
   if (url.pathname === "/stats" && request.method === "POST") {
     const body = await request.json().catch(() => null);
@@ -377,4 +419,46 @@ function randomToken() {
 async function sha256(text) {
   const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+
+// ---------- Challenge helpers ----------
+
+function randomId(n) {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", bytes = crypto.getRandomValues(new Uint8Array(n));
+  return [...bytes].map(b => abc[b % abc.length]).join("");
+}
+
+/** A ghost pace from a phone: whole ticks that never go down, at most 1000 floors. */
+function cleanChallengePace(v) {
+  const out = [];
+  if (!Array.isArray(v)) return out;
+  for (const x of v.slice(0, 1000)) {
+    if (typeof x !== "number" || !Number.isFinite(x) || x < 0 || x > 1e7 || (out.length && x < out[out.length - 1])) break;
+    out.push(Math.floor(x));
+  }
+  return out;
+}
+
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// Store pages. The App Store link becomes the app's own page once it's live (set APP_STORE_URL).
+const PLAY_URL = "https://play.google.com/store/apps/details?id=com.erlanstudios.skyrise";
+const APP_STORE_URL = "https://apps.apple.com/search?term=Skyrise%20Tower%20Stack";
+
+function challengePage(id, row) {
+  const who = row ? (row.name ? escHtml(row.name) : "A friend") : "";
+  const title = row ? `${who} challenges you on Skyrise!` : "Skyrise: Tower Stack";
+  const line = row ? `Their tower is ${Number(row.meters).toLocaleString("en-US")} m tall with ${Number(row.score).toLocaleString("en-US")} people living in it. Can you build a bigger one?` : "Stack floors, grow your sky city and race your friends.";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${line}">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font:600 17px/1.4 system-ui,-apple-system,sans-serif;color:#1b1f4a;background:linear-gradient(180deg,#8fc6ff,#ffe1c6)}
+main{width:min(420px,calc(100% - 32px));padding:28px 22px;border-radius:28px;background:rgba(255,255,255,.88);box-shadow:0 20px 50px rgba(20,24,70,.2);text-align:center}
+h1{margin:0 0 10px;font-size:26px;letter-spacing:-.02em}p{margin:0 0 20px;color:#4a4f7a}
+a{display:block;margin:10px 0;padding:15px;border-radius:18px;text-decoration:none;font-weight:800}
+.open{background:#f63476;color:#fff;box-shadow:0 8px 20px rgba(246,52,118,.3)}.store{background:rgba(27,31,74,.07);color:#1b1f4a}</style></head>
+<body><main><h1>🏙️ ${title}</h1><p>${line}</p>
+<a class="open" href="skyrise://c/${escHtml(id)}">Open in Skyrise</a>
+<a class="store" href="${APP_STORE_URL}">Get it on the App Store</a>
+<a class="store" href="${PLAY_URL}">Get it on Google Play</a></main></body></html>`;
 }

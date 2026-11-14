@@ -882,4 +882,11 @@ export const PT: Record<string, string> = {
   "the Tokyo Skytree": "a Tokyo Skytree",
   "Merdeka 118": "o Merdeka 118",
   "the Jeddah Tower": "a Torre de Jidá",
+  // ---------- Beat-my-tower challenges ----------
+  "A friend": "Um amigo",
+  "Your friend": "Seu amigo",
+  "{name} housed <b>{n}</b> people. Can you beat them?": "{name} abrigou <b>{n}</b> pessoas. Consegue superar?",
+  "{name} challenges you: beat {n} people!": "{name} te desafia: supere {n} pessoas!",
+  "🏆 {name} beat your tower with {n} people! Build a taller one?": "🏆 {name} superou sua torre com {n} pessoas! Construa uma mais alta?",
+  "👻 {name} tried to beat your tower ({n} people). You're still ahead!": "👻 {name} tentou superar sua torre ({n} pessoas). Você continua na frente!",
 };

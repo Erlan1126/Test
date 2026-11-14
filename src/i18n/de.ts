@@ -882,4 +882,11 @@ export const DE: Record<string, string> = {
   "the Tokyo Skytree": "der Tokyo Skytree",
   "Merdeka 118": "Merdeka 118",
   "the Jeddah Tower": "der Jeddah Tower",
+  // ---------- Beat-my-tower challenges ----------
+  "A friend": "Ein Freund",
+  "Your friend": "Dein Freund",
+  "{name} housed <b>{n}</b> people. Can you beat them?": "{name} hat <b>{n}</b> Leute untergebracht. Schaffst du mehr?",
+  "{name} challenges you: beat {n} people!": "{name} fordert dich heraus: schlag {n} Leute!",
+  "🏆 {name} beat your tower with {n} people! Build a taller one?": "🏆 {name} hat deinen Turm mit {n} Leuten geschlagen! Baust du einen höheren?",
+  "👻 {name} tried to beat your tower ({n} people). You're still ahead!": "👻 {name} wollte deinen Turm schlagen ({n} Leute). Du liegst noch vorn!",
 };

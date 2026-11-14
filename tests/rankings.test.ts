@@ -163,3 +163,36 @@ describe("online rankings", () => {
     expect(await name()).toMatch(/^Builder /);
   });
 });
+
+describe("beat-my-tower challenges", () => {
+  it("stores a challenge, serves it, records tries and reports who beat it", async () => {
+    const made = await call("/challenge", { name: "Erlan", score: 3000, meters: 450, floors: 90, pace: [10, 20, 30, 25, "x"] });
+    expect(made.status).toBe(200);
+    const id = made.body.id as string;
+    const got = await call(`/challenge?id=${id}`);
+    expect(got.body).toMatchObject({ name: "Erlan", score: 3000, meters: 450, pace: [10, 20, 30] });
+    expect((await call("/challenge/try", { id, name: "Ana", score: 3500 })).status).toBe(200);
+    expect((await call("/challenge/try", { id, name: "Leo", score: 1000 })).status).toBe(200);
+    expect((await call("/challenge/try", { id: "nope1234", name: "X", score: 1 })).status).toBe(404);
+    const tries = await call(`/challenge/tries?ids=${id}`);
+    expect(tries.body.tries.map((t: { name: string; beat: boolean }) => [t.name, t.beat])).toEqual([["Ana", true], ["Leo", false]]);
+    // The link's page names the challenger and offers the game.
+    const page = await worker.fetch(new Request(`https://api.example/c/${id}`), env as never);
+    const html = await page.text();
+    expect(html).toContain("Erlan challenges you");
+    expect(html).toContain(`skyrise://c/${id}`);
+  });
+
+  it("refuses broken towers", async () => {
+    expect((await call("/challenge", { score: -1, meters: 1, floors: 1 })).status).toBe(400);
+  });
+});
+
+describe("anonymous stats", () => {
+  it("accepts play stats at /stats", async () => {
+    const r = await call("/stats", { id: "abc-123", v: "1.0", lang: "en", items: [{ kind: "open", day: 0, towers: 0 }, { kind: "tower", day: 0, towers: 1, data: { floors: 12 } }] });
+    expect(r.status).toBe(200);
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM stats").first();
+    expect(n).toEqual({ n: 2 });
+  });
+});
