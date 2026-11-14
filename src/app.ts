@@ -184,6 +184,7 @@ export class App implements DailyHost {
   private passedTimer = 0;
   private lastTick = 0;
   private frameErrorShown = false;
+  private bodyBusy = false;
   /** Time not yet turned into fixed sim steps. */
   private stepTime = 0;
 
@@ -550,7 +551,12 @@ export class App implements DailyHost {
   }
 
   private wire(): void {
+    // Phones (iPhones especially) report a new size a moment after rotating, so the
+    // canvas is measured whenever it actually changes size, and again a little later.
     window.addEventListener("resize", () => this.resize());
+    window.addEventListener("orientationchange", () => { this.resize(); setTimeout(() => this.resize(), 300); });
+    window.visualViewport?.addEventListener("resize", () => this.resize());
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => this.resize()).observe(this.canvas);
     this.canvas.addEventListener("pointerdown", e => {
       e.preventDefault();
       if (!e.isPrimary) return; // a second finger on the screen isn't a new tap
@@ -1717,6 +1723,10 @@ export class App implements DailyHost {
       if (raw > 1 / 30) f.slow++;
       f.worst = Math.max(f.worst, raw * 1000);
     }
+    // While building, glass effects are switched off (blurring the moving scene behind
+    // them every frame is costly on iPhones).
+    const busy = this.state !== "menu";
+    if (busy !== this.bodyBusy) { this.bodyBusy = busy; document.body.classList.toggle("busy", busy); }
     // The next frame is booked first, so one error can never freeze the game for good.
     requestAnimationFrame(t => this.frame(t));
     try {

@@ -1632,3 +1632,7 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 #dock .tile:focus-visible, .corner-btn:focus-visible, .city-line:focus-visible, .rank-line:focus-visible { outline-color: #1b1f4a; }
 /* The tournament line fits one line on small phones (Spanish is longer). */
 @media (max-width: 380px) { .rank-line { font-size: 12.5px; padding: 6px 12px; } .rank-line b { font-size: 15px; } }
+
+/* Away from the home screen, no live blur: the panels keep their tint, just solid. */
+body.busy * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.busy .alt, body.busy .corner-btn, body.busy .card, body.busy .sheet { background-color: rgba(28, 30, 80, 0.86); }
