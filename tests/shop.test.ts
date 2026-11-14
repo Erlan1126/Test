@@ -56,7 +56,7 @@ describe("unlocking features gradually", () => {
 
   it("badges new features until they're opened", () => {
     const s = defaultSave();
-    s.profile.towers = 3;
+    s.profile.towers = 10;
     expect(isNew(s, "shop")).toBe(true);
     markSeen(s, "shop");
     expect(isNew(s, "shop")).toBe(false);
@@ -64,8 +64,10 @@ describe("unlocking features gradually", () => {
   });
 
   it("lists what a tower just opened", () => {
-    expect(openedBetween(0, 1).sort()).toEqual(["missions", "profile", "skins"]);
-    expect(openedBetween(2, 3).sort()).toEqual(["challenges", "shop"]);
+    expect(openedBetween(0, 1)).toEqual(["skins"]);
+    expect(openedBetween(2, 3)).toEqual(["missions"]);
     expect(openedBetween(5, 6)).toEqual([]);
+    // One new thing at a time over the first 15 towers.
+    for (let n = 0; n < 15; n++) expect(openedBetween(n, n + 1).length).toBeLessThanOrEqual(1);
   });
 });

@@ -240,6 +240,21 @@ async function rankings(request, url, env, now) {
     return json({ ok: true });
   }
 
+  // Anonymous play statistics (src/stats.ts). The install id is random and not a player id.
+  if (url.pathname === "/stats" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const install = String(body?.id ?? "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 40);
+    const items = Array.isArray(body?.items) ? body.items.slice(0, 20) : [];
+    if (!install) return json({ error: "no id" }, 400);
+    const v = String(body?.v ?? "").slice(0, 24), lang = String(body?.lang ?? "").slice(0, 5);
+    const int = (x, max) => Math.max(0, Math.min(max, Math.round(Number(x) || 0)));
+    const stmts = items.map(it => db.prepare("INSERT INTO stats (at, install, kind, day, towers, v, lang, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(now, install, it?.kind === "tower" ? "tower" : "open", int(it?.day, 100000), int(it?.towers, 10000000), v, lang, JSON.stringify(it?.data ?? {}).slice(0, 500)));
+    if (stmts.length) await db.batch(stmts);
+    if (Math.random() < 0.01) await db.prepare("DELETE FROM stats WHERE id <= (SELECT MAX(id) - 300000 FROM stats)").run();
+    return json({ ok: true });
+  }
+
   if (url.pathname === "/runs" && request.method === "POST") {
     const body = await request.json();
     const { player, token, record } = body ?? {};

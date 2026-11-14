@@ -4,6 +4,7 @@
 import { App as CapApp } from "@capacitor/app";
 import { SERVER_URL } from "./data/server";
 import { isNative } from "./native";
+import { setStatsVersion } from "./stats";
 
 interface Item { kind: "error" | "perf"; msg: string; data?: Record<string, unknown> }
 
@@ -36,7 +37,7 @@ function add(item: Item): void {
 export function initDiag(): void {
   if (!SERVER_URL) return;
   device = describeDevice();
-  if (isNative()) void CapApp.getInfo().then(i => { version = `${i.version} (${i.build})`; }).catch(() => {});
+  if (isNative()) void CapApp.getInfo().then(i => { version = `${i.version} (${i.build})`; setStatsVersion(version); }).catch(() => {});
   window.addEventListener("error", e => {
     add({ kind: "error", msg: String(e.message).slice(0, 200), data: { at: `${(e.filename ?? "").split("/").pop()}:${e.lineno}:${e.colno}`, stack: String(e.error?.stack ?? "").slice(0, 900) } });
   });

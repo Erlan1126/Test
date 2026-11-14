@@ -66,3 +66,19 @@ CREATE TABLE IF NOT EXISTS ghosts (
   pace TEXT NOT NULL,
   PRIMARY KEY (board, period, player)
 );
+
+-- Anonymous play statistics (see src/stats.ts): a random id per install that is never
+-- linked to a player, and for each item the day since that install first played, how
+-- many towers it had built, and the tower's numbers. Kept to the newest 300,000.
+CREATE TABLE IF NOT EXISTS stats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at INTEGER NOT NULL,
+  install TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  day INTEGER NOT NULL DEFAULT 0,
+  towers INTEGER NOT NULL DEFAULT 0,
+  v TEXT NOT NULL DEFAULT '',
+  lang TEXT NOT NULL DEFAULT '',
+  data TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS stats_kind ON stats (kind, at);

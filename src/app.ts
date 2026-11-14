@@ -34,6 +34,7 @@ import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
+import { flushStats, statsOpen, statsTower } from "./stats";
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
@@ -45,9 +46,9 @@ import { buyWithCrystals, grantPack, newPlayerId } from "./logic/premium";
 import { carriedOver, passTier, refreshPass, rewardText, unclaimed } from "./logic/pass";
 import type { CrystalPack, Product } from "./data/premium";
 import type { PackPurchase } from "./payments";
-import { chestReady, claimChest, claimLeagueReward, collectRent, pendingLeagueReward, lateChest, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
+import { chestReady, claimChest, collectRent, lateChest, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 import { CHEST } from "./data/daily";
-import { resolveLang, setLang, t, tn, translateDom } from "./i18n";
+import { getLang, resolveLang, setLang, t, tn, translateDom } from "./i18n";
 import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 import { maybeOfferStarter, starterLeft } from "./logic/starter";
 import { formatPrice, STARTER_PACK, STARTER_SKIN } from "./data/premium";
@@ -198,6 +199,8 @@ export class App implements DailyHost {
     if (!isSkinUnlocked(this.save, skinById(this.save.skin))) this.save.skin = "glass";
     this.persist();
     this.tutorial = !this.save.tutorialDone;
+    statsOpen(this.save.profile.towers);
+    setTimeout(() => void flushStats(getLang()), 8000);
     this.sound = new Sound(() => this.save.settings);
     // Real 3D on the graphics chip when the device can; the old 2D drawing otherwise.
     this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d") && !(this.save.settings.quality === "auto" && this.save.settings.flat)
@@ -900,6 +903,7 @@ export class App implements DailyHost {
     if (this.mode === "daily") run.day = this.runDay;
     const towersBefore = this.save.profile.towers;
     this.outcome = recordRun(this.save, run);
+    statsTower(run, this.save.profile.towers, this.save.profile.level);
     if (this.mode !== "zen" && run.floors >= 3) {
       const won = holidayTower(this.save);
       const hp = holidayProgress(this.save);
@@ -951,6 +955,7 @@ export class App implements DailyHost {
       reportPerf({ fps: Math.round(fs.n / fs.time), slow: fs.slow, worst: Math.round(fs.worst), floors: run.floors, gfx: this.renderer instanceof Renderer3D ? (this.low ? "3d-low" : "3d") : "2d" });
     }
     void flushDiag();
+    void flushStats(getLang());
     $("over-world").hidden = true;
     $("over-world").dataset.ok = "";
     void this.submitRun();
@@ -1242,7 +1247,7 @@ export class App implements DailyHost {
       this.persist();
     }
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
-    show("ranks-btn", this.online.ready && p.towers >= 1, false);
+    show("ranks-btn", this.online.ready && p.towers >= 6, false);
     // Goals gathers missions, the pass and rankings; its dot means one of them has news.
     const goalIds = ["missions-btn", "pass-btn", "ranks-btn"];
     show("goals-btn", goalIds.some(id => !$(id).hidden), goalIds.some(id => !$(id).hidden && !$(id).querySelector<HTMLElement>(".dot")!.hidden));
@@ -1288,15 +1293,14 @@ export class App implements DailyHost {
     $("lu-ok").focus();
   }
 
-  /** Labels for everything ready to collect: the daily gift, rent, the chest, the league reward. */
+  /** Labels for everything ready to collect: the daily gift, rent, the chest, the VIP gift.
+   *  (The weekly league was folded into the weekly tournament: one weekly competition.) */
   private waitingRewards(now: number): string[] {
     const save = this.save, out: string[] = [];
     if (save.profile.towers >= 1 && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
     const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0;
     if (rent >= 1) out.push(t("🏦 Collect {n} ★ of rent", { n: fmt(rent) }));
     if (chestReady(save, now)) out.push(t("🧰 Open today's chest"));
-    const lr = pendingLeagueReward(save, now);
-    if (lr) out.push(t("🏆 Claim your {league} league reward", { league: t(lr.league) }));
     if (vipClaimReady(save, dayNumber(now))) out.push(t("👑 Collect your VIP gift"));
     return out;
   }
@@ -1317,8 +1321,6 @@ export class App implements DailyHost {
     }
     const c = claimChest(save);
     if (c) lines.push(t("🧰 Mission chest · +{stars} ★ · +100 pass XP", { stars: c.stars }));
-    const lr = claimLeagueReward(save);
-    if (lr) lines.push(t("🏆 {league} league · +{n} ★", { league: t(lr.league), n: lr.stars }));
     if (claimVip(save, dayNumber())) lines.push(t("👑 VIP gift · +{n} 💎 · +1 rewind", { n: VIP_DAILY_CRYSTALS }));
     this.persist();
     if (lines.length) {
@@ -1345,7 +1347,7 @@ export class App implements DailyHost {
   private rankToken = 0;
   private async renderRankLine(now: number): Promise<void> {
     const el = $("rank-line"), token = ++this.rankToken;
-    if (this.online.kind !== "global" || this.save.profile.towers < 1) { el.hidden = true; return; }
+    if (this.online.kind !== "global" || this.save.profile.towers < 6) { el.hidden = true; return; }
     const board = await this.online.board("week", dayNumber(now), weekIndex(now));
     if (token !== this.rankToken) return;
     const me = board.me ?? board.rows.find(r => r.me) ?? null;

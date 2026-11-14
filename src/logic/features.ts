@@ -4,17 +4,18 @@ import type { SaveData } from "./save";
 
 export type Feature = "skins" | "profile" | "missions" | "daily" | "zen" | "shop" | "challenges" | "city" | "pass";
 
-/** Towers you need to have built before each feature appears. */
+/** Towers you need to have built before each feature appears: spread over the first 15
+ *  towers, so a new player meets one new thing at a time instead of a dozen at once. */
 export const FEATURE_TOWERS: Record<Feature, number> = {
   skins: 1,
-  profile: 1,
-  missions: 1,
-  daily: 2,
-  city: 2,
-  pass: 2,
-  challenges: 3,
-  shop: 3,
-  zen: 4,
+  profile: 2,
+  missions: 3,
+  daily: 4,
+  city: 5,
+  challenges: 7,
+  shop: 10,
+  pass: 12,
+  zen: 15,
 };
 
 export const FEATURE_NAMES: Record<Feature, string> = {

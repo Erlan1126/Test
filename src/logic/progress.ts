@@ -152,8 +152,9 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
     if (finishedNow && allMissionsDone(save) && save.missions.chest !== dayKey(0, now)) {
       rewards.push({ kind: "star", text: t("All of today's missions done! Open your chest on the main menu") });
     }
-    const tier = addLeague(save, run, now);
-    if (tier) rewards.push({ kind: "star", text: t("You moved up to the {league} league this week!", { league: t(tier) }) });
+    // Weekly points are still counted (the friends board shows them), but the weekly
+    // competition is now the tournament alone, so there's no separate league to announce.
+    addLeague(save, run, now);
   }
 
   // Streak and rent: every tower counts, Zen too.
