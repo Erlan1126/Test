@@ -21,7 +21,7 @@ import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
 import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
-import { challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
+import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
@@ -35,6 +35,7 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower } from "./stats";
+import { adsReady, showRewarded } from "./ads";
 import { challengeIdFrom, createChallenge, fetchChallenge, fetchTries, postTry, type Challenge as FriendChallenge } from "./challenge";
 
 /** This phone's own shared challenges, to hear when friends try them. */
@@ -148,6 +149,8 @@ export class App implements DailyHost {
   private friendScore = 0;
   /** A friend's tower to beat, from a challenge link (its ghost races you). */
   private vs: FriendChallenge | null = null;
+  /** Stars the last tower earned (a rewarded ad can double them, once). */
+  private towerStars = 0;
   private readonly site = siteUrl();
   private last = performance.now();
   private perf = { frames: 0, time: 0, bad: 0 };
@@ -643,6 +646,7 @@ export class App implements DailyHost {
     $("unpeek").addEventListener("click", () => this.setPeek(false));
     $("share").addEventListener("click", () => void this.share());
     $("share-video").addEventListener("click", () => void this.shareVideo());
+    $("ad-double").addEventListener("click", () => void this.adDouble());
 
     $("pause").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); this.pause(); });
     $("resume").addEventListener("click", () => this.resume());
@@ -925,8 +929,9 @@ export class App implements DailyHost {
     this.sound.intensity = 0;
     const run = this.sim.summary();
     if (this.mode === "daily") run.day = this.runDay;
-    const towersBefore = this.save.profile.towers;
+    const towersBefore = this.save.profile.towers, starsBefore = this.save.stars;
     this.outcome = recordRun(this.save, run);
+    this.towerStars = Math.max(0, this.save.stars - starsBefore);
     statsTower(run, this.save.profile.towers, this.save.profile.level);
     if (this.vs && this.mode === "classic") void postTry(this.vs.id, this.save.nickname, run.score);
     if (this.mode !== "zen" && run.floors >= 3) {
@@ -1559,6 +1564,9 @@ export class App implements DailyHost {
     $("over-actions").classList.toggle("single", mode === "challenge");
     this.pickHighlight();
     this.renderCorners();
+    const ad = $("ad-double");
+    ad.hidden = !(this.towerStars >= 1 && adsReady() && mode !== "challenge");
+    ad.textContent = t("🎬 Watch a short ad: double your +{n} ★", { n: this.towerStars });
     $("over").hidden = false;
   }
 
@@ -1681,6 +1689,25 @@ export class App implements DailyHost {
     ctx.fillStyle = "#ffe08a";
     ctx.font = `30px Bungee, sans-serif`;
     ctx.fillText("SKYRISE", W / 2, H - 32);
+  }
+
+  /** Optional rewarded ad after a tower: doubles the stars it earned. */
+  private async adDouble(): Promise<void> {
+    const btn = $("ad-double") as HTMLButtonElement, n = this.towerStars;
+    if (!n || btn.disabled) return;
+    btn.disabled = true;
+    this.sound.duck(true);
+    const ok = await showRewarded();
+    this.sound.duck(false);
+    btn.disabled = false;
+    if (!ok) { toast(t("No reward this time. Try again later.")); return; }
+    addStars(this.save, n);
+    this.towerStars = 0;
+    btn.hidden = true;
+    this.persist();
+    this.sound.star();
+    toast(t("+{n} ★ added. Thanks for watching!", { n }));
+    this.renderCorners();
   }
 
   /** Opens a friend's challenge from a link: their tower becomes the one to beat. */

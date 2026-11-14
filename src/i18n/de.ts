@@ -889,4 +889,8 @@ export const DE: Record<string, string> = {
   "{name} challenges you: beat {n} people!": "{name} fordert dich heraus: schlag {n} Leute!",
   "🏆 {name} beat your tower with {n} people! Build a taller one?": "🏆 {name} hat deinen Turm mit {n} Leuten geschlagen! Baust du einen höheren?",
   "👻 {name} tried to beat your tower ({n} people). You're still ahead!": "👻 {name} wollte deinen Turm schlagen ({n} Leute). Du liegst noch vorn!",
+  // ---------- Rewarded ads ----------
+  "🎬 Watch a short ad: double your +{n} ★": "🎬 Kurze Werbung ansehen: deine +{n} ★ verdoppeln",
+  "No reward this time. Try again later.": "Diesmal keine Belohnung. Versuch es später nochmal.",
+  "+{n} ★ added. Thanks for watching!": "+{n} ★ hinzugefügt. Danke fürs Zuschauen!",
 };
