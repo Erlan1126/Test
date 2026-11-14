@@ -56,6 +56,23 @@ it ran (frames per second). Each report includes the app version, the phone mode
 graphics chip, and nothing else: no player id, nickname, save or location. Reports are kept
 for at most a few weeks (the newest 20,000) and are never shared or sold.
 
+## Anonymous play statistics
+
+To balance the game (how hard towers are, how fast rewards come), it sends anonymous play
+statistics to the Skyrise server: once a day that the game was opened, and after each tower
+its mode, floors, height, perfect drops, score and your builder level, with how many towers
+this install has built and how many days since it first played. They carry a random id made
+up by this install, which is not your player id and isn't linked to your nickname, save,
+device or anything else, plus the app version and the game's language. They're kept in
+summary form (the newest 300,000) and are never shared or sold.
+
+## Challenge links
+
+When you tap "Challenge a friend", the tower you share (its height, people, floors, how
+fast it grew, and your leaderboard nickname if you set one) is saved on the Skyrise server
+so the link can show it. When a friend plays the challenge, their nickname and score are
+saved with it so you can see who tried.
+
 ## What the game does not do
 
 - No accounts or sign-in (the leaderboard uses the random player id above).

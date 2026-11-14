@@ -63,6 +63,24 @@ app, el modelo del teléfono y el chip gráfico, y nada más: ni id de jugador, 
 partida guardada, ni ubicación. Se guardan unas semanas como máximo (los 20.000 más recientes)
 y nunca se comparten ni se venden.
 
+## Estadísticas de juego anónimas
+
+Para equilibrar el juego (qué tan difíciles son las torres, qué tan rápido llegan las
+recompensas), envía estadísticas anónimas al servidor de Skyrise: una vez al día que se abrió
+el juego y, después de cada torre, su modo, pisos, altura, caídas perfectas, puntuación y tu
+nivel de constructor, junto con cuántas torres lleva esta instalación y cuántos días desde
+que se jugó por primera vez. Llevan un id aleatorio creado por esta instalación, que no es tu
+id de jugador ni está vinculado a tu apodo, partida, dispositivo ni nada más, además de la
+versión de la app y el idioma del juego. Se guardan en forma resumida (las 300.000 más
+recientes) y nunca se comparten ni se venden.
+
+## Enlaces de reto
+
+Cuando tocas "Reta a un amigo", la torre que compartes (su altura, personas, pisos, a qué
+ritmo creció y tu apodo de las clasificaciones si pusiste uno) se guarda en el servidor de
+Skyrise para que el enlace pueda mostrarla. Cuando un amigo juega el reto, su apodo y su
+puntuación se guardan con él para que veas quién lo intentó.
+
 ## Qué no hace el juego
 
 - No hay cuentas ni inicio de sesión (el ranking usa el identificador aleatorio de arriba).
