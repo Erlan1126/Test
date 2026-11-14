@@ -1823,3 +1823,14 @@ body.busy .corner-btn b, body.busy .corner-btn span, body.busy .corner-btn svg {
 /* Menus, seamless: the header melts into the sheet instead of sitting on a band. */
 .modal .sheet-top { background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 70%, rgba(255, 255, 255, 0)); }
 .modal .sheet-top::after { height: 6px; }
+/* The Starter Pack card in the light shop: solid warm card, dark readable text. */
+.modal .starter-card { background: linear-gradient(135deg, #fff1e0, #ffe3ee); border: 1px solid #ffd2a8; box-shadow: var(--card-shadow); color: var(--text); }
+.modal .starter-card small { color: #a2460b; }
+/* The Starter Pack offer, light: solid warm sheet, readable colors, one clean close button. */
+#starter .sheet.starter-sheet { background: linear-gradient(180deg, #fff7ec 0%, #ffffff 45%, #f6f7fd 100%); }
+#starter .starter-ribbon { margin-top: 4px; color: #fff; }
+#starter .starter-sheet h2 { color: #f0590f; background: linear-gradient(180deg, #ff9a3d, #f63476); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+#starter .starter-list li { background: #fff; box-shadow: var(--card-shadow); color: var(--text); }
+#starter .starter-list b { color: #e8590c; }
+#starter .starter-timer { color: #c2410c; }
+#starter .close-btn { box-shadow: none; outline: 0; border: 0; }
