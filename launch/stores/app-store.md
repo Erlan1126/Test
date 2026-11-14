@@ -212,3 +212,9 @@ is shared with English unless you change it.
 
 The privacy policy URL is shared across languages; a Spanish copy is in `../privacy-es.md`
 if you want to publish it as well.
+
+## Subscription (VIP)
+
+Monetization → **Subscriptions** (not In-App Purchases) → group **Skyrise VIP** → +.
+Product ID **skyrise_vip_monthly** (the App Store id; Google Play uses vip_monthly),
+duration 1 Month, $4.99, billing grace period 3 days.

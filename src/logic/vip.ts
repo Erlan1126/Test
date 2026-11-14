@@ -4,6 +4,9 @@ import { MAX_BOOSTS } from "../data/shop";
 import type { SaveData } from "./save";
 
 export const VIP_ID = "vip_monthly";
+/** The App Store's VIP id. ("vip_monthly" was taken there by a one-time purchase made by
+ *  mistake, and Apple never lets a product id be used again.) */
+export const VIP_ID_IOS = "skyrise_vip_monthly";
 export const VIP_CENTS = 499;
 export const VIP_DAILY_CRYSTALS = 50;
 export const VIP_SKIN = "platinum";

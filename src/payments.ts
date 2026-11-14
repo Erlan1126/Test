@@ -10,7 +10,10 @@
 //
 // Every completed purchase has a transaction id; the save remembers those ids so a pack
 // is never counted twice (see grantPack in logic/premium.ts).
-import { VIP_ID } from "./logic/vip";
+import { VIP_ID as VIP_ANDROID, VIP_ID_IOS } from "./logic/vip";
+
+/** VIP's store id on this phone (it differs between the two stores). */
+const VIP_ID = platform() === "ios" ? VIP_ID_IOS : VIP_ANDROID;
 import { CRYSTAL_PACKS, PAYMENTS_API, STARTER_PACK, type CrystalPack } from "./data/premium";
 import { isNative, platform } from "./native";
 
