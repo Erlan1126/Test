@@ -433,40 +433,72 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   // ---- People, a boat and birds ----
   anims.push(addCityLife(g));
 
+  // Things that move as one (the Ferris wheel, balloons, cars, floating rocks...) are
+  // merged inside themselves first, then everything still is merged into the island.
+  const movers: THREE.Object3D[] = [];
+  g.traverse(o => { if (o !== g && o.userData.dynamic && !(o as THREE.Mesh).isMesh) movers.push(o); });
+  for (const mv of movers) mergeStatic(mv);
   mergeStatic(g);
   return { group: g, anim: { update: (time, night) => anims.forEach(a => a(time, night)) } };
 }
 
-/** Merges every still mesh that shares a look into one, so the phone draws the island in
- *  a few dozen steps instead of hundreds. Moving things and lit windows stay separate. */
-function mergeStatic(root: THREE.Group): void {
+/** Merges every still mesh into as few meshes as possible, so the phone draws the island in
+ *  a handful of steps instead of hundreds. Each piece's color is baked into its vertices,
+ *  so pieces of every color share one mesh as long as they're the same kind of surface
+ *  (roughness, metalness, texture, glow). Pieces whose material animates (lit windows,
+ *  lamps) merge only with others using that same material. Moving things stay separate. */
+function mergeStatic(root: THREE.Object3D): void {
   root.updateMatrixWorld(true);
-  const groups = new Map<string, { mat: THREE.Material; geos: THREE.BufferGeometry[]; cast: boolean }>();
+  const toLocal = root.matrixWorld.clone().invert(), rel = new THREE.Matrix4();
+  const groups = new Map<string, { mat: THREE.MeshStandardMaterial; geos: THREE.BufferGeometry[]; cast: boolean; tint: boolean; rough: number; metal: number }>();
   const remove: THREE.Mesh[] = [];
+  const c = new THREE.Color();
   const visit = (o: THREE.Object3D) => {
-    if (o.userData.dynamic) return;
-    for (const c of o.children) visit(c);
+    if (o !== root && o.userData.dynamic) return;
+    for (const ch of o.children) visit(ch);
     const m = o as THREE.Mesh;
     if (!m.isMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh || Array.isArray(m.material)) return;
     const mat = m.material as THREE.MeshStandardMaterial;
-    if (mat.userData.dynamic || mat.transparent) return;
-    const key = [mat.color?.getHexString(), mat.roughness, mat.metalness, mat.flatShading, mat.map?.uuid, mat.emissive?.getHexString(), m.castShadow].join("|");
+    if (!mat.isMeshStandardMaterial || mat.transparent || mat.vertexColors) return;
+    // Materials that animate keep their identity; the rest group by surface, not color.
+    const tint = !mat.userData.dynamic;
+    // Near-identical surfaces count as one (roughness in quarters, metal or not), so more
+    // pieces share a mesh; nobody can tell 0.7 from 0.75 roughness on a phone screen.
+    const rough = Math.round(mat.roughness * 4) / 4, metal = mat.metalness >= 0.5 ? 1 : mat.metalness > 0.15 ? 0.3 : 0;
+    const key = tint
+      ? ["t", rough, metal, mat.flatShading, mat.map?.uuid, mat.emissive?.getHexString(), mat.emissiveIntensity, mat.side, mat.envMapIntensity, m.castShadow].join("|")
+      : `d|${mat.uuid}|${m.castShadow}`;
     let gr = groups.get(key);
-    if (!gr) { gr = { mat, geos: [], cast: m.castShadow }; groups.set(key, gr); }
-    let geo = m.geometry.clone().applyMatrix4(m.matrixWorld);
+    if (!gr) { gr = { mat, geos: [], cast: m.castShadow, tint, rough, metal }; groups.set(key, gr); }
+    let geo = m.geometry.clone().applyMatrix4(rel.multiplyMatrices(toLocal, m.matrixWorld));
     if (geo.index) geo = geo.toNonIndexed();
     for (const name of Object.keys(geo.attributes)) if (!["position", "normal", "uv"].includes(name)) geo.deleteAttribute(name);
-    if (!geo.attributes.uv) geo.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+    const n = geo.attributes.position.count;
+    if (!geo.attributes.uv) geo.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+    if (tint) {
+      c.copy(mat.color);
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+      geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    }
     gr.geos.push(geo);
     remove.push(m);
   };
   visit(root);
   for (const m of remove) { m.removeFromParent(); m.geometry.dispose(); }
-  for (const { mat, geos, cast } of groups.values()) {
+  for (const { mat, geos, cast, tint, rough, metal } of groups.values()) {
     const merged = mergeGeometries(geos);
     geos.forEach(x => x.dispose());
     if (!merged) continue;
-    const mesh = new THREE.Mesh(merged, mat);
+    let use: THREE.Material = mat;
+    if (tint) {
+      const v = mat.clone();
+      v.vertexColors = true;
+      v.color.set(0xffffff);
+      v.roughness = rough; v.metalness = metal;
+      use = v;
+    }
+    const mesh = new THREE.Mesh(merged, use);
     mesh.castShadow = cast;
     mesh.receiveShadow = true;
     root.add(mesh);
@@ -600,6 +632,7 @@ function cityBuilding(id: string, anims: ((t: number, n: number) => void)[]): TH
       hands.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.28, 0.03).translate(0, 0.12, 0), std("#212529")));
       hands.position.set(0, 5.4, 0.87);
       hands.userData.dynamic = true;
+      for (const hand of hands.children) hand.userData.dynamic = true; // each turns on its own
       g.add(hands);
       add(new THREE.ConeGeometry(1.25, 1.6, 4).rotateY(Math.PI / 4).translate(0, 6.9, 0), "#5fae96", { flatShading: true });
       add(new THREE.CylinderGeometry(0.02, 0.05, 0.9, 4).translate(0, 8.1, 0), "#ffd23f", { metalness: 0.8, roughness: 0.3 });
@@ -748,16 +781,23 @@ function lawnTexture(t: IslandTheme): THREE.Texture {
   for (let i = 0; i < 22; i++) { g.fillStyle = i % 2 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.025)"; g.fillRect(0, i * N / 22, N, N / 22); }
   const grassy = t.id === "meadow" || t.id === "blossom" || t.id === "candy";
   if (grassy) {
-    // Thousands of short blades, each a thin stroke leaning a little, in many greens.
+    // Thousands of short blades, each a thin stroke leaning a little, in many greens. They're
+    // drawn in a few batches (one path per shade), which is many times faster than one
+    // stroke each.
     g.lineCap = "round";
-    for (let i = 0; i < 26000; i++) {
-      const x = hash(i, 7, 1) * N, y = hash(i, 7, 2) * N, len = 3 + hash(i, 7, 3) * 6, lean = (hash(i, 7, 4) - 0.5) * 3;
-      const k = hash(i, 7, 5);
-      g.strokeStyle = k < 0.45 ? tone(-0.08 - k * 0.1, 0.05) : k < 0.85 ? tone(0.04 + (k - 0.45) * 0.12, -0.02, -0.01) : tone(0.14, -0.1, -0.03);
-      g.globalAlpha = 0.35 + hash(i, 7, 6) * 0.45;
-      g.lineWidth = 0.8 + hash(i, 7, 7) * 0.8;
-      g.beginPath(); g.moveTo(x, y); g.lineTo(x + lean, y - len); g.stroke();
-    }
+    const shades = [tone(-0.14, 0.05), tone(-0.08, 0.05), tone(0.02, -0.01, -0.01), tone(0.07, -0.02, -0.015), tone(0.14, -0.1, -0.03)];
+    shades.forEach((shade, si) => {
+      for (const [alpha, width] of [[0.45, 1], [0.7, 1.4]]) {
+        g.strokeStyle = shade; g.globalAlpha = alpha; g.lineWidth = width;
+        g.beginPath();
+        for (let i = 0; i < 2600; i++) {
+          const j = i * 10 + si * 2 + (width > 1 ? 1 : 0);
+          const x = hash(j, 7, 1) * N, y = hash(j, 7, 2) * N, len = 3 + hash(j, 7, 3) * 6, lean = (hash(j, 7, 4) - 0.5) * 3;
+          g.moveTo(x, y); g.lineTo(x + lean, y - len);
+        }
+        g.stroke();
+      }
+    });
     g.globalAlpha = 1;
     // Tiny clover leaves and specks of soil.
     for (let i = 0; i < 900; i++) {

@@ -168,6 +168,11 @@ export class Renderer3D {
   // Landmark silhouette and clouds
   private readonly landmark: THREE.Mesh;
   private landmarkIndex = -1;
+  /** The previous island, freed after the new one's first frame (see updateIsland). */
+  private oldIsland: THREE.Group | null = null;
+  /** Getting the first island's shaders ready before showing it (see updateIsland). */
+  private compiling = false;
+  private precompiled = false;
   private readonly clouds: THREE.Sprite[] = [];
 
   // Skyline island
@@ -183,6 +188,10 @@ export class Renderer3D {
     document.body.classList.add("webgl"); // the scene fades in on its first full frame
     this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: "high-performance" });
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
+    // Checking every new shader for errors makes the browser stop and wait for it to finish
+    // compiling, a visible hitch each time. The shaders are fixed and tested, so only check
+    // when asked to (?shadercheck).
+    this.gl.debug.checkShaderErrors = new URLSearchParams(location.search).has("shadercheck");
     // Neutral tone mapping keeps colors rich instead of washing them out.
     this.gl.toneMapping = THREE.NeutralToneMapping;
     this.gl.toneMappingExposure = 1;
@@ -515,6 +524,8 @@ export class Renderer3D {
 
     this.placeCamera(fx.shake > 0 && !this.calm ? fx.shake : 0);
     this.updateEnvironment(n);
+    // Still preparing the first island's shaders: wait (the scene isn't shown yet).
+    if (this.compiling && !this.shown) return;
     // By day the glow barely shows, so it's skipped there: a cheaper frame.
     if (this.low || env.nf < 0.12) this.gl.render(this.scene, this.cam);
     else {
@@ -523,6 +534,7 @@ export class Renderer3D {
       this.bloom.threshold = lerp(0.95, 0.82, env.nf);
       this.composer.render();
     }
+    if (this.oldIsland) { disposeTree(this.oldIsland); this.oldIsland = null; }
     this.drawOverlay(dt, f);
     // Show the scene only once its first complete frame is drawn, so the island, camera and
     // layout never appear half-set-up.
@@ -610,7 +622,10 @@ export class Renderer3D {
     const key = `${f.theme.id}|${f.islandLevel}|${f.city.join()}`;
     if (key === this.islandKey) return;
     this.islandKey = key;
-    if (this.island) { this.scene.remove(this.island); disposeTree(this.island); }
+    // The old island is thrown away only after the new one has been drawn once: its
+    // shaders are then still in use and get reused, instead of being freed and compiled
+    // again from scratch (a long freeze on phones).
+    if (this.island) { this.scene.remove(this.island); this.oldIsland = this.island; }
     const { group, anim } = buildIsland({ theme: f.theme, level: f.islandLevel, city: f.city });
     this.island = group;
     this.islandAnim = anim;
@@ -622,6 +637,15 @@ export class Renderer3D {
       if (m && !Array.isArray(m) && m.userData?.snowable && !this.snowable.includes(m)) this.snowable.push(m);
     });
     this.scene.add(group);
+    // The very first island: get its shaders ready in the background (on phones that can
+    // compile in parallel) before the scene appears, instead of freezing on the first frame.
+    if (!this.shown && !this.precompiled) {
+      this.precompiled = true;
+      this.compiling = true;
+      const done = () => { this.compiling = false; };
+      setTimeout(done, 4000); // never wait longer than this
+      this.gl.compileAsync(this.scene, this.cam).then(done, done);
+    }
   }
 
   /** The city: the current district's best towers on the island just behind, and every
