@@ -90,3 +90,13 @@ describe("daily gift streak", () => {
     expect(giftAmount(8)).toBe(1);
   });
 });
+
+describe("rules 4 speed", () => {
+  it("starts faster than before and never slows down", async () => {
+    const { floorSpeed4 } = await import("../src/logic/rules");
+    expect(floorSpeed4(1)).toBeGreaterThan(floorSpeed(1));
+    expect(floorSpeed4(15)).toBeGreaterThan(floorSpeed(15));
+    for (let n = 1; n < 120; n++) expect(floorSpeed4(n + 1)).toBeGreaterThanOrEqual(floorSpeed4(n));
+    expect(floorSpeed4(200)).toBe(20);
+  });
+});

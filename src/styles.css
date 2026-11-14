@@ -1787,3 +1787,23 @@ body.busy .modal .sheet { background-color: transparent; }
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.02) 55%, rgba(255, 255, 255, 0.1) 100%), #f63476;
   border: 0; box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.6), 0 8px 20px rgba(246, 52, 118, 0.28); text-shadow: none;
 }
+
+/* ======================================================================
+   Seamless play screen: the height and progress float on the sky with no box
+   around them, and the corner buttons are the same light glass as at home.
+   ====================================================================== */
+.alt, body.busy .alt {
+  width: min(280px, calc(100vw - 130px)); padding: 2px 4px 0;
+  background: none; border: 0; box-shadow: none;
+}
+.alt-row b, .alt-row span { color: #fff; text-shadow: 0 1px 2px rgba(10, 20, 60, 0.35), 0 2px 10px rgba(10, 20, 60, 0.3); }
+.alt-row span { color: rgba(255, 255, 255, 0.92); }
+.alt .bar { height: 5px; margin-top: 6px; background: rgba(255, 255, 255, 0.3); box-shadow: 0 1px 6px rgba(10, 20, 60, 0.18); }
+.alt .bar i { box-shadow: 0 0 10px rgba(255, 120, 170, 0.6); }
+.people-label { opacity: 0.95; }
+body.busy .corner-btn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.9), 0 6px 16px rgba(20, 24, 70, 0.16);
+  color: #1b1f4a;
+}
+body.busy .corner-btn b, body.busy .corner-btn span, body.busy .corner-btn svg { color: #1b1f4a; }

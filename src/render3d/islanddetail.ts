@@ -14,6 +14,7 @@ import type { IslandTheme } from "../data/islands";
 import { HOUSES, LAKE } from "../render/details";
 import { EXTRA_NEIGHBORS, NEIGHBORS } from "../render/scenery";
 import { FH } from "./geom";
+import { addThemeProps } from "./islandtheme";
 
 const I = ISLAND;
 const col = (c: string) => new THREE.Color(c);
@@ -170,14 +171,18 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
   }
 
   // ---- Scattered: bushes, grass tufts, wild flowers and edge rocks ----
+  // Spots already used by bigger scattered things, so nothing lands on top of them.
+  const taken: [number, number, number][] = [];
   const pick = (n: number, seed: number, r: number, ok: (x: number, z: number) => boolean) => {
     const out: [number, number, number][] = [];
     for (let i = 0; out.length < n && i < n * 30; i++) {
       const x = (hash(i, seed, 1) * 2 - 1) * (I - 0.8), z = (hash(i, seed, 2) * 2 - 1) * (I - 0.8);
       if (!ok(x, z) || onPaving(x, z, r) || o.blocked(x, z, r)) continue;
       if (out.some(([a, b]) => Math.hypot(a - x, b - z) < r * 2)) continue;
+      if (taken.some(([a, b, tr]) => Math.hypot(a - x, b - z) < r + tr)) continue;
       out.push([x, z, hash(i, seed, 3)]);
     }
+    if (r >= 0.4) for (const [x, z] of out) taken.push([x, z, r]);
     return out;
   };
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), c = new THREE.Color();
@@ -193,7 +198,11 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
     });
     im.castShadow = cast; im.receiveShadow = true;
     g.add(im);
+    return im;
   };
+
+  // What makes each island its own: candy on Candy Island, lava on the volcano...
+  addThemeProps({ g, t, add, pick, scatter, anims: o.anims });
 
   // Bushes: low round shrubs, more of them toward the island's rim.
   const bushes = pick(46, 11, 0.7, (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 9);

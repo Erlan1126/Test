@@ -15,6 +15,9 @@ export interface Box {
  * players can find the rhythm, then it ramps up and tops out around floor 50.
  */
 export const floorSpeed = (n: number): number => Math.min(20, 6.5 + n * 0.06 + Math.max(0, n - 15) * 0.32);
+/** Rules 4: floors start a little faster and speed up sooner, so a tower is a challenge
+ *  from the first floors (Zen keeps the gentle curve above). */
+export const floorSpeed4 = (n: number): number => Math.min(20, 7.6 + n * 0.08 + Math.max(0, n - 12) * 0.3);
 
 /** Wind strength (0 to 1) at floor n. It starts at `from` and is full 30 floors later. */
 export const windAt = (n: number, from = WIND_START): number => clamp((n - from) / 30, 0, 1);
@@ -44,7 +47,8 @@ export function runXp(run: RunSummary, newBest: boolean): number {
   // thousands on tall towers, and an uncapped share let players gain many levels a minute.
   let xp = run.floors + run.perfects + Math.min(60, Math.floor(run.score / 100)) + (newBest ? 20 : 0);
   if (run.mode === "daily") xp *= 1.5;
-  if (run.mode === "zen") xp /= 2;
+  // Zen can't be lost, so it earns much less.
+  if (run.mode === "zen") xp *= 0.3;
   return Math.round(xp * (run.xpMultiplier ?? 1));
 }
 

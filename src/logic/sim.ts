@@ -5,7 +5,7 @@ import { clamp } from "../core/util";
 import { BLOCK_SIZE, GROW, RANGE } from "../data/constants";
 import type { Challenge } from "../data/challenges";
 import type { WeekEvent } from "../data/events";
-import { floorSpeed, landmarkIndex, metersFor, peopleIn, perfectWindow, windAt, type Box } from "./rules";
+import { floorSpeed, floorSpeed4, landmarkIndex, metersFor, peopleIn, perfectWindow, windAt, type Box } from "./rules";
 import type { Mode, RunSummary } from "./types";
 
 /**
@@ -24,10 +24,12 @@ export type PowerUp = "slow" | "wide" | "steady";
 export const POWER_FLOORS: Record<PowerUp, number> = { slow: 4, wide: 4, steady: 6 };
 
 /** Rules versions: 1 is the original game; 2 adds shrinking, magnet and foggy floors and
- *  power-ups. Every recorded tower says which rules it was played with. *  3 softens shrinking floors (they lose at most 25% of their width, not 45%) and lets a
+ *  power-ups. Every recorded tower says which rules it was played with.
+ *  3 softens shrinking floors (they lose at most 25% of their width, not 45%) and lets a
  *  narrow tower win width back on both sides with perfect drops in a row.
+ *  4 starts floors a little faster and speeds them up sooner (floorSpeed4).
  */
-export const RULES = 3;
+export const RULES = 4;
 
 export interface Floor extends Box {
   y: number;
@@ -153,7 +155,8 @@ export class TowerSim {
 
   speedFor(n: number): number {
     const easy = this.cfg.easy && n <= 6 ? 0.7 : 1;
-    return (this.cfg.mode === "zen" ? floorSpeed(Math.min(n, 12)) : floorSpeed(n)) * easy;
+    if (this.cfg.mode === "zen") return floorSpeed(Math.min(n, 12)) * easy;
+    return ((this.cfg.rules ?? 1) >= 4 ? floorSpeed4(n) : floorSpeed(n)) * easy;
   }
 
   /** Picks the kind of the next floor. Always draws the same number of random values so
