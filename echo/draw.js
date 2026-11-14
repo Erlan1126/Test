@@ -1060,6 +1060,8 @@ function frame(now) {
   if (L) stepArtJob(screen === "play" ? 5 : 10);
   // The 3D view draws the cave and everything in it on its own canvas underneath; this canvas
   // then only carries the vignette, flashes and fades on top.
+  // The run, the title's live run, the city and the films cover the whole screen: draw nothing under them.
+  if (CORE && ["title", "run", "city", "movie"].includes(screen)) { if (R3D) R3D.show(false); ctx.clearRect(0, 0, W, H); requestAnimationFrame(frame); return; }
   const in3d = !!(L && R3D && save.settings.view3d !== false);
   if (R3D) R3D.show(in3d);
   if (in3d) {

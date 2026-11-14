@@ -25,9 +25,23 @@ Echo's main mode is now a calm, beautiful endless run (`echo/run.js`), in the sp
 - **Score and missions.** Score is distance plus lights, times your multiplier. Three missions at a time (gather 40 lights in one run, reach 400 m, sing 6 shadows free, reach 300 m untouched, gather whole light trails, reach world 2); each one done raises the multiplier (up to ×10) and is replaced by a harder one. Your best score shows under Play.
 - **Upgrades and the city.** The lights you gather are glow: spend it after a run on a Magnet (lights drift to you), a Bigger song (reaches further, recharges faster) and a Brighter heart (an extra light to start with). Every fifteen lights gathered in runs also light a window in the Singer's city.
 
+**Playing well.** Gathering lights without missing one builds a combo: every ten in a row makes each light worth one more, and the melody climbs; leaving one behind breaks it. Skimming close past a rock or a shadow without touching it gives a "Close!" bonus and a burst of speed. Freeing three shadows with one song is a Chorus (+10). Swipe up (or ↑ / W) to dash: a burst of speed straight through rocks, but it's loud, so shadows nearby turn your way.
+
+**Every world plays differently.** Mossy Hollow has currents that push you sideways; Amethyst Deep, crystal gates that open and close; Ember Caverns, lava bursting from the walls; Frost Tunnels, icicles that fall toward you (a ring on your line shows where); Coral Depths, bubbles to ride for a burst of speed; Golden Mines, lanterns swinging across the passage; Starlight Abyss, a Lurker's eye sweeping a beam you must not stay in.
+
+**Big moments**, one every few hundred metres: **darkness falls** (only Lumi's light and your songs show the cave), a **rush** (a fast current packed with lights), or **the Hunter** (a vast shadow rises behind you for sixteen seconds; slowing down or bumping lets it close in, dashing gets you away).
+
+**Power-ups:** Comet (unstoppable and fast, smashing rocks and shadows), Magnet (lights fly to you), Lantern (double lights, and no darkness), Choir (Lumi sings by itself).
+
+**Lost friends.** Once a run, past 300 m, a lost little light may be floating somewhere, calling for help. Reach it and it moves into the Singer's city (twelve to find); tap them there to hear what they say.
+
+**Daily run.** The same cave for everyone today (seeded by the date), with today's best shown on the title.
+
+**The menu** is a live run: behind the name, Lumi glides up the cave by itself, following the light trails and singing at shadows; tap to make it sing. Play, the Daily run, the City, Looks (now unlocked by lights gathered in runs) and Settings. The story films and handmade caves are no longer in the menus.
+
 **How it looks and moves.** Steering is springy, with momentum: Lumi leans into its turns, stretches as it speeds, its antenna swaying the other way, and leaves a smooth tapering comet tail; its eyes squint happily as it gathers a light. The camera drifts a little after Lumi, pulls back as the run speeds up, and shakes when you're hit or bump a rock. The walls are layered dark rock with broken edges and fainter ledges behind them, their edges glowing in the world's colour and brighter where Lumi's light falls; crystals and glow-worms grow on them. Behind, three layers of hanging and rising spires drift at different speeds, with fog bands and light shafts from far above, and dark rock rushes past close to the eye. Each world has its own air: motes, pollen, sparkles, rising embers, snow, bubbles, gold dust, stars. Lights are little turning stars joined by golden threads, streaking into Lumi when gathered; shadows are drifting knots of smoke with eyes that watch you and drift your way; songs roll out as a bright ring with echoes and sparkles, and freed shadows burst into gold with a "+3 ✦".
 
-**Story** on the title (and in the city) holds the films and the twenty handmade caves.
+
 
 ## The story is told as short films
 

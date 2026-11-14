@@ -278,9 +278,8 @@ const SIM = `
       save.got = { 0: 1, 1: 2 }; save.stars[0] = 3; save.stars[1] = 2; save.stars[2] = 1; save.stars[3] = 1; save.glow = 50; save.upg = {};
       showCity(true);
       out.cityShowsLightsHome = screen === "city" && lightsHome() === 3 && document.getElementById("cityCount").textContent.startsWith("3");
-      renderShop(); document.querySelector("#shopList button[data-up='dash']").click();
-      out.glowBuysAFasterDash = upg("dash") === 1 && save.glow === 40;
-      startLevel(3, true); dash(); out.upgradedDashRechargesFaster = L.dashCd < DASH_CD;
+      save.run = null; runSave(); renderShop(); document.querySelector("#shopList button[data-run='magnet']").click();
+      out.glowBuysRunUpgradesInTheCity = runUpg("magnet") === 1 && save.glow === 10;
       // The endless run: lights play and count, songs free shadows, touches dim Lumi, the best is kept.
       save.seenIntro = 1; save.run = null; startRun();
       out.runStarts = screen === "run" && run.hearts === 3;
@@ -294,6 +293,36 @@ const SIM = `
       out.runCaveScrollsAndSpeedsUp = runMetres() > 40 && run.speed > 200;
       run.hearts = 1; run.inv = 0; runHit();
       out.runEndsAndKeepsTheBest = !!run.over && save.run.best > 0 && save.glow >= run.lights;
+      // Combos, near misses, the chorus, the dash.
+      startRun(); run.next = 1e9; run.nextEvent = 1e9;
+      run.items = Array.from({ length: 12 }, (_, q) => ({ type: "light", at: run.dist + 10 + q * 3, x: run.x, trail: 7, of: 12 }));
+      for (let q = 0; q < 40; q++) { run.tx = run.x; runUpdate(1 / 60); }
+      out.runCombosGrow = run.comboBest >= 10 && run.lights > 12;
+      run.items = [{ type: "light", at: run.dist - 30, x: run.x + 80, trail: 8, of: 1 }]; runUpdate(1 / 60);
+      out.runMissingALightBreaksTheCombo = run.combo === 0;
+      run.items = [{ type: "rock", at: run.dist + 2, x: run.x + 40, r: 14, seed: 1 }]; const l0 = run.lights; run.inv = 0; runUpdate(1 / 60);
+      out.runNearMissGivesABonus = run.lights > l0 && run.boost > 0;
+      run.boost = 0; run.items = [0, 1, 2].map(q => ({ type: "shadow", at: run.dist + 70 + q * 10, x: run.x + (q - 1) * 30, ph: 0, amp: 0 })); runUpdate(1 / 60); run.songCd = 0; runSing();
+      for (let q = 0; q < 30; q++) runUpdate(1 / 60);
+      out.runChorusForThreeShadows = run.pops.some(p => p.text.startsWith("Chorus"));
+      const s0 = run.speed; run.dashCd = 0; runDash(); runUpdate(1 / 60);
+      out.runDashSpeedsUp = run.speed > s0 * 1.3 && run.dashCd > 0;
+      // Every world brings its own hazard; power-ups, big moments and lost friends.
+      out.runEachWorldHasItsHazard = [1, 2, 3, 4, 5, 6, 7].every(w => { run.items = []; runHazard(w * RUN.BIOME_M * RUN.M + 50, w, 200, 120); return run.items[0] && run.items[0].type === ["", "current", "gate", "lava", "ice", "bubble", "lantern", "eye"][w]; });
+      run.items = [{ type: "power", at: run.dist + 2, x: run.x, kind: "comet" }]; runUpdate(1 / 60);
+      out.runCometPowerUp = run.power && run.power.kind === "comet";
+      run.items = [{ type: "shadow", at: run.dist + 5, x: run.x, ph: 0, amp: 0 }]; const h0 = run.hearts; run.inv = 0; runUpdate(1 / 60); runUpdate(1 / 60);
+      out.runCometSmashesShadows = run.hearts === h0;
+      run.power = null; run.nextEvent = 0; runUpdate(1 / 60);
+      out.runBigMomentsHappen = !!run.event && ["dark", "rush", "hunter"].includes(run.event.kind);
+      save.runFriends = {}; run.items = [{ type: "friend", at: run.dist + 2, x: run.x, idx: 3 }]; runUpdate(1 / 60);
+      out.runFindsALostFriend = !!save.runFriends[3] && residentsHome().some(p => p.name === RUN_FRIENDS[3].name);
+      // The daily run is the same cave for everyone.
+      const layout = () => { startRun({ daily: true }); for (let q = 0; q < 120; q++) runUpdate(1 / 60); return run.items.filter(i => i.type !== "light").map(i => i.type + Math.round(i.at)).join(","); };
+      out.runDailyIsTheSameForEveryone = layout() === layout() && run.daily;
+      // The title plays a run by itself, without touching your missions.
+      const m0 = JSON.stringify(save.run.missions); showTitle(); for (let q = 0; q < 30; q++) { run = titleRun; runUpdate(1 / 60); } run = null;
+      out.titleRunsByItself = !!titleRun && titleRun.attract && titleRun.dist > 0 && JSON.stringify(save.run.missions) === m0;
       showTitle();
       // Light is health: three touches and the try is over.
       startLevel(3, true); only(1);
@@ -554,7 +583,9 @@ const SIM = `
     // the very hardest caves may beat it. More than 1% means something is genuinely unfair.
     const list = fails.slice(0, 12).map(f => `${f.n < 0 ? "daily" : "level " + (f.n + 1)} (${f.goal}): ${f.reason}`).join("; ");
     // 1% of the sample, rounded up, so the quick 97-level sample may lose one cave too.
-    check(`robot finished ${res.length - fails.length} of ${res.length} sampled levels (at least 99%)`, fails.length <= Math.ceil(res.length * 0.01), list);
+    // The handmade story caves are no longer in the menus (Echo is the endless run now), so how
+    // the robot does in them is reported, not required.
+    console.log(`        robot finished ${res.length - fails.length} of ${res.length} story caves (report only; they're no longer in the menus)`);
     if (fails.length) console.log(`        hardest caves for the robot: ${list}`);
     const lowLight = res.filter(r => r.done && r.energy > 0 && r.energy < 15 && r.n >= 10);
     console.log(`        balance: ${lowLight.length} finished levels ended with under 15% light; ` +

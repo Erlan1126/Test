@@ -32,7 +32,7 @@ const RESIDENTS = [
 // How many lights are home: the most found in each cave, added up.
 const lightsHome = () => Math.min(lightsInAll(), CORE_LEVELS.reduce((a, _, i) => a + ((save.got || {})[i] || 0), 0) + Math.floor(((save.run || {}).lights || 0) / 15));
 const lightsInAll = () => CORE_LEVELS.reduce((a, lv) => a + (lv.map.join("").match(/o/g) || []).length, 0);
-const residentsHome = () => RESIDENTS.filter((_, i) => save.stars[i]);
+const residentsHome = () => [...RESIDENTS.filter((_, i) => save.stars[i]), ...RUN_FRIENDS.filter((_, i) => (save.runFriends || {})[i])];
 
 // ---------- Songs Lumi learns, and upgrades bought with glow ----------
 const UPGRADES = [
@@ -134,7 +134,7 @@ function drawCity(ctx, W, H) {
   const res = residentsHome();
   cityFloat = [];
   res.forEach((p, q) => {
-    const i = RESIDENTS.indexOf(p), x = p.big ? 200 : 20 + ((i * 53) % 360), y = p.big ? 230 : 640 + Math.sin(t * 1.3 + i) * 6 - (i % 3) * 14, rad = p.big ? 0 : 7;
+    const i = q, x = p.big ? 200 : 20 + ((i * 53) % 360), y = p.big ? 230 : 640 + Math.sin(t * 1.3 + i) * 6 - (i % 3) * 14, rad = p.big ? 0 : 7;
     if (p.big) return;
     ctx.globalCompositeOperation = "lighter";
     const g = ctx.createRadialGradient(x, y, 1, x, y, 22); g.addColorStop(0, p.hush ? "rgba(200,170,255,0.6)" : "rgba(160,230,255,0.6)"); g.addColorStop(1, "rgba(120,200,255,0)");
@@ -202,19 +202,16 @@ function renderCity() {
   const n = nextUnplayed(), lv = CORE_LEVELS[n];
   $("cityCount").textContent = `${lightsHome()} / ${lightsInAll()}`;
   $("cityGlow").textContent = save.glow || 0;
-  $("citySub").textContent = residentsHome().length ? `${residentsHome().length} neighbours home · tap one to say hello` : "The Singer's city, waiting in the dark";
-  $("cityGoName").textContent = `${n + 1}. ${lv.name}`;
+  $("citySub").textContent = residentsHome().length ? `${residentsHome().length} friends home · tap one to say hello` : "Find lost friends in your runs. They'll live here";
+  $("cityGoName").textContent = (save.run || {}).best ? `Best ${(save.run.best).toLocaleString()}` : "Glide home through the dark";
   renderShop();
 }
 function renderShop() {
-  const list = UPGRADES.filter(learned);
-  $("shopList").innerHTML = list.length ? list.map(u => {
-    const lv = upg(u.id), next = u.tiers[lv], afford = next != null && (save.glow || 0) >= next;
-    return `<li><span><b>${u.name}</b> ${"◆".repeat(lv)}${"◇".repeat(u.tiers.length - lv)}<small>${u.tip(lv)}</small></span>` +
-      (next == null ? `<em>Best</em>` : `<button data-up="${u.id}" ${afford ? "" : "disabled"}>✦ ${next}</button>`) + "</li>";
-  }).join("") : `<li><span>Lumi learns new songs in the caves. Come back after cave 3.</span></li>`;
+  $("shopList").innerHTML = runShopHtml();
 }
 document.getElementById("shopList").addEventListener("click", e => {
+  const rb = e.target.closest("button[data-run]");
+  if (rb) { if (runBuy(rb.dataset.run)) renderCity(); return; }
   const b = e.target.closest("button[data-up]");
   if (!b) return;
   const u = UPGRADES.find(q => q.id === b.dataset.up), lv = upg(u.id), cost = u.tiers[lv];
@@ -226,5 +223,5 @@ document.getElementById("cityCanvas").addEventListener("click", e => {
   const near = cityFloat.map(f => ({ f, d: Math.hypot(f.x - e.clientX, f.y - e.clientY) })).sort((a, b) => a.d - b.d)[0];
   if (!near || near.d > 40) return;
   audio(); citySay = { p: near.f.p, x: near.f.x, y: near.f.y, t: 4 };
-  note(pitch(RESIDENTS.indexOf(near.f.p) % 7, 2), { dur: 0.6, vol: 0.05, fm: 2, echo: 0.8 });
+  note(pitch(cityFloat.indexOf(near.f) % 7, 2), { dur: 0.6, vol: 0.05, fm: 2, echo: 0.8 });
 });

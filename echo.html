@@ -616,6 +616,13 @@
   .run-panel .row button { flex: 1; padding: 13px 0; border-radius: 16px; font-size: 15px; background: rgba(255, 255, 255, 0.08); color: #e6f0ff; border: 1px solid rgba(255, 255, 255, 0.12); }
   .run-panel .row button.main { background: linear-gradient(180deg, #ffffff, #d9f1ff); color: #0a1a2e; font-weight: 600; }
   .run-panel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8fa6c8; font-weight: 500; }
+
+  /* The title is a live run: Lumi gliding up the glowing cave behind the name. */
+  #titleCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  #titleScreen > :not(#titleCanvas) { position: relative; z-index: 1; }
+  #titleScreen { background: none; }
+  #titleScreen::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(rgba(2, 3, 9, 0.75), rgba(2, 3, 9, 0) 32%, rgba(2, 3, 9, 0) 58%, rgba(2, 3, 9, 0.85) 90%); }
+  .daily-run { font-size: 14px; letter-spacing: 0.06em; color: #ffd98a; padding: 8px 18px; border-radius: 99px; border: 1px solid rgba(255, 217, 138, 0.4); background: rgba(40, 30, 10, 0.35); }
 </style>
 </head>
 <body>
@@ -640,6 +647,7 @@
 <div id="toasts" aria-live="polite"></div>
 
 <div class="screen on" id="titleScreen">
+  <canvas id="titleCanvas" aria-hidden="true"></canvas>
   <div class="title-bar">
     <button class="round glass" id="shareBtn" aria-label="Share Echo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
     <div class="chip glass" id="starChip" aria-label="Stars collected"><span class="st">★</span><span id="starCount">0</span></div>
@@ -656,10 +664,11 @@
     <div class="title-meta" id="titleMeta"></div>
     <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
     <button class="link week-link" id="weekLink">This week's cave ›</button>
-    <p class="tap-sing" id="tapSing">Tap the dark to sing</p>
+    <p class="tap-sing" id="tapSing">Tap to sing · swipe up to dash</p>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
+    <button class="daily-run" id="dailyRunBtn">Daily run</button>
     <nav class="dock glass" aria-label="Menu">
-      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Story</button>
+      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>City</button>
       <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
@@ -720,12 +729,12 @@
 <div class="screen" id="runScreen">
   <canvas id="runCanvas" aria-label="Lumi gliding up through the cave"></canvas>
   <div class="run-hud">
-    <div><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">✦ 0</span><span id="runMult">×1</span></div></div>
+    <div><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">✦ 0</span><span id="runMult">×1</span><span id="runPower"></span></div></div>
     <div><button id="runPauseBtn" aria-label="Pause">❚❚</button><div class="hearts" id="runHearts"></div></div>
   </div>
-  <div class="run-panel" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer. Tap to sing: shadows your song reaches turn back into light.</p><div class="row"><button id="runQuit">Quit</button><button class="main" id="runResume">Resume</button></div></div>
+  <div class="run-panel" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer. Tap to sing: shadows your song reaches turn back into light. Swipe up to dash.</p><div class="row"><button id="runQuit">Quit</button><button class="main" id="runResume">Resume</button></div></div>
   <div class="run-panel" id="runOver" hidden>
-    <h2>Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
+    <h2 id="runOverTitle">Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
     <h3>Missions</h3><ul id="runOverMissions"></ul>
     <h3>Upgrades · ✦ <span id="runGlowLeft">0</span></h3><ul class="shop-list" id="runShopList"></ul>
     <div class="row"><button id="runCity">City</button><button class="main" id="runAgain">Run again</button></div>
@@ -746,10 +755,10 @@
     <p class="city-sub" id="citySub"></p>
     <div class="city-stats"><span>✦ <b id="cityCount">0</b> lights home</span><span>Glow <b id="cityGlow">0</b></span></div>
   </div>
-  <div class="shop" id="shopPanel" hidden><h3>Songs</h3><p>Glow from the caves makes Lumi's songs stronger.</p><ul id="shopList"></ul></div>
+  <div class="shop" id="shopPanel" hidden><h3>Upgrades</h3><p>Spend the lights you gather in runs.</p><ul id="shopList"></ul></div>
   <div class="city-actions">
     <button class="play" id="cityGo"><span class="play-label">Into the dark</span><span class="play-sub" id="cityGoName"></span></button>
-    <div class="city-nav"><button id="cityMap">Map</button><button id="cityShop">Songs</button><button id="cityStory">Story</button><button id="cityBack">Title</button></div>
+    <div class="city-nav"><button id="cityShop">Upgrades</button><button id="cityBack">Title</button></div>
   </div>
 </div>
 

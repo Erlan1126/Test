@@ -486,12 +486,14 @@ function nextUnplayed() {
 // ---------- Title, looks, awards, settings ----------
 function renderTitle() {
   // The daily cave comes back once the story is finished.
-  document.body.classList.toggle("core-done", !CORE || (save.stars[TOTAL - 1] || 0) > 0);
+  document.body.classList.toggle("core-done", !CORE);
   const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
   $("starCount").textContent = t;
   $("playLabel").textContent = "Play";
-  const best = (save.run || {}).best || 0;
+  const rs = save.run || {}, best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
   $("playSub").textContent = best ? `Best ${best.toLocaleString()}` : "Glide home through the dark";
+  $("dailyRunBtn").textContent = daily ? `Daily run · today's best ${daily.toLocaleString()}` : "Daily run · new cave today";
+  startTitleRun();
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
   renderToday();
@@ -520,10 +522,10 @@ function renderLooks() {
       ball.style.setProperty("--glow", "rgba(255,255,255,0.6)");
     }
     b.appendChild(ball);
-    b.appendChild(document.createTextNode(open ? k.name : k.streak ? `🔥 ${k.streak}` : `★ ${k.need}`));
-    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : k.streak ? `${k.name}, needs a ${k.streak} day daily streak` : `${k.name}, needs ${k.need} stars`);
+    b.appendChild(document.createTextNode(open ? k.name : k.streak ? `🔥 ${k.streak}` : CORE ? `✦ ${k.need * 8}` : `★ ${k.need}`));
+    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : k.streak ? `${k.name}, needs a ${k.streak} day daily streak` : (CORE ? `${k.name}, needs ${k.need * 8} lights gathered in runs` : `${k.name}, needs ${k.need} stars`));
     b.addEventListener("click", () => {
-      if (!open) { toast(k.streak ? `Play the daily cave <b>${k.streak} days in a row</b> to unlock ${k.name}` : `Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`); return; }
+      if (!open) { toast(k.streak ? `Play the daily cave <b>${k.streak} days in a row</b> to unlock ${k.name}` : (CORE ? `Gather <b>${k.need * 8 - ((save.run || {}).lights || 0)}</b> more lights in runs to unlock ${k.name}` : `Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`)); return; }
       save.skin = i;
       persist();
       sfx.moth();
@@ -678,11 +680,12 @@ async function shareGame() {
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
 // Play goes home to the city first; from there, into the next cave.
 // Play starts an endless run (after the opening film, the first time); Story is the city and its caves.
-tap("playBtn", () => { if (!save.seenIntro) { save.seenIntro = 1; persist(); playMovie("intro", startRun); } else startRun(); });
-tap("cityGo", () => startLevel(nextUnplayed()));
-tap("cityMap", openMap);
+// Play starts a run; Daily run is the same cave for everyone today.
+tap("playBtn", () => startRun());
+tap("dailyRunBtn", () => startRun({ daily: true }));
+tap("cityGo", () => startRun());
 tap("cityBack", showTitle);
-tap("cityStory", () => playMovie("intro", () => showCity()));
+
 tap("cityShop", () => { $("shopPanel").hidden = !$("shopPanel").hidden; renderShop(); });
 tap("levelsBtn", () => (CORE ? showCity() : openMap()));
 // A soft tick when a switch or option changes, so settings feel alive.
