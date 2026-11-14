@@ -17,7 +17,7 @@ import { skinById } from "../data/skins";
 import type { Floor, FloorKind, PowerUp } from "../logic/sim";
 import { landmarkIndex, metersFor, type Box } from "../logic/rules";
 import type { SkylineTower } from "../logic/skyline";
-import { drawLandmarkLabel, drawLandmarkShape, Weather } from "../render/atmosphere";
+import { drawLandmarkLabel, drawLandmarkShape, landmarkAspect, Weather } from "../render/atmosphere";
 import { floorColor, lookFor } from "../render/buildings";
 import { drawGuide, Effects, type Debris } from "../render/effects";
 import { clipConvex, footprint, type XZ } from "../render/footprint";
@@ -922,20 +922,25 @@ export class Renderer3D {
     this.landmark.visible = !!ms;
     if (!ms) return;
     const mat = this.landmark.material as THREE.MeshBasicMaterial;
+    const aspect = landmarkAspect(index);
     if (index !== this.landmarkIndex) {
       this.landmarkIndex = index;
+      // Drawn in its real proportions: a light, softly shaded silhouette that the haze
+      // colour tints (see below).
       const c = document.createElement("canvas");
-      c.width = 256; c.height = 512;
+      c.height = 512; c.width = Math.max(32, Math.min(1024, Math.round(512 * aspect)));
       const g = c.getContext("2d")!;
-      drawLandmarkShape(g, index, 128, 512, 256, 500, "#ffffff");
+      drawLandmarkShape(g, index, c.width / 2, 512, c.width, 506, "#d8dce8", true);
       mat.map?.dispose();
       mat.map = new THREE.CanvasTexture(c);
       mat.map.colorSpace = THREE.SRGBColorSpace;
       mat.needsUpdate = true;
     }
-    const col = mixRgb(this.env.skyBot, this.env.skyTop, 0.35);
-    mat.color.copy(toColor(mixRgb(col, [16, 20, 52], 0.55)));
-    mat.opacity = 0.75;
+    // Hazy and light, as far-off buildings look: the sky's colour lifted towards a pale
+    // mist by day, and a soft moonlit blue at night (never a dark blot against the sky).
+    const col = mixRgb(this.env.skyBot, this.env.skyTop, 0.4), nf = this.env.nf;
+    mat.color.copy(toColor(mixRgb(col, mixRgb([236, 240, 250], [150, 172, 225], nf), 0.45 + nf * 0.1)));
+    mat.opacity = 0.92;
     // Placed far behind the tower, at the same spot on screen as before.
     const v = this.view, S = ISO_SCALE * v.s * v.zoom;
     const floors = ms.m / 5, hW = floors * FH * Math.sqrt(2 / 3);
@@ -944,8 +949,7 @@ export class Renderer3D {
     const back = 70;
     this.landmark.position.set(u / 2 - back, -back, -u / 2 - back);
     this.landmark.quaternion.copy(this.cam.quaternion);
-    // The plane is 2:1 (width:height of the texture) and anchored at its bottom.
-    const pxH = floors * v.th * v.zoom, wPx = Math.min(pxH * 0.5, v.W * 0.42);
+    const pxH = floors * v.th * v.zoom, wPx = Math.min(pxH * aspect, v.W * 0.5);
     this.landmark.scale.set(wPx / S, hW, 1);
   }
 

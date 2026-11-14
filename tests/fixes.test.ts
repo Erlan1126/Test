@@ -78,7 +78,8 @@ describe("skyline island", () => {
   });
 });
 
-import { ALBUM_CRYSTALS, ALL_POSTCARDS, collectPostcard, POSTCARD_COUNT } from "../src/logic/postcards";
+import { ALBUM_CRYSTALS, ALL_POSTCARDS, collectPostcard, migratePostcard, POSTCARD_COUNT } from "../src/logic/postcards";
+import { msAt } from "../src/data/constants";
 
 describe("postcard album", () => {
   it("pays once per card, a bonus per set, and crystals for the full album", () => {
@@ -88,9 +89,15 @@ describe("postcard album", () => {
     expect(collectPostcard(save, 1, "clear").fresh).toBe(false);
     collectPostcard(save, 1, "rain");
     expect(collectPostcard(save, 1, "snow").set).toBe(true);
-    for (const id of ALL_POSTCARDS) { const [i, w] = id.split(":"); collectPostcard(save, Number(i), w as "clear"); }
+    for (const id of ALL_POSTCARDS) { const [i, w] = id.split(":"); collectPostcard(save, msAt(i), w as "clear"); }
     expect(save.postcards.length).toBe(POSTCARD_COUNT);
     expect(save.crystals).toBe(ALBUM_CRYSTALS);
+  });
+
+  it("keeps postcards from saves that stored them by the old landmark order", () => {
+    expect(migratePostcard("2:rain")).toBe("liberty:rain");
+    expect(migratePostcard("8:snow")).toBe("burj:snow");
+    expect(migratePostcard("pisa:clear")).toBe("pisa:clear");
   });
 });
 

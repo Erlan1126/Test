@@ -824,4 +824,12 @@ export const ES: Record<string, string> = {
   "🏆 <b>#{rank}</b> this week · {gap} to pass {name}": "🏆 <b>#{rank}</b> esta semana · {gap} para pasar a {name}",
   "🏆 <b>#{rank}</b> of {total} this week": "🏆 <b>#{rank}</b> de {total} esta semana",
   "🎁 {n} new things": "🎁 {n} novedades",
+  "the Leaning Tower of Pisa": "la Torre de Pisa",
+  "the Taj Mahal": "el Taj Mahal",
+  "Big Ben": "el Big Ben",
+  "Taipei 101": "el Taipei 101",
+  "the CN Tower": "la Torre CN",
+  "the Tokyo Skytree": "el Tokyo Skytree",
+  "Merdeka 118": "el Merdeka 118",
+  "the Jeddah Tower": "la Torre Jeddah",
 };

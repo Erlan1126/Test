@@ -13,21 +13,35 @@ export const ISLAND = 22;           // half-size of the floating island
 export const GOLD = "#ffd23f";      // reserved for penthouse floors
 
 export interface Milestone {
+  /** Stable id (saves store postcards by it, so the list can grow). */
+  id: string;
   m: number;
   name: string;
 }
 
+/** Real landmarks by height, each passed as your tower climbs. Saves refer to them by id. */
 export const MILESTONES: Milestone[] = [
-  { m: 15, name: "a house" },
-  { m: 51, name: "Niagara Falls" },
-  { m: 93, name: "the Statue of Liberty" },
-  { m: 139, name: "the Great Pyramid" },
-  { m: 184, name: "the Space Needle" },
-  { m: 227, name: "the Golden Gate Bridge" },
-  { m: 330, name: "the Eiffel Tower" },
-  { m: 443, name: "the Empire State Building" },
-  { m: 828, name: "the Burj Khalifa" },
+  { id: "house", m: 15, name: "a house" },
+  { id: "niagara", m: 51, name: "Niagara Falls" },
+  { id: "pisa", m: 57, name: "the Leaning Tower of Pisa" },
+  { id: "taj", m: 73, name: "the Taj Mahal" },
+  { id: "liberty", m: 93, name: "the Statue of Liberty" },
+  { id: "bigben", m: 96, name: "Big Ben" },
+  { id: "pyramid", m: 139, name: "the Great Pyramid" },
+  { id: "needle", m: 184, name: "the Space Needle" },
+  { id: "goldengate", m: 227, name: "the Golden Gate Bridge" },
+  { id: "eiffel", m: 330, name: "the Eiffel Tower" },
+  { id: "empire", m: 443, name: "the Empire State Building" },
+  { id: "taipei", m: 508, name: "Taipei 101" },
+  { id: "cntower", m: 553, name: "the CN Tower" },
+  { id: "skytree", m: 634, name: "the Tokyo Skytree" },
+  { id: "merdeka", m: 679, name: "Merdeka 118" },
+  { id: "burj", m: 828, name: "the Burj Khalifa" },
+  { id: "jeddah", m: 1000, name: "the Jeddah Tower" },
 ];
+
+/** A landmark's place in MILESTONES by id. */
+export const msAt = (id: string): number => MILESTONES.findIndex(m => m.id === id);
 
 /** Sky colors (top, bottom) by tower height in floors: day, sunset, dusk, night. */
 export const SKY = [

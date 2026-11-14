@@ -1,5 +1,6 @@
 // Island themes (unlocked by builder level) and permanent island upgrades (unlocked by
 // your best tower passing landmarks).
+import { msAt } from "./constants";
 
 export interface IslandTheme {
   id: string;
@@ -53,10 +54,10 @@ export const ISLAND_THEMES: IslandTheme[] = [
 
 /** Upgrades in build order; `at` is the landmark index your best tower must pass. */
 export const ISLAND_UPGRADES = [
-  { at: 0, name: "Fountain plaza" },
-  { at: 1, name: "Duck pond" },
-  { at: 2, name: "New neighbors" },
-  { at: 3, name: "Street lights and traffic" },
-  { at: 4, name: "Ferris wheel" },
-  { at: 5, name: "Hot-air balloons" },
+  { at: msAt("house"), name: "Fountain plaza" },
+  { at: msAt("niagara"), name: "Duck pond" },
+  { at: msAt("liberty"), name: "New neighbors" },
+  { at: msAt("pyramid"), name: "Street lights and traffic" },
+  { at: msAt("needle"), name: "Ferris wheel" },
+  { at: msAt("goldengate"), name: "Hot-air balloons" },
 ];

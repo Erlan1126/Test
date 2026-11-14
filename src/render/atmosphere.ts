@@ -91,38 +91,146 @@ export class Weather {
   }
 }
 
-/** Silhouettes of the landmarks, drawn in a unit box: x from -0.5 to 0.5, y from 0 (ground) to 1 (top). */
-const SHAPES: { aspect: number; draw: (g: CanvasRenderingContext2D) => void }[] = [
-  { aspect: 1.1, draw: g => { g.rect(-0.4, 0, 0.8, 0.6); g.moveTo(-0.5, 0.6); g.lineTo(0, 1); g.lineTo(0.5, 0.6); } }, // a house
-  { aspect: 2.2, draw: g => { g.moveTo(-0.5, 0); g.lineTo(-0.5, 0.92); g.lineTo(-0.1, 1); g.lineTo(0.2, 0.95); g.lineTo(0.5, 1); g.lineTo(0.5, 0); } }, // Niagara's cliffs
-  { aspect: 0.32, draw: g => { // Statue of Liberty
-    g.rect(-0.3, 0, 0.6, 0.42); g.moveTo(-0.16, 0.42); g.lineTo(-0.12, 0.82); g.lineTo(0.12, 0.82); g.lineTo(0.16, 0.42);
-    g.rect(-0.07, 0.82, 0.14, 0.08); g.rect(0.08, 0.78, 0.07, 0.17); g.rect(0.06, 0.95, 0.11, 0.05);
+type Shape = { aspect: number; draw: (g: CanvasRenderingContext2D) => void };
+const poly = (g: CanvasRenderingContext2D, pts: number[]) => {
+  g.moveTo(pts[0], pts[1]);
+  for (let k = 2; k < pts.length; k += 2) g.lineTo(pts[k], pts[k + 1]);
+  g.closePath();
+};
+/** An ellipse as its own closed piece of the path (without the moveTo, canvas joins it to
+ *  the previous point with a stray line). */
+const ell = (g: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number) => {
+  g.moveTo(x + rx, y);
+  g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+};
+
+/** Silhouettes of the landmarks in real proportions, drawn in a unit box: x from -0.5 to
+ *  0.5, y from 0 (ground) to 1 (top); `aspect` is width over height. */
+const SHAPES: Record<string, Shape> = {
+  house: { aspect: 1.1, draw: g => { g.rect(-0.4, 0, 0.8, 0.6); poly(g, [-0.5, 0.6, 0, 1, 0.5, 0.6]); } },
+  niagara: { aspect: 2.6, draw: g => {
+    // The Horseshoe Falls in one outline: rocky banks either side, the curved lip of the
+    // falls dipping between them, and the wide gorge below.
+    g.moveTo(-0.5, 0); g.lineTo(-0.5, 0.95); g.lineTo(-0.36, 1); g.lineTo(-0.3, 0.9);
+    g.quadraticCurveTo(0, 0.68, 0.3, 0.88); g.lineTo(0.38, 0.97); g.lineTo(0.5, 0.92); g.lineTo(0.5, 0);
+    g.closePath();
   } },
-  { aspect: 1.55, draw: g => { g.moveTo(-0.5, 0); g.lineTo(0, 1); g.lineTo(0.5, 0); } }, // the Great Pyramid
-  { aspect: 0.3, draw: g => { // Space Needle
-    g.moveTo(-0.3, 0); g.lineTo(-0.06, 0.62); g.lineTo(0.06, 0.62); g.lineTo(0.3, 0); g.lineTo(0.18, 0); g.lineTo(0, 0.5); g.lineTo(-0.18, 0);
-    g.moveTo(-0.5, 0.66); g.lineTo(0.5, 0.66); g.lineTo(0.32, 0.76); g.lineTo(-0.32, 0.76); g.rect(-0.02, 0.76, 0.04, 0.24);
+  pisa: { aspect: 0.46, draw: g => { // eight tiers, leaning
+    const lean = (y: number) => y * 0.24 - 0.12;
+    for (let k = 0; k < 7; k++) {
+      const y0 = k * 0.124, y1 = y0 + 0.116, hw = k === 0 ? 0.3 : 0.28;
+      poly(g, [lean(y0) - hw, y0, lean(y0) + hw, y0, lean(y1) + hw, y1, lean(y1) - hw, y1]);
+      poly(g, [lean(y1) - hw - 0.02, y1 - 0.012, lean(y1) + hw + 0.02, y1 - 0.012, lean(y1) + hw + 0.02, y1 + 0.008, lean(y1) - hw - 0.02, y1 + 0.008]);
+    }
+    const b0 = 0.87, b1 = 0.98;
+    poly(g, [lean(b0) - 0.19, b0, lean(b0) + 0.19, b0, lean(b1) + 0.17, b1, lean(b1) - 0.17, b1]);
   } },
-  { aspect: 0.22, draw: g => { // a Golden Gate tower
+  taj: { aspect: 1.35, draw: g => {
+    g.rect(-0.5, 0, 1, 0.06);                    // plinth
+    g.rect(-0.29, 0.06, 0.58, 0.36);             // the hall
+    g.rect(-0.1, 0.42, 0.2, 0.1);                // drum
+    g.moveTo(-0.15, 0.52); g.bezierCurveTo(-0.2, 0.68, -0.05, 0.76, 0, 0.86);
+    g.bezierCurveTo(0.05, 0.76, 0.2, 0.68, 0.15, 0.52); g.closePath(); // onion dome
+    g.rect(-0.006, 0.86, 0.012, 0.08);           // finial
+    for (const x of [-0.21, 0.21]) { g.moveTo(x - 0.06, 0.42); g.quadraticCurveTo(x, 0.56, x + 0.06, 0.42); g.closePath(); }
+    for (const x of [-0.45, 0.45]) { g.rect(x - 0.022, 0.06, 0.044, 0.5); g.moveTo(x - 0.035, 0.56); g.quadraticCurveTo(x, 0.66, x + 0.035, 0.56); g.closePath(); }
+  } },
+  liberty: { aspect: 0.32, draw: g => {
+    g.rect(-0.5, 0, 1, 0.05);
+    poly(g, [-0.38, 0.05, 0.38, 0.05, 0.32, 0.4, -0.32, 0.4]);  // pedestal
+    g.rect(-0.38, 0.38, 0.76, 0.035);
+    poly(g, [-0.2, 0.415, 0.2, 0.415, 0.12, 0.78, -0.13, 0.78]); // robe
+    ell(g, 0, 0.805, 0.07, 0.03);            // head
+    for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) poly(g, [Math.sin(a) * 0.05 - 0.012, 0.82, Math.sin(a) * 0.16, 0.82 + Math.cos(a) * 0.045, Math.sin(a) * 0.05 + 0.012, 0.82]);
+    poly(g, [0.06, 0.72, 0.13, 0.73, 0.24, 0.93, 0.18, 0.94]);   // raised arm
+    g.rect(0.15, 0.93, 0.12, 0.025);                              // torch
+    ell(g, 0.21, 0.975, 0.045, 0.022);       // flame
+    g.rect(-0.24, 0.58, 0.09, 0.12);                              // tablet
+  } },
+  bigben: { aspect: 0.22, draw: g => {
+    g.rect(-0.38, 0, 0.76, 0.62);
+    g.rect(-0.46, 0.62, 0.92, 0.13);   // clock faces
+    g.rect(-0.4, 0.75, 0.8, 0.06);     // belfry
+    poly(g, [-0.42, 0.81, 0.42, 0.81, 0.18, 0.9, 0, 1, -0.18, 0.9]);
+    for (const x of [-0.46, 0.46]) poly(g, [x - 0.04, 0.75, x + 0.04, 0.75, x, 0.85]);
+  } },
+  pyramid: { aspect: 1.55, draw: g => { poly(g, [-0.5, 0, 0, 1, 0.5, 0]); } },
+  needle: { aspect: 0.3, draw: g => {
+    poly(g, [-0.3, 0, -0.06, 0.62, 0.06, 0.62, 0.3, 0, 0.18, 0, 0, 0.5, -0.18, 0]);
+    poly(g, [-0.5, 0.66, 0.5, 0.66, 0.32, 0.76, -0.32, 0.76]);
+    g.rect(-0.08, 0.62, 0.16, 0.04); g.rect(-0.02, 0.76, 0.04, 0.24);
+  } },
+  goldengate: { aspect: 0.22, draw: g => {
     g.rect(-0.5, 0, 0.25, 1); g.rect(0.25, 0, 0.25, 1); g.rect(-0.25, 0.3, 0.5, 0.06); g.rect(-0.25, 0.6, 0.5, 0.06); g.rect(-0.25, 0.86, 0.5, 0.08);
   } },
-  { aspect: 0.5, draw: g => { // Eiffel Tower
+  eiffel: { aspect: 0.5, draw: g => {
     g.moveTo(-0.5, 0); g.quadraticCurveTo(-0.2, 0.25, -0.08, 0.7); g.lineTo(-0.02, 0.92); g.lineTo(0, 1); g.lineTo(0.02, 0.92); g.lineTo(0.08, 0.7);
-    g.quadraticCurveTo(0.2, 0.25, 0.5, 0); g.lineTo(0.32, 0); g.quadraticCurveTo(0, 0.18, -0.32, 0); g.rect(-0.3, 0.3, 0.6, 0.03);
+    g.quadraticCurveTo(0.2, 0.25, 0.5, 0); g.lineTo(0.32, 0); g.quadraticCurveTo(0, 0.18, -0.32, 0); g.closePath();
+    g.rect(-0.31, 0.27, 0.62, 0.035); g.rect(-0.14, 0.5, 0.28, 0.025); g.rect(-0.05, 0.88, 0.1, 0.02);
   } },
-  { aspect: 0.3, draw: g => { // Empire State Building
-    g.rect(-0.5, 0, 1, 0.18); g.rect(-0.38, 0.18, 0.76, 0.5); g.rect(-0.26, 0.68, 0.52, 0.1); g.rect(-0.14, 0.78, 0.28, 0.06); g.rect(-0.06, 0.84, 0.12, 0.06); g.rect(-0.015, 0.9, 0.03, 0.1);
+  empire: { aspect: 0.27, draw: g => {
+    g.rect(-0.5, 0, 1, 0.1);               // lower block
+    g.rect(-0.42, 0.1, 0.84, 0.06);
+    g.rect(-0.32, 0.16, 0.64, 0.56);       // the tall shaft
+    g.rect(-0.24, 0.72, 0.48, 0.05);       // art deco setbacks
+    g.rect(-0.17, 0.77, 0.34, 0.04);
+    g.rect(-0.11, 0.81, 0.22, 0.04);
+    poly(g, [-0.07, 0.85, 0.07, 0.85, 0.04, 0.92, -0.04, 0.92]); // mooring mast
+    g.rect(-0.022, 0.92, 0.044, 0.03); g.rect(-0.008, 0.95, 0.016, 0.05);
   } },
-  { aspect: 0.16, draw: g => { // Burj Khalifa
-    g.moveTo(-0.5, 0); g.lineTo(-0.42, 0.25); g.lineTo(-0.3, 0.27); g.lineTo(-0.24, 0.5); g.lineTo(-0.14, 0.52); g.lineTo(-0.08, 0.75); g.lineTo(-0.02, 0.8); g.lineTo(0, 1);
-    g.lineTo(0.02, 0.8); g.lineTo(0.08, 0.72); g.lineTo(0.16, 0.48); g.lineTo(0.26, 0.45); g.lineTo(0.34, 0.22); g.lineTo(0.44, 0.2); g.lineTo(0.5, 0);
+  taipei: { aspect: 0.2, draw: g => {
+    poly(g, [-0.42, 0, 0.42, 0, 0.36, 0.2, -0.36, 0.2]);
+    for (let k = 0; k < 8; k++) { const y0 = 0.2 + k * 0.08, y1 = y0 + 0.076; poly(g, [-0.29, y0, 0.29, y0, 0.37, y1, -0.37, y1]); }
+    g.rect(-0.2, 0.84, 0.4, 0.04); g.rect(-0.12, 0.88, 0.24, 0.03); g.rect(-0.015, 0.91, 0.03, 0.09);
   } },
-];
+  cntower: { aspect: 0.13, draw: g => {
+    poly(g, [-0.24, 0, -0.08, 0.66, 0.08, 0.66, 0.24, 0]);
+    ell(g, 0, 0.675, 0.48, 0.022);
+    ell(g, 0, 0.66, 0.36, 0.018);
+    g.rect(-0.05, 0.68, 0.1, 0.11);
+    ell(g, 0, 0.79, 0.16, 0.01);
+    poly(g, [-0.045, 0.8, 0.045, 0.8, 0.01, 1, -0.01, 1]);
+  } },
+  skytree: { aspect: 0.13, draw: g => {
+    poly(g, [-0.5, 0, -0.14, 0.55, 0.14, 0.55, 0.5, 0]);
+    g.rect(-0.3, 0.53, 0.6, 0.05);
+    g.rect(-0.12, 0.58, 0.24, 0.13);
+    g.rect(-0.22, 0.71, 0.44, 0.03);
+    poly(g, [-0.09, 0.74, 0.09, 0.74, 0.015, 1, -0.015, 1]);
+  } },
+  merdeka: { aspect: 0.16, draw: g => {
+    poly(g, [-0.5, 0, -0.46, 0.25, -0.36, 0.27, -0.3, 0.5, -0.2, 0.52, -0.12, 0.74, -0.03, 0.76, 0, 1,
+      0.03, 0.74, 0.14, 0.72, 0.22, 0.49, 0.32, 0.47, 0.38, 0.24, 0.48, 0.22, 0.5, 0]);
+  } },
+  burj: { aspect: 0.17, draw: g => {
+    // Setbacks spiral up the three wings (the right side steps half a beat later), then
+    // the long needle.
+    const steps = [0.5, 0.42, 0.35, 0.29, 0.23, 0.18, 0.14, 0.1, 0.07];
+    const left: number[] = [], right: number[] = [];
+    steps.forEach((w, k) => {
+      const y0 = k * 0.088, y1 = y0 + 0.088, yr = y0 + 0.044;
+      left.push(-w, y0, -w, y1);
+      right.push(w * 0.96, yr, w * 0.96, yr + 0.088);
+    });
+    const top = steps.length * 0.088;
+    const pts = [...left, -0.035, top, -0.008, 1, 0.008, 1, 0.035, top];
+    for (let k = right.length - 2; k >= 0; k -= 2) pts.push(right[k], Math.min(right[k + 1], top));
+    pts.push(0.5, 0);
+    poly(g, pts);
+  } },
+  jeddah: { aspect: 0.15, draw: g => {
+    g.moveTo(-0.5, 0); g.quadraticCurveTo(-0.32, 0.55, -0.05, 0.93); g.lineTo(0, 1); g.lineTo(0.05, 0.93);
+    g.quadraticCurveTo(0.32, 0.55, 0.5, 0); g.closePath();
+  } },
+};
+const shapeAt = (index: number): Shape | undefined => SHAPES[MILESTONES[index]?.id ?? ""];
+
+/** Width over height of a landmark's silhouette. */
+export const landmarkAspect = (index: number): number => shapeAt(index)?.aspect ?? 0.5;
 
 /** The next landmark to beat, as a hazy silhouette beside the tower at its real height. */
 export function drawLandmark(p: Paint, index: number, alpha: number): void {
-  const ms = MILESTONES[index], shape = SHAPES[index];
+  const ms = MILESTONES[index], shape = shapeAt(index);
   if (!ms || !shape || alpha <= 0) return;
   const { ctx, view, env } = p;
   const floors = ms.m / 5;
@@ -216,9 +324,11 @@ export function drawAurora(p: Paint, height: number): void {
   ctx.restore();
 }
 
-/** A landmark's silhouette in a box (for postcards): bottom center at (cx, bottom). */
-export function drawLandmarkShape(g: CanvasRenderingContext2D, index: number, cx: number, bottom: number, maxW: number, h: number, fill: string | CanvasGradient): void {
-  const shape = SHAPES[index];
+/** A landmark's silhouette in a box (for postcards and the 3D view): bottom center at
+ *  (cx, bottom). With `shade`, the sunlit right side is lighter and the edges softer, so
+ *  it reads as a real building in the haze rather than a flat cut-out. */
+export function drawLandmarkShape(g: CanvasRenderingContext2D, index: number, cx: number, bottom: number, maxW: number, h: number, fill: string | CanvasGradient, shade = false): void {
+  const shape = shapeAt(index);
   if (!shape) return;
   const w = Math.min(h * shape.aspect, maxW);
   g.save();
@@ -227,6 +337,21 @@ export function drawLandmarkShape(g: CanvasRenderingContext2D, index: number, cx
   g.beginPath();
   shape.draw(g);
   g.fillStyle = fill;
-  g.fill();
+  g.fill("nonzero");
+  if (shade) {
+    g.clip("nonzero");
+    const lit = g.createLinearGradient(-0.5, 0, 0.5, 0);
+    lit.addColorStop(0, "rgba(40,50,80,0.22)");
+    lit.addColorStop(0.45, "rgba(255,255,255,0)");
+    lit.addColorStop(0.6, "rgba(255,255,255,0.35)");
+    lit.addColorStop(1, "rgba(255,255,255,0.15)");
+    g.fillStyle = lit;
+    g.fillRect(-0.5, 0, 1, 1);
+    const fade = g.createLinearGradient(0, 0, 0, 0.35);
+    fade.addColorStop(0, "rgba(255,255,255,0.35)");
+    fade.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = fade;
+    g.fillRect(-0.5, 0, 1, 0.35);
+  }
   g.restore();
 }

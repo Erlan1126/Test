@@ -6,7 +6,7 @@ import { MISSION_KEYS, type Mission } from "../data/missions";
 import { SKINS } from "../data/skins";
 import { SHAPES } from "../data/shapes";
 import { SKYLINE_SIZE, type SkylineTower } from "./skyline";
-import { ALL_POSTCARDS } from "./postcards";
+import { ALL_POSTCARDS, migratePostcard } from "./postcards";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES } from "../data/islands";
 import { CITY } from "../data/daily";
@@ -256,7 +256,7 @@ export function normalize(raw: unknown): SaveData {
     skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE * 8).map(x => obj(x))
       .map(x => ({ f: int(x.f, 0, 0, 9999), s: skinIds.includes(x.s as string) ? (x.s as string) : "glass", h: shapeIds.includes(x.h as string) ? (x.h as string) : "square", d: themeIds.includes(x.d as string) ? (x.d as string) : "meadow" }))
       .filter(x => x.f > 0),
-    postcards: strList(r.postcards, ALL_POSTCARDS),
+    postcards: strList(Array.isArray(r.postcards) ? r.postcards.map(x => (typeof x === "string" ? migratePostcard(x) : x)) : r.postcards, ALL_POSTCARDS),
     // Players from before the city get a head start from their best tower.
     population: r.population === undefined ? int(r.best, 0) * 3 : int(r.population, 0, 0, 1e12),
     deals: { day: int(obj(r.deals).day, 0), bought: strList(obj(r.deals).bought).slice(0, 10) },

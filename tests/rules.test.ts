@@ -1,3 +1,4 @@
+import { msAt } from "../src/data/constants";
 import { describe, expect, it } from "vitest";
 import { addXp, dayKey, floorSpeed, giftAmount, giftState, landmarkIndex, perfectWindow, runXp, windAt, xpNeeded } from "../src/logic/rules";
 import type { RunSummary } from "../src/logic/types";
@@ -41,7 +42,8 @@ describe("speed and fairness", () => {
   it("only counts a landmark once you're taller than it", () => {
     expect(landmarkIndex(15)).toBe(-1);
     expect(landmarkIndex(20)).toBe(0);
-    expect(landmarkIndex(900)).toBe(8);
+    expect(landmarkIndex(900)).toBe(msAt("burj"));
+    expect(landmarkIndex(1001)).toBe(msAt("jeddah"));
   });
 });
 

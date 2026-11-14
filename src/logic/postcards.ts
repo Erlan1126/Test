@@ -14,7 +14,11 @@ export const POSTCARD_STARS = 3;
 export const SET_STARS = 20;
 export const ALBUM_CRYSTALS = 200;
 
-export const postcardId = (landmark: number, w: PostcardWeather): string => `${landmark}:${w}`;
+export const postcardId = (landmark: number, w: PostcardWeather): string => `${MILESTONES[landmark]?.id ?? landmark}:${w}`;
+
+/** Older saves stored postcards by the landmark's place in the original list. */
+const OLD_ORDER = ["house", "niagara", "liberty", "pyramid", "needle", "goldengate", "eiffel", "empire", "burj"];
+export const migratePostcard = (id: string): string => id.replace(/^(\d+):/, (_, n) => `${OLD_ORDER[Number(n)] ?? n}:`);
 export const ALL_POSTCARDS = POSTCARD_LANDMARKS.flatMap(i => WEATHERS.map(w => postcardId(i, w)));
 
 export interface PostcardGain { fresh: boolean; set: boolean; album: boolean }
