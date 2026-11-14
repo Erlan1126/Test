@@ -375,16 +375,22 @@ export class DailySheets {
     const list = $("build-list");
     list.innerHTML = "";
     for (const b of CITY) {
-      const owned = save.city.includes(b.id), poor = save.stars < b.price;
+      const owned = save.city.includes(b.id), poor = save.stars < b.price, locked = !owned && save.bestMeters < b.needs;
       const row = document.createElement("div");
-      row.className = `build-card${owned ? " owned" : ""}`;
+      row.className = `build-card${owned ? " owned" : ""}${locked ? " locked" : ""}`;
       const name = t(b.name);
       row.innerHTML = `<span class="build-ico" aria-hidden="true">${b.icon}</span><b>${esc(name)}</b>
         <small>${esc(t(b.text))}</small>
-        <button type="button" class="buy"${owned ? " disabled" : ""}>${owned ? esc(t("✓ Built")) : `${fmt(b.price)} ★`}</button>`;
+        <button type="button" class="buy"${owned ? " disabled" : ""}>${owned ? esc(t("✓ Built")) : locked ? `🔒 ${esc(t("{n} m tower", { n: b.needs }))}` : `${fmt(b.price)} ★`}</button>`;
       const btn = row.querySelector<HTMLButtonElement>(".buy")!;
       btn.setAttribute("aria-label", owned ? t("{name}, built", { name }) : t("Build {name} for {n} stars, adds {pct}% rent", { name, n: b.price, pct: Math.round(RENT_BONUS_PER_BUILD * 100) }));
       btn.addEventListener("click", () => {
+        if (locked) {
+          this.host.sound.click();
+          toast(t("Build a tower {n} m tall to unlock {name}. Your best is {best} m.", { n: b.needs, name, best: fmt(save.bestMeters) }));
+          replay(btn, "nope");
+          return;
+        }
         if (poor) {
           this.host.sound.click();
           toast(t("You need {n} more ★. Collect rent and open daily chests to earn more.", { n: fmt(b.price - save.stars) }));

@@ -171,12 +171,13 @@ export function collectRent(save: SaveData, now = Date.now()): number {
   return n;
 }
 
-export type BuildResult = "ok" | "owned" | "poor" | "unknown";
+export type BuildResult = "ok" | "owned" | "locked" | "poor" | "unknown";
 
 export function buyBuild(save: SaveData, id: string): BuildResult {
   const b = CITY.find(c => c.id === id);
   if (!b) return "unknown";
   if (save.city.includes(id)) return "owned";
+  if (save.bestMeters < b.needs) return "locked";
   if (save.stars < b.price) return "poor";
   save.stars -= b.price;
   save.city.push(id);

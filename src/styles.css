@@ -1636,3 +1636,8 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 /* Away from the home screen, no live blur: the panels keep their tint, just solid. */
 body.busy * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 body.busy .alt, body.busy .corner-btn, body.busy .card, body.busy .sheet { background-color: rgba(28, 30, 80, 0.86); }
+
+/* City buildings you can't build yet: the icon greys out and the button shows the height
+   your best tower needs. */
+.build-card.locked .build-ico { filter: grayscale(1) opacity(0.55); }
+.build-card.locked .buy { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.85); box-shadow: none; }

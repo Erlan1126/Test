@@ -316,6 +316,146 @@ function cityBuilding(id: string, anims: ((t: number, n: number) => void)[]): TH
       anims.push(t => { const c = t % 40; rocket.position.y = c > 34 ? (c - 34) ** 2.2 * 2 : 0; });
       break;
     }
+    case "carousel": {
+      // A striped canopy on a pole over a turning ring of horses.
+      add(new THREE.CylinderGeometry(1.9, 2, 0.3, 20).translate(0, 0.15, 0), "#f1e3c8");
+      add(new THREE.CylinderGeometry(0.14, 0.14, 2.6, 8).translate(0, 1.6, 0), "#ffd23f", { metalness: 0.7, roughness: 0.3 });
+      const top = new THREE.Group();
+      for (let i = 0; i < 8; i++) {
+        const seg = new THREE.Mesh(new THREE.ConeGeometry(2.1, 0.9, 8, 1, true, (i * Math.PI) / 4, Math.PI / 4).translate(0, 3.1, 0), std(i % 2 ? "#ff6b6b" : "#ffffff", { side: THREE.DoubleSide }));
+        top.add(seg);
+      }
+      top.add(new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6).translate(0, 3.6, 0), std("#ffd23f", { metalness: 0.7, roughness: 0.3 })));
+      const ring = new THREE.Group();
+      const horse = ["#ffffff", "#ffd8a8", "#a5d8ff", "#fcc2d7", "#d8f5a2", "#e5dbff"];
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2, x = Math.cos(a) * 1.35, z = Math.sin(a) * 1.35;
+        ring.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.3, 4).translate(x, 1.45, z), std("#ffd23f", { metalness: 0.7, roughness: 0.3 })));
+        const h = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.32, 0.7), std(horse[i]));
+        h.position.set(x, 1.05, z); h.rotation.y = -a;
+        ring.add(h);
+      }
+      top.userData.dynamic = ring.userData.dynamic = true;
+      g.add(top, ring);
+      anims.push(t => { ring.rotation.y = top.rotation.y = t * 0.6; });
+      break;
+    }
+    case "clock": {
+      // A brick tower with a clock face on each side, a green copper roof and a spire.
+      add(new THREE.BoxGeometry(1.8, 0.5, 1.8).translate(0, 0.25, 0), "#c9b79c");
+      add(new THREE.BoxGeometry(1.4, 4.2, 1.4).translate(0, 2.6, 0), "#b8735a");
+      add(new THREE.BoxGeometry(1.6, 1.4, 1.6).translate(0, 5.4, 0), "#e8dcc8");
+      const face = std("#fffaf0", { emissive: col("#ffe8a3"), emissiveIntensity: 0 });
+      face.userData.dynamic = true;
+      for (let i = 0; i < 4; i++) {
+        const f = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 20).rotateX(Math.PI / 2).translate(0, 5.4, 0.82), face);
+        f.rotation.y = (i * Math.PI) / 2;
+        g.add(f);
+      }
+      const hands = new THREE.Group();
+      hands.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.03).translate(0, 0.18, 0), std("#212529")));
+      hands.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.28, 0.03).translate(0, 0.12, 0), std("#212529")));
+      hands.position.set(0, 5.4, 0.87);
+      hands.userData.dynamic = true;
+      g.add(hands);
+      add(new THREE.ConeGeometry(1.25, 1.6, 4).rotateY(Math.PI / 4).translate(0, 6.9, 0), "#5fae96", { flatShading: true });
+      add(new THREE.CylinderGeometry(0.02, 0.05, 0.9, 4).translate(0, 8.1, 0), "#ffd23f", { metalness: 0.8, roughness: 0.3 });
+      anims.push((t, night) => {
+        face.emissiveIntensity = night * 1.6;
+        hands.children[0].rotation.z = -t * 0.5; hands.children[1].rotation.z = -t * 0.04;
+      });
+      break;
+    }
+    case "dish": {
+      // A radio telescope: a white dish on a turning mount, slowly sweeping the sky.
+      add(new THREE.CylinderGeometry(1.3, 1.5, 0.4, 16).translate(0, 0.2, 0), "#ced4da");
+      const mount = new THREE.Group();
+      mount.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5).translate(0, 1.3, 0), std("#e9ecef")));
+      const tilt = new THREE.Group();
+      tilt.add(new THREE.Mesh(new THREE.SphereGeometry(1.7, 20, 8, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38).rotateX(Math.PI).translate(0, 1.4, 0), std("#f8f9fa", { side: THREE.DoubleSide, roughness: 0.4 })));
+      tilt.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 4).translate(0, 0.75, 0), std("#868e96")));
+      tilt.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6).translate(0, 1.5, 0), std("#ff6b6b")));
+      tilt.position.y = 2.2; tilt.rotation.x = -0.7;
+      mount.add(tilt);
+      mount.userData.dynamic = true;
+      g.add(mount);
+      anims.push(t => { mount.rotation.y = Math.sin(t * 0.15) * 1.4; tilt.rotation.x = -0.6 - Math.sin(t * 0.23) * 0.25; });
+      break;
+    }
+    case "balloon": {
+      // A launch field with a basket on the ground and a striped balloon bobbing on its rope.
+      add(new THREE.CylinderGeometry(1.6, 1.6, 0.06, 20).translate(0, 0.03, 0), "#e3c27a");
+      const b = new THREE.Group();
+      const colors = ["#ff6b6b", "#ffd43b", "#4dabf7", "#ffffff"];
+      for (let i = 0; i < 8; i++) {
+        b.add(new THREE.Mesh(new THREE.SphereGeometry(1.3, 4, 12, (i * Math.PI) / 4, Math.PI / 4).scale(1, 1.2, 1).translate(0, 4.6, 0), std(colors[i % 4], { roughness: 0.55 })));
+      }
+      b.add(new THREE.Mesh(new THREE.ConeGeometry(0.75, 1, 12, 1, true).rotateX(Math.PI).translate(0, 3.25, 0), std("#ff6b6b", { side: THREE.DoubleSide })));
+      b.add(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.55).translate(0, 2.5, 0), std("#8a6a4a")));
+      b.userData.dynamic = true;
+      g.add(b);
+      anims.push(t => { b.position.y = 1.5 + Math.sin(t * 0.35) * 1.4; b.rotation.y = t * 0.1; });
+      break;
+    }
+    case "pagoda": {
+      // Five shrinking tiers with upturned red roofs and lanterns that glow at night.
+      add(new THREE.BoxGeometry(2.8, 0.4, 2.8).translate(0, 0.2, 0), "#d8cbb3");
+      const lantern = std("#ffe8a3", { emissive: col("#ffb347"), emissiveIntensity: 0.2 });
+      lantern.userData.dynamic = true;
+      let y = 0.4;
+      for (let i = 0; i < 5; i++) {
+        const w = 1.7 - i * 0.24, h = 0.75 - i * 0.05;
+        add(new THREE.BoxGeometry(w, h, w).translate(0, y + h / 2, 0), "#f4e9d8");
+        y += h;
+        add(new THREE.CylinderGeometry(w * 0.45, w * 0.95, 0.35, 4, 1).rotateY(Math.PI / 4).translate(0, y + 0.17, 0), "#c0392b", { flatShading: true });
+        for (const [lx, lz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) g.add(new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 4).translate(lx * w * 0.62, y - 0.05, lz * w * 0.62), lantern));
+        y += 0.35;
+      }
+      add(new THREE.CylinderGeometry(0.03, 0.08, 1.2, 6).translate(0, y + 0.6, 0), "#ffd23f", { metalness: 0.8, roughness: 0.25 });
+      anims.push((_t, night) => { lantern.emissiveIntensity = 0.2 + night * 2.2; });
+      break;
+    }
+    case "stadium": {
+      // An oval bowl of stands around a green pitch, with four floodlight masts.
+      add(new THREE.CylinderGeometry(3, 3.1, 0.9, 28, 1, true).scale(1, 1, 0.75).translate(0, 0.45, 0), "#dee2e6", { side: THREE.DoubleSide });
+      add(new THREE.CylinderGeometry(2.4, 2.4, 0.3, 28).scale(1, 1, 0.75).translate(0, 0.15, 0), "#62b866");
+      add(new THREE.BoxGeometry(2.6, 0.02, 0.06).translate(0, 0.32, 0), "#ffffff");
+      add(new THREE.TorusGeometry(3, 0.12, 6, 28).rotateX(Math.PI / 2).scale(1, 1, 0.75).translate(0, 0.9, 0), "#4dabf7");
+      const flood = std("#ffffff", { emissive: col("#fff6d5"), emissiveIntensity: 0 });
+      flood.userData.dynamic = true;
+      for (const [x, z] of [[2.6, 1.9], [-2.6, 1.9], [2.6, -1.9], [-2.6, -1.9]]) {
+        add(new THREE.CylinderGeometry(0.06, 0.09, 3.2, 5).translate(x, 1.6, z), "#adb5bd");
+        g.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.15).translate(x, 3.3, z), flood));
+      }
+      anims.push((_t, night) => { flood.emissiveIntensity = night * 2.5; });
+      break;
+    }
+    case "airship": {
+      // A mooring mast, and a silver airship cruising in a wide circle above the island.
+      add(new THREE.CylinderGeometry(0.12, 0.3, 4.5, 6).translate(0, 2.25, 0), "#adb5bd", { metalness: 0.6, roughness: 0.35 });
+      add(new THREE.CylinderGeometry(0.35, 0.35, 0.3, 10).translate(0, 4.6, 0), "#ff6b6b");
+      const ship = new THREE.Group();
+      ship.add(new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12).scale(3.2, 1, 1), std("#dfe4ea", { metalness: 0.55, roughness: 0.3 })));
+      ship.add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.5).translate(0, -1.05, 0), std("#495057")));
+      for (const r of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.06).translate(-2.9, 0.5, 0), std("#ff6b6b"));
+        fin.rotation.x = r;
+        ship.add(fin);
+      }
+      ship.userData.dynamic = true;
+      // It flies around the whole island, so it hangs off the scene rather than the mast.
+      const pivot = new THREE.Group();
+      pivot.add(ship);
+      pivot.userData.dynamic = true;
+      g.add(pivot);
+      anims.push(t => {
+        const a = t * 0.05, R = 24;
+        // The building group sits at the mast; move the ship relative to the island centre.
+        ship.position.set(Math.cos(a) * R - BUILD_SPOTS.airship.x, 16 + Math.sin(t * 0.4) * 0.6, Math.sin(a) * R - BUILD_SPOTS.airship.z);
+        ship.rotation.y = -a - Math.PI / 2;
+      });
+      break;
+    }
   }
   return g;
 }

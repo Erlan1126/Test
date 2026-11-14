@@ -104,11 +104,13 @@ describe("rent and the city", () => {
   it("builds city buildings with stars, each raising rent", () => {
     const s = defaultSave();
     s.best = 1000;
-    s.stars = 5;
-    expect(buyBuild(s, "playground")).toBe("poor");
+    s.stars = 15;
+    expect(buyBuild(s, "playground")).toBe("locked"); // needs a 25 m tower first
+    s.bestMeters = 30;
     expect(buyBuild(s, "cafe")).toBe("ok");
     expect(buyBuild(s, "cafe")).toBe("owned");
-    expect(s.stars).toBe(2);
+    expect(buyBuild(s, "playground")).toBe("poor");
+    expect(s.stars).toBe(10);
     expect(rentPerHour(s)).toBe(0.5);
   });
 });
