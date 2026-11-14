@@ -12,6 +12,7 @@ import { BEDS, BUILD_SPOTS, HOUSE_ROOFS, HOUSE_WALLS, HOUSES, LAKE, ROCKS } from
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { addCityLife } from "./citylife";
+import { addIslandDetail } from "./islanddetail";
 
 const I = ISLAND;
 const col = (c: string | number[]) => (typeof c === "string" ? new THREE.Color(c) : new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255));
@@ -136,6 +137,24 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     && !(has(2) && EXTRA_NEIGHBORS.some(b => tr.x > b.x0 - 1 && tr.x < b.x1 + 1 && tr.z > b.z0 - 1 && tr.z < b.z1 + 1)));
   g.add(treeInstances(trees, t));
 
+  // ---- Small details: sidewalks, lamps, benches, fences, bushes, flowers... ----
+  const inBox = (x: number, z: number, b: { x0: number; x1: number; z0: number; z1: number }, pad: number) =>
+    x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad;
+  const blocked = (x: number, z: number, r: number) =>
+    trees.some(tr => near(x, z, tr.x, tr.z, r + 0.9))
+    || BEDS.some(([bx, bz]) => near(x, z, bx, bz, r + 1.4))
+    || near(x, z, LAKE.x, LAKE.z, LAKE.r + r + 0.7) || near(x, z, LAKE.x + LAKE.r * 0.4, LAKE.z - LAKE.r, r + 1.2)
+    || (has(0) && near(x, z, FOUNTAIN.x, FOUNTAIN.z, r + 2))
+    || (has(1) && near(x, z, POND.x, POND.z, POND.r + r + 0.8))
+    || (has(4) && near(x, z, WHEEL.x, WHEEL.z, r + 3.2))
+    || HOUSES.some(([hx, hz]) => x > hx - 2.2 - r && x < hx + 2.2 + r && z > hz - 2 - r && z < hz + 2.6 + r)
+    || [...NEIGHBORS, ...(has(2) ? EXTRA_NEIGHBORS : [])].some(b => inBox(x, z, b, r + 0.6))
+    || o.city.some(id => { const sp = BUILD_SPOTS[id]; return !!sp && near(x, z, sp.x, sp.z, sp.r + r + 0.5); })
+    || (has(6) && near(x, z, 20.5, 4.5, r + 1.6))
+    || (has(7) && Math.abs(x - POND.x) < 1.6 + r && z > POND.z)
+    || (has(11) && near(x, z, -16, -9.5, r + 1.8));
+  addIslandDetail(g, { theme: t, has, blocked, anims });
+
   // ---- Floating rocks around the island ----
   for (const [i, k] of ROCKS.entries()) {
     const r = new THREE.Group();
@@ -229,9 +248,9 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     const fall = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
     fall.userData.dynamic = true;
     g.add(new THREE.Mesh(new THREE.PlaneGeometry(2, edge - POND.z - POND.r + 0.4).rotateX(-Math.PI / 2).translate(wx, 0.28, (edge + POND.z + POND.r - 0.4) / 2), water));
-    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 26).translate(wx, -13 + 0.28, edge + 0.08), fall);
+    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 12).translate(wx, -6 + 0.28, edge + 0.08), fall);
     g.add(sheet);
-    const mist = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 8).scale(1.4, 0.7, 0.8).translate(wx, -24, edge + 0.6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
+    const mist = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 8).scale(1.2, 0.6, 0.7).translate(wx, -11.6, edge + 0.6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
     g.add(mist);
     anims.push(time => { tex.offset.y = time * 0.9; });
   }
@@ -379,7 +398,7 @@ function waterTexture(): THREE.CanvasTexture {
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1, 4);
+  tex.repeat.set(1, 2);
   tex.userData.own = true; // freed with the island
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
