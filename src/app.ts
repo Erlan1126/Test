@@ -776,6 +776,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.endMove();
+    this.sound.tune = currentTheme(this.save).id;
     this.slowmo = 0;
     this.fallCam = 0;
     this.passed = null;

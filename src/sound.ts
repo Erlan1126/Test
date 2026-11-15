@@ -8,6 +8,17 @@ import type { Settings } from "./logic/save";
 
 import { degreeToSemi, melody, sectionAt, songFor, type Song } from "./music";
 
+/** Each island's tune for perfect drops in a row: semitones above middle C, 16 notes in
+ *  four little phrases (original melodies written for Skyrise). */
+const SONGS: Record<string, number[]> = {
+  meadow: [0, 4, 7, 9, 7, 4, 2, 4, 5, 9, 12, 9, 7, 4, 2, 0],
+  snow: [9, 7, 4, 7, 9, 12, 11, 9, 7, 4, 2, 4, 7, 5, 4, 2],
+  desert: [2, 3, 7, 3, 2, 0, -2, 0, 2, 7, 8, 7, 3, 2, 0, 2],
+  blossom: [7, 9, 12, 14, 12, 9, 7, 4, 7, 9, 7, 4, 2, 4, 7, 12],
+  volcano: [0, 3, 5, 7, 10, 7, 5, 3, 0, -2, 0, 3, 7, 5, 3, 0],
+  candy: [12, 11, 9, 7, 9, 11, 12, 16, 14, 12, 11, 12, 9, 7, 5, 4],
+};
+
 const SCALE = [0, 2, 4, 7, 9];
 
 export class Sound {
@@ -228,9 +239,6 @@ export class Sound {
   }
 
   /** Notes climb a pentatonic scale, so a perfect streak plays a rising tune. */
-  private note(i: number): number {
-    return 261.63 * Math.pow(2, (SCALE[i % 5] + 12 * Math.floor(i / 5)) / 12);
-  }
 
   /** A heavy floor landing: a low thud, a body knock and a short clunk, slightly different each time. */
   private thud(weight = 1): void {
@@ -413,9 +421,15 @@ export class Sound {
     this.noise(0.35, 0.1, 3800, "highpass", 0.7, 0.01);
     for (let i = 0; i < 4; i++) this.bell(2400 + Math.random() * 1800, 0.12, 0.012, 0.02 + i * 0.03, Math.random() * 1.2 - 0.6);
   }
+  /** Which island's tune the perfect drops play (see SONGS). */
+  tune = "meadow";
   perfect(combo: number): void {
     this.thud(0.55);
-    const f = this.note(Math.min(combo - 1, 11) + 3);
+    // Your tower plays a song: each perfect drop in a row is the next note of the island's
+    // tune, with a soft low note under the start of each phrase.
+    const tune = SONGS[this.tune] ?? SONGS.meadow, step = (combo - 1) % tune.length;
+    const f = 261.63 * Math.pow(2, tune[step] / 12) * (combo > tune.length ? 2 : 1);
+    if (step % 4 === 0) this.bell(f / 4, 0.9, 0.05, 0, 0);
     this.bell(f, 0.9, 0.12);
     this.bell(f * 2, 0.5, 0.03, 0.02, 0.4);
     if (combo >= 5) this.bell(f * 1.5, 0.7, 0.04, 0.05, -0.4);
