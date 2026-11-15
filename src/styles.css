@@ -2128,3 +2128,43 @@ svg.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; disp
 @keyframes fever-flow { to { background-position: -200% 0; } }
 #hud.fevering #people { color: #ffe08a; text-shadow: 0 0 18px rgba(255, 150, 40, 0.9), 0 3px 0 rgba(120, 40, 0, 0.5); }
 @media (prefers-reduced-motion: reduce) { .fever-meter.on, .fever-meter.on i { animation: none; } }
+
+/* ---------- Dock as tabs over the open sheet ---------- */
+body.dock-tabs #dock {
+  position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 8; margin: 0; width: auto; max-width: calc(100% - 20px);
+  background: rgba(255, 255, 255, 0.82) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: 0 10px 30px rgba(20, 24, 70, 0.28), inset 0 1px 0 #fff !important;
+  animation: dock-rise 0.35s cubic-bezier(0.25, 1.3, 0.5, 1);
+}
+@keyframes dock-rise { from { transform: translate(-50%, 30px); opacity: 0; } }
+body.dock-tabs .modal:is(#city, #shop, #missions, #pass, #ranks) { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+body.dock-tabs .modal:is(#city, #shop, #missions, #pass, #ranks) .sheet { border-radius: 24px; padding-bottom: 18px; max-height: calc(100dvh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+#dock .tile[aria-current="page"] svg { transform: translateY(-3px) scale(1.08); box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--c2, #6a4cff), 0 8px 16px color-mix(in srgb, var(--c2, #6a4cff) 45%, transparent) !important; }
+#dock .tile[aria-current="page"] span { color: var(--c2, #6a4cff); }
+.sheet.tab-in-right { animation: tab-in-r 0.32s cubic-bezier(0.25, 1.1, 0.4, 1) !important; }
+.sheet.tab-in-left { animation: tab-in-l 0.32s cubic-bezier(0.25, 1.1, 0.4, 1) !important; }
+@keyframes tab-in-r { from { transform: translateX(40%); opacity: 0; } }
+@keyframes tab-in-l { from { transform: translateX(-40%); opacity: 0; } }
+
+/* A grab handle on every sheet: it can be pulled down to close. */
+.modal .sheet { position: relative; }
+.modal .sheet::before {
+  content: ""; position: sticky; top: 6px; display: block; width: 40px; height: 5px; margin: 6px auto -11px; border-radius: 3px;
+  background: rgba(42, 31, 110, 0.18); z-index: 3;
+}
+#pass .sheet::before { background: rgba(255, 255, 255, 0.6); margin-bottom: -11px; }
+
+/* Each place has its own color on its header. */
+#city .sheet-head h2 { color: #2f6fe0; }
+#shop .sheet-head h2 { color: #e8457a; }
+#missions .sheet-head h2 { color: #f08a12; }
+#ranks .sheet-head h2 { color: #14a070; }
+.modal:is(#city, #shop, #missions, #ranks) .sheet-top { position: relative; }
+#city .sheet-top { background: linear-gradient(180deg, rgba(79, 195, 255, 0.22), transparent) !important; }
+#shop .sheet-top { background: linear-gradient(180deg, rgba(255, 143, 184, 0.24), transparent) !important; }
+#missions .sheet-top { background: linear-gradient(180deg, rgba(255, 210, 63, 0.28), transparent) !important; }
+#ranks .sheet-top { background: linear-gradient(180deg, rgba(94, 224, 160, 0.24), transparent) !important; }
+@media (prefers-reduced-motion: reduce) { body.dock-tabs #dock, .sheet.tab-in-right, .sheet.tab-in-left { animation: none !important; } }
+body.dock-tabs #menu .menu-bottom > :not(#dock) { visibility: hidden; }
