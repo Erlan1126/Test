@@ -321,7 +321,6 @@ const SIM = `
       const layout = () => { startRun({ daily: true }); for (let q = 0; q < 120; q++) runUpdate(1 / 60); return run.items.filter(i => i.type !== "light").map(i => i.type + Math.round(i.at)).join(","); };
       out.runDailyIsTheSameForEveryone = layout() === layout() && run.daily;
       // The title plays a run by itself, without touching your missions.
-      const m0 = JSON.stringify(save.run.missions); showTitle(); for (let q = 0; q < 30; q++) { run = titleRun; runUpdate(1 / 60); } run = null;
       // Running out of light offers a continue (for lights), with a countdown.
       startRun(); run.next = 1e9; save.glow = 100; run.hearts = 1; run.inv = 0; runHit();
       out.runOffersKeepGoing = run.paused && !document.getElementById("runContinue").hidden;
@@ -339,6 +338,35 @@ const SIM = `
       runSing(); out.singingMovesTheLessonOn = run.tut === 3 && run.slow === 1;
       run.dist = 120 * RUN.M; runUpdate(1 / 60); run.dashCd = 0; runDash();
       out.dashingFinishesTheLessons = run.tut === 0 && save.run.tutDone === 1;
+      // A Warden at the start of each new world: it listens, and three songs then calm it.
+      save.run.tutDone = 1; startRun(); run.next = 1e9; run.nextEvent = 1e9; run.dist = RUN.BIOME_M * RUN.M - 5; runUpdate(1 / 60); runUpdate(1 / 60);
+      out.wardenGuardsEachNewWorld = !!run.boss && run.boss.hp >= 3;
+      const hp0 = run.boss.hp; let tries = 0;
+      while (run.boss && tries++ < 3000) { run.inv = 1; if (run.boss.listen > 0 && run.boss.off < 160 && run.songCd <= 0) runSing(); runUpdate(1 / 60); }
+      out.singingWhileItListensCalmsIt = !run.boss && hp0 > 0 && save.prog.boss >= 1;
+      // A fork: the rock in the middle; the risky side has lights and shadows.
+      startRun(); run.next = 1e9; run.nextEvent = 1e9; run.items = []; runSpawnFork(run.dist + 20);
+      const isl = run.items[0]; run.inv = 1; for (let q = 0; q < 60; q++) { run.tx = caveMid(run.dist); runUpdate(1 / 60); }
+      out.forkRockKeepsLumiToASide = isl.type === "island" && Math.abs(run.x - caveMid(run.dist)) >= islandHalf(isl, run.dist) && run.items.some(i => i.type === "shadow");
+      // Hard mode: one light of your own, double score, no continues.
+      runSave().hardOn = true; startRun(); out.hardModeHasOneLightAndDoubleScore = run.hard && run.hearts === 1 && (run.dist = 4000, runScore() >= 200); runSave().hardOn = false;
+      // The daily loop: the calendar, the missions, the streak, the week.
+      save.cal = null; const cst = calState(), g0 = save.glow || 0; const got = calClaim();
+      out.calendarGivesADailyGift = cst.day === 1 && got === CAL[0] && save.glow === g0 + CAL[0] && calState().claimed;
+      save.dm = null; const dm = dailyMissions(); const dm0 = DM_POOL[dm.list[0].i]; progressEvent(dm0.k, dm0.goal);
+      out.dailyMissionsCountAndPay = dm.list.length === 3 && dm.list[0].done;
+      save.streak = { last: today() - 1, n: 4, best: 4 }; streakTouch();
+      out.streakGrowsDayByDay = streakNow() === 5 && streakBonus() > 0.2;
+      out.thereIsAWeeklyEvent = !!weekEvent().name;
+      // The long game: rebuilding the city, friends with gifts, awards.
+      save.glow = 1000; save.builds = {}; save.runAch = Object.fromEntries(RUN_ACHS.map(a => [a.id, 1])); out.lightsRebuildTheCity = buildIt("lamps") && built("lamps") && save.glow === 960;
+      save.runFriends = { 4: 1 }; runSave().char = 4; out.playingAsAFriendGivesItsGift = playingAs() === 4 && perk(4);
+      runSave().char = -1;
+      save.runAch = {}; save.prog = { dist: 600 }; out.achievementsPay = checkAchievements().some(a => a.id === "m500");
+      // Challenge a friend: the same cave from the same seed.
+      const cave = seed => { startRun({ challenge: { seed, score: 100 } }); for (let q = 0; q < 200; q++) runUpdate(1 / 60); return run.items.filter(i => i.type !== "light").map(i => i.type + Math.round(i.at)).join(","); };
+      out.challengeLinksReplayTheSameCave = cave(4242) === cave(4242) && challengeLink(4242, 100).includes("ch=4242.100") && typeof shareRun === "function";
+      const m0 = JSON.stringify(save.run.missions); showTitle(); for (let q = 0; q < 30; q++) { run = titleRun; runUpdate(1 / 60); } run = null;
       out.titleRunsByItself = !!titleRun && titleRun.attract && titleRun.dist > 0 && JSON.stringify(save.run.missions) === m0;
       showTitle();
       // Light is health: three touches and the try is over.

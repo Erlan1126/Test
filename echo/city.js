@@ -89,7 +89,7 @@ function drawCity(ctx, W, H) {
     ctx.fill();
   }
   // The Singer's tower, in the middle of everything.
-  const glowT = act1 ? 1 : 0;
+  const glowT = act1 || built("tower") ? 1 : 0;
   if (glowT) { const g = ctx.createRadialGradient(200, 250, 10, 200, 250, 230); g.addColorStop(0, "rgba(255,210,130,0.55)"); g.addColorStop(1, "rgba(255,180,90,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH); }
   ctx.fillStyle = "#0b0d1c";
   ctx.beginPath(); ctx.moveTo(176, 600); ctx.lineTo(182, 290); ctx.lineTo(172, 286); ctx.lineTo(200, 200); ctx.lineTo(228, 286); ctx.lineTo(218, 290); ctx.lineTo(224, 600); ctx.fill();
@@ -102,6 +102,7 @@ function drawCity(ctx, W, H) {
   ctx.lineTo(CW, 600); ctx.lineTo(0, 600); ctx.fill();
   // A stone bridge on the right, lit once act two is done.
   ctx.strokeStyle = "#0e1124"; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(330, 470, 70, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  if (built("bridge")) for (let q = 0; q < 6; q++) { const a = Math.PI * (1.12 + q * 0.14), bx = 330 + Math.cos(a) * 70, by = 470 + Math.sin(a) * 70; ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(bx, by - 6, 0, bx, by - 6, 18); g.addColorStop(0, "rgba(255,210,130,0.8)"); g.addColorStop(1, "rgba(255,190,110,0)"); ctx.fillStyle = g; ctx.fillRect(bx - 18, by - 24, 36, 36); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ffe6b0"; ctx.fillRect(bx - 1.5, by - 9, 3, 4); }
   // Near houses.
   for (const h of CITY_HOUSES) {
     const w = h.w * 16 + 12, top = h.y, bot = 600;
@@ -112,12 +113,18 @@ function drawCity(ctx, W, H) {
     else { ctx.rect(h.x - 3, top - 6, w + 6, 6); }
     ctx.fill();
   }
+  // The music hall's dome sings once it's rebuilt.
+  if (built("hall")) { const h = CITY_HOUSES[3], cx = h.x + (h.w * 16 + 12) / 2; ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(cx, h.y, 4, cx, h.y, 70); g.addColorStop(0, "rgba(200,170,255,0.7)"); g.addColorStop(1, "rgba(180,140,255,0)"); ctx.fillStyle = g; ctx.fillRect(cx - 70, h.y - 70, 140, 140); ctx.globalCompositeOperation = "source-over"; for (let q = 0; q < 3; q++) { const p = (t * 0.3 + q / 3) % 1; ctx.globalAlpha = Math.sin(Math.PI * p); ctx.fillStyle = "#efe6ff"; ctx.font = "14px Georgia"; ctx.fillText("♪", cx - 10 + q * 10, h.y - 30 - p * 60); } ctx.globalAlpha = 1; }
+  // The bakery's warm awning.
+  if (built("bakery")) { const h = CITY_HOUSES[1]; for (let q = 0; q < 5; q++) { ctx.fillStyle = q % 2 ? "#f2c48a" : "#b0573a"; ctx.fillRect(h.x - 4 + q * 9, 560, 9, 8); } ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(h.x + 22, 580, 2, h.x + 22, 580, 40); g.addColorStop(0, "rgba(255,190,110,0.6)"); g.addColorStop(1, "rgba(255,170,90,0)"); ctx.fillStyle = g; ctx.fillRect(h.x - 18, 540, 80, 80); ctx.globalCompositeOperation = "source-over"; }
   // The street.
   ctx.fillStyle = "#080a16"; ctx.fillRect(0, 590, CW, 130);
+  if (built("fountain")) { ctx.fillStyle = "#1a2040"; ctx.beginPath(); ctx.ellipse(200, 600, 34, 8, 0, 0, Math.PI * 2); ctx.fill(); for (let q = 0; q < 16; q++) { const p = (t * 0.8 + q / 16) % 1, sd = q % 2 ? 1 : -1, x = 200 + sd * p * 26, y = 598 - Math.sin(Math.PI * p) * 34; ctx.fillStyle = `rgba(170,230,255,${0.8 - p * 0.5})`; ctx.fillRect(x - 1, y - 1, 2.4, 2.4); } }
+  if (built("garden")) for (let q = 0; q < 18; q++) { const x = 8 + q * 22 + (q % 2) * 6, y = 596 + (q % 3) * 3; ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(x, y, 0, x, y, 9); g.addColorStop(0, q % 3 ? "rgba(150,255,190,0.8)" : "rgba(255,160,220,0.8)"); g.addColorStop(1, "rgba(150,255,190,0)"); ctx.fillStyle = g; ctx.fillRect(x - 9, y - 9, 18, 18); ctx.globalCompositeOperation = "source-over"; }
   ctx.fillStyle = "#11152a"; for (let x = 0; x < CW; x += 26) ctx.fillRect(x + ((x / 26) % 2) * 6, 604 + ((x / 26) % 3) * 9, 18, 3);
   // Windows and lamps: dark until a light comes home to them; the newest ones bloom in.
   SLOTS.forEach((s, q) => {
-    const on = q < home, fresh = on && q >= cityFrom && cityArrive > 0;
+    const on = q < home || (s.lamp && built("lamps")) || (!s.lamp && !s.far && built("houses")), fresh = on && q >= cityFrom && q < home && cityArrive > 0;
     const a = !on ? 0 : fresh ? Math.min(1, Math.max(0, (cityT - (q - cityFrom) * 0.6))) : 1;
     if (s.lamp) {
       ctx.fillStyle = "#151a30"; ctx.fillRect(s.x - 1.5, s.y - 40, 3, 40); ctx.fillRect(s.x - 6, s.y - 44, 12, 4);
@@ -206,12 +213,28 @@ function renderCity() {
   $("cityGoName").textContent = (save.run || {}).best ? `Best ${(save.run.best).toLocaleString()}` : "Glide home through the dark";
   renderShop();
 }
+let cityPanel = "upgrades";
 function renderShop() {
-  $("shopList").innerHTML = runShopHtml();
+  const glow = save.glow || 0;
+  const head = { upgrades: ["Upgrades", "Spend the lights you gather in runs."], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
+    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
+  $("shopTitle").textContent = head[0]; $("shopSub").textContent = head[1];
+  if (cityPanel === "upgrades") $("shopList").innerHTML = runShopHtml();
+  if (cityPanel === "build") $("shopList").innerHTML = CITY_BUILDS.map(b => `<li class="${built(b.id) ? "won" : ""}"><span><b>${b.name}</b><small>${b.text}</small></span>` + (built(b.id) ? "<em>Rebuilt</em>" : `<button data-build="${b.id}" ${glow >= b.cost ? "" : "disabled"}>✦ ${b.cost}</button>`) + "</li>").join("");
+  if (cityPanel === "friends") {
+    const met = save.runFriends || {}, as = playingAs();
+    $("shopList").innerHTML = `<li><span><b>Lumi</b><small>The littlest light</small></span>${as < 0 ? "<em>Playing</em>" : `<button data-char="-1">Play</button>`}</li>` +
+      RUN_FRIENDS.map((f, i) => met[i] ? `<li><span><b>${f.name}</b><small>${FRIEND_PERKS[i]}</small></span>${as === i ? "<em>Playing</em>" : `<button data-char="${i}">Play</button>`}</li>` : `<li class="locked"><span><b>???</b><small>Still lost somewhere in the caves</small></span></li>`).join("");
+  }
+  if (cityPanel === "awards") $("shopList").innerHTML = RUN_ACHS.map(a => `<li class="${(save.runAch || {})[a.id] ? "won" : "locked"}"><span><b>${a.name}</b><small>${a.text}</small></span><em>+${a.r} ✦</em></li>`).join("");
 }
 document.getElementById("shopList").addEventListener("click", e => {
   const rb = e.target.closest("button[data-run]");
   if (rb) { if (runBuy(rb.dataset.run)) renderCity(); return; }
+  const bb = e.target.closest("button[data-build]");
+  if (bb) { if (buildIt(bb.dataset.build)) { cityT = 0; renderCity(); } return; }
+  const cb = e.target.closest("button[data-char]");
+  if (cb) { runSave().char = +cb.dataset.char; persist(); sfx.tick(); renderShop(); return; }
   const b = e.target.closest("button[data-up]");
   if (!b) return;
   const u = UPGRADES.find(q => q.id === b.dataset.up), lv = upg(u.id), cost = u.tiers[lv];

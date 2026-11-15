@@ -633,6 +633,25 @@
   #runOver.best .best { animation: bestGlow 1.4s ease-in-out infinite; }
   @keyframes bestGlow { 50% { text-shadow: 0 0 14px #ffd98a; } }
   .run-continue .big { font-size: 56px; }
+
+  /* Today: the calendar, daily missions, the streak and this week's event. */
+  #titleScreen > #todayPanel { position: absolute; z-index: 5; max-height: calc(100% - 40px); overflow: auto; }
+  .title-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .hard-toggle { font-size: 14px; letter-spacing: 0.06em; color: #ff9ad0; padding: 8px 14px; border-radius: 99px; border: 1px solid rgba(255, 154, 208, 0.35); background: rgba(40, 10, 30, 0.35); }
+  .hard-toggle.on { background: rgba(255, 120, 190, 0.25); border-color: #ff9ad0; color: #fff; }
+  #titleMeta { font-size: 13px; color: #cfe0f5; letter-spacing: 0.04em; text-shadow: 0 1px 8px #000; min-height: 1em; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 8px 0 12px; }
+  .cal div { border-radius: 10px; padding: 6px 0; font-size: 11px; background: rgba(255, 255, 255, 0.06); color: #9fb3d4; border: 1px solid transparent; }
+  .cal div b { display: block; font-size: 13px; color: #ffd98a; }
+  .cal div.past { opacity: 0.45; } .cal div.now { border-color: #ffd98a; background: rgba(255, 217, 138, 0.12); color: #fff; }
+  .dm li { display: flex; justify-content: space-between; gap: 8px; } .dm li.done { color: #9fe8ff; } .dm li.done::before { content: "✓ "; }
+  .dm-bar { display: block; height: 3px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; margin-top: 3px; } .dm-bar i { display: block; height: 100%; background: #ffd98a; border-radius: 2px; }
+  .week-ev { font-size: 13px; color: #ffd98a; margin: 0 0 10px; }
+  .run-row2 { display: flex; gap: 8px; margin-bottom: 10px; } .run-row2 button { flex: 1; padding: 9px 0; border-radius: 12px; font-size: 13px; background: rgba(255, 255, 255, 0.07); color: #e6f0ff; border: 1px solid rgba(255, 255, 255, 0.12); }
+  .run-daily { font-size: 12px; color: #ffd98a; margin: 0 0 10px; }
+  .city-nav { flex-wrap: wrap; } .city-nav button { flex: 1 1 22%; }
+  .shop li .perk { display: block; font-size: 11px; color: #8fa6c8; }
+  .shop li.locked { opacity: 0.45; } .shop li.won b::after { content: " ✓"; color: #9fe8ff; }
 </style>
 </head>
 <body>
@@ -670,16 +689,27 @@
     <div class="divider"><i></i></div>
     <p class="tagline">A little light, lost in the dark</p>
   </div>
+  <div class="run-panel" id="todayPanel" hidden>
+    <h2>Today</h2>
+    <p class="week-ev" id="weekEv"></p>
+    <h3>Daily gift · <span id="calStreak"></span></h3>
+    <div class="cal" id="calGrid"></div>
+    <button class="btn main" id="calClaim">Claim</button>
+    <h3 style="margin-top:14px">Daily missions</h3>
+    <ul class="dm" id="dmList"></ul>
+    <div class="row"><button class="main" id="todayClose">Let's go</button></div>
+  </div>
   <div class="title-actions">
     <div class="title-meta" id="titleMeta"></div>
     <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
     <button class="link week-link" id="weekLink">This week's cave ›</button>
     <p class="tap-sing" id="tapSing">Tap to sing · swipe up to dash</p>
     <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
-    <button class="daily-run" id="dailyRunBtn">Daily run</button>
+    <div class="title-row"><button class="daily-run" id="dailyRunBtn">Daily run</button><button class="hard-toggle" id="hardBtn">Hard: off</button></div>
     <nav class="dock glass" aria-label="Menu">
       <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>City</button>
       <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
+      <button id="todayBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/></svg>Today<i class="dot" id="todayDot" hidden></i></button>
       <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
       <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
       <button id="settingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</button>
@@ -747,6 +777,8 @@
   <div class="run-panel" id="runOver" hidden>
     <h2 id="runOverTitle">Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
     <p class="run-level" id="runLevel"></p><div class="run-bar"><i id="runLevelBar"></i></div><button class="run-trail" id="runTrail"></button>
+    <p class="run-daily" id="runOverDaily"></p>
+    <div class="run-row2"><button id="runShare">Share · challenge a friend</button></div>
     <h3>Missions</h3><ul id="runOverMissions"></ul>
     <h3>Upgrades · ✦ <span id="runGlowLeft">0</span></h3><ul class="shop-list" id="runShopList"></ul>
     <div class="row"><button id="runCity">City</button><button class="main" id="runAgain">Run again</button></div>
@@ -767,10 +799,10 @@
     <p class="city-sub" id="citySub"></p>
     <div class="city-stats"><span>✦ <b id="cityCount">0</b> lights home</span><span>Glow <b id="cityGlow">0</b></span></div>
   </div>
-  <div class="shop" id="shopPanel" hidden><h3>Upgrades</h3><p>Spend the lights you gather in runs.</p><ul id="shopList"></ul></div>
+  <div class="shop" id="shopPanel" hidden><h3 id="shopTitle">Upgrades</h3><p id="shopSub">Spend the lights you gather in runs.</p><ul id="shopList"></ul></div>
   <div class="city-actions">
     <button class="play" id="cityGo"><span class="play-label">Into the dark</span><span class="play-sub" id="cityGoName"></span></button>
-    <div class="city-nav"><button id="cityShop">Upgrades</button><button id="cityBack">Title</button></div>
+    <div class="city-nav"><button id="cityBuild">Rebuild</button><button id="cityShop">Upgrades</button><button id="cityFriends">Friends</button><button id="cityAwards">Awards</button><button id="cityBack">Title</button></div>
   </div>
 </div>
 
@@ -922,6 +954,7 @@
 <script src="echo/meta.js"></script>
 <script src="echo/city.js"></script>
 <script src="echo/run.js"></script>
+<script src="echo/progress.js"></script>
 <script src="echo/ui.js"></script>
 </body>
 </html>

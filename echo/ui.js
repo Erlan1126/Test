@@ -490,9 +490,17 @@ function renderTitle() {
   const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
   $("starCount").textContent = t;
   $("playLabel").textContent = "Play";
-  const rs = save.run || {}, best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
+  const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
   $("playSub").textContent = best ? `Best ${best.toLocaleString()}` : "Glide home through the dark";
-  $("dailyRunBtn").textContent = daily ? `Daily run · today's best ${daily.toLocaleString()}` : "Daily run · new cave today";
+  $("dailyRunBtn").textContent = daily ? `Daily run · best ${daily.toLocaleString()}` : "Daily run";
+  $("hardBtn").textContent = rs.hardOn ? "Hard: on ×2" : "Hard: off"; $("hardBtn").classList.toggle("on", !!rs.hardOn);
+  const we = weekEvent(), sn = streakNow();
+  $("titleMeta").textContent = (sn ? `🔥 ${sn} day streak · ` : "") + `${we.name}: ${we.text}` + (challengeFrom ? ` · A friend scored ${challengeFrom.score.toLocaleString()}` : "");
+  $("todayDot").hidden = calState().claimed;
+  if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()} in their cave`; }
+  // The first visit of the day opens the gift.
+  if (!calState().claimed && !save.run.todayShown) { save.run.todayShown = today(); setTimeout(openToday, 600); }
+  else if (save.run.todayShown !== today() && !calState().claimed) { save.run.todayShown = today(); setTimeout(openToday, 600); }
   startTitleRun();
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
@@ -681,12 +689,28 @@ const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation
 // Play goes home to the city first; from there, into the next cave.
 // Play starts an endless run (after the opening film, the first time); Story is the city and its caves.
 // Play starts a run; Daily run is the same cave for everyone today.
-tap("playBtn", () => startRun());
+tap("playBtn", () => (challengeFrom ? startRun({ challenge: challengeFrom }) : startRun()));
 tap("dailyRunBtn", () => startRun({ daily: true }));
+// Hard mode: one touch and the run is over, but every point counts double.
+tap("hardBtn", () => { runSave().hardOn = !save.run.hardOn; persist(); renderTitle(); });
+tap("todayBtn", openToday);
+tap("todayClose", () => { $("todayPanel").hidden = true; });
+tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift: <b>+${n} ✦</b>`, true); } renderToday2(); renderTitle(); });
+function openToday() { renderToday2(); $("todayPanel").hidden = false; }
+function renderToday2() {
+  const st = calState(), we = weekEvent();
+  $("weekEv").textContent = `${we.name}: ${we.text}`;
+  $("calStreak").textContent = streakNow() ? `🔥 ${streakNow()} day streak (+${Math.round(streakBonus() * 100)}% lights)` : "play a run to start a streak";
+  $("calGrid").innerHTML = CAL.map((n, i) => `<div class="${i + 1 < st.day || (i + 1 === st.day && st.claimed) ? "past" : i + 1 === st.day ? "now" : ""}">Day ${i + 1}<b>${n}</b></div>`).join("");
+  $("calClaim").disabled = st.claimed; $("calClaim").textContent = st.claimed ? "Come back tomorrow" : `Claim +${CAL[st.day - 1]} ✦`;
+  const dm = dailyMissions();
+  $("dmList").innerHTML = dm.list.map(m => { const d = DM_POOL[m.i], k = Math.min(1, m.prog / d.goal); return `<li class="${m.done ? "done" : ""}"><span style="flex:1">${d.text(d.goal)}<span class="dm-bar"><i style="width:${Math.round(k * 100)}%"></i></span></span><span>+${DM_REWARD} ✦</span></li>`; }).join("");
+}
 tap("cityGo", () => startRun());
 tap("cityBack", showTitle);
 
-tap("cityShop", () => { $("shopPanel").hidden = !$("shopPanel").hidden; renderShop(); });
+for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"]])
+  tap(id, () => { const same = cityPanel === kind && !$("shopPanel").hidden; cityPanel = kind; $("shopPanel").hidden = same; renderShop(); });
 tap("levelsBtn", () => (CORE ? showCity() : openMap()));
 // A soft tick when a switch or option changes, so settings feel alive.
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
