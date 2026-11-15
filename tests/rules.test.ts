@@ -9,11 +9,14 @@ const run = (over: Partial<RunSummary> = {}): RunSummary => ({
 });
 
 describe("speed and fairness", () => {
-  it("levels up at a steady pace: about 20 towers to level 5, not minutes", () => {
+  it("levels up at a steady pace: about 10 towers to level 5, 30+ to level 9", () => {
     const typical = { mode: "classic", floors: 30, perfects: 15, score: 1500, meters: 150 } as Parameters<typeof runXp>[0];
     let level = 1, xp = 0, towers = 0;
     while (level < 5) { ({ level, xp } = addXp(level, xp, runXp(typical, false))); towers++; }
-    expect(towers).toBeGreaterThanOrEqual(15);
+    expect(towers).toBeGreaterThanOrEqual(8);
+    expect(towers).toBeLessThanOrEqual(14);
+    while (level < 9) { ({ level, xp } = addXp(level, xp, runXp(typical, false))); towers++; }
+    expect(towers).toBeGreaterThanOrEqual(25);
     // Even a huge tower can't jump many levels at once.
     const huge = runXp({ ...typical, floors: 150, perfects: 120, score: 90000 }, true);
     expect(addXp(1, 0, huge).level).toBeLessThanOrEqual(3);

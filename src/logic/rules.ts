@@ -41,7 +41,7 @@ export function landmarkIndex(meters: number): number {
 /** XP needed to go from level l to the next one. */
 /** XP from level `l` to the next: quick early levels (each opens something new, see
  *  features.ts), then a steady climb. */
-export const xpNeeded = (l: number): number => (l < 10 ? 50 * l : 450 + (l - 9) * 110);
+export const xpNeeded = (l: number): number => (l < 10 ? 15 + 25 * l : 300 + (l - 10) * 120);
 
 /** XP for a finished tower. Every tower earns some; daily towers earn more, Zen towers less. */
 export function runXp(run: RunSummary, newBest: boolean): number {
