@@ -19,7 +19,6 @@ const SONGS: Record<string, number[]> = {
   candy: [12, 11, 9, 7, 9, 11, 12, 16, 14, 12, 11, 12, 9, 7, 5, 4],
 };
 
-const SCALE = [0, 2, 4, 7, 9];
 
 export class Sound {
   /** 0 to 3: how much of the music plays (pad and a soft tune, then bass, then the full
