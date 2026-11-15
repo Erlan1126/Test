@@ -29,6 +29,7 @@ import type { Sound } from "../sound";
 import { confetti } from "./fx";
 import { FEATURE_ICON, FEATURE_NAMES, FEATURE_TEXT, levelStep } from "../data/levels";
 import { iconSvg } from "./icons";
+import { towerName } from "../data/towernames";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
 export interface Host {
@@ -569,7 +570,7 @@ export class Sheets {
     const modeName = { classic: t("Classic"), daily: t("Daily"), challenge: t("Challenge"), zen: t("Zen") };
     $("history").innerHTML = save.history.length
       ? save.history.map((h, i) => `<div class="history-row"><span class="rank">${i + 1}</span>
-          <span><b>${fmt(h.score)}</b> <small>${esc(t("people · {m} m", { m: h.meters }))}</small></span>
+          <span><em class="hist-name">${esc(towerName(h.score, h.floors, h.day))}</em><b>${fmt(h.score)}</b> <small>${esc(t("people · {m} m", { m: h.meters }))}</small></span>
           <span class="when">${modeName[h.mode]}<br>${esc(this.when(h.day))}</span></div>`).join("")
       : `<p class="history-empty">${esc(t("Your best towers will show up here."))}</p>`;
     $("trophy-title").textContent = t("{n} of {total} won", { n: p.trophies.length, total: TROPHIES.length });

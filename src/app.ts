@@ -23,7 +23,7 @@ import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type Postca
 import { FEATURE_LEVEL, FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
 import { FEATURE_ICON, FEATURE_TEXT } from "./data/levels";
 import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
-import { dailySeed, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
+import { dailySeed, dayKey, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { FEVER_AT, FEVER_FLOORS, POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
@@ -58,6 +58,7 @@ import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
 import { CITY } from "./data/daily";
 import { BUILD_SPOTS } from "./data/spots";
 import { iconSvg, withIcons } from "./ui/icons";
+import { towerName } from "./data/towernames";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -1644,6 +1645,10 @@ export class App implements DailyHost {
     eyebrow.textContent = c ? (won ? t("Stage complete!") : t("Stage failed"))
       : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: this.runDay }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
+    // Every tower gets its own name, on a little plaque.
+    const plaque = $("over-name");
+    plaque.hidden = sim.level < 3 || !!c;
+    plaque.textContent = towerName(sim.score, sim.level, dayKey(0));
     // A new player's very first tower is a big moment.
     const first = save.profile.towers === 1 && !c && mode !== "zen";
     if (first) { eyebrow.textContent = t("Your first tower!"); eyebrow.classList.add("best"); }
