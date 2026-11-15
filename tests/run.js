@@ -281,7 +281,7 @@ const SIM = `
       save.run = null; runSave(); renderShop(); document.querySelector("#shopList button[data-run='magnet']").click();
       out.glowBuysRunUpgradesInTheCity = runUpg("magnet") === 1 && save.glow === 10;
       // The endless run: lights play and count, songs free shadows, touches dim Lumi, the best is kept.
-      save.seenIntro = 1; save.run = null; startRun();
+      save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; startRun();
       out.runStarts = screen === "run" && run.hearts === 3;
       run.items = [{ type: "light", at: run.dist + 5, x: run.x, trail: 1, of: 1 }]; run.next = 1e9; runUpdate(1 / 60); runUpdate(1 / 60);
       out.runGathersLights = run.lights === 1;
@@ -291,10 +291,10 @@ const SIM = `
       out.runShadowTouchDims = run.hearts === 2;
       for (let q = 0; q < 600; q++) runUpdate(1 / 60);
       out.runCaveScrollsAndSpeedsUp = runMetres() > 40 && run.speed > 200;
-      run.hearts = 1; run.inv = 0; runHit();
+      run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
       out.runEndsAndKeepsTheBest = !!run.over && save.run.best > 0 && save.glow >= run.lights;
       // Combos, near misses, the chorus, the dash.
-      startRun(); run.next = 1e9; run.nextEvent = 1e9;
+      save.run.tutDone = 1; startRun(); run.next = 1e9; run.nextEvent = 1e9;
       run.items = Array.from({ length: 12 }, (_, q) => ({ type: "light", at: run.dist + 10 + q * 3, x: run.x, trail: 7, of: 12 }));
       for (let q = 0; q < 40; q++) { run.tx = run.x; runUpdate(1 / 60); }
       out.runCombosGrow = run.comboBest >= 10 && run.lights > 12;
@@ -322,6 +322,23 @@ const SIM = `
       out.runDailyIsTheSameForEveryone = layout() === layout() && run.daily;
       // The title plays a run by itself, without touching your missions.
       const m0 = JSON.stringify(save.run.missions); showTitle(); for (let q = 0; q < 30; q++) { run = titleRun; runUpdate(1 / 60); } run = null;
+      // Running out of light offers a continue (for lights), with a countdown.
+      startRun(); run.next = 1e9; save.glow = 100; run.hearts = 1; run.inv = 0; runHit();
+      out.runOffersKeepGoing = run.paused && !document.getElementById("runContinue").hidden;
+      document.getElementById("runContinueGo").click();
+      out.keepGoingCostsLightsAndCarriesOn = !run.paused && run.hearts === 1 && save.glow === 75 && run.continues === 1;
+      // Lumi's level: every run earns experience, and levels unlock trails.
+      save.run.xp = 0; save.run.trail = 0; const lv0 = lumiLevel().lv; run.hearts = 1; run.continues = 2; run.inv = 0; run.dist = 400000; runHit();
+      out.runsEarnLevelsAndTrails = lumiLevel().lv > lv0 && run.levelInfo.newTrails.length > 0 && (save.run.trail || 0) > 0;
+      // The first run teaches: slide, then time slows at a shadow until you sing, then dash.
+      save.run.tutDone = 0; startRun(); run.next = 1e9;
+      out.firstRunTeachesSteering = run.tut === 1;
+      for (let q = 0; q < 120; q++) { run.tx = caveMid(run.dist) + (q % 40 < 20 ? 60 : -60); runUpdate(1 / 60); }
+      for (let q = 0; q < 120 && run.slow === 1; q++) runUpdate(1 / 60);
+      out.timeSlowsAtTheFirstShadow = run.tut === 2 && run.slow < 1 && run.tutText.includes("sing");
+      runSing(); out.singingMovesTheLessonOn = run.tut === 3 && run.slow === 1;
+      run.dist = 120 * RUN.M; runUpdate(1 / 60); run.dashCd = 0; runDash();
+      out.dashingFinishesTheLessons = run.tut === 0 && save.run.tutDone === 1;
       out.titleRunsByItself = !!titleRun && titleRun.attract && titleRun.dist > 0 && JSON.stringify(save.run.missions) === m0;
       showTitle();
       // Light is health: three touches and the try is over.

@@ -44,12 +44,13 @@ function startRun(opts = {}) {
   const daily = !!opts.daily;
   run = {
     daily, rng: daily ? seeded(dayNumber() * 7919 + 13) : null, attract: !!opts.attract,
-    combo: 0, comboBest: 0, comboT: 0, boost: 0, dashCd: 0, dashT: 0, power: null, event: null, nextEvent: 250, hunterGap: 1, pops: [], banner2: null, friendSpawned: false,
+    combo: 0, comboBest: 0, comboT: 0, boost: 0, dashCd: 0, dashT: 0, power: null, event: null, nextEvent: 250, hunterGap: 1, pops: [], msgs: [], friendSpawned: false, continues: 0, slow: 1, tut: 0, tutText: '',
     dist: 0, speed: 170, x: caveMid(0), tx: caveMid(0), vx: 0, hearts: 3 + runUpg("heart"), inv: 0, over: 0,
     lights: 0, freed: 0, songs: 0, hitAt: 0, trails: 0, songCd: 0, rings: [], items: [], parts: [], trail: [],
     next: 260, note: 0, biome: 0, banner: 1.5, flash: 0, t: 0, mult: r.mult, paused: false, nohit: true,
   };
   if (opts.attract) { run.hearts = 1e9; return run; }
+  if (!r.tutDone && !daily) run.tut = 1;
   for (const m of r.missions) m.run = 0;
   mood = MOODS[0];
   musicStart(4242, 2);
@@ -72,6 +73,7 @@ function runSpawn(at) {
     for (let q = 0; q < n; q++) { const a = at + q * 34; run.items.push({ type: "light", at: a, x: caveMid(a) + Math.sin(ph + q * 0.5) * amp, trail: id, of: n }); }
     return n * 34 + 80;
   }
+  if (roll < 0.8 && at / RUN.M < 60) { const id = R(); for (let q = 0; q < 8; q++) { const a = at + q * 34; run.items.push({ type: "light", at: a, x: caveMid(a) + Math.sin(q * 0.5) * hw * 0.3, trail: id, of: 8 }); } return 8 * 34 + 80; }
   if (roll < 0.8) {
     const n = R() < 0.25 + hard * 0.4 ? 2 : 1;
     for (let q = 0; q < n; q++) run.items.push({ type: "shadow", at: at + q * 70, x: mid + (R() - 0.5) * hw * 1.1, ph: R() * 6, amp: 20 + R() * 40 + hard * 30 });
@@ -82,18 +84,32 @@ function runSpawn(at) {
   return 160;
 }
 
+// The first run teaches: slide to steer; time slows at the first shadow until you sing; then dash.
+function runTutorial(dt) {
+  const R = run;
+  if (R.attract || !R.tut) return;
+  if (R.tut === 1) { R.tutText = "Slide your finger to steer"; R.tutMoved = (R.tutMoved || 0) + Math.abs(R.vx || 0) * dt; if (R.tutMoved > 90 && R.t > 1.5) R.tut = 2; }
+  else if (R.tut === 2) {
+    R.tutText = ""; R.slow = 1;
+    let sh = R.items.find(it => it.type === "shadow" && !it.freed && !it.gone && it.at > R.dist);
+    if (!sh || sh.at - R.dist > 420) { R.items.push(sh = { type: "shadow", at: R.dist + 400, x: caveMid(R.dist + 400), ph: 0, amp: 10 }); }
+    if (sh.at - R.dist < 190) { R.slow = 0.25; R.tutText = "Tap to sing!"; }
+  } else if (R.tut === 3) { R.slow = 1; R.tutText = ""; if (runMetres() > 110) { R.tut = 4; } }
+  else if (R.tut === 4) { R.tutText = "Swipe up to dash"; }
+}
 function runSing() {
   if (!run || run.over || run.paused || (run.songCd > 0 && !(run.power && run.power.kind === "choir"))) return;
   run.songCd = 1.1 - runUpg("song") * 0.2;
   run.songs++;
   run.rings.push({ x: run.x, at: run.dist, r: 0, max: 150 + runUpg("song") * 28 });
   if (!run.attract) { sfx.ping(run.songs); buzz(8); }
+  if (run.tut === 2) { run.tut = 3; run.slow = 1; run.tutText = ""; runMsg("That's it!", "Your song turns shadows back into light", 2.2); }
   runMission("songs", run.songs);
 }
 function runHit() {
   run.hearts--; run.inv = 1.6; run.flash = 1; run.nohit = false; run.hitAt = runMetres(); run.shake = 1;
   sfx.caught(); buzz([30, 40, 30]);
-  if (run.hearts <= 0) runEnd();
+  if (run.hearts <= 0) { if (run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
 function runMission(kind, value) {
   if (run.attract) return;
@@ -102,7 +118,7 @@ function runMission(kind, value) {
     const def = RUN.missions[m.k];
     if (def.kind !== kind || m.done || value < m.goal) continue;
     m.done = true; r.mult = Math.min(10, r.mult + 1); run.mult = r.mult;
-    run.missionMsg = { text: `Mission done! ×${r.mult}`, t: 2.5 }; sfx.unlock(); buzz([10, 30, 10]);
+    runMsg("Mission done!", `Score multiplier ×${r.mult}`, 2.2, true); sfx.unlock(); buzz([10, 30, 10]);
     // A new, a little harder, mission takes its place.
     const k = Math.floor(Math.random() * RUN.missions.length);
     Object.assign(m, { k, goal: Math.round(RUN.missions[k].goal * (1 + 0.5 * (r.mult - 1))), done: false });
@@ -113,14 +129,28 @@ function runEnd() {
   const r = save.run, score = runScore(), best = score > r.best;
   if (best) r.best = score;
   r.lights += run.lights; r.runs++;
+  const before = lumiLevel(r.xp || 0), gained = Math.round(score / 10);
+  r.xp = (r.xp || 0) + gained;
+  const after = lumiLevel(r.xp), newTrails = RUN_TRAILS.filter(tr => tr.lv > before.lv && tr.lv <= after.lv);
+  if (newTrails.length) r.trail = RUN_TRAILS.indexOf(newTrails[newTrails.length - 1]);
+  run.levelInfo = { before, after, gained, newTrails };
   if (run.daily) { r.dailyDay = dayNumber(); r.dailyBest = Math.max(r.dailyDay === dayNumber() ? r.dailyBest || 0 : 0, score); }
   save.glow = (save.glow || 0) + run.lights;
   persist();
   musicStop(); sfx.fail();
   setTimeout(() => {
     if (!run) return;
-    $("runOverScore").textContent = score.toLocaleString();
-    $("runOverBest").textContent = best ? "A new best!" : `Best ${r.best.toLocaleString()}`;
+    // The score counts up; a new best glows.
+    const t0 = performance.now(), el = $("runOverScore");
+    const tick = () => { const k = Math.min(1, (performance.now() - t0) / 900); el.textContent = Math.round(score * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1 && run) requestAnimationFrame(tick); };
+    tick();
+    $("runOver").classList.toggle("best", best);
+    $("runOverBest").textContent = best ? "✦ A new best! ✦" : `Best ${r.best.toLocaleString()}`;
+    const li = run.levelInfo;
+    $("runLevel").textContent = `Lumi level ${li.after.lv}` + (li.after.lv > li.before.lv ? "  ·  Level up!" : "") + `  ·  +${li.gained} xp`;
+    $("runLevelBar").style.width = `${Math.round(li.after.into / li.after.need * 100)}%`;
+    $("runTrail").textContent = `Trail: ${RUN_TRAILS[r.trail || 0].name}` + (li.newTrails.length ? " (new!)" : "") + " ›";
+    if (best) { sfx.win(); buzz([20, 40, 20, 40]); }
     $("runOverInfo").textContent = `${runMetres()} m · ✦ ${run.lights} lights · best combo ${run.comboBest}` + (run.friendFound ? ` · found ${run.friendFound}` : "");
     $("runOverTitle").textContent = run.daily ? "Daily run" : "Lumi rests";
     runMissions($("runOverMissions")); runShop();
@@ -204,9 +234,66 @@ function runSpawnExtra(at) {
   }
   const roll = R();
   if (roll < 0.06) { const kinds = Object.keys(RUN_POWERS); run.items.push({ type: "power", at, x: mid + (R() - 0.5) * hw * 0.7, kind: kinds[Math.floor(R() * kinds.length)] }); return 170; }
-  if (roll < 0.06 + (w > 0 ? 0.26 : 0.12)) return runHazard(at, w, mid, hw);
+  if (at / RUN.M > 150 && roll < 0.06 + (w > 0 ? 0.26 : 0.12)) return runHazard(at, w, mid, hw);
   return 0;
 }
+
+function runMsg(text, sub = "", dur = 2, gold = false) {
+  if (run.attract) return;
+  if (run.msgs.length > 2) run.msgs.splice(1, 1);
+  run.msgs.push({ text, sub, t: dur, dur, gold });
+}
+
+// ---------- Lumi's level and trails ----------
+// Every run earns experience (a tenth of the score); each level asks a little more.
+const RUN_TRAILS = [
+  { name: "Moonbeam", rgb: "150,235,255", core: "235,252,255", lv: 1 },
+  { name: "Aurora", rgb: "120,255,190", core: "220,255,236", lv: 3 },
+  { name: "Ember", rgb: "255,150,80", core: "255,230,200", lv: 5 },
+  { name: "Rose", rgb: "255,140,200", core: "255,225,240", lv: 7 },
+  { name: "Gold", rgb: "255,205,100", core: "255,245,210", lv: 9 },
+  { name: "Violet", rgb: "185,150,255", core: "236,226,255", lv: 12 },
+  { name: "Rainbow", rgb: "rainbow", core: "255,255,255", lv: 15 },
+];
+const xpFor = lv => Math.round(90 * Math.pow(lv, 1.35));
+function lumiLevel(xp = (save.run || {}).xp || 0) {
+  let lv = 1, left = xp;
+  while (left >= xpFor(lv)) { left -= xpFor(lv); lv++; }
+  return { lv, into: left, need: xpFor(lv) };
+}
+function trailRgb(t) {
+  const tr = RUN_TRAILS[(save.run || {}).trail || 0] || RUN_TRAILS[0];
+  if (tr.rgb !== "rainbow") return tr.rgb;
+  const h = (t * 60) % 360, c = k => Math.round(255 * (0.55 + 0.45 * Math.cos((h / 180) * Math.PI + k)));
+  return `${c(0)},${c(2.1)},${c(4.2)}`;
+}
+
+// ---------- Keep going? ----------
+// The first time the light runs out (and a second time, dearer), spend lights to carry on.
+const continueCost = () => 25 * (run.continues + 1);
+let continueTimer = 0;
+function runOfferContinue() {
+  run.paused = true;
+  const cost = continueCost(), have = (save.glow || 0) + run.lights;
+  $("runContinueCost").textContent = cost; $("runContinueGo").disabled = have < cost;
+  $("runContinue").hidden = false;
+  let left = 5; $("runContinueTime").textContent = left;
+  clearInterval(continueTimer);
+  continueTimer = setInterval(() => { left--; $("runContinueTime").textContent = left; if (left <= 0) runDecline(); }, 1000);
+}
+function runDecline() { clearInterval(continueTimer); $("runContinue").hidden = true; if (run) { run.paused = false; run.last = 0; runEnd(); } }
+function runContinue() {
+  clearInterval(continueTimer);
+  let cost = continueCost();
+  const fromRun = Math.min(run.lights, cost); run.lights -= fromRun; cost -= fromRun; save.glow = Math.max(0, (save.glow || 0) - cost);
+  run.continues++; run.hearts = 1; run.inv = 2.5; run.paused = false; run.last = 0;
+  // Clear the way a little.
+  for (const it of run.items) if ((it.type === "shadow" || it.type === "rock" || it.type === "ice") && Math.abs(it.at - run.dist) < 400) it.gone = true;
+  if (run.event && run.event.kind === "hunter") run.hunterGap = 1;
+  $("runContinue").hidden = true; sfx.gate(); runMsg("Keep going!", "", 1.4, true); runHud();
+}
+document.getElementById("runContinueGo").addEventListener("click", e => { e.stopPropagation(); runContinue(); });
+document.getElementById("runContinueNo").addEventListener("click", e => { e.stopPropagation(); runDecline(); });
 
 function runDash() {
   if (!run || run.over || run.paused || run.dashCd > 0 || run.attract) return;
@@ -215,6 +302,7 @@ function runDash() {
   // A dash is loud: shadows nearby turn toward you.
   for (const it of run.items) if (it.type === "shadow" && !it.freed && Math.abs(it.at - run.dist) < 260) it.x += Math.sign(run.x - (it.cx ?? it.x)) * 40;
   sfx.dash(); buzz(12);
+  if (run.tut === 4) { run.tut = 0; run.tutText = ""; save.run.tutDone = 1; persist(); runMsg("You're ready", "Gather lights, keep the combo, find lost friends", 2.6, true); }
   for (let k = 0; k < 14; k++) run.parts.push({ x: run.x + (Math.random() - 0.5) * 16, at: run.dist - 10, vx: (Math.random() - 0.5) * 50, va: -80 - Math.random() * 120, life: 0.5 });
 }
 function runBonus(text, lights, at = run.dist + 30, x = run.x) {
@@ -222,13 +310,13 @@ function runBonus(text, lights, at = run.dist + 30, x = run.x) {
 }
 function runPower(kind) {
   run.power = { kind, t: RUN_POWERS[kind].dur };
-  run.banner2 = { text: `${RUN_POWERS[kind].name}! ${RUN_POWERS[kind].tip}`, t: 2 };
+  runMsg(`${RUN_POWERS[kind].name}!`, RUN_POWERS[kind].tip, 1.8);
   sfx.unlock(); buzz([10, 20, 10]);
 }
 function runStartEvent() {
   const kinds = Object.keys(RUN_EVENTS), k = kinds[Math.floor(runR() * kinds.length)];
   run.event = { kind: k, t: RUN_EVENTS[k].dur };
-  run.banner2 = { text: RUN_EVENTS[k].banner, sub: RUN_EVENTS[k].sub, t: 2.6 };
+  runMsg(RUN_EVENTS[k].banner, RUN_EVENTS[k].sub, 2.6);
   if (k === "hunter") { run.hunterGap = 1; sfx.gloomWake(0, true); }
   if (k === "dark") sfx.deepBreath(0);
   if (k === "rush") sfx.gate();
@@ -246,7 +334,7 @@ function runTick(dt) {
   const R = run, quiet = R.attract;
   R.boost = Math.max(0, R.boost - dt); R.dashCd = Math.max(0, R.dashCd - dt); R.dashT = Math.max(0, R.dashT - dt);
   if (R.comboT > 0) R.comboT -= dt;
-  if (R.banner2) { R.banner2.t -= dt; if (R.banner2.t <= 0) R.banner2 = null; }
+  if (R.msgs.length) { R.msgs[0].t -= dt; if (R.msgs[0].t <= 0) R.msgs.shift(); }
   // Power-ups.
   if (R.power) {
     R.power.t -= dt;
@@ -287,7 +375,7 @@ function runTick(dt) {
       it.gone = true;
       if (!quiet) {
         save.runFriends = save.runFriends || {}; save.runFriends[it.idx] = 1; persist();
-        R.banner2 = { text: `You found ${RUN_FRIENDS[it.idx].name}!`, sub: "They'll wait for you in the city", t: 3 };
+        runMsg(`You found ${RUN_FRIENDS[it.idx].name}!`, "They'll wait for you in the city", 3);
         runBonus("+20 ✦", 20); sfx.memory(); buzz([10, 40, 10]); R.friendFound = RUN_FRIENDS[it.idx].name;
       }
     }
@@ -310,9 +398,10 @@ function runUpdate(dt) {
   const base = Math.min(400, 200 + R.dist * 0.006);
   R.speed = base * (1 + (R.boost > 0 ? 0.6 : 0) + (R.event && R.event.kind === "rush" ? 0.55 : 0) + (R.power && R.power.kind === "comet" ? 0.6 : 0));
   runTick(dt);
+  if (!R.attract) { music.layers = R.combo >= 10 ? 3 : 2; music.tension = R.event && R.event.kind === "hunter" ? 0.4 + (1 - R.hunterGap) * 0.6 : 0; }
+  runTutorial(dt);
   R.dist += R.speed * dt;
   R.songCd = Math.max(0, R.songCd - dt); R.inv = Math.max(0, R.inv - dt); R.flash = Math.max(0, R.flash - dt * 2); R.banner = Math.max(0, R.banner - dt);
-  if (R.missionMsg) R.missionMsg.t -= dt;
   // Steering: Lumi glides toward where your finger has slid it.
   if (keys.arrowleft || keys.a) R.tx -= 320 * dt;
   if (keys.arrowright || keys.d) R.tx += 320 * dt;
@@ -589,7 +678,8 @@ function runDraw(ctx, W, H) {
     g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
     ctx.fillStyle = g; ctx.beginPath(); L2.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); for (let q = n - 1; q >= 0; q--) ctx.lineTo(R2[q][0], R2[q][1]); ctx.closePath(); ctx.fill();
   };
-  ribbon(14, "150,235,255", 0.35); ribbon(5, "235,252,255", 0.7);
+  const tr = RUN_TRAILS[(save.run || {}).trail || 0] || RUN_TRAILS[0];
+  ribbon(14, R.attract ? "150,235,255" : trailRgb(t), 0.35); ribbon(5, R.attract ? "235,252,255" : tr.core, 0.7);
   // Lumi: a halo, a soft pulsing ring, the body leaning into its turns and stretching with speed.
   const pulse = 1 + Math.sin(t * 3) * 0.06 + (R.songCd > 0.8 ? 0.25 : 0);
   ctx.drawImage(runGlow(R.power ? RUN_POWERS[R.power.kind].rgb : "150,235,255"), R.x - 70 * pulse, LY - 70 * pulse, 140 * pulse, 140 * pulse);
@@ -641,7 +731,17 @@ function runDraw(ctx, W, H) {
   if (R.flash < 0) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); R.flash = Math.min(0, R.flash + 0.03); }
   // The combo counter.
   if (R.combo >= 3 && !R.attract) { ctx.globalAlpha = Math.min(1, 0.4 + R.comboT); ctx.textAlign = "center"; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.05 + Math.min(10, R.combo / 4))}px system-ui, sans-serif`; ctx.fillText(`${R.combo} combo`, W / 2, H * 0.14); ctx.globalAlpha = 1; }
-  if (R.banner2) { ctx.globalAlpha = Math.min(1, R.banner2.t * 1.5); ctx.textAlign = "center"; ctx.fillStyle = "#fff4d6"; ctx.font = `600 ${Math.round(W * 0.06)}px system-ui, sans-serif`; ctx.fillText(R.banner2.text, W / 2, H * 0.45); if (R.banner2.sub) { ctx.font = `italic ${Math.round(W * 0.042)}px "Cormorant Garamond", Georgia, serif`; ctx.fillStyle = "#c8d6ee"; ctx.fillText(R.banner2.sub, W / 2, H * 0.45 + W * 0.065); } ctx.globalAlpha = 1; }
+  // One message at a time in the middle, sliding in and fading out.
+  const msg = R.msgs[0];
+  if (msg && !R.banner) {
+    const age = msg.dur - msg.t; ctx.globalAlpha = Math.min(1, msg.t * 2, age * 4); ctx.textAlign = "center";
+    const y = H * 0.44 - Math.max(0, 0.25 - age) * 60;
+    ctx.fillStyle = msg.gold ? "#ffd98a" : "#fff4d6"; ctx.font = `600 ${Math.round(W * 0.062)}px system-ui, sans-serif`; ctx.fillText(msg.text, W / 2, y);
+    if (msg.sub) { ctx.font = `italic ${Math.round(W * 0.045)}px "Cormorant Garamond", Georgia, serif`; ctx.fillStyle = "#c8d6ee"; ctx.fillText(msg.sub, W / 2, y + W * 0.068); }
+    ctx.globalAlpha = 1;
+  }
+  // The first run teaches by doing.
+  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // A vignette.
   const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   // Floating "+3" when a shadow is sung free.
@@ -654,15 +754,15 @@ function runDraw(ctx, W, H) {
     ctx.font = `500 ${Math.round(W * 0.075)}px Cinzel, Georgia, serif`; ctx.fillText(THEMES[R.biome % THEMES.length].name, W / 2, H * 0.3);
     ctx.font = `italic ${Math.round(W * 0.045)}px "Cormorant Garamond", Georgia, serif`; ctx.fillStyle = "#b8c8e4"; ctx.fillText(`World ${R.biome + 1}`, W / 2, H * 0.3 + W * 0.07); ctx.globalAlpha = 1;
   }
-  if (R.missionMsg && R.missionMsg.t > 0) { ctx.globalAlpha = Math.min(1, R.missionMsg.t); ctx.fillStyle = "#ffd98a"; ctx.font = `600 ${Math.round(W * 0.05)}px system-ui, sans-serif`; ctx.fillText(R.missionMsg.text, W / 2, H * 0.4); ctx.globalAlpha = 1; }
+
 }
 
 function runLoop(now) {
   if (!run || screen !== "run") return;
-  const c = $("runCanvas"), d = Math.min(2, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c = $("runCanvas"), d = Math.min(modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now;
-  if (!run.paused) runUpdate(dt);
+  if (!run.paused) runUpdate(dt * (run.slow || 1));
   const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   runDraw(ctx, W, H);
   requestAnimationFrame(runLoop);
@@ -689,6 +789,12 @@ document.getElementById("runResume").addEventListener("click", () => { run.pause
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily }));
 document.getElementById("runCity").addEventListener("click", () => { run = null; showCity(); });
+// Tap the trail to wear the next one you've earned.
+document.getElementById("runTrail").addEventListener("click", () => {
+  const r = runSave(), lv = lumiLevel(r.xp || 0).lv, open = RUN_TRAILS.map((t, i) => i).filter(i => RUN_TRAILS[i].lv <= lv);
+  r.trail = open[(open.indexOf(r.trail || 0) + 1) % open.length]; persist();
+  $("runTrail").textContent = `Trail: ${RUN_TRAILS[r.trail].name} ›`; sfx.tick();
+});
 document.getElementById("runShopList").addEventListener("click", e => {
   const b = e.target.closest("button[data-run]");
   if (!b) return;
@@ -703,7 +809,7 @@ function startTitleRun() {
 function titleLoop(now) {
   titleRaf = 0;
   if (screen !== "title" || !titleRun) return;
-  const c = $("titleCanvas"), d = Math.min(2, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c = $("titleCanvas"), d = Math.min(modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
   if (W && c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const keep = run; run = titleRun;
   const dt = Math.min(0.05, (now - (titleRun.last || now)) / 1000); titleRun.last = now;

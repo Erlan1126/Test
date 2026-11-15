@@ -623,6 +623,16 @@
   #titleScreen { background: none; }
   #titleScreen::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(rgba(2, 3, 9, 0.75), rgba(2, 3, 9, 0) 32%, rgba(2, 3, 9, 0) 58%, rgba(2, 3, 9, 0.85) 90%); }
   .daily-run { font-size: 14px; letter-spacing: 0.06em; color: #ffd98a; padding: 8px 18px; border-radius: 99px; border: 1px solid rgba(255, 217, 138, 0.4); background: rgba(40, 30, 10, 0.35); }
+
+  /* Keep going?, Lumi's level, and a new best that glows. */
+  .run-level { margin: 2px 0 6px; font-size: 13px; color: #cfe0f5; }
+  .run-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; margin: 0 0 8px; }
+  .run-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7ee8ff, #ffd98a); transition: width 1s ease 0.6s; }
+  .run-trail { font-size: 13px; color: #9fe8ff; padding: 4px 10px; margin-bottom: 10px; border-radius: 99px; border: 1px solid rgba(159, 232, 255, 0.3); }
+  #runOver.best { box-shadow: 0 0 40px rgba(255, 217, 138, 0.35); border-color: rgba(255, 217, 138, 0.5); }
+  #runOver.best .best { animation: bestGlow 1.4s ease-in-out infinite; }
+  @keyframes bestGlow { 50% { text-shadow: 0 0 14px #ffd98a; } }
+  .run-continue .big { font-size: 56px; }
 </style>
 </head>
 <body>
@@ -733,8 +743,10 @@
     <div><button id="runPauseBtn" aria-label="Pause">❚❚</button><div class="hearts" id="runHearts"></div></div>
   </div>
   <div class="run-panel" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer. Tap to sing: shadows your song reaches turn back into light. Swipe up to dash.</p><div class="row"><button id="runQuit">Quit</button><button class="main" id="runResume">Resume</button></div></div>
+  <div class="run-panel run-continue" id="runContinue" hidden><h2>Keep going?</h2><div class="big" id="runContinueTime">5</div><p class="info">Lumi's light is fading. Spend lights to carry on.</p><div class="row"><button id="runContinueNo">Rest</button><button class="main" id="runContinueGo">Keep going · ✦ <span id="runContinueCost">25</span></button></div></div>
   <div class="run-panel" id="runOver" hidden>
     <h2 id="runOverTitle">Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
+    <p class="run-level" id="runLevel"></p><div class="run-bar"><i id="runLevelBar"></i></div><button class="run-trail" id="runTrail"></button>
     <h3>Missions</h3><ul id="runOverMissions"></ul>
     <h3>Upgrades · ✦ <span id="runGlowLeft">0</span></h3><ul class="shop-list" id="runShopList"></ul>
     <div class="row"><button id="runCity">City</button><button class="main" id="runAgain">Run again</button></div>
