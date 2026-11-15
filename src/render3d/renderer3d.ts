@@ -32,7 +32,16 @@ import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
 const SHADOW_MAX = 128;
-const POWER_ICON: Record<PowerUp, string> = { slow: "⏳", wide: "🎯", steady: "🍃" };
+// Line icons on a 24-unit grid, drawn white on the power-up badges and ghost tags.
+const POWER_ICON: Record<PowerUp, string> = {
+  slow: "M7 3h10M7 21h10M8 3c0 5 8 6 8 9s-8 4-8 9M16 3c0 5-8 6-8 9s8 4 8 9",
+  wide: "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 1 0 0-9M12 11.2v1.6",
+  steady: "M5 19c0-8 5-13 15-14-1 10-6 15-14 15M5 19l7-7",
+};
+const MAGNET_ICON = "M6 4v8a6 6 0 0 0 12 0V4M6 4h4v8a2 2 0 0 0 4 0V4h4M6 8h4M14 8h4";
+const GHOST_ICON = "M5 21V10a7 7 0 0 1 14 0v11l-2.5-2-2.3 2-2.2-2-2.2 2-2.3-2zM9.5 10.5v1M14.5 10.5v1";
+const ICON_PATHS = new Map<string, Path2D>();
+const iconPath = (d: string): Path2D => { let p = ICON_PATHS.get(d); if (!p) { p = new Path2D(d); ICON_PATHS.set(d, p); } return p; };
 /** The camera sits this far from what it looks at, along (1, 1, 1). */
 const CAM_DIST = 160;
 /** Seconds the first home screen's sunrise takes to warm into the day. */
@@ -1008,7 +1017,7 @@ export class Renderer3D {
       ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
     }
     if (m && f.showMover) {
-      if (m.power || m.kind === "magnet") this.drawBadge(m, m.power ? POWER_ICON[m.power] : "🧲");
+      if (m.power || m.kind === "magnet") this.drawBadge(m, m.power ? POWER_ICON[m.power] : MAGNET_ICON);
       if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect(), f.shape);
     }
     fx.drawFlash(p, top, f.shape);
@@ -1033,12 +1042,21 @@ export class Renderer3D {
     ctx.strokeStyle = "#7cf5ff";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.font = `${Math.round(r * 1.1)}px ${UI_FONT}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#fff";
-    ctx.fillText(icon, x, y + 1);
-    ctx.textBaseline = "alphabetic";
+    this.lineIcon(icon, x, y, r * 1.15);
+  }
+
+  /** One of the line icons above, centered on (x, y) and `size` px across. */
+  private lineIcon(d: string, x: number, y: number, size: number): void {
+    const { ctx } = this, k = size / 24;
+    ctx.save();
+    ctx.translate(x - size / 2, y - size / 2);
+    ctx.scale(k, k);
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke(iconPath(d));
+    ctx.restore();
   }
 
   /** The ghost you're racing: a see-through floor outline at the height its tower had
@@ -1087,15 +1105,17 @@ export class Renderer3D {
   private ghostTag(label: string, x: number, y: number, alpha: number, align: "left" | "right"): void {
     const { ctx } = this;
     ctx.font = `800 12px ${UI_FONT}`;
-    const w = ctx.measureText(label).width + 18, left = align === "right" ? Math.max(6, x - w) : Math.min(x, this.view.W - w - 6);
+    label = label.replace(/\u{1F47B}\s*/u, "");
+    const w = ctx.measureText(label).width + 36, left = align === "right" ? Math.max(6, x - w) : Math.min(x, this.view.W - w - 6);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(76, 58, 160, 0.88)";
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(left, y - 11, w, 22, 11) : ctx.rect(left, y - 11, w, 22); ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(label, left + w / 2, y + 1);
+    ctx.fillText(label, left + w / 2 + 9, y + 1);
     ctx.textBaseline = "alphabetic";
+    this.lineIcon(GHOST_ICON, left + 16, y, 14);
     ctx.globalAlpha = 1;
   }
 
