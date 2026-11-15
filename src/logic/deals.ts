@@ -27,14 +27,18 @@ export function dealsFor(save: SaveData, day: number): Deal[] {
   const rng = seeded(day * 7919 + 17);
   const pick = <T>(list: T[]): T | undefined => list.length ? list[Math.floor(rng() * list.length)] : undefined;
   const out: Deal[] = [];
+  // Something bought as one of today's deals stays in its slot (shown as bought) instead of
+  // making room for another discounted item.
+  const today = save.deals.day === day ? save.deals.bought : [];
+  const had = (kind: DealKind, id: string, owned: boolean) => owned && !today.includes(`${kind}:${id}`);
 
-  const skin = pick(SKINS.filter(s => s.unlock && "price" in s.unlock && !save.ownedSkins.includes(s.id)));
+  const skin = pick(SKINS.filter(s => s.unlock && "price" in s.unlock && !had("skin", s.id, save.ownedSkins.includes(s.id))));
   if (skin && skin.unlock && "price" in skin.unlock) out.push({ kind: "skin", ref: skin.id, name: skin.name, currency: "stars", was: skin.unlock.price, price: off(skin.unlock.price, 0.3) });
 
-  const prod = pick(PRODUCTS.filter(p => p.kind !== "bundle" && !ownsProduct(save, p.id)));
+  const prod = pick(PRODUCTS.filter(p => p.kind !== "bundle" && !had("product", p.id, ownsProduct(save, p.id))));
   if (prod) out.push({ kind: "product", ref: prod.id, name: prod.name, currency: "crystals", was: prod.crystals, price: off(prod.crystals, 0.25) });
 
-  const shape = pick(SHAPES.filter(s => s.unlock && !("level" in s.unlock) && !save.ownedShapes.includes(s.id)));
+  const shape = pick(SHAPES.filter(s => s.unlock && !("level" in s.unlock) && !had("shape", s.id, save.ownedShapes.includes(s.id))));
   if (shape && shape.unlock && !("level" in shape.unlock)) {
     const stars = "stars" in shape.unlock;
     const was = stars ? (shape.unlock as { stars: number }).stars : (shape.unlock as { crystals: number }).crystals;

@@ -2257,3 +2257,4 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
   70% { opacity: 1; }
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
 }
+#starter { z-index: 9; }

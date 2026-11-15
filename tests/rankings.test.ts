@@ -85,12 +85,15 @@ describe("online rankings", () => {
   it("refuses bad records and posting too fast", async () => {
     const token = await register(P1);
     const { rec } = play("classic", 2);
-    expect((await call("/runs", { player: P1, token, record: { ...rec, log: [90, 10] } })).status).toBe(422);
     expect((await call("/runs", { player: P1, token, record: { ...rec, mode: "daily", seed: 1 } })).status).toBe(400);
     expect((await call("/runs", { player: P1, token, record: { ...rec, week: rec.week - 5 } })).status).toBe(400);
     expect((await call("/runs", { player: P1, token, record: { ...rec, mode: "zen" } })).status).toBe(400);
     expect((await call("/runs", { player: P1, token, record: rec })).status).toBe(200);
     expect((await call("/runs", { player: P1, token, record: rec })).status).toBe(429);
+    // A record the replay rejects still counts as an attempt, so bad ones can't be sent nonstop.
+    const t2 = await register(P2);
+    expect((await call("/runs", { player: P2, token: t2, record: { ...rec, log: [90, 10] } })).status).toBe(422);
+    expect((await call("/runs", { player: P2, token: t2, record: rec })).status).toBe(429);
   });
 
   it("keeps each player's best and orders the board", async () => {

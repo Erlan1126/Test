@@ -63,6 +63,8 @@ export function tickStreak(save: SaveData, now = Date.now()): Reward[] {
   const s = save.streak, today = dayKey(0, now);
   if (s.last === today) return [];
   const gap = s.last ? daysBetween(s.last, today) : Infinity;
+  // The phone's date went back (a time zone change, or a fixed clock): change nothing.
+  if (gap < 1) return [];
   const rewards: Reward[] = [];
   if (gap === 1) s.count++;
   else if (gap === 2 && s.freezes > 0) {
@@ -108,6 +110,8 @@ export const lateChest = { opened: false };
 export function refreshMissions(save: SaveData, now = Date.now(), rng: () => number = Math.random): boolean {
   const today = dayKey(0, now);
   if (save.missions.day === today && save.missions.slots.length === 3) return false;
+  // A date earlier than the current missions' day (the clock went back): keep them.
+  if (save.missions.day && save.missions.slots.length === 3 && daysBetween(save.missions.day, today) < 0) return false;
   if (save.missions.day !== today) {
     // Finished all three yesterday but never opened the chest? It opens itself now.
     const m = save.missions;

@@ -77,3 +77,16 @@ describe("unlocking features gradually", () => {
     expect(isOpen(s, "zen")).toBe(false);
   });
 });
+
+import { buyDeal as buyDealX, dealsFor as dealsForX } from "../src/logic/deals";
+describe("daily deals", () => {
+  it("keeps a bought deal in its slot instead of offering another discount", () => {
+    const s = defaultSave();
+    s.stars = 9999; s.crystals = 99999;
+    const day = 20000, before = dealsForX(s, day);
+    const skin = before.find(d => d.kind === "skin")!;
+    expect(buyDealX(s, day, skin)).toBe("ok");
+    const after = dealsForX(s, day);
+    expect(after.find(d => d.kind === "skin")!.ref).toBe(skin.ref);
+  });
+});

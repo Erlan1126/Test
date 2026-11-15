@@ -113,6 +113,8 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   const skinsBefore = new Set(SKINS.filter(s => isSkinUnlocked(save, s)).map(s => s.id));
   const islandBefore = islandLevel(save), levelBefore = save.profile.level;
   const zen = run.mode === "zen";
+  // A tower that never got a floor (an instant miss, or Zen ended at once) earns nothing.
+  const counted = run.floors >= 1;
   let newBest = false;
 
   if (!zen) {
@@ -135,7 +137,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   if (!zen) {
     const got: Record<string, number> = {
       perfects: run.perfects, streak: run.bestStreak, height: run.meters, people: run.score, wind: run.windFloors,
-      penthouse: run.penthouses, towers: 1, floors: run.floors, daily: run.mode === "daily" ? 1 : 0,
+      penthouse: run.penthouses, towers: counted ? 1 : 0, floors: run.floors, daily: counted && run.mode === "daily" ? 1 : 0,
     };
     refreshMissions(save, now, rng);
     finishedNow = 0;
@@ -159,7 +161,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   }
 
   // Streak and rent: every tower counts, Zen too.
-  rewards.unshift(...tickStreak(save, now));
+  if (counted) rewards.unshift(...tickStreak(save, now));
   startRent(save, now);
 
   // Journey stage: paid the first time it's won, plus a star for each new map star.
@@ -167,7 +169,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
 
   // Lifetime stats
   const p = save.profile;
-  p.towers++;
+  if (counted) p.towers++;
   p.floors += run.floors;
   p.perfects += run.perfects;
   p.penthouses += run.penthouses;
@@ -183,7 +185,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   }
 
   // XP and levels
-  const gained = runXp(run, newBest);
+  const gained = counted ? runXp(run, newBest) : 0;
   const startPct = p.xp / xpNeeded(p.level);
   let levelUp: RunOutcome["levelUp"];
   const lv = addXp(p.level, p.xp, gained);
@@ -205,7 +207,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   }
 
   // Sky Pass
-  const tiers = addPassXp(save, towerPassXp(run.floors, zen) + finishedNow * MISSION_PASS_XP, now);
+  const tiers = addPassXp(save, (counted ? towerPassXp(run.floors, zen) : 0) + finishedNow * MISSION_PASS_XP, now);
   if (tiers) rewards.push({ kind: "pass", text: tn(tiers, "Sky Pass: a new tier reached! Claim your rewards", "Sky Pass: {n} tiers reached! Claim your rewards") });
 
   // Best towers

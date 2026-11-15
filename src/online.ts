@@ -90,6 +90,14 @@ export class Online {
   private writing: Promise<void> = Promise.resolve();
   private cache = new Map<string, { at: number; board: Board }>();
 
+  /** The player id changed (a fresh id, or progress loaded from another device). */
+  adopt(playerId: string, blocked?: string[]): void {
+    if (this.kind !== "global" || !playerId) return;
+    this.me = playerId;
+    this.cache.clear();
+    if (blocked) this.blocked = new Set(blocked);
+  }
+
   async init(playerId: string): Promise<void> {
     const rt = (window as unknown as { claude?: Runtime }).claude;
     if (rt?.use) { await this.initFriends(rt); return; }
@@ -226,6 +234,7 @@ export class Online {
           // one, and the queued towers go up with it next time.
           save.onlineToken = "";
           save.playerId = newPlayerId();
+          this.adopt(save.playerId);
           save.recoveryCode = "";
           persist();
           setTimeout(() => void this.flush(save, persist), 3000);

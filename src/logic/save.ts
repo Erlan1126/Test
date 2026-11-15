@@ -1,6 +1,7 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
 import { OLD_FEATURE_TOWERS } from "./features";
+import { addXp, xpNeeded } from "./rules";
 import { LANGS, type LangSetting } from "../i18n";
 import { cleanPace } from "./ghost";
 import { COINS_PER_STAR } from "../data/daily";
@@ -355,6 +356,13 @@ export function normalize(raw: unknown): SaveData {
       if (open && !save.keptDistricts.includes(id)) save.keptDistricts.push(id);
     }
     save.unlocksV = 2;
+  }
+  // XP past what the level needs (a hand-edited save, or progress from when levels needed
+  // more XP) becomes levels, capped so an edited save can't jump dozens of levels.
+  if (save.profile.xp >= xpNeeded(save.profile.level)) {
+    const lv = addXp(save.profile.level, 0, Math.min(save.profile.xp, xpNeeded(save.profile.level) * 3));
+    save.profile.level = lv.level;
+    save.profile.xp = Math.min(lv.xp, xpNeeded(lv.level) - 1);
   }
   // Features opened by tower count before they moved to levels (2026-11): keep them.
   if (save.unlocksV < 3) {

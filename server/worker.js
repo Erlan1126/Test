@@ -267,6 +267,9 @@ async function rankings(request, url, env, now) {
     if (!id || !Number.isFinite(score) || score < 0 || score > 1e8) return json({ error: "bad try" }, 400);
     const ok = await db.prepare("SELECT 1 FROM challenges WHERE id = ?").bind(id).first();
     if (!ok) return json({ error: "not found" }, 404);
+    // Keep a link's list of tries sane: at most 10 a minute and 500 in all.
+    const n = await db.prepare("SELECT COUNT(*) AS all_n, SUM(CASE WHEN at > ? THEN 1 ELSE 0 END) AS recent FROM challenge_tries WHERE challenge = ?").bind(now - 60000, id).first();
+    if ((n?.recent ?? 0) >= 10 || (n?.all_n ?? 0) >= 500) return json({ error: "too many tries" }, 429);
     await db.prepare("INSERT INTO challenge_tries (challenge, at, name, score) VALUES (?, ?, ?, ?)").bind(id, now, cleanName(body?.name), score).run();
     return json({ ok: true });
   }
@@ -329,6 +332,8 @@ async function rankings(request, url, env, now) {
     // updated yet), not any older set a player might find easier.
     if (!Number.isInteger(record.rules) || record.rules < RULES - 1) return json({ error: "old rules" }, 400);
 
+    // Count the attempt before the (costly) replay, so bad records can't be sent nonstop.
+    await db.prepare("UPDATE players SET last_run = ? WHERE id = ?").bind(now, player).run();
     const out = replayRun(record);
     if (!out.ok) return json({ error: `rejected: ${out.reason}` }, 422);
     const { score, meters } = out.summary;

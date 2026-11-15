@@ -53,7 +53,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 const EASY_TOWERS = 5;
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
-import { burst, confetti, countUp, fireworks } from "./ui/fx";
+import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
 import { CITY } from "./data/daily";
 import { BUILD_SPOTS } from "./data/spots";
@@ -272,6 +272,8 @@ export class App implements DailyHost {
       };
     }
     void this.syncPurchases(purchaseReturn());
+    // Back on the page (from the payment tab, or after a while away): pick up anything new.
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void this.syncPurchases(null); });
     // Leaderboards light up only where shared storage is available (the claude.ai page).
     this.online.blocked = new Set(this.save.blocked);
     void this.online.init(this.save.playerId).then(() => {
@@ -472,8 +474,11 @@ export class App implements DailyHost {
     }
     const pay = this.payments;
     if (!pay?.purchases) return;
-    for (let attempt = 0; attempt < (returned === "success" ? 5 : 1); attempt++) {
-      if (attempt) await new Promise(r => setTimeout(r, 3000));
+    // Right after paying: check often at first, then less, for about five minutes (some
+    // payments confirm late). Coming back to the page also checks again.
+    const waits = returned === "success" ? [0, 3000, 3000, 5000, 10000, 20000, 30000, 60000, 60000, 90000] : [0];
+    for (const [attempt, wait] of waits.entries()) {
+      if (attempt) await new Promise(r => setTimeout(r, wait));
       const list = await pay.purchases(this.save.playerId);
       if (!list) continue;
       let any = false;
@@ -553,6 +558,7 @@ export class App implements DailyHost {
 
   replaceSave(save: SaveData): void {
     this.save = save;
+    this.online.adopt(save.playerId, save.blocked);
     refreshMissions(this.save);
     if (!isSkinUnlocked(this.save, skinById(this.save.skin))) this.save.skin = "glass";
     this.tutorial = !this.save.tutorialDone;
@@ -740,6 +746,8 @@ export class App implements DailyHost {
   private key(e: KeyboardEvent): void {
     if (this.video) return; // recording the clip
     if (this.moving) { if (e.code === "Escape") this.endMove(); return; }
+    // The level-up card is up: keys close it rather than starting a tower underneath.
+    if (!$("levelup").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("levelup").hidden = true; } return; }
     const modal = openModalEl();
     if (modal) {
       if (e.code === "Escape") { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); }
@@ -788,6 +796,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.endMove();
+    $("levelup").hidden = true;
     this.chatIn = 6;
     this.sound.tune = currentTheme(this.save).id;
     this.slowmo = 0;
@@ -1319,14 +1328,14 @@ export class App implements DailyHost {
     for (const [id, n] of [["stars-num", save.stars], ["crystals-num", save.crystals]] as const) {
       const el = $(id), was = el.dataset.n === undefined ? n : Number(el.dataset.n);
       if (n > was && !this.calmMotion) { countUp(el, n, 650, short); burst(st, 8); }
-      else { el.dataset.n = String(n); el.textContent = short(n); }
+      else if (n !== was || !counting(el)) { stopCount(el); el.dataset.n = String(n); el.textContent = short(n); }
     }
     st.querySelector<HTMLElement>(".new-dot")!.hidden = true;
   }
 
   private renderMenu(): void {
     // After the fifth tower, the Starter Pack is offered once (if purchases work here).
-    if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => { if (this.state === "menu") this.openStarter(); }, 700); }
+    if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => { if (this.state === "menu" && !openModalEl() && !this.moving) this.openStarter(); }, 700); }
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     $("rules").hidden = p.towers >= 3;

@@ -51,7 +51,12 @@ export function confetti(el?: Element): void {
 }
 
 /** Counts a number up inside an element. `format` turns the number into text. */
+const counting = new WeakMap<HTMLElement, number>();
+/** Stops a count-up, e.g. before setting the number directly. */
+export const stopCount = (el: HTMLElement): void => { cancelAnimationFrame(counting.get(el) ?? 0); counting.delete(el); };
+
 export function countUp(el: HTMLElement, to: number, ms = 700, format: (n: number) => string = n => String(n)): void {
+  stopCount(el);
   const from = Number(el.dataset.n ?? 0);
   el.dataset.n = String(to);
   if (still() || from === to) { el.textContent = format(to); return; }
@@ -59,9 +64,10 @@ export function countUp(el: HTMLElement, to: number, ms = 700, format: (n: numbe
   const step = (now: number): void => {
     const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3);
     el.textContent = format(Math.round(from + (to - from) * e));
-    if (k < 1) requestAnimationFrame(step);
+    if (k < 1) counting.set(el, requestAnimationFrame(step));
+    else counting.delete(el);
   };
-  requestAnimationFrame(step);
+  counting.set(el, requestAnimationFrame(step));
 }
 
 /** Fireworks over the city: a few bursts high in the sky, one after another. */
@@ -98,3 +104,6 @@ export function fireworks(bursts = 4, onPop?: () => void): void {
     }, b * 380 + Math.random() * 150);
   }
 }
+
+/** Is a count-up running on this element? */
+export const isCounting = (el: HTMLElement): boolean => counting.has(el);
