@@ -63,3 +63,38 @@ export function countUp(el: HTMLElement, to: number, ms = 700, format: (n: numbe
   };
   requestAnimationFrame(step);
 }
+
+/** Fireworks over the city: a few bursts high in the sky, one after another. */
+export function fireworks(bursts = 4, onPop?: () => void): void {
+  if (still()) return;
+  const l = layer();
+  for (let b = 0; b < bursts; b++) {
+    setTimeout(() => {
+      const x = innerWidth * (0.18 + Math.random() * 0.64), y = innerHeight * (0.12 + Math.random() * 0.3);
+      const hue = Math.floor(Math.random() * 360), n = 26;
+      // The rocket's trail rising to the burst.
+      const trail = document.createElement("i");
+      trail.className = "fx-trail";
+      trail.style.cssText = `left:${x}px;top:${y}px;--rise:${innerHeight * 0.35}px`;
+      l.appendChild(trail);
+      setTimeout(() => trail.remove(), 500);
+      setTimeout(() => {
+        onPop?.();
+        const flash = document.createElement("i");
+        flash.className = "fx-flash";
+        flash.style.cssText = `left:${x}px;top:${y}px;background:radial-gradient(circle, hsla(${hue},100%,85%,0.9), hsla(${hue},100%,60%,0) 70%)`;
+        l.appendChild(flash);
+        setTimeout(() => flash.remove(), 600);
+        for (let i = 0; i < n; i++) {
+          const p = document.createElement("i");
+          const a = (i / n) * Math.PI * 2, d = 70 + Math.random() * 40;
+          p.className = "fx-p spark";
+          p.style.cssText = `left:${x}px;top:${y}px;width:6px;height:6px;background:hsl(${(hue + (i % 3) * 25) % 360},100%,${65 + (i % 2) * 15}%);`
+            + `box-shadow:0 0 8px hsl(${hue},100%,70%);--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d + 30}px;--r:0deg;animation-duration:1100ms`;
+          l.appendChild(p);
+          setTimeout(() => p.remove(), 1300);
+        }
+      }, 420);
+    }, b * 380 + Math.random() * 150);
+  }
+}

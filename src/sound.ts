@@ -449,6 +449,13 @@ export class Sound {
     [0, 4, 7, 11, 12, 16, 19, 24].forEach((n, i) => this.bell(392 * Math.pow(2, n / 12), 0.7, 0.06, i * 0.04, (i / 7) * 1.2 - 0.6));
     [0, 7, 12].forEach(n => this.tone(196 * Math.pow(2, n / 12), 0.9, "triangle", 0.05, 0.3, 0));
   }
+  /** A firework bursting far away: a soft thump and a crackle. */
+  firework(): void {
+    this.noise(0.5, 0.06, 900, "lowpass", 1, 0, 0.005);
+    for (let i = 0; i < 6; i++) this.noise(0.05, 0.02, 5000 + Math.random() * 3000, "highpass", 1, 0.12 + i * 0.05 + Math.random() * 0.04);
+  }
+  /** Cheers from the island below. */
+  cheer(): void { this.noise(1.6, 0.06, 1500, "bandpass", 0.6, 0, 0.35); this.noise(1.2, 0.03, 2600, "bandpass", 0.8, 0.15, 0.3); }
   streak(): void { [0, 4, 7, 12, 16, 19].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.5, 0.06, i * 0.045, (i / 5) * 1.2 - 0.6)); }
   golden(): void {
     this.thud(0.7);

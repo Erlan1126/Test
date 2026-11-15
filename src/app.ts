@@ -53,7 +53,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 const EASY_TOWERS = 5;
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
-import { burst, confetti, countUp } from "./ui/fx";
+import { burst, confetti, countUp, fireworks } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
 import { CITY } from "./data/daily";
 import { BUILD_SPOTS } from "./data/spots";
@@ -967,6 +967,7 @@ export class App implements DailyHost {
     this.sim.combo = 0;
     this.sim.mover = null;
     this.renderer.fx.shake = Math.max(this.renderer.fx.shake, 0.6);
+    this.renderer.fx.bubbles = [];
     // Losing on a miss: watch the floor tumble away in slow motion before the camera
     // pulls back to show the whole tower.
     if (!silent && !this.calmMotion && this.renderer.fx.debris.length) {
@@ -1166,6 +1167,8 @@ export class App implements DailyHost {
         this.persist();
       }
       setTimeout(() => s.milestone(), 120);
+      // The city celebrates with fireworks over the island.
+      if (!this.calmMotion) fireworks(2, () => s.firework());
     }
     if (out.windStarts) {
       this.banner(t("Wind ahead"), t("Gusts speed floors up and slow them down"));
@@ -1491,6 +1494,7 @@ export class App implements DailyHost {
     el.hidden = false;
     this.sound.unlock();
     setTimeout(() => this.sound.purchase(), 250);
+    if (!this.calmMotion) setTimeout(() => fireworks(3, () => this.sound.firework()), 400);
     vibrate(this.save.settings.vibrate, [30, 40, 60]);
     $("lu-ok").focus();
   }
@@ -1661,7 +1665,13 @@ export class App implements DailyHost {
     else {
       people.textContent = "0";
       countUp(people, sim.score, 900, fmt);
-      if ((o.newBest && mode !== "zen") || won || first) setTimeout(() => { if (this.state === "over") { confetti(people); if (first) this.sound.unlock(); } }, 500);
+      if ((o.newBest && mode !== "zen") || won || first) setTimeout(() => {
+        if (this.state !== "over") return;
+        confetti(people);
+        if (first) this.sound.unlock();
+        // A new best: fireworks over the city and cheers from below.
+        if (o.newBest && mode !== "zen" && !this.calmMotion) { this.sound.cheer(); fireworks(5, () => this.sound.firework()); }
+      }, 500);
     }
     $("over-sub").textContent = t("people live in your {m} m tower · {n} floors", { m: sim.meters, n: sim.level });
     $("over-landmark").textContent = c ? (won ? `${"★".repeat(save.journey[c.id] ?? 1)}${"☆".repeat(3 - (save.journey[c.id] ?? 1))}  ${stageName(c.id)}` : stageGoal(c))
