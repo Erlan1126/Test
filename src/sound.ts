@@ -429,6 +429,13 @@ export class Sound {
   widen(): void { this.bell(784, 0.35, 0.06, 0, -0.3); this.bell(1175, 0.45, 0.06, 0.07, 0.3); }
   ice(): void { this.bell(1760, 0.5, 0.05, 0, -0.3); this.bell(2637, 0.4, 0.035, 0.06, 0.3); this.noise(0.25, 0.03, 6000, "highpass", 0.5); }
   garden(): void { [0, 5, 9].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.4, 0.05, i * 0.06, i - 1)); }
+  /** Fever lit: a rising sweep into a bright chord with a whoosh. */
+  fever(): void {
+    this.thud(0.8);
+    this.noise(0.9, 0.05, 2400, "bandpass", 0.5, 0.0, 0.35);
+    [0, 4, 7, 11, 12, 16, 19, 24].forEach((n, i) => this.bell(392 * Math.pow(2, n / 12), 0.7, 0.06, i * 0.04, (i / 7) * 1.2 - 0.6));
+    [0, 7, 12].forEach(n => this.tone(196 * Math.pow(2, n / 12), 0.9, "triangle", 0.05, 0.3, 0));
+  }
   streak(): void { [0, 4, 7, 12, 16, 19].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.5, 0.06, i * 0.045, (i / 5) * 1.2 - 0.6)); }
   golden(): void {
     this.thud(0.7);

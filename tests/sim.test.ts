@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { seeded } from "../src/core/rng";
 import { CHALLENGES } from "../src/data/challenges";
-import { TowerSim, type SimConfig } from "../src/logic/sim";
+import { FEVER_AT, FEVER_FLOORS, TowerSim, type SimConfig } from "../src/logic/sim";
 
 const sim = (over: Partial<SimConfig> = {}) => new TowerSim({ mode: "classic", rng: seeded(1), rewinds: 1, ...over });
 
@@ -15,6 +15,29 @@ function dropAt(s: TowerSim, offset: number) {
 }
 
 describe("tower simulation", () => {
+  it("lights fever after a run of perfect drops and doubles the next floors (rules 5)", () => {
+    const s = sim({ rules: 5 });
+    let out = dropAt(s, 0);
+    for (let i = 1; i < FEVER_AT; i++) out = dropAt(s, 0);
+    expect(out.type === "land" && out.fever).toBe("start");
+    expect(s.feverLeft).toBe(FEVER_FLOORS);
+    const normal = sim({ rules: 5 }), plain = dropAt(normal, 3), hot = dropAt(s, 3);
+    if (plain.type !== "land" || hot.type !== "land") throw new Error("missed");
+    expect(hot.fever).toBe("on");
+    expect(hot.points).toBe(Math.round(plain.points * 2 * (hot.floor.x1 - hot.floor.x0) * (hot.floor.z1 - hot.floor.z0) / ((plain.floor.x1 - plain.floor.x0) * (plain.floor.z1 - plain.floor.z0))));
+    for (let i = 1; i < FEVER_FLOORS - 1; i++) dropAt(s, 0);
+    const last = dropAt(s, 0);
+    expect(last.type === "land" && last.fever).toBe("end");
+    expect(s.feverLeft).toBe(0);
+  });
+
+  it("never lights fever under older rules or in Zen", () => {
+    for (const s of [sim({ rules: 4 }), sim({ rules: 5, mode: "zen" })]) {
+      for (let i = 0; i < FEVER_AT * 2; i++) dropAt(s, 0);
+      expect(s.fevers).toBe(0);
+    }
+  });
+
   it("snaps perfect drops into place and builds a combo", () => {
     const s = sim();
     const a = dropAt(s, 0.1);

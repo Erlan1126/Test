@@ -53,7 +53,7 @@ const toColor = (c: RGB) => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
 /** Where district islands float around the home island (world units, height in floors). */
 const DISTRICT_SLOTS = [
   { x: -38, z: -38, y: 3 }, { x: -46, z: -22, y: 1 }, { x: -22, z: -46, y: -3 },
-  { x: -54, z: -44, y: -16 }, { x: -44, z: -56, y: 2 }, { x: -62, z: -60, y: -7 },
+  { x: -58, z: -40, y: -14 }, { x: -40, z: -58, y: 4 }, { x: -64, z: -64, y: -6 },
 ];
 /** Floors merged per block. */
 const CHUNK = 16;
@@ -159,6 +159,8 @@ export class Renderer3D {
   /** Shared shader inputs: the glass ripple after a perfect drop, rain and snow. */
   private readonly fxU = {
     uTime: { value: 0 }, uRipY: { value: -999 }, uRipAmp: { value: 0 }, uWet: { value: 0 }, uSnow: { value: 0 },
+    /** The sky's color (reflected in the glass), where the camera looks, and fever glow. */
+    uSky: { value: new THREE.Color(0.5, 0.7, 1) }, uFocusY: { value: 0 }, uFever: { value: 0 },
   };
   /** Materials (the lawn) that turn white when it snows. */
   private snowable: THREE.MeshStandardMaterial[] = [];
@@ -417,6 +419,9 @@ export class Renderer3D {
       u.uRipY.value = (top.y + 1) * FH - r.age * 30;
       u.uRipAmp.value = r.strength * 1.6 * (1 - r.age / life);
     } else u.uRipAmp.value = 0;
+    u.uFocusY.value = Math.max(0, this.view.level) * FH;
+    u.uSky.value.setRGB(this.env.skyTop[0] / 255, this.env.skyTop[1] / 255, this.env.skyTop[2] / 255);
+    u.uFever.value = lerp(u.uFever.value, f.fever && !this.calm ? 1 : 0, Math.min(1, dt * 4));
     const ease = Math.min(1, dt * 0.6);
     u.uWet.value = lerp(u.uWet.value, kind === "rain" ? 1 : 0, ease);
     u.uSnow.value = lerp(u.uSnow.value, kind === "snow" ? 1 : 0, ease);
@@ -431,10 +436,19 @@ export class Renderer3D {
   private addFx(m: THREE.Material, part: "wall" | "roof"): void {
     m.onBeforeCompile = shader => {
       Object.assign(shader.uniforms, this.fxU);
-      const decl = "uniform float uTime; uniform float uRipY; uniform float uRipAmp; uniform float uWet; uniform float uSnow; varying vec3 vFxW;\n";
+      const decl = "uniform float uTime; uniform float uRipY; uniform float uRipAmp; uniform float uWet; uniform float uSnow; uniform vec3 uSky; uniform float uFocusY; uniform float uFever; varying vec3 vFxW;\n";
       shader.vertexShader = "varying vec3 vFxW;\n" + shader.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\nvFxW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
       shader.fragmentShader = decl + (part === "wall"
-        ? shader.fragmentShader.replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+        ? shader.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+          // Soft shade where the tower meets the island, so it stands on the ground.
+          if (abs(vFxW.x) < 16.0 && abs(vFxW.z) < 16.0) diffuseColor.rgb *= mix(0.62, 1.0, smoothstep(0.0, 3.6, vFxW.y));`)
+          .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+          // The glass picks up the sky, more of it higher up, with slow diagonal light bands.
+          float skyK = smoothstep(-30.0, 25.0, vFxW.y - uFocusY);
+          float band = 0.5 + 0.5 * sin((vFxW.x - vFxW.z) * 0.35 + vFxW.y * 0.05);
+          totalEmissiveRadiance += metalnessFactor * (uSky * (0.05 + 0.11 * skyK) + vec3(0.07) * pow(band, 8.0));
+          // Fever: a warm pulse running up the tower.
+          totalEmissiveRadiance += vec3(1.0, 0.55, 0.2) * uFever * (0.22 + 0.14 * sin(uTime * 8.0 - vFxW.y * 0.6));
           // A bright band sweeping down the glass after a perfect drop.
           totalEmissiveRadiance += vec3(0.55, 0.85, 1.0) * uRipAmp * exp(-pow((vFxW.y - uRipY) / 1.3, 2.0));
           // Every few seconds a soft glint of sunlight slides diagonally across the glass
@@ -683,7 +697,14 @@ export class Renderer3D {
     const lawnMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.lawn), roughness: 0.9 });
     lawnMat.userData.own = true;
     g.add(new THREE.Mesh(new THREE.ConeGeometry(R * 1.35, R * 1.6, 4).rotateY(Math.PI / 4).rotateX(Math.PI).translate(CX, Y - R * 0.8, CZ), rockMat));
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(R * 2, 0.8, R * 2).translate(CX, Y - 0.4, CZ), lawnMat));
+    // The lawn sits a hair below the towers' feet and draws first, so far away (where the
+    // depth buffer is coarse) the ground never flickers through the towers' bases.
+    lawnMat.polygonOffset = true;
+    lawnMat.polygonOffsetFactor = 1;
+    lawnMat.polygonOffsetUnits = 2;
+    const lawn = new THREE.Mesh(new THREE.BoxGeometry(R * 2, 0.8, R * 2).translate(CX, Y - 0.42, CZ), lawnMat);
+    lawn.receiveShadow = false;
+    g.add(lawn);
     const spots = [-4.4, 0, 4.4].flatMap(a => [-4.4, 0, 4.4].map(b => [CX + a, CZ + b] as const)).sort((p, q) => p[0] + p[1] - (q[0] + q[1]));
     [...towers].sort((a, b) => b.f - a.f).forEach((tw, i) => {
       const spot = spots[i];
@@ -692,7 +713,7 @@ export class Renderer3D {
       const box = { x0: spot[0] - half, x1: spot[0] + half, z0: spot[1] - half, z1: spot[1] + half };
       const foot = shape.id === "square" ? boxFoot(box) : footprint(shape, box, 0);
       const mats = this.floorMats(lookFor(skin, "normal"));
-      const geo = prism(foot, Y, Y + h, shape.id === "round" || shape.id === "pill");
+      const geo = prism(foot, Y - 0.06, Y + h, shape.id === "round" || shape.id === "pill");
       paintGeo(geo, floorColor(skin, 8, "normal"));
       const m = new THREE.Mesh(geo, [mats.wall, mats.roof]);
       m.castShadow = true;

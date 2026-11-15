@@ -25,7 +25,7 @@ import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nex
 import { dailySeed, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
-import { POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
+import { FEVER_AT, FEVER_FLOORS, POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
 import { RunRecorder, simFor } from "./logic/replay";
 import type { Mode } from "./logic/types";
 import { floorColor, lookFor } from "./render/buildings";
@@ -1065,9 +1065,9 @@ export class App implements DailyHost {
       fx.startRipple(rx / view.W, ry / view.H, f.kind === "gold" ? 1 : out.combo >= 5 ? 0.75 : 0.45);
       const gold = f.kind === "gold";
       fx.sparkle(f, gold ? 46 : 22, gold ? GOLD : f.kind === "ice" ? "#d8f4ff" : f.kind === "garden" ? "#b8f5a0" : "#ffffff");
-      fx.popup(gold ? t("PENTHOUSE +{n}", { n: out.points }) : out.combo > 1 ? t("PERFECT x{n}", { n: out.combo }) : t("PERFECT"), gold ? "" : `+${out.points}`, f.y + 1, gold ? GOLD : "#ffffff");
+      if (out.fever !== "start") fx.popup(gold ? t("PENTHOUSE +{n}", { n: out.points }) : out.combo > 1 ? t("PERFECT x{n}", { n: out.combo }) : t("PERFECT"), gold ? "" : `+${out.points}`, f.y + 1, gold ? GOLD : "#ffffff");
       if (gold) { s.golden(); fx.whiteFlash = 0.35; } else s.perfect(out.combo);
-      if (out.combo === 5 || out.combo === 10 || out.combo === 20) {
+      if ((out.combo === 5 || out.combo === 10 || out.combo === 20) && !out.fever) {
         fx.popup(out.combo >= 10 ? t("UNSTOPPABLE!") : t("ON FIRE!"), "", f.y + 2.2, "#ffb13b", 1.4, true);
         s.streak();
       }
@@ -1084,6 +1084,17 @@ export class App implements DailyHost {
       fx.shake = Math.max(fx.shake, 0.25);
       s.cut();
       vibrate(vib, 8);
+    }
+    if (out.fever === "start") {
+      // Fever: a burst of light, a fanfare and a big label; the tower glows while it lasts.
+      fx.popup(t("FEVER!"), t("Double people for {n} floors", { n: FEVER_FLOORS }), f.y + 3, "#ff9a3d", 1.7, true);
+      fx.sparkle(f, 50, "#ffb13b");
+      fx.whiteFlash = Math.max(fx.whiteFlash, 0.45);
+      fx.shake = Math.max(fx.shake, 0.35);
+      s.fever();
+      vibrate(vib, [30, 40, 30, 40, 60]);
+    } else if (out.fever === "end") {
+      fx.popup(t("Fever over"), t("{n} more perfect drops for the next one", { n: FEVER_AT }), f.y + 2.4, "#ffd6a0", 1);
     }
     if (f.kind === "ice") s.ice();
     if (f.kind === "garden") { s.garden(); fx.popup(t("TERRACE"), t("Your tower grew wider"), f.y + 2.1, "#b8f5a0", 1.2); }
@@ -1137,6 +1148,16 @@ export class App implements DailyHost {
     const sim = this.sim, people = $("people");
     people.textContent = fmt(sim.score);
     if (bump) replay(people, "bump");
+    // The fever meter: fills with perfect drops in a row, then counts the fever floors down.
+    const fev = $("fever"), on = sim.feverLeft > 0, rules5 = (sim.cfg.rules ?? 1) >= 5 && this.mode !== "zen";
+    const toward = sim.combo % FEVER_AT;
+    fev.hidden = !rules5 || (!on && toward < 2);
+    $("hud").classList.toggle("fevering", on);
+    if (!fev.hidden) {
+      $("fever-bar").style.width = `${(on ? sim.feverLeft / FEVER_FLOORS : toward / FEVER_AT) * 100}%`;
+      $("fever-text").textContent = on ? t("FEVER x2 · {n} floors", { n: sim.feverLeft }) : t("Fever {n}/{max}", { n: toward, max: FEVER_AT });
+      fev.classList.toggle("on", on);
+    }
     const m = sim.meters;
     $("height").textContent = `${m} m`;
     // The next landmark to pass (passing means taller than it, see landmarkIndex).
@@ -1965,6 +1986,7 @@ export class App implements DailyHost {
       skyline: this.city().skyline,
       districts: this.city().districts,
       tint: holidayAt()?.tint ?? null,
+      fever: this.state === "playing" && this.sim.feverLeft > 0,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
       theme: currentTheme(save),
       islandLevel: islandLevel(save),

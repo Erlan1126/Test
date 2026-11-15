@@ -29,7 +29,7 @@ export const POWER_FLOORS: Record<PowerUp, number> = { slow: 4, wide: 4, steady:
  *  narrow tower win width back on both sides with perfect drops in a row.
  *  4 starts floors a little faster and speeds them up sooner (floorSpeed4).
  */
-export const RULES = 4;
+export const RULES = 5;
 
 export interface Floor extends Box {
   y: number;
@@ -91,6 +91,8 @@ export type DropOutcome =
       recovered?: boolean;
       /** A power-up this floor carried. */
       power?: PowerUp;
+      /** Fever (rules 5): "start" on the drop that lit it, "end" on its last floor. */
+      fever?: "start" | "on" | "end";
     };
 
 /** The sim always moves in fixed steps of this length, so a tower can be replayed exactly
@@ -105,6 +107,10 @@ const SHRINK_BY = 0.45, SHRINK_BY_3 = 0.25, SHRINK_TIME = 4;
 const NARROW = 0.45;
 /** ...and from its second perfect drop in a row grows back this much on each side. */
 const RECOVER = 0.8;
+/** Rules 5, fever: this many perfect drops in a row light it... */
+export const FEVER_AT = 8;
+/** ...for this many floors, each worth double, with a more forgiving perfect window. */
+export const FEVER_FLOORS = 6;
 
 export class TowerSim {
   readonly cfg: SimConfig;
@@ -128,6 +134,9 @@ export class TowerSim {
   powers: Record<PowerUp, number> = { slow: 0, wide: 0, steady: 0 };
   /** Power-ups collected this tower. */
   powersCaught = 0;
+  /** Floors of fever left (rules 5), and how many fevers this tower had. */
+  feverLeft = 0;
+  fevers = 0;
 
   constructor(cfg: SimConfig) {
     this.cfg = cfg;
@@ -251,7 +260,7 @@ export class TowerSim {
   wouldBePerfect(): boolean {
     const m = this.mover;
     if (!m) return false;
-    const k = (m.kind === "magnet" ? 2.5 : 1) * (this.powers.wide > 0 ? 2 : 1);
+    const k = (m.kind === "magnet" ? 2.5 : 1) * (this.powers.wide > 0 ? 2 : 1) * (this.feverLeft > 0 ? 1.35 : 1);
     return Math.abs(this.offset()) <= perfectWindow(m.v) * k;
   }
 
@@ -328,13 +337,24 @@ export class TowerSim {
       }
     }
 
-    const base = peopleIn(placed) * PEOPLE[m.kind];
+    // Fever: lit by a run of perfect drops, it doubles the next few floors.
+    let fever: "start" | "on" | "end" | undefined;
+    const inFever = this.feverLeft > 0;
+    if (inFever) {
+      this.feverLeft--;
+      fever = this.feverLeft === 0 ? "end" : "on";
+    } else if ((this.cfg.rules ?? 1) >= 5 && this.cfg.mode !== "zen" && perfect && this.combo > 0 && this.combo % FEVER_AT === 0) {
+      this.feverLeft = FEVER_FLOORS;
+      this.fevers++;
+      fever = "start";
+    }
+    const base = peopleIn(placed) * PEOPLE[m.kind] * (inFever ? 2 : 1);
     const points = Math.round(perfect ? base * (m.kind === "gold" ? 5 : 1.5) : base);
     this.stack.push(placed);
     this.score += points;
     if (this.windFor(placed.y) > 0) this.windFloors++;
 
-    const outcome: DropOutcome = { type: "land", perfect, floor: placed, points, combo: this.combo, piece, side: piece ? side : undefined, recovered };
+    const outcome: DropOutcome = { type: "land", perfect, floor: placed, points, combo: this.combo, piece, side: piece ? side : undefined, recovered, fever };
     // Power-ups in effect count down one floor; a power-up riding on this floor starts now.
     for (const k of ["slow", "wide", "steady"] as const) if (this.powers[k] > 0) this.powers[k]--;
     if (m.power) {
@@ -362,6 +382,7 @@ export class TowerSim {
     this.rewindsLeft--;
     this.rewindsUsed++;
     this.rewindLevel = this.level;
+    this.feverLeft = 0;
     this.newMover();
   }
 

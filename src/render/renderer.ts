@@ -42,6 +42,8 @@ export interface Frame {
   guide: boolean;
   /** Smooth mode: no shaders, fewer effects. */
   low: boolean;
+  /** Fever mode is on: the tower glows warm. */
+  fever?: boolean;
   /** Run the shader pass (bloom, light rays, color grading). */
   shaders: boolean;
   /** Bottom edge of the score display, in pixels. */

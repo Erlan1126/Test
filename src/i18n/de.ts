@@ -902,4 +902,10 @@ export const DE: Record<string, string> = {
   "Game Center": "Game Center",
   "Sign in to Game Center in your iPhone's Settings to see it here": "Melde dich in den iPhone-Einstellungen bei Game Center an, um es hier zu sehen",
   "Premium": "Premium",
+  "FEVER!": "FIEBER!",
+  "Double people for {n} floors": "Doppelt so viele Bewohner für {n} Etagen",
+  "Fever over": "Fieber vorbei",
+  "{n} more perfect drops for the next one": "Noch {n} perfekte Drops bis zum nächsten",
+  "FEVER x2 · {n} floors": "FIEBER x2 · {n} Etagen",
+  "Fever {n}/{max}": "Fieber {n}/{max}",
 };
