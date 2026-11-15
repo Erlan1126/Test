@@ -1079,7 +1079,8 @@ export class App implements DailyHost {
         fx.popup(out.combo >= 10 ? t("UNSTOPPABLE!") : t("ON FIRE!"), "", f.y + 2.2, "#ffb13b", 1.4, true);
         s.streak();
       }
-      vibrate(vib, gold ? [20, 30, 20] : 20);
+      // Heavier taps as the streak grows.
+      vibrate(vib, gold || out.combo >= 5 ? [20, 30, 20] : 20);
     } else {
       // New builders get told which way they missed, to learn the timing.
       const coach = this.save.profile.towers < 8 && this.timing ? (this.timing === "early" ? t("A bit early") : t("A bit late")) : "";
@@ -1100,7 +1101,9 @@ export class App implements DailyHost {
       fx.whiteFlash = Math.max(fx.whiteFlash, 0.45);
       fx.shake = Math.max(fx.shake, 0.35);
       s.fever();
-      vibrate(vib, [30, 40, 30, 40, 60]);
+      // A heavy thump, then the "success" buzz (a long pattern would read as a failure).
+      vibrate(vib, [20, 30, 20]);
+      setTimeout(() => vibrate(vib, [15, 30, 15]), 140);
     } else if (out.fever === "end") {
       fx.popup(t("Fever over"), t("{n} more perfect drops for the next one", { n: FEVER_AT }), f.y + 2.4, "#ffd6a0", 1);
     }
