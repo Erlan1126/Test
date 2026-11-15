@@ -1,6 +1,6 @@
 // Short-lived visual effects: sparkles, glass shards, dust, falling pieces and score popups.
 import { clamp, hexRgb, lerp, mixRgb, rand, rgb, type RGB } from "../core/util";
-import { NUM_FONT, UI_FONT } from "../data/constants";
+import { DISPLAY_FONT } from "../data/constants";
 import type { Look } from "../data/skins";
 import type { Box } from "../logic/rules";
 import type { Floor } from "../logic/sim";
@@ -37,6 +37,9 @@ interface Popup {
   life: number;
   color: string;
   big?: boolean;
+  /** Its starting life (for the pop-in), and a little tilt so each one feels alive. */
+  max: number;
+  tilt: number;
 }
 
 export class Effects {
@@ -100,7 +103,9 @@ export class Effects {
     // A new label quickly fades the old ones of its size, so fast tapping never piles
     // "PERFECT" on top of "PERFECT".
     for (const q of this.popups) if (q.big === big) q.life = Math.min(q.life, 0.18);
-    this.popups.push({ text, sub, y, life, color, big });
+    // The display font has no emoji: drop any, the words carry it.
+    const clean = (x: string) => x.replace(/\p{Extended_Pictographic}\uFE0F?\s*/gu, "").trim();
+    this.popups.push({ text: clean(text), sub: clean(sub), y, life, color, big, max: life, tilt: rand(-0.07, 0.07) });
     if (this.popups.length > 4) this.popups.splice(0, this.popups.length - 4);
   }
 
@@ -192,25 +197,60 @@ export class Effects {
   drawPopups(p: Paint, top: Box, minY = 0): void {
     const { ctx, view } = p;
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.lineJoin = "round";
     for (const q of this.popups) {
-      const y = Math.max(view.project((top.x0 + top.x1) / 2, q.y, (top.z0 + top.z1) / 2)[1], minY + (q.big ? 82 : 70));
-      const pop = 1 + Math.max(0, q.life - 0.9) * 2;
-      ctx.globalAlpha = clamp(q.life * 2, 0, 1);
-      ctx.font = `${Math.round((q.big ? 40 : 28) * pop)}px ${NUM_FONT}`;
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = "rgba(10,14,40,0.55)";
-      ctx.strokeText(q.text, view.W / 2, y - 34);
-      ctx.fillStyle = q.color;
-      ctx.fillText(q.text, view.W / 2, y - 34);
+      const y = Math.max(view.project((top.x0 + top.x1) / 2, q.y, (top.z0 + top.z1) / 2)[1], minY + (q.big ? 86 : 72)) - 34;
+      // Springy pop-in: overshoots, settles, then shrinks a touch as it fades.
+      const age = q.max - q.life, k = clamp(age / 0.32, 0, 1);
+      const spring = k >= 1 ? 1 : 1 + Math.sin(k * Math.PI * 1.5) * (1 - k) * 0.55 - (1 - k) * (1 - k) * 0.9;
+      const scale = Math.max(0.05, spring) * (q.life < 0.25 ? 0.85 + q.life * 0.6 : 1);
+      ctx.globalAlpha = clamp(q.life * 3, 0, 1);
+      ctx.save();
+      ctx.translate(view.W / 2, y);
+      ctx.rotate(q.tilt * (q.big ? 1 : 0.5));
+      ctx.scale(scale, scale);
+      const size = q.big ? 46 : 30;
+      ctx.font = `${size}px ${DISPLAY_FONT}`;
+      const [r, g, b] = hexRgb(q.color);
+      const dark = rgb(mixRgb([r, g, b], [20, 10, 50], 0.72));
+      // A deep shadow, a thick dark outline, a white rim and a bright gradient inside.
+      ctx.lineWidth = size * 0.3;
+      ctx.strokeStyle = dark;
+      ctx.strokeText(q.text, 0, size * 0.09);
+      ctx.strokeText(q.text, 0, 0);
+      ctx.lineWidth = size * 0.1;
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.strokeText(q.text, 0, 0);
+      const grad = ctx.createLinearGradient(0, -size * 0.5, 0, size * 0.45);
+      grad.addColorStop(0, rgb(mixRgb([r, g, b], [255, 255, 255], 0.65)));
+      grad.addColorStop(0.5, q.color);
+      grad.addColorStop(1, rgb(mixRgb([r, g, b], [0, 0, 0], 0.18)));
+      ctx.fillStyle = grad;
+      ctx.fillText(q.text, 0, 0);
+      // A glossy highlight across the top half.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-view.W, -size * 0.55, view.W * 2, size * 0.42);
+      ctx.clip();
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.fillText(q.text, 0, 0);
+      ctx.restore();
       if (q.sub) {
-        ctx.font = `800 18px ${UI_FONT}`;
-        ctx.strokeText(q.sub, view.W / 2, y - 10);
-        ctx.fillText(q.sub, view.W / 2, y - 10);
+        const sz = q.big ? 17 : 15;
+        ctx.font = `${sz}px ${DISPLAY_FONT}`;
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = dark;
+        ctx.strokeText(q.sub, 0, size * 0.62 + 4);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(q.sub, 0, size * 0.62 + 4);
       }
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
+    ctx.textBaseline = "alphabetic";
   }
+
 }
 
 /** Shows where the sliding floor will land, to help aim. */

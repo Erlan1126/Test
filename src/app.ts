@@ -128,6 +128,16 @@ const FALL_CAM = 1.4;
 /** Length of the video clip's camera flight. */
 const VIDEO_SECONDS = 4.5;
 
+/** The word a perfect drop earns, climbing with the streak. */
+function streakWord(combo: number): { text: string; color: string } {
+  if (combo >= 12) return { text: "LEGENDARY!", color: "#b47cff" };
+  if (combo >= 8) return { text: "SKY HIGH!", color: "#ff5fa2" };
+  if (combo >= 5) return { text: "AMAZING!", color: "#ff8a3d" };
+  if (combo >= 3) return { text: "AWESOME!", color: "#ffc93c" };
+  if (combo >= 2) return { text: "GREAT!", color: "#5ee08a" };
+  return { text: "NICE!", color: "#4fc3ff" };
+}
+
 export class App implements DailyHost {
   save: SaveData;
   readonly sound: Sound;
@@ -1073,12 +1083,12 @@ export class App implements DailyHost {
       fx.startRipple(rx / view.W, ry / view.H, f.kind === "gold" ? 1 : out.combo >= 5 ? 0.75 : 0.45);
       const gold = f.kind === "gold";
       fx.sparkle(f, gold ? 46 : 22, gold ? GOLD : f.kind === "ice" ? "#d8f4ff" : f.kind === "garden" ? "#b8f5a0" : "#ffffff");
-      if (out.fever !== "start") fx.popup(gold ? t("PENTHOUSE +{n}", { n: out.points }) : out.combo > 1 ? t("PERFECT x{n}", { n: out.combo }) : t("PERFECT"), gold ? "" : `+${out.points}`, f.y + 1, gold ? GOLD : "#ffffff");
-      if (gold) { s.golden(); fx.whiteFlash = 0.35; } else s.perfect(out.combo);
-      if ((out.combo === 5 || out.combo === 10 || out.combo === 20) && !out.fever) {
-        fx.popup(out.combo >= 10 ? t("UNSTOPPABLE!") : t("ON FIRE!"), "", f.y + 2.2, "#ffb13b", 1.4, true);
-        s.streak();
+      if (out.fever !== "start" && !(this.tutorial && this.sim.perfects === 1)) {
+        const w = streakWord(out.combo);
+        fx.popup(gold ? t("PENTHOUSE!") : t(w.text), gold ? `+${out.points}` : out.combo > 1 ? `x${out.combo} · +${out.points}` : `+${out.points}`, f.y + 1, gold ? GOLD : w.color, 1.15, out.combo >= 4 || gold);
       }
+      if (gold) { s.golden(); fx.whiteFlash = 0.35; } else s.perfect(out.combo);
+      if ((out.combo === 5 || out.combo === 10 || out.combo === 20) && !out.fever) s.streak();
       // Heavier taps as the streak grows.
       vibrate(vib, gold || out.combo >= 5 ? [20, 30, 20] : 20);
     } else {

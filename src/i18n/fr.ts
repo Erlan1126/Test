@@ -918,4 +918,10 @@ export const FR: Record<string, string> = {
   "Moved! Your island is rebuilding around it": "Déplacé ! Ton île se réorganise autour",
   "Move {name} on your island": "Déplacer {name} sur ton île",
   "Done": "Terminé",
+  "GREAT!": "SUPER !",
+  "AWESOME!": "GÉNIAL !",
+  "AMAZING!": "INCROYABLE !",
+  "SKY HIGH!": "AU SOMMET !",
+  "LEGENDARY!": "LÉGENDAIRE !",
+  "PENTHOUSE!": "PENTHOUSE !",
 };
