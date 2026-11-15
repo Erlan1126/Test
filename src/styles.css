@@ -1900,3 +1900,16 @@ body.busy .corner-btn b, body.busy .corner-btn span, body.busy .corner-btn svg {
 .modal :is(.goal-row b, .build-card > b, .district b, .shop-item b, .mission b, .setting b, .trophy b) { font-size: 14px; }
 .city-line, .rank-line, .collect-chip, .status-line { font-family: var(--display); font-weight: 400; letter-spacing: 0.01em; }
 .city-line b, .rank-line b { font-weight: 400; }
+/* Results: the city total, readable on the white card. */
+.card .city-gain .total { color: #646a92; }
+.card .city-gain .total b { color: #f63476; font-family: var(--display); }
+/* The dock shrinks to what's unlocked, so one or two places don't stretch across. */
+#dock.tiles { grid-template-columns: repeat(auto-fit, minmax(64px, 84px)); justify-content: center; width: auto; align-self: center; }
+/* The tap hint stays readable on the pale sunrise of the first open. */
+.tap-hint, #play.tap-hint { color: #fff; text-shadow: 0 0 2px #2a1270, 0 2px 0 #2a1270, 0 6px 18px rgba(42, 18, 112, 0.45); -webkit-text-stroke: 0.6px #2a1270; }
+#dock.tiles { display: flex !important; flex-direction: row; justify-content: center; gap: 0; width: auto; max-width: 100%; align-self: center; }
+#dock.tiles > .tile { flex: 0 0 auto; width: 70px; }
+#dock.tiles > .tile[hidden] { display: none; }
+.mode-row { width: min(350px, 100%); }
+.mode-chip { flex-direction: column; gap: 2px; padding: 6px 2px; font-size: 10px; overflow: hidden; }
+.mode-chip em { font-size: 15px; line-height: 1; }
