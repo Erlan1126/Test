@@ -36,9 +36,9 @@ const call = async (path: string, body?: unknown) => {
 const P1 = "11111111-2fa1-11d2-883f-0016d3cca427", P2 = "22222222-2fa1-11d2-883f-0016d3cca427";
 
 /** Builds a real tower like a player would and returns its record. */
-function play(mode: "classic" | "daily", salt: number, skill = 0.85): { rec: RunRecord; score: number } {
+function play(mode: "classic" | "daily", salt: number, skill = 0.85, boosts = { rewind: false, gold: false }): { rec: RunRecord; score: number } {
   const day = dayNumber();
-  const rec = new RunRecorder({ mode, seed: mode === "daily" ? dailySeed(day) : 4242 + salt, day, week: weekIndex(), boosts: { rewind: false, gold: false } });
+  const rec = new RunRecorder({ mode, seed: mode === "daily" ? dailySeed(day) : 4242 + salt, day, week: weekIndex(), boosts });
   const sim = simFor(rec.rec), r = seeded(salt);
   for (let guard = 0; guard < 300_000 && sim.mover; guard++) {
     sim.step();
@@ -161,6 +161,68 @@ describe("online rankings", () => {
     expect(await name()).toBe("Rude Name");
     await call("/report", { player: ids[3], token: tokens[3], target: P1 });
     expect(await name()).toMatch(/^Builder /);
+  });
+});
+
+describe("boosts on ranked towers", () => {
+  /** Lets the same player post again right away (the server spaces runs and saves out). */
+  const rested = () => env.DB.prepare("UPDATE players SET last_run = 0").run().then(() => env.DB.prepare("UPDATE saves SET updated = 0").run());
+  const save = (token: string, boosts: Record<string, number>, queuedBoosts?: Record<string, string[]>) =>
+    call("/save", { player: P1, token, data: JSON.stringify({ stars: 3, boosts: { rewind: 0, xp: 0, gold: 0, ...boosts }, queuedBoosts }) });
+  const run = async (token: string, rec: RunRecord) => { await rested(); return call("/runs", { player: P1, token, record: rec }); };
+
+  it("ranks a tower with a boost the cloud save shows, the way the game sends it", async () => {
+    const token = await register(P1);
+    // Bought a rewind, then started a tower right away: the save sent just before the
+    // tower is posted holds none (it was taken) and queues the boosted tower.
+    const rec = play("classic", 11, 0.85, { rewind: true, gold: false }).rec;
+    expect((await save(token, { rewind: 0 }, { rewind: [`${rec.week}:${rec.seed}`], gold: [] })).status).toBe(200);
+    const ok = await run(token, rec);
+    expect(ok.status).toBe(200);
+    expect(ok.body.ranks.all).toBe(1);
+  });
+
+  it("ranks boosts seen in an earlier save, both at once", async () => {
+    const token = await register(P1);
+    await save(token, { rewind: 2, gold: 1 });
+    await rested();
+    await save(token, { rewind: 1, gold: 0 }); // a backup taken mid-tower
+    expect((await run(token, play("classic", 12, 0.85, { rewind: true, gold: true }).rec)).status).toBe(200);
+    // One rewind is still left; the gold rush is gone.
+    expect((await run(token, play("classic", 13, 0.85, { rewind: true, gold: false }).rec)).status).toBe(200);
+    expect((await run(token, play("classic", 14, 0.85, { rewind: false, gold: true }).rec)).body.error).toBe("boost not owned");
+  });
+
+  it("refuses a boost the player never had", async () => {
+    const token = await register(P1);
+    const rec = play("classic", 15, 0.85, { rewind: false, gold: true }).rec;
+    const r = await run(token, rec);
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("boost not owned");
+    await save(token, { rewind: 3 }); // rewinds don't pay for a gold rush
+    expect((await run(token, rec)).body.error).toBe("boost not owned");
+    const board = await call("/board?board=all&period=0");
+    expect(board.body.total).toBe(0);
+  });
+
+  it("counts each boost once, even if the same save is sent again", async () => {
+    const token = await register(P1);
+    const rec = play("classic", 16, 0.85, { rewind: true, gold: false }).rec, queued = { rewind: [`${rec.week}:${rec.seed}`], gold: [] };
+    await save(token, { rewind: 0 }, queued);
+    expect((await run(token, rec)).status).toBe(200);
+    expect((await run(token, rec)).body.error).toBe("boost not owned");
+    await rested();
+    await save(token, { rewind: 0 }, queued); // the old save again, its tower already ranked
+    expect((await run(token, play("classic", 17, 0.85, { rewind: true, gold: false }).rec)).body.error).toBe("boost not owned");
+  });
+
+  it("leaves towers without boosts alone, and still keeps boosts off the Daily", async () => {
+    const token = await register(P1);
+    expect((await run(token, play("classic", 18).rec)).status).toBe(200);
+    expect((await run(token, play("daily", 19).rec)).status).toBe(200);
+    await save(token, { rewind: 5 });
+    const daily = await run(token, play("daily", 20, 0.85, { rewind: true, gold: false }).rec);
+    expect(daily.body.error).toBe("boosts aren't used on the Daily");
   });
 });
 

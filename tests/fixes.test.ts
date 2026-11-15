@@ -176,7 +176,7 @@ describe("sky city", () => {
     const save = defaultSave();
     expect(nextDistrict(save)?.id).toBe("snow");
     expect(addPopulation(save, peopleFrom(3000, false))).toEqual([]);
-    const opened = addPopulation(save, 2500);
+    const opened = addPopulation(save, 12500); // snow opens at 15,000 people
     expect(opened.map(d => d.id)).toEqual(["snow"]);
     expect(districtOpen(save, DISTRICTS.find(d => d.id === "snow")!)).toBe(true);
     expect(peopleFrom(1000, true)).toBe(250);

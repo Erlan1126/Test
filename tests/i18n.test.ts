@@ -120,7 +120,7 @@ describe("translations", () => {
     setLang("es");
     const s = defaultSave();
     dealMissions(s, seeded(1));
-    const out = recordRun(s, { mode: "classic", score: 300, floors: 12, meters: 60, perfects: 2, bestStreak: 2, penthouses: 0, windFloors: 0, afterRewind: 0, rewindsUsed: 0 }, Date.now(), seeded(2));
+    const out = recordRun(s, { mode: "classic", score: 300, floors: 12, meters: 100, perfects: 2, bestStreak: 2, penthouses: 0, windFloors: 0, afterRewind: 0, rewindsUsed: 0 }, Date.now(), seeded(2));
     expect(out.rewards.some(r => r.text === "Trofeo: Primera Piedra (+1 ★)" && r.group === "trophy" && r.name === "Primera Piedra")).toBe(true);
     expect(out.rewards.some(r => r.text === "Nuevos aspectos desbloqueados: Bloque de Ladrillo y Brisa Marina")).toBe(true);
   });

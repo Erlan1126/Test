@@ -29,12 +29,12 @@ describe("finishing a tower", () => {
 
   it("unlocks height skins and island upgrades and says so once", () => {
     const s = fresh();
-    const out = recordRun(s, run({ meters: 60, floors: 12 }), Date.now(), seeded(2));
+    const out = recordRun(s, run({ meters: 100, floors: 20 }), Date.now(), seeded(2));
     expect(isSkinUnlocked(s, SKINS.find(x => x.id === "brick")!)).toBe(true);
     expect(isSkinUnlocked(s, SKINS.find(x => x.id === "ocean")!)).toBe(true);
-    expect(islandLevel(s)).toBe(1); // 60 m clears Niagara Falls (51 m): the fountain plaza
+    expect(islandLevel(s)).toBe(2); // 100 m clears Niagara Falls and the Statue of Liberty
     expect(out.rewards.some(r => r.text.includes("Brick Block and Ocean Breeze"))).toBe(true);
-    const again = recordRun(s, run({ meters: 60, floors: 12 }), Date.now(), seeded(2));
+    const again = recordRun(s, run({ meters: 100, floors: 20 }), Date.now(), seeded(2));
     expect(again.rewards.some(r => r.kind === "skin")).toBe(false);
   });
 

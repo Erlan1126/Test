@@ -1834,3 +1834,69 @@ body.busy .corner-btn b, body.busy .corner-btn span, body.busy .corner-btn svg {
 #starter .starter-list b { color: #e8590c; }
 #starter .starter-timer { color: #c2410c; }
 #starter .close-btn { box-shadow: none; outline: 0; border: 0; }
+
+/* ======================================================================
+   Home, seamless: no Start button. Mode chips in one glass bar, and a soft
+   "Tap anywhere to build" that breathes. The dock goes straight to each place.
+   ====================================================================== */
+.mode-row {
+  display: flex; gap: 4px; padding: 5px; border-radius: 999px; align-self: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.22));
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 10px 26px rgba(20, 24, 70, 0.14);
+}
+.mode-row[hidden] { display: none; }
+.mode-chip {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 0; border-radius: 999px;
+  background: none; color: #1b1f4a; font: 400 13px/1 var(--display); letter-spacing: 0.02em; cursor: pointer;
+}
+.mode-chip em { font-style: normal; font-size: 16px; }
+.mode-chip b { font-weight: 400; }
+.mode-chip[aria-checked="true"] { background: #fff; box-shadow: 0 2px 10px rgba(27, 31, 74, 0.14); color: #f63476; }
+.mode-chip .dot { position: absolute; top: 3px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #ff3b5c; border: 2px solid #fff; }
+.mode-chip[hidden] { display: none; }
+
+.tap-hint, #play.tap-hint {
+  align-self: center; min-height: 0; padding: 10px 18px; border: 0; background: none; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; width: auto;
+  font: 400 clamp(17px, 5vw, 22px)/1.1 var(--display); letter-spacing: 0.03em; color: #fff;
+  text-shadow: 0 2px 0 rgba(42, 18, 112, 0.55), 0 6px 18px rgba(42, 18, 112, 0.35);
+  animation: tap-breathe 2.2s ease-in-out infinite;
+}
+#play.tap-hint::before, #play.tap-hint::after { display: none !important; }
+#play.tap-hint:active { transform: scale(0.96); box-shadow: none; }
+@keyframes tap-breathe { 0%, 100% { opacity: 0.72; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { .tap-hint { animation: none; } }
+
+/* Five places in the dock, all one tap away. */
+#dock .tile, #dock #city-btn, #dock #shop-btn, #dock #missions-btn, #dock #pass-btn, #dock #ranks-btn {
+  background: none; box-shadow: none; border: 0; border-radius: 22px;
+  -webkit-backdrop-filter: none; backdrop-filter: none; min-height: 60px; gap: 3px; padding: 6px 2px;
+  color: #1b1f4a; font: 400 10.5px/1.1 var(--display); letter-spacing: 0.02em; text-shadow: none; text-align: center;
+}
+#dock .tile svg { width: 26px; height: 26px; padding: 0; background: none; color: #1b1f4a; box-shadow: none; border-radius: 0; }
+.mode-row { width: min(360px, 100%); box-sizing: border-box; gap: 2px; }
+.mode-chip { flex: 1 1 0; justify-content: center; gap: 4px; padding: 9px 4px; font-size: 11px; min-width: 0; white-space: nowrap; }
+.mode-chip em { font-size: 14px; }
+
+/* ======================================================================
+   One voice: the logo's font (Bungee) for every title, button, tab and big
+   number, so the whole game looks like Skyrise. Small reading text stays in
+   Figtree, which is easier to read at small sizes.
+   ====================================================================== */
+.modal .sheet-head h2, .dialog h2, .card .eyebrow, #banner strong {
+  font: 400 24px/1.1 var(--display); letter-spacing: 0.01em; text-transform: uppercase;
+}
+.modal .sheet-head h2 { color: #1b1f4a; }
+.modal .sheet-sub { font: 400 12px/1.2 var(--display); letter-spacing: 0.06em; }
+.modal .seg button, .modal .tabs button, .dialog .seg button { font: 400 11px/1 var(--display); letter-spacing: 0.02em; padding: 9px 6px; }
+.btn, .modal .buy, .card .btn, .dialog .btn, .modal .btn { font-family: var(--display); font-weight: 400; letter-spacing: 0.02em; }
+.modal .buy { font-size: 13px; }
+.card .big, #people, .modal .stat-grid b, .card .stat b, .lu-level, .alt-row b, .corner-btn b { font-family: var(--display); font-weight: 400; }
+.card .stat span, .modal .stat-grid span { font-family: var(--ui); }
+.modal :is(.goal-row b, .build-card > b, .district b, .shop-item b, .mission b, .pack-card b, .premium-card b, .setting b, .trophy b, .stage-card .stage-top b, .rank-row b) {
+  font-family: var(--display); font-weight: 400; letter-spacing: 0.01em;
+}
+.modal :is(.goal-row b, .build-card > b, .district b, .shop-item b, .mission b, .setting b, .trophy b) { font-size: 14px; }
+.city-line, .rank-line, .collect-chip, .status-line { font-family: var(--display); font-weight: 400; letter-spacing: 0.01em; }
+.city-line b, .rank-line b { font-weight: 400; }

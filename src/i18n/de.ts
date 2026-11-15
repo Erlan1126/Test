@@ -893,4 +893,9 @@ export const DE: Record<string, string> = {
   "🎬 Watch a short ad: double your +{n} ★": "🎬 Kurze Werbung ansehen: deine +{n} ★ verdoppeln",
   "No reward this time. Try again later.": "Diesmal keine Belohnung. Versuch es später nochmal.",
   "+{n} ★ added. Thanks for watching!": "+{n} ★ hinzugefügt. Danke fürs Zuschauen!",
+  // ---------- Home: modes and tap to build ----------
+  "Tap anywhere to build": "Tippe irgendwo, um zu bauen",
+  "Tap to play the Daily": "Tippe für den Tagesturm",
+  "Tap to build in Zen": "Tippe, um im Zen zu bauen",
+  "Mode": "Modus",
 };

@@ -46,8 +46,9 @@ describe("save data", () => {
     expect(s.bestMeters).toBe(370);
     expect(s.skin).toBe("neon");
     expect(s.stars).toBe(27);
-    // 27 stars had unlocked the 10 and 25 star skins under the old rules.
-    expect(s.ownedSkins.sort()).toEqual(["rainbow", "starlight"]);
+    // 27 stars had unlocked the 10 and 25 star skins under the old rules, and a 370 m
+    // tower the height skins up to Neon Nights (kept although they need taller towers now).
+    expect(s.ownedSkins.sort()).toEqual(["brick", "bridge", "candy", "desert", "neon", "ocean", "rainbow", "retro", "starlight"]);
     expect(s.profile.level).toBe(4);
     expect(s.profile.trophies).toEqual(["first", "s10"]);
     expect(s.island).toBe("snow");

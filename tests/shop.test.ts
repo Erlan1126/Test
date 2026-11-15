@@ -9,7 +9,7 @@ import { MAX_BOOSTS } from "../src/data/shop";
 describe("star shop", () => {
   it("sells shop skins once and takes the stars", () => {
     const s = defaultSave();
-    s.stars = 12;
+    s.stars = 32;
     expect(buySkin(s, "starlight")).toBe("ok");
     expect(s.stars).toBe(2);
     expect(isSkinUnlocked(s, SKINS.find(x => x.id === "starlight")!)).toBe(true);

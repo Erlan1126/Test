@@ -101,3 +101,19 @@ CREATE TABLE IF NOT EXISTS challenge_tries (
   score INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS challenge_tries_by ON challenge_tries (challenge, at);
+
+-- Boosts on ranked towers (see "Boosts" in worker.js). boost_bank: per player and boost,
+-- the most their cloud saves show they bought. boost_uses: each ranked tower that used one.
+CREATE TABLE IF NOT EXISTS boost_bank (
+  player TEXT NOT NULL,
+  boost TEXT NOT NULL,
+  credit INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (player, boost)
+);
+CREATE TABLE IF NOT EXISTS boost_uses (
+  player TEXT NOT NULL,
+  boost TEXT NOT NULL,
+  run TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  PRIMARY KEY (player, boost, run)
+);

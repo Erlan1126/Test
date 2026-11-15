@@ -12,9 +12,9 @@ export const DISTRICTS: IslandTheme[] = [...ISLAND_THEMES].sort((a, b) => a.peop
 
 /** Is a district open: by population, by an older builder-level unlock, or bought. */
 export function districtOpen(save: SaveData, t: IslandTheme): boolean {
-  if (save.population >= t.people) return true;
+  if (save.population >= t.people || save.keptDistricts.includes(t.id)) return true;
   if (t.product) return premiumGrants(save).themes.has(t.id);
-  return save.profile.level >= t.level && t.people <= 20000;
+  return save.profile.level >= t.level && t.people <= 60000;
 }
 
 /** The next district your population will open, if any. */

@@ -8,7 +8,8 @@
 //                        server replays the tower from its seed and taps (the same game
 //                        rules as the app) and ranks the score it computes itself.
 //   GET  /board          ?board=daily|week|all&period=<n>&player=<id> -> top 100 and your rank
-//   POST /save           { player, token, data } backs up the player's save
+//   POST /save           { player, token, data } backs up the player's save (and counts
+//                        the boosts it shows, see "Boosts" below)
 //   POST /recovery       { player, token, code } sets the player's recovery code
 //   POST /restore        { code } -> { player, token, data } on a new device
 //   POST /report         { player, token, target } reports a leaderboard name
@@ -30,6 +31,7 @@ import { replayRun } from "../src/logic/replay";
 import { RULES } from "../src/logic/sim";
 import { dailySeed, dayNumber } from "../src/logic/rules";
 import { weekIndex } from "../src/data/events";
+import { MAX_BOOSTS } from "../src/data/shop";
 
 // Must match CRYSTAL_PACKS in src/data/premium.ts.
 const PRODUCTS = ["crystals_200", "crystals_650", "crystals_1250", "crystals_2600", "crystals_8000", "crystals_14000"];
@@ -192,6 +194,7 @@ async function rankings(request, url, env, now) {
     if (last && now - last.updated < SAVE_GAP_MS) return json({ error: "too fast" }, 429);
     await db.prepare("INSERT INTO saves (player, data, updated) VALUES (?, ?, ?) ON CONFLICT (player) DO UPDATE SET data = excluded.data, updated = excluded.updated")
       .bind(me.id, body.data, now).run();
+    await creditBoosts(db, me.id, body.data);
     return json({ ok: true });
   }
 
@@ -330,6 +333,12 @@ async function rankings(request, url, env, now) {
     if (!out.ok) return json({ error: `rejected: ${out.reason}` }, 422);
     const { score, meters } = out.summary;
 
+    // Boosts make a tower easier, so each one claimed must be one the player had.
+    const claimed = RUN_BOOSTS.filter(b => record.boosts?.[b]), runKey = boostRunKey(record);
+    for (const b of claimed) {
+      if (!(await boostAvailable(db, player, b, runKey))) return json({ error: "boost not owned" }, 400);
+    }
+
     const name = cleanName(body.name), level = Math.max(1, Math.min(999, Math.floor(Number(body.level) || 1)));
     const up = "INSERT INTO scores (board, period, player, score, meters, at) VALUES (?, ?, ?, ?, ?, ?) " +
       "ON CONFLICT (board, period, player) DO UPDATE SET score = excluded.score, meters = excluded.meters, at = excluded.at " +
@@ -338,6 +347,7 @@ async function rankings(request, url, env, now) {
     if (record.mode === "daily") boards.unshift(["daily", record.day]);
     await db.batch([
       db.prepare("UPDATE players SET name = ?, level = ?, last_run = ? WHERE id = ?").bind(name, level, now, player),
+      ...claimed.map(b => db.prepare("INSERT OR IGNORE INTO boost_uses (player, boost, run, at) VALUES (?, ?, ?, ?)").bind(player, b, runKey, now)),
       ...boards.map(([b, period]) => db.prepare(up).bind(b, period, player, score, meters, now)),
     ]);
     // Keep this tower's pace as the player's ghost on each board where it's now their best.
@@ -389,6 +399,62 @@ async function rankings(request, url, env, now) {
   }
 
   return json({ error: "not found" }, 404);
+}
+
+// ---------- Boosts ----------
+//
+// A ranked tower's record says which boosts it used (an extra rewind, gold rush) and the
+// replay trusts that, so the server keeps its own books per player and boost:
+//   boost_uses: each boosted tower it has ranked (a tower is known by its week and seed);
+//   boost_bank: credit, the most boosts the player can be shown to have bought. Each cloud
+//     save shows the boosts held; on top of those come the ones already used on ranked
+//     towers, and the ones taken by boosted towers still queued on the phone that aren't
+//     ranked yet (the game lists those as "queuedBoosts" in the save it sends). For an
+//     honest player that sum never exceeds what they bought. The credit only goes up.
+// A boosted tower is ranked only while (towers ranked with that boost) < credit, so a boost
+// must show up in the player's cloud save before it counts, each one counts once, and
+// sending an old save again adds nothing (its queued towers are ranked by then). The game
+// sends its save just before posting a boosted tower (src/online.ts flush), with that tower
+// in its queue, so honest players are always covered. A tower claiming a boost the player
+// didn't have gets 400 "boost not owned" and isn't ranked.
+// The save (stars included) still comes from the phone, so this can't stop a forged save;
+// it stops a tower that just claims boosts, and the same boost being claimed again.
+
+/** The boosts a ranked record can claim (Double XP doesn't change the score). */
+const RUN_BOOSTS = ["rewind", "gold"];
+
+const boostRunKey = rec => `${Math.floor(Number(rec.week))}:${Math.floor(Number(rec.seed))}`;
+
+async function boostsUsed(db, player, boost) {
+  return (await db.prepare("SELECT COUNT(*) AS n FROM boost_uses WHERE player = ? AND boost = ?").bind(player, boost).first())?.n ?? 0;
+}
+
+/** Whether a tower (by its key) may be ranked with this boost. */
+async function boostAvailable(db, player, boost, runKey) {
+  const again = await db.prepare("SELECT 1 AS x FROM boost_uses WHERE player = ? AND boost = ? AND run = ?").bind(player, boost, runKey).first();
+  if (again) return false;
+  const bank = await db.prepare("SELECT credit FROM boost_bank WHERE player = ? AND boost = ?").bind(player, boost).first();
+  return (await boostsUsed(db, player, boost)) < (bank?.credit ?? 0);
+}
+
+/** Raises the player's boost credit from a cloud save they just sent. */
+async function creditBoosts(db, player, data) {
+  let save;
+  try { save = JSON.parse(data); } catch { return; }
+  for (const b of RUN_BOOSTS) {
+    // A phone holds at most MAX_BOOSTS of each and queues at most 5 towers.
+    const held = Math.max(0, Math.min(MAX_BOOSTS, Math.floor(Number(save?.boosts?.[b])) || 0));
+    const list = save?.queuedBoosts?.[b];
+    const queued = [...new Set((Array.isArray(list) ? list : []).filter(k => typeof k === "string" && /^-?\d{1,10}:-?\d{1,10}$/.test(k)))].slice(0, 5);
+    let waiting = 0;
+    for (const k of queued) {
+      if (!(await db.prepare("SELECT 1 AS x FROM boost_uses WHERE player = ? AND boost = ? AND run = ?").bind(player, b, k).first())) waiting++;
+    }
+    if (!held && !waiting) continue;
+    const credit = held + waiting + (await boostsUsed(db, player, b));
+    await db.prepare("INSERT INTO boost_bank (player, boost, credit) VALUES (?, ?, ?) " +
+      "ON CONFLICT (player, boost) DO UPDATE SET credit = MAX(boost_bank.credit, excluded.credit)").bind(player, b, credit).run();
+  }
 }
 
 async function rankOf(db, board, period, player) {

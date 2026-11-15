@@ -206,6 +206,12 @@ export class Online {
     this.flushing = true;
     try {
       if (!(await this.ensureAccount(save, persist))) { this.stale = true; return; }
+      // A tower that used boosts is only ranked if the server's copy of the save shows
+      // the boosts it took (see "Boosts" in server/worker.js), so send the save first.
+      if ((save.pendingRuns as RunRecord[]).some(r => r.boosts?.rewind || r.boosts?.gold)) {
+        const synced = await this.sendSave(save);
+        if (synced === "later") { setTimeout(() => void this.flush(save, persist), 6000); return; }
+      }
       while (save.pendingRuns.length) {
         const rec = save.pendingRuns[0] as RunRecord;
         const res = await fetch(`${API}/runs`, {
@@ -252,14 +258,27 @@ export class Online {
   async backup(save: SaveData, persist: () => void): Promise<void> {
     // Nothing worth keeping before the first tower.
     if (this.kind !== "global" || !save.playerId || (save.profile.towers === 0 && !save.crystals)) return;
-    // The token and queue stay on this device; a restore makes new ones.
-    const data = JSON.stringify({ ...save, onlineToken: "", pendingRuns: [] });
-    if (data === this.lastBackup) return;
     try {
       if (!(await this.ensureAccount(save, persist))) return;
-      const res = await fetch(`${API}/save`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, data }) });
-      if (res.ok) this.lastBackup = data;
+      await this.sendSave(save);
     } catch { /* offline: next time */ }
+  }
+
+  /** Posts the save to the server unless it already has this exact copy. "later" means
+   *  the server asked to wait (or had a hiccup). Needs an account; throws when offline. */
+  private async sendSave(save: SaveData): Promise<"ok" | "later" | "failed"> {
+    // The token and queue stay on this device; a restore makes new ones. The boosts the
+    // queued towers used go along, so the server can tell they were the player's own.
+    const queued = { rewind: [] as string[], gold: [] as string[] };
+    for (const r of save.pendingRuns as RunRecord[]) {
+      if (r.boosts?.rewind) queued.rewind.push(`${r.week}:${r.seed}`);
+      if (r.boosts?.gold) queued.gold.push(`${r.week}:${r.seed}`);
+    }
+    const data = JSON.stringify({ ...save, onlineToken: "", pendingRuns: [], queuedBoosts: queued });
+    if (data === this.lastBackup) return "ok";
+    const res = await fetch(`${API}/save`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, data }) });
+    if (res.ok) { this.lastBackup = data; return "ok"; }
+    return res.status === 429 || res.status >= 500 ? "later" : "failed";
   }
 
   /** Gets a player back from their recovery code: their id, a new token and their save. */

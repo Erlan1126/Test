@@ -4,12 +4,12 @@ import { LANGS, type LangSetting } from "../i18n";
 import { cleanPace } from "./ghost";
 import { COINS_PER_STAR } from "../data/daily";
 import { MISSION_KEYS, type Mission } from "../data/missions";
-import { SKINS } from "../data/skins";
+import { OLD_SKIN_HEIGHTS, SKINS } from "../data/skins";
 import { SHAPES } from "../data/shapes";
 import { SKYLINE_SIZE, type SkylineTower } from "./skyline";
 import { ALL_POSTCARDS, migratePostcard } from "./postcards";
 import type { BoostId } from "../data/shop";
-import { ISLAND_THEMES, OLD_UPGRADE_HEIGHTS } from "../data/islands";
+import { ISLAND_THEMES, OLD_DISTRICT_PEOPLE, OLD_UPGRADE_HEIGHTS } from "../data/islands";
 import { CITY } from "../data/daily";
 import { PRODUCTS } from "../data/premium";
 import type { Mode } from "./types";
@@ -48,6 +48,10 @@ export interface SaveData {
   bestMeters: number;
   /** Island upgrades kept from before they needed taller towers (see islandLevel). */
   islandKept: number;
+  /** Districts kept open from before they needed more people. */
+  keptDistricts: string[];
+  /** 2 once unlocks earned under the old, easier thresholds have been kept. */
+  unlocksV: number;
   /** Spendable stars. */
   stars: number;
   /** All stars ever earned. */
@@ -145,6 +149,8 @@ export function defaultSave(): SaveData {
     best: 0,
     bestMeters: 0,
     islandKept: 0,
+    keptDistricts: [],
+    unlocksV: 2,
     stars: 0,
     starsEarned: 0,
     skin: "glass",
@@ -245,11 +251,13 @@ export function normalize(raw: unknown): SaveData {
         day: str(h.day, ""),
       })).slice(0, HISTORY_SIZE)
     : [];
-  return {
+  const save: SaveData = {
     v: 2,
     best: int(r.best, 0),
     bestMeters: int(r.bestMeters, 0),
     // Saves from before carry the upgrades their best tower had built under the old heights.
+    keptDistricts: strList(r.keptDistricts, ISLAND_THEMES.map(t => t.id)),
+    unlocksV: int(r.unlocksV, 1),
     islandKept: r.islandKept === undefined
       ? OLD_UPGRADE_HEIGHTS.filter(m => int(r.bestMeters, 0) > m).length
       : Math.min(OLD_UPGRADE_HEIGHTS.length, int(r.islandKept, 0)),
@@ -331,6 +339,18 @@ export function normalize(raw: unknown): SaveData {
     coinsGranted: strList(r.coinsGranted, PRODUCTS.map(x => x.id)),
     playerId: /^[A-Za-z0-9-]{8,64}$/.test(String(r.playerId ?? "")) ? String(r.playerId) : "",
   };
+  // Unlocks got harder (towers 2026-11). Saves from before keep everything they had:
+  // the height skins their best tower had already reached, and the districts open then.
+  if (save.unlocksV < 2) {
+    for (const [id, m] of Object.entries(OLD_SKIN_HEIGHTS)) if (save.bestMeters > m && !save.ownedSkins.includes(id)) save.ownedSkins.push(id);
+    const oldLevel: Record<string, number> = { snow: 3, desert: 6 };
+    for (const [id, people] of Object.entries(OLD_DISTRICT_PEOPLE)) {
+      const open = save.population >= people || (oldLevel[id] !== undefined && save.profile.level >= oldLevel[id]);
+      if (open && !save.keptDistricts.includes(id)) save.keptDistricts.push(id);
+    }
+    save.unlocksV = 2;
+  }
+  return save;
 }
 
 // ---------- Migration from the first version ----------
@@ -354,7 +374,8 @@ export function migrateLegacy(get: (key: string) => string | null): SaveData | n
     starsEarned: oldStars,
     skin,
     island: profile.island,
-    ownedSkins: SKINS.filter(s => s.unlock && "price" in s.unlock && oldStars >= s.unlock.price).map(s => s.id),
+    // The first version unlocked these at 10, 25 and 50 stars (prices are higher now).
+    ownedSkins: Object.entries({ starlight: 10, rainbow: 25, aurora: 50 }).filter(([, n]) => oldStars >= n).map(([id]) => id),
     missions: { slots: missions.slots, done: missions.done, seen: missions.seen },
     profile,
     daily,

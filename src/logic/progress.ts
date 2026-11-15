@@ -30,7 +30,8 @@ export function isSkinUnlocked(save: SaveData, skin: Skin): boolean {
   if ("product" in skin.unlock) return premiumGrants(save).skins.has(skin.id);
   if ("pass" in skin.unlock || "event" in skin.unlock) return save.ownedSkins.includes(skin.id);
   if ("vip" in skin.unlock) return vipActive(save);
-  return save.bestMeters > MILESTONES[skin.unlock.at].m;
+  // Height skins: earned by building taller, or kept from before they got harder.
+  return save.bestMeters > MILESTONES[skin.unlock.at].m || save.ownedSkins.includes(skin.id);
 }
 
 export const unlockedSkinCount = (save: SaveData): number => SKINS.filter(s => isSkinUnlocked(save, s)).length;

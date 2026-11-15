@@ -149,6 +149,8 @@ export class App implements DailyHost {
   private friendScore = 0;
   /** A friend's tower to beat, from a challenge link (its ghost races you). */
   private vs: FriendChallenge | null = null;
+  /** The mode a tap on the home screen starts (picked with the mode chips). */
+  private homeMode: "classic" | "daily" | "zen" = "classic";
   /** Stars the last tower earned (a rewarded ad can double them, once). */
   private towerStars = 0;
   private readonly site = siteUrl();
@@ -590,9 +592,17 @@ export class App implements DailyHost {
       // Impatient? A tap brings the results card (and its Build again button) right away.
       else if (this.state === "over" && !this.overReady) { this.fallCam = 0; this.overTimer = Math.min(this.overTimer, 0.12); }
     });
-    $("play").addEventListener("click", () => this.start("classic"));
-    $("daily-btn").addEventListener("click", () => this.start("daily"));
-    $("zen-btn").addEventListener("click", () => this.start("zen"));
+    // The home screen has no big button: pick a mode with the chips, then tap anywhere.
+    $("play").addEventListener("click", () => this.start(this.homeMode));
+    for (const [id, mode] of [["classic-btn", "classic"], ["daily-btn", "daily"], ["zen-btn", "zen"]] as const) {
+      $(id).addEventListener("click", e => { e.stopPropagation(); this.sound.ensure(); this.sound.click(); this.setHomeMode(mode); });
+    }
+    // Taps on the empty parts of the home screen (the sky, the island, the logo) start too.
+    $("menu").addEventListener("click", e => {
+      if (this.state !== "menu" || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
+      this.start(this.homeMode);
+    });
+    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl()) this.start(this.homeMode); });
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
@@ -718,7 +728,7 @@ export class App implements DailyHost {
       e.preventDefault();
       if (e.repeat) return;
       if (this.state === "playing") this.drop();
-      else if (this.state === "menu") this.start("classic");
+      else if (this.state === "menu") this.start(this.homeMode);
       else if (this.state === "over" && this.overReady) this.start(this.mode, this.challenge?.id);
     }
     if (e.code === "Escape" && this.state === "over" && this.overReady) this.goToMenu();
@@ -1281,8 +1291,7 @@ export class App implements DailyHost {
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && p.towers >= 6, false);
     // Goals gathers missions, the pass and rankings; its dot means one of them has news.
-    const goalIds = ["missions-btn", "pass-btn", "ranks-btn"];
-    show("goals-btn", goalIds.some(id => !$(id).hidden), goalIds.some(id => !$(id).hidden && !$(id).querySelector<HTMLElement>(".dot")!.hidden));
+    // Missions, the Sky Pass and rankings have their own places in the dock (no Goals menu).
     const done = save.missions.slots.filter(m => m.d).length;
     $("goal-missions").textContent = chestReady(save, now) ? t("Your chest is ready to open!") : t("{n} of 3 done today", { n: done });
     $("goal-pass").textContent = unclaimed(save) > 0 ? tn(unclaimed(save), "{n} reward to claim", "{n} rewards to claim") : t("Tier {n} of 30", { n: passTier(save) });
@@ -1292,10 +1301,13 @@ export class App implements DailyHost {
     const cl = $("city-line");
     cl.hidden = p.towers < 1;
     cl.innerHTML = t("🏙️ {city} · <b>{n}</b> people", { city: esc(t(CITY_NAME)), n: fmt(save.population) });
-    $("daily-title").textContent = t("Daily #{n}", { n: dayNumber(now) });
+    $("daily-title").textContent = t("Daily");
     // Daily, Journey and Zen live behind one Modes button; its dot means one of them has news.
+    // The other modes sit as chips beside Classic, right on the home screen.
     const modeIds = ["daily-btn", "challenges-btn", "zen-btn"];
-    show("modes-btn", modeIds.some(id => !$(id).hidden), modeIds.some(id => !$(id).hidden && !$(id).querySelector<HTMLElement>(".dot")!.hidden));
+    $("mode-row").hidden = modeIds.every(id => $(id).hidden);
+    if ((this.homeMode === "daily" && $("daily-btn").hidden) || (this.homeMode === "zen" && $("zen-btn").hidden)) this.homeMode = "classic";
+    this.setHomeMode(this.homeMode);
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
     void this.renderStatus(now);
     void this.renderRankLine(now);
@@ -1689,6 +1701,14 @@ export class App implements DailyHost {
     ctx.fillStyle = "#ffe08a";
     ctx.font = `30px Bungee, sans-serif`;
     ctx.fillText("SKYRISE", W / 2, H - 32);
+  }
+
+  /** Selects the mode a tap on the home screen starts, and says so in the hint. */
+  private setHomeMode(mode: "classic" | "daily" | "zen"): void {
+    this.homeMode = mode;
+    for (const [id, m] of [["classic-btn", "classic"], ["daily-btn", "daily"], ["zen-btn", "zen"]] as const) $(id).setAttribute("aria-checked", String(m === mode));
+    $("play-label").textContent = mode === "daily" ? t("Tap to play the Daily")
+      : mode === "zen" ? t("Tap to build in Zen") : t("Tap anywhere to build");
   }
 
   /** Optional rewarded ad after a tower: doubles the stars it earned. */
