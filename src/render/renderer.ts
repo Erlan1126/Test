@@ -14,7 +14,7 @@ import { drawBlock, drawRoof, floorColor, lookFor } from "./buildings";
 import { drawGuide, drawLandingShadow, Effects } from "./effects";
 import { ISO_X, View, type Env, type Paint } from "./paint";
 import { PostFX } from "./post";
-import { nightAt, Scenery, skyAt, sunAt } from "./scenery";
+import { clockSky, nightAt, Scenery, skyAt, sunAt } from "./scenery";
 import { SkyTraffic } from "./sky";
 import { drawAurora, drawLandmark, drawLandmarkLabel, Weather } from "./atmosphere";
 import { landmarkIndex, type Box } from "../logic/rules";
@@ -175,13 +175,14 @@ export class Renderer {
     const sim = f.sim, stack = sim.stack, n = stack.length, top = sim.top;
     env.time += dt;
     env.low = f.low;
-    [env.skyTop, env.skyBot] = skyAt(n, f.theme.id);
+    const skyN = Math.max(n, clockSky());
+    [env.skyTop, env.skyBot] = skyAt(skyN, f.theme.id);
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     // The finished tower is seen from far away, from the ground up, so the lower sky keeps
     // its daytime color instead of the sunset at the top.
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
     env.post = this.postOn;
-    env.nf = nightAt(n);
+    env.nf = nightAt(skyN);
     env.climb = view.level * view.th * view.zoom;
     scenery.theme = f.theme;
     scenery.islandNow = f.islandLevel;

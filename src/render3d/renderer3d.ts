@@ -23,7 +23,7 @@ import { drawGuide, Effects, type Debris } from "../render/effects";
 import { clipConvex, footprint, type XZ } from "../render/footprint";
 import { ISO_X, View, type Env, type Paint } from "../render/paint";
 import type { Frame, Shot } from "../render/renderer";
-import { nightAt, skyAt, sunAt } from "../render/scenery";
+import { clockSky, nightAt, skyAt, sunAt } from "../render/scenery";
 import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
@@ -510,7 +510,9 @@ export class Renderer3D {
     env.time += dt;
     env.low = f.low;
     if (!view.s || !view.W || !view.H) { if (view.W && view.H) this.resize(f.low); return; } // hidden / not laid out yet
-    [env.skyTop, env.skyBot] = skyAt(n, f.theme.id);
+    // The sky follows the tower's climb and the real time of day, whichever is later.
+    const skyN = Math.max(n, clockSky());
+    [env.skyTop, env.skyBot] = skyAt(skyN, f.theme.id);
     this.skyTheme = f.theme.id;
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
@@ -523,12 +525,12 @@ export class Renderer3D {
       env.skyTop = mixRgb(env.skyTop, [255, 170, 120], 0.55 * k);
       env.skyBot = mixRgb(env.skyBot, [255, 214, 150], 0.7 * k);
     }
-    env.nf = nightAt(n);
+    env.nf = nightAt(skyN);
     env.climb = view.level * view.th * view.zoom;
     if (f.low !== this.low) this.resize(f.low);
 
-    this.updateSky(n);
-    this.updateLights(n);
+    this.updateSky(skyN);
+    this.updateLights(skyN);
     this.updateIsland(f);
     this.updateSkyline(f);
     // Your skyline island is for looking at between towers, not while you build.

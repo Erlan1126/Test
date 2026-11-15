@@ -37,6 +37,20 @@ export function skyAt(n: number, island = ""): [RGB, RGB] {
 }
 export const nightAt = (n: number): number => clamp((n - 45) / 35, 0, 1);
 
+/** The sky follows the real clock: a point on the day-to-night climb (same scale as a
+ *  tower's floors) for the local time. Day 7:00-16:00, golden late afternoon, sunset around
+ *  19:00, night from 21:00, and dawn brightening again from 5:00. */
+export function clockSky(d = new Date()): number {
+  const h = d.getHours() + d.getMinutes() / 60;
+  const ramp = (a: number, b: number, from: number, to: number) => from + (to - from) * clamp((h - a) / (b - a), 0, 1);
+  if (h >= 7 && h < 16) return 0;
+  if (h >= 16 && h < 18) return ramp(16, 18, 0, 22);
+  if (h >= 18 && h < 20) return ramp(18, 20, 22, 46);
+  if (h >= 20 && h < 21.5) return ramp(20, 21.5, 46, 80);
+  if (h >= 5 && h < 7) return ramp(5, 7, 70, 0);
+  return 80;
+}
+
 /** Where the sun sits on screen: it sinks toward the horizon as the tower climbs. */
 export function sunAt(n: number, W: number, H: number): { x: number; y: number; t: number } {
   const t = clamp(n / 50, 0, 1);
