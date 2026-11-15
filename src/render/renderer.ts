@@ -235,6 +235,7 @@ export class Renderer {
     this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0);
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
     if (f.shot === "play") drawLandmarkLabel(p, landmarkIndex(f.sim.meters) + 1, 1, f.hudBottom);
+    fx.drawBubbles(p, top, f.hudBottom);
     fx.drawPopups(p, top, f.hudBottom);
     this.setPost(f.shaders);
     if (!this.postOn) scenery.drawVignette(p); // the shader has its own

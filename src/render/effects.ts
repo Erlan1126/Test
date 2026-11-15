@@ -46,6 +46,8 @@ export class Effects {
   particles: Particle[] = [];
   debris: Debris[] = [];
   popups: Popup[] = [];
+  /** Residents' speech bubbles out of the tower's windows. */
+  bubbles: { text: string; y: number; life: number; max: number; side: -1 | 1 }[] = [];
   /** Landing squash on the top floor, 1 to 0. */
   bounce = 0;
   /** Outline flash on a perfect drop, 1 to 0. */
@@ -66,6 +68,7 @@ export class Effects {
     this.particles = [];
     this.debris = [];
     this.popups = [];
+    this.bubbles = [];
     this.bounce = this.flash = this.shake = this.punch = this.whiteFlash = 0;
   }
 
@@ -133,6 +136,8 @@ export class Effects {
     }
     this.particles = this.particles.filter(p => p.life > 0);
     for (const p of this.popups) { p.life -= dt; p.y += dt * 1.3; }
+    for (const b of this.bubbles) b.life -= dt;
+    this.bubbles = this.bubbles.filter(b => b.life > 0);
     this.popups = this.popups.filter(p => p.life > 0);
   }
 
@@ -194,6 +199,50 @@ export class Effects {
   }
 
   /** `minY` keeps popups below the score display at the top of the screen. */
+  /** A resident says something from floor `y`, on the left or right side of the tower. */
+  say(text: string, y: number, side: -1 | 1 = Math.random() < 0.5 ? -1 : 1): void {
+    this.bubbles = [{ text, y, life: 2.6, max: 2.6, side }];
+  }
+
+  drawBubbles(p: Paint, top: Box, minY = 0): void {
+    const { ctx, view } = p;
+    for (const b of this.bubbles) {
+      const edge = b.side < 0 ? view.project(top.x0, b.y + 0.5, top.z1) : view.project(top.x1, b.y + 0.5, top.z0);
+      if (edge[1] < minY + 40 || edge[1] > view.H - 40) continue;
+      const age = b.max - b.life, k = clamp(age / 0.25, 0, 1);
+      const s = k >= 1 ? 1 : 1 + Math.sin(k * Math.PI) * 0.25 - (1 - k) * 0.8;
+      ctx.save();
+      ctx.globalAlpha = clamp(b.life * 3, 0, 1);
+      ctx.font = `18px ${DISPLAY_FONT}`;
+      const w = ctx.measureText(b.text).width + 30, h = 40;
+      const ax = edge[0] + b.side * 10, bx = clamp(b.side < 0 ? ax - w : ax, 8, view.W - w - 8), by = edge[1] - h - 14 - Math.sin(age * 3) * 2;
+      ctx.translate(ax, edge[1]);
+      ctx.scale(Math.max(0.05, s), Math.max(0.05, s));
+      ctx.translate(-ax, -edge[1]);
+      ctx.shadowColor = "rgba(20,24,70,0.3)";
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, w, h, 20); else ctx.rect(bx, by, w, h);
+      ctx.fill();
+      // The little tail pointing at the window.
+      ctx.beginPath();
+      const tx = clamp(ax, bx + 14, bx + w - 14);
+      ctx.moveTo(tx - 7, by + h - 1);
+      ctx.lineTo(edge[0], edge[1] - 4);
+      ctx.lineTo(tx + 7, by + h - 1);
+      ctx.fill();
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = "#2a1f6e";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(b.text, bx + w / 2, by + h / 2 + 1);
+      ctx.restore();
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+
   drawPopups(p: Paint, top: Box, minY = 0): void {
     const { ctx, view } = p;
     ctx.textAlign = "center";

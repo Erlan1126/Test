@@ -1057,6 +1057,7 @@ export class Renderer3D {
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
     if (f.shot === "play" && f.ghost) this.drawGhost(f, f.ghost);
     if (f.shot === "play") drawLandmarkLabel(p, landmarkIndex(sim.meters) + 1, 1, f.hudBottom);
+    fx.drawBubbles(p, top, f.hudBottom);
     fx.drawPopups(p, top, f.hudBottom);
     // A soft vignette, so the eye goes to the middle.
     if (fx.whiteFlash > 0) {

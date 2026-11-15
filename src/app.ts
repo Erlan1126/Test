@@ -129,6 +129,17 @@ const FALL_CAM = 1.4;
 /** Length of the video clip's camera flight. */
 const VIDEO_SECONDS = 4.5;
 
+/** Things residents say out of their windows. */
+const SAY = {
+  any: ["Nice view!", "Home sweet home!", "Love the new floor!", "Who's cooking?", "Hi neighbor!", "Morning!"],
+  streak: ["Wow, so neat!", "Perfect again!", "You're on fire!", "Keep going!"],
+  cut: ["Hey, my balcony!", "Careful up there!", "Oops!", "That was close!"],
+  high: ["I can see my house!", "Above the clouds!", "My ears popped!", "Is that a plane?"],
+  wind: ["So windy!", "Hold on to your hat!"],
+  fever: ["It's party time!", "Feel the heat!"],
+};
+const pick = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
+
 /** The word a perfect drop earns, climbing with the streak. */
 function streakWord(combo: number): { text: string; color: string } {
   if (combo >= 12) return { text: "LEGENDARY!", color: "#b47cff" };
@@ -776,6 +787,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.endMove();
+    this.chatIn = 6;
     this.sound.tune = currentTheme(this.save).id;
     this.slowmo = 0;
     this.fallCam = 0;
@@ -1119,6 +1131,7 @@ export class App implements DailyHost {
     } else if (out.fever === "end") {
       fx.popup(t("Fever over"), t("{n} more perfect drops for the next one", { n: FEVER_AT }), f.y + 2.4, "#ffd6a0", 1);
     }
+    this.residentChat(out);
     if (f.kind === "ice") s.ice();
     if (f.kind === "garden") { s.garden(); fx.popup(t("TERRACE"), t("Your tower grew wider"), f.y + 2.1, "#b8f5a0", 1.2); }
     this.updateGhost();
@@ -1163,6 +1176,20 @@ export class App implements DailyHost {
       return;
     }
     this.updateHint();
+  }
+
+  private chatIn = 6;
+  /** Now and then a resident says something from a window near the top. */
+  private residentChat(out: Extract<DropOutcome, { type: "land" }>): void {
+    if (this.tutorial || this.calmMotion) return;
+    const sim = this.sim, fx = this.renderer.fx;
+    // Big moments get a reply right away; otherwise every 6 to 11 floors.
+    const now = out.fever === "start" || (out.perfect && out.combo === 6) || (!!out.piece && Math.random() < 0.18);
+    if (!now && --this.chatIn > 0) return;
+    this.chatIn = 6 + Math.floor(Math.random() * 6);
+    const pool = out.fever ? SAY.fever : out.perfect && out.combo >= 3 ? SAY.streak : out.piece ? SAY.cut
+      : sim.mover && sim.windFor(sim.mover.y) > 0 ? SAY.wind : sim.meters > 120 && Math.random() < 0.6 ? SAY.high : SAY.any;
+    fx.say(t(pick(pool)), Math.max(1, out.floor.y - 1 - Math.floor(Math.random() * 3)));
   }
 
   // ---------- HUD ----------
