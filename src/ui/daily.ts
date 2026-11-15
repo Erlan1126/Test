@@ -17,7 +17,9 @@ import { PASS_PRICE } from "../data/premium";
 import { currentTheme, islandLevel, swapMission } from "../logic/progress";
 import { CITY_NAME, DISTRICTS, districtOpen, nextDistrict } from "../logic/city";
 import { districtTowers } from "../logic/skyline";
-import { drawThemePreview } from "../render/previews";
+import { drawSkinPreview, drawThemePreview } from "../render/previews";
+import { burst, confetti } from "./fx";
+import { iconSvg } from "./icons";
 import { titleFor } from "../data/titles";
 import { dayKey, dayNumber, duration } from "../logic/rules";
 import { isNative, reminderTime, setReminder, type ReminderInfo } from "../native";
@@ -107,6 +109,7 @@ export class DailySheets {
     if (!r) return;
     this.host.sound.unlock();
     this.celebrate(t("Chest opened: +{stars} ★ and +100 pass XP! New missions tomorrow", { stars: r.stars }));
+    confetti(document.querySelector(".chest-card") ?? undefined);
     if (!$("missions").hidden) this.renderMissions();
   }
 
@@ -191,8 +194,8 @@ export class DailySheets {
     this.renderPass();
     openModal($("pass"));
     // Show the next tier to earn rather than tier 1.
-    const next = $("pass-tiers").querySelector<HTMLElement>(".pass-row.next");
-    if (next) next.scrollIntoView({ block: "center" });
+    const list = $("pass-tiers"), next = list.querySelector<HTMLElement>(".pass-row.next, .pass-row.here");
+    if (next) list.scrollLeft = Math.max(0, next.offsetLeft - list.clientWidth / 2 + next.offsetWidth / 2);
   }
 
   /** Redraws the pass if it's open. */
@@ -203,20 +206,25 @@ export class DailySheets {
   private renderPass(): void {
     const save = this.save, season = save.pass.season, theme = seasonTheme(season);
     const tier = passTier(save), days = Math.max(1, Math.ceil(seasonEndsIn() / 864e5));
-    $("pass-season").innerHTML = `<b style="color:${theme.color}">${esc(t(theme.name))}</b> · ${esc(tn(days, "ends in {n} day", "ends in {n} days"))}`;
+    $("pass-hero").style.setProperty("--season", theme.color);
+    $("pass-season-name").textContent = t(theme.name);
+    $("pass-season").textContent = tn(days, "ends in {n} day", "ends in {n} days");
     $("pass-tier").textContent = String(tier);
     const into = tier >= PASS_TIERS ? XP_PER_TIER : save.pass.xp - tier * XP_PER_TIER;
     $("pass-bar").style.width = `${(into / XP_PER_TIER) * 100}%`;
+    $("pass-ring").style.setProperty("--p", String(into / XP_PER_TIER));
     $("pass-next").textContent = tier >= PASS_TIERS ? t("Every tier reached. Amazing!") : t("{xp} / {need} XP to tier {n}", { xp: into, need: XP_PER_TIER, n: tier + 1 });
 
     const prem = $("pass-premium");
+    const last = skinById(theme.skins.last);
     if (save.pass.premium) {
-      prem.innerHTML = `<b>${esc(t("✦ Premium pass active"))}</b><small>${esc(t("{theme}. Every premium reward is yours to claim.", { theme: t(theme.text) }))}</small>`;
+      prem.innerHTML = `<div><b>${esc(t("✦ Premium pass active"))}</b><small>${esc(t("{theme}. Every premium reward is yours to claim.", { theme: t(theme.text) }))}</small></div>`;
       prem.classList.add("on");
     } else {
       prem.classList.remove("on");
-      prem.innerHTML = `<div><b>${esc(t("✦ Unlock the premium track"))}</b><small>${esc(t("{first} skin now, {last} at tier 30, and {n} 💎 back along the way.", { first: t(skinById(theme.skins.first).name), last: t(skinById(theme.skins.last).name), n: fmt(seasonCrystals(season)) }))}</small></div>
-        <button type="button" class="buy" id="pass-buy">💎 ${PASS_PRICE}</button>`;
+      prem.innerHTML = `<canvas class="pass-prem-skin" aria-hidden="true"></canvas><div><b>${esc(t("✦ Unlock the premium track"))}</b><small>${esc(t("{first} skin now, {last} at tier 30, and {n} 💎 back along the way.", { first: t(skinById(theme.skins.first).name), last: t(last.name), n: fmt(seasonCrystals(season)) }))}</small>
+        <button type="button" class="buy shine" id="pass-buy">💎 ${PASS_PRICE}</button></div>`;
+      drawSkinPreview(prem.querySelector("canvas")!, last);
       prem.querySelector("#pass-buy")!.addEventListener("click", () => {
         const r = buyPremiumPass(save);
         if (r === "short") {
@@ -229,6 +237,7 @@ export class DailySheets {
         this.host.sound.purchase();
         this.celebrate(t("Premium Sky Pass unlocked! Claim your rewards"));
         this.renderPass();
+        confetti($("pass-premium"));
       });
     }
 
@@ -238,31 +247,41 @@ export class DailySheets {
     all.textContent = t("Claim all rewards ({n})", { n: waiting });
 
     const list = $("pass-tiers");
+    const keep = list.scrollLeft;
     list.innerHTML = "";
     for (let tr = 1; tr <= PASS_TIERS; tr++) {
-      const row = document.createElement("div");
-      row.className = `pass-row${tr <= tier ? " reached" : ""}${tr === tier + 1 ? " next" : ""}`;
-      row.innerHTML = `<span class="pass-num">${tr}</span>`;
-      for (const track of ["free", "prem"] as Track[]) {
+      const col = document.createElement("div");
+      col.className = `pass-row${tr <= tier ? " reached" : ""}${tr === tier + 1 ? " next" : ""}${tr === tier ? " here" : ""}`;
+      col.style.setProperty("--i", String(tr));
+      const cell = (track: Track): HTMLButtonElement => {
         const r = track === "free" ? freeReward(season, tr) : premiumReward(season, tr);
         const done = save.pass[track].includes(tr), can = claimable(save, track, tr);
         const locked = track === "prem" && !save.pass.premium;
-        const cell = document.createElement("button");
-        cell.type = "button";
-        cell.className = `pass-cell ${track}${done ? " done" : ""}${can ? " ready" : ""}${locked ? " locked" : ""}${r.skin ? " skin" : ""}`;
-        cell.disabled = !can;
-        cell.innerHTML = `<span class="pass-ico" aria-hidden="true">${rewardIcon(r)}</span><span>${esc(rewardText(r))}</span>${done ? '<i aria-hidden="true">✓</i>' : locked ? `<i aria-hidden="true">${LOCK_ICON}</i>` : ""}`;
-        cell.setAttribute("aria-label", t(track === "free" ? "Tier {n} free reward: {reward}" : "Tier {n} premium reward: {reward}", { n: tr, reward: rewardText(r) }) + (done ? t(", claimed") : can ? t(", tap to claim") : ""));
-        cell.addEventListener("click", () => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = `pass-cell ${track}${done ? " done" : ""}${can ? " ready" : ""}${locked ? " locked" : ""}${r.skin ? " skin" : ""}${r.crystals ? " gem" : ""}`;
+        b.disabled = !can;
+        b.innerHTML = `${r.skin ? '<canvas aria-hidden="true"></canvas>' : `<span class="pass-ico" aria-hidden="true">${rewardIcon(r)}</span>`}<span class="pass-what">${esc(rewardShort(r))}</span>${done ? '<i class="pass-done" aria-hidden="true">✓</i>' : locked ? `<i class="pass-lock" aria-hidden="true">${LOCK_ICON}</i>` : ""}`;
+        if (r.skin) drawSkinPreview(b.querySelector("canvas")!, skinById(r.skin));
+        b.setAttribute("aria-label", t(track === "free" ? "Tier {n} free reward: {reward}" : "Tier {n} premium reward: {reward}", { n: tr, reward: rewardText(r) }) + (done ? t(", claimed") : can ? t(", tap to claim") : ""));
+        b.addEventListener("click", () => {
           const got = claimTier(save, track, tr);
           if (!got) return;
+          burst(b);
           this.celebrate(t("Claimed: {reward}", { reward: rewardText(got) }));
-          this.renderPass();
+          setTimeout(() => this.renderPass(), 380);
         });
-        row.appendChild(cell);
-      }
-      list.appendChild(row);
+        return b;
+      };
+      col.appendChild(cell("prem"));
+      const node = document.createElement("span");
+      node.className = "pass-num";
+      node.textContent = String(tr);
+      col.appendChild(node);
+      col.appendChild(cell("free"));
+      list.appendChild(col);
     }
+    list.scrollLeft = keep;
   }
 
   // ---------- Missions, chest and league ----------
@@ -542,11 +561,18 @@ export class DailySheets {
 }
 
 function rewardIcon(r: PassReward): string {
-  if (r.skin) return "🏙️";
-  if (r.crystals) return "💎";
-  if (r.stars) return "★";
-  if (r.boost) return "⚡";
-  return "★";
+  if (r.skin) return iconSvg("building");
+  if (r.crystals) return iconSvg("gem");
+  if (r.boost) return iconSvg(r.boost === "rewind" ? "clock" : r.boost === "xp" ? "bolt" : "sun");
+  return iconSvg("star");
+}
+
+/** A short label that fits a reward tile. */
+function rewardShort(r: PassReward): string {
+  if (r.skin) return t(skinById(r.skin).name);
+  if (r.crystals) return `+${r.crystals}`;
+  if (r.stars) return `+${r.stars}`;
+  return rewardText(r);
 }
 
 /** Crystals the premium track pays back over a season. */

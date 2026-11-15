@@ -52,6 +52,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 const EASY_TOWERS = 5;
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
+import { burst, confetti, countUp } from "./ui/fx";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -1237,10 +1238,14 @@ export class App implements DailyHost {
     sb.querySelector<HTMLElement>(".new-dot")!.hidden = !v.atRisk;
     const st = $("stars-btn");
     st.hidden = save.starsEarned <= 0 && !isOpen(save, "shop");
-    $("stars-num").textContent = save.stars >= 10000 ? `${(save.stars / 1000).toFixed(1)}K` : String(save.stars);
-    // Big balances are shortened (26.6K) so the top bar always fits.
+    // Big balances are shortened (26.6K) so the top bar always fits; a balance that grows
+    // counts up and bumps so the reward is felt.
     const short = (n: number) => (n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}K` : fmt(n));
-    $("crystals-num").textContent = short(save.crystals);
+    for (const [id, n] of [["stars-num", save.stars], ["crystals-num", save.crystals]] as const) {
+      const el = $(id), was = el.dataset.n === undefined ? n : Number(el.dataset.n);
+      if (n > was && !this.calmMotion) { countUp(el, n, 650, short); burst(st, 8); }
+      else { el.dataset.n = String(n); el.textContent = short(n); }
+    }
     st.querySelector<HTMLElement>(".new-dot")!.hidden = true;
   }
 
@@ -1497,7 +1502,14 @@ export class App implements DailyHost {
     if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => { if (this.state === "over") this.showLevelUp(o.levelUp!); }, 700); }
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
-    $("over-people").textContent = fmt(sim.score);
+    const people = $("over-people");
+    people.dataset.n = "0";
+    if (this.peek) people.textContent = fmt(sim.score);
+    else {
+      people.textContent = "0";
+      countUp(people, sim.score, 900, fmt);
+      if ((o.newBest && mode !== "zen") || won) setTimeout(() => { if (this.state === "over") confetti(people); }, 500);
+    }
     $("over-sub").textContent = t("people live in your {m} m tower · {n} floors", { m: sim.meters, n: sim.level });
     $("over-landmark").textContent = c ? (won ? `${"★".repeat(save.journey[c.id] ?? 1)}${"☆".repeat(3 - (save.journey[c.id] ?? 1))}  ${stageName(c.id)}` : stageGoal(c))
       : mode === "daily" ? t("Today's best: {n} people", { n: fmt(o.dailyBest) }) + (o.newBest ? t(" · New all-time best!") : "") + this.dailyRank()

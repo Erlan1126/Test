@@ -901,4 +901,5 @@ export const FR: Record<string, string> = {
   // ---------- Game Center ----------
   "Game Center": "Game Center",
   "Sign in to Game Center in your iPhone's Settings to see it here": "Connecte-toi à Game Center dans les Réglages de l'iPhone pour le voir ici",
+  "Premium": "Premium",
 };

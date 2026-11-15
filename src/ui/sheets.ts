@@ -26,6 +26,7 @@ import type { PaymentProvider } from "../payments";
 import { drawPostcard, drawShapePreview, drawSkinPreview, drawThemePreview } from "../render/previews";
 import { ALBUM_CRYSTALS, POSTCARD_COUNT, POSTCARD_LANDMARKS, postcardId, SET_STARS, WEATHERS } from "../logic/postcards";
 import type { Sound } from "../sound";
+import { confetti } from "./fx";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
 export interface Host {
@@ -418,6 +419,7 @@ export class Sheets {
     this.host.sound.coins();
     vibrate(this.save.settings.vibrate, 20);
     toast(msg);
+    confetti();
     this.renderShop();
     $("shop").querySelector<HTMLElement>(".close-btn")?.focus();
     this.host.refresh();
