@@ -438,6 +438,8 @@ export class DailySheets {
   openRanks(tab?: "daily" | "week" | "best"): void {
     if (tab) this.tab = tab;
     this.click();
+    markSeen(this.save, "ranks");
+    this.host.persist();
     $<HTMLInputElement>("nick").value = this.save.nickname;
     void this.renderRanks();
     openModal($("ranks"));

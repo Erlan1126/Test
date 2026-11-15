@@ -1,5 +1,6 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
+import { OLD_FEATURE_TOWERS } from "./features";
 import { LANGS, type LangSetting } from "../i18n";
 import { cleanPace } from "./ghost";
 import { COINS_PER_STAR } from "../data/daily";
@@ -152,7 +153,7 @@ export function defaultSave(): SaveData {
     bestMeters: 0,
     islandKept: 0,
     keptDistricts: [],
-    unlocksV: 2,
+    unlocksV: 3,
     stars: 0,
     starsEarned: 0,
     skin: "glass",
@@ -354,6 +355,11 @@ export function normalize(raw: unknown): SaveData {
       if (open && !save.keptDistricts.includes(id)) save.keptDistricts.push(id);
     }
     save.unlocksV = 2;
+  }
+  // Features opened by tower count before they moved to levels (2026-11): keep them.
+  if (save.unlocksV < 3) {
+    for (const [f, n] of Object.entries(OLD_FEATURE_TOWERS)) if (save.profile.towers >= (n ?? Infinity) && !save.seenFeatures.includes(f)) save.seenFeatures.push(f);
+    save.unlocksV = 3;
   }
   return save;
 }

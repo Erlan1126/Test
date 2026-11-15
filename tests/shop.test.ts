@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isNew, isOpen, markSeen, openedBetween } from "../src/logic/features";
 import { isSkinUnlocked } from "../src/logic/progress";
-import { defaultSave, migrateLegacy } from "../src/logic/save";
+import { defaultSave, normalize, migrateLegacy } from "../src/logic/save";
 import { buyBoost, buySkin, takeBoosts } from "../src/logic/shop";
 import { SKINS } from "../src/data/skins";
 import { MAX_BOOSTS } from "../src/data/shop";
@@ -45,29 +45,35 @@ describe("star shop", () => {
 });
 
 describe("unlocking features gradually", () => {
-  it("starts with nothing but the play button", () => {
+  it("opens features by builder level", () => {
     const s = defaultSave();
-    expect(isOpen(s, "skins")).toBe(false);
+    expect(isOpen(s, "missions")).toBe(false);
     expect(isOpen(s, "shop")).toBe(false);
-    s.profile.towers = 1;
-    expect(isOpen(s, "skins")).toBe(true);
-    expect(isOpen(s, "zen")).toBe(false);
+    s.profile.level = 3;
+    expect(isOpen(s, "shop")).toBe(true);
+    expect(isOpen(s, "pass")).toBe(false);
+    s.profile.level = 9;
+    expect(isOpen(s, "ranks")).toBe(true);
   });
 
   it("badges new features until they're opened", () => {
     const s = defaultSave();
-    s.profile.towers = 10;
+    s.profile.level = 3;
     expect(isNew(s, "shop")).toBe(true);
     markSeen(s, "shop");
     expect(isNew(s, "shop")).toBe(false);
     expect(isNew(s, "zen")).toBe(false); // not open yet
   });
 
-  it("lists what a tower just opened", () => {
-    expect(openedBetween(0, 1)).toEqual(["skins"]);
-    expect(openedBetween(2, 3)).toEqual(["missions"]);
-    expect(openedBetween(5, 6)).toEqual([]);
-    // One new thing at a time over the first 15 towers.
-    for (let n = 0; n < 15; n++) expect(openedBetween(n, n + 1).length).toBeLessThanOrEqual(1);
+  it("lists what a level just opened, a little at a time", () => {
+    expect(openedBetween(1, 2)).toEqual(["missions"]);
+    expect(openedBetween(3, 4)).toEqual(["daily"]);
+    for (let n = 3; n < 12; n++) expect(openedBetween(n, n + 1).length).toBeLessThanOrEqual(1);
+  });
+
+  it("keeps features a player had from before levels", () => {
+    const s = normalize({ v: 2, unlocksV: 2, profile: { towers: 12, level: 2 } });
+    expect(isOpen(s, "pass")).toBe(true);
+    expect(isOpen(s, "zen")).toBe(false);
   });
 });

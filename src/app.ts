@@ -20,7 +20,8 @@ import { claimVip, setVip, VIP_DAILY_CRYSTALS, vipClaimReady } from "./logic/vip
 import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
-import { FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
+import { FEATURE_LEVEL, FEATURE_NAMES, isNew, isOpen, openedBetween, type Feature } from "./logic/features";
+import { FEATURE_ICON, FEATURE_TEXT } from "./data/levels";
 import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
 import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
@@ -56,7 +57,7 @@ import { burst, confetti, countUp } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
 import { CITY } from "./data/daily";
 import { BUILD_SPOTS } from "./data/spots";
-import { withIcons } from "./ui/icons";
+import { iconSvg, withIcons } from "./ui/icons";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -963,7 +964,7 @@ export class App implements DailyHost {
     this.sound.intensity = 0;
     const run = this.sim.summary();
     if (this.mode === "daily") run.day = this.runDay;
-    const towersBefore = this.save.profile.towers, starsBefore = this.save.stars;
+    const starsBefore = this.save.stars, levelBefore = this.save.profile.level;
     this.outcome = recordRun(this.save, run);
     this.towerStars = Math.max(0, this.save.stars - starsBefore);
     statsTower(run, this.save.profile.towers, this.save.profile.level);
@@ -1005,7 +1006,7 @@ export class App implements DailyHost {
       this.save.ghost = this.pace.slice(0, MAX_GHOST);
       this.save.ghostScore = run.score;
     }
-    this.opened = openedBetween(towersBefore, this.save.profile.towers);
+    this.opened = openedBetween(levelBefore, this.save.profile.level).filter(f => !this.save.seenFeatures.includes(f));
     if (this.tutorial && run.floors >= 6) { this.tutorial = false; this.save.tutorialDone = true; }
     this.persist();
     this.postScores();
@@ -1343,7 +1344,7 @@ export class App implements DailyHost {
       this.persist();
     }
     show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
-    show("ranks-btn", this.online.ready && p.towers >= 6, false);
+    show("ranks-btn", this.online.ready && isOpen(save, "ranks"), fresh("ranks"));
     // Goals gathers missions, the pass and rankings; its dot means one of them has news.
     // Missions, the Sky Pass and rankings have their own places in the dock (no Goals menu).
     const done = save.missions.slots.filter(m => m.d).length;
@@ -1446,8 +1447,13 @@ export class App implements DailyHost {
     $("lu-level").textContent = String(lu.to);
     $("lu-title").textContent = t(ti.name);
     $("lu-new").hidden = !newTitle;
-    $("lu-rewards").innerHTML = [`+${lu.stars} ★`, lu.crystals ? `+${lu.crystals} 💎` : ""].filter(Boolean).map(x => `<span>${x}</span>`).join("");
+    $("lu-rewards").innerHTML = [`+${lu.stars} ★`, lu.crystals ? `+${lu.crystals} 💎` : ""].filter(Boolean).map(x => `<span>${x}</span>`).join("")
+      + openedBetween(lu.from, lu.to).filter(f => f !== "profile").map(f => `<div class="lu-unlock"><span class="lv-ico">${iconSvg(FEATURE_ICON[f])}</span><span><em>${esc(t("Unlocked!"))}</em><b>${esc(t(FEATURE_NAMES[f]))}</b><small>${esc(t(FEATURE_TEXT[f]))}</small></span></div>`).join("");
     const next = upcoming(lu.to, SHAPES.map(sh => ({ name: sh.name, level: sh.unlock && "level" in sh.unlock ? sh.unlock.level : undefined })));
+    // The next new place or mode leads the "Coming up" list.
+    const soon = (Object.keys(FEATURE_LEVEL) as Feature[]).filter(f => FEATURE_LEVEL[f] > lu.to).sort((a, b) => FEATURE_LEVEL[a] - FEATURE_LEVEL[b])[0];
+    if (soon) next.unshift({ level: FEATURE_LEVEL[soon], icon: "🔒", text: FEATURE_NAMES[soon] });
+    next.splice(3);
     $("lu-next").innerHTML = next.length ? `<b>${esc(t("Coming up"))}</b>` + next.map(n => `<div><i>${esc(t("Lv {n}", { n: n.level }))}</i><span>${n.icon} ${esc(t(n.text))}</span></div>`).join("") : "";
     // Confetti in the title's color and friends.
     const box = $("lu-confetti"), colors = [ti.color, "#ff6f9c", "#ffe08a", "#7cf5ff", "#a98bff", "#8ce99a"];

@@ -27,6 +27,8 @@ import { drawPostcard, drawShapePreview, drawSkinPreview, drawThemePreview } fro
 import { ALBUM_CRYSTALS, POSTCARD_COUNT, POSTCARD_LANDMARKS, postcardId, SET_STARS, WEATHERS } from "../logic/postcards";
 import type { Sound } from "../sound";
 import { confetti } from "./fx";
+import { FEATURE_ICON, FEATURE_NAMES, FEATURE_TEXT, levelStep } from "../data/levels";
+import { iconSvg } from "./icons";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
 export interface Host {
@@ -517,14 +519,42 @@ export class Sheets {
 
   // ---------- Profile ----------
 
-  openProfile(): void {
+  openProfile(tab = "journey"): void {
     this.click();
     this.seen("profile");
     this.renderProfile();
+    showTab($("profile"), tab);
     openModal($("profile"));
+    // Start the path at where the player is now.
+    const here = $("journey-path").querySelector<HTMLElement>(".lv-step.here");
+    if (here) requestAnimationFrame(() => here.scrollIntoView({ block: "center" }));
+  }
+
+  /** The level journey: every level with what it brings, and where the player is. */
+  private renderJourney(): void {
+    const p = this.save.profile, last = Math.max(20, p.level + 8);
+    const rows: string[] = [];
+    for (let l = 1; l <= last; l++) {
+      const st = levelStep(l);
+      const state = l < p.level ? "done" : l === p.level ? "here" : "ahead";
+      const big = st.features.map(f => `<div class="lv-feature"><span class="lv-ico">${iconSvg(FEATURE_ICON[f])}</span><span><b>${esc(t(FEATURE_NAMES[f]))}</b><small>${esc(t(FEATURE_TEXT[f]))}</small></span></div>`).join("");
+      const small = [
+        st.title ? `<span class="lv-chip title">${esc(st.title.icon)} ${esc(t(st.title.name))}</span>` : "",
+        ...st.shapes.map(n => `<span class="lv-chip shape">${iconSvg("tower")} ${esc(t(n))}</span>`),
+        st.stars ? `<span class="lv-chip">+${st.stars} ★</span>` : "",
+        st.crystals ? `<span class="lv-chip gem">+${st.crystals} 💎</span>` : "",
+      ].filter(Boolean).join("");
+      rows.push(`<li class="lv-step ${state}${st.features.length ? " has-feature" : ""}" style="--i:${l}">
+        <span class="lv-node">${state === "done" ? "✓" : l}</span>
+        <div class="lv-body">${state === "here" ? `<em class="lv-here">${esc(t("You are here"))}</em>` : ""}
+          <b class="lv-name">${esc(t("Level {n}", { n: l }))}</b>${big}${small ? `<div class="lv-chips">${small}</div>` : ""}</div>
+      </li>`);
+    }
+    $("journey-path").innerHTML = rows.join("");
   }
 
   private renderProfile(): void {
+    this.renderJourney();
     const save = this.save, p = save.profile, need = xpNeeded(p.level);
     const ti = titleFor(p.level), nt = nextTitle(p.level);
     $("profile-title").textContent = `${ti.icon} ${t(ti.name)} · ${t("Lv {n}", { n: p.level })}`;
