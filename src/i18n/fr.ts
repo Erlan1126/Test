@@ -898,4 +898,7 @@ export const FR: Record<string, string> = {
   "Tap to play the Daily": "Touche pour jouer la Quotidienne",
   "Tap to build in Zen": "Touche pour construire en Zen",
   "Mode": "Mode",
+  // ---------- Game Center ----------
+  "Game Center": "Game Center",
+  "Sign in to Game Center in your iPhone's Settings to see it here": "Connecte-toi à Game Center dans les Réglages de l'iPhone pour le voir ici",
 };

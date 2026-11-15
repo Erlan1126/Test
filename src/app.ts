@@ -36,6 +36,7 @@ import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower } from "./stats";
 import { adsReady, showRewarded } from "./ads";
+import { gameCenterAvailable, gameCenterSignIn, gameCenterSync, showGameCenter } from "./gamecenter";
 import { challengeIdFrom, createChallenge, fetchChallenge, fetchTries, postTry, type Challenge as FriendChallenge } from "./challenge";
 
 /** This phone's own shared challenges, to hear when friends try them. */
@@ -220,6 +221,8 @@ export class App implements DailyHost {
     this.persist();
     this.tutorial = !this.save.tutorialDone;
     statsOpen(this.save.profile.towers);
+    // Game Center (iPhone): sign in quietly a moment after launch, then send what's earned.
+    if (gameCenterAvailable()) setTimeout(() => void gameCenterSignIn().then(ok => { if (ok) void gameCenterSync(this.save, 0, 0); }), 2500);
     setTimeout(() => void flushStats(getLang()), 8000);
     this.sound = new Sound(() => this.save.settings);
     // Real 3D on the graphics chip when the device can; the old 2D drawing otherwise.
@@ -623,6 +626,8 @@ export class App implements DailyHost {
     $("pass-btn").addEventListener("click", () => this.daily.openPass());
     $("streak-btn").addEventListener("click", () => this.daily.openStreak());
     $("status-line").addEventListener("click", () => this.statusTap());
+    $("gc-btn").hidden = !gameCenterAvailable();
+    $("gc-btn").addEventListener("click", () => { this.sound.click(); void showGameCenter().then(ok => { if (!ok) toast(t("Sign in to Game Center in your iPhone's Settings to see it here")); }); });
     $("rank-line").addEventListener("click", () => { this.sound.ensure(); this.daily.openRanks("week"); });
     $("collect-chip").addEventListener("click", () => this.collectAll());
     $("rewards-ok").addEventListener("click", () => { $("rewards").hidden = true; this.renderMenu(); });
@@ -996,6 +1001,8 @@ export class App implements DailyHost {
     }
     void flushDiag();
     void flushStats(getLang());
+    if (this.mode === "classic" || this.mode === "daily") void gameCenterSync(this.save, run.score, run.meters);
+    else void gameCenterSync(this.save, 0, 0);
     $("over-world").hidden = true;
     $("over-world").dataset.ok = "";
     void this.submitRun();

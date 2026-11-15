@@ -1913,3 +1913,5 @@ body.busy .corner-btn b, body.busy .corner-btn span, body.busy .corner-btn svg {
 .mode-row { width: min(350px, 100%); }
 .mode-chip { flex-direction: column; gap: 2px; padding: 6px 2px; font-size: 10px; overflow: hidden; }
 .mode-chip em { font-size: 15px; line-height: 1; }
+.gc-btn { margin-left: auto; margin-right: 8px; align-self: center; padding: 8px 12px; border: 0; border-radius: 999px; background: rgba(27, 31, 74, 0.07); color: #1b1f4a; font: 400 11px/1 var(--display); letter-spacing: 0.02em; }
+.gc-btn[hidden] { display: none; }
