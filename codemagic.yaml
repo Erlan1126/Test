@@ -29,7 +29,12 @@ workflows:
           agvtool new-version -all $BUILD_NUMBER
       - name: Build the app
         script: |
-          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+          # If it fails, print Xcode's own error lines so the reason shows in this log.
+          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" || {
+            echo "===== Xcode errors ====="
+            grep -hE "error:|requires a provisioning profile|doesn't (include|support)|entitlement" /tmp/xcodebuild_logs/*.log | sort -u | head -40
+            exit 1
+          }
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
