@@ -115,6 +115,8 @@ export interface SaveData {
   /** When rent (stars) was last collected. */
   rent: { last: number };
   city: string[];
+  /** Where the player moved city buildings: building id → spot id (see cityplace.ts). */
+  cityPlace: Record<string, string>;
   league: { week: number; points: number; lastWeek: number; lastPoints: number; rewarded: number };
   /** A name shown on the leaderboard, chosen by the player. */
   nickname: string;
@@ -185,6 +187,7 @@ export function defaultSave(): SaveData {
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
     rent: { last: 0 },
     city: [],
+    cityPlace: {},
     league: { week: -1, points: 0, lastWeek: -1, lastPoints: 0, rewarded: -1 },
     nickname: "",
     onlineToken: "",
@@ -315,6 +318,8 @@ export function normalize(raw: unknown): SaveData {
     },
     rent: { last: num(obj(r.rent).last, 0, 0, 1e15) }, // a timestamp in ms, far above the default cap
     city: strList(r.city, CITY.map(c => c.id)),
+    cityPlace: Object.fromEntries(Object.entries(obj(r.cityPlace))
+      .filter((e): e is [string, string] => CITY.some(c => c.id === e[0]) && typeof e[1] === "string" && CITY.some(c => c.id === e[1]))),
     league: {
       week: int(lg.week, -1, -1e6), points: int(lg.points, 0), lastWeek: int(lg.lastWeek, -1, -1e6),
       lastPoints: int(lg.lastPoints, 0), rewarded: int(lg.rewarded, -1, -1e6),

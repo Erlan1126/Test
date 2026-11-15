@@ -494,6 +494,16 @@ export class Renderer3D {
     if (Math.abs(sc.top - span) > 2) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); }
   }
 
+  /** Where a point on the island shows on screen (page px), or null when off screen. */
+  screenOf(x: number, y: number, z: number): [number, number] | null {
+    const v = new THREE.Vector3(x, y, z);
+    if (this.island) { this.island.updateMatrixWorld(); v.applyMatrix4(this.island.matrixWorld); }
+    v.project(this.cam);
+    if (!Number.isFinite(v.x) || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) return null;
+    const r = this.gl.domElement.getBoundingClientRect();
+    return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
+  }
+
   draw(dt: number, f: Frame): void {
     const { view, env, fx } = this;
     const sim = f.sim, stack = sim.stack, n = stack.length;
@@ -642,14 +652,14 @@ export class Renderer3D {
   // ---------- Island and skyline ----------
 
   private updateIsland(f: Frame): void {
-    const key = `${f.theme.id}|${f.islandLevel}|${f.city.join()}`;
+    const key = `${f.theme.id}|${f.islandLevel}|${f.city.join()}|${JSON.stringify(f.place ?? {})}`;
     if (key === this.islandKey) return;
     this.islandKey = key;
     // The old island is thrown away only after the new one has been drawn once: its
     // shaders are then still in use and get reused, instead of being freed and compiled
     // again from scratch (a long freeze on phones).
     if (this.island) { this.scene.remove(this.island); this.oldIsland = this.island; }
-    const { group, anim } = buildIsland({ theme: f.theme, level: f.islandLevel, city: f.city });
+    const { group, anim } = buildIsland({ theme: f.theme, level: f.islandLevel, city: f.city, place: f.place });
     this.island = group;
     this.islandAnim = anim;
     this.snowable = [];

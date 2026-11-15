@@ -53,6 +53,10 @@ const EASY_TOWERS = 5;
 import { nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { burst, confetti, countUp } from "./ui/fx";
+import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
+import { CITY } from "./data/daily";
+import { BUILD_SPOTS } from "./data/spots";
+import { withIcons } from "./ui/icons";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -332,6 +336,7 @@ export class App implements DailyHost {
   private back(): boolean {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
+    if (this.moving) { this.endMove(); return true; }
     const modal = openModalEl();
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
     if (!$("rewards").hidden) { $("rewards").hidden = true; this.renderMenu(); return true; }
@@ -603,10 +608,10 @@ export class App implements DailyHost {
     }
     // Taps on the empty parts of the home screen (the sky, the island, the logo) start too.
     $("menu").addEventListener("click", e => {
-      if (this.state !== "menu" || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
+      if (this.state !== "menu" || this.moving || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
       this.start(this.homeMode);
     });
-    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl()) this.start(this.homeMode); });
+    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving) this.start(this.homeMode); });
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
@@ -615,6 +620,7 @@ export class App implements DailyHost {
     $("starter-later").addEventListener("click", () => closeModal($("starter")));
     $("starter-buy").addEventListener("click", () => void this.buyPack(STARTER_PACK));
     $("lu-ok").addEventListener("click", () => { $("levelup").hidden = true; this.sound.click(); });
+    $("place-cancel").addEventListener("click", () => { this.sound.click(); this.endMove(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
     $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });
@@ -710,6 +716,7 @@ export class App implements DailyHost {
 
   private key(e: KeyboardEvent): void {
     if (this.video) return; // recording the clip
+    if (this.moving) { if (e.code === "Escape") this.endMove(); return; }
     const modal = openModalEl();
     if (modal) {
       if (e.code === "Escape") { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); }
@@ -757,6 +764,7 @@ export class App implements DailyHost {
   // ---------- Starting and ending towers ----------
 
   private start(mode: Mode, challengeId?: string): void {
+    this.endMove();
     this.slowmo = 0;
     this.fallCam = 0;
     this.passed = null;
@@ -1344,6 +1352,75 @@ export class App implements DailyHost {
     $("dock").hidden = [...$("dock").children].every(c => (c as HTMLElement).hidden);
     void this.renderStatus(now);
     void this.renderRankLine(now);
+  }
+
+  private placeCache = { key: "", map: {} as Record<string, string> };
+  /** Where each city building stands (memoized: the frame asks every frame). */
+  private placement(): Record<string, string> {
+    const key = `${this.save.city.join()}|${JSON.stringify(this.save.cityPlace)}`;
+    if (key !== this.placeCache.key) this.placeCache = { key, map: cityPlacement(this.save) };
+    return this.placeCache.map;
+  }
+
+  private moving: string | null = null;
+  private moveLoop = 0;
+  /** Move mode: glowing spots on the island; tap one to move the building there. */
+  startMove(id: string): void {
+    if (!(this.renderer instanceof Renderer3D) || this.state !== "menu") return;
+    const b = CITY.find(c => c.id === id);
+    if (!b) return;
+    for (const m of ["city"]) if (!$(m).hidden) closeModal($(m));
+    this.moving = id;
+    this.sound.click();
+    document.body.classList.add("placing");
+    $("place-title").textContent = t("Move {name}", { name: t(b.name) });
+    $("place-sub").textContent = t("Tap a glowing spot on your island");
+    $("place-layer").hidden = false;
+    this.drawSpots();
+  }
+
+  private drawSpots(): void {
+    const id = this.moving, r = this.renderer;
+    if (!id || !(r instanceof Renderer3D)) return;
+    const box = $("place-spots"), targets = moveTargets(this.save, id), here = this.placement()[id];
+    if (box.childElementCount !== targets.length + 1) {
+      box.innerHTML = "";
+      for (const tg of [{ spot: here, other: undefined as string | undefined, cur: true }, ...targets.map(x => ({ ...x, cur: false }))]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `place-spot${tg.cur ? " here" : ""}${tg.other ? " swap" : ""}`;
+        btn.dataset.spot = tg.spot;
+        const other = tg.other ? CITY.find(c => c.id === tg.other) : null;
+        btn.innerHTML = tg.cur ? `<i aria-hidden="true">${withIcons(CITY.find(c => c.id === id)!.icon)}</i>` : other ? `<i aria-hidden="true">${withIcons(other.icon)}</i>` : "";
+        btn.setAttribute("aria-label", tg.cur ? t("Here now") : other ? t("Swap with {name}", { name: t(other.name) }) : t("Free spot"));
+        if (!tg.cur) btn.addEventListener("click", () => {
+          if (!moveBuilding(this.save, id, tg.spot)) return;
+          this.persist();
+          this.sound.unlock();
+          vibrate(this.save.settings.vibrate, [15, 30, 15]);
+          burst(btn, 16);
+          toast(t("Moved! Your island is rebuilding around it"));
+          this.endMove();
+        });
+        box.appendChild(btn);
+      }
+    }
+    for (const btn of box.querySelectorAll<HTMLElement>(".place-spot")) {
+      const sp = BUILD_SPOTS[btn.dataset.spot!];
+      const at = sp ? r.screenOf(sp.x, 0.4, sp.z) : null;
+      btn.hidden = !at;
+      if (at) btn.style.transform = `translate(${at[0]}px, ${at[1]}px)`;
+    }
+    this.moveLoop = requestAnimationFrame(() => this.drawSpots());
+  }
+
+  endMove(): void {
+    if (!this.moving) return;
+    this.moving = null;
+    cancelAnimationFrame(this.moveLoop);
+    $("place-layer").hidden = true;
+    $("place-spots").innerHTML = "";
+    document.body.classList.remove("placing");
   }
 
   /** The level-up celebration: badge, new title, rewards, and what's next. */
@@ -1998,6 +2075,7 @@ export class App implements DailyHost {
       shaders: this.shaders,
       bestFloors: this.mode === "zen" ? 0 : Math.round(this.save.bestMeters / 5),
       city: save.city,
+      place: this.placement(),
       hudBottom: this.state === "playing" || this.state === "paused" ? this.hudBottom : 0,
       ghost: this.ghost && (this.state === "playing" || this.state === "paused")
         ? { floors: ghostFloors(this.ghost.pace, this.sim.ticks), total: this.ghost.pace.length, name: this.ghost.name } : null,

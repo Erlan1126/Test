@@ -33,10 +33,13 @@ export interface IslandOptions {
   /** How many island upgrades are built (fountain, pond, neighbors, traffic, wheel, balloons). */
   level: number;
   city: string[];
+  /** Where each city building stands: building id → spot id (see logic/cityplace.ts). */
+  place?: Record<string, string>;
 }
 
 export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: IslandAnim } {
   const t = o.theme, g = new THREE.Group(), has = (i: number) => o.level > i;
+  const spotOf = (id: string) => BUILD_SPOTS[o.place?.[id] ?? id];
   const anims: ((time: number, night: number) => void)[] = [];
 
   // ---- Ground: lawn on a slab of dirt with a grassy lip, rock tapering below ----
@@ -220,7 +223,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     !(has(0) && near(tr.x, tr.z, FOUNTAIN.x, FOUNTAIN.z, 2)) && !(has(1) && near(tr.x, tr.z, POND.x, POND.z, POND.r + 1))
     && !(has(4) && near(tr.x, tr.z, WHEEL.x, WHEEL.z, 3))
     && !(has(6) && near(tr.x, tr.z, 20.5, 4.5, 1.8)) && !(has(7) && Math.abs(tr.x - POND.x) < 1.8 && tr.z > POND.z) && !(has(11) && near(tr.x, tr.z, -16, -9.5, 2))
-    && !o.city.some(id => { const s = BUILD_SPOTS[id]; return s && near(tr.x, tr.z, s.x, s.z, s.r + 0.6); })
+    && !o.city.some(id => { const s = spotOf(id); return s && near(tr.x, tr.z, s.x, s.z, s.r + 0.6); })
     && !(has(2) && EXTRA_NEIGHBORS.some(b => tr.x > b.x0 - 1 && tr.x < b.x1 + 1 && tr.z > b.z0 - 1 && tr.z < b.z1 + 1)));
   g.add(treeInstances(trees, t));
 
@@ -236,7 +239,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     || (has(4) && near(x, z, WHEEL.x, WHEEL.z, r + 3.2))
     || HOUSES.some(([hx, hz]) => x > hx - 2.2 - r && x < hx + 2.2 + r && z > hz - 2 - r && z < hz + 2.6 + r)
     || [...NEIGHBORS, ...(has(2) ? EXTRA_NEIGHBORS : [])].some(b => inBox(x, z, b, r + 0.6))
-    || o.city.some(id => { const sp = BUILD_SPOTS[id]; return !!sp && near(x, z, sp.x, sp.z, sp.r + r + 0.5); })
+    || o.city.some(id => { const sp = spotOf(id); return !!sp && near(x, z, sp.x, sp.z, sp.r + r + 0.5); })
     || (has(6) && near(x, z, 20.5, 4.5, r + 1.6))
     || (has(7) && Math.abs(x - POND.x) < 1.6 + r && z > POND.z)
     || (has(11) && near(x, z, -16, -9.5, r + 1.8));
@@ -423,9 +426,9 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
 
   // ---- City buildings ----
   for (const id of o.city) {
-    const s = BUILD_SPOTS[id];
+    const s = spotOf(id);
     if (!s) continue;
-    const b = cityBuilding(id, anims);
+    const b = cityBuilding(id, anims, s);
     b.position.set(s.x, 0, s.z);
     g.add(shadowed(b));
   }
@@ -523,7 +526,7 @@ function waterTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-function cityBuilding(id: string, anims: ((t: number, n: number) => void)[]): THREE.Group {
+function cityBuilding(id: string, anims: ((t: number, n: number) => void)[], spot: { x: number; z: number } = BUILD_SPOTS[id]): THREE.Group {
   const g = new THREE.Group();
   const add = (geo: THREE.BufferGeometry, c: string, o: THREE.MeshStandardMaterialParameters = {}) => { const m = new THREE.Mesh(geo, std(c, o)); g.add(m); return m; };
   switch (id) {
@@ -727,7 +730,7 @@ function cityBuilding(id: string, anims: ((t: number, n: number) => void)[]): TH
       anims.push(t => {
         const a = t * 0.05, R = 24;
         // The building group sits at the mast; move the ship relative to the island centre.
-        ship.position.set(Math.cos(a) * R - BUILD_SPOTS.airship.x, 16 + Math.sin(t * 0.4) * 0.6, Math.sin(a) * R - BUILD_SPOTS.airship.z);
+        ship.position.set(Math.cos(a) * R - spot.x, 16 + Math.sin(t * 0.4) * 0.6, Math.sin(a) * R - spot.z);
         ship.rotation.y = -a - Math.PI / 2;
       });
       break;

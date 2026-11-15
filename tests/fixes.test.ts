@@ -223,3 +223,27 @@ describe("Starter Pack", () => {
     expect(grantPack(save, "starter_pack", "gp:1")).toBe(0);
   });
 });
+
+import { cityPlacement, moveBuilding, moveTargets } from "../src/logic/cityplace";
+describe("moving city buildings", () => {
+  it("swaps two buildings and keeps every spot used once", () => {
+    const save = { city: ["cafe", "windmill", "statue"], cityPlace: {} as Record<string, string> };
+    expect(moveTargets(save, "cafe").some(t => t.spot === "windmill" && t.other === "windmill")).toBe(true);
+    expect(moveBuilding(save as never, "cafe", "windmill")).toBe(true);
+    const p = cityPlacement(save);
+    expect(p.cafe).toBe("windmill");
+    expect(p.windmill).toBe("cafe");
+    expect(new Set(Object.values(p)).size).toBe(3);
+  });
+  it("gives a building bought later a free spot when its own is taken", () => {
+    const save = { city: ["cafe", "playground"], cityPlace: { cafe: "playground" } as Record<string, string> };
+    const p = cityPlacement(save);
+    expect(p.cafe).toBe("playground");
+    expect(p.playground).not.toBe("playground");
+    expect(p.playground).toBeTruthy();
+  });
+  it("never puts the stadium in a spot too small for it", () => {
+    const save = { city: ["stadium"], cityPlace: {} as Record<string, string> };
+    expect(moveTargets(save, "stadium").length).toBe(0);
+  });
+});

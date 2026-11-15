@@ -909,4 +909,13 @@ export const FR: Record<string, string> = {
   "FEVER x2 · {n} floors": "FIÈVRE x2 · {n} étages",
   "Fever {n}/{max}": "Fièvre {n}/{max}",
   "Your first tower!": "Ta première tour !",
+  "Move": "Déplacer",
+  "Move {name}": "Déplacer {name}",
+  "Tap a glowing spot on your island": "Touche un emplacement lumineux sur ton île",
+  "Here now": "Ici maintenant",
+  "Swap with {name}": "Échanger avec {name}",
+  "Free spot": "Emplacement libre",
+  "Moved! Your island is rebuilding around it": "Déplacé ! Ton île se réorganise autour",
+  "Move {name} on your island": "Déplacer {name} sur ton île",
+  "Done": "Terminé",
 };

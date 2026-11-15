@@ -56,6 +56,8 @@ export interface Host {
   openStarter(): void;
   /** Spends crystals on a premium item. */
   buyItem(product: Product): void;
+  /** Lets the player pick where a city building stands on the island. */
+  startMove(id: string): void;
 }
 
 const isShopSkin = (s: Skin) => !!s.unlock && "price" in s.unlock;

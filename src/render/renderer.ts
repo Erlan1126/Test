@@ -52,6 +52,8 @@ export interface Frame {
   bestFloors: number;
   /** City buildings on the island. */
   city: string[];
+  /** Where each city building stands (building id → spot id). */
+  place?: Record<string, string>;
   /** A ghost tower to race: how many floors it has built so far, and whose it is. */
   ghost?: { floors: number; total: number; name: string } | null;
 }
