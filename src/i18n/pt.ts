@@ -908,4 +908,5 @@ export const PT: Record<string, string> = {
   "{n} more perfect drops for the next one": "Mais {n} quedas perfeitas para a próxima",
   "FEVER x2 · {n} floors": "FEBRE x2 · {n} andares",
   "Fever {n}/{max}": "Febre {n}/{max}",
+  "Your first tower!": "Sua primeira torre!",
 };

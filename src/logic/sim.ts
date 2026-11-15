@@ -260,7 +260,9 @@ export class TowerSim {
   wouldBePerfect(): boolean {
     const m = this.mover;
     if (!m) return false;
-    const k = (m.kind === "magnet" ? 2.5 : 1) * (this.powers.wide > 0 ? 2 : 1) * (this.feverLeft > 0 ? 1.35 : 1);
+    // A new player's practice towers (never ranked) forgive a lot more on the first floors.
+    const easy = this.cfg.easy && (this.cfg.rules ?? 1) >= 5 && this.level <= 10 ? 2 : 1;
+    const k = (m.kind === "magnet" ? 2.5 : 1) * (this.powers.wide > 0 ? 2 : 1) * (this.feverLeft > 0 ? 1.35 : 1) * easy;
     return Math.abs(this.offset()) <= perfectWindow(m.v) * k;
   }
 

@@ -1520,6 +1520,9 @@ export class App implements DailyHost {
     eyebrow.textContent = c ? (won ? t("Stage complete!") : t("Stage failed"))
       : mode === "zen" ? t("Zen tower") : mode === "daily" ? t("Daily tower #{n}", { n: this.runDay }) : o.newBest ? t("New best!") : t("Tower complete");
     eyebrow.classList.toggle("best", (o.newBest && mode !== "zen") || won);
+    // A new player's very first tower is a big moment.
+    const first = save.profile.towers === 1 && !c && mode !== "zen";
+    if (first) { eyebrow.textContent = t("Your first tower!"); eyebrow.classList.add("best"); }
     if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => { if (this.state === "over") this.showLevelUp(o.levelUp!); }, 700); }
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
@@ -1529,7 +1532,7 @@ export class App implements DailyHost {
     else {
       people.textContent = "0";
       countUp(people, sim.score, 900, fmt);
-      if ((o.newBest && mode !== "zen") || won) setTimeout(() => { if (this.state === "over") confetti(people); }, 500);
+      if ((o.newBest && mode !== "zen") || won || first) setTimeout(() => { if (this.state === "over") { confetti(people); if (first) this.sound.unlock(); } }, 500);
     }
     $("over-sub").textContent = t("people live in your {m} m tower · {n} floors", { m: sim.meters, n: sim.level });
     $("over-landmark").textContent = c ? (won ? `${"★".repeat(save.journey[c.id] ?? 1)}${"☆".repeat(3 - (save.journey[c.id] ?? 1))}  ${stageName(c.id)}` : stageGoal(c))
