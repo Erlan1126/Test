@@ -104,3 +104,63 @@ describe("Skyhaven Tycoon", () => {
     expect(coins(1e40)).toMatch(/^10\\.0[a-z]{2}$|^10.0[a-z]{2}$/);
   });
 });
+
+import { STAGE_NAMES } from "../src/data/tycoon";
+import { nextStage, payOf, rushOn, stageName, stageOf, startRush, vipTip } from "../src/logic/tycoon";
+
+describe("tycoon evolution and live events", () => {
+  it("businesses grow through five named stages", () => {
+    expect([1, 24, 25, 99, 100, 200, 399, 400, 9999].map(stageOf)).toEqual([0, 0, 1, 1, 2, 3, 3, 4, 4]);
+    expect(stageName("coffee", 1)).toBe("Coffee Cart");
+    expect(stageName("coffee", 25)).toBe("Coffee Shop");
+    expect(stageName("mall", 400)).toBe("Mall Empire");
+    expect(nextStage(1)).toBe(25);
+    expect(nextStage(150)).toBe(200);
+    expect(nextStage(400)).toBeUndefined();
+    for (const b of BUSINESSES) {
+      expect(STAGE_NAMES[b.id]).toHaveLength(5);
+      expect(STAGE_NAMES[b.id][0]).toBe(b.name);
+    }
+  });
+
+  it("rush hour triples one business for a while, and only once at a time", () => {
+    const s = defaultSave();
+    const b = BUSINESSES[0], before = payOf(s, b, T0);
+    expect(startRush(s, T0, () => 0)).toBe("coffee");
+    expect(rushOn(s, "coffee", T0 + 1000)).toBe(true);
+    expect(payOf(s, b, T0 + 1000)).toBeCloseTo(before * 3);
+    expect(startRush(s, T0 + 2000)).toBe("");
+    expect(rushOn(s, "coffee", T0 + 46_000)).toBe(false);
+    expect(payOf(s, b, T0 + 46_000)).toBeCloseTo(before);
+  });
+
+  it("a rush doesn't count for a long stretch away", () => {
+    const s = defaultSave();
+    s.tycoon.managers = ["coffee"];
+    s.tycoon.runs.coffee = T0;
+    startRush(s, T0, () => 0);
+    s.tycoon.rush.until = T0 + 10 * 3600e3; // even a bad value: away 1h earns normal pay
+    const plain = defaultSave();
+    plain.tycoon.managers = ["coffee"];
+    plain.tycoon.runs.coffee = T0;
+    expect(tick(s, T0 + 3600e3)).toBeCloseTo(tick(plain, T0 + 3600e3));
+  });
+
+  it("a VIP tips about twenty seconds of earnings", () => {
+    const s = defaultSave();
+    const b = BUSINESSES[0];
+    const tip = vipTip(s, "coffee", T0);
+    expect(tip).toBeCloseTo((payOf(s, b, T0) / cycleOf(b, 1)) * 20);
+    expect(s.tycoon.coins).toBeCloseTo(tip);
+    expect(vipTip(s, "spaceport", T0)).toBe(0);
+  });
+
+  it("a saved rush survives loading, a bad one is dropped", () => {
+    const a = defaultSave();
+    a.tycoon.rush = { id: "coffee", until: T0 };
+    expect(normalize(JSON.parse(JSON.stringify(a))).tycoon.rush).toEqual({ id: "coffee", until: T0 });
+    const bad = JSON.parse(JSON.stringify(a));
+    bad.tycoon.rush = { id: "nope", until: "x" };
+    expect(normalize(bad).tycoon.rush.id).toBe("");
+  });
+});

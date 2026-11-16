@@ -60,3 +60,23 @@ export function coins(n: number): string {
   const a = "abcdefghijklmnopqrstuvwxyz";
   return txt + a[Math.floor(tier / 26) % 26] + a[tier % 26];
 }
+
+/** Every business grows through five stages as it levels up: a stand becomes a shop, a
+ *  store, a flagship and finally an empire. Each stage has its own name and a bigger,
+ *  richer room. */
+export const STAGE_AT = [1, 25, 100, 200, 400];
+export const STAGE_LABEL = ["Stand", "Shop", "Store", "Flagship", "Empire"];
+export const STAGE_NAMES: Record<string, string[]> = {
+  coffee: ["Coffee Cart", "Coffee Shop", "Corner Café", "Coffee House", "Coffee Empire"],
+  flowers: ["Flower Kiosk", "Flower Shop", "Garden Boutique", "Botanical Hall", "Bloom Empire"],
+  bakery: ["Cloud Bakery", "Bakery Shop", "Patisserie", "Grand Bakery", "Pastry Empire"],
+  pizza: ["Pizza Place", "Pizzeria", "Trattoria", "Pizza Palace", "Pizza Empire"],
+  cinema: ["Sky Cinema", "Movie Theater", "Multiplex", "Cinema Plaza", "Film Studio"],
+  hotel: ["Cloud Hotel", "Boutique Hotel", "Grand Hotel", "Luxury Resort", "Hotel Empire"],
+  mall: ["Sky Mall", "Shopping Center", "Mega Mall", "Shopping Plaza", "Mall Empire"],
+  airport: ["Airship Port", "Airfield", "Sky Airport", "Air Hub", "Sky Gateway"],
+  casino: ["Star Casino", "Game Hall", "Grand Casino", "Casino Resort", "Casino Empire"],
+  spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate"],
+};
+/** Rush hour: one business earns this many times more for a short while. */
+export const RUSH_MULT = 3, RUSH_SECONDS = 45;

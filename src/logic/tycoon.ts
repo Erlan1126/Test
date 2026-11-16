@@ -1,6 +1,6 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
-import { BUSINESSES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, WARP_24H_CRYSTALS, WARP_4H_CRYSTALS, type Business } from "../data/tycoon";
+import { BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, WARP_24H_CRYSTALS, WARP_4H_CRYSTALS, type Business } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { vipActive } from "./vip";
 
@@ -20,10 +20,12 @@ export interface TycoonState {
   eras: number;
   /** Floors built in towers that count as offices (not Zen, which never ends). */
   floors: number;
+  /** Rush hour: a business earning extra until a time. */
+  rush: { id: string; until: number };
 }
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0 });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 } });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -44,7 +46,34 @@ export const nextMilestone = (level: number): number | undefined => MILESTONES_A
 /** Seconds per cycle at a level. */
 export const cycleOf = (b: Business, level: number): number => b.cycle / Math.pow(2, milestonesAt(level));
 /** Coins one cycle pays right now. */
-export const payOf = (s: SaveData, b: Business, now = Date.now()): number => b.income * levelOf(s, b.id) * multiplier(s, now);
+export const payOf = (s: SaveData, b: Business, now = Date.now()): number =>
+  b.income * levelOf(s, b.id) * multiplier(s, now) * (rushOn(s, b.id, now) ? RUSH_MULT : 1);
+
+/** Is a business in its rush hour right now? */
+export const rushOn = (s: SaveData, id: string, now = Date.now()): boolean => s.tycoon.rush.id === id && s.tycoon.rush.until > now;
+
+/** Starts a rush hour on a random business the player owns (returns its id, or ""). */
+export function startRush(s: SaveData, now = Date.now(), rnd = Math.random): string {
+  const owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
+  if (!owned.length || s.tycoon.rush.until > now) return "";
+  const b = owned[Math.floor(rnd() * owned.length)];
+  s.tycoon.rush = { id: b.id, until: now + RUSH_SECONDS * 1000 };
+  return b.id;
+}
+
+/** A business's stage (0 = stand ... 4 = empire) and the name it has at that stage. */
+export const stageOf = (level: number): number => Math.max(0, STAGE_AT.filter(a => level >= a).length - 1);
+export const stageName = (id: string, level: number): string => STAGE_NAMES[id]?.[stageOf(level)] ?? id;
+export const nextStage = (level: number): number | undefined => STAGE_AT.find(a => a > level && a > 1);
+
+/** A VIP customer's tip: about twenty seconds of what the business earns. */
+export function vipTip(s: SaveData, id: string, now = Date.now()): number {
+  const b = businessById(id);
+  if (!b || levelOf(s, id) === 0) return 0;
+  const n = (payOf(s, b, now) / cycleOf(b, levelOf(s, id))) * 20;
+  earn(s, n);
+  return n;
+}
 
 /** Coins a second from businesses that run by themselves (managed). */
 export function perSecond(s: SaveData, now = Date.now()): number {
@@ -141,7 +170,9 @@ export function tick(s: SaveData, now = Date.now()): number {
     if (t.managers.includes(b.id)) {
       const elapsed = now - start, counted = Math.min(elapsed, capMs);
       const k = Math.floor(counted / c);
-      if (k > 0) total += k * payOf(s, b, now);
+      // (A rush hour only counts while it lasts, not for a whole stretch away.)
+      const pay = rushOn(s, b.id, now) && counted > RUSH_SECONDS * 1000 ? payOf(s, b, now) / RUSH_MULT : payOf(s, b, now);
+      if (k > 0) total += k * pay;
       // Keep the part-done cycle; time past the cap is simply lost.
       t.runs[b.id] = now - (elapsed % c);
     } else if (now - start >= c) {

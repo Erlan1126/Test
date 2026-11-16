@@ -1,12 +1,12 @@
 // The Tycoon screens: the business list (tap to run, buy levels, hire managers), boosts,
 // the New Era, the live card on the home screen and the "while you were away" welcome.
-import { BUSINESSES, coins, COIN_BOOST_CRYSTALS, WARP_24H_CRYSTALS, WARP_4H_CRYSTALS } from "../data/tycoon";
+import { BUSINESSES, coins, RUSH_MULT, STAGE_LABEL, COIN_BOOST_CRYSTALS, WARP_24H_CRYSTALS, WARP_4H_CRYSTALS } from "../data/tycoon";
 import { t } from "../i18n";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
-  payOf, perSecond, progressOf, runOnce, tick, timeWarp, unlockedBusiness,
+  payOf, perSecond, progressOf, runOnce, rushOn, stageName, stageOf, nextStage, startRush, tick, timeWarp, unlockedBusiness, vipTip,
 } from "../logic/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, toast, vibrate, wireModal } from "./dom";
@@ -35,6 +35,12 @@ export class TycoonUI {
   private pending = 0;
   private lastP = new Map<string, number>();
   private lastPop = new Map<string, number>();
+  /** A VIP customer waiting in a room to be tapped, and when the next ones come. */
+  private vip = { id: "", until: 0 };
+  private nextVip = 0;
+  private nextRush = 0;
+  private rushWas = "";
+  private vipFresh = false;
 
   constructor(private readonly host: TycoonHost) {
     wireModal($("tycoon"));
@@ -59,6 +65,9 @@ export class TycoonUI {
     tick(this.save);
     this.render();
     openModal($("tycoon"));
+    const now = Date.now();
+    this.nextVip = Math.max(this.nextVip, now + 6000);
+    this.nextRush = Math.max(this.nextRush, now + 35000);
     cancelAnimationFrame(this.loop);
     const frame = () => {
       if ($("tycoon").hidden) { this.host.persist(); return; }
@@ -97,8 +106,81 @@ export class TycoonUI {
       const hire = row.querySelector<HTMLButtonElement>(".ty-hire");
       if (hire) hire.disabled = this.save.tycoon.coins < b.manager;
     }
+    this.events(now);
     // Refresh the labels every half second or so (prices change as coins grow).
     if (this.pending && now % 500 < 20) { this.pending = 0; this.render(); }
+  }
+
+  /** Live moments while the tower is open: VIP customers to tap and rush hours. */
+  private events(now: number): void {
+    const s = this.save, owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
+    if (!owned.length) return;
+    // A VIP walks into a random business; tap them before they leave for a big tip.
+    if (this.vip.id && this.vip.until < now) {
+      this.vip.id = "";
+      document.querySelector("#ty-list .vip")?.remove();
+    }
+    if (!this.vip.id && now > this.nextVip) {
+      const b = owned[Math.floor(Math.random() * owned.length)];
+      this.vip = { id: b.id, until: now + 9000 };
+      this.vipFresh = true;
+      this.nextVip = now + 22000 + Math.random() * 20000;
+      this.render();
+    }
+    // Rush hour: one business earns ×3 for a while.
+    if (now > this.nextRush) {
+      this.nextRush = now + 100000 + Math.random() * 60000;
+      const id = startRush(s, now);
+      if (id) {
+        const b = BUSINESSES.find(x => x.id === id)!;
+        toast(t("Rush hour at {name}! ×{n} for a while", { name: t(stageName(id, levelOf(s, id))), n: RUSH_MULT }));
+        this.host.sound.unlock();
+        this.render();
+        $("ty-list").querySelector(`[data-id="${b.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+    const rush = rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "";
+    if (rush !== this.rushWas) { this.rushWas = rush; this.render(); }
+    if (rush) {
+      const left = $("ty-list").querySelector(".rush-tag i");
+      if (left) left.textContent = `${Math.ceil((s.tycoon.rush.until - now) / 1000)}s`;
+    }
+  }
+
+  /** A business grew into its next stage: a big moment. */
+  private evolve(id: string, from: number, to: number): void {
+    const b = BUSINESSES.find(x => x.id === id)!;
+    let el = document.getElementById("evolve");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "evolve";
+      el.setAttribute("role", "alert");
+      document.body.appendChild(el);
+    }
+    el.style.setProperty("--b1", b.color[0]);
+    el.style.setProperty("--b2", b.color[1]);
+    const stage = stageOf(to);
+    el.innerHTML = `<div class="evo-card">
+      <small>${esc(t("Your business evolved!"))}</small>
+      <div class="evo-from">${esc(t(stageName(id, from)))}</div>
+      <div class="evo-arrow">▼</div>
+      <div class="evo-icon">${iconSvg(b.icon)}</div>
+      <b class="evo-to">${esc(t(stageName(id, to)))}</b>
+      <span class="evo-stars">${"★".repeat(stage + 1)}<em>${"★".repeat(4 - stage)}</em></span>
+      <span class="evo-label">${esc(t(STAGE_LABEL[stage]))}</span>
+      <button type="button" class="btn btn-primary">${esc(t("Amazing!"))}</button>
+    </div>`;
+    el.hidden = false;
+    el.classList.remove("show");
+    void el.offsetWidth;
+    el.classList.add("show");
+    const close = () => { el!.hidden = true; el!.classList.remove("show"); };
+    el.querySelector("button")!.addEventListener("click", () => { this.host.sound.click(); close(); });
+    el.onclick = e => { if (e.target === el) close(); };
+    this.host.sound.unlock();
+    fireworks(4, () => this.host.sound.firework());
+    confetti();
+    vibrate(this.save.settings.vibrate, [20, 40, 20]);
   }
 
   render(): void {
@@ -122,18 +204,27 @@ export class TycoonUI {
       const n = this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount;
       const price = costOf(b, lv, n), next = nextMilestone(lv);
       const row = document.createElement("div");
-      row.className = `ty-biz room${owned ? "" : " locked"}${managed ? " managed" : ""}`;
+      const stage = owned ? stageOf(lv) : 0, rush = owned && rushOn(s, b.id, now), name = t(stageName(b.id, Math.max(1, lv)));
+      row.className = `ty-biz room st${stage}${owned ? "" : " locked"}${managed ? " managed" : ""}${rush ? " rush" : ""}`;
       if (owned) row.dataset.id = b.id;
       row.style.setProperty("--b1", b.color[0]);
       row.style.setProperty("--b2", b.color[1]);
-      const people = owned ? Math.min(6, 1 + Math.floor(Math.log2(lv + 1))) : 0;
-      const props = (PROPS[b.id] ?? [b.icon]).map((ic, k) => `<span class="rp rp${k}">${iconSvg(ic)}</span>`).join("");
+      // Bigger businesses: more customers and more things in the room.
+      const people = owned ? Math.min(3 + stage * 2, 1 + Math.floor(Math.log2(lv + 1))) : 0;
+      const pr = PROPS[b.id] ?? [b.icon];
+      const props = Array.from({ length: Math.min(5, 2 + stage) }, (_, k) => `<span class="rp rp${k}">${iconSvg(pr[k % pr.length])}</span>`).join("");
+      const ns = owned ? nextStage(lv) : undefined;
+      const vip = owned && this.vip.id === b.id && this.vip.until > now;
       const walkers = Array.from({ length: people }, (_, k) =>
         `<i class="walker" style="--d:${(k * 1.7) % 5}s;--t:${5 + ((k * 3) % 4)}s;--x:${12 + ((k * 37) % 60)}%;--shirt:${SHIRTS[(k + i) % SHIRTS.length]}">${PERSON}</i>`).join("");
       row.innerHTML = `
-        <button type="button" class="room-scene" aria-label="${esc(owned ? t("Run {name}", { name: t(b.name) }) : t(b.name))}">
+        <button type="button" class="room-scene" aria-label="${esc(owned ? t("Run {name}", { name }) : name)}">
           <span class="room-wall"></span><span class="room-window"></span>
-          <span class="room-sign">${iconSvg(b.icon)}<b>${esc(t(b.name))}</b></span>
+          ${stage >= 1 ? `<span class="room-awning"></span>` : ""}${stage >= 2 ? `<span class="room-light"></span>` : ""}${stage >= 4 ? `<span class="room-chand"></span><span class="room-sparkle"></span>` : ""}
+          <span class="room-sign">${iconSvg(b.icon)}<b>${esc(name)}</b></span>
+          ${owned ? `<span class="room-stars" aria-label="${esc(t(STAGE_LABEL[stage]))}">${"★".repeat(stage + 1)}</span>` : ""}
+          ${rush ? `<span class="rush-tag">${esc(t("RUSH ×{n}", { n: RUSH_MULT }))} <i></i></span>` : ""}
+          ${vip ? `<span class="vip${this.vipFresh ? " fresh" : ""}" role="button" aria-label="${esc(t("VIP customer: tap for a tip"))}"><i>VIP</i>${PERSON_VIP}<em>${esc(t("Tap!"))}</em></span>` : ""}
           ${owned ? `<span class="room-props">${props}</span>${walkers}` : `<span class="room-lease">${esc(t("For lease"))}</span>`}
           ${managed ? `<i class="walker boss" style="--x:78%">${PERSON_BOSS}</i>` : ""}
           ${owned ? `<b class="room-level">${esc(t("{n} floors", { n: fmt(lv) }))}</b>` : ""}
@@ -142,10 +233,23 @@ export class TycoonUI {
           <div class="ty-prog"><i></i><span>${owned ? esc(coins(payOf(s, b, now))) : esc(t("Opens with {n}", { n: coins(b.income * multiplier(s, now)) }))}</span></div>
         </button>
         <div class="room-bar">
-          <small>${owned ? esc(next ? t("{n} floors: twice as fast", { n: next }) : t("Top speed!")) + " · " + esc(fmtSec(cycleOf(b, lv))) : esc(t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }))}</small>
+          <small>${owned ? (ns && ns <= (next ?? Infinity) ? `<span class="grow">${esc(t("Grows into {name} at {n}", { name: t(stageName(b.id, ns)), n: ns }))}</span>` : esc(next ? t("{n} floors: twice as fast", { n: next }) : t("Top speed!"))) + " · " + esc(fmtSec(cycleOf(b, lv))) : esc(t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }))}</small>
           ${owned && !managed ? `<button type="button" class="ty-hire">${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : managed ? `<span class="ty-auto">${esc(t("Auto"))}</span>` : ""}
           <button type="button" class="buy ty-buy"><small>${esc(owned ? t("Buy ×{n}", { n: fmt(n) }) : t("Open"))}</small>${COIN_SVG}${esc(coins(price))}</button>
         </div>`;
+      row.querySelector(".vip")?.addEventListener("click", e => {
+        e.stopPropagation();
+        const tip = vipTip(s, b.id);
+        this.vip.id = "";
+        const box = row.querySelector(".room-pops")!;
+        for (let k = 0; k < 6; k++) setTimeout(() => popCoin(box, k === 0 ? coins(tip) : ""), k * 90);
+        burst(e.currentTarget as Element, 18);
+        this.host.sound.coins();
+        vibrate(s.settings.vibrate, 15);
+        toast(t("A VIP tipped {n} coins!", { n: coins(tip) }));
+        this.host.persist();
+        setTimeout(() => this.render(), 600);
+      });
       row.querySelector(".room-scene")!.addEventListener("click", e => {
         if (!owned) return;
         if (runOnce(s, b.id)) { this.host.sound.click(); burst(e.currentTarget as Element, 6); vibrate(s.settings.vibrate, 8); }
@@ -164,8 +268,9 @@ export class TycoonUI {
         const crossed = nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
         this.host.sound.coins();
         burst(e.currentTarget as Element, crossed ? 20 : 8);
+        if (owned && stageOf(lv + got) > stageOf(lv)) { this.host.persist(); this.render(); this.evolve(b.id, lv, lv + got); return; }
         if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(row); }
-        else if (crossed) { toast(t("{name} now runs twice as fast!", { name: t(b.name) })); fireworks(2, () => this.host.sound.firework()); }
+        else if (crossed) { toast(t("{name} now runs twice as fast!", { name: t(stageName(b.id, lv + got)) })); fireworks(2, () => this.host.sound.firework()); }
         this.host.persist();
         this.render();
       });
@@ -174,7 +279,7 @@ export class TycoonUI {
         if (!hireManager(s, b.id)) { this.host.sound.click(); return; }
         this.host.sound.unlock();
         burst(e.currentTarget as Element, 16);
-        toast(t("A manager now runs {name}, even while you're away", { name: t(b.name) }));
+        toast(t("A manager now runs {name}, even while you're away", { name }));
         this.host.persist();
         this.render();
       });
@@ -182,6 +287,7 @@ export class TycoonUI {
     });
     // Newest business on top, like floors built up over time.
     for (const r of rooms.reverse()) list.appendChild(r);
+    this.vipFresh = false;
     list.insertAdjacentHTML("beforeend", `<div class="tw-lobby"><span class="tw-door"></span><span class="tw-door"></span><b>${esc(t("Lobby"))}</b></div>`);
     this.renderBoosts();
     this.renderEra();
@@ -326,13 +432,15 @@ const PROPS: Record<string, string[]> = {
 const SHIRTS = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff", "#ff8a5c"];
 /** A little office worker (shirt color from --shirt). */
 const PERSON = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f6c49e"/><path d="M6 5q4-5 8 0" fill="#5a3a22"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="var(--shirt)"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
+/** A VIP customer: sunglasses, a gold jacket. */
+const PERSON_VIP = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#e8b48a"/><path d="M5 5q5-5 10 0v-1q-5-4-10 0z" fill="#1c1640"/><rect x="5.5" y="6" width="9" height="2.6" rx="1.2" fill="#1c1640"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#ffc93c"/><path d="M10 14l-2 18h4z" fill="#fff3b0"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
 /** The manager: a suit and a red tie. */
 const PERSON_BOSS = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f2c39a"/><path d="M5 6q5-6 10 0v-2q-5-4-10 0z" fill="#3a3a4a"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#2a3590"/><path d="M10 14l-2 3 2 9 2-9z" fill="#e8334f"/><path d="M8 14h4l-2 2z" fill="#fff"/></svg>`;
 
 function popCoin(box: Element, text: string): void {
   const el = document.createElement("span");
   el.className = "coin-pop";
-  el.innerHTML = `${COIN_SVG}+${text}`;
+  el.innerHTML = text ? `${COIN_SVG}+${text}` : COIN_SVG;
   el.style.left = `${20 + Math.random() * 50}%`;
   box.appendChild(el);
   setTimeout(() => el.remove(), 1100);

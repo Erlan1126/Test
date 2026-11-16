@@ -2605,3 +2605,86 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 .room-level { top: 16px !important; left: 41% !important; z-index: 2; }
 .room-props { z-index: 0; }
 .room-level { top: 40px !important; left: calc(8% + 4px) !important; font-size: 10px !important; padding: 1px 7px !important; }
+
+/* ── Tycoon: businesses grow through five stages ─────────────────────────────── */
+.room.st1 .room-scene { height: 126px; }
+.room.st2 .room-scene { height: 136px; }
+.room.st3 .room-scene { height: 146px; }
+.room.st4 .room-scene { height: 158px; }
+/* Shop: a striped awning over the window. */
+.room-awning { position: absolute; top: 6px; left: calc(8% - 6px); width: calc(30% + 12px); height: 14px; border-radius: 4px 4px 8px 8px; z-index: 1;
+  background: repeating-linear-gradient(90deg, var(--b2) 0 10px, #fff 10px 20px); box-shadow: 0 3px 4px rgba(0, 0, 0, 0.18); }
+/* Store: wood floor and a warm spotlight. */
+.room.st2 .room-scene, .room.st3 .room-scene { background:
+  linear-gradient(180deg, color-mix(in srgb, var(--b1) 30%, #fff) 0%, color-mix(in srgb, var(--b1) 50%, #fff) 72%, transparent 72.5%),
+  repeating-linear-gradient(90deg, #a8703e 0 22px, #94602f 22px 24px); }
+.room-light { position: absolute; top: 0; left: 44%; width: 46%; height: 100%; pointer-events: none;
+  background: radial-gradient(60% 70% at 50% 0%, rgba(255, 240, 180, 0.55), transparent 70%); }
+/* Flagship: a glass storefront with a neon glow. */
+.room.st3 .room-window { width: 36%; height: 52px; background: linear-gradient(160deg, #bfe8ff, #e9f7ff 45%, #9ed8ff 46%, #d8f1ff); }
+.room.st3 .room-sign, .room.st4 .room-sign { box-shadow: 0 0 0 2px #fff, 0 0 14px var(--b1), 0 0 26px color-mix(in srgb, var(--b1) 60%, transparent); }
+/* Empire: marble, gold trim, a chandelier and sparkles. */
+.room.st4 { border-top-color: #ffc93c !important; }
+.room.st4 .room-scene { background:
+  linear-gradient(180deg, #fffaf0 0%, color-mix(in srgb, var(--b1) 25%, #fff6e0) 72%, #c99a2e 72%, #c99a2e 73.5%, transparent 73.5%),
+  linear-gradient(135deg, #f4efe6 25%, #e6dccb 25% 50%, #f4efe6 50% 75%, #e6dccb 75%) 0 0 / 28px 28px; }
+.room.st4 .room-window { width: 38%; height: 58px; box-shadow: inset 0 0 0 3px #ffd95e, 0 2px 8px rgba(160, 110, 0, 0.3); }
+.room-chand { position: absolute; top: 0; left: 62%; width: 30px; height: 26px; z-index: 1;
+  background: radial-gradient(circle at 50% 75%, #fff8d0 0 5px, transparent 6px), linear-gradient(#c99a2e, #c99a2e) 50% 0 / 2px 12px no-repeat,
+  radial-gradient(ellipse at 50% 80%, #ffd95e 0 13px, transparent 14px); filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.9)); }
+.room-sparkle { position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: radial-gradient(circle at 20% 30%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 70% 20%, #fff 0 1.5px, transparent 2px),
+  radial-gradient(circle at 85% 55%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 40% 60%, #fff 0 1.5px, transparent 2px);
+  animation: sparkle-tw 2.4s ease-in-out infinite; }
+@keyframes sparkle-tw { 50% { opacity: 0.2; } }
+.room.st3 .rp, .room.st4 .rp { background: rgba(255, 255, 255, 0.92); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12), 0 0 10px color-mix(in srgb, var(--b1) 50%, transparent); }
+.room-stars { position: absolute; top: 44px; right: 12px; z-index: 2; font-size: 12px; letter-spacing: 1px; color: #ffc93c; text-shadow: 0 1px 0 #a8740c, 0 0 6px rgba(255, 200, 60, 0.7); }
+.room-bar .grow { display: block; color: #6a3cff; font-weight: 800; }
+
+/* Rush hour: a glowing room with a countdown. */
+.room.rush .room-scene { animation: rush-glow 0.9s ease-in-out infinite alternate; }
+@keyframes rush-glow { from { box-shadow: inset 0 0 0 3px #ff4f8b, inset 0 0 18px rgba(255, 79, 139, 0.5); } to { box-shadow: inset 0 0 0 3px #ffc93c, inset 0 0 26px rgba(255, 201, 60, 0.6); } }
+.rush-tag { position: absolute; top: 66px; right: 10px; z-index: 3; padding: 3px 10px; border-radius: 10px; font: 400 12px var(--display); color: #fff;
+  background: linear-gradient(90deg, #ff4f8b, #ff8a3b); box-shadow: 0 3px 0 #a8204f, 0 0 14px rgba(255, 79, 139, 0.6); animation: ready-bob 0.7s ease-in-out infinite; }
+.rush-tag i { font-style: normal; opacity: 0.85; }
+.room.rush .tap-me { display: none; }
+
+/* A VIP customer: tap them for a tip before they leave. */
+.vip { position: absolute; bottom: 26px; left: 30%; z-index: 4; width: 30px; height: 46px; cursor: pointer; }
+.vip.fresh { animation: vip-in 0.5s cubic-bezier(.2, 1.6, .4, 1) both; }
+.vip svg { width: 22px; height: 38px; margin: 0 auto; display: block; filter: drop-shadow(0 0 6px rgba(255, 210, 60, 0.95)); animation: bob 0.6s ease-in-out infinite alternate; }
+.vip i { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 1px 6px; border-radius: 6px; font: 400 9px var(--display); font-style: normal; color: #2a1f3e; background: linear-gradient(#fff3b0, #ffc93c); box-shadow: 0 2px 0 #b8740c; }
+.vip em { position: absolute; top: -32px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 2px 8px; border-radius: 8px; font: 400 10px var(--display); font-style: normal; color: #fff; background: #ff4f8b; animation: ready-bob 0.8s ease-in-out infinite; }
+@keyframes vip-in { from { transform: translateY(20px) scale(0.4); opacity: 0; } }
+
+/* Evolution celebration. */
+#evolve { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(20, 12, 50, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#evolve[hidden] { display: none; }
+.evo-card { position: relative; width: min(340px, 100%); padding: 22px 20px 18px; border-radius: 26px; text-align: center; color: #2a1f3e;
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--b1) 18%, #fff)); box-shadow: 0 0 0 3px #fff, 0 0 40px color-mix(in srgb, var(--b1) 70%, transparent), 0 20px 50px rgba(0, 0, 0, 0.35); }
+#evolve.show .evo-card { animation: evo-pop 0.6s cubic-bezier(.2, 1.5, .4, 1) both; }
+@keyframes evo-pop { from { transform: scale(0.5) rotate(-6deg); opacity: 0; } }
+.evo-card small { display: block; font: 400 12px var(--display); letter-spacing: 0.08em; color: #6a3cff; text-transform: uppercase; }
+.evo-from { margin-top: 10px; font-weight: 800; color: #8a8fb8; text-decoration: line-through; }
+.evo-arrow { color: var(--b2); font-size: 14px; animation: ready-bob 0.8s ease-in-out infinite; }
+.evo-icon { display: grid; place-items: center; width: 84px; height: 84px; margin: 6px auto; border-radius: 26px; font-size: 44px; color: #fff;
+  background: linear-gradient(150deg, var(--b1), var(--b2)); box-shadow: 0 6px 0 color-mix(in srgb, var(--b2) 70%, #000), 0 0 30px var(--b1); }
+#evolve.show .evo-icon { animation: evo-spin 0.9s 0.2s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes evo-spin { from { transform: scale(0) rotate(-180deg); } }
+.evo-icon svg.ic { width: 1em; height: 1em; filter: brightness(0) invert(1); }
+.evo-to { display: block; font: 400 24px/1.15 var(--display); background: linear-gradient(90deg, var(--b2), #6a3cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.evo-stars { display: block; margin: 6px 0 2px; font-size: 22px; letter-spacing: 3px; color: #ffc93c; text-shadow: 0 2px 0 #b8740c; }
+.evo-stars em { font-style: normal; color: #e2def5; text-shadow: none; }
+.evo-label { display: inline-block; margin-bottom: 14px; padding: 2px 12px; border-radius: 10px; font: 400 12px var(--display); color: #fff; background: linear-gradient(90deg, var(--b1), var(--b2)); }
+.evo-card .btn { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .vip, .vip svg, .vip em, .rush-tag, .room.rush .room-scene, .room-sparkle, .evo-card, .evo-icon, .evo-arrow { animation: none !important; } }
+.room-bar .grow { display: inline; }
+.tap-me { top: 66px; }
+.vip { left: 20%; }
+.vip em { top: 6px; left: calc(100% + 2px); transform: none; }
+.evo-card { box-sizing: border-box; }
+.evo-stars svg.ic { width: 1em; height: 1em; }
+.evo-stars em { opacity: 0.22; filter: grayscale(1); }
+.room-chand { top: 0; left: 47%; width: 30px; height: 64px;
+  background: radial-gradient(circle at 50% 84%, #fff8d0 0 5px, transparent 6px), linear-gradient(#c99a2e, #c99a2e) 50% 0 / 2px 46px no-repeat,
+  radial-gradient(ellipse 15px 9px at 50% 86%, #ffd95e 0 98%, transparent 100%); }

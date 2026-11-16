@@ -518,5 +518,6 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     runs, gems: Math.floor(big(o.gems)), boost: o.boost === true, last: big(o.last), eras: Math.floor(big(o.eras)),
     // Saves from before office floors start with every floor they had built.
     floors: Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore)),
+    rush: { id: typeof (o.rush as { id?: unknown })?.id === "string" && ids.includes((o.rush as { id: string }).id) ? (o.rush as { id: string }).id : "", until: big((o.rush as { until?: unknown })?.until) },
   };
 }
