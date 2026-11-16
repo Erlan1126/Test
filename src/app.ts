@@ -406,7 +406,7 @@ export class App implements DailyHost {
     if (this.moving) { this.endMove(); return true; }
     if (this.visiting) { this.endVisit(); return true; }
     const modal = openModalEl();
-    if (!modal && this.tycoon.inCity) { this.tycoon.exitCity(); return true; }
+    if (!modal && this.tycoon.closeCard()) return true;
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
     if (!$("rewards").hidden) { $("rewards").hidden = true; this.renderMenu(); return true; }
     if (this.peek) { this.setPeek(false); return true; }
@@ -1444,6 +1444,8 @@ export class App implements DailyHost {
     this.renderCorners();
     // The Tycoon: the business card on the home screen and its dock tile.
     this.tycoon.renderHome(p.towers >= 1);
+    // The business district is the game's home (once the first tower is built).
+    if (p.towers >= 1 && this.state === "menu" && !this.moving && !this.visiting && this.canCity()) this.tycoon.enterCity();
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
@@ -1549,6 +1551,7 @@ export class App implements DailyHost {
   private visiting: FriendCity | null = null;
   visit(city: FriendCity, code: string): void {
     if (this.state !== "menu") return;
+    this.tycoon.exitCity();
     this.visiting = city;
     this.cityView = null;
     this.sound.whoosh();
@@ -1564,6 +1567,14 @@ export class App implements DailyHost {
     document.body.classList.remove("visiting");
     $("visit-bar").hidden = true;
     this.sound.whoosh();
+    this.refresh(); // back to the business district
+  }
+
+  /** From the city's Build panel: a tower in a mode. */
+  play(mode: "classic" | "daily" | "zen"): void {
+    if (this.state !== "menu") return;
+    this.setHomeMode(mode);
+    this.start(mode);
   }
 
   /** From the Tycoon: build a tower to add office floors. */
@@ -1589,6 +1600,7 @@ export class App implements DailyHost {
 
   startMove(id: string): void {
     if (!(this.renderer instanceof Renderer3D) || this.state !== "menu") return;
+    this.tycoon.exitCity();
     const b = CITY.find(c => c.id === id);
     if (!b) return;
     for (const m of ["city"]) if (!$(m).hidden) closeModal($(m));
@@ -1643,6 +1655,7 @@ export class App implements DailyHost {
     $("place-layer").hidden = true;
     $("place-spots").innerHTML = "";
     document.body.classList.remove("placing");
+    this.refresh(); // back to the business district
   }
 
   /** The level-up celebration: badge, new title, rewards, and what's next. */

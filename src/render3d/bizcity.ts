@@ -20,6 +20,8 @@ export interface BizLot {
 
 /** What changes from moment to moment (no rebuild needed). */
 export interface BizLive {
+  /** The building whose card is open. */
+  sel?: string;
   rush: string;
   vip: string;
   critic: string;
@@ -280,6 +282,12 @@ export function buildBizCity(lots: BizLot[]): BizCity {
   criticRing.visible = false;
   life.add(criticRing);
 
+  // A soft golden ring under the building you've tapped.
+  const selMat = own(new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const selRing = new THREE.Mesh(new THREE.RingGeometry(1.95, 2.35, 40).rotateX(-Math.PI / 2).translate(0, 0.14, 0), selMat);
+  selRing.visible = false;
+  life.add(selRing);
+
   // Everything still is merged into a few meshes (the moving parts stay separate).
   mergeStatic(g);
 
@@ -331,6 +339,14 @@ export function buildBizCity(lots: BizLot[]): BizCity {
         ring.position.set(x, 0, z);
         ringMat.opacity = 0.45 + Math.sin(t * 6) * 0.2;
         ring.scale.setScalar(1 + Math.sin(t * 3) * 0.05);
+      }
+      const si = idx(live.sel ?? "");
+      selRing.visible = si >= 0;
+      if (si >= 0) {
+        const { x, z } = lotPos(si);
+        selRing.position.set(x, 0, z);
+        selMat.opacity = 0.55 + Math.sin(t * 4) * 0.25;
+        selRing.scale.setScalar(1 + Math.sin(t * 4) * 0.03);
       }
       const ci = idx(live.critic);
       criticRing.visible = ci >= 0;
