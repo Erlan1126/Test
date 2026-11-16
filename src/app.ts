@@ -60,6 +60,7 @@ import { BUILD_SPOTS } from "./data/spots";
 import { iconSvg, withIcons } from "./ui/icons";
 import { towerName } from "./data/towernames";
 import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
+import { avatarBadge } from "./data/avatars";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -1317,7 +1318,7 @@ export class App implements DailyHost {
     const lv = $("level-btn");
     lv.hidden = !isOpen(save, "profile");
     $("level-num").textContent = String(p.level);
-    $("level-ico").textContent = titleFor(p.level).icon;
+    $("level-ico").innerHTML = avatarBadge(save, "mini");
     $("level-btn").classList.toggle("glow", !!titleFor(p.level).glow);
     // A quick sparkle on the level button whenever you've gone up a level.
     if (this.shownLevel && p.level > this.shownLevel) replay($("level-btn"), "lvl-pop");

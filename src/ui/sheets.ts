@@ -30,6 +30,7 @@ import { confetti } from "./fx";
 import { FEATURE_ICON, FEATURE_NAMES, FEATURE_TEXT, levelStep } from "../data/levels";
 import { iconSvg } from "./icons";
 import { towerName } from "../data/towernames";
+import { AVATAR_COLORS, AVATARS, avatarBadge, FRAMES } from "../data/avatars";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
 export interface Host {
@@ -71,6 +72,7 @@ export class Sheets {
 
   constructor(private readonly host: Host) {
     for (const id of ["shop", "challenges", "profile", "help"]) wireModal($(id));
+    $("my-avatar").addEventListener("click", () => { $("avatar-picker").hidden = !$("avatar-picker").hidden; this.click(); });
     wireModal($("settings"), () => this.closeSettings());
     this.wireSettings();
   }
@@ -589,8 +591,33 @@ export class Sheets {
     $("journey-path").innerHTML = rows.join("");
   }
 
+  /** The avatar picker in the profile: icon, color and the frames earned so far. */
+  private renderAvatar(): void {
+    const save = this.save, p = save.profile;
+    $("my-avatar").innerHTML = avatarBadge(save, "big");
+    $("pick-icons").innerHTML = AVATARS.map(a => `<button type="button" class="pick${p.avatar === a ? " on" : ""}" data-a="${a}" aria-label="${esc(a)}">${iconSvg(a)}</button>`).join("");
+    $("pick-colors").innerHTML = AVATAR_COLORS.map(([c1, c2], i) => `<button type="button" class="pick swatch-pick${p.avatarColor === i ? " on" : ""}" data-c="${i}" style="background:linear-gradient(150deg,${c1},${c2})" aria-label="${esc(t("Color {n}", { n: i + 1 }))}"></button>`).join("");
+    $("pick-frames").innerHTML = FRAMES.map(f => `<button type="button" class="pick frame-pick frame-${f.id}${p.frame === f.id ? " on" : ""}${f.open(save) ? "" : " locked"}" data-f="${f.id}" aria-label="${esc(t(f.name))}">${f.open(save) ? "" : LOCK_ICON}</button>`).join("");
+    const pick = (sel: string, fn: (b: HTMLElement) => void) => $("avatar-picker").querySelectorAll<HTMLElement>(sel).forEach(b => b.addEventListener("click", () => fn(b)));
+    pick("[data-a]", b => { p.avatar = b.dataset.a!; this.avatarChanged(); });
+    pick("[data-c]", b => { p.avatarColor = Number(b.dataset.c); this.avatarChanged(); });
+    pick("[data-f]", b => {
+      const f = FRAMES.find(x => x.id === b.dataset.f)!;
+      if (!f.open(save)) { this.nope(b, t(f.how)); return; }
+      p.frame = f.id; this.avatarChanged();
+    });
+  }
+
+  private avatarChanged(): void {
+    this.host.persist();
+    this.click();
+    this.renderAvatar();
+    this.host.refresh();
+  }
+
   private renderProfile(): void {
     this.renderJourney();
+    this.renderAvatar();
     const save = this.save, p = save.profile, need = xpNeeded(p.level);
     const ti = titleFor(p.level), nt = nextTitle(p.level);
     $("profile-title").textContent = `${ti.icon} ${t(ti.name)} · ${t("Lv {n}", { n: p.level })}`;

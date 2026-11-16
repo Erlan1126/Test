@@ -271,10 +271,16 @@
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
-        <div><h2 id="profile-title">Builder level 1</h2><p id="profile-xp"></p></div>
+        <button type="button" class="my-avatar" id="my-avatar" aria-label="Change your avatar"></button>
+        <div class="profile-head"><h2 id="profile-title">Builder level 1</h2><p id="profile-xp"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
       <div class="bar"><i id="profile-bar"></i></div>
+      <div class="avatar-picker" id="avatar-picker" hidden>
+        <small>Avatar</small><div class="pick-row" id="pick-icons"></div>
+        <small>Color</small><div class="pick-row" id="pick-colors"></div>
+        <small>Frame</small><div class="pick-row" id="pick-frames"></div>
+      </div>
       <div class="seg tabs" role="tablist" aria-label="Profile" data-tabs><button type="button" role="tab" data-tab="journey">Journey</button><button type="button" role="tab" data-tab="stats">Stats</button><button type="button" role="tab" data-tab="towers">Best towers</button><button type="button" role="tab" data-tab="trophies">Trophies</button><button type="button" role="tab" data-tab="postcards">Postcards</button></div>
     </div>
     <div data-panel="journey"><ol class="journey-path" id="journey-path"></ol></div>

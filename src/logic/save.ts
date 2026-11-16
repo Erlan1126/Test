@@ -95,6 +95,10 @@ export interface SaveData {
     bestStreak: number;
     dailyDays: number[];
     trophies: string[];
+    /** The builder's avatar icon, its color and the frame around it (see avatars.ts). */
+    avatar: string;
+    avatarColor: number;
+    frame: string;
     gift: { last: string; streak: number };
     swapDay: string;
   };
@@ -179,7 +183,7 @@ export function defaultSave(): SaveData {
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
       xp: 0, level: 1, towers: 0, floors: 0, perfects: 0, penthouses: 0, bestStreak: 0,
-      dailyDays: [], trophies: [], gift: { last: "", streak: 0 }, swapDay: "",
+      dailyDays: [], trophies: [], gift: { last: "", streak: 0 }, swapDay: "", avatar: "tower", avatarColor: 0, frame: "none",
     },
     daily: { day: 0, best: 0, plays: 0 },
     challenges: [],
@@ -297,6 +301,7 @@ export function normalize(raw: unknown): SaveData {
     profile: {
       xp: num(p.xp, 0), level: int(p.level, 1, 1, 999), towers: int(p.towers, 0), floors: int(p.floors, 0),
       perfects: int(p.perfects, 0), penthouses: int(p.penthouses, 0), bestStreak: int(p.bestStreak, 0),
+      avatar: str(p.avatar, "tower").slice(0, 20), avatarColor: int(p.avatarColor, 0, 0, 7), frame: str(p.frame, "none").slice(0, 12),
       dailyDays: Array.isArray(p.dailyDays) ? [...new Set(p.dailyDays.filter((x): x is number => Number.isInteger(x)))] : [],
       trophies: strList(p.trophies),
       gift: { last: str(gift.last, ""), streak: int(gift.streak, 0) },

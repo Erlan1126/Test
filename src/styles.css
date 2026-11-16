@@ -2350,3 +2350,29 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
 .help-ico svg.ic { width: 1em; height: 1em; vertical-align: 0; }
 .help-row b { display: block; font: 400 14px var(--display); color: #2a1f6e; }
 .help-row small { display: block; margin-top: 2px; color: #5a5f8a; font-size: 13px; font-weight: 600; line-height: 1.35; }
+
+/* ---------- Avatars and frames ---------- */
+.avatar-badge { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 30%; background: linear-gradient(150deg, var(--a1), var(--a2)); color: #fff; vertical-align: middle; }
+.avatar-badge svg.ic { width: 64%; height: 64%; vertical-align: 0; filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
+.avatar-badge.frame-silver { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #b8c2d6; }
+.avatar-badge.frame-gold { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #ffc93c, 0 0 10px rgba(255, 190, 40, 0.6); }
+.avatar-badge.frame-diamond { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #9fe6ff, 0 0 14px rgba(140, 220, 255, 0.9); animation: diamond-glint 2.4s ease-in-out infinite; }
+@keyframes diamond-glint { 50% { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #e0c8ff, 0 0 20px rgba(200, 160, 255, 0.9); } }
+.avatar-badge.mini { width: 22px; height: 22px; margin-right: 4px; border-radius: 7px; }
+.avatar-badge.big { width: 56px; height: 56px; border-radius: 18px; }
+.my-avatar { flex: none; padding: 4px; margin-right: 10px; border: 0; background: none; cursor: pointer; }
+.profile-head { flex: 1; min-width: 0; }
+.avatar-picker { margin: 10px 0 6px; padding: 10px; border-radius: 16px; background: #f1eeff; }
+.avatar-picker small { display: block; margin: 4px 0; font: 400 11px var(--display); color: #7b6cff; letter-spacing: 0.05em; }
+.pick-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: #fff; font-size: 22px; box-shadow: 0 2px 6px rgba(42, 31, 110, 0.12); cursor: pointer; }
+.pick svg.ic { width: 1em; height: 1em; vertical-align: 0; }
+.pick.on { box-shadow: 0 0 0 3px #7b6cff; }
+.frame-pick.frame-none { background: #fff; }
+.frame-pick.frame-silver { box-shadow: inset 0 0 0 4px #b8c2d6; }
+.frame-pick.frame-gold { box-shadow: inset 0 0 0 4px #ffc93c; }
+.frame-pick.frame-diamond { box-shadow: inset 0 0 0 4px #9fe6ff; }
+.frame-pick.on { outline: 3px solid #7b6cff; outline-offset: 2px; }
+.frame-pick.locked { opacity: 0.55; }
+.frame-pick svg { width: 14px; height: 14px; color: #5a5f8a; }
+@media (prefers-reduced-motion: reduce) { .avatar-badge.frame-diamond { animation: none; } }
