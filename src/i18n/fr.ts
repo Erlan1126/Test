@@ -1346,4 +1346,13 @@ export const FR: Record<string, string> = {
   "Landmark challenges, one by one": "Des défis de monuments, un par un",
   "Relax and build, no pressure": "Détends-toi et construis, sans pression",
   "Sky City": "Cité du Ciel",
+  "My company": "Mon entreprise",
+  "Story": "Histoire",
+  "Today's company goals": "Objectifs du jour de l'entreprise",
+  "Tower missions": "Missions de tours",
+  "See missions and rewards": "Voir les missions et récompenses",
+  "Menu": "Menu",
+  "New in your company: {name}!": "Nouveau dans ton entreprise : {name} !",
+  "Welcome to Skyhaven Inc.!": "Bienvenue chez Skyhaven Inc. !",
+  "This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!": "Voici ton quartier d'affaires. Chaque bâtiment est l'un de tes commerces, et ils grandissent avec toi. La carte en bas te dit toujours quoi faire ensuite. Et pour construire une tour, touche CONSTRUIRE !",
 };

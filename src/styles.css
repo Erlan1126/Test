@@ -3144,3 +3144,14 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .more-mayor { display: flex !important; align-items: center; gap: 10px; padding: 10px 12px !important; border-radius: 18px !important; background: #fff !important; box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1) !important; }
 .more-mayor .mayor-mini { flex: none; width: 52px !important; height: 52px !important; }
 .more-mayor .mayor-mini svg { width: 100%; height: 100%; }
+
+/* ══════════ Simple and seamless ══════════ */
+.tcy-next .next-ico svg { width: 100%; height: 100%; }
+.tcy-next.tone-learn .next-ico { background: #fff7d6; overflow: hidden; }
+.ty-tabs[hidden], .ty-tabs button[hidden] { display: none !important; }
+.tcy-goals .sheet-sub { margin: 14px 4px 8px; }
+.tcy-goals .sheet-sub:first-child { margin-top: 0; }
+.tcy-goals .ty-goals { margin: 0; }
+.tcy-goals .more-mayor { width: 100%; }
+.goals-more { display: block; margin: 10px auto 0; }
+.tcy-bar button[data-open="goals"] svg, .tcy-bar button[data-open="more"] svg { color: #6a3cff; }
