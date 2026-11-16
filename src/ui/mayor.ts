@@ -8,25 +8,49 @@ import type { SaveData } from "../logic/save";
 import { $, esc } from "./dom";
 import { confetti, fireworks } from "./fx";
 
-/** Mayor Pip, drawn: a round face, rosy cheeks, a moustache and a tall hat with a gold band. */
-export const MAYOR_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true">
+/** Mayor Pip, drawn: a round, kind face with shading, grey sideburns and a curled
+ *  moustache, a navy suit with a gold mayor's sash and a red bow tie, and a glossy top hat.
+ *  The eyes blink; on happy moments they become smiling arcs. */
+export function mayorSvg(mood: "talk" | "happy" = "talk"): string {
+  const eyes = mood === "happy"
+    ? `<path d="M44 58q6-6 12 0M64 58q6-6 12 0" stroke="#2a1f3e" stroke-width="3.2" fill="none" stroke-linecap="round"/>`
+    : `<g class="mp-eyes">
+        <ellipse cx="50" cy="58" rx="4.6" ry="5.4" fill="#fff"/><ellipse cx="70" cy="58" rx="4.6" ry="5.4" fill="#fff"/>
+        <circle cx="50.8" cy="59" r="3.2" fill="#3a2a1a"/><circle cx="70.8" cy="59" r="3.2" fill="#3a2a1a"/>
+        <circle cx="52" cy="57.6" r="1.2" fill="#fff"/><circle cx="72" cy="57.6" r="1.2" fill="#fff"/>
+      </g>`;
+  const mouth = mood === "happy"
+    ? `<path d="M50 75q10 10 20 0z" fill="#8a2a2a"/><path d="M53 78q7 4 14 0" fill="#ff8a8a"/>`
+    : `<path d="M52 76q8 6 16 0" stroke="#8a3a2a" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  return `<svg viewBox="0 0 120 120" aria-hidden="true">
   <defs>
-    <linearGradient id="mp-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe0c2"/><stop offset="1" stop-color="#f7c49c"/></linearGradient>
-    <linearGradient id="mp-hat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3aa8"/><stop offset="1" stop-color="#2a1f6e"/></linearGradient>
+    <radialGradient id="mp-skin" cx="0.42" cy="0.38" r="0.7"><stop offset="0" stop-color="#ffe6cf"/><stop offset="0.7" stop-color="#f6c49e"/><stop offset="1" stop-color="#e3a57d"/></radialGradient>
+    <linearGradient id="mp-suit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b4cc0"/><stop offset="1" stop-color="#1f2a78"/></linearGradient>
+    <linearGradient id="mp-hat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1c1640"/><stop offset="0.35" stop-color="#3a2f80"/><stop offset="0.55" stop-color="#5a4ab0"/><stop offset="1" stop-color="#1c1640"/></linearGradient>
+    <linearGradient id="mp-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset="0.5" stop-color="#ffc93c"/><stop offset="1" stop-color="#d0901a"/></linearGradient>
   </defs>
-  <ellipse cx="60" cy="112" rx="34" ry="6" fill="rgba(20,20,60,0.18)"/>
-  <path d="M26 112c2-20 16-30 34-30s32 10 34 30z" fill="#ff5f8f"/>
-  <path d="M52 84l8 10 8-10" fill="#fff"/>
-  <circle cx="60" cy="62" r="27" fill="url(#mp-face)"/>
-  <circle cx="44" cy="68" r="5" fill="#ff9a9a" opacity="0.6"/><circle cx="76" cy="68" r="5" fill="#ff9a9a" opacity="0.6"/>
-  <circle cx="50" cy="59" r="3.4" fill="#2a1f3e"/><circle cx="70" cy="59" r="3.4" fill="#2a1f3e"/>
-  <circle cx="51.2" cy="57.8" r="1.1" fill="#fff"/><circle cx="71.2" cy="57.8" r="1.1" fill="#fff"/>
-  <path d="M46 71c5-4 9-4 14-1 5-3 9-3 14 1-4 4-9 4-14 1-5 3-10 3-14-1z" fill="#8a5a3a"/>
-  <path d="M54 77c3 2 9 2 12 0" stroke="#b5533a" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <ellipse cx="60" cy="38" rx="32" ry="6" fill="#2a1f6e"/>
-  <rect x="40" y="6" width="40" height="32" rx="5" fill="url(#mp-hat)"/>
-  <rect x="40" y="28" width="40" height="7" fill="#ffc93c"/>
+  <ellipse cx="60" cy="114" rx="36" ry="5" fill="rgba(20,20,60,0.18)"/>
+  <path d="M22 116c2-22 18-33 38-33s36 11 38 33z" fill="url(#mp-suit)"/>
+  <path d="M52 84l8 18 8-18z" fill="#fff"/>
+  <path d="M44 86l12 22-6 4zM76 86l-12 22 6 4z" fill="#2a3590"/>
+  <path d="M30 96l52 18-4 4-50-16z" fill="url(#mp-gold)"/>
+  <path d="M53 88l7 4 7-4-2 7-5-2-5 2z" fill="#e8334f"/><circle cx="60" cy="92" r="2" fill="#b81f38"/>
+  <circle cx="33" cy="62" r="6" fill="#efb48b"/><circle cx="87" cy="62" r="6" fill="#efb48b"/>
+  <circle cx="60" cy="61" r="27" fill="url(#mp-skin)"/>
+  <path d="M34 52q-2 10 3 17l4-12zM86 52q2 10-3 17l-4-12z" fill="#c9c9d6"/>
+  <ellipse cx="44" cy="68" rx="5.5" ry="3.5" fill="#ff8a8a" opacity="0.45"/><ellipse cx="76" cy="68" rx="5.5" ry="3.5" fill="#ff8a8a" opacity="0.45"/>
+  <path d="M44 50q6-4 11-1M65 49q5-3 11 1" stroke="#7a7a8a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  ${eyes}
+  <ellipse cx="60" cy="66" rx="4" ry="3.2" fill="#e8a07a"/>
+  <path d="M60 70c-5-1-10 0-14 3-3 2-5 1-6-1 1 4 5 6 9 4 4-2 8-3 11-2 3-1 7 0 11 2 4 2 8 0 9-4-1 2-3 3-6 1-4-3-9-4-14-3z" fill="#9a9aa8"/>
+  ${mouth}
+  <ellipse cx="60" cy="37" rx="33" ry="6.5" fill="#1c1640"/>
+  <path d="M39 9q21-6 42 0v27q-21 4-42 0z" fill="url(#mp-hat)"/>
+  <path d="M39 27q21 4 42 0v6q-21 4-42 0z" fill="url(#mp-gold)"/>
+  <path d="M44 12q5-2 8-1v16q-4 0-8-1z" fill="rgba(255,255,255,0.18)"/>
 </svg>`;
+}
+export const MAYOR_SVG = mayorSvg();
 
 const goalText = (text: string, need: number) => t(text, { n: fmt(need) });
 const say = (line: string) => t(line, { city: t(CITY_NAME) });
@@ -57,7 +81,7 @@ function goalsHtml(save: SaveData, c: Chapter): string {
 }
 
 function show(chapter: string, text: string, goals: string, reward: string, button: string, onOk: () => void): void {
-  $("mayor-face").innerHTML = MAYOR_SVG;
+  $("mayor-face").innerHTML = mayorSvg(reward ? "happy" : "talk");
   $("mayor-chapter").textContent = chapter;
   $("mayor-text").textContent = text;
   $("mayor-goals").innerHTML = goals;
