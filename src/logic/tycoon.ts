@@ -1,6 +1,6 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
-import { BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business } from "../data/tycoon";
+import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { vipActive } from "./vip";
 import { dayKey } from "./rules";
@@ -33,6 +33,18 @@ export interface TycoonState {
   tips: number;
   /** Today's three company goals, and whether the all-done bonus was paid. */
   goals: { day: string; list: CompanyGoal[]; bonus: boolean };
+  /** The stage each business has evolved to (its new headquarters built). */
+  evolved: Record<string, number>;
+  /** Upgrades bought. */
+  upgrades: string[];
+  /** Advisors collected. */
+  advisors: string[];
+  /** Vault upgrades bought (each adds hours of earning while away). */
+  vault: number;
+  /** A construction boom (after a tower with a long perfect streak) until this time. */
+  boom: number;
+  /** Five-star reviews from a food critic: business id → until. */
+  reviews: Record<string, number>;
 }
 
 export type GoalType = "vip" | "buy" | "taps" | "rush";
@@ -42,7 +54,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false } });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], vault: 0, boom: 0, reviews: {} });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -50,9 +62,31 @@ export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] 
 /** Workers from the sky city: more people living in Skyhaven, more earnings everywhere. */
 export const workerBonus = (s: SaveData): number => 1 + Math.sqrt(Math.max(0, s.population)) / 1000;
 
-/** Everything that multiplies all earnings. */
-export function multiplier(s: SaveData, now = Date.now()): number {
-  return workerBonus(s) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1);
+const has = (s: SaveData, id: string): boolean => s.tycoon.advisors.includes(id);
+const perkOf = (s: SaveData, perk: Advisor["perk"]): Advisor[] => ADVISORS.filter(a => a.perk === perk && has(s, a.id));
+
+/** Everything that multiplies all earnings. `live` adds the short-lived boosts (a
+ *  construction boom), which time warps and tower bonuses leave out. */
+export function multiplier(s: SaveData, now = Date.now(), live = true): number {
+  const ups = UPGRADES.filter(u => u.biz === "all" && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
+  const adv = perkOf(s, "all").reduce((m, a) => m * a.n, 1);
+  return workerBonus(s) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1) * ups * adv
+    * (live && s.tycoon.boom > now ? BOOM_MULT : 1);
+}
+
+/** This week's festival business (it earns more all week). */
+export function festivalBiz(now = Date.now()): string {
+  const week = Math.floor((Math.floor(now / 864e5) + 3) / 7);
+  return BUSINESSES[((week % BUSINESSES.length) + BUSINESSES.length) % BUSINESSES.length].id;
+}
+
+/** What multiplies one business: its evolved stage, its upgrades, advisors, the festival
+ *  and (live) a critic's five-star review. */
+export function bizMult(s: SaveData, b: Business, now = Date.now(), live = true): number {
+  const ups = UPGRADES.filter(u => u.biz === b.id && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
+  const adv = perkOf(s, "biz").filter(a => a.biz?.includes(b.id)).reduce((m, a) => m * a.n, 1);
+  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1)
+    * (live && (s.tycoon.reviews[b.id] ?? 0) > now ? 2 : 1);
 }
 
 /** Milestones reached at a level (each doubles the speed). */
@@ -64,8 +98,12 @@ export const nextMilestone = (level: number): number | undefined => MILESTONES_A
 export const cycleOf = (b: Business, level: number): number => b.cycle / Math.pow(2, milestonesAt(level));
 /** Coins one cycle pays right now. */
 export const payOf = (s: SaveData, b: Business, now = Date.now()): number => basePay(s, b, now) * (rushOn(s, b.id, now) ? RUSH_MULT : 1);
-/** What one cycle pays without a rush hour. */
-export const basePay = (s: SaveData, b: Business, now = Date.now()): number => b.income * levelOf(s, b.id) * multiplier(s, now);
+/** What one cycle pays without a rush hour (and, unless `live`, without other short boosts). */
+export const basePay = (s: SaveData, b: Business, now = Date.now(), live = true): number =>
+  b.income * levelOf(s, b.id) * multiplier(s, now, live) * bizMult(s, b, now, live);
+
+/** How long a rush hour lasts (an advisor makes it longer). */
+export const rushSeconds = (s: SaveData): number => RUSH_SECONDS * perkOf(s, "rush").reduce((m, a) => m * a.n, 1);
 
 /** Is a business in its rush hour right now? */
 export const rushOn = (s: SaveData, id: string, now = Date.now()): boolean => s.tycoon.rush.id === id && s.tycoon.rush.until > now;
@@ -75,13 +113,82 @@ export function startRush(s: SaveData, now = Date.now(), rnd = Math.random): str
   const owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
   if (!owned.length || s.tycoon.rush.until > now) return "";
   const b = owned[Math.floor(rnd() * owned.length)];
-  s.tycoon.rush = { id: b.id, until: now + RUSH_SECONDS * 1000 };
+  s.tycoon.rush = { id: b.id, until: now + rushSeconds(s) * 1000 };
   return b.id;
 }
 
-/** A business's stage (0 = stand ... 4 = empire) and the name it has at that stage. */
+/** The stage a level is big enough for (0 = stand ... 4 = empire). A business only
+ *  reaches it once its new headquarters is built: see stageNow and evolve. */
 export const stageOf = (level: number): number => Math.max(0, STAGE_AT.filter(a => level >= a).length - 1);
-export const stageName = (id: string, level: number): string => STAGE_NAMES[id]?.[stageOf(level)] ?? id;
+/** The stage a business is at now: as big as its level allows and its headquarters built. */
+export const stageNow = (s: SaveData, id: string): number => Math.min(stageOf(levelOf(s, id)), s.tycoon.evolved[id] ?? 0);
+export const stageName = (id: string, stage: number): string => STAGE_NAMES[id]?.[Math.max(0, Math.min(4, stage))] ?? id;
+/** The stage a business is ready to grow into (its level is big enough), or 0. */
+export function readyStage(s: SaveData, id: string): number {
+  const now = s.tycoon.evolved[id] ?? 0;
+  return levelOf(s, id) > 0 && stageOf(levelOf(s, id)) > now ? now + 1 : 0;
+}
+/** Floors the headquarters for a stage needs. */
+export const hqFloors = (stage: number): number => HQ_FLOORS[Math.max(0, Math.min(HQ_FLOORS.length - 1, stage))];
+/** A tower of `floors` was built for a business's new headquarters: grows it a stage if
+ *  it's tall enough. Returns the new stage, or 0. */
+export function evolve(s: SaveData, id: string, floors: number): number {
+  const next = readyStage(s, id);
+  if (!next || floors < hqFloors(next)) return 0;
+  s.tycoon.evolved[id] = next;
+  return next;
+}
+
+/** A tower with a long perfect streak starts a construction boom. */
+export function startBoom(s: SaveData, now = Date.now()): void {
+  s.tycoon.boom = Math.max(s.tycoon.boom, now) + BOOM_MINUTES * 60e3 - Math.max(0, s.tycoon.boom - now);
+}
+
+/** A food critic's five-star review doubles a business for an hour. */
+export function review(s: SaveData, id: string, now = Date.now()): void {
+  if (levelOf(s, id) > 0) s.tycoon.reviews[id] = now + 3600e3;
+}
+
+// ---------- Upgrades, advisors and the vault ----------
+
+export const upgradeById = (id: string) => UPGRADES.find(u => u.id === id);
+/** Upgrades on offer: for businesses that are open, not bought yet, cheapest first. */
+export const upgradesOnOffer = (s: SaveData) =>
+  UPGRADES.filter(u => !s.tycoon.upgrades.includes(u.id) && (u.biz === "all" || levelOf(s, u.biz) > 0));
+export function buyUpgrade(s: SaveData, id: string): boolean {
+  const u = upgradeById(id);
+  if (!u || s.tycoon.upgrades.includes(id) || s.tycoon.coins < u.cost || (u.biz !== "all" && levelOf(s, u.biz) === 0)) return false;
+  s.tycoon.coins -= u.cost;
+  s.tycoon.upgrades.push(id);
+  return true;
+}
+
+/** A random advisor the player doesn't have yet (or undefined when all are collected). */
+export function giveAdvisor(s: SaveData, rnd = Math.random): Advisor | undefined {
+  const left = ADVISORS.filter(a => !has(s, a.id));
+  if (!left.length) return undefined;
+  const a = left[Math.floor(rnd() * left.length)];
+  s.tycoon.advisors.push(a.id);
+  return a;
+}
+/** Opens an advisor crate for crystals. */
+export function openCrate(s: SaveData, rnd = Math.random): Advisor | undefined {
+  if (s.crystals < CRATE_CRYSTALS || ADVISORS.every(a => has(s, a.id))) return undefined;
+  s.crystals -= CRATE_CRYSTALS;
+  return giveAdvisor(s, rnd);
+}
+/** VIPs come this many times as often; their tips are this many times bigger. */
+export const vipRate = (s: SaveData): number => perkOf(s, "vip").reduce((m, a) => m * a.n, 1);
+export const tipMult = (s: SaveData): number => perkOf(s, "tips").reduce((m, a) => m * a.n, 1);
+
+export const vaultCost = (s: SaveData): number | undefined => VAULT_COST[s.tycoon.vault];
+export function buyVault(s: SaveData): boolean {
+  const c = vaultCost(s);
+  if (c === undefined || s.tycoon.coins < c) return false;
+  s.tycoon.coins -= c;
+  s.tycoon.vault++;
+  return true;
+}
 export const nextStage = (level: number): number | undefined => STAGE_AT.find(a => a > level && a > 1);
 
 /** A VIP customer's tip: half a minute of what the business earns, and never less than a
@@ -90,7 +197,7 @@ export function vipTip(s: SaveData, id: string, now = Date.now()): number {
   const b = businessById(id);
   if (!b || levelOf(s, id) === 0) return 0;
   const cheapest = Math.min(...BUSINESSES.filter(x => levelOf(s, x.id) > 0).map(x => costOf(x, levelOf(s, x.id), 1)));
-  const n = Math.max((payOf(s, b, now) / cycleOf(b, levelOf(s, id))) * 30, cheapest * 0.25);
+  const n = Math.max((payOf(s, b, now) / cycleOf(b, levelOf(s, id))) * 30, cheapest * 0.25) * tipMult(s);
   earn(s, n);
   return n;
 }
@@ -101,7 +208,7 @@ export function perSecond(s: SaveData, now = Date.now(), rush = true): number {
   let n = 0;
   for (const b of BUSINESSES) {
     const lv = levelOf(s, b.id);
-    if (lv > 0 && s.tycoon.managers.includes(b.id)) n += (rush ? payOf(s, b, now) : basePay(s, b, now)) / cycleOf(b, lv);
+    if (lv > 0 && s.tycoon.managers.includes(b.id)) n += (rush ? payOf(s, b, now) : basePay(s, b, now, false)) / cycleOf(b, lv);
   }
   return n;
 }
@@ -178,13 +285,14 @@ export function progressOf(s: SaveData, id: string, now = Date.now()): number {
 }
 
 /** How many hours the managers keep earning while the game is closed. */
-export const offlineHours = (s: SaveData, now = Date.now()): number => (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS);
+export const offlineHours = (s: SaveData, now = Date.now()): number =>
+  (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS) + s.tycoon.vault * VAULT_HOURS + perkOf(s, "away").reduce((h, a) => h + a.n, 0);
 
 /** Brings the economy up to date and returns the coins earned since last time. Managed
  *  businesses keep earning while the game is closed, up to the offline limit. */
 export function tick(s: SaveData, now = Date.now()): number {
   const t = s.tycoon;
-  const capMs = (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS) * 3600e3;
+  const capMs = offlineHours(s, now) * 3600e3;
   let total = 0;
   for (const b of BUSINESSES) {
     const lv = levelOf(s, b.id), start = t.runs[b.id];
@@ -199,7 +307,7 @@ export function tick(s: SaveData, now = Date.now()): number {
       const base = basePay(s, b, now);
       let rushK = 0;
       if (k > 0 && t.rush.id === b.id) {
-        const from = Math.max(t.rush.until - RUSH_SECONDS * 1000, now - counted), to = Math.min(now, t.rush.until);
+        const from = Math.max(t.rush.until - rushSeconds(s) * 1000, now - counted), to = Math.min(now, t.rush.until);
         if (to > from) rushK = Math.min(k, Math.max(1, Math.floor((to - from) / c)));
       }
       if (k > 0) total += k * base + rushK * base * (RUSH_MULT - 1);
@@ -220,7 +328,7 @@ export function tick(s: SaveData, now = Date.now()): number {
 export function towerBonus(s: SaveData, floors: number, now = Date.now()): number {
   if (floors < 1) return 0;
   s.tycoon.floors += floors; // every floor becomes an office
-  const rate = Math.max(perSecond(s, now, false), basePay(s, BUSINESSES[0], now) / BUSINESSES[0].cycle);
+  const rate = Math.max(perSecond(s, now, false), basePay(s, BUSINESSES[0], now, false) / BUSINESSES[0].cycle);
   const n = rate * Math.min(600, floors * 10);
   earn(s, n);
   return n;
@@ -277,7 +385,7 @@ export function timeWarp(s: SaveData, hours: 1 | 8, now = Date.now()): number {
 
 /** Crystals to double the coins earned while away (by how long it was, up to the cap). */
 export function doublePrice(s: SaveData, awayMs: number, now = Date.now()): number {
-  const cap = (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS) * 3600e3;
+  const cap = offlineHours(s, now) * 3600e3;
   return Math.max(10, Math.ceil((Math.min(awayMs, cap) / 3600e3) * DOUBLE_CRYSTALS_PER_HOUR / 10) * 10);
 }
 
@@ -307,9 +415,9 @@ export function dealGoals(s: SaveData, now = Date.now(), rnd = Math.random): voi
 
 /** Counts progress toward today's goals. Returns the stars paid (and the crystals, if the
  *  last of the three was finished). */
-export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()): { stars: number; crystals: number; done: CompanyGoal[] } {
+export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now(), rnd = Math.random): { stars: number; crystals: number; advisor?: Advisor; done: CompanyGoal[] } {
   dealGoals(s, now);
-  const out = { stars: 0, crystals: 0, done: [] as CompanyGoal[] };
+  const out: { stars: number; crystals: number; advisor?: Advisor; done: CompanyGoal[] } = { stars: 0, crystals: 0, done: [] };
   for (const g of s.tycoon.goals.list) {
     if (g.t !== kind || g.p >= g.n) continue;
     g.p = Math.min(g.n, g.p + by);
@@ -320,8 +428,9 @@ export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()):
   }
   if (!s.tycoon.goals.bonus && s.tycoon.goals.list.every(g => g.p >= g.n)) {
     s.tycoon.goals.bonus = true;
-    s.crystals += GOALS_BONUS_CRYSTALS;
-    out.crystals = GOALS_BONUS_CRYSTALS;
+    // An advisor while there are any left to collect, else crystals.
+    out.advisor = giveAdvisor(s, rnd);
+    if (!out.advisor) { s.crystals += GOALS_BONUS_CRYSTALS; out.crystals = GOALS_BONUS_CRYSTALS; }
   }
   return out;
 }

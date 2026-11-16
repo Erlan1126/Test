@@ -131,9 +131,9 @@ import { nextStage, payOf, rushOn, stageName, stageOf, startRush, vipTip } from 
 describe("tycoon evolution and live events", () => {
   it("businesses grow through five named stages", () => {
     expect([1, 24, 25, 99, 100, 200, 399, 400, 9999].map(stageOf)).toEqual([0, 0, 1, 1, 2, 3, 3, 4, 4]);
-    expect(stageName("coffee", 1)).toBe("Coffee Cart");
-    expect(stageName("coffee", 25)).toBe("Coffee Shop");
-    expect(stageName("mall", 400)).toBe("Mall Empire");
+    expect(stageName("coffee", 0)).toBe("Coffee Cart");
+    expect(stageName("coffee", 1)).toBe("Coffee Shop");
+    expect(stageName("mall", 4)).toBe("Mall Empire");
     expect(nextStage(1)).toBe(25);
     expect(nextStage(150)).toBe(200);
     expect(nextStage(400)).toBeUndefined();
@@ -205,7 +205,7 @@ describe("tycoon economy reset", () => {
   });
 });
 
-import { basePay, dealGoals, goalStep, GOALS_BONUS_CRYSTALS } from "../src/logic/tycoon";
+import { basePay, dealGoals, goalStep } from "../src/logic/tycoon";
 
 describe("company goals and first steps", () => {
   it("deals three different goals a day and pays stars, then a crystal bonus for all three", () => {
@@ -220,7 +220,8 @@ describe("company goals and first steps", () => {
       expect(r.stars).toBeGreaterThan(0);
     }
     expect(s.stars).toBeGreaterThan(stars0);
-    expect(s.crystals).toBe(crystals0 + GOALS_BONUS_CRYSTALS);
+    expect(s.tycoon.advisors).toHaveLength(1); // the bonus: a new advisor while any are left
+    expect(s.crystals).toBe(crystals0);
     // Nothing more today...
     expect(goalStep(s, g[0].t, 5, T0).stars).toBe(0);
     // ...and a new set tomorrow.
@@ -260,5 +261,72 @@ describe("rush hour fairness", () => {
     const rate = perSecond(s, T0 + c + 2000, false);
     expect(timeWarp(s, 1, T0 + c + 2000)).toBeCloseTo(rate * 3600);
     expect(rate).toBeCloseTo(plain / cycleOf(b, 1));
+  });
+});
+
+import { ADVISORS, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST } from "../src/data/tycoon";
+import { buyUpgrade, buyVault, evolve, festivalBiz, giveAdvisor, offlineHours, openCrate, readyStage, stageNow, startBoom, review } from "../src/logic/tycoon";
+
+describe("grand openings, upgrades, advisors and the vault", () => {
+  it("a business only evolves once its new headquarters is built tall enough", () => {
+    const s = defaultSave();
+    s.tycoon.levels.coffee = 30;
+    expect(stageNow(s, "coffee")).toBe(0);
+    expect(readyStage(s, "coffee")).toBe(1);
+    const b = BUSINESSES[0], before = basePay(s, b, T0);
+    expect(evolve(s, "coffee", HQ_FLOORS[1] - 1)).toBe(0);
+    expect(evolve(s, "coffee", HQ_FLOORS[1])).toBe(1);
+    expect(stageNow(s, "coffee")).toBe(1);
+    expect(readyStage(s, "coffee")).toBe(0);
+    expect(basePay(s, b, T0)).toBeCloseTo(before * STAGE_MULT);
+  });
+
+  it("old saves keep the stages their levels had reached", () => {
+    const old = JSON.parse(JSON.stringify(defaultSave()));
+    old.tycoon.levels = { coffee: 120, flowers: 30 };
+    delete old.tycoon.evolved;
+    const t = normalize(old).tycoon;
+    expect(t.evolved).toEqual({ coffee: 2, flowers: 1 });
+  });
+
+  it("upgrades multiply earnings once, for coins", () => {
+    const s = defaultSave();
+    const u = UPGRADES.find(x => x.biz === "coffee")!, b = BUSINESSES[0];
+    const before = basePay(s, b, T0);
+    expect(buyUpgrade(s, u.id)).toBe(false);
+    s.tycoon.coins = u.cost;
+    expect(buyUpgrade(s, u.id)).toBe(true);
+    expect(s.tycoon.coins).toBe(0);
+    expect(buyUpgrade(s, u.id)).toBe(false);
+    expect(basePay(s, b, T0)).toBeCloseTo(before * u.mult);
+  });
+
+  it("advisors are collected one by one, never twice, and their perks work", () => {
+    const s = defaultSave();
+    for (let i = 0; i < ADVISORS.length; i++) expect(giveAdvisor(s)).toBeDefined();
+    expect(new Set(s.tycoon.advisors).size).toBe(ADVISORS.length);
+    expect(giveAdvisor(s)).toBeUndefined();
+    s.crystals = 1000;
+    expect(openCrate(s)).toBeUndefined(); // nothing left: no crystals taken
+    expect(s.crystals).toBe(1000);
+    expect(offlineHours(s, T0)).toBe(8 + 4); // Otto
+  });
+
+  it("the vault adds hours away; booms and reviews are short boosts warps leave out", () => {
+    const s = defaultSave();
+    s.tycoon.coins = VAULT_COST[0];
+    expect(buyVault(s)).toBe(true);
+    expect(offlineHours(s, T0)).toBe(10);
+    const b = BUSINESSES[0], base = basePay(s, b, T0);
+    startBoom(s, T0);
+    review(s, "coffee", T0);
+    expect(basePay(s, b, T0 + 1000)).toBeCloseTo(base * 4);
+    expect(basePay(s, b, T0 + 1000, false)).toBeCloseTo(base);
+    expect(basePay(s, b, T0 + 3601e3)).toBeCloseTo(base);
+  });
+
+  it("the festival moves to another business each week", () => {
+    const ids = new Set(Array.from({ length: 10 }, (_, w) => festivalBiz(T0 + w * 7 * 864e5)));
+    expect(ids.size).toBe(10);
   });
 });

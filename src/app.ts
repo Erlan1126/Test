@@ -63,8 +63,8 @@ import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { TycoonUI } from "./ui/tycoon";
-import { offlineHours, stageOf, tick as tickTycoon, towerBonus } from "./logic/tycoon";
-import { BUSINESSES, coins as tycoonCoins } from "./data/tycoon";
+import { evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus } from "./logic/tycoon";
+import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -275,6 +275,8 @@ export class App implements DailyHost {
       // After the splash has gone (it can take a moment on slower phones).
       const show = () => {
         if (document.getElementById("splash")) { setTimeout(show, 400); return; }
+        // The Tycoon is the front door: the app opens on Skyhaven Inc.
+        if (this.state === "menu" && this.save.profile.towers >= 1 && !this.visiting) this.tycoon.open();
         if (this.state === "menu") this.tycoon.welcome(earned, away);
         if (this.state === "menu") this.tycoon.freshStart();
       };
@@ -857,6 +859,9 @@ export class App implements DailyHost {
     this.sound.ensure();
     const challenge = mode === "challenge" ? challengeById(challengeId ?? "") ?? null : null;
     if (mode === "challenge" && (!challenge || !challengeOpen(this.save, challenge.id))) return;
+    // A headquarters tower: chosen in the Tycoon, or tried again right after missing it.
+    this.hq = mode !== "classic" ? null : this.hqNext ?? (this.state === "over" ? this.hq : null);
+    this.hqNext = null;
     this.mode = mode;
     this.challenge = challenge;
     const event = mode === "classic" || mode === "daily" ? eventFor() : null;
@@ -896,6 +901,10 @@ export class App implements DailyHost {
     if (challenge) this.banner(stageName(challenge.id), stageGoal(challenge));
     else if (used.length) this.banner(t("Boosts on"), used.join(" · "));
     else if (mode === "daily") this.banner(t("Daily tower #{n}", { n: dayNumber() }), t("Same tower for everyone"));
+    if (this.hq) {
+      const b = BUSINESSES.find(x => x.id === this.hq)!, next = readyStage(this.save, b.id);
+      this.banner(t("{name} HQ", { name: t(STAGE_NAMES[b.id][next]) }), t("Build {n} floors to open it!", { n: hqFloors(next) }));
+    }
   }
 
   /** Classic and Daily towers race a ghost: the player just above you on this week's (or
@@ -1070,6 +1079,22 @@ export class App implements DailyHost {
       const bonus = towerBonus(this.save, run.floors);
       if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} coins for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
       if (run.floors > 0) this.outcome.rewards.unshift({ kind: "pass", text: t("+{n} office floors for Skyhaven Inc.: open more business levels!", { n: run.floors }) });
+      // A long perfect streak starts a construction boom.
+      if (this.sim.bestStreak >= BOOM_STREAK) {
+        startBoom(this.save);
+        this.outcome.rewards.unshift({ kind: "star", text: t("🏗️ Construction boom! Skyhaven Inc. earns ×2 for {n} minutes", { n: BOOM_MINUTES }) });
+      }
+      // A headquarters tower: tall enough, and the business grows a stage.
+      if (this.hq) {
+        const id = this.hq, from = stageNow(this.save, id), need = hqFloors(readyStage(this.save, id)), to = evolveBiz(this.save, id, run.floors);
+        if (to) {
+          this.hq = null;
+          this.outcome.rewards.unshift({ kind: "island", text: t("🏢 The {name} HQ is open!", { name: t(STAGE_NAMES[id][to]) }) });
+          setTimeout(() => this.tycoon.evolve(id, from, to), 1600);
+        } else if (need) {
+          this.outcome.rewards.unshift({ kind: "pass", text: t("🏗️ The HQ needs {n} floors: you built {m}. Try again!", { n: need, m: run.floors }) });
+        }
+      }
     }
     // Tall towers stand in their district for good.
     if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
@@ -1528,6 +1553,17 @@ export class App implements DailyHost {
   /** From the Tycoon: build a tower to add office floors. */
   buildFloors(): void {
     if (this.state !== "menu") return;
+    this.start("classic");
+  }
+
+  /** The business whose new headquarters this tower is (null for an ordinary tower). */
+  private hq: string | null = null;
+  private hqNext: string | null = null;
+
+  /** From the Tycoon: build a business's new headquarters to let it grow a stage. */
+  buildHQ(id: string): void {
+    if (this.state !== "menu" || !readyStage(this.save, id)) return;
+    this.hqNext = id;
     this.start("classic");
   }
 
@@ -2257,7 +2293,7 @@ export class App implements DailyHost {
   private bizView(): { c: string; c2: string; s: number }[] {
     const lv = this.save.tycoon.levels, key = JSON.stringify(lv);
     if (key !== this.bizCache.key) {
-      this.bizCache = { key, list: BUSINESSES.filter(b => (lv[b.id] ?? 0) > 0).map(b => ({ c: b.color[0], c2: b.color[1], s: stageOf(lv[b.id]) })) };
+      this.bizCache = { key, list: BUSINESSES.filter(b => (lv[b.id] ?? 0) > 0).map(b => ({ c: b.color[0], c2: b.color[1], s: stageNow(this.save, b.id) })) };
     }
     return this.bizCache.list;
   }

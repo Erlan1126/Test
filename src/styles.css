@@ -2725,3 +2725,59 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 .vault.full small { color: #e8334f; }
 @media (prefers-reduced-motion: reduce) { .ty-coach, .coach-here { animation: none !important; } }
 .ty-list .ty-coach { margin: 0; border-radius: 0; box-shadow: inset 0 0 0 2px #fff; }
+
+/* ── Tycoon: grand openings, festival, reviews ───────────────────────────── */
+.hq-tag { position: absolute; top: 44px; left: calc(8% + 4px); z-index: 3; padding: 3px 9px; border-radius: 10px; font: 400 11px var(--display); color: #2a1f3e;
+  background: linear-gradient(90deg, #fff3b0, #ffc93c); box-shadow: 0 3px 0 #b8740c, 0 0 14px rgba(255, 201, 60, 0.8); animation: ready-bob 0.8s ease-in-out infinite; }
+.fest-tag, .review-tag { position: absolute; bottom: 28px; right: 10px; z-index: 3; padding: 2px 8px; border-radius: 8px; font: 400 10px var(--display); color: #fff; background: linear-gradient(90deg, #ff4f8b, #b48cff); }
+.review-tag { right: auto; left: 10px; color: #ffc93c; background: rgba(30, 20, 60, 0.75); letter-spacing: 1px; }
+.hq-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 7px 10px; border: 0; border-radius: 12px; cursor: pointer; text-align: left;
+  font: 400 12px/1.15 var(--display); color: #2a1f3e; background: linear-gradient(135deg, #fff3b0, #ffc93c); box-shadow: 0 3px 0 #b8740c, 0 0 16px rgba(255, 201, 60, 0.55); animation: coach-pulse 1.4s ease-in-out infinite; }
+.hq-btn em { font: 700 11px var(--ui, inherit); font-style: normal; color: #8a5a00; }
+
+/* Food critic and power cut. */
+.critic { position: absolute; bottom: 26px; left: 58%; z-index: 4; width: 30px; height: 46px; cursor: pointer; animation: vip-in 0.5s cubic-bezier(.2, 1.6, .4, 1) both; }
+.critic svg { width: 22px; height: 38px; margin: 0 auto; display: block; filter: drop-shadow(0 0 6px rgba(180, 140, 255, 0.95)); animation: bob 0.6s ease-in-out infinite alternate; }
+.critic i { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 1px 6px; border-radius: 6px; font: 400 9px var(--display); font-style: normal; color: #fff; background: #6a3cff; white-space: nowrap; }
+.critic em { position: absolute; top: 6px; left: calc(100% + 2px); white-space: nowrap; padding: 2px 8px; border-radius: 8px; font: 400 10px var(--display); font-style: normal; color: #fff; background: #6a3cff; animation: ready-bob 0.8s ease-in-out infinite; }
+.power-cut { position: absolute; inset: 0 0 22px; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
+  background: rgba(10, 8, 30, 0.78); color: #fff; animation: flicker 1.6s steps(2) infinite; }
+.power-cut b { font: 400 18px var(--display); color: #ffe27a; text-shadow: 0 0 10px rgba(255, 220, 100, 0.8); }
+.power-cut small { font-size: 12px; font-weight: 800; }
+@keyframes flicker { 0%, 92% { opacity: 1; } 96% { opacity: 0.75; } }
+
+/* Hero chips: festival week and a construction boom. */
+.ty-events { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.ty-chip { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; color: #fff; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.ty-chip.boom { background: linear-gradient(90deg, #ff8a3b, #ff4f8b); box-shadow: 0 0 14px rgba(255, 120, 80, 0.6); }
+
+/* Upgrades. */
+.ty-upgrades { display: grid; gap: 8px; margin: 0 4px; }
+.ty-up { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(60, 40, 140, 0.08); }
+.ty-up-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 24px; background: linear-gradient(150deg, var(--b1), var(--b2)); }
+.ty-up-ico svg.ic { width: 1em; height: 1em; filter: brightness(0) invert(1); }
+.ty-up b { display: block; font: 400 14px var(--display); color: #2a1f3e; }
+.ty-up small { font-size: 12px; font-weight: 700; color: #6a3cff; }
+.ty-up .buy { display: flex; align-items: center; gap: 4px; min-width: 84px; justify-content: center; }
+.ty-up .buy svg { width: 16px; height: 16px; }
+
+/* Advisors. */
+.ty-adv-count { margin: 0 6px 6px; font-size: 12px; font-weight: 800; color: #6a6f99; }
+.ty-adv-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 0 4px 10px; }
+.ty-adv { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 8px; border-radius: 14px; text-align: center; background: #fff; box-shadow: 0 4px 12px rgba(60, 40, 140, 0.08); }
+.ty-adv.locked { background: #f4f1fd; box-shadow: none; }
+.ty-adv-face { width: 48px; height: 48px; }
+.ty-adv-face svg { width: 100%; height: 100%; }
+.ty-adv b { font: 400 11px var(--display); color: #2a1f3e; }
+.ty-adv small { font-size: 9px; font-weight: 700; line-height: 1.15; color: #6a6f99; }
+.ty-crate { margin: 0 4px; width: calc(100% - 8px); }
+.evo-icon.adv { padding: 0; background: #fff6e0; overflow: hidden; }
+.evo-icon.adv svg { width: 100%; height: 100%; filter: none; }
+.adv-perk { margin: 0 0 14px; font-weight: 800; color: #6a3cff; }
+@media (prefers-reduced-motion: reduce) { .hq-tag, .hq-btn, .critic, .critic svg, .critic em, .power-cut { animation: none !important; } }
+.ty-up .buy { grid-column: auto !important; grid-row: auto !important; width: auto !important; padding: 9px 12px; }
+.hq-tag { top: 44px; left: auto; right: 10px; }
+.room:has(.hq-tag) .room-stars { display: none; }
+.critic { left: 44%; }
+.critic { left: 56%; }
+.critic em { left: auto; right: calc(100% + 2px); }

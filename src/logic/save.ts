@@ -1,8 +1,8 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
 import { OLD_FEATURE_TOWERS } from "./features";
-import { ECONOMY, newTycoon, type CompanyGoal, type TycoonState } from "./tycoon";
-import { BUSINESSES } from "../data/tycoon";
+import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
+import { ADVISORS, BUSINESSES, UPGRADES, VAULT_COST } from "../data/tycoon";
 import { addXp, xpNeeded } from "./rules";
 import { LANGS, type LangSetting } from "../i18n";
 import { cleanPace } from "./ghost";
@@ -499,6 +499,16 @@ export function importCode(code: string): SaveData | null {
 }
 
 /** Tycoon numbers can be astronomically large, so they're checked as finite, not capped. */
+function normalizeEvolved(v: unknown, levels: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (v && typeof v === "object") {
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) if (k in levels && Number.isInteger(x) && (x as number) > 0) out[k] = Math.min(4, x as number);
+  } else {
+    for (const [k, lv] of Object.entries(levels)) { const st = stageOf(lv); if (st > 0) out[k] = st; }
+  }
+  return out;
+}
+
 function normalizeGoals(v: unknown): TycoonState["goals"] {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const kinds = ["vip", "buy", "taps", "rush"];
@@ -539,6 +549,13 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     floors: Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore)),
     speedups: { day: typeof (o.speedups as { day?: unknown })?.day === "string" ? String((o.speedups as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.speedups as { n?: unknown })?.n)) },
     econ: ECONOMY,
+    // Saves from before headquarters had to be built keep the stages they had reached.
+    evolved: normalizeEvolved(o.evolved, levels),
+    upgrades: Array.isArray(o.upgrades) ? [...new Set(o.upgrades.filter((x): x is string => typeof x === "string" && UPGRADES.some(u => u.id === x)))] : [],
+    advisors: Array.isArray(o.advisors) ? [...new Set(o.advisors.filter((x): x is string => typeof x === "string" && ADVISORS.some(a => a.id === x)))] : [],
+    vault: Math.min(VAULT_COST.length, Math.floor(big(o.vault))),
+    boom: big(o.boom),
+    reviews: Object.fromEntries(Object.entries((o.reviews && typeof o.reviews === "object" ? o.reviews : {}) as Record<string, unknown>).filter(([k]) => ids.includes(k)).map(([k, x]) => [k, big(x)])),
     fresh: o.fresh === true,
     tips: managers0.length ? 3 : Math.min(3, Math.floor(big(o.tips))),
     goals: normalizeGoals(o.goals),
