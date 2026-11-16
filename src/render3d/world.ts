@@ -42,20 +42,52 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   const spotOf = (id: string) => BUILD_SPOTS[o.place?.[id] ?? id];
   const anims: ((time: number, night: number) => void)[] = [];
 
-  // ---- Ground: lawn on a slab of dirt with a grassy lip, rock tapering below ----
+  // ---- Ground: a lawn with soft rounded corners on layered earth, a grassy lip, and a
+  // craggy rock root hanging below with stalactites and dangling roots ----
   const lawn = new THREE.MeshStandardMaterial({ map: lawnTexture(t), roughness: 0.95 });
   lawn.userData.snowable = true;   // turns white when it snows
-  g.add(shadowed(new THREE.Mesh(new THREE.PlaneGeometry(I * 2, I * 2).rotateX(-Math.PI / 2), lawn), false));
-  const dirt = new THREE.Mesh(new THREE.BoxGeometry(I * 2, 3 * FH, I * 2).translate(0, -1.5 * FH - 0.08, 0), [
-    std(t.dirtR), std(t.dirtL), std(t.lawn), std(t.dirtL), std(t.dirtL), std(t.dirtR),
-  ]);
-  g.add(dirt);
-  const lip = new THREE.Mesh(new THREE.BoxGeometry(I * 2 + 0.06, 0.45 * FH, I * 2 + 0.06).translate(0, -0.225 * FH - 0.005, 0), std(t.lip));
+  const top = islandShape(I, 4.5);
+  const lawnGeo = new THREE.ShapeGeometry(top, 12).rotateX(-Math.PI / 2);
+  // The lawn texture spans the whole island, as on the old square plane.
+  const luv = lawnGeo.attributes.uv as THREE.BufferAttribute, lpos = lawnGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < luv.count; i++) luv.setXY(i, (lpos.getX(i) + I) / (2 * I), 1 - (lpos.getZ(i) + I) / (2 * I));
+  lawnGeo.computeVertexNormals();
+  const lawnMesh = new THREE.Mesh(lawnGeo, lawn);
+  g.add(shadowed(lawnMesh, false));
+  // Layered earth: each band a little narrower, alternating warm and cool tones.
+  const slabOf = (inset: number, y0: number, depth: number, c: string) => {
+    const geo = new THREE.ExtrudeGeometry(islandShape(I - inset, Math.max(1.5, 4.5 - inset)), { depth, bevelEnabled: false, curveSegments: 10 })
+      .rotateX(Math.PI / 2).translate(0, y0, 0);
+    jitter(geo, Math.min(0.5, 0.15 + inset * 0.08), 7 + inset * 3);
+    return new THREE.Mesh(geo, std(c, { flatShading: true }));
+  };
+  g.add(slabOf(0, -0.08, 1.4 * FH, t.dirtL));
+  g.add(slabOf(0.7, -0.08 - 1.4 * FH, 1.0 * FH, t.dirtR));
+  g.add(slabOf(1.6, -0.08 - 2.4 * FH, 0.9 * FH, t.dirtL));
+  const lip = new THREE.Mesh(new THREE.ExtrudeGeometry(islandShape(I + 0.04, 4.55), { depth: 0.45 * FH, bevelEnabled: false, curveSegments: 12 })
+    .rotateX(Math.PI / 2).translate(0, -0.005, 0), std(t.lip));
   g.add(lip);
-  const rock = new THREE.Mesh(new THREE.ConeGeometry(I * Math.SQRT2, (I - 3) * FH, 4, 3).rotateY(Math.PI / 4).rotateX(Math.PI).translate(0, -3 * FH - (I - 3) * FH / 2, 0),
-    new THREE.MeshStandardMaterial({ color: col(t.rockL), roughness: 1, flatShading: true }));
-  jitter(rock.geometry as THREE.BufferGeometry, 0.9, 3);
+  // The rock root: a many-sided, lumpy cone, plus hanging spikes of rock.
+  const rockMat = new THREE.MeshStandardMaterial({ color: col(t.rockL), roughness: 1, flatShading: true });
+  const rockTop = -3.3 * FH;
+  const rock = new THREE.Mesh(new THREE.ConeGeometry(I * 1.12, (I - 2) * FH, 12, 5).rotateX(Math.PI).translate(0, rockTop - (I - 2) * FH / 2, 0), rockMat);
+  jitter(rock.geometry as THREE.BufferGeometry, 3.2, 3);
   g.add(rock);
+  for (let i = 0; i < 9; i++) {
+    const a = i * 0.7 + hash(i, 4, 1) * 0.5, r = I * (0.45 + hash(i, 4, 2) * 0.4), h = 4 + hash(i, 4, 3) * 9;
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(1 + hash(i, 5, 1) * 1.6, h, 6).rotateX(Math.PI).translate(Math.cos(a) * r, rockTop - h / 2 - 1, Math.sin(a) * r), rockMat);
+    jitter(spike.geometry as THREE.BufferGeometry, 0.5, 11 + i);
+    g.add(spike);
+  }
+  // Roots and vines dangling from the edge.
+  const rootMat = std("#5a3a22");
+  const vineMat = std(t.leaf[0]);
+  for (let i = 0; i < 26; i++) {
+    const side = i % 4, along = (hash(i, 6, 1) - 0.5) * 2 * (I - 5), len = 1.5 + hash(i, 6, 2) * 4;
+    const x = side === 0 ? I - 0.2 : side === 1 ? -I + 0.2 : along, z = side === 2 ? I - 0.2 : side === 3 ? -I + 0.2 : along;
+    const geo = new THREE.CylinderGeometry(0.05, 0.12, len, 4).translate(x, -0.6 - len / 2, z);
+    g.add(new THREE.Mesh(geo, i % 3 === 0 ? vineMat : rootMat));
+  }
 
   // ---- Roads, plaza and flower beds ----
   const roadMat = new THREE.MeshStandardMaterial({ map: roadTexture(t.road), roughness: 0.9 });
@@ -898,6 +930,18 @@ function roadTexture(color: string): THREE.Texture {
 }
 
 /** Roughens a geometry's vertices a little, for natural-looking rock. */
+/** A square of half-size `h` with corners rounded to radius `r` (in the XZ plane once
+ *  rotated: shape y is world z). */
+function islandShape(h: number, r: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(-h + r, -h);
+  s.lineTo(h - r, -h); s.quadraticCurveTo(h, -h, h, -h + r);
+  s.lineTo(h, h - r); s.quadraticCurveTo(h, h, h - r, h);
+  s.lineTo(-h + r, h); s.quadraticCurveTo(-h, h, -h, h - r);
+  s.lineTo(-h, -h + r); s.quadraticCurveTo(-h, -h, -h + r, -h);
+  return s;
+}
+
 function jitter(geo: THREE.BufferGeometry, amount: number, seed: number): void {
   const p = geo.attributes.position as THREE.BufferAttribute;
   const seen = new Map<string, [number, number, number]>();
