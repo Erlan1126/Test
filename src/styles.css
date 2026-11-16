@@ -2688,3 +2688,4 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 .room-chand { top: 0; left: 47%; width: 30px; height: 64px;
   background: radial-gradient(circle at 50% 84%, #fff8d0 0 5px, transparent 6px), linear-gradient(#c99a2e, #c99a2e) 50% 0 / 2px 46px no-repeat,
   radial-gradient(ellipse 15px 9px at 50% 86%, #ffd95e 0 98%, transparent 100%); }
+.ty-speedups { margin: 2px 4px 0; text-align: center; font-size: 12px; font-weight: 700; color: #6a6f99; }

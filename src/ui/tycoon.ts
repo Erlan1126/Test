@@ -1,12 +1,12 @@
 // The Tycoon screens: the business list (tap to run, buy levels, hire managers), boosts,
 // the New Era, the live card on the home screen and the "while you were away" welcome.
-import { BUSINESSES, coins, RUSH_MULT, STAGE_LABEL, COIN_BOOST_CRYSTALS, WARP_24H_CRYSTALS, WARP_4H_CRYSTALS } from "../data/tycoon";
+import { BUSINESSES, coins, RUSH_MULT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
 import { t } from "../i18n";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
-  payOf, perSecond, progressOf, runOnce, rushOn, stageName, stageOf, nextStage, startRush, tick, timeWarp, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, runOnce, rushOn, speedupsLeft, warpPrice, doublePrice, doubleAway, stageName, stageOf, nextStage, startRush, tick, timeWarp, unlockedBusiness, vipTip,
 } from "../logic/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, toast, vibrate, wireModal } from "./dom";
@@ -317,10 +317,15 @@ export class TycoonUI {
     const s = this.save, ty = s.tycoon, rate = perSecond(s);
     const card = (cls: string, icon: string, title: string, text: string, price: string, disabled: boolean) =>
       `<div class="ty-boost ${cls}"><span class="ty-bico">${iconSvg(icon)}</span><span><b>${esc(title)}</b><small>${esc(text)}</small></span><button type="button" class="buy"${disabled ? " disabled" : ""}>${price}</button></div>`;
+    const left = speedupsLeft(s);
+    const warp = (cls: string, icon: string, h: 1 | 8, title: string) => card(cls, icon, title,
+      rate <= 0 ? t("Hire a manager first") : left <= 0 ? t("No more speed-ups today. Come back tomorrow!") : t("Get {n} right now", { n: coins(rate * h * 3600) }),
+      `💎 ${warpPrice(h)}`, rate <= 0 || left <= 0);
     $("ty-boosts").innerHTML =
       card("boost", "bolt", t("Coin booster ×2"), ty.boost ? t("Active forever. Every coin counts twice") : t("Double every coin you earn, forever"), ty.boost ? esc(t("✓ Owned")) : `💎 ${fmt(COIN_BOOST_CRYSTALS)}`, ty.boost)
-      + card("warp4", "clock", t("Time warp: 4 hours"), rate > 0 ? t("Get {n} right now", { n: coins(rate * 4 * 3600) }) : t("Hire a manager first"), `💎 ${WARP_4H_CRYSTALS}`, rate <= 0)
-      + card("warp24", "rocket", t("Time warp: 24 hours"), rate > 0 ? t("Get {n} right now", { n: coins(rate * 24 * 3600) }) : t("Hire a manager first"), `💎 ${WARP_24H_CRYSTALS}`, rate <= 0);
+      + warp("warp1", "clock", 1, t("Time warp: 1 hour"))
+      + warp("warp8", "rocket", 8, t("Time warp: 8 hours"))
+      + `<p class="ty-speedups">${esc(t("Crystal speed-ups left today: {n} of {max}", { n: left, max: SPEEDUPS_PER_DAY }))}</p>`;
     const buys = $("ty-boosts").querySelectorAll<HTMLButtonElement>(".buy");
     buys[0].addEventListener("click", () => {
       if (s.crystals < COIN_BOOST_CRYSTALS) { this.short(COIN_BOOST_CRYSTALS); return; }
@@ -328,7 +333,8 @@ export class TycoonUI {
       this.host.sound.purchase(); confetti(); toast(t("Coin booster on: every coin counts twice!"));
       this.done();
     });
-    for (const [i, h, price] of [[1, 4, WARP_4H_CRYSTALS], [2, 24, WARP_24H_CRYSTALS]] as const) {
+    for (const [i, h] of [[1, 1], [2, 8]] as const) {
+      const price = warpPrice(h);
       buys[i].addEventListener("click", () => {
         if (s.crystals < price) { this.short(price); return; }
         tick(s);
@@ -396,13 +402,12 @@ export class TycoonUI {
     $("welcome-face").innerHTML = mayorSvg("happy");
     $("welcome-amount").textContent = coins(earned);
     $("welcome-text").textContent = t("Your managers kept Skyhaven busy for {time}.", { time: fmtAway(awayMs) });
-    const x3 = $<HTMLButtonElement>("welcome-x3"), price = 30;
-    x3.textContent = t("Triple it · 💎 {n}", { n: price });
+    const x3 = $<HTMLButtonElement>("welcome-x3"), price = doublePrice(this.save, awayMs);
+    x3.textContent = t("Double it · 💎 {n}", { n: price });
+    x3.hidden = speedupsLeft(this.save) <= 0;
     x3.onclick = () => {
       if (this.save.crystals < price) { toast(t("You need {n} more Sky Crystals", { n: price - this.save.crystals })); return; }
-      this.save.crystals -= price;
-      this.save.tycoon.coins += earned * 2;
-      this.save.tycoon.lifetime += earned * 2;
+      if (!doubleAway(this.save, earned, awayMs)) return;
       this.host.sound.purchase(); fireworks(3);
       this.close();
     };

@@ -1178,4 +1178,10 @@ export const PT: Record<string, string> = {
   "VIP customer: tap for a tip": "Cliente VIP: toque para uma gorjeta",
   "Grows into {name} at {n}": "Vira {name} com {n}",
   "A VIP tipped {n} coins!": "Um VIP deu {n} moedas de gorjeta!",
+  "Crystal speed-ups left today: {n} of {max}": "Acelerações com cristais hoje: {n} de {max}",
+  "Double it · 💎 {n}": "Dobrar · 💎 {n}",
+  "Double it": "Dobrar",
+  "No more speed-ups today. Come back tomorrow!": "Sem acelerações hoje. Volte amanhã!",
+  "Time warp: 1 hour": "Salto temporal: 1 hora",
+  "Time warp: 8 hours": "Salto temporal: 8 horas",
 };

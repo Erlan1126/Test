@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
-import { BUSINESSES, coins } from "../src/data/tycoon";
+import { BUSINESSES, coins, ERA_SCALE } from "../src/data/tycoon";
+import { doubleAway, doublePrice, speedupsLeft } from "../src/logic/tycoon";
 import { affordable, buyLevels, freeFloors, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
 
 const T0 = 1_800_000_000_000;
@@ -12,9 +13,10 @@ describe("Skyhaven Tycoon", () => {
     expect(s.tycoon.levels.coffee).toBe(1);
     expect(runOnce(s, "coffee", T0)).toBe(true);
     expect(tick(s, T0 + 500)).toBe(0);
-    const got = tick(s, T0 + 900);
+    expect(BUSINESSES[0].income).toBe(1); // a whole coin per tap from the start
+    const got = tick(s, T0 + BUSINESSES[0].cycle * 1000 + 100);
     expect(got).toBeCloseTo(multiplier(s, T0));
-    expect(tick(s, T0 + 5000)).toBe(0); // no manager: it waits for the next tap
+    expect(tick(s, T0 + 20000)).toBe(0); // no manager: it waits for the next tap
   });
 
   it("prices levels on a growing curve and buys the most it can afford", () => {
@@ -45,7 +47,9 @@ describe("Skyhaven Tycoon", () => {
     const b = BUSINESSES[0];
     expect(cycleOf(b, 24)).toBe(b.cycle);
     expect(cycleOf(b, 25)).toBe(b.cycle / 2);
-    expect(cycleOf(b, 100)).toBe(b.cycle / 8);
+    expect(cycleOf(b, 99)).toBe(b.cycle / 2);
+    expect(cycleOf(b, 100)).toBe(b.cycle / 4); // speed-ups come with each new stage
+    expect(cycleOf(b, 400)).toBe(b.cycle / 16);
   });
 
   it("keeps earning with a manager while away, up to the offline limit", () => {
@@ -64,7 +68,7 @@ describe("Skyhaven Tycoon", () => {
 
   it("gives Sky Gems for a New Era and they raise every later era's earnings", () => {
     const s = defaultSave();
-    s.tycoon.lifetime = 4e11;
+    s.tycoon.lifetime = ERA_SCALE * 400;
     const before = multiplier(s, T0);
     const g = eraGems(s);
     expect(g).toBe(200);
@@ -77,19 +81,35 @@ describe("Skyhaven Tycoon", () => {
   it("feeds on the sky city: more people, more earnings; towers pay a bonus", () => {
     const s = defaultSave();
     const base = multiplier(s, T0);
-    s.population = 40000;
+    s.population = 1e6;
     expect(multiplier(s, T0)).toBeCloseTo(base * 2);
     expect(towerBonus(s, 0, T0)).toBe(0);
     expect(towerBonus(s, 20, T0)).toBeGreaterThan(0);
   });
 
-  it("time warps cost crystals and need a manager", () => {
+  it("time warps cost crystals, need a manager, and only a few a day", () => {
     const s = defaultSave();
-    s.crystals = 500;
-    expect(timeWarp(s, 4, T0)).toBe(0);
+    s.crystals = 5000;
+    expect(timeWarp(s, 1, T0)).toBe(0);
     s.tycoon.coins = 5000; hireManager(s, "coffee", T0);
-    expect(timeWarp(s, 4, T0)).toBeGreaterThan(0);
-    expect(s.crystals).toBe(400);
+    const rate = perSecond(s, T0);
+    expect(timeWarp(s, 1, T0)).toBeCloseTo(rate * 3600);
+    expect(s.crystals).toBe(4900);
+    expect(timeWarp(s, 8, T0)).toBeCloseTo(rate * 8 * 3600);
+    expect(s.crystals).toBe(4400);
+    expect(doubleAway(s, 1000, 2 * 3600e3, T0)).toBe(true); // the third speed-up today
+    expect(s.crystals).toBe(4400 - doublePrice(s, 2 * 3600e3, T0));
+    expect(timeWarp(s, 1, T0)).toBe(0);
+    expect(speedupsLeft(s, T0)).toBe(0);
+    expect(speedupsLeft(s, T0 + 86400e3)).toBe(3);
+    expect(timeWarp(s, 1, T0 + 86400e3)).toBeGreaterThan(0);
+  });
+
+  it("doubling the welcome-back coins costs more the longer you were away", () => {
+    const s = defaultSave();
+    expect(doublePrice(s, 60e3, T0)).toBe(10);
+    expect(doublePrice(s, 2 * 3600e3, T0)).toBe(80);
+    expect(doublePrice(s, 30 * 3600e3, T0)).toBe(320); // capped at 8 hours
   });
 
   it("survives a save round trip and shortens huge numbers", () => {

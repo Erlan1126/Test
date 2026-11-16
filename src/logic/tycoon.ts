@@ -1,8 +1,9 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
-import { BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, WARP_24H_CRYSTALS, WARP_4H_CRYSTALS, type Business } from "../data/tycoon";
+import { BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { vipActive } from "./vip";
+import { dayKey } from "./rules";
 
 export interface TycoonState {
   coins: number;
@@ -22,16 +23,18 @@ export interface TycoonState {
   floors: number;
   /** Rush hour: a business earning extra until a time. */
   rush: { id: string; until: number };
+  /** Crystal speed-ups used today. */
+  speedups: { day: string; n: number };
 }
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 } });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 } });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
 
 /** Workers from the sky city: more people living in Skyhaven, more earnings everywhere. */
-export const workerBonus = (s: SaveData): number => 1 + Math.sqrt(Math.max(0, s.population)) / 200;
+export const workerBonus = (s: SaveData): number => 1 + Math.sqrt(Math.max(0, s.population)) / 1000;
 
 /** Everything that multiplies all earnings. */
 export function multiplier(s: SaveData, now = Date.now()): number {
@@ -223,12 +226,40 @@ export function buyBoost(s: SaveData): boolean {
   return true;
 }
 
-export function timeWarp(s: SaveData, hours: 4 | 24, now = Date.now()): number {
-  const price = hours === 4 ? WARP_4H_CRYSTALS : WARP_24H_CRYSTALS;
+/** Crystal speed-ups left today. */
+export function speedupsLeft(s: SaveData, now = Date.now()): number {
+  return s.tycoon.speedups.day === dayKey(0, now) ? Math.max(0, SPEEDUPS_PER_DAY - s.tycoon.speedups.n) : SPEEDUPS_PER_DAY;
+}
+function useSpeedup(s: SaveData, now: number): void {
+  const day = dayKey(0, now);
+  s.tycoon.speedups = { day, n: (s.tycoon.speedups.day === day ? s.tycoon.speedups.n : 0) + 1 };
+}
+
+export const warpPrice = (hours: 1 | 8): number => (hours === 1 ? WARP_1H_CRYSTALS : WARP_8H_CRYSTALS);
+
+export function timeWarp(s: SaveData, hours: 1 | 8, now = Date.now()): number {
+  const price = warpPrice(hours);
   const rate = perSecond(s, now);
-  if (s.crystals < price || rate <= 0) return 0;
+  if (s.crystals < price || rate <= 0 || speedupsLeft(s, now) <= 0) return 0;
   s.crystals -= price;
+  useSpeedup(s, now);
   const n = rate * hours * 3600;
   earn(s, n);
   return n;
+}
+
+/** Crystals to double the coins earned while away (by how long it was, up to the cap). */
+export function doublePrice(s: SaveData, awayMs: number, now = Date.now()): number {
+  const cap = (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS) * 3600e3;
+  return Math.max(10, Math.ceil((Math.min(awayMs, cap) / 3600e3) * DOUBLE_CRYSTALS_PER_HOUR / 10) * 10);
+}
+
+/** Doubles the welcome-back coins for crystals (one of the day's speed-ups). */
+export function doubleAway(s: SaveData, earned: number, awayMs: number, now = Date.now()): boolean {
+  const price = doublePrice(s, awayMs, now);
+  if (!(earned > 0) || s.crystals < price || speedupsLeft(s, now) <= 0) return false;
+  s.crystals -= price;
+  useSpeedup(s, now);
+  earn(s, earned);
+  return true;
 }

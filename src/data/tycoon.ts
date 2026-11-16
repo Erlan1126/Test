@@ -23,29 +23,34 @@ export interface Business {
 }
 
 export const BUSINESSES: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 4, growth: 1.07, income: 1, cycle: 0.8, manager: 1000 },
-  { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 60, growth: 1.15, income: 60, cycle: 3, manager: 15000 },
-  { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 720, growth: 1.14, income: 540, cycle: 6, manager: 100000 },
-  { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 8640, growth: 1.13, income: 4320, cycle: 12, manager: 500000 },
-  { id: "cinema", name: "Sky Cinema", icon: "film", color: ["#b48cff", "#6a3cff"], cost: 103680, growth: 1.12, income: 51840, cycle: 24, manager: 1.2e6 },
-  { id: "hotel", name: "Cloud Hotel", icon: "building", color: ["#7fd3ff", "#3a8dff"], cost: 1244160, growth: 1.11, income: 622080, cycle: 96, manager: 1e7 },
-  { id: "mall", name: "Sky Mall", icon: "gift", color: ["#5ee0a0", "#19a87a"], cost: 14929920, growth: 1.1, income: 7464960, cycle: 384, manager: 1.11e8 },
-  { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 179159040, growth: 1.09, income: 89579520, cycle: 1536, manager: 5.55e8 },
-  { id: "casino", name: "Star Casino", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 2149908480, growth: 1.08, income: 1074954000, cycle: 6144, manager: 1e10 },
-  { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 25798901760, growth: 1.07, income: 29668737024, cycle: 36864, manager: 1e11 },
+  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 12, growth: 1.17, income: 1, cycle: 4, manager: 1500 },
+  { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 150, growth: 1.13, income: 0.4, cycle: 6, manager: 10000 },
+  { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 3000, growth: 1.13, income: 3, cycle: 15, manager: 150000 },
+  { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 50000, growth: 1.13, income: 25, cycle: 40, manager: 3e6 },
+  { id: "cinema", name: "Sky Cinema", icon: "film", color: ["#b48cff", "#6a3cff"], cost: 2e5, growth: 1.12, income: 300, cycle: 120, manager: 1e7 },
+  { id: "hotel", name: "Cloud Hotel", icon: "building", color: ["#7fd3ff", "#3a8dff"], cost: 3e6, growth: 1.11, income: 3000, cycle: 300, manager: 2e8 },
+  { id: "mall", name: "Sky Mall", icon: "gift", color: ["#5ee0a0", "#19a87a"], cost: 4e7, growth: 1.1, income: 35000, cycle: 900, manager: 3e9 },
+  { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 6e8, growth: 1.09, income: 400000, cycle: 1800, manager: 5e10 },
+  { id: "casino", name: "Star Casino", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1e10, growth: 1.08, income: 5e+06, cycle: 3600, manager: 1e12 },
+  { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 2e11, growth: 1.07, income: 1e+08, cycle: 7200, manager: 2e13 },
 ];
 
 /** Level milestones: reaching each one makes a business run twice as fast. */
-export const MILESTONES_AT = [25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+export const MILESTONES_AT = [25, 100, 200, 400, 600, 800, 1000];
 /** Every Sky Gem adds this much to all earnings. */
 export const GEM_BONUS = 0.02;
 /** Offline earnings stop piling up after this long (longer with VIP). */
 export const OFFLINE_HOURS = 8, OFFLINE_HOURS_VIP = 24;
 /** Crystal prices for the boosts. */
 export const COIN_BOOST_CRYSTALS = 1200;
-export const WARP_4H_CRYSTALS = 100, WARP_24H_CRYSTALS = 400;
+export const WARP_1H_CRYSTALS = 100, WARP_8H_CRYSTALS = 500;
+/** Crystal speed-ups (time warps and doubling the welcome-back coins) allowed a day:
+ *  crystals help, but the company still grows at its own pace. */
+export const SPEEDUPS_PER_DAY = 3;
+/** Doubling what managers earned while away costs this many crystals an hour away. */
+export const DOUBLE_CRYSTALS_PER_HOUR = 40;
 /** Lifetime coins needed for the first New Era gem (the formula is a square root of this). */
-export const ERA_SCALE = 1e9;
+export const ERA_SCALE = 2e8;
 
 const SUFFIX = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
 /** 1234 → "1.23K", 5.6e15 → "5.60Qa", then aa, ab, ac... for the truly endless. */
