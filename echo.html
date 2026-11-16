@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Echo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@1,500&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@1,500&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #e9f3ff;
@@ -652,6 +652,134 @@
   .city-nav { flex-wrap: wrap; } .city-nav button { flex: 1 1 22%; }
   .shop li .perk { display: block; font-size: 11px; color: #8fa6c8; }
   .shop li.locked { opacity: 0.45; } .shop li.won b::after { content: " ✓"; color: #9fe8ff; }
+
+  /* ================= Echo 2.0: sleek, dark, minimal =================
+     One modern face (Inter), deep dark tones, frosted glass, crisp white type and quiet
+     colour accents. Big tabular numbers; one tab bar; sheets that slide up from the bottom. */
+  :root { --bg2: #06070b; --glass: rgba(20, 22, 30, 0.62); --glass-hi: rgba(36, 40, 54, 0.7); --edge: rgba(255, 255, 255, 0.09); --txt: #f5f7fb; --mut: #8b91a3; --acc: #8be9ff; --acc2: #c7b6ff; --gold2: #ffd98a; --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  html, body { font-family: var(--font); background: var(--bg2); letter-spacing: -0.005em; }
+  button { font-family: var(--font); }
+  .logo, .panel h2, .levels-title, .story-name, .lc-name, .ch-name, .looks-head, .journal-h, .city-title, .movie-cap, .tagline, .city-sub, #encounter b, .story-text { font-family: var(--font) !important; font-style: normal !important; }
+  .panel h2, .levels-title, .city-title { font-weight: 700; letter-spacing: -0.01em; }
+  .ic { width: 22px; height: 22px; display: block; } .ic.sm { width: 14px; height: 14px; }
+  .glass, .panel, .card2, .sheet-card, .tabbar, .chip2, .icon2, .seg { background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%); }
+  .primary { background: #fff; color: #090a10; border: 0; border-radius: 16px; font-weight: 700; font-size: 16px; padding: 15px 22px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: transform 0.12s; }
+  .primary:active, .ghost:active, .play2:active, .tabbar button:active { transform: scale(0.96); }
+  .primary:disabled { opacity: 0.4; }
+  .primary.wide { width: 100%; margin: 4px 0 6px; }
+  .ghost { background: rgba(255, 255, 255, 0.07); color: var(--txt); border: 1px solid var(--edge); border-radius: 16px; font-weight: 600; font-size: 15px; padding: 14px 18px; display: inline-flex; align-items: center; justify-content: center; }
+  .ghost.icon-only { padding: 14px; flex: 0 0 auto; }
+  .row2 { display: flex; gap: 10px; width: 100%; } .row2 .primary { flex: 1; }
+  .link2 { background: none; border: 0; color: var(--mut); font-size: 13px; margin-top: 10px; }
+
+  /* Home */
+  #titleScreen { justify-content: space-between; padding: calc(14px + var(--top)) 18px calc(96px + var(--bottom)); }
+  #titleScreen::before { background: linear-gradient(rgba(6, 7, 11, 0.85), rgba(6, 7, 11, 0.1) 26%, rgba(6, 7, 11, 0.05) 50%, rgba(6, 7, 11, 0.88) 86%); }
+  .home-top { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .wordmark { font-weight: 600; font-size: 15px; letter-spacing: 0.55em; color: var(--txt); padding-left: 2px; }
+  .home-chips { display: flex; gap: 6px; align-items: center; }
+  .chip2 { height: 34px; padding: 0 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--txt); font-variant-numeric: tabular-nums; }
+  .chip2 .ic { color: var(--gold2); }
+  .icon2 { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--txt); position: relative; }
+  .icon2 .ic { width: 18px; height: 18px; }
+  .icon2 .dot, .tabbar .dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold2); }
+  .home-center { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(340px, 100%); margin-bottom: 8px; animation: rise 0.8s cubic-bezier(.2,.7,.2,1) both; transition: opacity 0.25s, transform 0.25s; }
+  .home-best { display: flex; flex-direction: column; align-items: center; }
+  .home-best span { font-size: 12px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--mut); }
+  .home-best b { font-size: 56px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--txt); }
+  .play2 { width: 100%; height: 64px; border-radius: 20px; background: #fff; color: #090a10; border: 0; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 10px 40px rgba(139, 233, 255, 0.18); transition: transform 0.12s; }
+  .play2 .ic { width: 20px; height: 20px; }
+  .play2 span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+  .play2 b { font-size: 18px; font-weight: 700; } .play2 small { font-size: 12px; color: #5c6273; font-weight: 500; }
+  .home-meta { margin: 0; font-size: 13px; color: var(--mut); text-align: center; min-height: 1.2em; }
+  .seg { display: flex; border-radius: 14px; padding: 4px; gap: 4px; width: 100%; }
+  .seg button { flex: 1; padding: 10px 0; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--txt); background: none; border: 0; }
+  .seg button.on { background: rgba(255, 255, 255, 0.14); }
+  #hardBtn.on { color: #ffb3d6; }
+  #titleScreen.launch .home-center, #titleScreen.launch .home-top { opacity: 0; transform: translateY(12px); }
+
+  /* The tab bar */
+  .tabbar { position: fixed; left: 12px; right: 12px; bottom: calc(10px + var(--bottom)); height: 64px; border-radius: 22px; display: none; z-index: 20; padding: 0 6px; }
+  body.tabs .tabbar { display: flex; }
+  .tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--mut); font-size: 11px; font-weight: 600; position: relative; border-radius: 16px; }
+  .tabbar button.on { color: var(--txt); }
+  .tabbar button.on .ic { color: var(--acc); }
+
+  /* Sheets */
+  .sheet { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, 0.5); display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s ease both; }
+  .sheet[hidden] { display: none; }
+  .sheet-card { width: min(520px, 100%); max-height: 82vh; overflow: auto; border-radius: 26px 26px 0 0; padding: 8px 18px calc(22px + var(--bottom)); background: rgba(16, 18, 26, 0.92); animation: sheetUp 0.32s cubic-bezier(.2,.8,.2,1) both; text-align: left; color: var(--txt); }
+  @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } }
+  @keyframes fadeIn { from { opacity: 0; } }
+  .grip { width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); margin: 4px auto 14px; }
+  .sh-title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .sh-sub { margin: 4px 0 12px; font-size: 13px; color: var(--mut); }
+  .sh-sec { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mut); }
+  .sh-sec span:last-child { letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--gold2); }
+  .list2 { list-style: none; margin: 0; padding: 0; }
+  .list2 li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--edge); font-size: 15px; }
+  .list2 li:last-child { border-bottom: 0; }
+  .list2 li b { font-weight: 600; } .list2 li small { display: block; font-size: 12px; color: var(--mut); margin-top: 2px; }
+  .list2 li button { flex: 0 0 auto; padding: 8px 14px; border-radius: 12px; background: #fff; color: #090a10; border: 0; font-weight: 700; font-size: 13px; }
+  .list2 li button:disabled { background: rgba(255, 255, 255, 0.08); color: var(--mut); }
+  .list2 li em { font-style: normal; font-size: 12px; color: var(--acc); font-weight: 600; }
+  .list2 li.locked { opacity: 0.4; } .list2 li.won b::after { content: "  ✓"; color: var(--acc); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 0 0 8px; }
+  .cal div { border-radius: 12px; padding: 8px 0; font-size: 10px; text-align: center; background: rgba(255, 255, 255, 0.05); color: var(--mut); border: 1px solid transparent; }
+  .cal div b { display: block; font-size: 14px; color: var(--txt); margin-top: 2px; }
+  .cal div.past { opacity: 0.35; } .cal div.now { border-color: var(--gold2); background: rgba(255, 217, 138, 0.1); }
+  .dm-bar, .run-bar { display: block; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .dm-bar i, .run-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--acc), var(--acc2)); border-radius: 2px; transition: width 0.9s ease 0.3s; }
+  .dm li.done { color: var(--acc); }
+  .season p { margin: 8px 0 0; font-size: 13px; color: var(--mut); }
+  #todayPanel .row2 { margin-top: 18px; }
+
+  /* The run */
+  .run-hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; padding: calc(12px + var(--top)) 14px 0; }
+  .hud-side.right { display: flex; justify-content: flex-end; pointer-events: auto; }
+  .hud-mid { text-align: center; }
+  .run-hud .score { font-family: var(--font); font-weight: 800; font-size: 40px; letter-spacing: -0.03em; color: #fff; text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6); font-variant-numeric: tabular-nums; line-height: 1; }
+  .run-hud .sub { justify-content: center; gap: 8px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--gold2); }
+  .run-hud .sub span { padding: 2px 8px; border-radius: 99px; background: rgba(0, 0, 0, 0.3); }
+  .run-hud .sub span:empty { display: none; }
+  .run-hud .sub span:nth-child(2) { color: var(--acc); } .run-hud .sub span:nth-child(3) { color: #ffb3d6; }
+  .hearts { display: flex; gap: 6px; margin-top: 10px; font-size: 0; }
+  .hearts i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
+  .hearts i.on { background: #fff; box-shadow: 0 0 10px rgba(139, 233, 255, 0.8); }
+  #runPauseBtn { pointer-events: auto; }
+  .card2 { position: absolute; left: 50%; width: min(380px, calc(100% - 28px)); border-radius: 24px; padding: 22px 18px 18px; text-align: center; color: var(--txt); background: rgba(16, 18, 26, 0.84); }
+  .card2[hidden] { display: none; }
+  .card2.mid { top: 50%; transform: translate(-50%, -50%); animation: fadeIn 0.2s both; }
+  .card2.bottom { bottom: calc(14px + var(--bottom)); transform: translateX(-50%); animation: cardUp 0.38s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes cardUp { from { transform: translate(-50%, 40px); opacity: 0; } }
+  .card2 h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
+  .card2 .info { color: var(--mut); font-size: 14px; margin: 6px 0 16px; }
+  .ring { width: 92px; height: 92px; margin: 10px auto 0; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 800; border: 3px solid rgba(255, 255, 255, 0.12); border-top-color: #fff; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ro-head { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mut); }
+  .badge { font-size: 11px; letter-spacing: 0.06em; color: var(--gold2); }
+  .badge:empty { display: none; }
+  #runOver.best .badge { color: #090a10; background: var(--gold2); padding: 3px 8px; border-radius: 99px; }
+  .ro-score { font-size: 64px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; margin: 4px 0 10px; font-variant-numeric: tabular-nums; }
+  #runOver.best .ro-score { text-shadow: 0 0 30px rgba(255, 217, 138, 0.45); }
+  .ro-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .ro-stats div { background: rgba(255, 255, 255, 0.05); border-radius: 14px; padding: 10px 4px; }
+  .ro-stats b { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ro-stats span { font-size: 11px; color: var(--mut); }
+  .ro-level { text-align: left; font-size: 13px; color: var(--txt); font-weight: 600; margin-bottom: 8px; }
+  .ro-daily { font-size: 12px; color: var(--mut); margin: 6px 0 14px; }
+  .ability { position: fixed; right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(26px + var(--bottom)); z-index: 6; min-width: 64px; height: 64px; padding: 0 14px; border-radius: 22px; background: var(--glass); border: 1px solid var(--edge); color: var(--txt); font-weight: 700; font-size: 13px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .ability[hidden] { display: none; } .ability.cool { opacity: 0.4; }
+
+  /* The city, in the same style */
+  #cityScreen .city-title { font-size: 15px; letter-spacing: 0.55em; font-weight: 600; text-transform: uppercase; text-shadow: none; }
+  #cityScreen .city-sub { font-size: 13px; color: var(--mut); }
+  #cityScreen .city-actions { padding-bottom: calc(92px + var(--bottom)); }
+  #cityShop, #cityFriends, #cityBack { display: none !important; }
+  .city-nav button { background: var(--glass); border: 1px solid var(--edge); border-radius: 14px; color: var(--txt); font-weight: 600; }
+  #cityScreen .play { background: #fff !important; color: #090a10 !important; border: 0 !important; border-radius: 20px; }
+  #cityScreen .play-label { font-family: var(--font) !important; letter-spacing: 0 !important; font-weight: 700; }
+  #cityScreen .play-sub { color: #5c6273 !important; letter-spacing: 0.02em; text-transform: none; }
 </style>
 </head>
 <body>
@@ -677,43 +805,24 @@
 
 <div class="screen on" id="titleScreen">
   <canvas id="titleCanvas" aria-hidden="true"></canvas>
-  <div class="title-bar">
-    <button class="round glass" id="shareBtn" aria-label="Share Echo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
-    <div class="chip glass" id="starChip" aria-label="Stars collected"><span class="st">★</span><span id="starCount">0</span></div>
-  </div>
-  <div class="hero">
-    <div class="logo-wrap">
-      <span class="ripple"></span><span class="ripple"></span><span class="ripple"></span>
-      <h1 class="logo">Echo</h1>
+  <div class="home-top">
+    <div class="wordmark">ECHO</div>
+    <div class="home-chips">
+      <span class="chip2" id="chipLights"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg><b>0</b></span>
+      <span class="chip2" id="chipLevel">Lv 1</span>
+      <button class="icon2" id="looksBtn" aria-label="Looks"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.3 0 2-.8 2-1.8 0-1.3-1.2-1.6-1.2-2.8 0-1 .8-1.6 1.8-1.6H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/></svg><i class="dot" id="looksDot" hidden></i></button>
+      <button class="icon2" id="settingsBtn" aria-label="Settings"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
     </div>
-    <div class="divider"><i></i></div>
-    <p class="tagline">A little light, lost in the dark</p>
   </div>
-  <div class="run-panel" id="todayPanel" hidden>
-    <h2>Today</h2>
-    <p class="week-ev" id="weekEv"></p>
-    <h3>Daily gift · <span id="calStreak"></span></h3>
-    <div class="cal" id="calGrid"></div>
-    <button class="btn main" id="calClaim">Claim</button>
-    <h3 style="margin-top:14px">Daily missions</h3>
-    <ul class="dm" id="dmList"></ul>
-    <div class="row"><button class="main" id="todayClose">Let's go</button></div>
+  <div class="home-center" id="homeCenter">
+    <div class="home-best"><span>Best</span><b id="homeBest">0</b></div>
+    <button class="play2" id="playBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg><span><b id="playLabel">Play</b><small id="playSub"></small></span></button>
+    <p class="home-meta" id="titleMeta"></p>
+    <div class="seg"><button id="dailyRunBtn">Daily run</button><button id="hardBtn">Hard</button></div>
   </div>
-  <div class="title-actions">
-    <div class="title-meta" id="titleMeta"></div>
-    <button class="today glass" id="todayCard"><span class="today-ico" id="todayIco"></span><span class="today-main"><b id="todayName"></b><small id="todayInfo"></small></span><span class="today-side"><b id="todayStreak"></b><small id="todayQuests"></small></span></button>
-    <button class="link week-link" id="weekLink">This week's cave ›</button>
-    <p class="tap-sing" id="tapSing">Tap to sing · swipe up to dash</p>
-    <button class="play" id="playBtn"><span class="play-label" id="playLabel">Play</span><span class="play-sub" id="playSub">Level 1</span></button>
-    <div class="title-row"><button class="daily-run" id="dailyRunBtn">Daily run</button><button class="hard-toggle" id="hardBtn">Hard: off</button></div>
-    <nav class="dock glass" aria-label="Menu">
-      <button id="levelsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>City</button>
-      <button id="homeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M2 20h20"/><circle cx="12" cy="15" r="2.5"/></svg>Home<i class="dot" id="homeDot" hidden></i></button>
-      <button id="todayBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/></svg>Today<i class="dot" id="todayDot" hidden></i></button>
-      <button id="looksBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="11" r="0.8" fill="currentColor"/><circle cx="14.5" cy="11" r="0.8" fill="currentColor"/><path d="M10 14.5c1.2 1 2.8 1 4 0"/></svg>Looks<i class="dot" id="looksDot" hidden></i></button>
-      <button id="awardsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M16 5h3v2a3 3 0 0 1-3 3"/><path d="M8 5H5v2a3 3 0 0 0 3 3"/><path d="M12 13v4"/><path d="M8.5 20h7"/></svg>Awards</button>
-      <button id="settingsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</button>
-    </nav>
+  <div hidden aria-hidden="true">
+    <button id="shareBtn"></button><span id="starCount"></span><button id="weekLink"></button><button id="homeBtn"></button><i id="homeDot"></i><button id="awardsBtn"></button><p id="tapSing"></p>
+    <button id="todayCard"><span id="todayIco"></span><b id="todayName"></b><small id="todayInfo"></small><b id="todayStreak"></b><small id="todayQuests"></small></button>
   </div>
 </div>
 
@@ -769,21 +878,54 @@
 <div class="screen" id="runScreen">
   <canvas id="runCanvas" aria-label="Lumi gliding up through the cave"></canvas>
   <div class="run-hud">
-    <div><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">✦ 0</span><span id="runMult">×1</span><span id="runPower"></span></div></div>
-    <div><button id="runPauseBtn" aria-label="Pause">❚❚</button><div class="hearts" id="runHearts"></div></div>
+    <div class="hud-side"><div class="hearts" id="runHearts"></div></div>
+    <div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div></div>
+    <div class="hud-side right"><button class="icon2" id="runPauseBtn" aria-label="Pause"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></div>
   </div>
-  <div class="run-panel" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer. Tap to sing: shadows your song reaches turn back into light. Swipe up to dash.</p><div class="row"><button id="runQuit">Quit</button><button class="main" id="runResume">Resume</button></div></div>
-  <div class="run-panel run-continue" id="runContinue" hidden><h2>Keep going?</h2><div class="big" id="runContinueTime">5</div><p class="info">Lumi's light is fading. Spend lights to carry on.</p><div class="row"><button id="runContinueNo">Rest</button><button class="main" id="runContinueGo">Keep going · ✦ <span id="runContinueCost">25</span></button></div></div>
-  <div class="run-panel" id="runOver" hidden>
-    <h2 id="runOverTitle">Lumi rests</h2><div class="big" id="runOverScore">0</div><p class="best" id="runOverBest"></p><p class="info" id="runOverInfo"></p>
-    <p class="run-level" id="runLevel"></p><div class="run-bar"><i id="runLevelBar"></i></div><button class="run-trail" id="runTrail"></button>
-    <p class="run-daily" id="runOverDaily"></p>
-    <div class="run-row2"><button id="runShare">Share · challenge a friend</button></div>
-    <h3>Missions</h3><ul id="runOverMissions"></ul>
-    <h3>Upgrades · ✦ <span id="runGlowLeft">0</span></h3><ul class="shop-list" id="runShopList"></ul>
-    <div class="row"><button id="runCity">City</button><button class="main" id="runAgain">Run again</button></div>
+  <button class="ability" id="abilityBtn" hidden aria-label="Ability"><span id="abilityName"></span></button>
+  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer · tap to sing · swipe up to dash</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
+  <div class="card2 mid" id="runContinue" hidden><h2>Keep going?</h2><div class="ring" id="runContinueTime">5</div><p class="info">Spend lights to carry on</p><div class="row2"><button class="ghost" id="runContinueNo">Rest</button><button class="primary" id="runContinueGo"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg> <span id="runContinueCost">25</span></button></div></div>
+  <div class="card2 bottom" id="runOver" hidden>
+    <div class="ro-head"><span id="runOverTitle">Run over</span><span class="badge" id="runOverBest"></span></div>
+    <div class="ro-score" id="runOverScore">0</div>
+    <div class="ro-stats"><div><b id="roDist">0</b><span>metres</span></div><div><b id="roLights">0</b><span>lights</span></div><div><b id="roCombo">0</b><span>best combo</span></div></div>
+    <div class="ro-level"><span id="runLevel"></span><div class="run-bar"><i id="runLevelBar"></i></div></div>
+    <p class="ro-daily" id="runOverDaily"></p>
+    <div class="row2"><button class="ghost icon-only" id="runCity" aria-label="Home"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg></button><button class="primary" id="runAgain">Play again</button><button class="ghost icon-only" id="runShare" aria-label="Share and challenge a friend"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>
+    <button class="link2" id="runTrail"></button>
+    <div hidden><p id="runOverInfo"></p><ul id="runOverMissions"></ul><span id="runGlowLeft"></span><ul id="runShopList"></ul></div>
   </div>
 </div>
+
+<!-- Bottom sheets: Today, and the shop, friends, awards and rebuild lists. -->
+<div class="sheet" id="todayPanel" hidden><div class="sheet-card">
+  <div class="grip"></div>
+  <h3 class="sh-title">Today</h3>
+  <p class="sh-sub" id="weekEv"></p>
+  <div class="sh-sec"><span>Daily gift</span><span id="calStreak"></span></div>
+  <div class="cal" id="calGrid"></div>
+  <button class="primary wide" id="calClaim">Claim</button>
+  <div class="sh-sec"><span>Daily missions</span></div>
+  <ul class="list2 dm" id="dmList"></ul>
+  <div class="sh-sec"><span>Season</span><span id="seasonInfo"></span></div>
+  <div class="season"><div class="run-bar"><i id="seasonBar"></i></div><p id="seasonNext"></p></div>
+  <div class="sh-sec"><span>Run missions</span><span id="multInfo"></span></div>
+  <ul class="list2" id="todayRunMissions"></ul>
+  <div class="row2"><button class="ghost" id="todayAwards">Awards</button><button class="primary" id="todayClose">Let's go</button></div>
+</div></div>
+<div class="sheet" id="sheet" hidden><div class="sheet-card">
+  <div class="grip"></div>
+  <h3 class="sh-title" id="shopTitle"></h3>
+  <p class="sh-sub" id="shopSub"></p>
+  <ul class="list2" id="shopList"></ul>
+</div></div>
+<nav class="tabbar" id="tabbar" aria-label="Menu">
+  <button id="tabHome" class="on"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+  <button id="levelsBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V10l4-3v14"/><path d="M9 21V4l6 3v14"/><path d="M15 21v-9l4 2v7"/></svg><span>City</span></button>
+  <button id="tabShop"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.4 5.6L20 9.3l-4.3 3.9 1.2 5.8L12 16.2 7.1 19l1.2-5.8L4 9.3l5.6-.7z"/></svg><span>Shop</span></button>
+  <button id="tabFriends"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10.5" r="2.4"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><path d="M14.5 15.2c2.6-.4 4.8.8 5.8 3.3"/></svg><span>Friends</span></button>
+  <button id="todayBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/></svg><span>Today</span><i class="dot" id="todayDot" hidden></i></button>
+</nav>
 
 <div class="screen" id="movieScreen">
   <canvas id="movieCanvas" aria-hidden="true"></canvas>
@@ -799,7 +941,7 @@
     <p class="city-sub" id="citySub"></p>
     <div class="city-stats"><span>✦ <b id="cityCount">0</b> lights home</span><span>Glow <b id="cityGlow">0</b></span></div>
   </div>
-  <div class="shop" id="shopPanel" hidden><h3 id="shopTitle">Upgrades</h3><p id="shopSub">Spend the lights you gather in runs.</p><ul id="shopList"></ul></div>
+  <div id="shopPanel" hidden></div>
   <div class="city-actions">
     <button class="play" id="cityGo"><span class="play-label">Into the dark</span><span class="play-sub" id="cityGoName"></span></button>
     <div class="city-nav"><button id="cityBuild">Rebuild</button><button id="cityShop">Upgrades</button><button id="cityFriends">Friends</button><button id="cityAwards">Awards</button><button id="cityBack">Title</button></div>

@@ -14,6 +14,17 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Echo 2.0: the look and the flow
+
+Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted glass, crisp white type and quiet colour accents, with a real icon set instead of emoji.
+
+- **Home** is the live run behind a small ECHO wordmark, your lights and level, Looks and Settings at the top; your best score big in the middle; **Play** (or tap anywhere) starts the run seamlessly: the menu fades away and Lumi carries on in the same cave. Daily run and Hard sit under it.
+- **One tab bar**: Home, City, Shop (upgrades), Friends, Today. Lists open as **sheets** that slide up from the bottom; tap outside to close.
+- **Today** holds the daily gift, the daily missions, the **season** (a free 30-tier reward track that starts again every month; every run's experience moves it on and each tier pays lights at once, with bigger rewards at tiers 10, 20 and 30), the run missions and the awards.
+- **In a run**: a big score at the top, your lights and multiplier under it, dots for Lumi's lights, messages as small pills, a quiet world label, and the combo as a ring filling around Lumi with the count above it. The cave is darker, with crisp edges and less haze.
+- **When a run ends**: one card slides up with the score counting, best, metres, lights and best combo, the level bar, today's progress, and Play again in the middle (Home and Share on either side).
+- **Friends' abilities**: playing as a friend gives an ability button (a four-second Magnet, Comet, Lantern or Choir), ready again after 25 s.
+
 ## Play: the endless run
 
 Echo's main mode is now a calm, beautiful endless run (`echo/run.js`), in the spirit of Alto's Adventure with Subway Surfers' "one more run" hook. **Play** on the title starts it (after the opening film, the first time).

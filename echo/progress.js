@@ -130,10 +130,30 @@ const RUN_ACHS = [
 function checkAchievements() {
   save.runAch = save.runAch || {};
   const fresh = RUN_ACHS.filter(a => !save.runAch[a.id] && a.test());
-  for (const a of fresh) { save.runAch[a.id] = 1; gain(a.r); toast(`🏆 <b>${a.name}</b> · +${a.r} ✦`, true); }
+  for (const a of fresh) { save.runAch[a.id] = 1; gain(a.r); toast(`Award · <b>${a.name}</b> · +${a.r} lights`, true); }
   if (fresh.length) persist();
   return fresh;
 }
+
+// ---------- The season: a free reward track, new every month ----------
+const SEASON_TIERS = 30, SEASON_XP = 150;
+const seasonId = () => { const d = new Date(); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
+const seasonDaysLeft = () => { const d = new Date(), end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); return Math.max(1, Math.ceil((end - d.getTime()) / 86400000)); };
+const seasonReward = n => 15 + n * 5 + (n % 10 === 0 ? n * 15 : 0);
+function seasonState() { if (!save.season || save.season.id !== seasonId()) save.season = { id: seasonId(), xp: 0, paid: 0 }; return save.season; }
+const seasonTier = xp => ({ n: Math.min(SEASON_TIERS, Math.floor(xp / SEASON_XP)), into: xp >= SEASON_TIERS * SEASON_XP ? SEASON_XP : xp % SEASON_XP });
+// Experience from a run moves the season along; each tier reached pays its reward at once.
+function seasonGain(xp) {
+  const se = seasonState(); se.xp += xp;
+  const n = seasonTier(se.xp).n; let paid = 0;
+  while (se.paid < n) { se.paid++; const r = seasonReward(se.paid); gain(r); paid += r; }
+  if (paid) toast(`Season tier ${n} · <b>+${paid}</b> lights`, true);
+  return paid;
+}
+
+// ---------- Friends' abilities ----------
+// Playing as a friend gives an ability button: a short power-up, ready again after 25 s.
+const FRIEND_ABILITY = ["magnet", "comet", "choir", "lantern", "comet", "lantern", "choir", "magnet", "lantern", "comet", "choir", "magnet"];
 
 // ---------- Challenge a friend; share a score card ----------
 // A link carries a seed and a score: your friend plays the very same cave and tries to beat you.

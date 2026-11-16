@@ -214,9 +214,10 @@ function renderCity() {
   renderShop();
 }
 let cityPanel = "upgrades";
+function openSheet(kind) { cityPanel = kind; renderShop(); $("todayPanel").hidden = true; $("sheet").hidden = false; }
 function renderShop() {
   const glow = save.glow || 0;
-  const head = { upgrades: ["Upgrades", "Spend the lights you gather in runs."], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
+  const head = { upgrades: ["Shop", `Upgrades for every run. You have ${glow.toLocaleString()} lights.`], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
     friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
   $("shopTitle").textContent = head[0]; $("shopSub").textContent = head[1];
   if (cityPanel === "upgrades") $("shopList").innerHTML = runShopHtml();

@@ -284,7 +284,7 @@ const SIM = `
       save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; startRun();
       out.runStarts = screen === "run" && run.hearts === 3;
       run.items = [{ type: "light", at: run.dist + 5, x: run.x, trail: 1, of: 1 }]; run.next = 1e9; runUpdate(1 / 60); runUpdate(1 / 60);
-      out.runGathersLights = run.lights === 1;
+      out.runGathersLights = run.lights === (weekEvent().id === "gold" ? 2 : 1);
       run.items = [{ type: "shadow", at: run.dist + 60, x: run.x, ph: 0, amp: 0 }]; runUpdate(1 / 60); runSing(); for (let q = 0; q < 30; q++) runUpdate(1 / 60);
       out.runSongFreesShadows = run.freed === 1 && run.lights >= 4;
       run.items = [{ type: "shadow", at: run.dist + 2, x: run.x, ph: 0, amp: 0 }]; run.inv = 0; runUpdate(1 / 60); runUpdate(1 / 60);

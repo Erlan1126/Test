@@ -146,6 +146,7 @@ function runEnd() {
   save.glow = (save.glow || 0) + run.lights + bonus;
   run.streakBonus = bonus;
   progressEvent("dist", runMetres());
+  run.seasonPaid = seasonGain(Math.round(score / 10));
   if (run.hard) { save.prog = save.prog || {}; save.prog.hardDist = Math.max(save.prog.hardDist || 0, runMetres()); }
   persist();
   checkAchievements();
@@ -157,16 +158,17 @@ function runEnd() {
     const tick = () => { const k = Math.min(1, (performance.now() - t0) / 900); el.textContent = Math.round(score * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1 && run) requestAnimationFrame(tick); };
     tick();
     $("runOver").classList.toggle("best", best);
-    $("runOverBest").textContent = best ? "✦ A new best! ✦" : `Best ${r.best.toLocaleString()}`;
+    $("runOverBest").textContent = best ? "New best" : `Best ${r.best.toLocaleString()}`;
+    $("roDist").textContent = runMetres().toLocaleString(); $("roLights").textContent = (run.lights + (run.streakBonus || 0)).toLocaleString(); $("roCombo").textContent = run.comboBest;
     const li = run.levelInfo;
-    $("runLevel").textContent = `Lumi level ${li.after.lv}` + (li.after.lv > li.before.lv ? "  ·  Level up!" : "") + `  ·  +${li.gained} xp`;
+    $("runLevel").textContent = `Level ${li.after.lv}` + (li.after.lv > li.before.lv ? " · Level up!" : "") + ` · +${li.gained} xp`;
     $("runLevelBar").style.width = `${Math.round(li.after.into / li.after.need * 100)}%`;
-    $("runTrail").textContent = `Trail: ${RUN_TRAILS[r.trail || 0].name}` + (li.newTrails.length ? " (new!)" : "") + " ›";
+    $("runTrail").textContent = `Trail · ${RUN_TRAILS[r.trail || 0].name}` + (li.newTrails.length ? " · new" : "") + " ›";
     if (best) { sfx.win(); buzz([20, 40, 20, 40]); }
     $("runOverInfo").textContent = `${runMetres()} m · ✦ ${run.lights} lights · best combo ${run.comboBest}` + (run.friendFound ? ` · found ${run.friendFound}` : "");
-    $("runOverTitle").textContent = run.challenge ? (score > run.challenge.score ? "You won the challenge!" : "Challenge lost") : run.daily ? "Daily run" : run.hard ? "Hard run" : "Lumi rests";
+    $("runOverTitle").textContent = run.challenge ? (score > run.challenge.score ? "Challenge won" : "Challenge lost") : run.daily ? "Daily run" : run.hard ? "Hard run" : "Run over";
     const dm = dailyMissions();
-    $("runOverDaily").textContent = `Today: ${dm.list.filter(m => m.done).length}/3 daily missions` + (streakNow() ? ` · 🔥 ${streakNow()} day streak` : "") + (run.streakBonus ? ` (+${run.streakBonus} ✦)` : "");
+    $("runOverDaily").textContent = `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}-day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
     runMissions($("runOverMissions")); runShop();
     $("runOver").hidden = false;
   }, 900);
@@ -179,7 +181,11 @@ function runHud() {
   if (run.attract) return;
   $("runScore").textContent = runScore().toLocaleString();
   $("runLights").textContent = `✦ ${run.lights}`;
-  $("runHearts").textContent = "●".repeat(Math.max(0, run.hearts)) + "○".repeat(Math.max(0, 3 + runUpg("heart") - run.hearts));
+  const maxH = Math.max(run.hearts, (run.hard ? 1 : 3 + runUpg("heart")) + (perk(11) ? 1 : 0));
+  $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join("");
+  const ab = $("abilityBtn"), as = playingAs();
+  if (ab.hidden === as >= 0) ab.hidden = as < 0;
+  if (as >= 0) { $("abilityName").textContent = run.abilityCd > 0 ? Math.ceil(run.abilityCd) : RUN_POWERS[FRIEND_ABILITY[as]].name; ab.classList.toggle("cool", run.abilityCd > 0); }
   $("runMult").textContent = `×${run.mult}`;
   $("runPower").textContent = run.power ? `${RUN_POWERS[run.power.kind].name} ${Math.ceil(run.power.t)}` : "";
 }
@@ -352,7 +358,7 @@ function runEndEvent() {
 // Per frame: hazards, power-ups, the big moment under way, near misses, combos.
 function runTick(dt) {
   const R = run, quiet = R.attract;
-  R.boost = Math.max(0, R.boost - dt); R.dashCd = Math.max(0, R.dashCd - dt); R.dashT = Math.max(0, R.dashT - dt);
+  R.boost = Math.max(0, R.boost - dt); R.dashCd = Math.max(0, R.dashCd - dt); R.dashT = Math.max(0, R.dashT - dt); R.abilityCd = Math.max(0, (R.abilityCd || 0) - dt);
   if (R.comboT > 0) R.comboT -= dt;
   if (R.msgs.length) { R.msgs[0].t -= dt; if (R.msgs[0].t <= 0) R.msgs.shift(); }
   // Power-ups.
@@ -586,7 +592,7 @@ function runDraw(ctx, W, H) {
   const th = THEMES[b % THEMES.length], th2 = THEMES[(b + 1) % THEMES.length];
   const rim = mixC(th.rim, th2.rim, f), deep = mixC(th.deep, th2.deep, f), floor = mixC(th.floor2, th2.floor2, f), rock = mixC(th.rock, th2.rock, f);
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, `rgb(${mixC(deep, [0, 0, 0], 0.5)})`); sky.addColorStop(0.5, `rgb(${mixC(floor, deep, 0.35)})`); sky.addColorStop(1, `rgb(${mixC(deep, [0, 0, 0], 0.55)})`);
+  sky.addColorStop(0, `rgb(${mixC(deep, [4, 5, 8], 0.72)})`); sky.addColorStop(0.5, `rgb(${mixC(mixC(floor, deep, 0.4), [6, 7, 11], 0.45)})`); sky.addColorStop(1, `rgb(${mixC(deep, [3, 4, 6], 0.78)})`);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
   ctx.save();
   ctx.translate(W / 2 + (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); ctx.scale(S, S); ctx.translate(-200 - camX, 0);
@@ -610,7 +616,7 @@ function runDraw(ctx, W, H) {
   for (let q = 0; q < 3; q++) { const y = ((q * 0.37 + t * 0.012 + R.dist * 0.0004) % 1.2 - 0.1) * Hu, g = ctx.createLinearGradient(0, y - 60, 0, y + 60); g.addColorStop(0, `rgba(${rim},0)`); g.addColorStop(0.5, `rgba(${mixC(rim, deep, 0.5)},0.07)`); g.addColorStop(1, `rgba(${rim},0)`); ctx.fillStyle = g; ctx.fillRect(left, y - 60, right - left, 120); }
   // The world's air.
   const air = RUN_AIR[b % RUN_AIR.length];
-  for (let q = 0; q < 60; q++) {
+  for (let q = 0; q < 34; q++) {
     const r = seeded(q * 13 + 1), x = left + r() * (right - left) + Math.sin(t * 0.5 + q) * 8, y = (((r() * Hu + R.dist * (0.25 + r() * 0.4) + t * 40 * air.vy) % Hu) + Hu) % Hu;
     ctx.globalAlpha = (0.3 + 0.5 * (air.twinkle ? Math.abs(Math.sin(t * 2 + q)) : r())) * 0.9; const s = air.size * (0.5 + r());
     if (air.bubble) { ctx.strokeStyle = `rgba(${air.rgb},0.7)`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, s * 0.5, 0, Math.PI * 2); ctx.stroke(); }
@@ -630,8 +636,8 @@ function runDraw(ctx, W, H) {
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(outer, -30); for (const p of pts) ctx.lineTo(p[0], p[1]); ctx.lineTo(outer, Hu + 30); ctx.fill();
     // Strata: fainter ledges further into the rock.
     ctx.lineJoin = "round";
-    for (const [inset, a] of [[16, 0.13], [38, 0.06]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = 1.2; line(edge(side, inset)); ctx.stroke(); }
-    for (const [w, a] of [[10, 0.06], [4, 0.2], [1.6, 0.85]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = w; line(pts); ctx.stroke(); }
+    for (const [inset, a] of [[18, 0.07]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = 1; line(edge(side, inset)); ctx.stroke(); }
+    for (const [w, a] of [[6, 0.06], [1.3, 0.95]]) { ctx.strokeStyle = `rgba(${mixC(rim, [255, 255, 255], 0.3)},${a})`; ctx.lineWidth = w; line(pts); ctx.stroke(); }
     // Lumi lights the rock near it.
     const lg = ctx.createLinearGradient(0, LY - 150, 0, LY + 150); lg.addColorStop(0, "rgba(190,245,255,0)"); lg.addColorStop(0.5, `rgba(190,245,255,${0.55 + 0.2 * Math.sin(t * 3)})`); lg.addColorStop(1, "rgba(190,245,255,0)");
     ctx.strokeStyle = lg; ctx.lineWidth = 3; line(pts.filter(p => Math.abs(p[1] - LY) < 160)); ctx.stroke();
@@ -841,29 +847,42 @@ function runDraw(ctx, W, H) {
   if (R.flash > 0) { ctx.fillStyle = `rgba(120,40,160,${R.flash * 0.3})`; ctx.fillRect(0, 0, W, H); }
   if (R.flash < 0) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); R.flash = Math.min(0, R.flash + 0.03); }
   // The combo counter.
-  if (R.combo >= 3 && !R.attract) { ctx.globalAlpha = Math.min(1, 0.4 + R.comboT); ctx.textAlign = "center"; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.05 + Math.min(10, R.combo / 4))}px system-ui, sans-serif`; ctx.fillText(`${R.combo} combo`, W / 2, H * 0.14); ctx.globalAlpha = 1; }
+  // The combo: a ring around Lumi filling toward the next ten, and the count above it.
+  if (R.combo >= 3 && !R.attract) {
+    const cx = W / 2 + (R.x - 200 - camX) * S, cy = LY * S, rr = 26 * S, k = (R.combo % 10) / 10;
+    ctx.globalAlpha = Math.min(1, 0.5 + R.comboT);
+    ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "#ffd98a"; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, k)); ctx.stroke();
+    ctx.textAlign = "center"; ctx.fillStyle = "#ffffff"; ctx.font = `800 ${Math.round(W * 0.038)}px Inter, system-ui, sans-serif`; ctx.fillText(`×${R.combo}`, cx, cy - rr - 8);
+    ctx.globalAlpha = 1;
+  }
   // One message at a time in the middle, sliding in and fading out.
   const msg = R.msgs[0];
   if (msg && !R.banner) {
-    const age = msg.dur - msg.t; ctx.globalAlpha = Math.min(1, msg.t * 2, age * 4); ctx.textAlign = "center";
-    const y = H * 0.44 - Math.max(0, 0.25 - age) * 60;
-    ctx.fillStyle = msg.gold ? "#ffd98a" : "#fff4d6"; ctx.font = `600 ${Math.round(W * 0.062)}px system-ui, sans-serif`; ctx.fillText(msg.text, W / 2, y);
-    if (msg.sub) { ctx.font = `italic ${Math.round(W * 0.045)}px "Cormorant Garamond", Georgia, serif`; ctx.fillStyle = "#c8d6ee"; ctx.fillText(msg.sub, W / 2, y + W * 0.068); }
+    const age = msg.dur - msg.t, y = H * 0.19 + Math.max(0, 0.2 - age) * 40;
+    ctx.globalAlpha = Math.min(1, msg.t * 2.5, age * 5); ctx.textAlign = "center";
+    ctx.font = `700 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`;
+    const t1 = msg.text, t2 = msg.sub || "", w1 = ctx.measureText(t1).width; ctx.font = `500 ${Math.round(W * 0.034)}px Inter, system-ui, sans-serif`; const w2 = ctx.measureText(t2).width;
+    const pw = Math.max(w1, w2) + W * 0.1, ph = t2 ? W * 0.15 : W * 0.1;
+    ctx.fillStyle = "rgba(14,16,24,0.72)"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - pw / 2, y - ph / 2, pw, ph, ph / 2); else ctx.rect(W / 2 - pw / 2, y - ph / 2, pw, ph); ctx.fill();
+    ctx.strokeStyle = msg.gold ? "rgba(255,217,138,0.5)" : "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.font = `700 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = msg.gold ? "#ffd98a" : "#ffffff"; ctx.fillText(t1, W / 2, y + (t2 ? -W * 0.008 : W * 0.014));
+    if (t2) { ctx.font = `500 ${Math.round(W * 0.034)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(t2, W / 2, y + W * 0.045); }
     ctx.globalAlpha = 1;
   }
   // The first run teaches by doing.
-  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
+  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // A vignette.
   const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   // Floating "+3" when a shadow is sung free.
   ctx.textAlign = "center";
-  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px system-ui, sans-serif`; ctx.fillText(p.text, W / 2 + (p.x - 200 - camX) * S, (yOf(p.at) - k * 40) * S); }
+  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px Inter, system-ui, sans-serif`; ctx.fillText(p.text, W / 2 + (p.x - 200 - camX) * S, (yOf(p.at) - k * 40) * S); }
   ctx.globalAlpha = 1;
   // The world's name as you enter it; mission messages.
   if (R.banner > 0) {
-    ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.fillStyle = "#eef8ff";
-    ctx.font = `500 ${Math.round(W * 0.075)}px Cinzel, Georgia, serif`; ctx.fillText(THEMES[R.biome % THEMES.length].name, W / 2, H * 0.3);
-    ctx.font = `italic ${Math.round(W * 0.045)}px "Cormorant Garamond", Georgia, serif`; ctx.fillStyle = "#b8c8e4"; ctx.fillText(`World ${R.biome + 1}`, W / 2, H * 0.3 + W * 0.07); ctx.globalAlpha = 1;
+    ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(`WORLD ${R.biome + 1}`.split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(THEMES[R.biome % THEMES.length].name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
   }
 
 }
@@ -900,7 +919,14 @@ document.getElementById("runResume").addEventListener("click", () => { run.pause
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
 document.getElementById("runShare").addEventListener("click", () => { if (run) shareRun(runScore(), runMetres(), run.comboBest, run.seed); });
-document.getElementById("runCity").addEventListener("click", () => { run = null; showCity(); });
+document.getElementById("runCity").addEventListener("click", () => { run = null; showTitle(); });
+// Playing as a friend: their ability.
+document.getElementById("abilityBtn").addEventListener("pointerdown", e => {
+  e.stopPropagation(); audio();
+  const as = playingAs();
+  if (!run || run.over || run.paused || as < 0 || run.abilityCd > 0) return;
+  runPower(FRIEND_ABILITY[as]); run.power.t = 4; run.abilityCd = 25; runHud();
+});
 // Tap the trail to wear the next one you've earned.
 document.getElementById("runTrail").addEventListener("click", () => {
   const r = runSave(), lv = lumiLevel(r.xp || 0).lv, open = RUN_TRAILS.map((t, i) => i).filter(i => RUN_TRAILS[i].lv <= lv);
@@ -937,7 +963,7 @@ function titleLoop(now) {
   run = keep;
   titleRaf = requestAnimationFrame(titleLoop);
 }
-document.getElementById("titleCanvas").addEventListener("click", () => { if (!titleRun) return; const keep = run; run = titleRun; run.songCd = 0; runSing(); run = keep; });
+document.getElementById("titleCanvas").addEventListener("click", () => { if (screen === "title" && typeof playNow === "function") { playNow(challengeFrom ? { challenge: challengeFrom } : {}); return; } if (!titleRun) return; const keep = run; run = titleRun; run.songCd = 0; runSing(); run = keep; });
 // Upgrades, from the end of a run or the city.
 function runBuy(id) {
   const u = RUN.upgrades.find(q => q.id === id), r = runSave(), lv = runUpg(u.id), cost = u.tiers[lv];

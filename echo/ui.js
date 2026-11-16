@@ -13,6 +13,11 @@ function applyLayoutPrefs() {
 }
 function show(name) {
   screen = name;
+  // The tab bar sits under Home and the City; sheets close when the screen changes.
+  document.body.classList.toggle("tabs", name === "title" || name === "city");
+  for (const [id, scr] of [["tabHome", "title"], ["levelsBtn", "city"]]) { const b = $(id); if (b) b.classList.toggle("on", name === scr); }
+  for (const id of ["todayPanel", "sheet"]) { const el = $(id); if (el) el.hidden = true; }
+  if (name === "title") { const t = $("titleScreen"); if (t) t.classList.remove("launch"); }
   if (name !== "play") { const d = $("dashBtn"); if (d) d.hidden = true; }
   if (name !== "city") { const sp = $("shopPanel"); if (sp) sp.hidden = true; }
   $("singBtn").hidden = name !== "play" || controlMode() === "stick";
@@ -491,16 +496,20 @@ function renderTitle() {
   $("starCount").textContent = t;
   $("playLabel").textContent = "Play";
   const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
-  $("playSub").textContent = best ? `Best ${best.toLocaleString()}` : "Glide home through the dark";
-  $("dailyRunBtn").textContent = daily ? `Daily run · best ${daily.toLocaleString()}` : "Daily run";
-  $("hardBtn").textContent = rs.hardOn ? "Hard: on ×2" : "Hard: off"; $("hardBtn").classList.toggle("on", !!rs.hardOn);
+  $("homeBest").textContent = best.toLocaleString();
+  $("playSub").textContent = "Tap anywhere to glide";
+  $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
+  $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
+  $("dailyRunBtn").textContent = daily ? `Daily · ${daily.toLocaleString()}` : "Daily run";
+  $("hardBtn").textContent = rs.hardOn ? "Hard · ×2" : "Hard"; $("hardBtn").classList.toggle("on", !!rs.hardOn);
   const we = weekEvent(), sn = streakNow();
-  $("titleMeta").textContent = (sn ? `🔥 ${sn} day streak · ` : "") + `${we.name}: ${we.text}` + (challengeFrom ? ` · A friend scored ${challengeFrom.score.toLocaleString()}` : "");
+  $("titleMeta").textContent = (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
+  $("playLabel").textContent = "Play";
   if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()} in their cave`; }
   // The first visit of the day opens the gift.
-  if (!calState().claimed && !save.run.todayShown) { save.run.todayShown = today(); setTimeout(openToday, 600); }
-  else if (save.run.todayShown !== today() && !calState().claimed) { save.run.todayShown = today(); setTimeout(openToday, 600); }
+  if (!calState().claimed && !save.run.todayShown) { save.run.todayShown = today(); setTimeout(() => { if (screen === "title") openToday(); }, 600); }
+  else if (save.run.todayShown !== today() && !calState().claimed) { save.run.todayShown = today(); setTimeout(() => { if (screen === "title") openToday(); }, 600); }
   startTitleRun();
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
@@ -689,28 +698,43 @@ const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation
 // Play goes home to the city first; from there, into the next cave.
 // Play starts an endless run (after the opening film, the first time); Story is the city and its caves.
 // Play starts a run; Daily run is the same cave for everyone today.
-tap("playBtn", () => (challengeFrom ? startRun({ challenge: challengeFrom }) : startRun()));
-tap("dailyRunBtn", () => startRun({ daily: true }));
+function playNow(opts = {}) {
+  if (screen !== "title") return startRun(opts);
+  $("titleScreen").classList.add("launch");
+  setTimeout(() => startRun(opts), 230);
+}
+tap("playBtn", () => playNow(challengeFrom ? { challenge: challengeFrom } : {}));
+tap("dailyRunBtn", () => playNow({ daily: true }));
 // Hard mode: one touch and the run is over, but every point counts double.
 tap("hardBtn", () => { runSave().hardOn = !save.run.hardOn; persist(); renderTitle(); });
 tap("todayBtn", openToday);
 tap("todayClose", () => { $("todayPanel").hidden = true; });
-tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift: <b>+${n} ✦</b>`, true); } renderToday2(); renderTitle(); });
-function openToday() { renderToday2(); $("todayPanel").hidden = false; }
+tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift · <b>+${n}</b> lights`, true); } renderToday2(); if (screen === "title") { const keep = $("todayPanel").hidden; renderTitle(); $("todayPanel").hidden = keep; } });
+function openToday() { renderToday2(); $("sheet").hidden = true; $("todayPanel").hidden = false; }
 function renderToday2() {
   const st = calState(), we = weekEvent();
-  $("weekEv").textContent = `${we.name}: ${we.text}`;
-  $("calStreak").textContent = streakNow() ? `🔥 ${streakNow()} day streak (+${Math.round(streakBonus() * 100)}% lights)` : "play a run to start a streak";
+  $("weekEv").textContent = `${we.name} · ${we.text}`;
+  $("calStreak").textContent = streakNow() ? `${streakNow()}-day streak · +${Math.round(streakBonus() * 100)}% lights` : "Play a run to start a streak";
   $("calGrid").innerHTML = CAL.map((n, i) => `<div class="${i + 1 < st.day || (i + 1 === st.day && st.claimed) ? "past" : i + 1 === st.day ? "now" : ""}">Day ${i + 1}<b>${n}</b></div>`).join("");
   $("calClaim").disabled = st.claimed; $("calClaim").textContent = st.claimed ? "Come back tomorrow" : `Claim +${CAL[st.day - 1]} ✦`;
   const dm = dailyMissions();
+  const se = seasonState(), tier = seasonTier(se.xp);
+  $("seasonInfo").textContent = `Tier ${tier.n} of ${SEASON_TIERS} · ${seasonDaysLeft()} days left`;
+  $("seasonBar").style.width = `${Math.round(tier.into / SEASON_XP * 100)}%`;
+  $("seasonNext").textContent = tier.n >= SEASON_TIERS ? "Season complete. A new one starts next month." : `Next: +${seasonReward(tier.n + 1)} lights at tier ${tier.n + 1}`;
+  const rr = runSave();
+  $("multInfo").textContent = `Score ×${rr.mult}`;
+  $("todayRunMissions").innerHTML = rr.missions.map(m => `<li><span>${RUN.missions[m.k].text(m.goal)}</span><em>+1×</em></li>`).join("");
   $("dmList").innerHTML = dm.list.map(m => { const d = DM_POOL[m.i], k = Math.min(1, m.prog / d.goal); return `<li class="${m.done ? "done" : ""}"><span style="flex:1">${d.text(d.goal)}<span class="dm-bar"><i style="width:${Math.round(k * 100)}%"></i></span></span><span>+${DM_REWARD} ✦</span></li>`; }).join("");
 }
 tap("cityGo", () => startRun());
 tap("cityBack", showTitle);
 
-for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"]])
-  tap(id, () => { const same = cityPanel === kind && !$("shopPanel").hidden; cityPanel = kind; $("shopPanel").hidden = same; renderShop(); });
+for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"], ["tabShop", "upgrades"], ["tabFriends", "friends"], ["todayAwards", "awards"]])
+  tap(id, () => openSheet(kind));
+tap("tabHome", () => showTitle());
+// Tapping the dimmed backdrop closes a sheet.
+for (const id of ["sheet", "todayPanel"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
 tap("levelsBtn", () => (CORE ? showCity() : openMap()));
 // A soft tick when a switch or option changes, so settings feel alive.
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
