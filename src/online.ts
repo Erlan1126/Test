@@ -55,6 +55,13 @@ export interface Row {
 
 export interface Board { rows: Row[]; me: Row | null; total: number }
 
+/** What a friend sees of your city (the server checks and caps every field). */
+export interface FriendCity {
+  name: string; population: number; best: number; meters: number; level: number;
+  theme: string; islandLevel: number; avatar: string; avatarColor: number; frame: string;
+  skyline: { f: number; s: string; h: string; d: string }[]; city: string[]; place: Record<string, string>;
+}
+
 const num = (v: unknown, max = 1e9) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.floor(v))) : 0);
 const API = SERVER_URL.replace(/\/$/, "");
 const JSON_HEADERS = { "content-type": "application/json" };
@@ -165,6 +172,32 @@ export class Online {
       // View-only people can read but not post: show the board without their row.
       if (e?.code === "invalid_argument") { this.canPost = false; this.onChange(); }
     });
+  }
+
+  // ---------- Friends ----------
+
+  /** Shares a snapshot of this player's city and returns their friend code (or "" offline). */
+  async shareCity(save: SaveData, persist: () => void, city: FriendCity): Promise<string> {
+    if (this.kind !== "global" || !save.playerId) return "";
+    try {
+      if (!(await this.ensureAccount(save, persist))) return "";
+      const res = await fetch(`${API}/city`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, city }) });
+      if (!res.ok) return "";
+      const code = String((await res.json() as { code?: string }).code ?? "");
+      if (code && code !== save.friendCode) { save.friendCode = code; persist(); }
+      return code;
+    } catch { return ""; }
+  }
+
+  /** A friend's city by their code: null if there's no such code, undefined if offline. */
+  async friendCity(code: string): Promise<FriendCity | null | undefined> {
+    if (this.kind !== "global") return undefined;
+    try {
+      const res = await fetch(`${API}/city?code=${encodeURIComponent(code)}`);
+      if (res.status === 404) return null;
+      if (!res.ok) return undefined;
+      return (await res.json() as { city: FriendCity }).city;
+    } catch { return undefined; }
   }
 
   /** Registers this player with the server the first time (and sets a recovery code).

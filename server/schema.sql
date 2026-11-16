@@ -117,3 +117,11 @@ CREATE TABLE IF NOT EXISTS boost_uses (
   at INTEGER NOT NULL,
   PRIMARY KEY (player, boost, run)
 );
+
+-- Friends: each player's city snapshot under a short friend code anyone can look up.
+CREATE TABLE IF NOT EXISTS cities (
+  code TEXT PRIMARY KEY,
+  player TEXT NOT NULL UNIQUE,
+  at INTEGER NOT NULL,
+  data TEXT NOT NULL
+);

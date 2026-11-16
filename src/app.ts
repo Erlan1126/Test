@@ -1,6 +1,6 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
 import type { SkylineTower } from "./logic/skyline";
-import type { IslandTheme } from "./data/islands";
+import { ISLAND_THEMES, type IslandTheme } from "./data/islands";
 import { claimTournament, prizeText } from "./logic/tournament";
 import { ghostFloors, MAX_GHOST, type Ghost } from "./logic/ghost";
 import { ROOF_STEPS, roofFor, type RoofKind } from "./render3d/rooftops";
@@ -60,7 +60,8 @@ import { BUILD_SPOTS } from "./data/spots";
 import { iconSvg, withIcons } from "./ui/icons";
 import { towerName } from "./data/towernames";
 import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
-import { avatarBadge } from "./data/avatars";
+import { avatarBadge, avatarBadgeFor } from "./data/avatars";
+import type { FriendCity } from "./online";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -365,6 +366,7 @@ export class App implements DailyHost {
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
     if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
     if (this.moving) { this.endMove(); return true; }
+    if (this.visiting) { this.endVisit(); return true; }
     const modal = openModalEl();
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
     if (!$("rewards").hidden) { $("rewards").hidden = true; this.renderMenu(); return true; }
@@ -495,6 +497,8 @@ export class App implements DailyHost {
 
   postScores(): void {
     this.online.post(this.save, dayNumber(), streakView(this.save).count);
+    // Friends see the city as it is after each tower.
+    if (this.save.profile.towers >= 1) void this.shareCity();
   }
 
   /** Sends the finished tower to the worldwide rankings and shows where it placed. */
@@ -644,10 +648,10 @@ export class App implements DailyHost {
     }
     // Taps on the empty parts of the home screen (the sky, the island, the logo) start too.
     $("menu").addEventListener("click", e => {
-      if (this.state !== "menu" || this.moving || !$("mayor").hidden || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
+      if (this.state !== "menu" || this.moving || this.visiting || !$("mayor").hidden || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
       this.start(this.homeMode);
     });
-    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving && $("mayor").hidden) this.start(this.homeMode); });
+    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving && !this.visiting && $("mayor").hidden) this.start(this.homeMode); });
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
@@ -658,6 +662,7 @@ export class App implements DailyHost {
     $("lu-ok").addEventListener("click", () => { $("levelup").hidden = true; this.sound.click(); });
     $("place-cancel").addEventListener("click", () => { this.sound.click(); this.endMove(); });
     $("help-btn").addEventListener("click", () => this.sheets.openHelp());
+    $("visit-back").addEventListener("click", () => { this.sound.click(); this.endVisit(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
     $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });
@@ -755,6 +760,7 @@ export class App implements DailyHost {
   private key(e: KeyboardEvent): void {
     if (this.video) return; // recording the clip
     if (this.moving) { if (e.code === "Escape") this.endMove(); return; }
+    if (this.visiting) { if (e.code === "Escape") this.endVisit(); return; }
     if (!$("mayor").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("mayor-ok").click(); } return; }
     // The level-up card is up: keys close it rather than starting a tower underneath.
     if (!$("levelup").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("levelup").hidden = true; } return; }
@@ -806,6 +812,7 @@ export class App implements DailyHost {
 
   private start(mode: Mode, challengeId?: string): void {
     this.endMove();
+    this.endVisit();
     $("levelup").hidden = true;
     this.chatIn = 10;
     this.sound.tune = currentTheme(this.save).id;
@@ -1439,6 +1446,41 @@ export class App implements DailyHost {
   private moving: string | null = null;
   private moveLoop = 0;
   /** Move mode: glowing spots on the island; tap one to move the building there. */
+  // ---------- Friends ----------
+
+  /** What friends see of this city. */
+  private myCity(): FriendCity {
+    const save = this.save, here = currentTheme(save).id, p = save.profile;
+    return {
+      name: save.nickname, population: save.population, best: save.best, meters: save.bestMeters, level: p.level,
+      theme: here, islandLevel: islandLevel(save), avatar: p.avatar, avatarColor: p.avatarColor, frame: p.frame,
+      skyline: districtTowers(save, here).slice(0, 9), city: save.city, place: this.placement(),
+    };
+  }
+
+  shareCity(): Promise<string> { return this.online.shareCity(this.save, () => this.persist(), this.myCity()); }
+
+  /** A friend's city, shown on the home screen until "Back home". */
+  private visiting: FriendCity | null = null;
+  visit(city: FriendCity, code: string): void {
+    if (this.state !== "menu") return;
+    this.visiting = city;
+    this.cityView = null;
+    this.sound.whoosh();
+    document.body.classList.add("visiting");
+    $("visit-who").innerHTML = `${avatarBadgeFor(city.avatar, city.avatarColor, city.frame, "mini")}<span><b>${esc(t("{name}'s city", { name: displayName(city.name) }))}</b><small>${esc(t("{n} people · {m} m tower", { n: fmt(city.population), m: fmt(city.meters) }))} · ${esc(code)}</small></span>`;
+    $("visit-bar").hidden = false;
+  }
+
+  endVisit(): void {
+    if (!this.visiting) return;
+    this.visiting = null;
+    this.cityView = null;
+    document.body.classList.remove("visiting");
+    $("visit-bar").hidden = true;
+    this.sound.whoosh();
+  }
+
   canMove(): boolean { return this.renderer instanceof Renderer3D; }
   onMenu(): boolean { return this.state === "menu"; }
 
@@ -2143,7 +2185,13 @@ export class App implements DailyHost {
   }
 
   private city(): NonNullable<App["cityView"]> {
-    const save = this.save, here = currentTheme(save).id;
+    const save = this.save, v = this.visiting;
+    if (v) {
+      // A friend's island: their towers, nothing floating around it.
+      this.cityView ??= { theme: v.theme, skyline: v.skyline.map(x => ({ ...x, d: v.theme })), districts: [] };
+      return this.cityView;
+    }
+    const here = currentTheme(save).id;
     if (!this.cityView || this.cityView.theme !== here) {
       this.cityView = {
         theme: here,
@@ -2167,14 +2215,14 @@ export class App implements DailyHost {
       tint: holidayAt()?.tint ?? null,
       fever: this.state === "playing" && this.sim.feverLeft > 0,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),
-      theme: currentTheme(save),
-      islandLevel: islandLevel(save),
+      theme: this.visiting ? ISLAND_THEMES.find(x => x.id === this.visiting!.theme) ?? currentTheme(save) : currentTheme(save),
+      islandLevel: this.visiting ? this.visiting.islandLevel : islandLevel(save),
       guide: this.tutorial && this.mode !== "zen" && this.sim.stack.length <= 4,
       low: this.low,
       shaders: this.shaders,
       bestFloors: this.mode === "zen" ? 0 : Math.round(this.save.bestMeters / 5),
-      city: save.city,
-      place: this.placement(),
+      city: this.visiting ? this.visiting.city : save.city,
+      place: this.visiting ? this.visiting.place : this.placement(),
       hudBottom: this.state === "playing" || this.state === "paused" ? this.hudBottom : 0,
       ghost: this.ghost && (this.state === "playing" || this.state === "paused")
         ? { floors: ghostFloors(this.ghost.pace, this.sim.ticks), total: this.ghost.pace.length, name: this.ghost.name } : null,

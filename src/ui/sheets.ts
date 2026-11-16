@@ -31,6 +31,7 @@ import { FEATURE_ICON, FEATURE_NAMES, FEATURE_TEXT, levelStep } from "../data/le
 import { iconSvg } from "./icons";
 import { towerName } from "../data/towernames";
 import { AVATAR_COLORS, AVATARS, avatarBadge, FRAMES } from "../data/avatars";
+import type { FriendCity, Online } from "../online";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 
 export interface Host {
@@ -66,6 +67,11 @@ export interface Host {
   canMove(): boolean;
   /** On the main menu (not in the middle of a tower)? */
   onMenu(): boolean;
+  readonly online: Online;
+  /** Shares this player's city; resolves to their friend code ("" offline). */
+  shareCity(): Promise<string>;
+  /** Shows a friend's city on the home screen. */
+  visit(city: FriendCity, code: string): void;
 }
 
 const isShopSkin = (s: Skin) => !!s.unlock && "price" in s.unlock;

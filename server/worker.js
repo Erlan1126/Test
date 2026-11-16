@@ -51,7 +51,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats"].includes(url.pathname)
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/city"].includes(url.pathname)
       || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
@@ -196,6 +196,32 @@ async function rankings(request, url, env, now) {
       .bind(me.id, body.data, now).run();
     await creditBoosts(db, me.id, body.data);
     return json({ ok: true });
+  }
+
+  // Friends: a player shares a snapshot of their city under a short friend code.
+  if (url.pathname === "/city" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const me = await auth(body);
+    if (!me) return json({ error: "not allowed" }, 403);
+    const city = cleanCity(body?.city);
+    if (!city) return json({ error: "bad city" }, 400);
+    const have = await db.prepare("SELECT code, at FROM cities WHERE player = ?").bind(me.id).first();
+    if (have && now - have.at < 20_000) return json({ code: have.code });
+    let code = have?.code;
+    for (let i = 0; !code && i < 5; i++) {
+      const c = friendCode();
+      if (!(await db.prepare("SELECT 1 FROM cities WHERE code = ?").bind(c).first())) code = c;
+    }
+    if (!code) return json({ error: "try again" }, 503);
+    await db.prepare("INSERT INTO cities (code, player, at, data) VALUES (?, ?, ?, ?) ON CONFLICT (player) DO UPDATE SET at = excluded.at, data = excluded.data")
+      .bind(code, me.id, now, JSON.stringify(city)).run();
+    return json({ code });
+  }
+  if (url.pathname === "/city" && request.method === "GET") {
+    const code = (url.searchParams.get("code") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    const row = code ? await db.prepare("SELECT data, at FROM cities WHERE code = ?").bind(code).first() : null;
+    if (!row) return json({ error: "not found" }, 404);
+    return json({ code, at: row.at, city: JSON.parse(row.data) });
   }
 
   if (url.pathname === "/recovery" && request.method === "POST") {
@@ -470,6 +496,29 @@ async function rankOf(db, board, period, player) {
 }
 
 /** Letters, digits, spaces and a little punctuation, up to 16 characters. */
+/** Six letters and digits without look-alikes. */
+function friendCode() {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return [...bytes].map(b => abc[b % abc.length]).join("");
+}
+
+/** Only the few things a friend's visit shows, checked and capped. */
+function cleanCity(c) {
+  if (!c || typeof c !== "object") return null;
+  const n = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.floor(Number(v)))) : 0);
+  const id = (v) => String(v ?? "").replace(/[^a-z0-9_]/g, "").slice(0, 24);
+  const skyline = (Array.isArray(c.skyline) ? c.skyline : []).slice(0, 9).map(t => ({ f: n(t?.f, 2000), s: id(t?.s), h: id(t?.h), d: id(t?.d) }));
+  const city = (Array.isArray(c.city) ? c.city : []).slice(0, 20).map(id).filter(Boolean);
+  const place = {};
+  for (const [k, v] of Object.entries(c.place && typeof c.place === "object" ? c.place : {}).slice(0, 20)) place[id(k)] = id(v);
+  return {
+    name: cleanName(c.name), population: n(c.population, 1e10), best: n(c.best, 1e9), meters: n(c.meters, 1e6),
+    level: n(c.level, 999), theme: id(c.theme), islandLevel: n(c.islandLevel, 99), avatar: id(c.avatar),
+    avatarColor: n(c.avatarColor, 7), frame: id(c.frame), skyline, city, place,
+  };
+}
+
 function cleanName(v) {
   const name = String(v ?? "").replace(/[^\p{L}\p{N} _.-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 16);
   return BLOCKED.some(w => name.toLowerCase().replace(/[^a-z]/g, "").includes(w)) ? "" : name;

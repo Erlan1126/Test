@@ -18,8 +18,14 @@ export const FRAMES: { id: FrameId; name: string; how: string; open: (s: SaveDat
 
 /** The player's avatar, ready to drop into the page. */
 export function avatarBadge(s: SaveData, cls = ""): string {
-  const a = AVATARS.includes(s.profile.avatar) ? s.profile.avatar : "tower";
-  const [c1, c2] = AVATAR_COLORS[s.profile.avatarColor % AVATAR_COLORS.length];
   const frame = FRAMES.find(f => f.id === s.profile.frame && f.open(s))?.id ?? "none";
-  return `<span class="avatar-badge frame-${frame} ${cls}" style="--a1:${c1};--a2:${c2}" aria-hidden="true">${iconSvg(a)}</span>`;
+  return avatarBadgeFor(s.profile.avatar, s.profile.avatarColor, frame, cls);
+}
+
+/** Someone else's avatar (a friend's), from its parts. */
+export function avatarBadgeFor(avatar: string, color: number, frame: string, cls = ""): string {
+  const a = AVATARS.includes(avatar) ? avatar : "tower";
+  const [c1, c2] = AVATAR_COLORS[(Math.abs(Math.floor(color)) || 0) % AVATAR_COLORS.length];
+  const f = FRAMES.some(x => x.id === frame) ? frame : "none";
+  return `<span class="avatar-badge frame-${f} ${cls}" style="--a1:${c1};--a2:${c2}" aria-hidden="true">${iconSvg(a)}</span>`;
 }

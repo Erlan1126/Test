@@ -89,6 +89,8 @@
   </div>
 </div>
 
+<div id="visit-bar" hidden><span id="visit-who"></span><button type="button" class="btn btn-primary" id="visit-back">Back home</button></div>
+
 <div id="place-layer" hidden>
   <div class="place-bar"><b id="place-title"></b><small id="place-sub"></small><button type="button" class="btn btn-secondary" id="place-cancel">Done</button></div>
   <div id="place-spots"></div>
@@ -418,7 +420,13 @@
         <button type="button" role="tab" data-tab="daily" aria-selected="true">Today's Daily</button>
         <button type="button" role="tab" data-tab="week" aria-selected="false">🏆 Tournament</button>
         <button type="button" role="tab" data-tab="best" aria-selected="false">All time</button>
+        <button type="button" role="tab" data-tab="friends" aria-selected="false">Friends</button>
       </div>
+    </div>
+    <div class="friends-panel" id="friends-panel" hidden>
+      <div class="my-code"><small>Your friend code</small><b id="my-code">······</b><button type="button" class="btn btn-secondary" id="copy-code">Copy</button></div>
+      <div class="nick-row"><input type="text" id="friend-input" maxlength="7" placeholder="A friend's code" autocapitalize="characters" spellcheck="false" aria-label="Friend code"><button type="button" class="btn btn-primary" id="friend-add">Add</button></div>
+      <div class="friend-list" id="friend-list"></div>
     </div>
     <div class="tourney" id="tourney" hidden></div>
     <div class="podium" id="rank-podium" hidden></div>

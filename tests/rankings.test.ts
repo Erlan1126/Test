@@ -261,3 +261,22 @@ describe("anonymous stats", () => {
     expect(n).toEqual({ n: 2 });
   });
 });
+
+describe("friends' cities", () => {
+  it("gives each player a friend code and shows their city to anyone with it", async () => {
+    const token = await register(P1);
+    const city = { name: "Ana", population: 12000, best: 900, meters: 120, level: 6, theme: "meadow", islandLevel: 3,
+      avatar: "rocket", avatarColor: 2, frame: "gold", skyline: [{ f: 40, s: "glass", h: "round", d: "meadow" }], city: ["cafe"], place: { cafe: "windmill" } };
+    const a = await call("/city", { player: P1, token, city });
+    expect(a.status).toBe(200);
+    expect(a.body.code).toMatch(/^[A-Z2-9]{6}$/);
+    const got = await worker.fetch(new Request(`https://api.example/city?code=${a.body.code}`), env as never);
+    const body = await got.json() as any;
+    expect(body.city.name).toBe("Ana");
+    expect(body.city.place).toEqual({ cafe: "windmill" });
+    // The same player keeps the same code.
+    expect((await call("/city", { player: P1, token, city })).body.code).toBe(a.body.code);
+    expect((await call("/city", { player: P1, token: "nope", city })).status).toBe(403);
+    expect((await worker.fetch(new Request("https://api.example/city?code=ZZZZZZ"), env as never)).status).toBe(404);
+  });
+});

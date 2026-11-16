@@ -24,6 +24,7 @@ import { titleFor } from "../data/titles";
 import { dayKey, dayNumber, duration } from "../logic/rules";
 import { isNative, reminderTime, setReminder, type ReminderInfo } from "../native";
 import type { Online, Row } from "../online";
+import { avatarBadgeFor } from "../data/avatars";
 import { $, closeModal, displayName, esc, LOCK_ICON, openModal, replay, showTab, toast, vibrate, wireModal } from "./dom";
 import type { Host } from "./sheets";
 
@@ -44,7 +45,7 @@ function untilMidnight(now = Date.now()): number {
 }
 
 export class DailySheets {
-  private tab: "daily" | "week" | "best" = "daily";
+  private tab: "daily" | "week" | "best" | "friends" = "daily";
 
   constructor(private readonly host: DailyHost) {
     for (const id of ["streak", "missions", "city", "ranks", "pass"]) wireModal($(id));
@@ -448,6 +449,13 @@ export class DailySheets {
   private async renderRanks(): Promise<void> {
     const on = this.host.online, today = dayNumber(), week = weekIndex(), tab = this.tab;
     document.querySelectorAll<HTMLButtonElement>("#ranks .tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    // Friends have their own panel; the boards' parts hide meanwhile.
+    const friends = tab === "friends";
+    $("friends-panel").hidden = !friends;
+    for (const id of ["rank-list", "ranks-note", "rank-podium", "rank-chase", "tourney"]) if (friends) $(id).hidden = true;
+    $("rank-list").hidden = friends;
+    $("ranks-note").hidden = friends;
+    if (friends) { void this.renderFriends(); return; }
     const global = on.kind === "global";
     $("ranks-sub2").textContent = global ? t("Builders all over the world") : t("Friends you share Skyrise with");
     const el = $("rank-list");
@@ -555,6 +563,65 @@ export class DailySheets {
     this.host.sound.click();
     toast(v ? t(this.host.online.kind === "global" ? "You're \"{name}\" on the leaderboard from your next tower" : "You're \"{name}\" on the leaderboard", { name: v }) : t("Using your default name on the leaderboard"));
     void this.renderRanks();
+  }
+
+  // ---------- Friends ----------
+
+  private friendsWired = false;
+  private async renderFriends(): Promise<void> {
+    const save = this.save;
+    if (!this.friendsWired) {
+      this.friendsWired = true;
+      $("copy-code").addEventListener("click", async () => {
+        const code = save.friendCode;
+        if (!code) return;
+        try { await navigator.clipboard.writeText(code); toast(t("Copied! Send it to a friend")); } catch { toast(code); }
+        this.click();
+      });
+      $("friend-add").addEventListener("click", () => void this.addFriend());
+      $("friend-input").addEventListener("keydown", e => { if ((e as KeyboardEvent).key === "Enter") void this.addFriend(); });
+    }
+    $("my-code").textContent = save.friendCode || "······";
+    if (!save.friendCode) void this.host.shareCity().then(c => { if (c) $("my-code").textContent = c; });
+    const list = $("friend-list");
+    if (!save.friends.length) { list.innerHTML = `<p class="history-empty">${esc(t("Add a friend's code to see their city and visit it."))}</p>`; return; }
+    list.innerHTML = `<p class="history-empty">${esc(t("Loading…"))}</p>`;
+    const cities = await Promise.all(save.friends.map(c => this.host.online.friendCity(c)));
+    if (this.tab !== "friends") return;
+    list.innerHTML = "";
+    save.friends.forEach((code, i) => {
+      const c = cities[i];
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `${avatarBadgeFor(c?.avatar ?? "tower", c?.avatarColor ?? 0, c?.frame ?? "none", "big")}<span class="friend-info"><b>${esc(c ? displayName(c.name) : code)}</b>
+        <small>${c ? esc(t("{n} people · {m} m · Lv {l}", { n: fmt(c.population), m: fmt(c.meters), l: c.level })) : c === null ? esc(t("No city with this code")) : esc(t("Can't reach the server right now"))}</small></span>
+        ${c ? `<button type="button" class="buy" data-visit>${esc(t("Visit"))}</button>` : ""}<button type="button" class="friend-x" aria-label="${esc(t("Remove"))}">×</button>`;
+      row.querySelector("[data-visit]")?.addEventListener("click", () => { closeModal($("ranks")); this.host.visit(c!, code); });
+      row.querySelector(".friend-x")!.addEventListener("click", () => {
+        save.friends = save.friends.filter(x => x !== code);
+        this.host.persist();
+        this.click();
+        void this.renderFriends();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  private async addFriend(): Promise<void> {
+    const save = this.save, box = $<HTMLInputElement>("friend-input");
+    const code = box.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!/^[A-Z2-9]{6}$/.test(code)) { toast(t("Friend codes have 6 letters and numbers.")); return; }
+    if (code === save.friendCode) { toast(t("That's your own code!")); return; }
+    if (save.friends.includes(code)) { toast(t("Already your friend")); return; }
+    const c = await this.host.online.friendCity(code);
+    if (c === null) { toast(t("No city with this code")); return; }
+    if (c === undefined) { toast(t("Can't reach the server right now")); return; }
+    save.friends = [code, ...save.friends].slice(0, 30);
+    this.host.persist();
+    box.value = "";
+    this.host.sound.unlock();
+    toast(t("{name} added as a friend!", { name: displayName(c.name) }));
+    void this.renderFriends();
   }
 
   /** For the main menu. */

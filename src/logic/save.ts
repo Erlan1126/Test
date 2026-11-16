@@ -81,6 +81,9 @@ export interface SaveData {
   vip: { until: number; claimed: number; gift: number };
   /** Crystal packs bought at least once (each one's first purchase pays double). */
   packsFirst: string[];
+  /** This player's friend code (from the server), and friends' codes they added. */
+  friendCode: string;
+  friends: string[];
   /** The story (see chapters.ts): chapters finished, and the last chapter Mayor Pip introduced. */
   chapters: { done: number; seen: number };
   boosts: Record<BoostId, number>;
@@ -179,6 +182,8 @@ export function defaultSave(): SaveData {
     vip: { until: 0, claimed: 0, gift: 0 },
     packsFirst: [],
     chapters: { done: 0, seen: -1 },
+    friendCode: "",
+    friends: [],
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -296,6 +301,8 @@ export function normalize(raw: unknown): SaveData {
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0), gift: num(obj(r.vip).gift, 0, 0, 1e15) },
     packsFirst: strList(r.packsFirst),
     chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99) },
+    friendCode: /^[A-Z2-9]{6}$/.test(String(r.friendCode ?? "")) ? String(r.friendCode) : "",
+    friends: strList(r.friends).filter(c => /^[A-Z2-9]{6}$/.test(c)).slice(0, 30),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {
