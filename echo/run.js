@@ -12,14 +12,14 @@ const RUN = {
   missions: [
     { kind: "lights", goal: 40, text: n => `Gather ${n} lights in one run` },
     { kind: "dist", goal: 400, text: n => `Reach ${n} m` },
-    { kind: "free", goal: 6, text: n => `Fix ${n} glitches in one run` },
+    { kind: "free", goal: 6, text: n => `Jump or slide past ${n} obstacles in one run` },
     { kind: "nohit", goal: 300, text: n => `Reach ${n} m without being touched` },
-    { kind: "trail", goal: 3, text: n => `Gather ${n} whole light trails in one run` },
+    { kind: "trail", goal: 3, text: n => `Collect ${n} whole coin lines in one run` },
     { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
-    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `Pulls in lights from ${40 + lv * 30} away` : "Lights drift toward Bip" },
-    { id: "song", name: "Bigger pulse", tiers: [50, 110, 190], tip: lv => `Pulse reaches ${150 + lv * 28}, recharges in ${(1.1 - lv * 0.2).toFixed(1)} s` },
+    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `The magnet reaches ${14 + lv * 4} m` : "A stronger magnet power-up" },
+    { id: "song", name: "Longer power-ups", tiers: [50, 110, 190], tip: lv => `Power-ups last ${100 + lv * 20}% as long` },
     { id: "heart", name: "Brighter heart", tiers: [120], tip: lv => `Start each run with ${3 + lv} lights of your own` },
   ],
 };
@@ -50,6 +50,8 @@ function startRun(opts = {}) {
     lights: 0, freed: 0, songs: 0, hitAt: 0, trails: 0, songCd: 0, rings: [], items: [], parts: [], trail: [],
     next: 260, note: 0, biome: 0, banner: 1.5, flash: 0, t: 0, mult: r.mult, paused: false, nohit: true,
   };
+  // The 3D runner when the phone can draw it (runner.js); the classic flight otherwise.
+  if (!(save.set && save.set.classic) && typeof runner3D === "function" && runner3D()) runnerStart(run);
   if (opts.attract) { run.hearts = 1e9; return run; }
   if (!r.tutDone && !daily) run.tut = 1;
   if (run.hard) run.hearts = 1;
@@ -185,9 +187,9 @@ function runHud() {
   $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join("");
   const ab = $("abilityBtn"), as = playingAs();
   if (ab.hidden === as >= 0) ab.hidden = as < 0;
-  if (as >= 0) { $("abilityName").textContent = run.abilityCd > 0 ? Math.ceil(run.abilityCd) : RUN_POWERS[FRIEND_ABILITY[as]].name; ab.classList.toggle("cool", run.abilityCd > 0); }
+  if (as >= 0) { $("abilityName").textContent = run.abilityCd > 0 ? Math.ceil(run.abilityCd) : run.mode3 ? "Shield" : RUN_POWERS[FRIEND_ABILITY[as]].name; ab.classList.toggle("cool", run.abilityCd > 0); }
   $("runMult").textContent = `×${run.mult}`;
-  $("runPower").textContent = run.power ? `${RUN_POWERS[run.power.kind].name} ${Math.ceil(run.power.t)}` : "";
+  $("runPower").textContent = run.power ? `${((run.mode3 && RUNNER_POWERS[run.power.kind]) || RUN_POWERS[run.power.kind]).name} ${Math.ceil(run.power.t)}` : "";
 }
 
 // ---------- Variety: worlds, big moments, power-ups, friends ----------
@@ -476,6 +478,7 @@ function runSpawnFork(at) {
 
 // ---------- Update ----------
 function runUpdate(dt) {
+  if (run.mode3) return runnerUpdate(dt);
   const R = run;
   R.t += dt;
   if (R.over) { R.over += dt; R.speed *= 0.96; R.dist += R.speed * dt; return; }
@@ -611,9 +614,12 @@ function runDraw(ctx, W, H) {
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
   const rim = neon, rock = tower, deep = mixC(w1.sky[0], w2.sky[0], f);
   // The 3D city when the phone can draw it (run3d.js); the flat city otherwise.
-  const proj = typeof RUN3D !== "undefined" && RUN3D && !(save.set && save.set.flat) ? RUN3D.draw(ctx, W, H, { night, tower, winC, neon, neon2, rain: f < 0.5 ? w1.rain : w2.rain,
-    sky: [mixC(w1.sky[0], w2.sky[0], f), mixC(w1.sky[1], w2.sky[1], f), mixC(w1.sky[2], w2.sky[2], f)] }) : null;
-  if (!proj && typeof RUN3D !== "undefined" && RUN3D) RUN3D.hide();
+  const pal = { night, tower, winC, neon, neon2, rain: f < 0.5 ? w1.rain : w2.rain, sky: [mixC(w1.sky[0], w2.sky[0], f), mixC(w1.sky[1], w2.sky[1], f), mixC(w1.sky[2], w2.sky[2], f)] };
+  const R3 = R.mode3 && typeof runner3D === "function" ? runner3D() : null;
+  const proj = R3 ? R3.draw(ctx, W, H, pal) : !R.mode3 && typeof RUN3D !== "undefined" && RUN3D && !(save.set && save.set.flat) ? RUN3D.draw(ctx, W, H, pal) : null;
+  if (typeof RUN3D !== "undefined" && RUN3D && (R.mode3 || !proj)) RUN3D.hide();
+  if (!R.mode3 && typeof RUNNER3D_ !== "undefined" && RUNNER3D_) RUNNER3D_.hide();
+  if (R.mode3 && !proj) { ctx.fillStyle = "#0b0d14"; ctx.fillRect(0, 0, W, H); return; }
   if (proj) ctx.clearRect(0, 0, W, H); else {
   // The sky.
   const sky = ctx.createLinearGradient(0, 0, 0, H);
@@ -924,7 +930,7 @@ function runDraw(ctx, W, H) {
   if (R.flash < 0) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); R.flash = Math.min(0, R.flash + 0.03); }
   // The combo counter.
   // The combo: a ring around Lumi filling toward the next ten, and the count above it.
-  if (R.combo >= 3 && !R.attract) {
+  if (R.combo >= 3 && !R.attract && !R.mode3) {
     const [cx, cy] = P2(R.x, R.dist), rr = 26 * pxU, k = (R.combo % 10) / 10;
     ctx.globalAlpha = Math.min(1, 0.5 + R.comboT);
     ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
@@ -981,14 +987,19 @@ function runLoop(now) {
   c.addEventListener("pointerdown", e => { audio(); p = { x: e.clientX, y: e.clientY, sx: e.clientX, t: performance.now(), moved: false, tx: run ? run.tx : 0 }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
   c.addEventListener("pointermove", e => {
     if (!p || !run) return;
+    if (run.mode3) {
+      const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > 26) { runnerSwipe(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down")); p.x = e.clientX; p.y = e.clientY; p.moved = true; }
+      return;
+    }
     if (Math.abs(e.clientX - p.sx) > 6) p.moved = true;
     if (!p.dashed && p.y - e.clientY > 45 && performance.now() - p.t < 300) { p.dashed = true; p.moved = true; runDash(); }
     run.tx = p.tx + (e.clientX - p.sx) / (c.clientWidth / 400) * 1.25;
   });
-  const end = () => { if (p && !p.moved && performance.now() - p.t < 350) runSing(); p = null; };
+  const end = () => { if (p && !p.moved && performance.now() - p.t < 350 && run && !run.mode3) runSing(); p = null; };
   c.addEventListener("pointerup", end);
   c.addEventListener("pointercancel", () => { p = null; });
-  window.addEventListener("keydown", e => { if (screen !== "run") return; if (e.key === " ") { e.preventDefault(); runSing(); } if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") { e.preventDefault(); runDash(); } });
+  window.addEventListener("keydown", e => { if (screen !== "run") return; if (e.key === " ") { e.preventDefault(); if (run && run.mode3) runnerSwipe("up"); else runSing(); } if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") { e.preventDefault(); runDash(); } });
 }
 document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
@@ -1001,7 +1012,8 @@ document.getElementById("abilityBtn").addEventListener("pointerdown", e => {
   e.stopPropagation(); audio();
   const as = playingAs();
   if (!run || run.over || run.paused || as < 0 || run.abilityCd > 0) return;
-  runPower(FRIEND_ABILITY[as]); run.power.t = 4; run.abilityCd = 25; runHud();
+  if (run.mode3) run.power = { kind: "shield", t: 6 }; else { runPower(FRIEND_ABILITY[as]); run.power.t = 4; }
+  run.abilityCd = 25; runHud();
 });
 // Tap the trail to wear the next one you've earned.
 document.getElementById("runTrail").addEventListener("click", () => {
@@ -1028,10 +1040,13 @@ function titleLoop(now) {
   const keep = run; run = titleRun;
   const dt = Math.min(0.05, (now - (titleRun.last || now)) / 1000); titleRun.last = now;
   // It steers itself along the light trails and sings at shadows.
-  const ahead = titleRun.items.find(it => it.type === "light" && it.got == null && it.at > titleRun.dist && it.at < titleRun.dist + 220);
-  titleRun.tx = ahead ? ahead.x : caveMid(titleRun.dist + 120);
-  if (titleRun.items.some(it => it.type === "shadow" && !it.freed && it.at - titleRun.dist < 140 && it.at > titleRun.dist)) runSing();
-  titleRun.inv = 1; titleRun.speed = 0;
+  if (titleRun.mode3) { runnerAuto(); titleRun.inv = Math.max(titleRun.inv, 0); }
+  else {
+    const ahead = titleRun.items.find(it => it.type === "light" && it.got == null && it.at > titleRun.dist && it.at < titleRun.dist + 220);
+    titleRun.tx = ahead ? ahead.x : caveMid(titleRun.dist + 120);
+    if (titleRun.items.some(it => it.type === "shadow" && !it.freed && it.at - titleRun.dist < 140 && it.at > titleRun.dist)) runSing();
+    titleRun.inv = 1; titleRun.speed = 0;
+  }
   runUpdate(dt);
   if (titleRun.dist > 60000) { titleRun = null; run = keep; startTitleRun(); return; }
   const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);

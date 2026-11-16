@@ -41,6 +41,8 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     save.stars = []; save.ach = {}; save.story = {}; save.cards = {};
     for (let w = 0; w < WORLDS; w++) save.story[w] = 1;
     for (const k in CARDS) save.cards[k] = 1;
+    // The classic flight, unless a test asks for the 3D runner.
+    save.set = { classic: true };
   });
   return { page, errors };
 }
@@ -419,6 +421,43 @@ const SIM = `
       return out;
     });
     for (const [k, v] of Object.entries(m)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    check("no page errors", errors.length === 0, errors[0]);
+    await page.close();
+  }
+
+  // ---------------------------------------------------------------- The 3D runner
+  section("The 3D runner");
+  {
+    const { page, errors } = await openGame(browser);
+    const r = await page.evaluate(() => {
+      const out = {}, step = (n = 1) => { for (let q = 0; q < n; q++) runUpdate(1 / 60); };
+      save.set = {}; save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; startRun();
+      const R = run, clear = () => { R.obs = []; R.coins = []; R.ups = []; R.nextRow = 1e9; R.inv = 0; };
+      out.runnerStartsIn3D = screen === "run" && R.mode3 === true && R.hearts === 3;
+      clear(); runnerSwipe("right"); step(30);
+      out.swipesChangeLanes = R.lane === 1 && Math.abs(R.px - LANE_W) < 0.2;
+      runnerSwipe("right"); out.theEdgeStopsYou = R.lane === 1;
+      clear(); let m = runnerM(); R.coins.push({ lane: 1, z: m + 0.5, y: 0.9, line: 0 }); R.lines[0] = { n: 1, got: 0 }; step(2);
+      out.coinsAreCollected = R.lights === (weekEvent().id === "gold" ? 2 : 1);
+      clear(); m = runnerM(); runnerAddObs("hurdle", 1, m + 3.2); runnerSwipe("up"); step(60);
+      out.jumpingClearsAHurdle = R.hearts === 3 && R.freed === 1;
+      clear(); step(30); m = runnerM(); runnerAddObs("bar", 1, m + 3); runnerSwipe("down"); step(40);
+      out.slidingGoesUnderABar = R.hearts === 3 && R.freed === 2;
+      clear(); step(30); m = runnerM(); runnerAddObs("hurdle", 1, m + 1.5); step(30);
+      out.runningIntoAHurdleHurts = R.hearts === 2;
+      clear(); step(10); R.inv = 0; m = runnerM(); runnerAddObs("tram", 0, m - 3, { len: 14 }); runnerSwipe("left"); step(12);
+      out.aTramBumpsYouBackToYourLane = R.lane === 1 && R.hearts === 2;
+      clear(); step(10); R.inv = 0; R.power = { kind: "shield", t: 5 }; m = runnerM(); runnerAddObs("wall", 1, m + 1); step(20);
+      out.aShieldTakesTheHit = R.hearts === 2 && !R.power;
+      clear(); R.nextRow = runnerM() + 20; const d0 = runnerM(), v0 = R.v; for (let q = 0; q < 1800; q++) { R.inv = 1; runnerAuto(); runUpdate(1 / 60); }
+      out.theAvenueRollsOnAndSpeedsUp = runnerM() > d0 + 300 && R.v > v0 && R.obs.length > 0 && R.coins.length > 0;
+      run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
+      out.theRunEndsAndPays = !!run.over && save.run.best > 0;
+      // The title plays itself.
+      showTitle(); out.theTitlePlaysTheRunner = !!titleRun && titleRun.mode3 === true;
+      return out;
+    });
+    for (const [k, v] of Object.entries(r)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     check("no page errors", errors.length === 0, errors[0]);
     await page.close();
   }

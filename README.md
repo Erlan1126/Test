@@ -25,6 +25,12 @@ Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted g
 - **When a run ends**: one card slides up with the score counting, best, metres, lights and best combo, the level bar, today's progress, and Play again in the middle (Home and Share on either side).
 - **Friends' abilities**: playing as a friend gives an ability button (a four-second Magnet, Comet, Lantern or Choir), ready again after 25 s.
 
+## The runner (new)
+
+Play is now a **3D endless runner** (echo/runner.js, Three.js). A runner in a hoodie, cap, headphones and bright sneakers races down a three-lane tram avenue: **swipe left/right** to change lanes, **up** to jump, **down** to slide (arrow keys and space on a computer). Gather gold coins (they are your lights), jump hurdles, slide under low bars, dodge roadworks, trams (later ones come toward you) and oncoming cars. Power-ups: **Magnet**, **Shield** (takes one hit) and **Jetboard** (ride high above the street over a trail of coins).
+
+The avenue is alive: glass, brick and concrete towers with shops on the ground floor, animated billboards, neon blade signs, rooftop water towers, lamp posts, trees, benches and people walking (they cheer every 500 m, with fireworks), flying cars overhead and birds by day. The sky still turns from morning to night as you go, with rain and wet reflective streets in Rain Lights. Real-time shadows and reflective glass throughout. Hearts, missions, the season pass, continues and the end card work as before; the first run teaches the swipes with slow motion. Without WebGL the classic flight is used.
+
 ## The city (new look)
 
 Echo no longer happens in a dark cave. Lumi climbs between glass skyscrapers, and the time of day changes as you go up: **Morning Plaza** and **Glass Heights** in bright daylight, **Golden Hour**, **Pink Dusk**, then neon night on **Neon Avenue**, **Rain Lights** and **Midnight Gold**, and finally the **Starline**, above the rooftops under the stars and an aurora. Towers have rows of windows that light up after dark, neon strips and signs; a skyline and clouds drift behind.
