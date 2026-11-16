@@ -13,7 +13,8 @@ export const VIP_SKIN = "platinum";
 /** How long VIP keeps working without hearing from the store (offline play). */
 const GRACE_MS = 3 * 864e5;
 
-export const vipActive = (save: SaveData, now = Date.now()): boolean => save.vip.until > now;
+/** On through the store subscription, or days of VIP that came with a big crystal pack. */
+export const vipActive = (save: SaveData, now = Date.now()): boolean => save.vip.until > now || save.vip.gift > now;
 
 /** What the store says. Active extends the grace period; not active ends VIP at once. */
 export function setVip(save: SaveData, active: boolean, now = Date.now()): boolean {

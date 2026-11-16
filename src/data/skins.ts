@@ -14,6 +14,8 @@ export interface Look {
   neon?: boolean;
   /** Windows lit even in daylight. */
   alwaysLit?: boolean;
+  /** Legendary skins' living effect (see addFx in renderer3d.ts). */
+  fx?: "aurora" | "gold" | "lava" | "diamond";
 }
 
 export type SkinUnlock =
@@ -101,6 +103,19 @@ export const SKINS: Skin[] = [
     floors: ["#4b2a7a", "#5a3290", "#42246c"],
     glass: "#1e1236", frame: "#e7c25a", slab: "#e7c25a", slabH: 0.14, lit: ["#ffe08a", "#fff3c4"],
     swatch: ["#4b2a7a", "#e7c25a", "#5a3290"] },
+  // Legendary skins: alive with light (crystals, or the biggest crystal pack's exclusive).
+  { id: "aurora", name: "Aurora Glass", unlock: { product: "skin_aurora" }, kind: "ribbon", fx: "aurora",
+    floors: ["#1b2a5a", "#20306a", "#18244e"],
+    glass: "#2a3f7a", frame: "#cfe8ff", slab: "#e6f2ff", slabH: 0.08, lit: ["#b8f5ff", "#d6c4ff"], swatch: ["#5ef0c8", "#7b6cff", "#ff7ad9"] },
+  { id: "gold", name: "Molten Gold", unlock: { product: "skin_gold" }, kind: "punched", fx: "gold",
+    floors: ["#c99a1e", "#d8aa2a", "#b88812"],
+    glass: "#3a2a10", frame: "#ffe08a", slab: "#fff1c2", slabH: 0.14, lit: ["#fff1b0", "#ffd36b"], swatch: ["#ffe08a", "#c99a1e", "#fff6d6"] },
+  { id: "lava", name: "Lava Core", unlock: { product: "skin_lava" }, kind: "punched", fx: "lava",
+    floors: ["#2a1410", "#341812", "#22100c"],
+    glass: "#1a0a06", frame: "#4a1e12", slab: "#ff6a1a", slabH: 0.1, lit: ["#ffb13b", "#ff6a1a"], alwaysLit: true, swatch: ["#2a1410", "#ff6a1a", "#ffb13b"] },
+  { id: "diamond_sky", name: "Diamond Skyline", unlock: { product: "pack_diamond" }, kind: "ribbon", fx: "diamond",
+    floors: ["#dff4ff", "#eefaff", "#cfeeff"],
+    glass: "#f2fbff", frame: "#ffffff", slab: "#ffffff", slabH: 0.08, lit: ["#ffffff", "#e0f6ff"], alwaysLit: true, swatch: ["#ffffff", "#bfe9ff", "#e8d6ff"] },
   { id: "cyber", name: "Cyber City", unlock: { product: "skin_cyber" }, kind: "ribbon", neon: true,
     floors: ["#0d0f1c", "#121528", "#0a0c16"],
     glass: "#080a14", frame: "#1d2a4a", slab: "#05060c", slabH: 0.08,

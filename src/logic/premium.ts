@@ -54,6 +54,7 @@ export type SpendResult = "ok" | "owned" | "short";
 /** Buys a premium item with crystals. */
 export function buyWithCrystals(save: SaveData, id: string): SpendResult {
   if (ownsProduct(save, id)) return "owned";
+  if (productById(id)?.exclusive) return "short";
   const price = itemPrice(save, id);
   if (save.crystals < price) return "short";
   save.crystals -= price;
@@ -62,18 +63,30 @@ export function buyWithCrystals(save: SaveData, id: string): SpendResult {
 }
 
 /** Adds a bought pack's crystals once per transaction. Returns the crystals added. */
-export function grantPack(save: SaveData, packId: string, tx: string): number {
+export function grantPack(save: SaveData, packId: string, tx: string, now = Date.now()): number {
   const pack = packById(packId);
   if (!pack || !tx || save.crystalTx.includes(tx)) return 0;
   save.crystalTx.push(tx);
   if (save.crystalTx.length > 300) save.crystalTx.splice(0, save.crystalTx.length - 300);
-  save.crystals += pack.crystals;
+  // Each pack's first purchase pays double.
+  let crystals = pack.crystals;
+  if (pack.id !== STARTER_PACK.id && !save.packsFirst.includes(pack.id)) {
+    save.packsFirst.push(pack.id);
+    crystals *= 2;
+  }
+  save.crystals += crystals;
+  // What else comes with the bigger packs.
+  for (const sk of pack.extras?.skins ?? []) {
+    const prod = PRODUCTS.find(x => x.grants.skins?.includes(sk) && x.exclusive);
+    if (prod && !save.purchases.includes(prod.id)) save.purchases.push(prod.id);
+  }
+  if (pack.extras?.vipDays) save.vip.gift = Math.max(save.vip.gift, now) + pack.extras.vipDays * 864e5;
   if (pack.id === STARTER_PACK.id) {
     save.starter.bought = true;
     if (!save.ownedSkins.includes(STARTER_SKIN)) save.ownedSkins.push(STARTER_SKIN);
     for (const b of ["rewind", "xp", "gold"] as const) save.boosts[b] = Math.min(MAX_BOOSTS, save.boosts[b] + 1);
   }
-  return pack.crystals;
+  return crystals;
 }
 
 /** A random, unguessable id the servers use to know this player. */

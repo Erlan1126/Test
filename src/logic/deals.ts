@@ -35,7 +35,7 @@ export function dealsFor(save: SaveData, day: number): Deal[] {
   const skin = pick(SKINS.filter(s => s.unlock && "price" in s.unlock && !had("skin", s.id, save.ownedSkins.includes(s.id))));
   if (skin && skin.unlock && "price" in skin.unlock) out.push({ kind: "skin", ref: skin.id, name: skin.name, currency: "stars", was: skin.unlock.price, price: off(skin.unlock.price, 0.3) });
 
-  const prod = pick(PRODUCTS.filter(p => p.kind !== "bundle" && !had("product", p.id, ownsProduct(save, p.id))));
+  const prod = pick(PRODUCTS.filter(p => p.kind !== "bundle" && !p.exclusive && !p.legendary && !had("product", p.id, ownsProduct(save, p.id))));
   if (prod) out.push({ kind: "product", ref: prod.id, name: prod.name, currency: "crystals", was: prod.crystals, price: off(prod.crystals, 0.25) });
 
   const shape = pick(SHAPES.filter(s => s.unlock && !("level" in s.unlock) && !had("shape", s.id, save.ownedShapes.includes(s.id))));

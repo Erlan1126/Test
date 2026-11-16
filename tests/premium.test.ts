@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buyWithCrystals, grantPack, grantPurchase, itemPrice, newPlayerId, ownsProduct, premiumGrants } from "../src/logic/premium";
+import { setVip, vipActive } from "../src/logic/vip";
 import { currentTheme, isSkinUnlocked, themeUnlocked } from "../src/logic/progress";
 import { defaultSave, exportCode, importCode, normalize } from "../src/logic/save";
 import { SKINS } from "../src/data/skins";
@@ -63,11 +64,24 @@ describe("premium purchases", () => {
 
   it("adds each pack purchase exactly once", () => {
     const s = defaultSave();
-    expect(grantPack(s, "crystals_650", "android:abc")).toBe(650);
+    expect(grantPack(s, "crystals_650", "android:abc")).toBe(1300); // first time pays double
     expect(grantPack(s, "crystals_650", "android:abc")).toBe(0); // the store resent it
-    expect(grantPack(s, "crystals_200", "android:def")).toBe(200);
+    expect(grantPack(s, "crystals_650", "android:ghi")).toBe(650);
+    expect(grantPack(s, "crystals_200", "android:def")).toBe(400);
     expect(grantPack(s, "free_crystals", "x")).toBe(0);
-    expect(s.crystals).toBe(850);
+    expect(s.crystals).toBe(2350);
+  });
+
+  it("gives the biggest pack's exclusive skin and VIP days", () => {
+    const s = defaultSave(), now = 1_800_000_000_000;
+    grantPack(s, "crystals_14000", "ios:big", now);
+    expect(s.crystals).toBe(28000);
+    expect(isSkinUnlocked(s, SKINS.find(x => x.id === "diamond_sky")!)).toBe(true);
+    expect(vipActive(s, now + 29 * 864e5)).toBe(true);
+    expect(vipActive(s, now + 31 * 864e5)).toBe(false);
+    // The store saying "no subscription" doesn't take the gifted days away.
+    setVip(s, false, now);
+    expect(vipActive(s, now + 864e5)).toBe(true);
   });
 
   it("keeps purchases and the player id through saves and save codes", () => {
@@ -83,7 +97,7 @@ describe("premium purchases", () => {
 
   it("prices every product and grants something real", () => {
     for (const p of PRODUCTS) {
-      expect(p.crystals).toBeGreaterThan(0);
+      if (!p.exclusive) expect(p.crystals).toBeGreaterThan(0);
       for (const id of p.grants.skins ?? []) expect(SKINS.some(x => x.id === id)).toBe(true);
       for (const id of p.grants.themes ?? []) expect(ISLAND_THEMES.some(x => x.id === id)).toBe(true);
     }

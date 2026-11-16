@@ -10,6 +10,10 @@ export interface Product {
   name: string;
   text: string;
   kind: "skin" | "island" | "bundle";
+  /** A Legendary item: animated, rarer, and priced for the bigger packs. */
+  legendary?: boolean;
+  /** Only comes with a crystal pack; never sold on its own. */
+  exclusive?: boolean;
   /** Price in Sky Crystals. */
   crystals: number;
   grants: { skins?: string[]; themes?: string[]; shapes?: string[]; stars?: number };
@@ -27,15 +31,19 @@ export interface CrystalPack {
   best?: boolean;
   /** Tagged "Best value". */
   value?: boolean;
+  /** No longer offered (kept so past purchases and restores still work). */
+  retired?: boolean;
+  /** What else comes with the pack. */
+  extras?: { skins?: string[]; vipDays?: number };
 }
 
 export const CRYSTAL_PACKS: CrystalPack[] = [
   { id: "crystals_200", crystals: 200, cents: 199 },
-  { id: "crystals_650", crystals: 650, cents: 599, bonus: "+8%" },
+  { id: "crystals_650", crystals: 650, cents: 599, bonus: "+8%", retired: true },
   { id: "crystals_1250", crystals: 1250, cents: 1099, bonus: "+14%", best: true },
   { id: "crystals_2600", crystals: 2600, cents: 2099, bonus: "+24%" },
-  { id: "crystals_8000", crystals: 8000, cents: 5999, bonus: "+33%" },
-  { id: "crystals_14000", crystals: 14000, cents: 9999, bonus: "+40%", value: true },
+  { id: "crystals_8000", crystals: 8000, cents: 5999, bonus: "+33%", extras: { vipDays: 7 } },
+  { id: "crystals_14000", crystals: 14000, cents: 9999, bonus: "+40%", value: true, extras: { skins: ["diamond_sky"], vipDays: 30 } },
 ];
 
 /** A one-time welcome offer: crystals, an exclusive skin and one of each boost. Shown once,
@@ -53,6 +61,9 @@ export const PRODUCTS: Product[] = [
   { id: "skin_sakura", name: "Sakura Spire", kind: "skin", crystals: 200, text: "Blossom pink with warm paper lanterns", grants: { skins: ["sakura"] } },
   { id: "skin_royal", name: "Royal Amethyst", kind: "skin", crystals: 200, text: "Deep purple stone trimmed in gold", grants: { skins: ["royal"] } },
   { id: "skin_cyber", name: "Cyber City", kind: "skin", crystals: 300, text: "Black glass with glowing neon edges", grants: { skins: ["cyber"] } },
+  { id: "skin_aurora", name: "Aurora Glass", kind: "skin", legendary: true, crystals: 1500, text: "Northern lights ripple up the glass", grants: { skins: ["aurora"] } },
+  { id: "skin_gold", name: "Molten Gold", kind: "skin", legendary: true, crystals: 2000, text: "Solid gold that shimmers in the sun", grants: { skins: ["gold"] } },
+  { id: "skin_lava", name: "Lava Core", kind: "skin", legendary: true, crystals: 2500, text: "Glowing lava pulses through dark stone", grants: { skins: ["lava"] } },
   { id: "island_volcano", name: "Volcano Island", kind: "island", crystals: 300, text: "Black rock, palm trees and glowing lava", grants: { themes: ["volcano"] } },
   { id: "island_candy", name: "Candy Island", kind: "island", crystals: 300, text: "Pastel lawns and cotton-candy trees", grants: { themes: ["candy"] } },
   // Themed sets: a skin, an island or shapes that go together, for less than buying each.
@@ -67,11 +78,21 @@ export const PRODUCTS: Product[] = [
     grants: { skins: ["sakura"], themes: ["candy"], shapes: ["wave"] },
   },
   {
-    id: "founders", name: "Founder's Pack", kind: "bundle", crystals: 900,
-    text: "Every premium skin and island, plus 50 stars. Thank you for supporting Skyrise!",
+    id: "founders", name: "Founder's Pack", kind: "bundle", crystals: 1500,
+    text: "Every premium skin and island (not Legendary), plus 50 stars. Thank you for supporting Skyrise!",
     grants: { skins: ["crystal", "sakura", "royal", "cyber"], themes: ["volcano", "candy"], stars: 50 },
   },
 ];
+
+// Comes only with the biggest crystal pack.
+PRODUCTS.push({ id: "pack_diamond", name: "Diamond Skyline", kind: "skin", legendary: true, exclusive: true, crystals: 0, text: "Only with the 14,000 crystal pack", grants: { skins: ["diamond_sky"] } });
+
+// The whole Legendary set for less than buying each.
+PRODUCTS.push({
+  id: "set_legendary", name: "Legendary Collection", kind: "bundle", legendary: true, crystals: 5000,
+  text: "Aurora Glass, Molten Gold and Lava Core, plus 200 stars",
+  grants: { skins: ["aurora", "gold", "lava"], stars: 200 },
+});
 
 export const productById = (id: string): Product | undefined => PRODUCTS.find(p => p.id === id);
 

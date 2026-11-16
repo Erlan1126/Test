@@ -78,7 +78,9 @@ export interface SaveData {
   /** Towers built during this year's holiday event. */
   holiday: { key: string; towers: number };
   /** VIP subscription: on until this time (refreshed by the store), and the day its gift was last claimed. */
-  vip: { until: number; claimed: number };
+  vip: { until: number; claimed: number; gift: number };
+  /** Crystal packs bought at least once (each one's first purchase pays double). */
+  packsFirst: string[];
   boosts: Record<BoostId, number>;
   missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
@@ -168,7 +170,8 @@ export function defaultSave(): SaveData {
     deals: { day: 0, bought: [] },
     starter: { offeredAt: 0, bought: false },
     holiday: { key: "", towers: 0 },
-    vip: { until: 0, claimed: 0 },
+    vip: { until: 0, claimed: 0, gift: 0 },
+    packsFirst: [],
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -283,7 +286,8 @@ export function normalize(raw: unknown): SaveData {
     deals: { day: int(obj(r.deals).day, 0), bought: strList(obj(r.deals).bought).slice(0, 10) },
     starter: { offeredAt: num(obj(r.starter).offeredAt, 0, 0, 1e15), bought: obj(r.starter).bought === true },
     holiday: { key: str(obj(r.holiday).key, "").slice(0, 40), towers: int(obj(r.holiday).towers, 0, 0, 9999) },
-    vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0) },
+    vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0), gift: num(obj(r.vip).gift, 0, 0, 1e15) },
+    packsFirst: strList(r.packsFirst),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {

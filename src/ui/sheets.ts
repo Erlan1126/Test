@@ -281,16 +281,27 @@ export class Sheets {
     }
     const packs = $("pack-list");
     packs.innerHTML = "";
-    for (const pk of CRYSTAL_PACKS) {
+    const shown = CRYSTAL_PACKS.filter(pk => !pk.retired);
+    for (const pk of shown) {
       const price = pay?.price?.(pk) ?? formatPrice(pk.cents);
+      const first = !save.packsFirst.includes(pk.id);
       const card = document.createElement("button");
       card.type = "button";
-      card.className = `pack-card${pk.best || pk.value ? " best" : ""}`;
+      card.className = `pack-card${pk.best || pk.value ? " best" : ""}${pk.extras ? " hero" : ""}`;
       card.disabled = !pay;
+      const extras = [
+        ...(pk.extras?.skins ?? []).map(id => t("{name} skin (only here)", { name: t(skinById(id).name) })),
+        pk.extras?.vipDays ? t("{n} days of VIP", { n: pk.extras.vipDays }) : "",
+      ].filter(Boolean);
       card.innerHTML = `${pk.best ? `<span class="best-value">${esc(t("Most popular"))}</span>` : pk.value ? `<span class="best-value">${esc(t("Best value"))}</span>` : ""}
-        <span class="pack-gems" aria-hidden="true">${"💎".repeat(Math.min(3, 1 + CRYSTAL_PACKS.indexOf(pk) / 2 | 0))}</span>
-        <b>${fmt(pk.crystals)}</b>${pk.bonus ? `<small class="bonus">${esc(t("{n} bonus", { n: pk.bonus }))}</small>` : "<small>&nbsp;</small>"}
+        ${first ? `<span class="first-x2">${esc(t("2× first time"))}</span>` : ""}
+        ${pk.extras?.skins?.length ? `<canvas class="pack-skin" aria-hidden="true"></canvas>` : ""}
+        <span class="pack-gems" aria-hidden="true">${"💎".repeat(Math.min(3, 1 + shown.indexOf(pk) / 2 | 0))}</span>
+        <b>${fmt(first ? pk.crystals * 2 : pk.crystals)}</b>${first ? `<s class="was">${fmt(pk.crystals)}</s>` : ""}${pk.bonus ? `<small class="bonus">${esc(t("{n} bonus", { n: pk.bonus }))}</small>` : "<small>&nbsp;</small>"}
+        ${extras.length ? `<span class="pack-extras">+ ${esc(extras.join(" · "))}</span>` : ""}
         <span class="buy">${pay ? esc(price) : esc(t("Soon"))}</span>`;
+      const ps = card.querySelector<HTMLCanvasElement>(".pack-skin");
+      if (ps && pk.extras?.skins?.[0]) drawSkinPreview(ps, skinById(pk.extras.skins[0]));
       card.setAttribute("aria-label", pay ? t("Buy {n} Sky Crystals for {price}", { n: pk.crystals, price }) : t("{n} Sky Crystals, coming soon", { n: pk.crystals }));
       card.addEventListener("click", async () => {
         card.disabled = true;
@@ -302,18 +313,21 @@ export class Sheets {
 
     const list = $("premium-list");
     list.innerHTML = "";
-    for (const p of PRODUCTS) {
+    // Legendary items lead the list; pack-only items aren't sold here.
+    const order = [...PRODUCTS.filter(p => p.legendary && !p.exclusive), ...PRODUCTS.filter(p => !p.legendary)];
+    for (const p of order) {
       const owned = ownsProduct(save, p.id), price = itemPrice(save, p.id);
       const card = document.createElement("div");
-      card.className = `premium-card${p.kind === "bundle" ? " bundle" : ""}${owned ? " owned" : ""}`;
+      card.className = `premium-card${p.kind === "bundle" ? " bundle" : ""}${p.legendary ? " legendary" : ""}${owned ? " owned" : ""}`;
       card.innerHTML = `<canvas aria-hidden="true"></canvas>
-        ${p.kind === "bundle" ? `<span class="best-value">${esc(t("Best value"))}</span>` : ""}
+        ${p.legendary ? `<span class="legend-tag">${esc(t("Legendary"))}</span>` : p.kind === "bundle" ? `<span class="best-value">${esc(t("Best value"))}</span>` : ""}
         <b>${esc(t(p.name))}</b><small>${esc(t(p.text))}</small>
         <button type="button" class="buy">${owned ? esc(t("✓ Owned")) : `💎 ${fmt(price)}`}</button>`;
       const cv = card.querySelector("canvas")!;
       const skinId = p.grants.skins?.[0], themeId = p.grants.themes?.[0];
       if (p.kind === "island" && themeId) drawThemePreview(cv, ISLAND_THEMES.find(t => t.id === themeId)!);
       else if (p.id === "founders") drawSkinPreview(cv, SKINS.find(s => s.id === "cyber")!);
+      else if (p.id === "set_legendary") drawSkinPreview(cv, skinById("gold"));
       else if (p.grants.shapes?.length && skinId) drawShapePreview(cv, SHAPES.find(x => x.id === p.grants.shapes![0])!, skinById(skinId));
       else if (skinId) drawSkinPreview(cv, skinById(skinId));
       const btn = card.querySelector<HTMLButtonElement>(".buy")!;

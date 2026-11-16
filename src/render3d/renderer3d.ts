@@ -435,7 +435,21 @@ export class Renderer3D {
   }
 
   /** Adds the ripple, rain and snow effects to a building material's shader. */
-  private addFx(m: THREE.Material, part: "wall" | "roof"): void {
+  private addFx(m: THREE.Material, part: "wall" | "roof", special?: Look["fx"]): void {
+    // Legendary skins' living light, added on top of everything else.
+    const legend = !special ? "" : {
+      aurora: `{ float h = fract(vFxW.y * 0.025 - uTime * 0.07 + (vFxW.x - vFxW.z) * 0.01);
+          vec3 c = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+          totalEmissiveRadiance += mix(vec3(0.2, 1.0, 0.75), c, 0.6) * (0.25 + 0.35 * metalnessFactor) * (0.6 + 0.4 * sin(vFxW.y * 0.4 - uTime * 1.5)); }`,
+      gold: `{ float s = pow(max(0.0, sin((vFxW.x - vFxW.z) * 0.9 + vFxW.y * 0.25 - uTime * 2.2)), 18.0);
+          totalEmissiveRadiance += vec3(1.0, 0.82, 0.35) * (0.08 + s * 0.55); }`,
+      lava: `{ float p = 0.5 + 0.5 * sin(vFxW.y * 0.7 - uTime * 1.8 + sin((vFxW.x + vFxW.z) * 0.8) * 1.5);
+          totalEmissiveRadiance += vec3(1.0, 0.32, 0.05) * (1.0 - metalnessFactor) * (0.15 + 0.6 * pow(p, 4.0)); }`,
+      diamond: `{ vec3 cell = floor(vFxW * 2.5);
+          float r = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+          float tw = pow(max(0.0, sin(uTime * (1.5 + r * 3.0) + r * 40.0)), 30.0) * step(0.7, r);
+          totalEmissiveRadiance += vec3(0.95, 0.97, 1.0) * (0.1 + tw * 1.4) + vec3(0.6, 0.4, 1.0) * 0.06 * sin(vFxW.y * 0.3 + uTime); }`,
+    }[special];
     m.onBeforeCompile = shader => {
       Object.assign(shader.uniforms, this.fxU);
       const decl = "uniform float uTime; uniform float uRipY; uniform float uRipAmp; uniform float uWet; uniform float uSnow; uniform vec3 uSky; uniform float uFocusY; uniform float uFever; varying vec3 vFxW;\n";
@@ -449,6 +463,7 @@ export class Renderer3D {
           float skyK = smoothstep(-30.0, 25.0, vFxW.y - uFocusY);
           float band = 0.5 + 0.5 * sin((vFxW.x - vFxW.z) * 0.35 + vFxW.y * 0.05);
           totalEmissiveRadiance += metalnessFactor * (uSky * (0.05 + 0.11 * skyK) + vec3(0.07) * pow(band, 8.0));
+          ${legend}
           // Fever: a warm pulse running up the tower.
           totalEmissiveRadiance += vec3(1.0, 0.55, 0.2) * uFever * (0.22 + 0.14 * sin(uTime * 8.0 - vFxW.y * 0.6));
           // A bright band sweeping down the glass after a perfect drop.
@@ -469,7 +484,7 @@ export class Renderer3D {
         : shader.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.96, 0.97, 1.0), uSnow * 0.9);")
           .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n roughnessFactor *= 1.0 - 0.65 * uWet;"));
     };
-    m.customProgramCacheKey = () => `skyfx-${part}`;
+    m.customProgramCacheKey = () => `skyfx-${part}-${special ?? ""}`;
   }
 
   /** Points the 3D camera so world points land exactly where View.project puts them. */
@@ -744,7 +759,7 @@ export class Renderer3D {
   /** Wall and roof materials for a look, shared by every floor in it: each floor's own
    *  color is baked into its vertices, so floors can be merged into a few big meshes. */
   private floorMats(look: Look, kind?: string): FloorMats {
-    const key = `${look.glass}|${look.frame}|${look.kind}|${look.slab}|${look.lit.join()}|${look.neon ? 1 : 0}|${kind === "gold" ? "gold" : ""}`;
+    const key = `${look.glass}|${look.frame}|${look.kind}|${look.slab}|${look.lit.join()}|${look.neon ? 1 : 0}|${kind === "gold" ? "gold" : ""}|${look.fx ?? ""}`;
     let m = this.mats.get(key);
     if (m) return m;
     const fa = facadeFor(look);
@@ -757,7 +772,7 @@ export class Renderer3D {
       roughnessMap: fa.orm, metalnessMap: fa.orm, roughness: gold ? 0.5 : 0.85, metalness: 1, envMapIntensity: 1.75,
     });
     wall.userData.alwaysLit = !!look.alwaysLit || !!look.neon;
-    this.addFx(wall, "wall");
+    this.addFx(wall, "wall", look.fx);
     this.wallMats.add(wall);
     const roof = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: gold ? 0.35 : 0.8, metalness: gold ? 0.7 : 0 });
     this.addFx(roof, "roof");

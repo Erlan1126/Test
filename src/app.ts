@@ -73,7 +73,7 @@ import { CHEST } from "./data/daily";
 import { getLang, resolveLang, setLang, t, tn, translateDom } from "./i18n";
 import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, onOpenUrl, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 import { maybeOfferStarter, starterLeft } from "./logic/starter";
-import { formatPrice, STARTER_PACK, STARTER_SKIN } from "./data/premium";
+import { formatPrice, packById, STARTER_PACK, STARTER_SKIN } from "./data/premium";
 import { drawSkinPreview } from "./render/previews";
 
 type State = "menu" | "playing" | "paused" | "rescue" | "over";
@@ -421,7 +421,10 @@ export class App implements DailyHost {
     }
     this.persist();
     this.sound.purchase();
-    toast(test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }));
+    const extra = packById(p.pack)?.extras;
+    toast((test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }))
+      + (extra?.vipDays ? " " + t("Plus {n} days of VIP!", { n: extra.vipDays }) : ""));
+    if (extra && !this.calmMotion) fireworks(4, () => this.sound.firework());
     this.refresh();
     this.sheets?.refreshShop();
     this.daily?.refreshPass();
