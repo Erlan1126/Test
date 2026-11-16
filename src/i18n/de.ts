@@ -959,4 +959,5 @@ export const DE: Record<string, string> = {
   "Hold on to your hat!": "Halt deinen Hut fest!",
   "It's party time!": "Party-Zeit!",
   "Feel the heat!": "Spür die Hitze!",
+  "+{n} more": "+{n} weitere",
 };

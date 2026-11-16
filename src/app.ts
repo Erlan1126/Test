@@ -688,8 +688,9 @@ export class App implements DailyHost {
     });
     $("to-menu").addEventListener("click", () => this.goToMenu());
     $("over-more").addEventListener("click", () => {
-      const r = $("over-rewards"), open = r.hidden;
-      r.hidden = !open;
+      const r = $("over-rewards"), open = !r.classList.contains("open");
+      r.classList.toggle("open", open);
+      $("over-more").hidden = open;
       $("over-more").setAttribute("aria-expanded", String(open));
       this.sound.click();
     });
@@ -1720,14 +1721,18 @@ export class App implements DailyHost {
       });
       rewards.appendChild(b);
     }
-    // Everything else that happened is one tap away instead of all on the card: a single
-    // line shows as it is, more than one folds behind "N new things".
-    const extras = rewards.children.length, more = $("over-more");
-    const folded = extras > 1;
-    more.hidden = !folded;
-    more.textContent = t("🎁 {n} new things", { n: extras });
+    // The two biggest things show on the card (new unlocks and skins first); anything else
+    // is one tap away behind "+N more".
+    const kids = [...rewards.children] as HTMLElement[];
+    const rank = (el: HTMLElement) => (el.classList.contains("try-skin") ? 0 : el.classList.contains("new") ? 1 : 2);
+    kids.sort((a, b) => rank(a) - rank(b)).forEach(el => rewards.appendChild(el));
+    kids.forEach((el, i) => el.classList.toggle("more-line", i >= 2));
+    const hiddenN = Math.max(0, kids.length - 2), more = $("over-more");
+    more.hidden = !hiddenN;
+    more.textContent = t("+{n} more", { n: hiddenN });
     more.setAttribute("aria-expanded", "false");
-    rewards.hidden = !extras || folded;
+    rewards.classList.remove("open");
+    rewards.hidden = !kids.length;
 
     const near = $("over-near");
     near.hidden = !o.near || !!c;
