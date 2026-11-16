@@ -63,7 +63,9 @@ import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { TycoonUI } from "./ui/tycoon";
-import { evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus } from "./logic/tycoon";
+import { evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, unlockedBusiness } from "./logic/tycoon";
+import type { BizLot } from "./render3d/bizcity";
+const NO_LOTS: BizLot[] = [];
 import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
@@ -404,6 +406,7 @@ export class App implements DailyHost {
     if (this.moving) { this.endMove(); return true; }
     if (this.visiting) { this.endVisit(); return true; }
     const modal = openModalEl();
+    if (!modal && this.tycoon.inCity) { this.tycoon.exitCity(); return true; }
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
     if (!$("rewards").hidden) { $("rewards").hidden = true; this.renderMenu(); return true; }
     if (this.peek) { this.setPeek(false); return true; }
@@ -687,7 +690,7 @@ export class App implements DailyHost {
       if (this.state !== "menu" || this.moving || this.visiting || !$("mayor").hidden || !$("welcome").hidden || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
       this.start(this.homeMode);
     });
-    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving && !this.visiting && $("mayor").hidden && $("welcome").hidden) this.start(this.homeMode); });
+    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !this.tycoon.inCity && !openModalEl() && !this.moving && !this.visiting && $("mayor").hidden && $("welcome").hidden) this.start(this.homeMode); });
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
@@ -850,6 +853,7 @@ export class App implements DailyHost {
   // ---------- Starting and ending towers ----------
 
   private start(mode: Mode, challengeId?: string): void {
+    this.tycoon.exitCity();
     clearTimeout(this.evolveTimer);
     const evo = document.getElementById("evolve");
     if (evo) evo.hidden = true;
@@ -2301,14 +2305,24 @@ export class App implements DailyHost {
     return this.cityView;
   }
 
-  /** Skyhaven Inc.'s businesses for the 3D business district (cached until a level changes). */
-  private bizCache: { key: string; list: { c: string; c2: string; s: number }[] } = { key: "", list: [] };
-  private bizView(): { c: string; c2: string; s: number }[] {
-    const lv = this.save.tycoon.levels, key = JSON.stringify(lv);
-    if (key !== this.bizCache.key) {
-      this.bizCache = { key, list: BUSINESSES.filter(b => (lv[b.id] ?? 0) > 0).map(b => ({ c: b.color[0], c2: b.color[1], s: stageNow(this.save, b.id) })) };
-    }
+  /** Skyhaven Inc.'s lots for the 3D business district (the same list until one changes). */
+  private bizCache: { key: string; list: BizLot[] } = { key: "", list: [] };
+  private bizView(): BizLot[] {
+    const s = this.save, lots: BizLot[] = BUSINESSES.map((b, i) => ({
+      id: b.id, c: b.color[0], c2: b.color[1], s: stageNow(s, b.id),
+      state: (s.tycoon.levels[b.id] ?? 0) > 0 ? "open" : unlockedBusiness(s, i) ? "lease" : "locked",
+    }));
+    const key = JSON.stringify(lots);
+    if (key !== this.bizCache.key) this.bizCache = { key, list: lots };
     return this.bizCache.list;
+  }
+
+  /** The camera is over the business district (the Tycoon city is open). */
+  private bizFocus = false;
+  canCity(): boolean { return this.renderer instanceof Renderer3D && !this.visiting; }
+  setBizFocus(on: boolean): void { this.bizFocus = on; }
+  bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
+    return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }
 
   private draw(dt: number): void {
@@ -2321,7 +2335,10 @@ export class App implements DailyHost {
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       skyline: this.city().skyline,
       districts: this.city().districts,
-      biz: this.visiting ? [] : this.bizView(),
+      bizLots: this.visiting ? NO_LOTS : this.bizView(),
+      bizLive: this.tycoon.liveState(),
+      bizFocus: this.bizFocus && this.state === "menu",
+      bizCard: this.tycoon.cardOpen,
       tint: holidayAt()?.tint ?? null,
       fever: this.state === "playing" && this.sim.feverLeft > 0,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),

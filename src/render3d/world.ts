@@ -482,7 +482,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
  *  so pieces of every color share one mesh as long as they're the same kind of surface
  *  (roughness, metalness, texture, glow). Pieces whose material animates (lit windows,
  *  lamps) merge only with others using that same material. Moving things stay separate. */
-function mergeStatic(root: THREE.Object3D): void {
+export function mergeStatic(root: THREE.Object3D): void {
   root.updateMatrixWorld(true);
   const toLocal = root.matrixWorld.clone().invert(), rel = new THREE.Matrix4();
   const groups = new Map<string, { mat: THREE.MeshStandardMaterial; geos: THREE.BufferGeometry[]; cast: boolean; tint: boolean; rough: number; metal: number }>();

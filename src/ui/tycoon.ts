@@ -12,6 +12,7 @@ import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
+import { STAGE_H } from "../render3d/bizcity";
 import { MAYOR_SVG, mayorNote, mayorSvg } from "./mayor";
 
 export interface TycoonHost {
@@ -26,6 +27,12 @@ export interface TycoonHost {
   buildHQ(id: string): void;
   /** The home screen is showing (not a tower). */
   onMenu(): boolean;
+  /** The 3D business district can be shown (the 3D renderer is on). */
+  canCity(): boolean;
+  /** Flies the camera over the business district (or back). */
+  setBizFocus(on: boolean): void;
+  /** Where a lot's building is on screen. */
+  bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
 }
 
 /** A gold coin with a star, for counters. */
@@ -77,6 +84,15 @@ export class TycoonUI {
       this.showTab(b.dataset.tab!);
     }));
     $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.host.buildFloors(); });
+    $("tycity").addEventListener("click", e => this.onCityTap(e));
+    $("tcy-card").addEventListener("click", e => this.onCardTap(e));
+    $("tcy-home").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.exitCity(); });
+    $("tcy-bar").querySelectorAll<HTMLButtonElement>("button").forEach(b => b.addEventListener("click", e => {
+      e.stopPropagation();
+      const k = b.dataset.open!;
+      if (k === "build") { this.host.sound.click(); this.leave(); this.host.buildFloors(); return; }
+      this.openSheet(k);
+    }));
     // One listener per section (sections are rebuilt, their containers never are).
     $("ty-list").addEventListener("click", e => this.onListClick(e));
     $("ty-upgrades").addEventListener("click", e => this.onUpgradeClick(e));
@@ -105,14 +121,66 @@ export class TycoonUI {
     this.render();
   }
 
+  /** In the business district (the 3D city), rather than the home screen. */
+  inCity = false;
+  /** The building whose card is open in the city. */
+  private selected = "";
+  get cardOpen(): boolean { return this.inCity && !!this.selected; }
+
+  /** Opens Skyhaven Inc.: the 3D district when the phone draws it, else the sheet. */
   open(): void {
+    if (this.host.canCity()) this.enterCity();
+    else this.openSheet("company");
+  }
+
+  /** Opens the sheet on a tab (over the city, if it's showing). */
+  openSheet(tab = this.tab, focus?: string): void {
     this.host.sound.click();
     tick(this.save);
     this.eraArmed = false;
+    if (tab !== this.tab) this.showTab(tab);
     this.render();
     openModal($("tycoon"));
     // While learning, start at the coffee cart (it's at the foot of the tower).
-    if (this.save.tycoon.tips < 3 && this.tab === "company") requestAnimationFrame(() => $("ty-list").querySelector(".ty-coach")?.scrollIntoView({ block: "start" }));
+    if (focus) requestAnimationFrame(() => $("ty-list").querySelector(`[data-biz="${focus}"]`)?.scrollIntoView({ block: "center" }));
+    else if (this.save.tycoon.tips < 3 && this.tab === "company") requestAnimationFrame(() => $("ty-list").querySelector(".ty-coach")?.scrollIntoView({ block: "start" }));
+    this.startLoop();
+  }
+
+  /** The camera flies to the business district and its tags and buttons appear. */
+  enterCity(): void {
+    if (!this.host.onMenu()) return;
+    this.host.sound.click();
+    tick(this.save);
+    this.inCity = true;
+    this.host.setBizFocus(true);
+    document.body.classList.add("in-tycity");
+    $("tycity").hidden = false;
+    this.html.delete($("tcy-labels"));
+    // New players start with the coffee cart's card open.
+    if (this.save.tycoon.tips < 3) this.selected = "coffee";
+    this.render();
+    this.startLoop();
+  }
+
+  /** Back to the home screen. */
+  exitCity(): void {
+    if (!this.inCity) return;
+    this.inCity = false;
+    this.selected = "";
+    this.host.setBizFocus(false);
+    document.body.classList.remove("in-tycity");
+    $("tycity").hidden = true;
+    this.host.refresh();
+  }
+
+  /** Leaves Skyhaven Inc. entirely (to build a tower). */
+  private leave(): void {
+    if (!$("tycoon").hidden) closeModal($("tycoon"));
+    this.exitCity();
+  }
+
+  private startLoop(): void {
     const now = Date.now();
     this.nextVip = Math.max(this.nextVip, now + 6000);
     this.nextRush = Math.max(this.nextRush, now + 35000);
@@ -120,17 +188,28 @@ export class TycoonUI {
     this.nextPower = Math.max(this.nextPower, now + 50000);
     cancelAnimationFrame(this.loop);
     const frame = () => {
-      if ($("tycoon").hidden) { this.host.persist(); return; }
+      if ($("tycoon").hidden && !this.inCity) { this.host.persist(); return; }
       this.live();
       this.loop = requestAnimationFrame(frame);
     };
     this.loop = requestAnimationFrame(frame);
   }
 
-  /** Every frame while the sheet is open: earnings, the rolling counter, progress bars and
-   *  coins popping out of the rooms. */
-  private live(): void {
+  /** What's happening right now, for the 3D district. */
+  liveState(): { rush: string; vip: string; critic: string; power: string } {
     const now = Date.now(), s = this.save;
+    return {
+      rush: rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "",
+      vip: this.vip.until > now ? this.vip.id : "",
+      critic: this.critic.until > now ? this.critic.id : "",
+      power: this.power.until > now ? this.power.id : "",
+    };
+  }
+
+  /** Every frame while Skyhaven Inc. is open: earnings, the rolling counter, progress, and
+   *  coins popping out of the rooms or buildings. */
+  private live(): void {
+    const now = Date.now(), s = this.save, sheet = !$("tycoon").hidden;
     if (now - this.lastTick > 120) {
       this.lastTick = now;
       tick(s, now);
@@ -141,22 +220,177 @@ export class TycoonUI {
     this.shownCoins = this.shownCoins < 0 || real < this.shownCoins ? real : this.shownCoins + (real - this.shownCoins) * 0.18;
     if (real - this.shownCoins < Math.max(0.5, real * 1e-4)) this.shownCoins = real;
     $("ty-coins").textContent = coins(this.shownCoins);
-    for (const row of $("ty-list").querySelectorAll<HTMLElement>(".ty-biz[data-id]")) {
-      const id = row.dataset.id!, p = progressOf(s, id, now);
-      // A finished cycle pops a coin out of the room and sends one flying to the counter.
+    $("tcy-coins").textContent = coins(this.shownCoins);
+    for (const b of BUSINESSES) {
+      if (levelOf(s, b.id) === 0) continue;
+      const id = b.id, p = progressOf(s, id, now);
+      // A finished cycle pops a coin out and sends one flying to the counter.
       const was = this.lastP.get(id) ?? 0, running = !!s.tycoon.runs[id];
       if ((p < was - 0.05 || (was > 0.6 && !running)) && now - (this.lastPop.get(id) ?? 0) > 450) {
         this.lastPop.set(id, now);
-        const b = BUSINESSES.find(x => x.id === id)!;
-        popCoin(row.querySelector(".room-pops")!, coins(payOf(s, b, now) * Math.max(1, Math.round(450 / (cycleOf(b, levelOf(s, id)) * 1000)))));
-        if (this.tab === "company") flyCoin(row.querySelector(".room-scene")!);
+        const amount = coins(payOf(s, b, now) * Math.max(1, Math.round(450 / (cycleOf(b, levelOf(s, id)) * 1000))));
+        if (sheet) {
+          const row = $("ty-list").querySelector<HTMLElement>(`.ty-biz[data-id="${id}"]`);
+          if (row && this.tab === "company") { popCoin(row.querySelector(".room-pops")!, amount); flyCoin(row.querySelector(".room-scene")!, "ty-coins"); }
+        } else if (this.inCity) {
+          const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`);
+          if (tag && !tag.hidden) { popCoin(tag.querySelector(".tag-pops")!, amount); if (Math.random() < 0.5) flyCoin(tag, "tcy-coins"); }
+        }
       }
       this.lastP.set(id, p);
-      (row.querySelector(".ty-prog i") as HTMLElement).style.width = `${p * 100}%`;
+      const bar = sheet ? $("ty-list").querySelector<HTMLElement>(`.ty-biz[data-id="${id}"] .ty-prog i`) : null;
+      if (bar) bar.style.width = `${p * 100}%`;
+      if (this.inCity) {
+        const tb = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"] .tag-prog i`);
+        if (tb) tb.style.width = `${p * 100}%`;
+        if (this.selected === id) { const cb = $("tcy-card").querySelector<HTMLElement>(".card-prog i"); if (cb) cb.style.width = `${p * 100}%`; }
+      }
     }
+    if (this.inCity) this.placeTags();
     this.events(now);
     // Prices, labels and buttons follow the coins a few times a second.
     if (now - this.lastSoft > 300) { this.lastSoft = now; this.render(); }
+  }
+
+  // ---------- The 3D city ----------
+
+  /** The tags over every lot (rebuilt only when they change). */
+  private renderCity(now: number): void {
+    const s = this.save, ty = s.tycoon;
+    $("tcy-era").textContent = t("Skyhaven Inc. · Era {n}", { n: ty.eras + 1 });
+    $("tcy-rate").textContent = t("{n} a second", { n: coins(perSecond(s, now)) });
+    if (this.shownCoins < 0) $("tcy-coins").textContent = coins(ty.coins);
+    this.put($("tcy-events"), $("ty-events").innerHTML);
+    const live = this.liveState();
+    this.put($("tcy-labels"), BUSINESSES.map((b, i) => {
+      const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
+      if (!owned && !open && !(i > 0 && unlockedBusiness(s, i - 1))) return `<button type="button" class="tag locked" data-tag="${b.id}" data-i="${i}" data-h="0.8">🔒</button>`;
+      if (!owned) return `<button type="button" class="tag lease${open ? "" : " soon"}" data-tag="${b.id}" data-i="${i}" data-h="1.6"><b>${esc(t(b.name))}</b><small>${esc(open ? t("For lease") : t("Coming soon"))}</small></button>`;
+      const st = stageNow(s, b.id), grow = readyStage(s, b.id), managed = ty.managers.includes(b.id);
+      const flags = [
+        live.vip === b.id ? `<span class="flag vip" data-act="vip">VIP · ${esc(t("Tap!"))}</span>` : "",
+        live.critic === b.id ? `<span class="flag critic" data-act="critic">${esc(t("Serve me!"))}</span>` : "",
+        live.power === b.id ? `<span class="flag power" data-act="power">${esc(t("Power cut!"))}</span>` : "",
+        live.rush === b.id ? `<span class="flag rush">${esc(t("RUSH ×{n}", { n: RUSH_MULT }))}</span>` : "",
+        grow ? `<span class="flag grow">${esc(t("Ready to grow!"))}</span>` : "",
+        !managed && !grow && ty.tips < 3 && b.id === "coffee" ? `<span class="flag run">${esc(t("Tap!"))}</span>` : "",
+      ].join("");
+      return `<button type="button" class="tag${this.selected === b.id ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="${STAGE_H[st] + (st >= 3 ? STAGE_H[st] * 0.2 : 0) + 0.6}" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+        <span class="tag-flags">${flags}</span>
+        <b>${iconSvg(b.icon)}${esc(t(stageName(b.id, st)))}</b>
+        <small>${"★".repeat(st + 1)} · ${esc(tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }))}</small>
+        <i class="tag-prog"><i></i></i><span class="tag-pops"></span>
+      </button>`;
+    }).join(""));
+    this.renderCard(now);
+    // First steps, said by the city itself.
+    const coach = $("tcy-coach");
+    coach.hidden = ty.tips >= 3;
+    if (ty.tips < 3) coach.innerHTML = `<span class="ty-coach-face">${COACH_FACE}</span><p><small>${esc(t("First steps · {n} of 3", { n: ty.tips + 1 }))}</small>${esc(ty.tips === 0 ? t("Tap the Coffee Cart to sell your first coffee!")
+      : ty.tips === 1 ? t("Nice! Now buy a level: every level earns more each sale.")
+      : t("Save {n} coins to hire a manager. Managers sell for you, even while you're away!", { n: coins(BUSINESSES[0].manager) }))}</p>`;
+    // Dots on the bar.
+    const dot = (k: string, on: boolean) => { $("tcy-bar").querySelector<HTMLElement>(`[data-open="${k}"] .dot`)!.hidden = !on; };
+    dot("company", BUSINESSES.some((b, i) => unlockedBusiness(s, i) && costOf(b, levelOf(s, b.id), 1) <= ty.coins));
+    dot("upgrades", upgradesOnOffer(s).some(u => u.cost <= ty.coins));
+    dot("team", s.crystals >= CRATE_CRYSTALS && ADVISORS.some(a => !ty.advisors.includes(a.id)));
+    dot("boosts", eraGems(s) > 0);
+  }
+
+  /** Keeps each tag floating over its building as the camera moves. */
+  private placeTags(): void {
+    for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) {
+      const p = this.host.bizScreen(Number(tag.dataset.i), Number(tag.dataset.h));
+      if (!p) { tag.style.visibility = "hidden"; continue; }
+      tag.style.visibility = "";
+      tag.style.transform = `translate(${p.top[0].toFixed(1)}px, ${p.top[1].toFixed(1)}px) translate(-50%, -100%)`;
+      // Buildings nearer the front draw their tags on top.
+      tag.style.zIndex = tag.classList.contains("sel") ? "999" : String(Math.round(p.base[1]));
+    }
+  }
+
+  /** A tap in the city: on a tag, or on a building (nearest one under the finger). */
+  private onCityTap(e: MouseEvent): void {
+    const target = e.target as Element;
+    if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-coach")) return;
+    const act = target.closest<HTMLElement>("[data-act]"), tag = target.closest<HTMLElement>(".tag");
+    let id = tag?.dataset.tag ?? "";
+    if (!id) {
+      let best = 46;
+      BUSINESSES.forEach((b, i) => {
+        const h = Number($("tcy-labels").querySelector<HTMLElement>(`[data-tag="${b.id}"]`)?.dataset.h ?? 1.5);
+        const p = this.host.bizScreen(i, h);
+        if (!p) return;
+        const d = distToSeg(e.clientX, e.clientY, p.base, p.top);
+        if (d < best) { best = d; id = b.id; }
+      });
+    }
+    if (!id) { if (this.selected) { this.selected = ""; this.render(); } return; }
+    const s = this.save, owned = levelOf(s, id) > 0;
+    // Tapping a building runs it (no manager yet), handles what's happening there, and opens its card.
+    if (act && owned) {
+      this.doAct(act.dataset.act!, id, act, e, tag!.querySelector(".tag-pops")!, tag!);
+    } else if (owned && !s.tycoon.managers.includes(id)) {
+      this.doAct("run", id, tag ?? $("tcy-labels"), null, tag?.querySelector(".tag-pops") ?? $("tcy-labels"), tag ?? $("tcy-labels"));
+    }
+    if (this.selected !== id) { this.selected = id; this.host.sound.click(); }
+    this.render();
+  }
+
+  /** The card for the selected building. */
+  private renderCard(now: number): void {
+    const card = $("tcy-card"), s = this.save, ty = s.tycoon;
+    const i = BUSINESSES.findIndex(b => b.id === this.selected);
+    card.hidden = i < 0;
+    if (i < 0) return;
+    const b = BUSINESSES[i], lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
+    const st = owned ? stageNow(s, b.id) : 0, grow = owned ? readyStage(s, b.id) : 0, managed = ty.managers.includes(b.id);
+    const room = Math.max(1, freeFloors(s)), noRoom = freeFloors(s) < 1;
+    const n = Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
+    const price = costOf(b, lv, n), canBuy = price <= ty.coins && open && !noRoom;
+    const next = nextMilestone(lv), ns = owned ? nextStage(lv) : undefined;
+    const info = !open ? t("Open {name} first", { name: t(BUSINESSES[i - 1].name) })
+      : !owned ? t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) })
+      : (ns && ns <= (next ?? Infinity) ? t("Grows into {name} at {n}", { name: t(stageName(b.id, st + 1)), n: ns }) : next ? t("{n} floors: twice as fast", { n: next }) : t("Top speed!"));
+    this.put(card, `<div class="card-head" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+        <span class="card-ico">${iconSvg(b.icon)}</span>
+        <span><small>${esc(owned ? `${t(STAGE_LABEL[st])} · ${"★".repeat(st + 1)}` : t("For lease"))}</small><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b></span>
+        <button type="button" class="card-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
+      </div>
+      ${owned ? `<div class="card-stats"><span><b>${esc(fmt(lv))}</b><small>${esc(t("floors"))}</small></span><span><b>${esc(coins(payOf(s, b, now)))}</b><small>${esc(t("a sale"))}</small></span><span><b>${esc(fmtSec(cycleOf(b, lv)))}</b><small>${esc(t("per sale"))}</small></span></div>
+      <i class="card-prog"><i></i></i>` : ""}
+      <p class="card-info">${esc(info)}</p>
+      <div class="card-acts">
+        ${grow ? `<button type="button" class="hq-btn" data-card="hq">${esc(t("Build the {name} HQ", { name: t(stageName(b.id, grow)) }))}<em>${esc(t("{n} floors", { n: hqFloors(grow) }))}</em></button>` : ""}
+        ${owned && !managed ? `<button type="button" class="card-run" data-card="run">👆 ${esc(t("Run"))}</button>` : ""}
+        ${owned && !managed ? `<button type="button" class="ty-hire" data-card="hire"${ty.coins < b.manager ? " disabled" : ""}>${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : owned ? `<span class="ty-auto">${esc(t("Auto"))}</span>` : ""}
+        <button type="button" class="buy ty-buy${noRoom ? " need-floors" : ""}" data-card="buy"${canBuy || noRoom ? "" : " disabled"}>${noRoom ? `<small>${esc(t("No empty floors"))}</small>${esc(t("Build"))}` : `<small>${esc(owned ? t("Buy ×{n}", { n: fmt(n) }) : t("Open"))}</small>${COIN_SVG}${esc(coins(price))}`}</button>
+      </div>
+      <div class="card-foot">
+        <div class="card-amount">${[1, 10, 100, "max"].map(a => `<button type="button" data-amount="${a}" aria-checked="${this.amount === a}">${a === "max" ? "MAX" : `×${a}`}</button>`).join("")}</div>
+        ${owned ? `<button type="button" class="card-look" data-card="look">${esc(t("Look inside"))} →</button>` : ""}
+      </div>
+      <span class="tag-pops card-pops"></span>`);
+  }
+
+  private onCardTap(e: MouseEvent): void {
+    const el = (e.target as Element).closest<HTMLElement>("[data-card], [data-amount]");
+    if (!el) return;
+    e.stopPropagation();
+    const id = this.selected, card = $("tcy-card");
+    if (el.dataset.amount) {
+      this.amount = el.dataset.amount === "max" ? "max" : Number(el.dataset.amount);
+      $("tycoon").querySelectorAll<HTMLElement>(".ty-amount button").forEach(x => x.setAttribute("aria-checked", String(x.dataset.n === el.dataset.amount)));
+      this.host.sound.click();
+      this.render();
+      return;
+    }
+    const what = el.dataset.card!;
+    if (what === "close") { this.selected = ""; this.host.sound.click(); this.render(); return; }
+    if (what === "look") { this.openSheet("company", id); return; }
+    const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`) ?? card;
+    this.doAct(what, id, el, e, card.querySelector(".card-pops")!, tag);
+    this.render();
   }
 
   /** Live moments while the tower is open: VIPs, critics, power cuts and rush hours. */
@@ -235,6 +469,8 @@ export class TycoonUI {
     this.renderOffice();
     this.renderEvents(now);
     this.renderTabs();
+    if (this.inCity) this.renderCity(now);
+    if ($("tycoon").hidden) return;
     if (this.tab === "company") { this.renderRooms(now); this.renderGoals(); }
     else if (this.tab === "upgrades") this.renderUpgrades();
     else if (this.tab === "team") this.renderAdvisors();
@@ -352,13 +588,18 @@ export class TycoonUI {
     const el = (e.target as Element).closest<HTMLElement>("[data-act]");
     const row = el?.closest<HTMLElement>(".ty-biz");
     if (!el || !row) return;
-    const s = this.save, b = BUSINESSES.find(x => x.id === row.dataset.biz)!, act = el.dataset.act;
+    if (el.dataset.act !== "run") e.stopPropagation();
+    this.doAct(el.dataset.act!, row.dataset.biz!, el, e as MouseEvent, row.querySelector(".room-pops")!, row.querySelector(".room-scene")!);
+  }
+
+  /** What a tap does (from a room in the list, or a building in the city). */
+  private doAct(act: string, id: string, el: HTMLElement, e: MouseEvent | null, popBox: Element, flyFrom: Element): void {
+    const s = this.save, b = BUSINESSES.find(x => x.id === id)!;
     const name = t(stageName(b.id, stageNow(s, b.id)));
-    if (act !== "run") e.stopPropagation();
     switch (act) {
       case "run": {
         if (levelOf(s, b.id) === 0) return;
-        ripple(el, e as MouseEvent);
+        if (e) ripple(el, e);
         if (runOnce(s, b.id)) {
           this.host.sound.click(); vibrate(s.settings.vibrate, 8);
           this.goal("taps");
@@ -369,7 +610,7 @@ export class TycoonUI {
       }
       case "hq":
         this.host.sound.click();
-        closeModal($("tycoon"));
+        this.leave();
         this.host.buildHQ(b.id);
         return;
       case "vip": {
@@ -377,9 +618,9 @@ export class TycoonUI {
         if (this.vip.id !== b.id || this.vip.until < Date.now()) return;
         this.vip.id = "";
         const tip = vipTip(s, b.id);
-        const box = row.querySelector(".room-pops")!;
+        const box = popBox;
         for (let k = 0; k < 6; k++) setTimeout(() => popCoin(box, k === 0 ? coins(tip) : ""), k * 90);
-        for (let k = 0; k < 4; k++) setTimeout(() => flyCoin(row.querySelector(".room-scene")!), k * 70);
+        for (let k = 0; k < 4; k++) setTimeout(() => flyCoin(flyFrom, this.inCity && $("tycoon").hidden ? "tcy-coins" : "ty-coins"), k * 70);
         this.host.sound.coins();
         vibrate(s.settings.vibrate, 15);
         toast(t("A VIP tipped {n} coins!", { n: coins(tip) }));
@@ -409,7 +650,7 @@ export class TycoonUI {
         if (this.power.taps > 0) { this.render(); return; }
         this.power.id = "";
         const got = vipTip(s, b.id);
-        const box = row.querySelector(".room-pops")!;
+        const box = popBox;
         for (let k = 0; k < 5; k++) setTimeout(() => popCoin(box, k === 0 ? coins(got) : ""), k * 90);
         this.host.sound.coins();
         toast(t("Lights back on! The customers stayed: +{n} coins", { n: coins(got) }));
@@ -429,7 +670,7 @@ export class TycoonUI {
         return;
       }
       case "buy": {
-        if (el.classList.contains("need-floors")) { toast(t("Every office floor is full. Build a tower to add more!")); closeModal($("tycoon")); this.host.buildFloors(); return; }
+        if (el.classList.contains("need-floors")) { toast(t("Every office floor is full. Build a tower to add more!")); this.leave(); this.host.buildFloors(); return; }
         tick(s);
         const lv = levelOf(s, b.id), owned = lv > 0, wasReady = !!readyStage(s, b.id);
         const got = buyLevels(s, b.id, this.amount);
@@ -439,14 +680,14 @@ export class TycoonUI {
         const crossed = nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
         this.host.sound.coins();
         burst(el, crossed ? 20 : 8);
-        row.querySelector(".room-scene")?.classList.remove("bump");
-        void (row.querySelector(".room-scene") as HTMLElement | null)?.offsetWidth;
-        row.querySelector(".room-scene")?.classList.add("bump");
+        flyFrom.classList.remove("bump");
+        void (flyFrom as HTMLElement).offsetWidth;
+        flyFrom.classList.add("bump");
         if (owned && readyStage(s, b.id) && !wasReady) {
           toast(t("{name} is ready to grow! Build its new HQ", { name }));
           fireworks(1, () => this.host.sound.firework());
         }
-        if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(row); }
+        if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(flyFrom as HTMLElement); }
         else if (crossed) { toast(t("{name} now runs twice as fast!", { name })); fireworks(2, () => this.host.sound.firework()); }
         this.host.persist();
         this.render();
@@ -734,8 +975,8 @@ function showOverlay(el: HTMLElement, click: () => void): void {
 }
 
 /** A coin flies from a room up to the coin counter. */
-function flyCoin(from: Element): void {
-  const to = document.getElementById("ty-coins");
+function flyCoin(from: Element, toId = "ty-coins"): void {
+  const to = document.getElementById(toId);
   if (!to || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
   if (a.bottom < 0 || a.top > innerHeight) return;
@@ -834,3 +1075,10 @@ function advisorSvg(a: Advisor, own: boolean): string {
 
 /** A food critic: a beret, a notepad. */
 const PERSON_CRITIC = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f2c39a"/><ellipse cx="10" cy="3.4" rx="5.6" ry="2" fill="#1c1640"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#2a2a3a"/><rect x="12" y="17" width="5" height="6" rx="1" fill="#fff" stroke="#bbb" stroke-width="0.5"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
+
+/** Distance from a point to a line segment (screen px). */
+function distToSeg(x: number, y: number, a: [number, number], b: [number, number]): number {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy || 1;
+  const k = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l));
+  return Math.hypot(x - (a[0] + dx * k), y - (a[1] + dy * k));
+}

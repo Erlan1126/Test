@@ -28,6 +28,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
+import { buildBizCity, lotPos, type BizCity } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -56,7 +57,9 @@ const DISTRICT_SLOTS = [
   { x: -58, z: -40, y: -14 }, { x: -40, z: -58, y: 4 }, { x: -64, z: -64, y: -6 },
 ];
 /** Where Skyhaven Inc.'s business district floats. */
-const BIZ_SLOT = { x: -22, z: -40, y: 9 };
+const BIZ_SLOT = { x: 48, z: -48, y: 0 };
+/** How close the camera comes over the district. */
+const BIZ_ZOOM = 1.18;
 /** Floors merged per block. */
 const CHUNK = 16;
 
@@ -192,9 +195,13 @@ export class Renderer3D {
   private skyline: THREE.Group | null = null;
   private skylineKey = "";
   private skylineIn: unknown = null;
-  private biz: THREE.Group | null = null;
+  private biz: BizCity | null = null;
   private bizKey = "";
   private bizIn: unknown = null;
+  /** 0 = looking at the home island, 1 = over the business district. */
+  private bizK = 0;
+  /** A building's card is open (the district sits higher to make room). */
+  private bizCardK = 0;
   private districtsIn: unknown = null;
 
   constructor(private readonly canvas: HTMLCanvasElement, glCanvas: HTMLCanvasElement) {
@@ -492,8 +499,10 @@ export class Renderer3D {
 
   /** Points the 3D camera so world points land exactly where View.project puts them. */
   private placeCamera(shake: number): void {
-    const v = this.view, S = ISO_SCALE * v.s * v.zoom;
-    const target = this.tmpA.set(0, v.level * FH, 0);
+    const v = this.view, k = this.bizK * this.bizK * (3 - 2 * this.bizK);
+    const S = ISO_SCALE * v.s * lerp(v.zoom, BIZ_ZOOM, k);
+    // Over the business district, the camera looks at its plaza instead of the tower.
+    const target = this.tmpA.set(lerp(0, BIZ_SLOT.x, k), lerp(v.level * FH, BIZ_SLOT.y + 2, k), lerp(0, BIZ_SLOT.z, k));
     // Straight isometric while playing; on the home screen the camera can swing around the
     // island (nothing on the overlay needs to line up there).
     const d = CAM_DIST / Math.sqrt(3), a = this.azimuth;
@@ -501,12 +510,12 @@ export class Renderer3D {
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(target);
     const sx = shake ? rand(-1, 1) * 10 * shake : 0, sy = shake ? rand(-1, 1) * 10 * shake : 0;
-    const cx = v.cx + sx, cy = v.originY + sy;
+    const cx = lerp(v.cx, v.W / 2, k) + sx, cy = lerp(v.originY, v.H * (this.bizCardK > 0.5 ? 0.36 : 0.5), k) + sy;
     this.cam.left = -cx / S; this.cam.right = (v.W - cx) / S;
     this.cam.top = cy / S; this.cam.bottom = -(v.H - cy) / S;
     this.cam.updateProjectionMatrix();
     // The sun follows what the camera looks at, so shadows stay sharp where you are.
-    const focus = this.tmpA.set(0, Math.max(0, v.level) * FH, 0);
+    const focus = this.tmpA.set(lerp(0, BIZ_SLOT.x, k), lerp(Math.max(0, v.level) * FH, BIZ_SLOT.y, k), lerp(0, BIZ_SLOT.z, k));
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
     const span = Math.max(34, (v.H / S) * 0.75);
@@ -554,7 +563,7 @@ export class Renderer3D {
     this.updateLights(skyN);
     this.updateIsland(f);
     this.updateSkyline(f);
-    this.updateBiz(f);
+    this.updateBiz(f, dt);
     // Your skyline island is for looking at between towers, not while you build.
     if (this.skyline) {
       // Shown around a finished tower. Not while building, and not on the home screen,
@@ -757,61 +766,41 @@ export class Renderer3D {
     return g;
   }
 
-  /** Skyhaven Inc.'s business district: a floating island where each business stands as a
-   *  building that grows with it, from a little kiosk to a gleaming gold-crowned empire. */
-  private updateBiz(f: Frame): void {
-    if (f.biz === this.bizIn) return;
-    this.bizIn = f.biz;
-    const list = f.biz ?? [];
-    const key = JSON.stringify(list);
-    if (key === this.bizKey) return;
-    this.bizKey = key;
-    if (this.biz) { this.scene.remove(this.biz); disposeTree(this.biz); }
-    this.biz = null;
-    if (!list.length) return;
-    const { x: CX, z: CZ } = BIZ_SLOT, Y = BIZ_SLOT.y * FH, R = 8, g = new THREE.Group();
-    const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
-    const rock = own(new THREE.MeshStandardMaterial({ color: 0x9a8fb8, roughness: 1, flatShading: true }));
-    g.add(new THREE.Mesh(new THREE.ConeGeometry(R * 1.3, R * 1.5, 6).rotateX(Math.PI).translate(CX, Y - R * 0.75, CZ), rock));
-    const plaza = own(new THREE.MeshStandardMaterial({ color: 0xece6f7, roughness: 0.6 }));
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.96, 0.8, 6).translate(CX, Y - 0.42, CZ), plaza);
-    top.receiveShadow = true;
-    g.add(top);
-    // A little fountain in the middle of the plaza.
-    const water = own(new THREE.MeshStandardMaterial({ color: 0x7fd3ff, roughness: 0.1, emissive: 0x2a6fbf, emissiveIntensity: 0.3 }));
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.35, 16).translate(CX, Y + 0.15, CZ), plaza));
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.36, 16).translate(CX, Y + 0.17, CZ), water));
-    const gold = own(new THREE.MeshStandardMaterial({ color: 0xffc93c, roughness: 0.25, metalness: 0.8, emissive: 0x6a4a00, emissiveIntensity: 0.25 }));
-    const glass = own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.08, metalness: 0.3, emissive: 0x204060, emissiveIntensity: 0.15 }));
-    // Ten lots around the fountain, the first businesses nearest the front.
-    list.slice(0, 10).forEach((b, i) => {
-      const a = Math.PI * 0.25 + (i / 10) * Math.PI * 2, r = i % 2 ? 5.6 : 4.9;
-      const x = CX + Math.cos(a) * r, z = CZ + Math.sin(a) * r;
-      const s = b.s, h = (1.2 + s * 1.5) * FH, w = 0.75 + s * 0.16;
-      const body = own(new THREE.MeshStandardMaterial({ color: new THREE.Color(b.c).lerp(new THREE.Color(0xffffff), 0.35), roughness: 0.55 }));
-      const trim = own(new THREE.MeshStandardMaterial({ color: new THREE.Color(b.c2), roughness: 0.4, emissive: new THREE.Color(b.c2), emissiveIntensity: s >= 3 ? 0.35 : 0.08 }));
-      const bld = new THREE.Group();
-      bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2, h, w * 2).translate(0, h / 2, 0), body));
-      // A glass storefront at the bottom, a colored band (the sign) at the top.
-      bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2 + 0.06, Math.min(0.9, h * 0.3), w * 2 + 0.06).translate(0, Math.min(0.45, h * 0.15), 0), glass));
-      bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2 + 0.12, 0.28, w * 2 + 0.12).translate(0, h - 0.14, 0), trim));
-      // Bigger stages: setbacks, then a spire, then a gold crown.
-      if (s >= 2) bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 1.3, h * 0.25, w * 1.3).translate(0, h + h * 0.125, 0), body));
-      if (s >= 3) bld.add(new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.6, 6).translate(0, h * 1.25 + 0.8, 0), trim));
-      if (s >= 4) {
-        bld.add(new THREE.Mesh(new THREE.CylinderGeometry(w * 0.7, w * 0.9, 0.3, 8).translate(0, h * 1.25 + 0.15, 0), gold));
-        bld.add(new THREE.Mesh(new THREE.ConeGeometry(0.18, 2.4, 8).translate(0, h * 1.25 + 1.5, 0), gold));
+  /** Skyhaven Inc.'s business district: rebuilt when a lot changes, alive every frame. */
+  private updateBiz(f: Frame, dt: number): void {
+    // The camera flies over when the Tycoon opens, and back after.
+    this.bizK = lerp(this.bizK, f.bizFocus ? 1 : 0, Math.min(1, dt * 3.2));
+    this.bizCardK = lerp(this.bizCardK, f.bizCard ? 1 : 0, Math.min(1, dt * 6));
+    if (Math.abs(this.bizK - (f.bizFocus ? 1 : 0)) < 0.002) this.bizK = f.bizFocus ? 1 : 0;
+    const lots = f.bizLots ?? [];
+    if (lots !== this.bizIn) {
+      this.bizIn = lots;
+      const key = JSON.stringify(lots);
+      if (key !== this.bizKey) {
+        this.bizKey = key;
+        if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
+        this.biz = null;
+        if (lots.length) {
+          this.biz = buildBizCity(lots);
+          this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
+          this.scene.add(this.biz.group);
+        }
       }
-      if (s === 0) { // a kiosk: a striped awning
-        bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2.3, 0.12, 0.7).rotateX(0.35).translate(0, h * 0.7, w + 0.25), trim));
-      }
-      bld.position.set(x, Y, z);
-      bld.rotation.y = -a + Math.PI / 2;
-      bld.traverse(o => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-      g.add(bld);
-    });
-    this.biz = g;
-    this.scene.add(g);
+    }
+    if (!this.biz) return;
+    this.biz.group.visible = this.bizK > 0.01;
+    if (this.biz.group.visible) this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
+  }
+
+  /** Where a lot's building shows on screen: its base and its top (page px). */
+  bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
+    if (!this.biz || this.bizK < 0.5) return null;
+    const { x, z } = lotPos(i), r = this.gl.domElement.getBoundingClientRect();
+    const at = (y: number): [number, number] => {
+      const v = new THREE.Vector3(BIZ_SLOT.x + x, BIZ_SLOT.y + y, BIZ_SLOT.z + z).project(this.cam);
+      return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
+    };
+    return { base: at(0), top: at(height) };
   }
 
   // ---------- The tower ----------

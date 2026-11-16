@@ -1295,4 +1295,12 @@ export const ES: Record<string, string> = {
   "One-time buys that multiply your earnings for good.": "Compras únicas que multiplican tus ganancias para siempre.",
   "Advisors join your company with special perks. Collect all ten!": "Los asesores se unen a tu empresa con ventajas especiales. ¡Reúne los diez!",
   "more floors": "más pisos",
+  "Coming soon": "Próximamente",
+  "Look inside": "Ver por dentro",
+  "Open {name} first": "Abre primero {name}",
+  "Run": "Atender",
+  "Skyhaven Inc. · Era {n}": "Skyhaven Inc. · Era {n}",
+  "a sale": "por venta",
+  "per sale": "cada venta",
+  "Back to the home screen": "Volver al inicio",
 };

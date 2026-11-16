@@ -23,6 +23,8 @@ import { t } from "../i18n";
 /** What the screen is showing, which decides where the camera goes. */
 export type Shot = "menu" | "play" | "over";
 
+import type { BizLive, BizLot } from "../render3d/bizcity";
+
 export interface Frame {
   sim: TowerSim;
   shot: Shot;
@@ -54,9 +56,13 @@ export interface Frame {
   city: string[];
   /** Where each city building stands (building id → spot id). */
   place?: Record<string, string>;
-  /** Skyhaven Inc.'s businesses, shown as buildings on their own floating island: colors
-   *  and stage (0 stand ... 4 empire). */
-  biz?: { c: string; c2: string; s: number }[];
+  /** Skyhaven Inc.'s business district: its lots, what's happening right now, and whether
+   *  the camera is over there (the Tycoon is open). */
+  bizLots?: BizLot[];
+  bizLive?: BizLive;
+  bizFocus?: boolean;
+  /** A building's card is open in the district. */
+  bizCard?: boolean;
   /** A ghost tower to race: how many floors it has built so far, and whose it is. */
   ghost?: { floors: number; total: number; name: string } | null;
 }
