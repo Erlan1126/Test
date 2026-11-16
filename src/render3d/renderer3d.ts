@@ -148,7 +148,7 @@ export class Renderer3D {
   private warmMats: THREE.Material[] = [];
   private topMesh: THREE.Mesh | null = null;
   /** A tower crane that climbs the back corner while you build, with two builders. */
-  private crane: { root: THREE.Group; jib: THREE.Group; hook: THREE.Object3D; workers: THREE.Object3D[] } | null = null;
+  private crane: { root: THREE.Group; jib: THREE.Group; hook: THREE.Object3D; workers: THREE.Object3D[]; mast: THREE.Group; ties: THREE.Object3D[] } | null = null;
   private topOf: Floor | null = null;
   private towerKey = "";
   private readonly mats = new Map<string, FloorMats>();
@@ -519,7 +519,8 @@ export class Renderer3D {
     if (f.tint) { env.skyTop = mixRgb(env.skyTop, f.tint, 0.22); env.skyBot = mixRgb(env.skyBot, f.tint, 0.18); }
     if (f.shot === "over") env.skyBot = mixRgb(env.skyBot, skyAt(0, f.theme.id)[1], 0.6);
     // The first home screen opens on a sunrise that warms into the day.
-    const dawn = this.introDone || f.shot !== "menu" ? 0 : clamp(1 - this.menuTime / DAWN, 0, 1);
+    // (Not at night: orange on a night sky turns it muddy.)
+    const dawn = this.introDone || f.shot !== "menu" || skyN > 30 ? 0 : clamp(1 - this.menuTime / DAWN, 0, 1);
     // What else colours the sky right now, so the glass reflection follows it too.
     this.skyExtra = `${dawn > 0 ? Math.round(dawn * 4) : ""}|${f.shot === "over" ? "o" : ""}|${f.tint ? f.tint.join(",") : ""}`;
     if (dawn > 0) {
@@ -548,7 +549,8 @@ export class Renderer3D {
     this.updateLandmark(f);
     this.updateClouds(dt);
     this.islandAnim?.update(env.time, env.nf);
-    const wallGlow = (m: THREE.MeshStandardMaterial) => (m.userData.alwaysLit ? Math.max(0.9, env.nf * 1.4) : env.nf * 1.4);
+    // Windows glow warmly at night, without turning the tower into a lamp.
+    const wallGlow = (m: THREE.MeshStandardMaterial) => (m.userData.alwaysLit ? Math.max(0.6, env.nf * 0.9) : env.nf * 0.85);
     for (const m of this.wallMats) m.emissiveIntensity = wallGlow(m);
 
     // Top floor squash when it lands
@@ -568,8 +570,8 @@ export class Renderer3D {
     if (this.low || env.nf < 0.12) this.gl.render(this.scene, this.cam);
     else {
       // Subtle by day (only sun glints), stronger at night when windows glow.
-      this.bloom.strength = 0.15 + env.nf * 0.3;
-      this.bloom.threshold = lerp(0.95, 0.82, env.nf);
+      this.bloom.strength = 0.12 + env.nf * 0.16;
+      this.bloom.threshold = lerp(0.95, 0.88, env.nf);
       this.composer.render();
     }
     if (this.oldIsland) { disposeTree(this.oldIsland); this.oldIsland = null; }
@@ -869,11 +871,28 @@ export class Renderer3D {
     const yellow = new THREE.MeshStandardMaterial({ color: 0xffc21a, roughness: 0.55, metalness: 0.2 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x2a2f4a, roughness: 0.7 });
     const root = new THREE.Group(), jib = new THREE.Group();
-    // A lattice-looking mast: a box with four thin corner posts.
-    const mastH = FH * 6;
-    root.add(new THREE.Mesh(new THREE.BoxGeometry(0.55, mastH, 0.55).translate(0, -mastH / 2 + FH * 3.4, 0), yellow));
-    for (const [x, z] of [[-0.32, -0.32], [0.32, -0.32], [-0.32, 0.32], [0.32, 0.32]]) {
-      root.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, mastH, 0.1).translate(x, -mastH / 2 + FH * 3.4, z), dark));
+    // A lattice-looking mast (one unit tall, stretched to reach down the tower's side) with
+    // four thin corner posts and cross bracing.
+    const mast = new THREE.Group();
+    mast.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 0.5).translate(0, -0.5, 0), yellow));
+    for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) {
+      mast.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 1, 0.1).translate(x, -0.5, z), dark));
+    }
+    mast.position.y = FH * 3.4;
+    root.add(mast);
+    // Steel ties from the mast to the tower's corner every few floors: it climbs with the
+    // tower, held by the floors already built, the way real tower cranes do.
+    const ties: THREE.Object3D[] = [];
+    const len = Math.hypot(1.4, 1.4);
+    for (let i = 0; i < 5; i++) {
+      const tie = new THREE.Group();
+      tie.add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.14, 0.14).translate(len / 2, 0, -0.18), dark));
+      tie.add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.14, 0.14).translate(len / 2, 0, 0.18), dark));
+      tie.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), yellow)); // the collar around the mast
+      tie.rotation.y = -Math.PI * 0.75; // pointing at the tower's corner
+      tie.position.y = -FH * (1 + i * 3);
+      root.add(tie);
+      ties.push(tie);
     }
     // The cab, the long arm and its counterweight, all turning together.
     jib.position.y = FH * 3.4;
@@ -899,7 +918,7 @@ export class Renderer3D {
     }
     root.add(jib);
     root.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
-    return { root, jib, hook, workers };
+    return { root, jib, hook, workers, mast, ties };
   }
 
   /** The crane rides up with the tower while you build and swings its arm now and then. */
@@ -917,6 +936,11 @@ export class Renderer3D {
     c.root.position.z += (top.z0 - 1.4 - c.root.position.z) * 0.15;
     c.root.position.y += (y - c.root.position.y) * 0.12;
     c.jib.rotation.y = -Math.PI * 0.75 + Math.sin(t * 0.35) * 0.5;
+    // The mast reaches down to the ground or 14 floors, whichever is nearer; ties below the
+    // ground are hidden.
+    const above = c.root.position.y + FH * 3.4;
+    c.mast.scale.y = Math.max(1, Math.min(above, FH * 14));
+    c.ties.forEach(tie => { tie.visible = c.root.position.y + tie.position.y > FH * 0.5 && -tie.position.y < FH * 13; });
     c.hook.rotation.z = Math.sin(t * 1.7) * 0.06;
     // Builders bob, and jump for joy on a perfect drop.
     c.workers.forEach((w, i) => { w.position.y = 0.7 + Math.abs(Math.sin(t * 3 + i * 1.7)) * 0.05 + this.fx.flash * 0.25; });

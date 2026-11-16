@@ -105,7 +105,8 @@ export class Effects {
   popup(text: string, sub: string, y: number, color = "#ffffff", life = 1.1, big = false): void {
     // A new label quickly fades the old ones of its size, so fast tapping never piles
     // "PERFECT" on top of "PERFECT".
-    for (const q of this.popups) if (q.big === big) q.life = Math.min(q.life, 0.18);
+    // One word at a time: a new one replaces whatever was showing.
+    this.popups.length = 0;
     // The display font has no emoji: drop any, the words carry it.
     const clean = (x: string) => x.replace(/\p{Extended_Pictographic}\uFE0F?\s*/gu, "").trim();
     this.popups.push({ text: clean(text), sub: clean(sub), y, life, color, big, max: life, tilt: rand(-0.07, 0.07) });
@@ -215,7 +216,9 @@ export class Effects {
       ctx.globalAlpha = clamp(b.life * 3, 0, 1);
       ctx.font = `18px ${DISPLAY_FONT}`;
       const w = ctx.measureText(b.text).width + 30, h = 40;
-      const ax = edge[0] + b.side * 10, bx = clamp(b.side < 0 ? ax - w : ax, 8, view.W - w - 8), by = edge[1] - h - 14 - Math.sin(age * 3) * 2;
+      // The bubble sits against the screen edge on its side, clear of the tower.
+      const ax = edge[0] + b.side * 10, bx = b.side < 0 ? 10 : view.W - w - 10, by = edge[1] - h - 14 - Math.sin(age * 3) * 2;
+      if (b.side < 0 ? bx + w > edge[0] - 4 : bx < edge[0] + 4) continue; // no room beside the tower
       ctx.translate(ax, edge[1]);
       ctx.scale(Math.max(0.05, s), Math.max(0.05, s));
       ctx.translate(-ax, -edge[1]);
@@ -243,13 +246,14 @@ export class Effects {
     ctx.textBaseline = "alphabetic";
   }
 
-  drawPopups(p: Paint, top: Box, minY = 0): void {
+  drawPopups(p: Paint, _top: Box, minY = 0): void {
     const { ctx, view } = p;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.lineJoin = "round";
     for (const q of this.popups) {
-      const y = Math.max(view.project((top.x0 + top.x1) / 2, q.y, (top.z0 + top.z1) / 2)[1], minY + (q.big ? 86 : 72)) - 34;
+      // Words sit in a band just under the score, never over the tower you're aiming at.
+      const y = (minY || 150) + (q.big ? 40 : 34) - Math.min(q.max - q.life, 0.6) * 10;
       // Springy pop-in: overshoots, settles, then shrinks a touch as it fades.
       const age = q.max - q.life, k = clamp(age / 0.32, 0, 1);
       const spring = k >= 1 ? 1 : 1 + Math.sin(k * Math.PI * 1.5) * (1 - k) * 0.55 - (1 - k) * (1 - k) * 0.9;
@@ -259,7 +263,7 @@ export class Effects {
       ctx.translate(view.W / 2, y);
       ctx.rotate(q.tilt * (q.big ? 1 : 0.5));
       ctx.scale(scale, scale);
-      const size = q.big ? 46 : 30;
+      const size = q.big ? 36 : 28;
       ctx.font = `${size}px ${DISPLAY_FONT}`;
       const [r, g, b] = hexRgb(q.color);
       const dark = rgb(mixRgb([r, g, b], [20, 10, 50], 0.72));
@@ -286,7 +290,7 @@ export class Effects {
       ctx.fillText(q.text, 0, 0);
       ctx.restore();
       if (q.sub) {
-        const sz = q.big ? 17 : 15;
+        const sz = 13;
         ctx.font = `${sz}px ${DISPLAY_FONT}`;
         ctx.lineWidth = 5;
         ctx.strokeStyle = dark;

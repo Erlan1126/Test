@@ -797,7 +797,7 @@ export class App implements DailyHost {
   private start(mode: Mode, challengeId?: string): void {
     this.endMove();
     $("levelup").hidden = true;
-    this.chatIn = 6;
+    this.chatIn = 10;
     this.sound.tune = currentTheme(this.save).id;
     this.slowmo = 0;
     this.fallCam = 0;
@@ -1197,9 +1197,10 @@ export class App implements DailyHost {
     if (this.tutorial || this.calmMotion) return;
     const sim = this.sim, fx = this.renderer.fx;
     // Big moments get a reply right away; otherwise every 6 to 11 floors.
-    const now = out.fever === "start" || (out.perfect && out.combo === 6) || (!!out.piece && Math.random() < 0.18);
+    // Not too chatty: a remark every 10 to 16 floors, and on a fever.
+    const now = out.fever === "start";
     if (!now && --this.chatIn > 0) return;
-    this.chatIn = 6 + Math.floor(Math.random() * 6);
+    this.chatIn = 10 + Math.floor(Math.random() * 7);
     const pool = out.fever ? SAY.fever : out.perfect && out.combo >= 3 ? SAY.streak : out.piece ? SAY.cut
       : sim.mover && sim.windFor(sim.mover.y) > 0 ? SAY.wind : sim.meters > 120 && Math.random() < 0.6 ? SAY.high : SAY.any;
     fx.say(t(pick(pool)), Math.max(1, out.floor.y - 1 - Math.floor(Math.random() * 3)));
@@ -1565,6 +1566,8 @@ export class App implements DailyHost {
     if (this.online.kind !== "global" || this.save.profile.towers < 6) { el.hidden = true; return; }
     const board = await this.online.board("week", dayNumber(now), weekIndex(now));
     if (token !== this.rankToken) return;
+    // No board (offline, or the server is down): say nothing rather than something wrong.
+    if (!board.total && !board.rows.length) { el.hidden = true; return; }
     const me = board.me ?? board.rows.find(r => r.me) ?? null;
     const ahead = me && me.rank > 1 ? board.rows.find(r => r.rank === me.rank - 1) : null;
     el.innerHTML = !me ? t("🏆 Tournament: build a tower to get ranked")

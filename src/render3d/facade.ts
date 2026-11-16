@@ -75,10 +75,15 @@ export function facadeFor(look: Look): Facade {
     b.fillStyle = "rgba(255,255,255,0.18)"; b.fillRect(x, y, w * 0.3, h); // a reflection streak
     if (look.kind === "ribbon") { b.fillStyle = look.frame; b.fillRect(x - 3, y, 3, h); }
     o.fillStyle = "rgb(0,14,235)"; o.fillRect(x, y, w, h);          // mirror-like glass
-    // About half the windows glow at night (all of them for always-lit skins).
-    if (look.alwaysLit || r < 0.5) {
+    // Some windows glow at night (all of them for always-lit skins): a soft, warm lamp-lit
+    // room, brighter low in the window and dimmer at the edges, not a flat white panel.
+    if (look.alwaysLit || r < 0.38) {
       const c = litColors[Math.floor(r * 97) % litColors.length];
       l.fillStyle = c; l.fillRect(x, y, w, h);
+      const room = l.createRadialGradient(x + w / 2, y + h * 0.75, 0, x + w / 2, y + h * 0.75, Math.max(w, h) * 0.85);
+      room.addColorStop(0, "rgba(0,0,0,0)");
+      room.addColorStop(1, "rgba(30,12,0,0.55)");
+      l.fillStyle = room; l.fillRect(x, y, w, h);
       l.fillStyle = "rgba(0,0,0,0.35)"; l.fillRect(x, y, w, h * 0.22); // a darker ceiling band
     }
   }

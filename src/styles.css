@@ -2258,3 +2258,10 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
 }
 #starter { z-index: 9; }
+
+/* Readable at any time of day: the home chips get a solid frosted base under the glass. */
+.city-line, .corner-btn { background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.78)) !important; }
+.city-line b { color: #e8336f !important; }
+/* The Starter Pack card's button never gets cut off. */
+.starter-card .buy { flex: none; min-width: 0; padding: 8px 12px; white-space: nowrap; font-size: 13px; grid-row: auto; }
+.starter-card > span:nth-child(2) { flex: 1; min-width: 0; }
