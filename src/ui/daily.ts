@@ -394,17 +394,17 @@ export class DailySheets {
     const list = $("build-list");
     list.innerHTML = "";
     for (const b of CITY) {
-      const owned = save.city.includes(b.id), poor = save.stars < b.price, locked = !owned && save.bestMeters < b.needs;
+      const owned = save.city.includes(b.id), movable = owned && this.host.canMove(), poor = save.stars < b.price, locked = !owned && save.bestMeters < b.needs;
       const row = document.createElement("div");
       row.className = `build-card${owned ? " owned" : ""}${locked ? " locked" : ""}`;
       const name = t(b.name);
       row.innerHTML = `<span class="build-ico" aria-hidden="true">${b.icon}</span><b>${esc(name)}</b>
         <small>${esc(t(b.text))}</small>
-        <button type="button" class="buy${owned ? " move" : ""}">${owned ? esc(t("Move")) : locked ? `🔒 ${esc(t("{n} m tower", { n: b.needs }))}` : `${fmt(b.price)} ★`}</button>`;
+        <button type="button" class="buy${movable ? " move" : ""}"${owned && !movable ? " disabled" : ""}>${movable ? esc(t("Move")) : owned ? esc(t("✓ Built")) : locked ? `🔒 ${esc(t("{n} m tower", { n: b.needs }))}` : `${fmt(b.price)} ★`}</button>`;
       const btn = row.querySelector<HTMLButtonElement>(".buy")!;
       btn.setAttribute("aria-label", owned ? t("Move {name} on your island", { name }) : t("Build {name} for {n} stars, adds {pct}% rent", { name, n: b.price, pct: Math.round(RENT_BONUS_PER_BUILD * 100) }));
       btn.addEventListener("click", () => {
-        if (owned) { this.host.startMove(b.id); return; }
+        if (owned) { if (movable) this.host.startMove(b.id); return; }
         if (locked) {
           this.host.sound.click();
           toast(t("Build a tower {n} m tall to unlock {name}. Your best is {best} m.", { n: b.needs, name, best: fmt(save.bestMeters) }));

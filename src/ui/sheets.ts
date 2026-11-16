@@ -62,6 +62,10 @@ export interface Host {
   buyItem(product: Product): void;
   /** Lets the player pick where a city building stands on the island. */
   startMove(id: string): void;
+  /** Whether buildings can be moved here (needs the 3D graphics). */
+  canMove(): boolean;
+  /** On the main menu (not in the middle of a tower)? */
+  onMenu(): boolean;
 }
 
 const isShopSkin = (s: Skin) => !!s.unlock && "price" in s.unlock;
@@ -767,6 +771,7 @@ export class Sheets {
     $("restore-btn").addEventListener("click", async () => {
       const box = $<HTMLInputElement>("restore-box"), btn = $<HTMLButtonElement>("restore-btn");
       const code = box.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (!this.host.onMenu()) { this.restoreMsg(t("Finish this tower first, then restore from the main menu."), "bad"); return; }
       if (code.length !== 12) { this.restoreMsg(t("Recovery codes have 12 letters and numbers, like ABCD-EFGH-2345."), "bad"); return; }
       if (code === this.host.cloudCode()) { this.restoreMsg(t("That's this device's own code."), "bad"); return; }
       if (!this.restoreArmed) {
@@ -810,6 +815,7 @@ export class Sheets {
     });
     $("load-code").addEventListener("click", () => {
       const box = $<HTMLTextAreaElement>("code-box");
+      if (!this.host.onMenu()) { this.codeMsg(t("Finish this tower first, then load the code from the main menu."), "bad"); return; }
       const loaded = importCode(box.value);
       if (!loaded) {
         this.codeMsg(box.value.trim() ? t("That code doesn't look right. Check that you copied all of it.") : t("Paste a save code first."), "bad");

@@ -112,6 +112,7 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   const rewards: Reward[] = [];
   const skinsBefore = new Set(SKINS.filter(s => isSkinUnlocked(save, s)).map(s => s.id));
   const islandBefore = islandLevel(save), levelBefore = save.profile.level;
+  const openBefore = new Set(ISLAND_THEMES.filter(th => districtOpen(save, th)).map(th => th.id));
   const zen = run.mode === "zen";
   // A tower that never got a floor (an instant miss, or Zen ended at once) earns nothing.
   const counted = run.floors >= 1;
@@ -222,7 +223,8 @@ export function recordRun(save: SaveData, run: RunSummary, now = Date.now(), rng
   if (newSkins.length) rewards.push({ kind: "skin", text: tn(newSkins.length, "New skin unlocked: {names}", "New skins unlocked: {names}", { names: listNames(newSkins.map(s => t(s.name))) }) });
   const built = ISLAND_UPGRADES.slice(islandBefore, islandLevel(save)).map(u => t(u.name));
   if (built.length) rewards.push({ kind: "island", text: tn(built.length, "Island upgrade: {names}", "Island upgrades: {names}", { names: listNames(built) }) });
-  const themes = ISLAND_THEMES.filter(th => th.level > levelBefore && th.level <= p.level).map(th => t(th.name));
+  // Districts that this tower actually opened (by people or by level).
+  const themes = ISLAND_THEMES.filter(th => !openBefore.has(th.id) && districtOpen(save, th)).map(th => t(th.name));
   if (themes.length) rewards.push({ kind: "island", text: tn(themes.length, "New island theme: {names}", "New island themes: {names}", { names: listNames(themes) }) });
 
   return {

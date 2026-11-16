@@ -1039,4 +1039,7 @@ export const FR: Record<string, string> = {
   "Reach builder level 10": "Atteins le niveau de bâtisseur 10",
   "Reach level 20, or get the 8,000 crystal pack": "Atteins le niveau 20 ou prends le pack de 8 000 cristaux",
   "Comes with the 14,000 crystal pack": "Inclus dans le pack de 14 000 cristaux",
+  "Finish this tower first, then restore from the main menu.": "Termine d'abord cette tour, puis restaure depuis le menu principal.",
+  "Finish this tower first, then load the code from the main menu.": "Termine d'abord cette tour, puis charge le code depuis le menu principal.",
+  "You have {n} ★. The star shop opens at builder level {l}.": "Tu as {n} ★. La boutique d'étoiles ouvre au niveau de bâtisseur {l}.",
 };

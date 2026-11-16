@@ -42,7 +42,8 @@ export function levelStep(level: number): LevelStep {
     features: (Object.keys(FEATURE_LEVEL) as Feature[]).filter(f => FEATURE_LEVEL[f] === level && f !== "profile"),
     title: title ? { name: title.name, icon: title.icon } : undefined,
     shapes: SHAPES.filter(s => s.unlock && "level" in s.unlock && s.unlock.level === level).map(s => s.name),
-    stars: level > 1 ? r.stars : 0,
+    // What levelReward pays, plus addXp's own star for each level (three on every fifth).
+    stars: level > 1 ? r.stars + (level % 5 === 0 ? 3 : 1) : 0,
     crystals: level > 1 ? r.crystals : 0,
   };
 }

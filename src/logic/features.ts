@@ -44,6 +44,8 @@ export const isOpen = (save: SaveData, f: Feature): boolean => save.profile.leve
 export const isNew = (save: SaveData, f: Feature): boolean => isOpen(save, f) && !save.seenFeatures.includes(f);
 
 export function markSeen(save: SaveData, f: Feature): void {
+  // Opening something early (from a shortcut) mustn't unlock it for good.
+  if (save.profile.level < FEATURE_LEVEL[f]) return;
   if (!save.seenFeatures.includes(f)) save.seenFeatures.push(f);
 }
 

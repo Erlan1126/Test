@@ -51,7 +51,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 
 /** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
 const EASY_TOWERS = 5;
-import { nightAt } from "./render/scenery";
+import { clockSky, nightAt } from "./render/scenery";
 import { Sound } from "./sound";
 import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
@@ -571,6 +571,7 @@ export class App implements DailyHost {
     this.persist();
     this.sound.applySettings();
     this.applyQuality();
+    this.applyLang();
     this.refresh();
   }
 
@@ -680,7 +681,7 @@ export class App implements DailyHost {
       if (isOpen(this.save, "shop")) { this.sheets.openShop(); return; }
       this.sound.ensure();
       this.sound.click();
-      toast(t("You have {n} ★. The star shop opens after your 3rd tower.", { n: this.save.stars }));
+      toast(t("You have {n} ★. The star shop opens at builder level {l}.", { n: this.save.stars, l: FEATURE_LEVEL.shop }));
     });
     $("settings-btn").addEventListener("click", () => this.sheets.openSettings());
     $("restore-link").addEventListener("click", () => {
@@ -980,6 +981,7 @@ export class App implements DailyHost {
     // Each tower is finished (and paid into the city) exactly once.
     if (this.state === "over" || this.state === "menu") return;
     this.state = "over";
+    this.overDay = dayKey(0);
     this.overTimer = 0.55;
     this.overReady = false;
     this.sim.combo = 0;
@@ -1149,7 +1151,7 @@ export class App implements DailyHost {
       vibrate(vib, [20, 30, 20]);
       setTimeout(() => vibrate(vib, [15, 30, 15]), 140);
     } else if (out.fever === "end") {
-      fx.popup(t("Fever over"), t("{n} more perfect drops for the next one", { n: FEVER_AT }), f.y + 2.4, "#ffd6a0", 1);
+      fx.popup(t("Fever over"), t("{n} more perfect drops for the next one", { n: out.perfect ? FEVER_AT - (out.combo % FEVER_AT) : FEVER_AT }), f.y + 2.4, "#ffd6a0", 1);
     }
     this.residentChat(out);
     if (f.kind === "ice") s.ice();
@@ -1201,6 +1203,8 @@ export class App implements DailyHost {
   }
 
   private chatIn = 6;
+  /** The day the last tower finished (its name comes from it). */
+  private overDay = "";
   /** Now and then a resident says something from a window near the top. */
   private residentChat(out: Extract<DropOutcome, { type: "land" }>): void {
     if (this.tutorial || this.calmMotion) return;
@@ -1410,7 +1414,7 @@ export class App implements DailyHost {
     // A brand-new player's Play button pulses so it's obvious where to start.
     $("play").classList.toggle("first", p.towers === 0);
     const cl = $("city-line");
-    cl.hidden = p.towers < 1;
+    cl.hidden = p.towers < 1 || !isOpen(save, "city");
     cl.innerHTML = t("🏙️ {city} · <b>{n}</b> people", { city: esc(t(CITY_NAME)), n: fmt(save.population) });
     $("daily-title").textContent = t("Daily");
     // Daily, Journey and Zen live behind one Modes button; its dot means one of them has news.
@@ -1435,6 +1439,9 @@ export class App implements DailyHost {
   private moving: string | null = null;
   private moveLoop = 0;
   /** Move mode: glowing spots on the island; tap one to move the building there. */
+  canMove(): boolean { return this.renderer instanceof Renderer3D; }
+  onMenu(): boolean { return this.state === "menu"; }
+
   startMove(id: string): void {
     if (!(this.renderer instanceof Renderer3D) || this.state !== "menu") return;
     const b = CITY.find(c => c.id === id);
@@ -1577,7 +1584,7 @@ export class App implements DailyHost {
   private rankToken = 0;
   private async renderRankLine(now: number): Promise<void> {
     const el = $("rank-line"), token = ++this.rankToken;
-    if (this.online.kind !== "global" || this.save.profile.towers < 6) { el.hidden = true; return; }
+    if (this.online.kind !== "global" || this.save.profile.towers < 6 || !isOpen(this.save, "ranks")) { el.hidden = true; return; }
     const board = await this.online.board("week", dayNumber(now), weekIndex(now));
     if (token !== this.rankToken) return;
     // No board (offline, or the server is down): say nothing rather than something wrong.
@@ -1604,7 +1611,7 @@ export class App implements DailyHost {
       kind = "holiday";
       text = t("{emoji} {name}: {left} towers to a holiday skin", { emoji: hp.h.emoji, name: t(hp.h.name), left: hp.h.towers - hp.towers });
     } else {
-      const r = this.online.ready && save.profile.towers >= 1 ? this.online.rival(dayNumber(now), weekIndex(now)) : null;
+      const r = this.online.ready && save.profile.towers >= 1 && isOpen(save, "ranks") ? this.online.rival(dayNumber(now), weekIndex(now)) : null;
       if (r) {
         const who = displayName(this.online.kind === "friends" ? (await this.online.names([r.id]))[r.id] : r.name);
         if (token !== this.statusToken) return;
@@ -1678,7 +1685,7 @@ export class App implements DailyHost {
     // Every tower gets its own name, on a little plaque.
     const plaque = $("over-name");
     plaque.hidden = sim.level < 3 || !!c;
-    plaque.textContent = towerName(sim.score, sim.level, dayKey(0));
+    plaque.textContent = towerName(sim.score, sim.level, this.overDay);
     // A new player's very first tower is a big moment.
     const first = save.profile.towers === 1 && !c && mode !== "zen";
     if (first) { eyebrow.textContent = t("Your first tower!"); eyebrow.classList.add("best"); }
@@ -2102,7 +2109,7 @@ export class App implements DailyHost {
     // Ambience follows the camera: city and birds near the ground, wind higher up.
     const lvl = this.state === "over" || this.state === "menu" ? 0 : sim.level;
     this.sound.setSong(currentTheme(this.save).id);
-    this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(sim.stack.length), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
+    this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(Math.max(sim.stack.length, clockSky())), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
     const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" && this.fallCam <= 0 ? "over" : "play";
     if (this.video && this.renderer instanceof Renderer3D) {
