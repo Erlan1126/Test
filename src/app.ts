@@ -655,6 +655,7 @@ export class App implements DailyHost {
     $("starter-buy").addEventListener("click", () => void this.buyPack(STARTER_PACK));
     $("lu-ok").addEventListener("click", () => { $("levelup").hidden = true; this.sound.click(); });
     $("place-cancel").addEventListener("click", () => { this.sound.click(); this.endMove(); });
+    $("help-btn").addEventListener("click", () => this.sheets.openHelp());
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
     $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });

@@ -2344,3 +2344,9 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
 .splash-by { position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); font: 400 13px var(--display); letter-spacing: 0.12em; color: rgba(255, 255, 255, 0.85); }
 @media (prefers-reduced-motion: reduce) { .splash-logo, .splash-bar i { animation: none; } }
 .tagline { display: inline-block; padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.88); color: #1b1f4a !important; font-family: var(--display); font-weight: 400; font-size: clamp(12px, 3.6vw, 15px); box-shadow: 0 4px 14px rgba(20, 24, 70, 0.16); }
+.help-list { display: grid; gap: 8px; padding: 4px 0 12px; }
+.help-row { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: var(--card-shadow, 0 4px 12px rgba(42, 31, 110, 0.08)); }
+.help-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(150deg, #eef3ff, #ffeef6); font-size: 26px; }
+.help-ico svg.ic { width: 1em; height: 1em; vertical-align: 0; }
+.help-row b { display: block; font: 400 14px var(--display); color: #2a1f6e; }
+.help-row small { display: block; margin-top: 2px; color: #5a5f8a; font-size: 13px; font-weight: 600; line-height: 1.35; }

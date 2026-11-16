@@ -427,6 +427,13 @@
   </div>
 </div>
 
+<div id="help" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="sheet">
+    <div class="sheet-top"><div class="sheet-head"><div><h2 id="help-title">How to play</h2><p>Everything you need to build higher</p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <div class="help-list" id="help-list"></div>
+  </div>
+</div>
+
 <div id="settings" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
   <div class="sheet narrow">
     <div class="sheet-top">
@@ -467,6 +474,7 @@
       </div>
     </div>
     <div class="group">
+      <button type="button" class="setting link" id="help-btn"><span class="set-ico" aria-hidden="true">📖</span><b>How to play</b><span class="chev" aria-hidden="true">›</span></button>
       <button type="button" class="setting link" id="replay-tips"><span class="set-ico" aria-hidden="true">💡</span><b>Show beginner tips again</b><span class="chev" aria-hidden="true">›</span></button>
       <details class="setting disclosure" id="cloud" hidden>
         <summary><span class="set-ico" aria-hidden="true">☁️</span><b>Cloud backup</b><span class="chev" aria-hidden="true">›</span></summary>

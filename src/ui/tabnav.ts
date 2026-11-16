@@ -5,7 +5,7 @@
 import { closeModal } from "./dom";
 
 const TABS = [["city", "city-btn"], ["shop", "shop-btn"], ["missions", "missions-btn"], ["pass", "pass-btn"], ["ranks", "ranks-btn"]] as const;
-const SHEETS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass", "goals", "modes", "starter"];
+const SHEETS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass", "goals", "modes", "starter", "help"];
 
 const byId = (id: string): HTMLElement | null => document.getElementById(id);
 const openTab = (): number => TABS.findIndex(([m]) => byId(m) && !byId(m)!.hidden);

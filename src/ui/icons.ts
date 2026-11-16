@@ -94,7 +94,7 @@ const EMOJI: Record<string, string> = {
   "☁": "cloud", "📲": "phone", "📮": "mail", "📭": "mail", "👆": "pointer", "🏅": "medal", "🥇": "medal1", "🥈": "medal2", "🥉": "medal3", "🧊": "ice",
   "🏁": "flag", "⚑": "flag", "🏰": "building", "🏛": "building", "🕌": "building", "⛩": "pagoda", "🎡": "wheel", "☕": "coffee", "🛝": "slide", "🗽": "statue",
   "🌾": "windmill", "🔭": "telescope", "🎠": "carousel", "🕰": "clock", "📡": "dish", "🎈": "balloon", "🏟": "stadium", "🚀": "rocket", "🛸": "airship",
-  "🏝": "island", "📍": "mapPin", "🧭": "map", "🔨": "brick", "👷": "crown",
+  "🏝": "island", "📍": "mapPin", "📖": "bulb", "🧭": "map", "🔨": "brick", "👷": "crown",
 };
 
 const CHARS = Object.keys(EMOJI).sort((a, b) => b.length - a.length).map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
