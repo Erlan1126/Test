@@ -28,7 +28,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
-import { buildBizCity, lotPos, type BizCity } from "./bizcity";
+import { buildBizCity, lotPos, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -198,6 +198,7 @@ export class Renderer3D {
   private biz: BizCity | null = null;
   private bizKey = "";
   private bizIn: unknown = null;
+  private bizStyleKey = "";
   /** 0 = looking at the home island, 1 = over the business district. */
   private bizK = 0;
   /** A building's card is open (the district sits higher to make room). */
@@ -773,15 +774,19 @@ export class Renderer3D {
     this.bizCardK = lerp(this.bizCardK, f.bizCard ? 1 : 0, Math.min(1, dt * 6));
     if (Math.abs(this.bizK - (f.bizFocus ? 1 : 0)) < 0.002) this.bizK = f.bizFocus ? 1 : 0;
     const lots = f.bizLots ?? [];
-    if (lots !== this.bizIn) {
+    const look = lookFor(f.skin, "normal"), th = f.theme;
+    const style: BizStyle = { lawn: th.lawn, rock: th.rockL, dirt: th.dirtL, plaza: th.plaza, road: th.road, leaf: th.leaf[0], trunk: th.trunk, tree: th.tree, glass: look.glass, lit: look.lit[0] ?? "#ffd99a" };
+    const styleKey = `${th.id}|${f.skin.id}`;
+    if (lots !== this.bizIn || styleKey !== this.bizStyleKey) {
       this.bizIn = lots;
-      const key = JSON.stringify(lots);
+      this.bizStyleKey = styleKey;
+      const key = JSON.stringify(lots) + styleKey;
       if (key !== this.bizKey) {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
         this.biz = null;
         if (lots.length) {
-          this.biz = buildBizCity(lots);
+          this.biz = buildBizCity(lots, style);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
         }

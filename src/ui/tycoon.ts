@@ -179,7 +179,8 @@ export class TycoonUI {
     this.host.setBizFocus(false);
     document.body.classList.remove("in-tycity");
     $("tycity").hidden = true;
-    this.host.refresh();
+    // (No refresh here: the home screen re-opens the city, and a tower starting right
+    // after this must not have the city pop back up on top of it.)
   }
 
   /** Closes the building card (the Android back button). Returns false if none was open. */

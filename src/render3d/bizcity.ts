@@ -18,6 +18,14 @@ export interface BizLot {
   state: "open" | "lease" | "locked";
 }
 
+/** The look of the district: your island's ground and trees, your skin's glass. */
+export interface BizStyle {
+  lawn: string; rock: string; dirt: string; plaza: string; road: string;
+  leaf: string; trunk: string; tree: "round" | "pine" | "palm";
+  glass: string; lit: string;
+}
+export const DEFAULT_STYLE: BizStyle = { lawn: "#7fd36a", rock: "#8a7fb0", dirt: "#a8784a", plaza: "#f4efe6", road: "#5a5f7a", leaf: "#3fbf6a", trunk: "#8a5a3a", tree: "round", glass: "#bfe6ff", lit: "#ffd99a" };
+
 /** What changes from moment to moment (no rebuild needed). */
 export interface BizLive {
   /** The building whose card is open. */
@@ -47,18 +55,18 @@ export interface BizCity {
   update(t: number, night: number, live: BizLive, lots: BizLot[]): void;
 }
 
-export function buildBizCity(lots: BizLot[]): BizCity {
+export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizCity {
   const g = new THREE.Group(), R = BIZ_R;
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
   // ---- The island: a round plaza on layered rock ----
-  const rock = own(std("#8a7fb0", { roughness: 1, flatShading: true }));
+  const rock = own(std(st.rock, { roughness: 1, flatShading: true }));
   g.add(new THREE.Mesh(new THREE.ConeGeometry(R * 1.02, R * 1.4, 9).rotateX(Math.PI).translate(0, -R * 0.7 - 1, 0), rock));
-  const earth = own(std("#a8784a", { roughness: 1 }));
+  const earth = own(std(st.dirt, { roughness: 1 }));
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.97, 1.2, 40).translate(0, -0.65, 0), earth));
-  const lawn = own(std("#7fd36a", { roughness: 0.95 }));
+  const lawn = own(std(st.lawn, { roughness: 0.95 }));
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.12, 40).translate(0, -0.05, 0), lawn));
   // Ring road with sidewalks.
-  const road = own(std("#5a5f7a", { roughness: 0.9 }));
+  const road = own(std(st.road, { roughness: 0.9 }));
   const walk = own(std("#e6e1f2", { roughness: 0.8 }));
   g.add(new THREE.Mesh(new THREE.RingGeometry(10.1, 11.1, 48).rotateX(-Math.PI / 2).translate(0, 0.03, 0), walk));
   g.add(new THREE.Mesh(new THREE.RingGeometry(10.3, 10.9, 48).rotateX(-Math.PI / 2).translate(0, 0.05, 0), road));
@@ -73,7 +81,7 @@ export function buildBizCity(lots: BizLot[]): BizCity {
   // Inner sidewalk ring where people stroll, and paths from each lot.
   g.add(new THREE.Mesh(new THREE.RingGeometry(9.1, 9.9, 48).rotateX(-Math.PI / 2).translate(0, 0.04, 0), walk));
   // Central plaza: paving, a fountain, trees and benches.
-  const pave = own(std("#f4efe6", { roughness: 0.7 }));
+  const pave = own(std(st.plaza, { roughness: 0.7 }));
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(4.4, 4.4, 0.1, 36).translate(0, 0.05, 0), pave));
   const stone = own(std("#d9d2e6", { roughness: 0.6 }));
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.75, 0.45, 28).translate(0, 0.25, 0), stone));
@@ -84,13 +92,17 @@ export function buildBizCity(lots: BizLot[]): BizCity {
   const jet = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.3, 14).translate(0, 2.1, 0), jetMat);
   jet.userData.dynamic = true;
   g.add(jet);
-  const leaf = own(std("#3fbf6a", { roughness: 0.9, flatShading: true }));
-  const trunk = own(std("#8a5a3a"));
+  const leaf = own(std(st.leaf, { roughness: 0.9, flatShading: true }));
+  const trunk = own(std(st.trunk));
+  // Trees like your island's: round, pine or palm.
+  const treeTop = (h: number, r: number) => st.tree === "pine" ? new THREE.ConeGeometry(r * 0.9, r * 2.4, 7).translate(0, h + r, 0)
+    : st.tree === "palm" ? new THREE.ConeGeometry(r * 1.3, r * 0.5, 6).translate(0, h + r * 0.6, 0) : new THREE.IcosahedronGeometry(r, 0).translate(0, h + r * 0.6, 0);
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2 + 0.2, r = 3.4;
     const t = new THREE.Group();
-    t.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.6, 6).translate(0, 0.3, 0), trunk));
-    t.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0).translate(0, 0.95, 0), leaf));
+    const th = st.tree === "palm" ? 1.1 : 0.6;
+    t.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, th, 6).translate(0, th / 2, 0), trunk));
+    t.add(new THREE.Mesh(treeTop(th, 0.55), leaf));
     t.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
     g.add(t);
   }
@@ -98,8 +110,9 @@ export function buildBizCity(lots: BizLot[]): BizCity {
   for (let k = 0; k < 20; k++) {
     const a = (k / 20) * Math.PI * 2 + 0.16, r = 12.2;
     const t = new THREE.Group();
-    t.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.5, 6).translate(0, 0.25, 0), trunk));
-    t.add(new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 7).translate(0, 1, 0), leaf));
+    const th = st.tree === "palm" ? 1.0 : 0.5;
+    t.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, th, 6).translate(0, th / 2, 0), trunk));
+    t.add(new THREE.Mesh(treeTop(th, 0.5), leaf));
     t.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
     g.add(t);
   }
@@ -117,7 +130,7 @@ export function buildBizCity(lots: BizLot[]): BizCity {
   }
 
   // ---- The lots and their buildings ----
-  const winMat = own(std("#bfe6ff", { roughness: 0.15, metalness: 0.3, emissive: 0xffd99a, emissiveIntensity: 0.05 }));
+  const winMat = own(std(st.glass, { roughness: 0.15, metalness: 0.3, emissive: new THREE.Color(st.lit), emissiveIntensity: 0.05 }));
   winMat.userData.dynamic = true;
   const gold = own(std("#ffc93c", { roughness: 0.25, metalness: 0.85, emissive: 0x6a4a00, emissiveIntensity: 0.25 }));
   const white = own(std("#ffffff", { roughness: 0.6 }));
