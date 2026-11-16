@@ -1064,6 +1064,7 @@ export class App implements DailyHost {
       tickTycoon(this.save);
       const bonus = towerBonus(this.save, run.floors);
       if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} coins for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
+      if (run.floors > 0) this.outcome.rewards.unshift({ kind: "pass", text: t("+{n} office floors for Skyhaven Inc.: open more business levels!", { n: run.floors }) });
     }
     // Tall towers stand in their district for good.
     if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
@@ -1517,6 +1518,12 @@ export class App implements DailyHost {
     document.body.classList.remove("visiting");
     $("visit-bar").hidden = true;
     this.sound.whoosh();
+  }
+
+  /** From the Tycoon: build a tower to add office floors. */
+  buildFloors(): void {
+    if (this.state !== "menu") return;
+    this.start("classic");
   }
 
   canMove(): boolean { return this.renderer instanceof Renderer3D; }
@@ -2007,7 +2014,7 @@ export class App implements DailyHost {
     this.homeMode = mode;
     for (const [id, m] of [["classic-btn", "classic"], ["daily-btn", "daily"], ["zen-btn", "zen"]] as const) $(id).setAttribute("aria-checked", String(m === mode));
     $("play-label").textContent = mode === "daily" ? t("Tap to play the Daily")
-      : mode === "zen" ? t("Tap to build in Zen") : t("Tap anywhere to build");
+      : mode === "zen" ? t("Tap to build in Zen") : this.save.profile.towers >= 1 ? t("Tap anywhere to build office floors") : t("Tap anywhere to build");
   }
 
   /** Optional rewarded ad after a tower: doubles the stars it earned. */

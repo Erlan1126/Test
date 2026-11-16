@@ -1115,4 +1115,11 @@ export const FR: Record<string, string> = {
   "Earn {n} coins in Skyhaven Inc.": "Gagne {n} pièces chez Skyhaven SA",
   "Open {n} businesses": "Ouvre {n} commerces",
   "Start {n} New Era": "Lance {n} Nouvelle Ère",
+  "No empty floors": "Plus d'étage libre",
+  "Every office floor is full. Build a tower to add more!": "Tous les étages de bureaux sont pleins. Construis une tour pour en ajouter !",
+  "{used} of {total} office floors": "{used} sur {total} étages de bureaux",
+  "+{n} office floors for Skyhaven Inc.: open more business levels!": "+{n} étages de bureaux pour Skyhaven SA : ouvre plus de niveaux !",
+  "Office floors": "Étages de bureaux",
+  "Build more floors": "Construire plus d'étages",
+  "Tap anywhere to build office floors": "Touche n'importe où pour construire des étages de bureaux",
 };

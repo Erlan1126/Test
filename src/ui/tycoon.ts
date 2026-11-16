@@ -5,7 +5,7 @@ import { t } from "../i18n";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
-  affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, hireManager, levelOf, multiplier, newEra, nextMilestone,
+  affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
   payOf, perSecond, progressOf, runOnce, tick, timeWarp, unlockedBusiness,
 } from "../logic/tycoon";
 import type { Sound } from "../sound";
@@ -20,6 +20,8 @@ export interface TycoonHost {
   persist(): void;
   refresh(): void;
   openCrystalShop(): void;
+  /** Starts a tower (to build more office floors). */
+  buildFloors(): void;
 }
 
 /** A gold coin with a star, for counters. */
@@ -43,6 +45,7 @@ export class TycoonUI {
       this.host.sound.click();
       this.render();
     }));
+    $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.host.buildFloors(); });
     // The home card ticks along while the menu shows.
     setInterval(() => this.homeTick(), 1000);
   }
@@ -80,7 +83,7 @@ export class TycoonUI {
       const lv = levelOf(this.save, id), n = this.amount === "max" ? Math.max(1, affordable(b, lv, this.save.tycoon.coins)) : this.amount;
       const btn = row.querySelector<HTMLButtonElement>(".ty-buy")!;
       const can = costOf(b, lv, n) <= this.save.tycoon.coins && (this.amount !== "max" || affordable(b, lv, this.save.tycoon.coins) > 0);
-      if (btn.disabled === can) btn.disabled = !can;
+      if (!btn.classList.contains("need-floors") && btn.disabled === can) btn.disabled = !can;
       const hire = row.querySelector<HTMLButtonElement>(".ty-hire");
       if (hire) hire.disabled = this.save.tycoon.coins < b.manager;
     }
@@ -94,6 +97,7 @@ export class TycoonUI {
     $("ty-coins").textContent = coins(ty.coins);
     $("ty-rate").textContent = t("{n} a second", { n: coins(perSecond(s, now)) });
     $("ty-mult").textContent = t("×{n} earnings", { n: multiplier(s, now).toFixed(2) });
+    this.renderOffice();
     const list = $("ty-list");
     list.innerHTML = "";
     BUSINESSES.forEach((b, i) => {
@@ -121,7 +125,14 @@ export class TycoonUI {
         if (!owned) return;
         if (runOnce(s, b.id)) { this.host.sound.click(); burst(e.currentTarget as Element, 6); vibrate(s.settings.vibrate, 8); }
       });
+      const noRoom = freeFloors(s) < (this.amount === "max" ? 1 : this.amount);
+      if (noRoom) {
+        const bb = row.querySelector<HTMLButtonElement>(".ty-buy")!;
+        bb.classList.add("need-floors");
+        bb.innerHTML = `<small>${esc(t("No empty floors"))}</small>${esc(t("Build"))}`;
+      }
       row.querySelector(".ty-buy")!.addEventListener("click", e => {
+        if (noRoom) { toast(t("Every office floor is full. Build a tower to add more!")); closeModal($("tycoon")); this.host.buildFloors(); return; }
         tick(s);
         const got = buyLevels(s, b.id, this.amount);
         if (!got) { this.host.sound.click(); return; }
@@ -146,6 +157,26 @@ export class TycoonUI {
     });
     this.renderBoosts();
     this.renderEra();
+  }
+
+  /** The company's office tower: each business's floors in its own color, empty floors as
+   *  glass, and how many are free. */
+  private renderOffice(): void {
+    const s = this.save, total = officeFloors(s), used = usedFloors(s);
+    $("ty-floors").textContent = `${fmt(used)} / ${fmt(total)}`;
+    $("ty-fbar").style.width = `${Math.min(100, (used / total) * 100)}%`;
+    $("ty-build").classList.toggle("urgent", freeFloors(s) === 0);
+    const rows = 22, per = total / rows, segs: string[] = [];
+    let acc = 0, bi = 0, inB = 0;
+    const owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
+    for (let r = 0; r < rows; r++) {
+      const floorAt = (r + 0.5) * per;
+      while (bi < owned.length && acc + levelOf(s, owned[bi].id) < floorAt) { acc += levelOf(s, owned[bi].id); bi++; inB = 0; }
+      const b = floorAt <= used ? owned[bi] : undefined;
+      inB++;
+      segs.push(b ? `<i style="--f1:${b.color[0]};--f2:${b.color[1]}"></i>` : `<i class="empty"></i>`);
+    }
+    $("ty-tower").innerHTML = `<span class="tt-roof"></span>${segs.reverse().join("")}`;
   }
 
   private renderBoosts(): void {
@@ -210,6 +241,7 @@ export class TycoonUI {
     card.hidden = tile.hidden = !show;
     if (!show) return;
     $("tc-coins").textContent = coins(this.save.tycoon.coins);
+    $("tc-floors").textContent = t("{used} of {total} office floors", { used: fmt(usedFloors(this.save)), total: fmt(officeFloors(this.save)) });
     const r = perSecond(this.save);
     $("tc-rate").textContent = r > 0 ? t("+{n} a second", { n: coins(r) }) : t("Tap to run your businesses");
     // A dot when something can be bought.

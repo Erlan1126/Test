@@ -306,7 +306,7 @@ export function normalize(raw: unknown): SaveData {
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0), gift: num(obj(r.vip).gift, 0, 0, 1e15) },
     packsFirst: strList(r.packsFirst),
     chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99) },
-    tycoon: normalizeTycoon(r.tycoon),
+    tycoon: normalizeTycoon(r.tycoon, Number(obj(r.profile).floors) || 0),
     friendCode: /^[A-Z2-9]{6}$/.test(String(r.friendCode ?? "")) ? String(r.friendCode) : "",
     friends: strList(r.friends).filter(c => /^[A-Z2-9]{6}$/.test(c)).slice(0, 30),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
@@ -499,7 +499,7 @@ export function importCode(code: string): SaveData | null {
 }
 
 /** Tycoon numbers can be astronomically large, so they're checked as finite, not capped. */
-function normalizeTycoon(v: unknown): TycoonState {
+function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const big = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : 0);
   const ids = BUSINESSES.map(b => b.id);
@@ -516,5 +516,7 @@ function normalizeTycoon(v: unknown): TycoonState {
     coins: big(o.coins), lifetime: Math.max(big(o.lifetime), big(o.coins)), levels,
     managers: Array.isArray(o.managers) ? [...new Set(o.managers.filter((x): x is string => typeof x === "string" && ids.includes(x)))] : [],
     runs, gems: Math.floor(big(o.gems)), boost: o.boost === true, last: big(o.last), eras: Math.floor(big(o.eras)),
+    // Saves from before office floors start with every floor they had built.
+    floors: Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore)),
   };
 }

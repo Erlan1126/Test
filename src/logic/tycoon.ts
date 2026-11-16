@@ -18,10 +18,12 @@ export interface TycoonState {
   /** The last time the economy was brought up to date (ms). */
   last: number;
   eras: number;
+  /** Floors built in towers that count as offices (not Zen, which never ends). */
+  floors: number;
 }
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0 });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0 });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -67,6 +69,14 @@ export function affordable(b: Business, level: number, coinsHave: number): numbe
   return Math.max(0, Math.floor(Math.log(coinsHave * (g - 1) / first + 1) / Math.log(g)));
 }
 
+/** Office floors: every floor the player has ever built is an office (plus the ten of the
+ *  first office building), and each business level fills one. More floors come from
+ *  building towers, so the tower game is how the company grows. */
+export const FREE_FLOORS = 10;
+export const officeFloors = (s: SaveData): number => FREE_FLOORS + Math.max(0, s.tycoon.floors);
+export const usedFloors = (s: SaveData): number => Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
+export const freeFloors = (s: SaveData): number => Math.max(0, officeFloors(s) - usedFloors(s));
+
 /** A business is offered once the one before it has been bought. */
 export const unlockedBusiness = (s: SaveData, i: number): boolean => i === 0 || levelOf(s, BUSINESSES[i - 1].id) > 0;
 
@@ -81,8 +91,9 @@ export function buyLevels(s: SaveData, id: string, n: number | "max", now = Date
   const b = businessById(id), i = BUSINESSES.findIndex(x => x.id === id);
   if (!b || !unlockedBusiness(s, i)) return 0;
   const lv = levelOf(s, id);
-  const count = n === "max" ? affordable(b, lv, s.tycoon.coins) : n;
-  if (count <= 0) return 0;
+  // Never more levels than there are empty office floors.
+  const count = Math.min(n === "max" ? affordable(b, lv, s.tycoon.coins) : n, freeFloors(s));
+  if (count <= 0 || (n !== "max" && count < n)) return 0;
   const price = costOf(b, lv, count);
   if (price > s.tycoon.coins) return 0;
   s.tycoon.coins -= price;
@@ -147,6 +158,7 @@ export function tick(s: SaveData, now = Date.now()): number {
  *  (ten seconds a floor, up to ten minutes), at least a little even before any managers. */
 export function towerBonus(s: SaveData, floors: number, now = Date.now()): number {
   if (floors < 1) return 0;
+  s.tycoon.floors += floors; // every floor becomes an office
   const rate = Math.max(perSecond(s, now), payOf(s, BUSINESSES[0], now) / BUSINESSES[0].cycle);
   const n = rate * Math.min(600, floors * 10);
   earn(s, n);
