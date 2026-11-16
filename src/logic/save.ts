@@ -1,7 +1,7 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
 import { OLD_FEATURE_TOWERS } from "./features";
-import { newTycoon, type TycoonState } from "./tycoon";
+import { ECONOMY, newTycoon, type TycoonState } from "./tycoon";
 import { BUSINESSES } from "../data/tycoon";
 import { addXp, xpNeeded } from "./rules";
 import { LANGS, type LangSetting } from "../i18n";
@@ -508,6 +508,14 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     if (ids.includes(k) && Number.isInteger(x) && (x as number) > 0) levels[k] = Math.min(x as number, 100000);
   }
   if (!levels.coffee) levels.coffee = 1;
+  // A company from the first economy (when everything grew far too fast) starts over once.
+  // It keeps its office floors and the crystal coin booster it paid for.
+  if (v && typeof v === "object" && o.econ !== ECONOMY) {
+    const fresh = newTycoon();
+    fresh.floors = Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore));
+    fresh.boost = o.boost === true;
+    return fresh;
+  }
   const runs: Record<string, number> = {};
   for (const [k, x] of Object.entries((o.runs && typeof o.runs === "object" ? o.runs : {}) as Record<string, unknown>)) {
     if (ids.includes(k)) runs[k] = big(x);
@@ -519,6 +527,7 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     // Saves from before office floors start with every floor they had built.
     floors: Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore)),
     speedups: { day: typeof (o.speedups as { day?: unknown })?.day === "string" ? String((o.speedups as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.speedups as { n?: unknown })?.n)) },
+    econ: ECONOMY,
     rush: { id: typeof (o.rush as { id?: unknown })?.id === "string" && ids.includes((o.rush as { id: string }).id) ? (o.rush as { id: string }).id : "", until: big((o.rush as { until?: unknown })?.until) },
   };
 }

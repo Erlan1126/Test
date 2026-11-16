@@ -184,3 +184,22 @@ describe("tycoon evolution and live events", () => {
     expect(normalize(bad).tycoon.rush.id).toBe("");
   });
 });
+
+describe("tycoon economy reset", () => {
+  it("a company from the old, too-fast economy starts over once, keeping floors and the booster", () => {
+    const old = JSON.parse(JSON.stringify(defaultSave()));
+    old.tycoon = { coins: 2e8, lifetime: 5e9, levels: { coffee: 120, flowers: 60, mall: 3 }, managers: ["coffee"], runs: {}, gems: 40, boost: true, last: 0, eras: 1, floors: 900 };
+    const t = normalize(old).tycoon;
+    expect(t.coins).toBe(0);
+    expect(t.lifetime).toBe(0);
+    expect(t.levels).toEqual({ coffee: 1 });
+    expect(t.managers).toEqual([]);
+    expect(t.gems).toBe(0);
+    expect(t.floors).toBe(900);
+    expect(t.boost).toBe(true);
+    // ...and only once: a new-economy company is kept as it is.
+    const now = normalize(JSON.parse(JSON.stringify({ ...defaultSave(), tycoon: { ...t, coins: 500, levels: { coffee: 7 } } }))).tycoon;
+    expect(now.coins).toBe(500);
+    expect(now.levels).toEqual({ coffee: 7 });
+  });
+});

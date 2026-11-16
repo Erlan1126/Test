@@ -25,10 +25,15 @@ export interface TycoonState {
   rush: { id: string; until: number };
   /** Crystal speed-ups used today. */
   speedups: { day: string; n: number };
+  /** Economy version: saves from the first, much faster economy start the company over. */
+  econ: number;
 }
 
+/** The current economy version (see TycoonState.econ). */
+export const ECONOMY = 2;
+
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 } });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
