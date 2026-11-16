@@ -37,7 +37,7 @@ const streakBonus = () => Math.min(0.5, streakNow() * 0.05);
 // ---------- Daily missions: three a day, the same for everyone ----------
 const DM_POOL = [
   { k: "lights", goal: 150, text: n => `Gather ${n} lights today` },
-  { k: "free", goal: 20, text: n => `Sing ${n} shadows free today` },
+  { k: "free", goal: 20, text: n => `Fix ${n} glitches today` },
   { k: "dist", goal: 800, text: n => `Reach ${n} m in one run`, max: true },
   { k: "boss", goal: 1, text: () => "Clear a Blackout" },
   { k: "runs", goal: 3, text: n => `Play ${n} runs` },
@@ -75,7 +75,7 @@ function progressEvent(k, v = 1) {
 const WEEK_EVENTS = [
   { id: "gold", name: "Golden Week", text: "Every light counts double" },
   { id: "frost", name: "Frost Week", text: "Icicles fall in every world" },
-  { id: "shadow", name: "Shadow Week", text: "More shadows, ×1.5 score" },
+  { id: "shadow", name: "Glitch Week", text: "More glitches, ×1.5 score" },
   { id: "rush", name: "Rush Week", text: "Every big moment is a rush" },
 ];
 const weekEvent = () => WEEK_EVENTS[weekNumber() % WEEK_EVENTS.length];
@@ -84,8 +84,8 @@ const weekEvent = () => WEEK_EVENTS[weekNumber() % WEEK_EVENTS.length];
 // Friends you find in runs can be played as; each brings a small gift.
 const FRIEND_PERKS = [
   "Starts each run with a Magnet", "Bubbles carry you twice as far", "Currents can't push you", "Crystal gates open wider",
-  "Lava can't hurt you", "Icicles fall slowly", "Songs reach a quarter further", "Lanterns swing slower",
-  "Sees through the dark", "Small: close calls are easier", "Shadows drift away from you", "One extra light of your own",
+  "Lava can't hurt you", "Icicles fall slowly", "Pulses reach a quarter further", "Lanterns swing slower",
+  "Sees through power cuts", "Small: close calls are easier", "Glitches drift away from you", "One extra light of your own",
 ];
 const playingAs = () => { const c = (save.run || {}).char; return c != null && c >= 0 && (save.runFriends || {})[c] ? c : -1; };
 const perk = i => playingAs() === i;
@@ -116,8 +116,8 @@ const RUN_ACHS = [
   { id: "m1500", name: "Long way home", text: "Reach 1,500 m", test: () => (save.prog || {}).dist >= 1500, r: 80 },
   { id: "m3000", name: "Almost the sky", text: "Reach 3,000 m", test: () => (save.prog || {}).dist >= 3000, r: 200 },
   { id: "c30", name: "In tune", text: "Reach a 30 combo", test: () => (save.prog || {}).combo >= 30, r: 40 },
-  { id: "c80", name: "Perfect song", text: "Reach an 80 combo", test: () => (save.prog || {}).combo >= 80, r: 120 },
-  { id: "f50", name: "Choir", text: "Sing 50 shadows free", test: () => (save.prog || {}).free >= 50, r: 50 },
+  { id: "c80", name: "Perfect flow", text: "Reach an 80 combo", test: () => (save.prog || {}).combo >= 80, r: 120 },
+  { id: "f50", name: "Debugger", text: "Fix 50 glitches", test: () => (save.prog || {}).free >= 50, r: 50 },
   { id: "b1", name: "Peacemaker", text: "Clear a Blackout", test: () => (save.prog || {}).boss >= 1, r: 40 },
   { id: "b5", name: "Storm chaser", text: "Clear 5 Blackouts", test: () => (save.prog || {}).boss >= 5, r: 120 },
   { id: "fr3", name: "Not alone", text: "Find 3 lost friends", test: () => Object.keys(save.runFriends || {}).length >= 3, r: 50 },

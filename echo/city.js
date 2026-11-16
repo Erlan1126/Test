@@ -224,7 +224,7 @@ function renderShop() {
   if (cityPanel === "build") $("shopList").innerHTML = CITY_BUILDS.map(b => `<li class="${built(b.id) ? "won" : ""}"><span><b>${b.name}</b><small>${b.text}</small></span>` + (built(b.id) ? "<em>Rebuilt</em>" : `<button data-build="${b.id}" ${glow >= b.cost ? "" : "disabled"}>✦ ${b.cost}</button>`) + "</li>").join("");
   if (cityPanel === "friends") {
     const met = save.runFriends || {}, as = playingAs();
-    $("shopList").innerHTML = `<li><span><b>Lumi</b><small>The littlest light</small></span>${as < 0 ? "<em>Playing</em>" : `<button data-char="-1">Play</button>`}</li>` +
+    $("shopList").innerHTML = `<li><span><b>Bip</b><small>A little city robot</small></span>${as < 0 ? "<em>Playing</em>" : `<button data-char="-1">Play</button>`}</li>` +
       RUN_FRIENDS.map((f, i) => met[i] ? `<li><span><b>${f.name}</b><small>${FRIEND_PERKS[i]}</small></span>${as === i ? "<em>Playing</em>" : `<button data-char="${i}">Play</button>`}</li>` : `<li class="locked"><span><b>???</b><small>Still lost somewhere in the caves</small></span></li>`).join("");
   }
   if (cityPanel === "awards") $("shopList").innerHTML = RUN_ACHS.map(a => `<li class="${(save.runAch || {})[a.id] ? "won" : "locked"}"><span><b>${a.name}</b><small>${a.text}</small></span><em>+${a.r} ✦</em></li>`).join("");

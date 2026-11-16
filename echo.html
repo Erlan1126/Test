@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Echo</title>
-<meta name="description" content="A little light lost in a dark cave. Tap to sing, and your echo shows you the way.">
+<meta name="description" content="A little robot flying up through a glowing city. Tap to pulse, dodge the glitches.">
 <meta name="theme-color" content="#05060f">
 <link rel="manifest" href="echo.webmanifest">
 <link rel="icon" href="echo-icon.svg" type="image/svg+xml">
@@ -796,7 +796,7 @@
 <div id="chimeBar" hidden aria-label="Chimes to ring, in order"></div>
 <div id="hint"></div>
 <div id="encounter" aria-live="polite"><small>Something's here…</small><b id="encounterName"></b><span id="encounterTip"></span></div>
-<button id="singBtn" aria-label="Sing. Hold for a long song" hidden>♪</button>
+<button id="singBtn" aria-label="Pulse" hidden>♪</button>
 <button id="flareBtn" aria-label="Flare: burst your light" hidden>✦</button>
 <button id="dashBtn" aria-label="Dash" hidden>➶</button>
 <button id="pebbleBtn" aria-label="Throw a pebble" hidden><i></i><b>3</b></button>
@@ -876,14 +876,14 @@
 
 <div id="iris"></div>
 <div class="screen" id="runScreen">
-  <canvas id="runCanvas" aria-label="Lumi gliding up through the cave"></canvas>
+  <canvas id="runCanvas" aria-label="Bip flying up through the city"></canvas>
   <div class="run-hud">
     <div class="hud-side"><div class="hearts" id="runHearts"></div></div>
     <div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div></div>
     <div class="hud-side right"><button class="icon2" id="runPauseBtn" aria-label="Pause"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></div>
   </div>
   <button class="ability" id="abilityBtn" hidden aria-label="Ability"><span id="abilityName"></span></button>
-  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer · tap to sing · swipe up to dash</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
+  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="info">Slide to steer · tap to pulse · swipe up to dash</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
   <div class="card2 mid" id="runContinue" hidden><h2>Keep going?</h2><div class="ring" id="runContinueTime">5</div><p class="info">Spend lights to carry on</p><div class="row2"><button class="ghost" id="runContinueNo">Rest</button><button class="primary" id="runContinueGo"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg> <span id="runContinueCost">25</span></button></div></div>
   <div class="card2 bottom" id="runOver" hidden>
     <div class="ro-head"><span id="runOverTitle">Run over</span><span class="badge" id="runOverBest"></span></div>

@@ -12,14 +12,14 @@ const RUN = {
   missions: [
     { kind: "lights", goal: 40, text: n => `Gather ${n} lights in one run` },
     { kind: "dist", goal: 400, text: n => `Reach ${n} m` },
-    { kind: "free", goal: 6, text: n => `Sing ${n} shadows back into light in one run` },
+    { kind: "free", goal: 6, text: n => `Fix ${n} glitches in one run` },
     { kind: "nohit", goal: 300, text: n => `Reach ${n} m without being touched` },
     { kind: "trail", goal: 3, text: n => `Gather ${n} whole light trails in one run` },
     { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
-    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `Pulls in lights from ${40 + lv * 30} away` : "Lights drift toward Lumi" },
-    { id: "song", name: "Bigger song", tiers: [50, 110, 190], tip: lv => `Song reaches ${150 + lv * 28}, recharges in ${(1.1 - lv * 0.2).toFixed(1)} s` },
+    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `Pulls in lights from ${40 + lv * 30} away` : "Lights drift toward Bip" },
+    { id: "song", name: "Bigger pulse", tiers: [50, 110, 190], tip: lv => `Pulse reaches ${150 + lv * 28}, recharges in ${(1.1 - lv * 0.2).toFixed(1)} s` },
     { id: "heart", name: "Brighter heart", tiers: [120], tip: lv => `Start each run with ${3 + lv} lights of your own` },
   ],
 };
@@ -100,7 +100,7 @@ function runTutorial(dt) {
     R.tutText = ""; R.slow = 1;
     let sh = R.items.find(it => it.type === "shadow" && !it.freed && !it.gone && it.at > R.dist);
     if (!sh || sh.at - R.dist > 420) { R.items.push(sh = { type: "shadow", at: R.dist + 400, x: caveMid(R.dist + 400), ph: 0, amp: 10 }); }
-    if (sh.at - R.dist < 190) { R.slow = 0.25; R.tutText = "Tap to sing!"; }
+    if (sh.at - R.dist < 190) { R.slow = 0.25; R.tutText = "Tap to pulse!"; }
   } else if (R.tut === 3) { R.slow = 1; R.tutText = ""; if (runMetres() > 110) { R.tut = 4; } }
   else if (R.tut === 4) { R.tutText = "Swipe up to dash"; }
 }
@@ -110,7 +110,7 @@ function runSing() {
   run.songs++;
   run.rings.push({ x: run.x, at: run.dist, r: 0, max: (150 + runUpg("song") * 28) * (perk(6) ? 1.25 : 1) });
   if (!run.attract) { sfx.ping(run.songs); buzz(8); }
-  if (run.tut === 2) { run.tut = 3; run.slow = 1; run.tutText = ""; runMsg("That's it!", "Your song turns shadows back into light", 2.2); }
+  if (run.tut === 2) { run.tut = 3; run.slow = 1; run.tutText = ""; runMsg("That's it!", "Your pulse fixes glitches", 2.2); }
   runMission("songs", run.songs);
 }
 function runHit() {
@@ -198,12 +198,12 @@ const RUN_POWERS = {
   comet: { name: "Comet", dur: 5, rgb: "255,210,120", tip: "Unstoppable!" },
   magnet: { name: "Magnet", dur: 8, rgb: "255,170,230", tip: "Lights fly to you" },
   lantern: { name: "Lantern", dur: 10, rgb: "255,240,190", tip: "Double lights, no dark" },
-  choir: { name: "Choir", dur: 8, rgb: "170,240,255", tip: "Singing by itself" },
+  choir: { name: "Auto-pulse", dur: 8, rgb: "170,240,255", tip: "Pulsing by itself" },
 };
 const RUN_EVENTS = {
-  dark: { dur: 14, banner: "Darkness falls", sub: "Sing to see the walls" },
+  dark: { dur: 14, banner: "Power cut", sub: "Pulse to light up the street" },
   rush: { dur: 8, banner: "Rush!", sub: "The current takes you" },
-  hunter: { dur: 16, banner: "Something is chasing you", sub: "Stay fast. Dash to get away" },
+  hunter: { dur: 16, banner: "A glitch wave is coming", sub: "Stay fast. Dash to get away" },
 };
 // Friends lost in the caves: find one floating in a run and it moves into your city.
 const RUN_FRIENDS = [
@@ -423,7 +423,7 @@ function runTick(dt) {
 const WARDEN_NAMES = ["", "a Blackout over Glass Heights", "a Blackout over Golden Hour", "a Blackout over Pink Dusk", "a Blackout over Neon Avenue", "a Blackout in the rain", "a Blackout at midnight", "a Blackout over the Starline"];
 function runStartBoss(b) {
   run.boss = { b, t: 0, hp: 3 + Math.min(2, Math.floor(b / 3)), x: 200, off: 300, listen: 0, cycle: 2.5, vol: 1.6, bolts: [], hurt: 0 };
-  runMsg(`${WARDEN_NAMES[b % 8] || "a Blackout"} rolls in`.replace(/^./, c => c.toUpperCase()), "Sing when its eyes turn gold", 2.8);
+  runMsg(`${WARDEN_NAMES[b % 8] || "a Blackout"} rolls in`.replace(/^./, c => c.toUpperCase()), "Pulse when its eyes turn gold", 2.8);
   sfx.gloomWake(0, true); buzz([30, 50, 30]);
 }
 function runBossTick(dt) {
@@ -751,8 +751,8 @@ function runDraw(ctx, W, H) {
     } else if (it.type === "friend") {
       const bob = Math.sin(t * 2) * 5;
       ctx.globalAlpha = night > 0.4 ? 1 : 0.6; ctx.drawImage(runGlow("255,180,220"), it.x - 40, y - 40 + bob, 80, 80); ctx.globalAlpha = 1;
-      ctx.fillStyle = "#fff0f8"; ctx.beginPath(); ctx.arc(it.x, y + bob, 9, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "rgba(255,120,190,0.8)"; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = "#3a1830"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(it.x + sd * 3, y + bob - 1, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = "#fff0f8"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(it.x - 10, y + bob - 9, 20, 18, 7); else ctx.rect(it.x - 10, y + bob - 9, 20, 18); ctx.fill(); ctx.strokeStyle = "rgba(255,120,190,0.8)"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = "#14192a"; ctx.fillRect(it.x - 7, y + bob - 5, 14, 9); ctx.fillStyle = "#ff9ad0"; for (const sd of [-1, 1]) ctx.fillRect(it.x + sd * 3 - 1, y + bob - 3, 2, 4);
       ctx.fillStyle = "rgba(20,22,30,0.75)"; ctx.font = "600 10px Inter, system-ui, sans-serif"; ctx.textAlign = "center"; const tw = ctx.measureText("help!").width + 12; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(it.x - tw / 2, y + bob - 30, tw, 15, 7); else ctx.rect(it.x - tw / 2, y + bob - 30, tw, 15); ctx.fill(); ctx.fillStyle = "#fff"; ctx.fillText("help!", it.x, y + bob - 19);
     }
   }
@@ -804,19 +804,27 @@ function runDraw(ctx, W, H) {
       for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.strokeStyle = "#2a2f3d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + bob); ctx.lineTo(x + dx * rr * 0.8, y + dy * rr * 0.6 + bob); ctx.stroke(); ctx.fillStyle = "rgba(200,210,230,0.45)"; ctx.beginPath(); ctx.ellipse(x + dx * rr * 0.8, y + dy * rr * 0.6 + bob, rr * 0.45, rr * 0.12, (t * 30 + dx) % Math.PI, 0, Math.PI * 2); ctx.fill(); }
       ctx.fillStyle = Math.sin(t * 6 + it.seed) > 0 ? "#ff3b5c" : "#5a1020"; ctx.beginPath(); ctx.arc(x, y + bob, 2.6, 0, Math.PI * 2); ctx.fill();
     } else if (it.type === "shadow") {
-      // A drifting knot of smoke with two eyes that watch Lumi.
-      const x = it.cx, look = Math.max(-2, Math.min(2, (R.x - x) * 0.03));
-      ctx.globalAlpha = 0.9; ctx.drawImage(runGlow("90,40,140"), x - 34, y - 38, 68, 68); ctx.globalAlpha = 1;
-      for (let q = 0; q < 6; q++) { const a = t * (1.2 + q * 0.2) + q * 1.1, sx = x + Math.cos(a) * 5, sy = y - 4 + q * 5 + Math.sin(a) * 3, rr = 17 - q * 2.3; ctx.fillStyle = `rgba(5,2,12,${0.62 - q * 0.08})`; ctx.beginPath(); ctx.ellipse(sx, sy, rr, rr * 0.85, a * 0.2, 0, Math.PI * 2); ctx.fill(); }
-      for (let q = 0; q < 3; q++) { ctx.strokeStyle = "rgba(10,4,20,0.5)"; ctx.lineWidth = 3 - q * 0.6; ctx.beginPath(); const bx = x + (q - 1) * 8; ctx.moveTo(bx, y + 12); ctx.quadraticCurveTo(bx + Math.sin(t * 3 + q) * 8, y + 24, bx + Math.sin(t * 2 + q) * 5, y + 34); ctx.stroke(); }
-      const blink = (t * 0.6 + it.ph) % 3 < 0.1 ? 0.15 : 1, near = Math.max(0, 1 - Math.abs(it.at - R.dist) / 260);
-      for (const sd of [-1, 1]) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6 + near * 0.4; ctx.drawImage(runGlow("255,110,185"), x + sd * 7 + look - 10, y - 13, 20, 20); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ffc0e0"; ctx.beginPath(); ctx.ellipse(x + sd * 7 + look, y - 3, 3.6, 2.4 * blink, sd * -0.3, 0, Math.PI * 2); ctx.fill(); }
+      // A glitch: a flickering knot of broken pixels with a red/cyan split and two pixel eyes on Bip.
+      const x = it.cx, look = Math.max(-2, Math.min(2, (R.x - x) * 0.03)), fr = Math.floor(t * 14 + it.ph * 10), jr = seeded(fr * 7 + Math.floor(it.at));
+      const near = Math.max(0, 1 - Math.abs(it.at - R.dist) / 260);
+      ctx.globalAlpha = 0.7 + near * 0.3; ctx.globalCompositeOperation = night > 0.4 ? "lighter" : "source-over"; ctx.drawImage(runGlow("255,40,120"), x - 32, y - 32, 64, 64); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+      const jx = (jr() - 0.5) * 4, sp = 2 + jr() * 2;
+      // Colour split copies, then the body.
+      for (const [dx, c] of [[-sp, "rgba(0,240,255,0.75)"], [sp, "rgba(255,30,120,0.75)"], [0, night > 0.4 ? "#120a1e" : "#1a1024"]]) {
+        ctx.fillStyle = c; ctx.fillRect(x - 13 + dx + jx, y - 11, 26, 22);
+        for (let q = 0; q < 5; q++) { const bx = x - 16 + jr() * 30 + dx, by = y - 16 + jr() * 30, bw = 3 + jr() * 7; ctx.fillRect(bx, by, bw, 3 + jr() * 3); }
+      }
+      // Scanlines and a torn strip.
+      ctx.fillStyle = "rgba(255,255,255,0.08)"; for (let q = -10; q < 11; q += 3) ctx.fillRect(x - 13 + jx, y + q, 26, 1);
+      if (jr() < 0.35) { ctx.fillStyle = "rgba(0,240,255,0.8)"; ctx.fillRect(x - 20 + jr() * 10, y - 3 + jr() * 8, 34, 2); }
+      const blink = (t * 0.6 + it.ph) % 3 < 0.1 ? 0.2 : 1;
+      for (const sd of [-1, 1]) { ctx.fillStyle = "#ff3d7f"; ctx.fillRect(x + sd * 6 + look - 3 + jx, y - 4, 6, 6 * blink); ctx.fillStyle = "#ffffff"; ctx.fillRect(x + sd * 6 + look - 1 + jx, y - 3, 2, 2 * blink); }
     }
   }
   // Song rings: a bright ring with a softer echo behind it, sparkling where it runs.
   for (const ring of R.rings) {
     const k = ring.r / ring.max, y = yOf(ring.at);
-    for (const [rr, a, w] of [[ring.r, 0.85, 3], [ring.r * 0.82, 0.35, 2], [ring.r * 0.6, 0.15, 1.5]]) { ctx.strokeStyle = `rgba(175,240,255,${a * (1 - k)})`; ctx.lineWidth = w * (1 - k) + 0.6; ctx.beginPath(); ctx.arc(ring.x, y, rr, 0, Math.PI * 2); ctx.stroke(); }
+    for (const [rr, a, w] of [[ring.r, 0.85, 3], [ring.r * 0.82, 0.35, 2], [ring.r * 0.6, 0.15, 1.5]]) { ctx.strokeStyle = night > 0.4 ? `rgba(120,240,255,${a * (1 - k)})` : `rgba(0,150,230,${a * (1 - k)})`; ctx.lineWidth = w * (1 - k) + 0.6; ctx.beginPath(); ctx.arc(ring.x, y, rr, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 1 - k;
     for (let q = 0; q < 12; q++) { const a = q / 12 * Math.PI * 2 + t; ctx.drawImage(runGlow("190,245,255"), ring.x + Math.cos(a) * ring.r - 5, y + Math.sin(a) * ring.r - 5, 10, 10); }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
@@ -841,7 +849,7 @@ function runDraw(ctx, W, H) {
   };
   const tr = RUN_TRAILS[(save.run || {}).trail || 0] || RUN_TRAILS[0];
   ribbon(14, R.attract ? "150,235,255" : trailRgb(t), 0.35); ribbon(5, R.attract ? "235,252,255" : tr.core, 0.7);
-  // Lumi: a halo, a soft pulsing ring, the body leaning into its turns and stretching with speed.
+  // Bip: a halo, a soft pulsing ring, the body leaning into its turns and stretching with speed.
   const pulse = 1 + Math.sin(t * 3) * 0.06 + (R.songCd > 0.8 ? 0.25 : 0);
   ctx.drawImage(runGlow(R.power ? RUN_POWERS[R.power.kind].rgb : "150,235,255"), R.x - 70 * pulse, LY - 70 * pulse, 140 * pulse, 140 * pulse);
   if (R.power && R.power.kind === "comet") { ctx.drawImage(runGlow("255,200,100"), R.x - 50, LY - 20, 100, 160); }
@@ -849,28 +857,42 @@ function runDraw(ctx, W, H) {
   if (!(R.inv > 0.4 && Math.floor(R.inv * 12) % 2)) {
     const tilt = R.tilt || 0, stretch = 1 + Math.min(0.18, Math.abs(R.vx || 0) * 0.0007) + fast * 0.06, bob = Math.sin(t * 2.6) * 1.5;
     ctx.save(); ctx.translate(R.x, LY + bob); ctx.rotate(tilt);
-    ctx.strokeStyle = `rgba(200,245,255,${0.35 + 0.25 * Math.sin(t * 3)})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, 17 * pulse, 0, Math.PI * 2); ctx.stroke();
+    // Bip: a round little robot with a screen face, an antenna and a jet below.
+    ctx.scale(1.18, 1.18);
+    const flame = 6 + Math.sin(t * 30) * 2 + fast * 6;
+    ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("120,220,255"), -9, 10, 18, 14 + flame * 2); ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#bff4ff"; ctx.beginPath(); ctx.moveTo(-4, 12); ctx.lineTo(0, 13 + flame); ctx.lineTo(4, 12); ctx.fill();
     // The antenna sways the other way.
-    ctx.strokeStyle = "#bfefff"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(0, -11); ctx.quadraticCurveTo(-tilt * 14 + 2, -20, -tilt * 18 + 1, -25); ctx.stroke();
-    ctx.drawImage(runGlow("220,250,255"), -tilt * 18 + 1 - 7, -32, 14, 14);
+    ctx.strokeStyle = "#8a96ad"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(0, -12); ctx.quadraticCurveTo(-tilt * 14 + 1, -18, -tilt * 18 + 1, -22); ctx.stroke();
+    ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(R.power ? RUN_POWERS[R.power.kind].rgb : "120,240,255"), -tilt * 18 - 7, -29, 16, 16); ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = R.power ? `rgb(${RUN_POWERS[R.power.kind].rgb})` : "#7ff0ff"; ctx.beginPath(); ctx.arc(-tilt * 18 + 1, -22, 2.6, 0, Math.PI * 2); ctx.fill();
     ctx.scale(1 / Math.sqrt(stretch), stretch);
-    const sk = !R.attract && playingAs() >= 0 ? ["#fff8fc", "#ffe0f0", "#ff9ccc"] : SKINS[save.skin] && skinUnlocked(save.skin) && SKINS[save.skin].body ? SKINS[save.skin].body : ["#ffffff", "#d6f6ff", "#7fd8f5"];
+    const sk = !R.attract && playingAs() >= 0 ? ["#fff4fa", "#ffd6ea", "#e98ab8"] : SKINS[save.skin] && skinUnlocked(save.skin) && SKINS[save.skin].body ? SKINS[save.skin].body : ["#ffffff", "#e8eef7", "#a9b6c9"];
     if (!R.attract && perk(9)) ctx.scale(0.8, 0.8);
-    const g = ctx.createRadialGradient(-4, -5, 1, 0, 0, 13); g.addColorStop(0, sk[0]); g.addColorStop(0.65, sk[1]); g.addColorStop(1, sk[2]);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
-    const look = Math.max(-2.2, Math.min(2.2, (R.vx || 0) * 0.012)), blink = (t % 3.4) < 0.12 ? 0.15 : 1, happy = R.happy > 0;
-    ctx.fillStyle = "#123049";
-    for (const sd of [-1, 1]) { ctx.beginPath(); if (happy) { ctx.lineWidth = 1.6; ctx.strokeStyle = "#123049"; ctx.arc(sd * 4.5 + look, 0, 2.2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); } else { ctx.ellipse(sd * 4.5 + look, -1, 1.8, 2.7 * blink, 0, 0, Math.PI * 2); ctx.fill(); } }
-    ctx.fillStyle = "rgba(255,150,190,0.45)"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * 7.5, 4, 2.4, 1.4, 0, 0, Math.PI * 2); ctx.fill(); }
+    const rr2 = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+    // Ear bolts, then the shell.
+    ctx.fillStyle = sk[2]; rr2(-17, -4, 5, 8, 2); ctx.fill(); rr2(12, -4, 5, 8, 2); ctx.fill();
+    const g = ctx.createLinearGradient(0, -13, 0, 13); g.addColorStop(0, sk[0]); g.addColorStop(0.6, sk[1]); g.addColorStop(1, sk[2]);
+    ctx.fillStyle = g; rr2(-14, -13, 28, 25, 10); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1; ctx.stroke();
+    // The screen face.
+    ctx.fillStyle = "#14192a"; rr2(-10, -8, 20, 14, 6); ctx.fill();
+    const look = Math.max(-2, Math.min(2, (R.vx || 0) * 0.012)), blink = (t % 3.4) < 0.12 ? 0.15 : 1, happy = R.happy > 0, eye = !R.attract && playingAs() >= 0 ? "#ff9ad0" : "#7ff0ff";
+    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6; ctx.drawImage(runGlow(eye === "#7ff0ff" ? "120,240,255" : "255,150,210"), -11, -10, 22, 18); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = eye; ctx.strokeStyle = eye; ctx.lineWidth = 1.8; ctx.lineCap = "round";
+    for (const sd of [-1, 1]) { if (happy) { ctx.beginPath(); ctx.arc(sd * 4.5 + look, 0, 2.4, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); } else { rr2(sd * 4.5 + look - 1.6, -3.5 + (1 - blink) * 2.5, 3.2, 5 * blink, 1.5); ctx.fill(); } }
+    ctx.fillStyle = "rgba(255,140,180,0.55)"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * 9, 8, 2.2, 1.2, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
   }
   ctx.restore();
   // The Hunter: a vast shadow rising behind Lumi, closer as the gap closes.
   if (R.event && R.event.kind === "hunter") {
     const gy = H * (1.15 - (1 - R.hunterGap) * 0.42), gx = W / 2 + Math.sin(t * 0.8) * W * 0.1;
-    const g = ctx.createRadialGradient(gx, gy, 10, gx, gy, W * 0.75); g.addColorStop(0, "rgba(4,1,10,0.97)"); g.addColorStop(0.6, "rgba(10,3,24,0.85)"); g.addColorStop(1, "rgba(10,3,24,0)");
-    ctx.fillStyle = g; ctx.fillRect(0, gy - W * 0.75, W, W * 1.5);
-    for (const sd of [-1, 1]) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,90,170"), gx + sd * W * 0.12 - 40, gy - W * 0.2 - 40, 80, 80); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ffb0d8"; ctx.beginPath(); ctx.ellipse(gx + sd * W * 0.12, gy - W * 0.2, 14, 6, sd * -0.3, 0, Math.PI * 2); ctx.fill(); }
+    const fr = seeded(Math.floor(t * 12)), top = gy - W * 0.35;
+    const g = ctx.createLinearGradient(0, top - 40, 0, H); g.addColorStop(0, "rgba(10,4,20,0)"); g.addColorStop(0.25, "rgba(10,4,20,0.9)"); g.addColorStop(1, "rgba(10,4,20,1)");
+    ctx.fillStyle = g; ctx.fillRect(0, top - 40, W, H - top + 40);
+    for (let q = 0; q < 40; q++) { const y = top - 50 + fr() * 120, x = fr() * W, w = 10 + fr() * 70, c = fr(); ctx.fillStyle = c < 0.4 ? "rgba(0,240,255,0.7)" : c < 0.8 ? "rgba(255,30,120,0.7)" : "rgba(20,10,30,0.95)"; ctx.fillRect(x, y, w, 3 + fr() * 8); }
+    for (const sd of [-1, 1]) { ctx.fillStyle = "#ff3d7f"; ctx.fillRect(gx + sd * W * 0.12 - 12, top + 30, 24, 14); ctx.fillStyle = "#fff"; ctx.fillRect(gx + sd * W * 0.12 - 4, top + 33, 8, 6); }
   }
   // Darkness falls: only Lumi's light and its songs show the cave.
   if (R.event && R.event.kind === "dark" && !(R.power && R.power.kind === "lantern")) {

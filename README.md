@@ -29,7 +29,7 @@ Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted g
 
 Echo no longer happens in a dark cave. Lumi climbs between glass skyscrapers, and the time of day changes as you go up: **Morning Plaza** and **Glass Heights** in bright daylight, **Golden Hour**, **Pink Dusk**, then neon night on **Neon Avenue**, **Rain Lights** and **Midnight Gold**, and finally the **Starline**, above the rooftops under the stars and an aurora. Towers have rows of windows that light up after dark, neon strips and signs; a skyline and clouds drift behind.
 
-Hazards have city versions: drones instead of rocks, laser gates, steam vents, falling glass panes, gusts of wind, balloons to ride, swinging cable cars and rooftop searchlights. The boss at the start of each new district is a **Blackout**, a living thundercloud: sing when its eyes turn gold to clear it.
+Hazards have city versions: drones instead of rocks, laser gates, steam vents, falling glass panes, gusts of wind, balloons to ride, swinging cable cars and rooftop searchlights. You play as **Bip**, a little robot with a screen face and a jet. The enemies are **glitches**, flickering knots of broken pixels: tap to send out a **pulse** that fixes them (it used to be a song). The chase event is now a glitch wave, and the dark event is a power cut. The boss at the start of each new district is a **Blackout**, a living thundercloud: sing when its eyes turn gold to clear it.
 
 ## Play: the endless run
 

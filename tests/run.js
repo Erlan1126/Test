@@ -334,7 +334,7 @@ const SIM = `
       out.firstRunTeachesSteering = run.tut === 1;
       for (let q = 0; q < 120; q++) { run.tx = caveMid(run.dist) + (q % 40 < 20 ? 60 : -60); runUpdate(1 / 60); }
       for (let q = 0; q < 120 && run.slow === 1; q++) runUpdate(1 / 60);
-      out.timeSlowsAtTheFirstShadow = run.tut === 2 && run.slow < 1 && run.tutText.includes("sing");
+      out.timeSlowsAtTheFirstShadow = run.tut === 2 && run.slow < 1 && run.tutText.includes("pulse");
       runSing(); out.singingMovesTheLessonOn = run.tut === 3 && run.slow === 1;
       run.dist = 120 * RUN.M; runUpdate(1 / 60); run.dashCd = 0; runDash();
       out.dashingFinishesTheLessons = run.tut === 0 && save.run.tutDone === 1;
