@@ -25,6 +25,12 @@ Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted g
 - **When a run ends**: one card slides up with the score counting, best, metres, lights and best combo, the level bar, today's progress, and Play again in the middle (Home and Share on either side).
 - **Friends' abilities**: playing as a friend gives an ability button (a four-second Magnet, Comet, Lantern or Choir), ready again after 25 s.
 
+## The city (new look)
+
+Echo no longer happens in a dark cave. Lumi climbs between glass skyscrapers, and the time of day changes as you go up: **Morning Plaza** and **Glass Heights** in bright daylight, **Golden Hour**, **Pink Dusk**, then neon night on **Neon Avenue**, **Rain Lights** and **Midnight Gold**, and finally the **Starline**, above the rooftops under the stars and an aurora. Towers have rows of windows that light up after dark, neon strips and signs; a skyline and clouds drift behind.
+
+Hazards have city versions: drones instead of rocks, laser gates, steam vents, falling glass panes, gusts of wind, balloons to ride, swinging cable cars and rooftop searchlights. The boss at the start of each new district is a **Blackout**, a living thundercloud: sing when its eyes turn gold to clear it.
+
 ## Play: the endless run
 
 Echo's main mode is now a calm, beautiful endless run (`echo/run.js`), in the spirit of Alto's Adventure with Subway Surfers' "one more run" hook. **Play** on the title starts it (after the opening film, the first time).

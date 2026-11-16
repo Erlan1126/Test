@@ -15,7 +15,7 @@ const RUN = {
     { kind: "free", goal: 6, text: n => `Sing ${n} shadows back into light in one run` },
     { kind: "nohit", goal: 300, text: n => `Reach ${n} m without being touched` },
     { kind: "trail", goal: 3, text: n => `Gather ${n} whole light trails in one run` },
-    { kind: "biome", goal: 2, text: n => `Reach world ${n}` },
+    { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
     { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `Pulls in lights from ${40 + lv * 30} away` : "Lights drift toward Lumi" },
@@ -416,14 +416,14 @@ function runTick(dt) {
   }
 }
 
-// ---------- Wardens: a boss at the start of every new world ----------
+// ---------- Blackouts: a storm boss at the start of every new district ----------
 // A vast shadow guards the way into each world. It hangs ahead of Lumi and throws fans of
 // shadow bolts. Every few seconds it stops to listen, its eyes turning gold, and swoops close:
 // sing then, three times, and it's calmed. Songs also break bolts. After 35 s it lets you pass.
-const WARDEN_NAMES = ["", "the Moss Warden", "the Crystal Warden", "the Ember Warden", "the Frost Warden", "the Tide Warden", "the Lantern Warden", "the Star Warden"];
+const WARDEN_NAMES = ["", "a Blackout over Glass Heights", "a Blackout over Golden Hour", "a Blackout over Pink Dusk", "a Blackout over Neon Avenue", "a Blackout in the rain", "a Blackout at midnight", "a Blackout over the Starline"];
 function runStartBoss(b) {
   run.boss = { b, t: 0, hp: 3 + Math.min(2, Math.floor(b / 3)), x: 200, off: 300, listen: 0, cycle: 2.5, vol: 1.6, bolts: [], hurt: 0 };
-  runMsg(`${WARDEN_NAMES[b % 8] || "a Warden"} blocks the way`.replace(/^./, c => c.toUpperCase()), "Sing when its eyes turn gold", 2.8);
+  runMsg(`${WARDEN_NAMES[b % 8] || "a Blackout"} rolls in`.replace(/^./, c => c.toUpperCase()), "Sing when its eyes turn gold", 2.8);
   sfx.gloomWake(0, true); buzz([30, 50, 30]);
 }
 function runBossTick(dt) {
@@ -453,10 +453,10 @@ function runBossTick(dt) {
     if (Math.hypot(B.x - ring.x, B.at - ring.at) < ring.r + 40) {
       ring.hitBoss = true; B.hp--; B.hurt = 0.6; B.listen = 0; B.cycle = 2.6; B.bolts.length = 0;
       if (!R.attract) { sfx.rune(); buzz([20, 30]); }
-      if (B.hp <= 0) { R.boss = null; runBonus("The Warden is at peace! +50 ✦", 50, R.dist + 120); R.flash = -0.8; progressEvent("boss"); R.next = Math.max(R.next, R.dist + 300); if (!R.attract) sfx.gate(); return; }
+      if (B.hp <= 0) { R.boss = null; runBonus("The Blackout clears! +50 ✦", 50, R.dist + 120); R.flash = -0.8; progressEvent("boss"); R.next = Math.max(R.next, R.dist + 300); if (!R.attract) sfx.gate(); return; }
     }
   }
-  if (B.t > 35) { R.boss = null; runMsg("The Warden lets you pass", "", 2); R.next = Math.max(R.next, R.dist + 300); }
+  if (B.t > 35) { R.boss = null; runMsg("The Blackout drifts away", "", 2); R.next = Math.max(R.next, R.dist + 300); }
 }
 
 // ---------- Forks: the cave splits around a great rock ----------
@@ -582,6 +582,24 @@ const RUN_AIR = [
   { rgb: "255,150,80", vy: -0.6, size: 6 }, { rgb: "240,248,255", vy: 0.9, size: 6 }, { rgb: "150,235,255", vy: -0.4, size: 7, bubble: 1 },
   { rgb: "255,215,120", vy: 0.15, size: 5 }, { rgb: "255,190,240", vy: 0.3, size: 6, twinkle: 1 },
 ];
+// Echo's city: Lumi climbs between skyscrapers, from a bright morning up through golden hour
+// and pink dusk into neon night, and out above the rooftops under the stars. Each district has
+// its own sky, towers, windows and neon.
+const RUN_WORLDS = [
+  { name: "Morning Plaza", sky: [[96, 170, 255], [170, 214, 255], [236, 246, 255]], tower: [214, 226, 242], win: [150, 196, 240], neon: [64, 156, 255], night: 0, sun: 1, cloud: 1 },
+  { name: "Glass Heights", sky: [[70, 160, 250], [150, 210, 252], [232, 248, 255]], tower: [196, 222, 236], win: [130, 200, 230], neon: [40, 210, 190], night: 0, sun: 1, cloud: 1 },
+  { name: "Golden Hour", sky: [[255, 140, 90], [255, 190, 130], [255, 228, 190]], tower: [222, 182, 150], win: [255, 214, 150], neon: [255, 130, 60], night: 0.15, sun: 1, cloud: 1 },
+  { name: "Pink Dusk", sky: [[80, 66, 150], [196, 110, 170], [255, 172, 150]], tower: [98, 84, 130], win: [255, 200, 150], neon: [255, 100, 200], night: 0.55, cloud: 1 },
+  { name: "Neon Avenue", sky: [[14, 10, 42], [40, 20, 80], [76, 30, 110]], tower: [26, 24, 48], win: [120, 230, 255], neon: [40, 225, 255], neon2: [255, 60, 240], night: 1 },
+  { name: "Rain Lights", sky: [[10, 18, 32], [24, 40, 61], [34, 56, 80]], tower: [20, 28, 40], win: [120, 255, 200], neon: [60, 255, 180], neon2: [255, 90, 120], night: 1, rain: 1 },
+  { name: "Midnight Gold", sky: [[5, 7, 15], [14, 19, 40], [27, 33, 64]], tower: [16, 19, 31], win: [255, 205, 110], neon: [255, 200, 90], night: 1 },
+  { name: "Starline", sky: [[2, 3, 19], [10, 15, 46], [26, 24, 70]], tower: [11, 13, 26], win: [190, 180, 255], neon: [155, 140, 255], neon2: [120, 255, 220], night: 1, stars: 1 },
+];
+const runWorld = b => RUN_WORLDS[b % RUN_WORLDS.length];
+// Buildings along each side: the passage edge, held level for each block, so the walls step like towers.
+const BLOCK = 92;
+const blockEdge = (k, side) => { const a = k * BLOCK + BLOCK / 2, r = seeded(k * 7 + (side > 0 ? 3 : 0)); return caveMid(a) + side * (caveHalf(a, run ? run.dist : 0) + r() * 10); };
+
 function runDraw(ctx, W, H) {
   const R = run, t = R.t;
   // The camera: follows Lumi a little sideways, pulls back as you speed up, shakes when you're hit.
@@ -589,152 +607,179 @@ function runDraw(ctx, W, H) {
   const LY = H / S * (0.7 + Math.min(0.05, (R.speed - 200) / 4000));
   const shake = R.shake > 0 ? R.shake * 6 : 0, camX = R.camX || 0;
   const m = R.dist / RUN.M, b = Math.floor(m / RUN.BIOME_M), f = Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
-  const th = THEMES[b % THEMES.length], th2 = THEMES[(b + 1) % THEMES.length];
-  const rim = mixC(th.rim, th2.rim, f), deep = mixC(th.deep, th2.deep, f), floor = mixC(th.floor2, th2.floor2, f), rock = mixC(th.rock, th2.rock, f);
+  const w1 = runWorld(b), w2 = runWorld(b + 1), mixW = k => mixC(w1[k], w2[k], f);
+  const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
+  const rim = neon, rock = tower, deep = mixC(w1.sky[0], w2.sky[0], f);
+  // The sky.
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, `rgb(${mixC(deep, [4, 5, 8], 0.72)})`); sky.addColorStop(0.5, `rgb(${mixC(mixC(floor, deep, 0.4), [6, 7, 11], 0.45)})`); sky.addColorStop(1, `rgb(${mixC(deep, [3, 4, 6], 0.78)})`);
+  sky.addColorStop(0, `rgb(${mixC(w1.sky[0], w2.sky[0], f)})`); sky.addColorStop(0.55, `rgb(${mixC(w1.sky[1], w2.sky[1], f)})`); sky.addColorStop(1, `rgb(${mixC(w1.sky[2], w2.sky[2], f)})`);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
   ctx.save();
   ctx.translate(W / 2 + (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); ctx.scale(S, S); ctx.translate(-200 - camX, 0);
   const Hu = H / S, yOf = at => LY - (at - R.dist), left = -60 + camX, right = 460 + camX;
-  // A soft light high above: home.
-  ctx.globalCompositeOperation = "lighter";
-  ctx.globalAlpha = 0.5; ctx.drawImage(runGlow(rim.join(",")), 200 + camX * 0.5 - 260, -260, 520, 520); ctx.globalAlpha = 1;
-  // Light shafts.
-  for (let q = 0; q < 3; q++) { const x = 60 + q * 140 + Math.sin(t * 0.2 + q) * 30 + camX * 0.6, g = ctx.createLinearGradient(x, 0, x + 60, Hu); g.addColorStop(0, `rgba(${rim},0.09)`); g.addColorStop(1, `rgba(${rim},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - 20, 0); ctx.lineTo(x + 30, 0); ctx.lineTo(x + 110, Hu); ctx.lineTo(x + 40, Hu); ctx.fill(); }
-  ctx.globalCompositeOperation = "source-over";
-  // Three layers of far cave, each moving slower the further away it is: hanging and rising spires.
-  [[0.18, 0.55, 260], [0.32, 0.4, 200], [0.5, 0.25, 150]].forEach(([par, fog, gap], layer) => {
-    ctx.fillStyle = `rgb(${mixC(mixC(deep, [0, 0, 0], 0.3), mixC(floor, deep, 0.4), fog)})`;
-    for (let q = -1; q < Hu / gap + 2; q++) {
-      const base = Math.floor(R.dist * par / gap) + q, r = seeded(base * 13 + layer * 101), y = LY - (base * gap - R.dist * par);
-      const x = left + r() * (right - left) + camX * (par - 1), w = 18 + r() * 34 * (1 + layer * 0.3), h = 90 + r() * 140, up = r() < 0.5;
-      ctx.beginPath(); ctx.moveTo(x - w, y); ctx.quadraticCurveTo(x - w * 0.3, y + (up ? -h * 0.6 : h * 0.6), x, y + (up ? -h : h)); ctx.quadraticCurveTo(x + w * 0.3, y + (up ? -h * 0.6 : h * 0.6), x + w, y); ctx.closePath(); ctx.fill();
+  // Sun by day, moon by night; stars and an aurora up high.
+  const day = 1 - night;
+  if (day > 0.05) { ctx.globalAlpha = day; const g = ctx.createRadialGradient(290 + camX * 0.2, 90, 6, 290 + camX * 0.2, 90, 150); g.addColorStop(0, "rgba(255,250,235,1)"); g.addColorStop(0.18, "rgba(255,240,210,0.85)"); g.addColorStop(1, "rgba(255,230,190,0)"); ctx.fillStyle = g; ctx.fillRect(140 + camX * 0.2, -60, 300, 300); ctx.globalAlpha = 1; }
+  if (night > 0.4) {
+    ctx.globalAlpha = (night - 0.4) / 0.6;
+    const r = seeded(9); for (let q = 0; q < 80; q++) { ctx.fillStyle = `rgba(255,255,255,${0.35 + 0.65 * Math.abs(Math.sin(t * 0.7 + q))})`; ctx.fillRect(left + r() * (right - left), r() * Hu * 0.6, 1.4, 1.4); }
+    ctx.fillStyle = "#f4f2e8"; ctx.beginPath(); ctx.arc(120 + camX * 0.2, 80, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgb(${mixC(w1.sky[0], w2.sky[0], f)})`; ctx.beginPath(); ctx.arc(127 + camX * 0.2, 75, 14, 0, Math.PI * 2); ctx.fill();
+    if (w1.stars) { ctx.globalCompositeOperation = "lighter"; for (let q = 0; q < 3; q++) { const g = ctx.createLinearGradient(0, 40 + q * 30, 0, 180 + q * 30); g.addColorStop(0, "rgba(120,255,210,0)"); g.addColorStop(0.5, `rgba(${q ? "150,140,255" : "120,255,210"},0.12)`); g.addColorStop(1, "rgba(120,255,210,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(left, 120 + q * 30); for (let x = left; x <= right; x += 20) ctx.lineTo(x, 100 + q * 30 + Math.sin(x * 0.015 + t * 0.4 + q) * 30); ctx.lineTo(right, 220 + q * 30); ctx.lineTo(left, 220 + q * 30); ctx.fill(); } ctx.globalCompositeOperation = "source-over"; }
+    ctx.globalAlpha = 1;
+  }
+  // Soft clouds drifting by in the day and at dusk.
+  if (night < 0.7) {
+    ctx.globalAlpha = Math.min(1, (0.7 - night) * 1.6) * 0.9;
+    for (let q = -1; q < 5; q++) {
+      const base = Math.floor(R.dist * 0.12 / 220) + q, r = seeded(base * 5 + 1), y = LY - (base * 220 - R.dist * 0.12), x = left + r() * (right - left) + Math.sin(t * 0.05 + q) * 20, w = 60 + r() * 80;
+      ctx.fillStyle = night > 0.3 ? `rgba(${mixC([255, 190, 200], [120, 100, 160], night)},0.7)` : "rgba(255,255,255,0.85)";
+      ctx.beginPath(); ctx.ellipse(x, y, w, w * 0.22, 0, 0, Math.PI * 2); ctx.ellipse(x - w * 0.4, y + 4, w * 0.5, w * 0.18, 0, 0, Math.PI * 2); ctx.ellipse(x + w * 0.35, y - 6, w * 0.45, w * 0.24, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // The far skyline: two layers of towers, paler and slower the further away.
+  [[0.14, 0.72, 46], [0.3, 0.45, 60]].forEach(([par, haze, wd], layer) => {
+    const skyMid = mixC(w1.sky[1], w2.sky[1], f), col = mixC(mixC(tower, [0, 0, 0], night * 0.55), skyMid, haze);
+    for (let q = -2; q < 12; q++) {
+      const base = Math.floor(camX * par / wd) + q, r = seeded(base * 13 + layer * 101), x = base * wd - camX * par + left * 0 + r() * 8 - 40, w = wd * (0.55 + r() * 0.4);
+      const top = Hu * (0.25 + r() * 0.35) + layer * 40 - ((R.dist * par * 0.15) % 40);
+      ctx.fillStyle = `rgb(${col})`; ctx.fillRect(x, top, w, Hu);
+      if (night > 0.3) { ctx.fillStyle = `rgba(${winC},${0.3 * night * (1 - haze * 0.6)})`; for (let wy = top + 8; wy < Hu; wy += 12) for (let wx = x + 4; wx < x + w - 4; wx += 8) if (seeded(wx * 3 + wy)() < 0.18) ctx.fillRect(wx, wy, 3, 4); }
     }
   });
-  // Drifting bands of fog.
-  for (let q = 0; q < 3; q++) { const y = ((q * 0.37 + t * 0.012 + R.dist * 0.0004) % 1.2 - 0.1) * Hu, g = ctx.createLinearGradient(0, y - 60, 0, y + 60); g.addColorStop(0, `rgba(${rim},0)`); g.addColorStop(0.5, `rgba(${mixC(rim, deep, 0.5)},0.07)`); g.addColorStop(1, `rgba(${rim},0)`); ctx.fillStyle = g; ctx.fillRect(left, y - 60, right - left, 120); }
-  // The world's air.
-  const air = RUN_AIR[b % RUN_AIR.length];
+  // The district's air: dust by day, petals at dusk, neon bokeh, rain, gold sparks, stars.
   for (let q = 0; q < 34; q++) {
-    const r = seeded(q * 13 + 1), x = left + r() * (right - left) + Math.sin(t * 0.5 + q) * 8, y = (((r() * Hu + R.dist * (0.25 + r() * 0.4) + t * 40 * air.vy) % Hu) + Hu) % Hu;
-    ctx.globalAlpha = (0.3 + 0.5 * (air.twinkle ? Math.abs(Math.sin(t * 2 + q)) : r())) * 0.9; const s = air.size * (0.5 + r());
-    if (air.bubble) { ctx.strokeStyle = `rgba(${air.rgb},0.7)`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, s * 0.5, 0, Math.PI * 2); ctx.stroke(); }
-    else { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(air.rgb), x - s, y - s, s * 2, s * 2); ctx.globalCompositeOperation = "source-over"; }
+    const r = seeded(q * 13 + 1), x = left + r() * (right - left) + Math.sin(t * 0.5 + q) * 8;
+    if (w1.rain) { const y = (((r() * Hu + t * 700 + R.dist * 0.6) % Hu) + Hu) % Hu; ctx.strokeStyle = "rgba(190,220,255,0.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 18); ctx.stroke(); continue; }
+    const y = (((r() * Hu + R.dist * (0.25 + r() * 0.4) - t * 12) % Hu) + Hu) % Hu, s = 2 + r() * 4;
+    if (night > 0.5) { ctx.globalAlpha = 0.25 + 0.4 * Math.abs(Math.sin(t + q)); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(q % 2 ? neon.join(",") : neon2.join(",")), x - s * 2, y - s * 2, s * 4, s * 4); ctx.globalCompositeOperation = "source-over"; }
+    else { ctx.globalAlpha = 0.5; ctx.fillStyle = night > 0.3 ? "rgba(255,190,210,0.9)" : "rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.ellipse(x, y, s * 0.6, s * 0.35, t + q, 0, Math.PI * 2); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
-  // Speed: faint streaks when the cave is really moving.
+  // Speed: faint streaks when the city is really rushing by.
   const fast = Math.max(0, (R.speed - 260) / 140);
-  if (fast > 0) { ctx.strokeStyle = `rgba(${rim},${0.18 * fast})`; ctx.lineWidth = 1; for (let q = 0; q < 14; q++) { const r = seeded(q * 7), x = left + r() * (right - left), y = ((r() * Hu + R.dist * 1.4) % (Hu + 80)) - 40; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 30 + fast * 30); ctx.stroke(); } }
-  // The cave walls: layered dark rock with broken edges that catch the world's glow, brighter
-  // where Lumi's light falls on them.
-  const edge = (side, inset = 0) => { const pts = []; for (let y = -30; y <= Hu + 30; y += 7) { const a = R.dist + (LY - y); pts.push([caveMid(a) + side * (caveHalf(a, R.dist) + rockEdge(a + side * 500) + inset), y]); } return pts; };
-  const line = pts => { ctx.beginPath(); pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); };
+  if (fast > 0) { ctx.strokeStyle = `rgba(255,255,255,${0.2 * fast})`; ctx.lineWidth = 1; for (let q = 0; q < 14; q++) { const r = seeded(q * 7), x = left + r() * (right - left), y = ((r() * Hu + R.dist * 1.4) % (Hu + 80)) - 40; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 30 + fast * 30); ctx.stroke(); } }
+  // The towers either side: glass by day, dark with lit windows and neon strips at night.
+  const k0 = Math.floor((R.dist - (Hu - LY) - 40) / BLOCK), k1 = Math.ceil((R.dist + LY + 40) / BLOCK);
   for (const side of [-1, 1]) {
-    const pts = edge(side), outer = side < 0 ? left - 20 : right + 20;
-    const g = ctx.createLinearGradient(side < 0 ? left : right, 0, 200 + side * 60, 0); g.addColorStop(0, "#010104"); g.addColorStop(1, `rgb(${mixC(rock, [0, 0, 0], 0.82)})`);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(outer, -30); for (const p of pts) ctx.lineTo(p[0], p[1]); ctx.lineTo(outer, Hu + 30); ctx.fill();
-    // Strata: fainter ledges further into the rock.
-    ctx.lineJoin = "round";
-    for (const [inset, a] of [[18, 0.07]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = 1; line(edge(side, inset)); ctx.stroke(); }
-    for (const [w, a] of [[6, 0.06], [1.3, 0.95]]) { ctx.strokeStyle = `rgba(${mixC(rim, [255, 255, 255], 0.3)},${a})`; ctx.lineWidth = w; line(pts); ctx.stroke(); }
-    // Lumi lights the rock near it.
-    const lg = ctx.createLinearGradient(0, LY - 150, 0, LY + 150); lg.addColorStop(0, "rgba(190,245,255,0)"); lg.addColorStop(0.5, `rgba(190,245,255,${0.55 + 0.2 * Math.sin(t * 3)})`); lg.addColorStop(1, "rgba(190,245,255,0)");
-    ctx.strokeStyle = lg; ctx.lineWidth = 3; line(pts.filter(p => Math.abs(p[1] - LY) < 160)); ctx.stroke();
-    // Crystals growing from the walls.
-    for (let q = -2; q < 12; q++) { const base = Math.floor(R.dist / 120) + q, r = seeded(base * 31 + (side > 0 ? 7 : 0)); if (r() < 0.55) continue; const a = base * 120, y = yOf(a), x = caveMid(a) + side * (caveHalf(a, R.dist) + rockEdge(a + side * 500)), s = 6 + r() * 9, tilt = (r() - 0.5) * 0.8;
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(rim.join(",")), x - s * 3, y - s * 3, s * 6, s * 6); ctx.globalCompositeOperation = "source-over";
-      for (let c = 0; c < 3; c++) { const cs = s * (1 - c * 0.28), ang = tilt + (c - 1) * 0.5; ctx.fillStyle = `rgba(${mixC(rim, [255, 255, 255], 0.35 + c * 0.2)},0.9)`; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - side * Math.cos(ang) * cs * 1.4 - Math.sin(ang) * cs * 0.3, y - Math.sin(ang) * cs * 1.4); ctx.lineTo(x - side * cs * 0.3, y + cs * 0.3); ctx.fill(); } }
-  }
-  // Glow-worms: threads of tiny lights hanging from the walls.
-  for (let q = -2; q < 16; q++) {
-    const base = Math.floor(R.dist / 90) + q, r = seeded(base * 17 + 5); if (r() < 0.5) continue;
-    const side = r() < 0.5 ? -1 : 1, a = base * 90, y0 = yOf(a), x0 = caveMid(a) + side * (caveHalf(a, R.dist) + rockEdge(a + side * 500) - 2), len = 3 + Math.floor(r() * 5);
-    for (let k = 0; k < len; k++) { const x = x0 - side * (2 + k * 0.6), y = y0 + k * 7 + Math.sin(t * 1.5 + base) * 1.5; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 2 + k + base); ctx.drawImage(runGlow("170,255,220"), x - 3, y - 3, 6, 6); }
-  }
-  ctx.globalAlpha = 1;
-  // World hazards.
-  for (const it of R.items) {
-    if (it.gone) continue;
-    const y = yOf(it.at); if (y < -120 || y > Hu + 120) continue;
-    const mid = caveMid(it.at), hw = caveHalf(it.at, R.dist);
-    if (it.type === "current") {
-      // Streams of green light flowing sideways.
-      ctx.strokeStyle = "rgba(160,255,190,0.35)"; ctx.lineWidth = 1.5;
-      for (let q = 0; q < 14; q++) { const yy = y - (q / 14) * it.len, ph = ((t * 1.4 + q * 0.37) % 1), x0 = mid - hw + ph * hw * 2; ctx.beginPath(); ctx.moveTo(x0 - it.dir * 18, yy); ctx.lineTo(x0 + it.dir * 18, yy); ctx.lineTo(x0 + it.dir * 10, yy - 5); ctx.stroke(); }
-    } else if (it.type === "gate") {
-      const gap = 34 + 30 * (0.5 + 0.5 * Math.sin(t * 1.6 + it.ph));
-      for (const side of [-1, 1]) {
-        const x0 = mid + side * (hw + 10), x1 = mid + side * gap;
-        ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.6; ctx.drawImage(runGlow("200,160,255"), Math.min(x0, x1) - 20, y - 26, Math.abs(x1 - x0) + 40, 52); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-        ctx.fillStyle = "#d9c4ff"; ctx.beginPath(); ctx.moveTo(x0, y - 6); ctx.lineTo(x1, y - 2); ctx.lineTo(x1 - side * 6, y + 6); ctx.lineTo(x0, y + 7); ctx.fill();
-        for (let c = 0; c < 4; c++) { const cx = x1 + (x0 - x1) * (c / 4 + 0.1); ctx.beginPath(); ctx.moveTo(cx - 5, y - 4); ctx.lineTo(cx, y - 15 - c * 2); ctx.lineTo(cx + 5, y - 4); ctx.fill(); }
+    for (let k = k0; k <= k1; k++) {
+      const r = seeded(k * 31 + (side > 0 ? 17 : 0)), edgeX = blockEdge(k, side), yTop = yOf((k + 1) * BLOCK), yBot = yOf(k * BLOCK);
+      const outer = side < 0 ? left - 30 : right + 30, x0 = Math.min(edgeX, outer), wB = Math.abs(outer - edgeX), shade = 0.88 + r() * 0.2;
+      const base = mixC(tower.map(v => v * shade), [0, 0, 0], night * 0.25);
+      const g = ctx.createLinearGradient(edgeX, 0, edgeX + side * 160, 0);
+      g.addColorStop(0, `rgb(${mixC(base, [255, 255, 255], day * 0.25)})`); g.addColorStop(1, `rgb(${mixC(base, [0, 0, 0], 0.25 + night * 0.4)})`);
+      ctx.fillStyle = g; ctx.fillRect(x0, yTop + 2, wB, yBot - yTop - 2);
+      // Windows: rows of glass, a few lit (more at night).
+      for (let wy = yTop + 10; wy < yBot - 8; wy += 14) for (let c = 0; c < 6; c++) {
+        const wx = edgeX + side * (12 + c * 15) - (side > 0 ? 0 : 8), lit = seeded(k * 97 + c * 7 + Math.floor(wy))() < 0.25 + night * 0.4;
+        ctx.fillStyle = night > 0.3 ? (lit ? `rgba(${winC},${0.85})` : "rgba(255,255,255,0.05)") : `rgba(${mixC(winC, [255, 255, 255], lit ? 0.5 : 0)},${lit ? 0.9 : 0.55})`;
+        ctx.fillRect(wx, wy, 8, 8);
       }
-    } else if (it.type === "lava") {
-      const wall = mid + it.side * hw, warn = Math.max(0, Math.sin(t * 1.3 + it.ph - 0.6));
-      ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.4 + warn * 0.6; ctx.drawImage(runGlow("255,120,40"), wall - 30, y - 30, 60, 60); ctx.globalAlpha = 1;
-      if (it.len > 4) { const x2 = wall - it.side * it.len, g = ctx.createLinearGradient(wall, 0, x2, 0); g.addColorStop(0, "rgba(255,240,180,0.95)"); g.addColorStop(0.5, "rgba(255,130,40,0.8)"); g.addColorStop(1, "rgba(255,60,20,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(wall, y - 10); ctx.quadraticCurveTo((wall + x2) / 2, y - 14 + Math.sin(t * 20) * 3, x2, y); ctx.quadraticCurveTo((wall + x2) / 2, y + 14, wall, y + 10); ctx.fill(); }
-      ctx.globalCompositeOperation = "source-over";
-    } else if (it.type === "ice") {
-      // Its shadow on Lumi's line warns where it will land.
-      const warn = Math.max(0, 1 - Math.abs(it.at - R.dist) / 320);
-      ctx.strokeStyle = `rgba(220,240,255,${0.5 * warn})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(it.x, LY, 10 + (1 - warn) * 10, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "#e8f6ff"; ctx.beginPath(); ctx.moveTo(it.x - 6, y - 20); ctx.lineTo(it.x + 6, y - 20); ctx.lineTo(it.x, y + 14); ctx.fill();
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("200,235,255"), it.x - 16, y - 16, 32, 32); ctx.globalCompositeOperation = "source-over";
-    } else if (it.type === "bubble") {
-      const r = 18 + Math.sin(t * 3 + it.ph) * 1.5;
-      ctx.strokeStyle = "rgba(170,240,255,0.8)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(it.x, y, r, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "rgba(170,240,255,0.12)"; ctx.fill(); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.ellipse(it.x - r * 0.35, y - r * 0.4, r * 0.25, r * 0.12, -0.6, 0, Math.PI * 2); ctx.fill();
-    } else if (it.type === "lantern") {
-      const ax = mid + Math.sin(it.ph) * 10, ay = y - 140;
-      ctx.strokeStyle = "rgba(200,170,110,0.5)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(it.x || mid, y); ctx.stroke();
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,200,110"), (it.x || mid) - 34, y - 34, 68, 68); ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "#2a1e10"; ctx.fillRect((it.x || mid) - 7, y - 9, 14, 18); ctx.fillStyle = "#ffd98a"; ctx.fillRect((it.x || mid) - 4, y - 6, 8, 12);
-    } else if (it.type === "eye") {
-      const ex = mid + it.side * hw, ang = it.ang ?? 0;
-      ctx.globalCompositeOperation = "lighter";
-      const g = ctx.createRadialGradient(ex, y, 10, ex, y, 300); g.addColorStop(0, `rgba(255,210,110,${0.35 + Math.max(0, it.burn) * 0.8})`); g.addColorStop(1, "rgba(255,200,90,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(ex, y); ctx.arc(ex, y, 300, -ang - 0.17, -ang + 0.17); ctx.closePath(); ctx.fill();
-      ctx.drawImage(runGlow("255,200,90"), ex - 30, y - 30, 60, 60); ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.ellipse(ex, y, 13, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#1a0e02"; ctx.beginPath(); ctx.ellipse(ex + Math.cos(-ang) * 4, y + Math.sin(-ang) * 4, 2.5, 7, 0, 0, Math.PI * 2); ctx.fill();
-    } else if (it.type === "power") {
-      const P = RUN_POWERS[it.kind], bob = Math.sin(t * 3) * 3;
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(P.rgb), it.x - 34, y - 34 + bob, 68, 68); ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = `rgba(${P.rgb},0.9)`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(it.x, y + bob, 14, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "#fff"; ctx.font = "16px system-ui"; ctx.textAlign = "center"; ctx.fillText({ comet: "☄", magnet: "✧", lantern: "☀", choir: "♫" }[it.kind], it.x, y + bob + 6);
-    } else if (it.type === "friend") {
-      const bob = Math.sin(t * 2) * 5;
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,180,220"), it.x - 40, y - 40 + bob, 80, 80); ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "#fff0f8"; ctx.beginPath(); ctx.arc(it.x, y + bob, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#3a1830"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(it.x + sd * 3, y + bob - 1, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = "rgba(255,220,240,0.85)"; ctx.font = "italic 11px Georgia, serif"; ctx.textAlign = "center"; ctx.fillText("help!", it.x, y + bob - 16);
+      // A ledge between floors and a neon strip on the corner.
+      ctx.fillStyle = `rgba(${mixC(base, [255, 255, 255], 0.35)},0.9)`; ctx.fillRect(x0, yTop + 1, wB, 2);
+      ctx.strokeStyle = `rgba(${side < 0 ? neon : neon2},${0.35 + night * 0.6})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(edgeX, yTop + 2); ctx.lineTo(edgeX, yBot); ctx.stroke();
+      if (night > 0.3) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = night * 0.35; ctx.drawImage(runGlow((side < 0 ? neon : neon2).join(",")), edgeX - 14, yTop, 28, yBot - yTop); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+      // Now and then a neon sign hangs on the corner.
+      if (r() < 0.22) {
+        const sy = (yTop + yBot) / 2, sx = edgeX + side * 30, nc = r() < 0.5 ? neon : neon2, word = ["OPEN", "24H", "CAFE", "◆◆", "HOTEL", "♪", "BAR", "NEON"][Math.floor(r() * 8)];
+        if (night > 0.3) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(nc.join(",")), sx - 40, sy - 24, 80, 48); ctx.globalCompositeOperation = "source-over"; }
+        ctx.strokeStyle = `rgba(${nc},${0.5 + night * 0.5})`; ctx.lineWidth = 1.5; ctx.strokeRect(sx - 20, sy - 9, 40, 18);
+        ctx.fillStyle = night > 0.3 ? `rgb(${mixC(nc, [255, 255, 255], 0.4)})` : `rgb(${nc})`; ctx.font = "700 9px Inter, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillText(word, sx, sy + 3.5);
+      }
     }
   }
-  // The fork's great rock.
+  // Lumi's light on the towers close by.
+  ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.25 + night * 0.35;
+  for (const side of [-1, 1]) { const ex = caveMid(R.dist) + side * caveHalf(R.dist, R.dist); ctx.drawImage(runGlow("190,245,255"), ex - 40, LY - 120, 80, 240); }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  // City hazards.
+  for (const it of R.items) {
+    if (it.gone) continue;
+    const y = yOf(it.at); if (y < -160 || y > Hu + 160) continue;
+    const mid = caveMid(it.at), hw = caveHalf(it.at, R.dist);
+    if (it.type === "current") {
+      // A gust of wind: white streaks sweeping sideways.
+      ctx.strokeStyle = `rgba(255,255,255,${0.35 + night * 0.2})`; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      for (let q = 0; q < 12; q++) { const yy = y - (q / 12) * it.len, ph = ((t * 1.6 + q * 0.37) % 1), x0 = mid - hw + ph * hw * 2; ctx.beginPath(); ctx.moveTo(x0 - it.dir * 22, yy); ctx.quadraticCurveTo(x0, yy - 6, x0 + it.dir * 22, yy); ctx.stroke(); }
+    } else if (it.type === "gate") {
+      // A laser gate: beams from emitters on the towers, a gap that breathes.
+      const gap = 34 + 30 * (0.5 + 0.5 * Math.sin(t * 1.6 + it.ph)) + (perk(3) ? 22 : 0);
+      for (const side of [-1, 1]) {
+        const x0 = mid + side * (hw + 6), x1 = mid + side * gap;
+        ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,60,120"), Math.min(x0, x1) - 10, y - 14, Math.abs(x1 - x0) + 20, 28); ctx.globalCompositeOperation = "source-over";
+        for (const dy of [-4, 0, 4]) { ctx.strokeStyle = dy ? "rgba(255,80,140,0.8)" : "#fff0f5"; ctx.lineWidth = dy ? 1.2 : 2; ctx.beginPath(); ctx.moveTo(x0, y + dy); ctx.lineTo(x1, y + dy); ctx.stroke(); }
+        ctx.fillStyle = "#1c1f2b"; ctx.fillRect(x1 - (side > 0 ? 0 : 7), y - 9, 7, 18); ctx.fillStyle = "#ff3d7f"; ctx.fillRect(x1 - (side > 0 ? -2 : 5), y - 2, 3, 4);
+      }
+    } else if (it.type === "lava") {
+      // A steam vent bursting from the tower wall.
+      const wall = mid + it.side * hw, warn = Math.max(0, Math.sin(t * 1.3 + it.ph - 0.6));
+      ctx.fillStyle = "#2a2e3a"; ctx.fillRect(wall - (it.side > 0 ? 10 : 0), y - 10, 10, 20);
+      ctx.fillStyle = `rgba(255,170,60,${0.4 + warn * 0.6})`; ctx.fillRect(wall - (it.side > 0 ? 8 : -2), y - 6, 6, 12);
+      if (it.len > 4) for (let q = 0; q < 9; q++) { const k = q / 8, x2 = wall - it.side * it.len * k, r2 = 8 + k * 14; ctx.fillStyle = `rgba(245,248,255,${0.75 - k * 0.5})`; ctx.beginPath(); ctx.arc(x2, y + Math.sin(t * 8 + q) * 3, r2, 0, Math.PI * 2); ctx.fill(); }
+    } else if (it.type === "ice") {
+      // A pane of glass falling from far above; its shadow on Lumi's line warns where.
+      const warn = Math.max(0, 1 - Math.abs(it.at - R.dist) / 320);
+      ctx.strokeStyle = `rgba(${night > 0.5 ? "200,230,255" : "40,60,90"},${0.5 * warn})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(it.x, LY, 10 + (1 - warn) * 10, 0, Math.PI * 2); ctx.stroke();
+      ctx.save(); ctx.translate(it.x, y); ctx.rotate(Math.sin(t * 3 + it.at) * 0.3);
+      ctx.fillStyle = "rgba(170,220,255,0.6)"; ctx.fillRect(-9, -14, 18, 26); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.strokeRect(-9, -14, 18, 26);
+      ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(4, 6); ctx.stroke(); ctx.restore();
+    } else if (it.type === "bubble") {
+      // A balloon to ride.
+      const bob = Math.sin(t * 2 + it.ph) * 3, c = ["255,90,110", "255,190,60", "90,200,255", "170,120,255"][Math.floor((it.ph * 10) % 4)];
+      ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, y + 18 + bob); ctx.quadraticCurveTo(it.x + 5, y + 30 + bob, it.x, y + 40 + bob); ctx.stroke();
+      ctx.fillStyle = `rgb(${c})`; ctx.beginPath(); ctx.ellipse(it.x, y + bob, 15, 18, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.ellipse(it.x - 5, y - 6 + bob, 4, 6, -0.4, 0, Math.PI * 2); ctx.fill();
+    } else if (it.type === "lantern") {
+      // A cable car swinging across the street.
+      const x = it.x || mid, ax = mid + Math.sin(it.ph) * 10, ay = y - 150;
+      ctx.strokeStyle = "rgba(60,64,80,0.8)"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(mid - hw, ay); ctx.lineTo(mid + hw, ay); ctx.stroke(); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(x, y - 12); ctx.stroke();
+      ctx.fillStyle = night > 0.5 ? "#e94e6a" : "#ff5a6e"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x - 14, y - 12, 28, 22, 5); else ctx.rect(x - 14, y - 12, 28, 22); ctx.fill();
+      ctx.fillStyle = night > 0.5 ? `rgb(${winC})` : "#cfe8ff"; ctx.fillRect(x - 10, y - 8, 8, 8); ctx.fillRect(x + 2, y - 8, 8, 8);
+    } else if (it.type === "eye") {
+      // A searchlight on a rooftop, its beam sweeping across the street.
+      const ex = mid + it.side * hw, ang = it.ang ?? 0;
+      const g = ctx.createRadialGradient(ex, y, 10, ex, y, 300); g.addColorStop(0, `rgba(255,250,220,${0.5 + Math.max(0, it.burn) * 0.8})`); g.addColorStop(1, "rgba(255,245,210,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(ex, y); ctx.arc(ex, y, 300, -ang - 0.17, -ang + 0.17); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#2a2e3a"; ctx.beginPath(); ctx.arc(ex, y, 11, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff6d6"; ctx.beginPath(); ctx.arc(ex + Math.cos(-ang) * 4, y + Math.sin(-ang) * 4, 6, 0, Math.PI * 2); ctx.fill();
+    } else if (it.type === "power") {
+      const P = RUN_POWERS[it.kind], bob = Math.sin(t * 3) * 3;
+      ctx.globalCompositeOperation = night > 0.4 ? "lighter" : "source-over"; ctx.globalAlpha = night > 0.4 ? 1 : 0.5; ctx.drawImage(runGlow(P.rgb), it.x - 34, y - 34 + bob, 68, 68); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(20,22,30,0.75)"; ctx.beginPath(); ctx.arc(it.x, y + bob, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgb(${P.rgb})`; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.font = "15px system-ui"; ctx.textAlign = "center"; ctx.fillText({ comet: "☄", magnet: "✧", lantern: "☀", choir: "♫" }[it.kind], it.x, y + bob + 5);
+    } else if (it.type === "friend") {
+      const bob = Math.sin(t * 2) * 5;
+      ctx.globalAlpha = night > 0.4 ? 1 : 0.6; ctx.drawImage(runGlow("255,180,220"), it.x - 40, y - 40 + bob, 80, 80); ctx.globalAlpha = 1;
+      ctx.fillStyle = "#fff0f8"; ctx.beginPath(); ctx.arc(it.x, y + bob, 9, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "rgba(255,120,190,0.8)"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = "#3a1830"; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(it.x + sd * 3, y + bob - 1, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = "rgba(20,22,30,0.75)"; ctx.font = "600 10px Inter, system-ui, sans-serif"; ctx.textAlign = "center"; const tw = ctx.measureText("help!").width + 12; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(it.x - tw / 2, y + bob - 30, tw, 15, 7); else ctx.rect(it.x - tw / 2, y + bob - 30, tw, 15); ctx.fill(); ctx.fillStyle = "#fff"; ctx.fillText("help!", it.x, y + bob - 19);
+    }
+  }
+  // The fork: a tower standing in the middle of the street.
   for (const it of R.items) {
     if (it.type !== "island" || it.gone) continue;
     const y0 = yOf(it.at), y1 = yOf(it.at + it.len); if (y0 < -40 || y1 > Hu + 40) continue;
-    const pts = []; for (let a = it.at; a <= it.at + it.len; a += 14) pts.push([caveMid(a) - islandHalf(it, a) - rockEdge(a) * 0.4, yOf(a)]);
-    for (let a = it.at + it.len; a >= it.at; a -= 14) pts.push([caveMid(a) + islandHalf(it, a) + rockEdge(a + 99) * 0.4, yOf(a)]);
-    ctx.fillStyle = `rgb(${mixC(rock, [0, 0, 0], 0.85)})`; ctx.beginPath(); pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.fill();
-    for (const [w, a] of [[8, 0.07], [1.6, 0.8]]) { ctx.strokeStyle = `rgba(${rim},${a})`; ctx.lineWidth = w; ctx.stroke(); }
+    const pts = []; for (let a = it.at; a <= it.at + it.len; a += 14) pts.push([caveMid(a) - islandHalf(it, a), yOf(a)]);
+    for (let a = it.at + it.len; a >= it.at; a -= 14) pts.push([caveMid(a) + islandHalf(it, a), yOf(a)]);
+    ctx.fillStyle = `rgb(${mixC(tower, [0, 0, 0], 0.15 + night * 0.4)})`; ctx.beginPath(); pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = `rgba(${neon},0.9)`; ctx.lineWidth = 1.6; ctx.stroke();
+    for (let a = it.at + 30; a < it.at + it.len - 30; a += 16) { const hwI = islandHalf(it, a) - 8; for (let x = caveMid(a) - hwI; x < caveMid(a) + hwI - 6; x += 12) if (seeded(a + x)() < 0.3 + night * 0.4) { ctx.fillStyle = `rgba(${winC},0.85)`; ctx.fillRect(x, yOf(a), 6, 6); } }
   }
-  // A Warden: a vast hooded shadow, eyes violet; gold when it's listening.
+  // A storm: a living thundercloud over the street, eyes violet; gold when it's listening.
   if (R.boss) {
     const B = R.boss, x = B.x, y = yOf(B.at), s = 70 + Math.sin(R.t * 2) * 3;
-    ctx.globalAlpha = 0.85; ctx.drawImage(runGlow(B.listen > 0 ? "255,200,110" : "120,60,200"), x - s * 2.2, y - s * 2.2, s * 4.4, s * 4.4); ctx.globalAlpha = 1;
-    ctx.fillStyle = B.hurt > 0 ? "rgba(60,30,90,0.95)" : "rgba(6,3,14,0.96)";
-    ctx.beginPath(); ctx.moveTo(x - s, y + s * 0.6); ctx.bezierCurveTo(x - s * 1.1, y - s * 0.4, x - s * 0.5, y - s * 1.2, x, y - s * 1.3); ctx.bezierCurveTo(x + s * 0.5, y - s * 1.2, x + s * 1.1, y - s * 0.4, x + s, y + s * 0.6);
-    for (let q = 6; q >= 0; q--) ctx.lineTo(x - s + q * (s / 3), y + s * 0.6 + (q % 2 ? 22 : 6) + Math.sin(R.t * 3 + q) * 6);
-    ctx.fill(); ctx.strokeStyle = B.listen > 0 ? "rgba(255,210,120,0.7)" : "rgba(150,100,255,0.45)"; ctx.lineWidth = 2; ctx.stroke();
-    const ec = B.listen > 0 ? "255,215,120" : "190,140,255";
-    for (const sd of [-1, 1]) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(ec), x + sd * s * 0.32 - 24, y - s * 0.45 - 24, 48, 48); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = `rgb(${ec})`; ctx.beginPath(); ctx.ellipse(x + sd * s * 0.32, y - s * 0.45, 9, B.listen > 0 ? 7 : 4, sd * -0.3, 0, Math.PI * 2); ctx.fill(); }
-    for (let q = 0; q < B.hp; q++) { ctx.fillStyle = "rgba(255,215,140,0.9)"; ctx.beginPath(); ctx.arc(x + (q - (B.hp - 1) / 2) * 12, y - s * 1.45, 3.5, 0, Math.PI * 2); ctx.fill(); }
-    if (B.listen > 0) { ctx.fillStyle = "#ffe2a0"; ctx.font = "22px Georgia, serif"; ctx.textAlign = "center"; ctx.fillText("♪", x, y + s * 0.2); }
-    for (const b of B.bolts) { const by = yOf(b.at); ctx.drawImage(runGlow("170,80,230"), b.x - 14, by - 14, 28, 28); ctx.fillStyle = "#0a0414"; ctx.beginPath(); ctx.arc(b.x, by, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#ff9ad0"; ctx.beginPath(); ctx.arc(b.x, by, 2, 0, Math.PI * 2); ctx.fill(); }
+    if (Math.random() < 0.03) { ctx.strokeStyle = "rgba(220,200,255,0.9)"; ctx.lineWidth = 2; ctx.beginPath(); let lx = x + (Math.random() - 0.5) * s, ly = y + s * 0.3; ctx.moveTo(lx, ly); for (let q = 0; q < 5; q++) { lx += (Math.random() - 0.5) * 30; ly += 24; ctx.lineTo(lx, ly); } ctx.stroke(); }
+    for (let q = 0; q < 9; q++) { const a = q / 9 * Math.PI * 2 + R.t * 0.3, rr = s * (0.55 + 0.15 * Math.sin(R.t * 1.5 + q)); ctx.fillStyle = B.hurt > 0 ? "rgba(90,70,130,0.95)" : "rgba(28,26,44,0.96)"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * s * 0.55, y - s * 0.3 + Math.sin(a) * s * 0.35, rr, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = B.hurt > 0 ? "rgba(90,70,130,0.95)" : "rgba(28,26,44,0.98)"; ctx.beginPath(); ctx.ellipse(x, y - s * 0.3, s * 0.9, s * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    const ec = B.listen > 0 ? "255,215,120" : "190,150,255";
+    for (const sd of [-1, 1]) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow(ec), x + sd * s * 0.3 - 24, y - s * 0.35 - 24, 48, 48); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = `rgb(${ec})`; ctx.beginPath(); ctx.ellipse(x + sd * s * 0.3, y - s * 0.35, 9, B.listen > 0 ? 7 : 4, sd * -0.3, 0, Math.PI * 2); ctx.fill(); }
+    for (let q = 0; q < B.hp; q++) { ctx.fillStyle = "#ffd98a"; ctx.beginPath(); ctx.arc(x + (q - (B.hp - 1) / 2) * 12, y - s * 1.05, 3.5, 0, Math.PI * 2); ctx.fill(); }
+    if (B.listen > 0) { ctx.fillStyle = "#ffe2a0"; ctx.font = "22px Georgia, serif"; ctx.textAlign = "center"; ctx.fillText("♪", x, y - s * 0.05); }
+    for (const bl of B.bolts) { const by = yOf(bl.at); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("170,120,255"), bl.x - 14, by - 14, 28, 28); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(bl.x - 3, by - 7); ctx.lineTo(bl.x + 4, by - 1); ctx.lineTo(bl.x - 1, by); ctx.lineTo(bl.x + 3, by + 7); ctx.lineTo(bl.x - 4, by + 1); ctx.lineTo(bl.x + 1, by); ctx.fill(); }
   }
   // Golden threads between the lights of a trail.
-  ctx.strokeStyle = "rgba(255,215,130,0.18)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = night > 0.4 ? "rgba(255,215,130,0.18)" : "rgba(255,170,40,0.35)"; ctx.lineWidth = 1;
   let prev = null;
   for (const it of R.items) { if (it.type !== "light" || it.gone || it.got) { prev = null; continue; } const y = yOf(it.at); if (prev && prev.trail === it.trail) { ctx.beginPath(); ctx.moveTo(prev.x, yOf(prev.at)); ctx.lineTo(it.x, y); ctx.stroke(); } prev = it; }
   // Things in the cave.
@@ -745,19 +790,19 @@ function runDraw(ctx, W, H) {
       // A little star; once gathered, it streaks into Lumi.
       let x = it.x, yy = y + Math.sin(t * 3 + it.at * 0.05) * 3, s = 1;
       if (it.got) { const k = Math.min(1, it.got / 0.16); x += (R.x - x) * k; yy += (LY - yy) * k; s = 1 - k * 0.6; }
-      ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("255,205,110"), x - 20 * s, yy - 20 * s, 40 * s, 40 * s); ctx.globalCompositeOperation = "source-over";
-      ctx.save(); ctx.translate(x, yy); ctx.rotate(t * 1.2 + it.at); ctx.fillStyle = "#fff6d6"; ctx.beginPath();
-      for (let p = 0; p < 8; p++) { const rr = (p % 2 ? 1.6 : 5.5) * s, a = p / 8 * Math.PI * 2; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
-      ctx.fill(); ctx.restore();
+      ctx.globalCompositeOperation = night > 0.4 ? "lighter" : "source-over"; ctx.globalAlpha = night > 0.4 ? 1 : 0.55; ctx.drawImage(runGlow("255,190,80"), x - 20 * s, yy - 20 * s, 40 * s, 40 * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      ctx.save(); ctx.translate(x, yy); ctx.rotate(t * 1.2 + it.at); ctx.fillStyle = night > 0.4 ? "#fff6d6" : "#ffb81c"; ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let p = 0; p < 8; p++) { const rr = (p % 2 ? 2 : 6.5) * s, a = p / 8 * Math.PI * 2; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill(); if (night <= 0.4) ctx.stroke(); ctx.restore();
     } else if (it.type === "heart") {
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(runGlow("160,235,255"), it.x - 28, y - 28, 56, 56); ctx.globalCompositeOperation = "source-over";
       ctx.save(); ctx.translate(it.x, y); ctx.rotate(Math.sin(t * 2) * 0.2); ctx.fillStyle = "#e6fbff"; ctx.beginPath(); for (let p = 0; p < 8; p++) { const rr = p % 2 ? 3 : 10, a = p / 8 * Math.PI * 2 - Math.PI / 2; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.fill(); ctx.restore();
     } else if (it.type === "rock") {
-      const r = seeded(it.seed); ctx.fillStyle = `rgb(${mixC(rock, [0, 0, 0], 0.85)})`; ctx.beginPath();
-      const pts = []; for (let q = 0; q < 10; q++) { const a = q / 10 * Math.PI * 2, rr = it.r * (0.78 + r() * 0.4); pts.push([it.x + Math.cos(a) * rr, y + Math.sin(a) * rr]); }
-      pts.forEach((p, q) => (q ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = `rgba(${rim},0.75)`; ctx.lineWidth = 1.4; ctx.stroke();
-      ctx.strokeStyle = `rgba(${rim},0.15)`; ctx.lineWidth = 6; ctx.stroke();
+      // A delivery drone hovering in the street: a body, four spinning rotors, a blinking light.
+      const x = it.x, rr = it.r, bob = Math.sin(t * 4 + it.seed) * 2;
+      ctx.fillStyle = night > 0.5 ? "#1c1f2b" : "#2a2f3d"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x - rr * 0.55, y - rr * 0.35 + bob, rr * 1.1, rr * 0.7, 6); else ctx.rect(x - rr * 0.55, y - rr * 0.35 + bob, rr * 1.1, rr * 0.7); ctx.fill();
+      for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.strokeStyle = "#2a2f3d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + bob); ctx.lineTo(x + dx * rr * 0.8, y + dy * rr * 0.6 + bob); ctx.stroke(); ctx.fillStyle = "rgba(200,210,230,0.45)"; ctx.beginPath(); ctx.ellipse(x + dx * rr * 0.8, y + dy * rr * 0.6 + bob, rr * 0.45, rr * 0.12, (t * 30 + dx) % Math.PI, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = Math.sin(t * 6 + it.seed) > 0 ? "#ff3b5c" : "#5a1020"; ctx.beginPath(); ctx.arc(x, y + bob, 2.6, 0, Math.PI * 2); ctx.fill();
     } else if (it.type === "shadow") {
       // A drifting knot of smoke with two eyes that watch Lumi.
       const x = it.cx, look = Math.max(-2, Math.min(2, (R.x - x) * 0.03));
@@ -839,9 +884,9 @@ function runDraw(ctx, W, H) {
     ctx.drawImage(mk, 0, 0, W, H);
   }
   // Close dark rock rushing past at the edges: depth.
-  ctx.save(); ctx.scale(S, S); ctx.fillStyle = "rgba(1,1,4,0.92)";
+  ctx.save(); ctx.scale(S, S); ctx.fillStyle = `rgba(${mixC(tower, [0, 0, 0], 0.55 + night * 0.35)},0.9)`;
   for (let q = -1; q < 4; q++) { const base = Math.floor(R.dist * 1.6 / 420) + q, r = seeded(base * 29 + 11); if (r() < 0.4) continue; const side = r() < 0.5 ? -1 : 1, y = LY - (base * 420 - R.dist * 1.6), x = side < 0 ? -20 + r() * 20 : W / S + 20 - r() * 20, w = 50 + r() * 40, h = 120 + r() * 90;
-    ctx.beginPath(); ctx.ellipse(x, y, w, h, side * 0.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillRect(x - w, y - h, w * 2, h * 2); }
   ctx.restore();
   // Touched: a flash of violet.
   if (R.flash > 0) { ctx.fillStyle = `rgba(120,40,160,${R.flash * 0.3})`; ctx.fillRect(0, 0, W, H); }
@@ -873,7 +918,7 @@ function runDraw(ctx, W, H) {
   // The first run teaches by doing.
   if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // A vignette.
-  const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${0.2 + night * 0.35})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   // Floating "+3" when a shadow is sung free.
   ctx.textAlign = "center";
   for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px Inter, system-ui, sans-serif`; ctx.fillText(p.text, W / 2 + (p.x - 200 - camX) * S, (yOf(p.at) - k * 40) * S); }
@@ -881,8 +926,8 @@ function runDraw(ctx, W, H) {
   // The world's name as you enter it; mission messages.
   if (R.banner > 0) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(`WORLD ${R.biome + 1}`.split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
-    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(THEMES[R.biome % THEMES.length].name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(`DISTRICT ${R.biome + 1}`.split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
   }
 
 }

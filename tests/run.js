@@ -338,7 +338,7 @@ const SIM = `
       runSing(); out.singingMovesTheLessonOn = run.tut === 3 && run.slow === 1;
       run.dist = 120 * RUN.M; runUpdate(1 / 60); run.dashCd = 0; runDash();
       out.dashingFinishesTheLessons = run.tut === 0 && save.run.tutDone === 1;
-      // A Warden at the start of each new world: it listens, and three songs then calm it.
+      // A Blackout at the start of each new district: it listens, and three songs then calm it.
       save.run.tutDone = 1; startRun(); run.next = 1e9; run.nextEvent = 1e9; run.dist = RUN.BIOME_M * RUN.M - 5; runUpdate(1 / 60); runUpdate(1 / 60);
       out.wardenGuardsEachNewWorld = !!run.boss && run.boss.hp >= 3;
       const hp0 = run.boss.hp; let tries = 0;
