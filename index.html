@@ -101,20 +101,21 @@
     <h1 class="logo" aria-label="Skyrise"><svg class="logo-art" viewBox="0 0 600 150" role="img" aria-hidden="true">
       <defs>
         <linearGradient id="logo-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#fff8cf"/><stop offset="0.38" stop-color="#ffd24a"/><stop offset="0.7" stop-color="#ff8a3d"/><stop offset="1" stop-color="#ff4f8b"/>
+          <stop offset="0" stop-color="#ffffff"/><stop offset="0.32" stop-color="#ffe27a"/><stop offset="0.66" stop-color="#ff8a5c"/><stop offset="1" stop-color="#ff4f9a"/>
         </linearGradient>
-        <linearGradient id="logo-side" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#8b5cff"/><stop offset="1" stop-color="#4a24b8"/>
+        <linearGradient id="logo-side" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#b48cff"/><stop offset="1" stop-color="#6a3cff"/>
         </linearGradient>
-        <clipPath id="logo-top"><rect x="0" y="0" width="600" height="66"/></clipPath>
+        <filter id="logo-glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="9"/></filter>
+        <clipPath id="logo-top"><rect x="0" y="0" width="600" height="64"/></clipPath>
       </defs>
-      <g font-family="Bungee, Impact, 'Arial Black', sans-serif" font-size="112" text-anchor="middle" letter-spacing="3" stroke-linejoin="round" paint-order="stroke">
-        <text x="300" y="112" transform="translate(0 14)" fill="#2a1270" stroke="#2a1270" stroke-width="16">SKYRISE</text>
-        <text x="300" y="112" transform="translate(0 7)" fill="url(#logo-side)" stroke="#2a1270" stroke-width="16">SKYRISE</text>
-        <text x="300" y="112" fill="url(#logo-fill)" stroke="#2a1270" stroke-width="14">SKYRISE</text>
-        <text x="300" y="112" fill="#ffffff" fill-opacity="0.38" clip-path="url(#logo-top)">SKYRISE</text>
+      <g font-family="Bungee, Impact, 'Arial Black', sans-serif" font-size="112" text-anchor="middle" letter-spacing="4" stroke-linejoin="round" paint-order="stroke">
+        <text x="300" y="112" fill="#ff6fb4" opacity="0.55" filter="url(#logo-glow)">SKYRISE</text>
+        <text x="300" y="112" transform="translate(0 8)" fill="url(#logo-side)" opacity="0.9">SKYRISE</text>
+        <text x="300" y="112" fill="url(#logo-fill)" stroke="rgba(255,255,255,0.95)" stroke-width="5">SKYRISE</text>
+        <text x="300" y="112" fill="#ffffff" fill-opacity="0.45" clip-path="url(#logo-top)">SKYRISE</text>
       </g>
-      <path class="logo-spark" d="M548 18 l5 13 13 5 -13 5 -5 13 -5 -13 -13 -5 13 -5z" fill="#fff" stroke="#2a1270" stroke-width="3" stroke-linejoin="round"/>
+      <path class="logo-spark" d="M548 18 l5 13 13 5 -13 5 -5 13 -5 -13 -13 -5 13 -5z" fill="#fff" filter="drop-shadow(0 0 6px #fff)"/>
     </svg></h1>
     <p class="tagline">Build the tallest skyscraper in the world</p>
     <button type="button" class="city-line" id="city-line" hidden></button>

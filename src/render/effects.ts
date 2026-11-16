@@ -315,13 +315,17 @@ export class Effects {
       ctx.font = `${size}px ${DISPLAY_FONT}`;
       const [r, g, b] = hexRgb(q.color);
       const dark = rgb(mixRgb([r, g, b], [20, 10, 50], 0.72));
-      // A deep shadow, a thick dark outline, a white rim and a bright gradient inside.
-      ctx.lineWidth = size * 0.3;
-      ctx.strokeStyle = dark;
-      ctx.strokeText(q.text, 0, size * 0.09);
-      ctx.strokeText(q.text, 0, 0);
-      ctx.lineWidth = size * 0.1;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      // A soft colored glow and a depth layer under a crisp white edge and a bright
+      // gradient (modern and light, not a heavy arcade outline).
+      ctx.save();
+      ctx.shadowColor = q.color;
+      ctx.shadowBlur = size * 0.6;
+      ctx.fillStyle = dark;
+      ctx.globalAlpha *= 0.85;
+      ctx.fillText(q.text, 0, size * 0.1);
+      ctx.restore();
+      ctx.lineWidth = size * 0.12;
+      ctx.strokeStyle = "rgba(255,255,255,0.95)";
       ctx.strokeText(q.text, 0, 0);
       const grad = ctx.createLinearGradient(0, -size * 0.5, 0, size * 0.45);
       grad.addColorStop(0, rgb(mixRgb([r, g, b], [255, 255, 255], 0.65)));
@@ -340,11 +344,12 @@ export class Effects {
       if (q.sub) {
         const sz = 13;
         ctx.font = `${sz}px ${DISPLAY_FONT}`;
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = dark;
-        ctx.strokeText(q.sub, 0, size * 0.62 + 4);
+        ctx.save();
+        ctx.shadowColor = "rgba(30,20,90,0.7)";
+        ctx.shadowBlur = 8;
         ctx.fillStyle = "#ffffff";
         ctx.fillText(q.sub, 0, size * 0.62 + 4);
+        ctx.restore();
       }
       ctx.restore();
     }
