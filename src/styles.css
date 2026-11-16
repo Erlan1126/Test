@@ -2451,3 +2451,78 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
   box-shadow: 0 5px 0 #b8740c, 0 10px 22px rgba(255, 170, 40, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.7) !important;
 }
 @media (prefers-reduced-motion: reduce) { .btn-primary::after, .buy::after { animation: none !important; } }
+
+/* ---------- Skyhaven Tycoon ---------- */
+.tc-coin { display: inline-grid; width: 1.2em; height: 1.2em; vertical-align: -0.2em; }
+.tc-coin svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(150, 90, 0, 0.35)); }
+.tycoon-card {
+  position: relative; overflow: hidden; display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 10px;
+  width: min(360px, 100%); margin: 0 auto 8px; padding: 10px 10px 10px 12px; border: 0; border-radius: 22px; text-align: left; cursor: pointer; pointer-events: auto;
+  background: linear-gradient(135deg, #2b1d6e 0%, #5a2ca8 55%, #b0398f 100%); color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 210, 63, 0.75), 0 12px 30px rgba(70, 30, 140, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.tycoon-card[hidden] { display: none; }
+.tycoon-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.25) 50%, transparent 65%); transform: translateX(-120%); animation: btn-shine 4.5s ease-in-out infinite; }
+.tycoon-card > .tc-coin { width: 52px; height: 52px; animation: coin-spin 3.2s ease-in-out infinite; }
+@keyframes coin-spin { 0%, 70%, 100% { transform: rotateY(0); } 85% { transform: rotateY(180deg); } }
+.tc-info small { display: block; font: 400 10px var(--display); letter-spacing: 0.08em; color: #ffe27a; }
+.tc-info b { display: block; font: 400 26px/1.05 var(--display); text-shadow: 0 2px 12px rgba(255, 210, 63, 0.5); }
+.tc-info em { display: block; font-style: normal; font-size: 12px; font-weight: 800; color: rgba(255, 255, 255, 0.85); }
+.tc-go { padding: 10px 14px; border-radius: 14px; font: 400 13px var(--display); color: #4a2a00; background: linear-gradient(180deg, #fff3b0, #ffd23f 48%, #ffb13b 52%, #ffc24a); box-shadow: 0 4px 0 #b8740c, inset 0 2px 0 rgba(255, 255, 255, 0.7); }
+.tycoon-card.can-buy .tc-go { animation: ready-bob 1.4s ease-in-out infinite; }
+#dock #tycoon-btn { --c1: #ffe27a; --c2: #ff9a1f; }
+
+.tycoon-sheet { padding-top: 0 !important; }
+.ty-hero { position: sticky; top: 0; z-index: 5; margin: 0 -16px 10px; padding: 16px 16px 12px; border-radius: 22px 22px 0 0; color: #fff; background: linear-gradient(135deg, #2b1d6e 0%, #5a2ca8 55%, #b0398f 100%); box-shadow: 0 8px 20px rgba(40, 20, 100, 0.25); }
+.ty-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.ty-top small { font: 400 11px var(--display); letter-spacing: 0.08em; color: #ffe27a; }
+.modal .ty-top h2 { margin: 0; font: 400 26px var(--display); color: #fff; background: none; -webkit-text-fill-color: #fff; }
+.modal .ty-hero .close-btn { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.ty-coins { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 400 36px/1 var(--display); text-shadow: 0 2px 16px rgba(255, 210, 63, 0.5); }
+.ty-coins .tc-coin { width: 36px; height: 36px; }
+.ty-stats { display: flex; gap: 12px; margin: 4px 0 10px; font-size: 13px; font-weight: 800; color: rgba(255, 255, 255, 0.9); }
+.ty-amount { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ty-amount button { padding: 7px 0; border: 0; border-radius: 12px; font: 400 13px var(--display); color: #fff; background: rgba(255, 255, 255, 0.16); cursor: pointer; }
+.ty-amount button[aria-checked="true"] { color: #4a2a00; background: linear-gradient(180deg, #fff3b0, #ffc93c); box-shadow: 0 3px 0 #b8740c; }
+.ty-list { display: grid; gap: 10px; }
+.ty-biz { display: grid; grid-template-columns: 64px 1fr auto; grid-template-rows: auto auto; align-items: center; gap: 4px 10px; padding: 10px; border-radius: 20px; background: #fff; box-shadow: 0 4px 0 rgba(42, 31, 110, 0.06), 0 8px 18px rgba(42, 31, 110, 0.08); }
+.ty-biz.locked { opacity: 0.85; background: linear-gradient(135deg, #f6f4ff, #ffffff); }
+.ty-icon { position: relative; grid-row: span 2; width: 64px; height: 64px; padding: 0; border: 0; border-radius: 20px; cursor: pointer; display: grid; place-items: center; font-size: 34px;
+  background: linear-gradient(150deg, var(--b1), var(--b2)); box-shadow: 0 5px 0 color-mix(in srgb, var(--b2) 70%, #000), 0 8px 16px color-mix(in srgb, var(--b2) 40%, transparent), inset 0 2px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.ty-icon:active { transform: translateY(3px) scale(0.95); }
+.ty-icon svg.ic { width: 1em; height: 1em; vertical-align: 0; filter: brightness(0) invert(1) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); }
+.ty-icon b { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); min-width: 26px; padding: 1px 6px; border-radius: 10px; font: 400 12px var(--display); color: #2a1f6e; background: #fff; box-shadow: 0 2px 6px rgba(42, 31, 110, 0.25); }
+.ty-icon b:empty { display: none; }
+.ty-biz:not(.managed):not(.locked) .ty-icon { animation: ready-bob 1.6s ease-in-out infinite; }
+.ty-mid { min-width: 0; }
+.ty-name { display: flex; align-items: center; gap: 6px; }
+.ty-name b { font: 400 15px var(--display); color: #2a1f6e; }
+.ty-auto { padding: 1px 7px; border-radius: 8px; font: 400 9px var(--display); color: #fff; background: #2bc48a; }
+.ty-prog { position: relative; height: 20px; margin: 4px 0 3px; border-radius: 10px; overflow: hidden; background: rgba(42, 31, 110, 0.08); }
+.ty-prog i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, var(--b1), var(--b2)); }
+.ty-prog span { position: relative; display: block; text-align: center; font: 400 12px/20px var(--display); color: #2a1f6e; text-shadow: 0 0 4px #fff; }
+.ty-mid small { display: block; color: #6a6f99; font-size: 11px; font-weight: 700; }
+.ty-buy { grid-row: span 1; display: grid; justify-items: center; min-width: 92px; padding: 6px 10px !important; font: 400 14px var(--display) !important; line-height: 1.1; }
+.ty-buy small { font: 400 9px var(--display); opacity: 0.9; }
+.ty-buy svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; display: inline; }
+.ty-buy:disabled { filter: grayscale(0.7); opacity: 0.6; }
+.ty-hire { grid-column: 2 / -1; padding: 6px 10px; border: 0; border-radius: 12px; font: 400 11px var(--display); color: #19a87a; background: rgba(46, 196, 138, 0.12); cursor: pointer; }
+.ty-hire:disabled { color: #8a86b5; background: rgba(42, 31, 110, 0.05); }
+.ty-boosts { display: grid; gap: 8px; }
+.ty-boost, .ty-era { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 18px; background: #fff; box-shadow: 0 6px 16px rgba(42, 31, 110, 0.08); }
+.ty-bico, .ty-gem { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; font-size: 26px; background: linear-gradient(150deg, #fff3c8, #ffd36b); }
+.ty-bico svg.ic, .ty-gem svg.ic { width: 1em; height: 1em; vertical-align: 0; }
+.ty-gem { background: linear-gradient(150deg, #e0f4ff, #b8d8ff); }
+.ty-boost b, .ty-era b { display: block; font: 400 14px var(--display); color: #2a1f6e; }
+.ty-boost small, .ty-era small { display: block; color: #6a6f99; font-size: 12px; font-weight: 700; line-height: 1.3; }
+.ty-boost .buy, .ty-era .buy { grid-row: auto; grid-column: auto; min-width: 0; padding: 8px 12px; }
+.welcome-card .welcome-coins { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; font: 400 40px/1 var(--display); color: #e8a00c; text-shadow: 0 2px 14px rgba(255, 190, 40, 0.45); }
+.welcome-coins .tc-coin { width: 40px; height: 40px; }
+.welcome-card .btn { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { .tycoon-card::after, .tycoon-card > .tc-coin, .tycoon-card.can-buy .tc-go, .ty-biz .ty-icon { animation: none !important; } }
+.ty-biz .ty-buy { grid-column: 3 !important; grid-row: 1 / span 2 !important; align-self: center; width: auto; }
+.ty-biz .ty-hire { grid-column: 1 / -1; grid-row: 3; }
+#dock.tiles > .tile { width: 60px !important; }
+#dock .tile svg { width: 36px !important; height: 36px !important; padding: 8px !important; }
+#dock .tile span { font-size: 9px !important; letter-spacing: 0; }

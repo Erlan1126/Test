@@ -4,8 +4,8 @@
 // also be pulled down by its header to close it, like on iPhone.
 import { closeModal } from "./dom";
 
-const TABS = [["city", "city-btn"], ["shop", "shop-btn"], ["missions", "missions-btn"], ["pass", "pass-btn"], ["ranks", "ranks-btn"]] as const;
-const SHEETS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass", "goals", "modes", "starter", "help"];
+const TABS = [["tycoon", "tycoon-btn"], ["city", "city-btn"], ["shop", "shop-btn"], ["missions", "missions-btn"], ["pass", "pass-btn"], ["ranks", "ranks-btn"]] as const;
+const SHEETS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass", "goals", "modes", "starter", "help", "tycoon"];
 
 const byId = (id: string): HTMLElement | null => document.getElementById(id);
 const openTab = (): number => TABS.findIndex(([m]) => byId(m) && !byId(m)!.hidden);

@@ -1,6 +1,8 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
 import { OLD_FEATURE_TOWERS } from "./features";
+import { newTycoon, type TycoonState } from "./tycoon";
+import { BUSINESSES } from "../data/tycoon";
 import { addXp, xpNeeded } from "./rules";
 import { LANGS, type LangSetting } from "../i18n";
 import { cleanPace } from "./ghost";
@@ -81,6 +83,8 @@ export interface SaveData {
   vip: { until: number; claimed: number; gift: number };
   /** Crystal packs bought at least once (each one's first purchase pays double). */
   packsFirst: string[];
+  /** Skyhaven Tycoon: businesses, coins, managers and New Era gems (see logic/tycoon.ts). */
+  tycoon: TycoonState;
   /** This player's friend code (from the server), and friends' codes they added. */
   friendCode: string;
   friends: string[];
@@ -184,6 +188,7 @@ export function defaultSave(): SaveData {
     chapters: { done: 0, seen: -1 },
     friendCode: "",
     friends: [],
+    tycoon: newTycoon(),
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -301,6 +306,7 @@ export function normalize(raw: unknown): SaveData {
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0), gift: num(obj(r.vip).gift, 0, 0, 1e15) },
     packsFirst: strList(r.packsFirst),
     chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99) },
+    tycoon: normalizeTycoon(r.tycoon),
     friendCode: /^[A-Z2-9]{6}$/.test(String(r.friendCode ?? "")) ? String(r.friendCode) : "",
     friends: strList(r.friends).filter(c => /^[A-Z2-9]{6}$/.test(c)).slice(0, 30),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
@@ -490,4 +496,25 @@ export function importCode(code: string): SaveData | null {
   } catch {
     return null;
   }
+}
+
+/** Tycoon numbers can be astronomically large, so they're checked as finite, not capped. */
+function normalizeTycoon(v: unknown): TycoonState {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const big = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : 0);
+  const ids = BUSINESSES.map(b => b.id);
+  const levels: Record<string, number> = {};
+  for (const [k, x] of Object.entries((o.levels && typeof o.levels === "object" ? o.levels : {}) as Record<string, unknown>)) {
+    if (ids.includes(k) && Number.isInteger(x) && (x as number) > 0) levels[k] = Math.min(x as number, 100000);
+  }
+  if (!levels.coffee) levels.coffee = 1;
+  const runs: Record<string, number> = {};
+  for (const [k, x] of Object.entries((o.runs && typeof o.runs === "object" ? o.runs : {}) as Record<string, unknown>)) {
+    if (ids.includes(k)) runs[k] = big(x);
+  }
+  return {
+    coins: big(o.coins), lifetime: Math.max(big(o.lifetime), big(o.coins)), levels,
+    managers: Array.isArray(o.managers) ? [...new Set(o.managers.filter((x): x is string => typeof x === "string" && ids.includes(x)))] : [],
+    runs, gems: Math.floor(big(o.gems)), boost: o.boost === true, last: big(o.last), eras: Math.floor(big(o.eras)),
+  };
 }

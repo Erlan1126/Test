@@ -3,6 +3,7 @@
 import { CHAPTERS, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter } from "../data/chapters";
 import { CITY_NAME } from "../logic/city";
 import { fmt } from "../core/util";
+import { coins } from "../data/tycoon";
 import { t } from "../i18n";
 import type { SaveData } from "../logic/save";
 import { $, esc } from "./dom";
@@ -52,7 +53,7 @@ export function mayorSvg(mood: "talk" | "happy" = "talk"): string {
 }
 export const MAYOR_SVG = mayorSvg();
 
-const goalText = (text: string, need: number) => t(text, { n: fmt(need) });
+const goalText = (text: string, need: number) => t(text, { n: need >= 1e6 ? coins(need) : fmt(need) });
 const say = (line: string) => t(line, { city: t(CITY_NAME) });
 
 /** The home screen strip: the next goal of the current chapter, or "complete!". */
@@ -72,11 +73,13 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   el.onclick = onTap;
 }
 
+const num = (n: number) => (n >= 1e6 ? coins(n) : fmt(n));
+
 function goalsHtml(save: SaveData, c: Chapter): string {
   return c.goals.map(g => {
     const done = goalDone(save, g);
     return `<li class="${done ? "done" : ""}"><span>${done ? "✓" : ""}</span>${esc(goalText(g.text, g.need))}
-      <em>${done ? "" : `${fmt(Math.min(g.have(save), g.need))} / ${fmt(g.need)}`}</em></li>`;
+      <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}</em></li>`;
   }).join("");
 }
 

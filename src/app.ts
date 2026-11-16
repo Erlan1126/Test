@@ -62,6 +62,9 @@ import { towerName } from "./data/towernames";
 import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
+import { TycoonUI } from "./ui/tycoon";
+import { tick as tickTycoon, towerBonus } from "./logic/tycoon";
+import { coins as tycoonCoins } from "./data/tycoon";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -160,6 +163,7 @@ export class App implements DailyHost {
   readonly online = new Online();
   readonly payments = choosePayments(() => this.sheets?.refreshShop());
   private readonly daily: DailySheets;
+  private readonly tycoon: TycoonUI;
   private readonly storage = openStorage();
   private readonly canvas = $<HTMLCanvasElement>("game");
   private readonly renderer: Renderer | Renderer3D;
@@ -263,6 +267,24 @@ export class App implements DailyHost {
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
+    this.tycoon = new TycoonUI(this);
+    // What the managers earned while the game was closed, shown once the island is up.
+    {
+      const away = this.save.tycoon.last ? Date.now() - this.save.tycoon.last : 0, earned = tickTycoon(this.save);
+      this.persist();
+      // After the splash has gone (it can take a moment on slower phones).
+      const show = () => {
+        if (document.getElementById("splash")) { setTimeout(show, 400); return; }
+        if (this.state === "menu") this.tycoon.welcome(earned, away);
+      };
+      setTimeout(show, 1500);
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") { tickTycoon(this.save); this.persist(); return; }
+      const away = Date.now() - this.save.tycoon.last, earned = tickTycoon(this.save);
+      this.persist();
+      if (this.state === "menu" && earned > 0) this.tycoon.welcome(earned, away);
+    });
     if (this.payments) {
       const test = !this.payments.live;
       this.payments.onPurchase = p => this.packBought(p, test);
@@ -365,6 +387,7 @@ export class App implements DailyHost {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
     if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
+    if (!$("welcome").hidden) { $("welcome-ok").click(); return true; }
     if (this.moving) { this.endMove(); return true; }
     if (this.visiting) { this.endVisit(); return true; }
     const modal = openModalEl();
@@ -648,10 +671,10 @@ export class App implements DailyHost {
     }
     // Taps on the empty parts of the home screen (the sky, the island, the logo) start too.
     $("menu").addEventListener("click", e => {
-      if (this.state !== "menu" || this.moving || this.visiting || !$("mayor").hidden || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
+      if (this.state !== "menu" || this.moving || this.visiting || !$("mayor").hidden || !$("welcome").hidden || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
       this.start(this.homeMode);
     });
-    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving && !this.visiting && $("mayor").hidden) this.start(this.homeMode); });
+    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving && !this.visiting && $("mayor").hidden && $("welcome").hidden) this.start(this.homeMode); });
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
@@ -762,6 +785,7 @@ export class App implements DailyHost {
     if (this.moving) { if (e.code === "Escape") this.endMove(); return; }
     if (this.visiting) { if (e.code === "Escape") this.endVisit(); return; }
     if (!$("mayor").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("mayor-ok").click(); } return; }
+    if (!$("welcome").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("welcome-ok").click(); } return; }
     // The level-up card is up: keys close it rather than starting a tower underneath.
     if (!$("levelup").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("levelup").hidden = true; } return; }
     const modal = openModalEl();
@@ -814,6 +838,7 @@ export class App implements DailyHost {
     this.endMove();
     this.endVisit();
     $("mayor").hidden = true;
+    $("welcome").hidden = true;
     $("levelup").hidden = true;
     this.chatIn = 10;
     this.sound.tune = currentTheme(this.save).id;
@@ -1033,6 +1058,12 @@ export class App implements DailyHost {
       const opened = addPopulation(this.save, people);
       // (The card's '+N residents' line shows the move into the city.)
       for (const d of opened) this.outcome.rewards.unshift({ kind: "island", text: t("🎉 New district open: {name}! Build there from your City", { name: t(d.name) }) });
+    }
+    // The tower's workers report to the businesses: a coin bonus for Skyhaven Inc.
+    if (this.save.profile.towers >= 1 && this.mode !== "zen") {
+      tickTycoon(this.save);
+      const bonus = towerBonus(this.save, run.floors);
+      if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} coins for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
     }
     // Tall towers stand in their district for good.
     if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
@@ -1364,10 +1395,12 @@ export class App implements DailyHost {
     if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => { if (this.state === "menu" && !openModalEl() && !this.moving) this.openStarter(); }, 700); }
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
+    // The Tycoon: the business card on the home screen and its dock tile.
+    this.tycoon.renderHome(p.towers >= 1);
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
-      if (this.state === "menu" && !$("menu").hidden && !openModalEl() && !this.moving && !this.visiting && $("levelup").hidden && $("starter").hidden && $("mayor").hidden) introduce(save, () => this.persist());
+      if (this.state === "menu" && !$("menu").hidden && !openModalEl() && !this.moving && !this.visiting && $("levelup").hidden && $("starter").hidden && $("mayor").hidden && $("welcome").hidden) introduce(save, () => this.persist());
     }, 1100);
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);

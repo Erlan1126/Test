@@ -28,6 +28,10 @@ const people = (s: SaveData) => s.population;
 const builds = (s: SaveData) => s.city.length;
 const level = (s: SaveData) => s.profile.level;
 const inDistrict = (d: string) => (s: SaveData) => districtTowers(s, d).length;
+const managers = (s: SaveData) => s.tycoon.managers.length;
+const earned = (s: SaveData) => s.tycoon.lifetime;
+const businesses = (s: SaveData) => Object.keys(s.tycoon.levels).length;
+const eras = (s: SaveData) => s.tycoon.eras;
 
 export const CHAPTERS: Chapter[] = [
   {
@@ -49,6 +53,7 @@ export const CHAPTERS: Chapter[] = [
       { text: "Reach {n} people", need: 5000, have: people },
       { text: "Reach builder level {n}", need: 5, have: level },
       { text: "Build {n} city building", need: 1, have: builds },
+      { text: "Hire {n} manager in Skyhaven Inc.", need: 1, have: managers },
     ],
     reward: { stars: 15, crystals: 30 },
   },
@@ -60,6 +65,7 @@ export const CHAPTERS: Chapter[] = [
       { text: "Reach {n} people", need: 15000, have: people },
       { text: "Build {n} towers in Snowy Peaks", need: 3, have: inDistrict("snow") },
       { text: "Build {n} city buildings", need: 3, have: builds },
+      { text: "Earn {n} coins in Skyhaven Inc.", need: 1e6, have: earned },
     ],
     reward: { stars: 20, crystals: 40 },
   },
@@ -71,6 +77,7 @@ export const CHAPTERS: Chapter[] = [
       { text: "Reach {n} people", need: 60000, have: people },
       { text: "Build {n} towers in Desert Oasis", need: 3, have: inDistrict("desert") },
       { text: "Build a tower {n} m tall", need: 200, have: best },
+      { text: "Open {n} businesses", need: 6, have: businesses },
     ],
     reward: { stars: 30, crystals: 60 },
   },
@@ -82,6 +89,7 @@ export const CHAPTERS: Chapter[] = [
       { text: "Reach {n} people", need: 180000, have: people },
       { text: "Build {n} towers in Cherry Blossom", need: 3, have: inDistrict("blossom") },
       { text: "Build {n} city buildings", need: 8, have: builds },
+      { text: "Earn {n} coins in Skyhaven Inc.", need: 1e10, have: earned },
     ],
     reward: { stars: 40, crystals: 80 },
   },
@@ -93,6 +101,7 @@ export const CHAPTERS: Chapter[] = [
       { text: "Reach {n} people", need: 500000, have: people },
       { text: "Build a tower {n} m tall", need: 500, have: best },
       { text: "Reach builder level {n}", need: 20, have: level },
+      { text: "Start {n} New Era", need: 1, have: eras },
     ],
     reward: { stars: 60, crystals: 150 },
   },
