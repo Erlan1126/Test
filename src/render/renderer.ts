@@ -54,6 +54,9 @@ export interface Frame {
   city: string[];
   /** Where each city building stands (building id → spot id). */
   place?: Record<string, string>;
+  /** Skyhaven Inc.'s businesses, shown as buildings on their own floating island: colors
+   *  and stage (0 stand ... 4 empire). */
+  biz?: { c: string; c2: string; s: number }[];
   /** A ghost tower to race: how many floors it has built so far, and whose it is. */
   ghost?: { floors: number; total: number; name: string } | null;
 }

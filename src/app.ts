@@ -63,8 +63,8 @@ import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { TycoonUI } from "./ui/tycoon";
-import { tick as tickTycoon, towerBonus } from "./logic/tycoon";
-import { coins as tycoonCoins } from "./data/tycoon";
+import { offlineHours, stageOf, tick as tickTycoon, towerBonus } from "./logic/tycoon";
+import { BUSINESSES, coins as tycoonCoins } from "./data/tycoon";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -276,6 +276,7 @@ export class App implements DailyHost {
       const show = () => {
         if (document.getElementById("splash")) { setTimeout(show, 400); return; }
         if (this.state === "menu") this.tycoon.welcome(earned, away);
+        if (this.state === "menu") this.tycoon.freshStart();
       };
       setTimeout(show, 1500);
     }
@@ -377,6 +378,8 @@ export class App implements DailyHost {
     return {
       doneToday: v.doneToday, streak: v.count, rentFull: city && left <= 0,
       rentFullAt: city && left > 0 && this.save.rent.last ? Date.now() + left * 36e5 : undefined,
+      // The managers' vault fills up after the offline limit.
+      vaultFullAt: this.save.tycoon.managers.length ? Date.now() + offlineHours(this.save) * 36e5 : undefined,
       holidayEnds: hp && !hp.done ? { at: Date.now() + holidayDaysLeft(hp.h) * 864e5, name: t(hp.h.name), skin: t(skinById(hp.h.skin).name) } : undefined,
     };
   }
@@ -388,6 +391,8 @@ export class App implements DailyHost {
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
     if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
     if (!$("welcome").hidden) { $("welcome-ok").click(); return true; }
+    const evo = document.getElementById("evolve");
+    if (evo && !evo.hidden) { evo.hidden = true; return true; }
     if (this.moving) { this.endMove(); return true; }
     if (this.visiting) { this.endVisit(); return true; }
     const modal = openModalEl();
@@ -2247,6 +2252,16 @@ export class App implements DailyHost {
     return this.cityView;
   }
 
+  /** Skyhaven Inc.'s businesses for the 3D business district (cached until a level changes). */
+  private bizCache: { key: string; list: { c: string; c2: string; s: number }[] } = { key: "", list: [] };
+  private bizView(): { c: string; c2: string; s: number }[] {
+    const lv = this.save.tycoon.levels, key = JSON.stringify(lv);
+    if (key !== this.bizCache.key) {
+      this.bizCache = { key, list: BUSINESSES.filter(b => (lv[b.id] ?? 0) > 0).map(b => ({ c: b.color[0], c2: b.color[1], s: stageOf(lv[b.id]) })) };
+    }
+    return this.bizCache.list;
+  }
+
   private draw(dt: number): void {
     const save = this.save;
     this.renderer.draw(dt, {
@@ -2257,6 +2272,7 @@ export class App implements DailyHost {
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       skyline: this.city().skyline,
       districts: this.city().districts,
+      biz: this.visiting ? [] : this.bizView(),
       tint: holidayAt()?.tint ?? null,
       fever: this.state === "playing" && this.sim.feverLeft > 0,
       shape: this.state === "over" && this.builtShape ? shapeById(this.builtShape) : currentShape(save),

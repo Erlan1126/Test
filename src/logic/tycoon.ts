@@ -27,13 +27,22 @@ export interface TycoonState {
   speedups: { day: string; n: number };
   /** Economy version: saves from the first, much faster economy start the company over. */
   econ: number;
+  /** The company was just started over (Mayor Pip explains it once). */
+  fresh: boolean;
+  /** First steps done: 0 tap the cart, 1 buy a level, 2 hire a manager, 3 all done. */
+  tips: number;
+  /** Today's three company goals, and whether the all-done bonus was paid. */
+  goals: { day: string; list: CompanyGoal[]; bonus: boolean };
 }
+
+export type GoalType = "vip" | "buy" | "taps" | "rush";
+export interface CompanyGoal { t: GoalType; n: number; p: number }
 
 /** The current economy version (see TycoonState.econ). */
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false } });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -54,8 +63,9 @@ export const nextMilestone = (level: number): number | undefined => MILESTONES_A
 /** Seconds per cycle at a level. */
 export const cycleOf = (b: Business, level: number): number => b.cycle / Math.pow(2, milestonesAt(level));
 /** Coins one cycle pays right now. */
-export const payOf = (s: SaveData, b: Business, now = Date.now()): number =>
-  b.income * levelOf(s, b.id) * multiplier(s, now) * (rushOn(s, b.id, now) ? RUSH_MULT : 1);
+export const payOf = (s: SaveData, b: Business, now = Date.now()): number => basePay(s, b, now) * (rushOn(s, b.id, now) ? RUSH_MULT : 1);
+/** What one cycle pays without a rush hour. */
+export const basePay = (s: SaveData, b: Business, now = Date.now()): number => b.income * levelOf(s, b.id) * multiplier(s, now);
 
 /** Is a business in its rush hour right now? */
 export const rushOn = (s: SaveData, id: string, now = Date.now()): boolean => s.tycoon.rush.id === id && s.tycoon.rush.until > now;
@@ -74,21 +84,24 @@ export const stageOf = (level: number): number => Math.max(0, STAGE_AT.filter(a 
 export const stageName = (id: string, level: number): string => STAGE_NAMES[id]?.[stageOf(level)] ?? id;
 export const nextStage = (level: number): number | undefined => STAGE_AT.find(a => a > level && a > 1);
 
-/** A VIP customer's tip: about twenty seconds of what the business earns. */
+/** A VIP customer's tip: half a minute of what the business earns, and never less than a
+ *  quarter of the cheapest next level, so a tip always feels worth the tap. */
 export function vipTip(s: SaveData, id: string, now = Date.now()): number {
   const b = businessById(id);
   if (!b || levelOf(s, id) === 0) return 0;
-  const n = (payOf(s, b, now) / cycleOf(b, levelOf(s, id))) * 20;
+  const cheapest = Math.min(...BUSINESSES.filter(x => levelOf(s, x.id) > 0).map(x => costOf(x, levelOf(s, x.id), 1)));
+  const n = Math.max((payOf(s, b, now) / cycleOf(b, levelOf(s, id))) * 30, cheapest * 0.25);
   earn(s, n);
   return n;
 }
 
-/** Coins a second from businesses that run by themselves (managed). */
-export function perSecond(s: SaveData, now = Date.now()): number {
+/** Coins a second from businesses that run by themselves (managed). Without `rush`, a
+ *  rush hour going on is left out (for time warps and tower bonuses, which pay hours). */
+export function perSecond(s: SaveData, now = Date.now(), rush = true): number {
   let n = 0;
   for (const b of BUSINESSES) {
     const lv = levelOf(s, b.id);
-    if (lv > 0 && s.tycoon.managers.includes(b.id)) n += payOf(s, b, now) / cycleOf(b, lv);
+    if (lv > 0 && s.tycoon.managers.includes(b.id)) n += (rush ? payOf(s, b, now) : basePay(s, b, now)) / cycleOf(b, lv);
   }
   return n;
 }
@@ -164,6 +177,9 @@ export function progressOf(s: SaveData, id: string, now = Date.now()): number {
   return ((now - start) % c) / c;
 }
 
+/** How many hours the managers keep earning while the game is closed. */
+export const offlineHours = (s: SaveData, now = Date.now()): number => (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS);
+
 /** Brings the economy up to date and returns the coins earned since last time. Managed
  *  businesses keep earning while the game is closed, up to the offline limit. */
 export function tick(s: SaveData, now = Date.now()): number {
@@ -178,9 +194,15 @@ export function tick(s: SaveData, now = Date.now()): number {
     if (t.managers.includes(b.id)) {
       const elapsed = now - start, counted = Math.min(elapsed, capMs);
       const k = Math.floor(counted / c);
-      // (A rush hour only counts while it lasts, not for a whole stretch away.)
-      const pay = rushOn(s, b.id, now) && counted > RUSH_SECONDS * 1000 ? payOf(s, b, now) / RUSH_MULT : payOf(s, b, now);
-      if (k > 0) total += k * pay;
+      // A rush hour triples only the cycles that finished during it, never a whole
+      // stretch away.
+      const base = basePay(s, b, now);
+      let rushK = 0;
+      if (k > 0 && t.rush.id === b.id) {
+        const from = Math.max(t.rush.until - RUSH_SECONDS * 1000, now - counted), to = Math.min(now, t.rush.until);
+        if (to > from) rushK = Math.min(k, Math.max(1, Math.floor((to - from) / c)));
+      }
+      if (k > 0) total += k * base + rushK * base * (RUSH_MULT - 1);
       // Keep the part-done cycle; time past the cap is simply lost.
       t.runs[b.id] = now - (elapsed % c);
     } else if (now - start >= c) {
@@ -198,7 +220,7 @@ export function tick(s: SaveData, now = Date.now()): number {
 export function towerBonus(s: SaveData, floors: number, now = Date.now()): number {
   if (floors < 1) return 0;
   s.tycoon.floors += floors; // every floor becomes an office
-  const rate = Math.max(perSecond(s, now), payOf(s, BUSINESSES[0], now) / BUSINESSES[0].cycle);
+  const rate = Math.max(perSecond(s, now, false), basePay(s, BUSINESSES[0], now) / BUSINESSES[0].cycle);
   const n = rate * Math.min(600, floors * 10);
   earn(s, n);
   return n;
@@ -244,7 +266,7 @@ export const warpPrice = (hours: 1 | 8): number => (hours === 1 ? WARP_1H_CRYSTA
 
 export function timeWarp(s: SaveData, hours: 1 | 8, now = Date.now()): number {
   const price = warpPrice(hours);
-  const rate = perSecond(s, now);
+  const rate = perSecond(s, now, false);
   if (s.crystals < price || rate <= 0 || speedupsLeft(s, now) <= 0) return 0;
   s.crystals -= price;
   useSpeedup(s, now);
@@ -267,4 +289,39 @@ export function doubleAway(s: SaveData, earned: number, awayMs: number, now = Da
   useSpeedup(s, now);
   earn(s, earned);
   return true;
+}
+
+// ---------- Company goals: three a day ----------
+
+/** Goal kinds with three sizes; each pays stars by size, all three a crystal bonus. */
+export const GOAL_TIERS: Record<GoalType, number[]> = { vip: [2, 4, 6], buy: [10, 25, 50], taps: [30, 60, 120], rush: [1, 2, 3] };
+export const GOAL_STARS = [3, 5, 8], GOALS_BONUS_CRYSTALS = 10;
+
+/** Deals today's goals if they're from another day. */
+export function dealGoals(s: SaveData, now = Date.now(), rnd = Math.random): void {
+  const day = dayKey(0, now), g = s.tycoon.goals;
+  if (g.day === day && g.list.length) return;
+  const kinds = (Object.keys(GOAL_TIERS) as GoalType[]).sort(() => rnd() - 0.5).slice(0, 3);
+  s.tycoon.goals = { day, bonus: false, list: kinds.map(k => ({ t: k, n: GOAL_TIERS[k][Math.floor(rnd() * 3)], p: 0 })) };
+}
+
+/** Counts progress toward today's goals. Returns the stars paid (and the crystals, if the
+ *  last of the three was finished). */
+export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()): { stars: number; crystals: number; done: CompanyGoal[] } {
+  dealGoals(s, now);
+  const out = { stars: 0, crystals: 0, done: [] as CompanyGoal[] };
+  for (const g of s.tycoon.goals.list) {
+    if (g.t !== kind || g.p >= g.n) continue;
+    g.p = Math.min(g.n, g.p + by);
+    if (g.p >= g.n) {
+      const stars = GOAL_STARS[Math.max(0, GOAL_TIERS[kind].indexOf(g.n))];
+      s.stars += stars; s.starsEarned += stars; out.stars += stars; out.done.push(g);
+    }
+  }
+  if (!s.tycoon.goals.bonus && s.tycoon.goals.list.every(g => g.p >= g.n)) {
+    s.tycoon.goals.bonus = true;
+    s.crystals += GOALS_BONUS_CRYSTALS;
+    out.crystals = GOALS_BONUS_CRYSTALS;
+  }
+  return out;
 }

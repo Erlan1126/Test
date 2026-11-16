@@ -127,3 +127,8 @@ export function introduce(save: SaveData, persist: () => void): boolean {
   show(t("Chapter {n}: {title}", { n: i + 1, title: t(c.title) }), say(c.intro), goalsHtml(save, c), "", t("Let's build!"), () => {});
   return true;
 }
+
+/** Pip says something outside the chapters (one button to close). */
+export function mayorNote(title: string, text: string, button: string, onOk: () => void = () => {}): void {
+  show(title, text, "", "", button, onOk);
+}

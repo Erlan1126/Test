@@ -55,6 +55,8 @@ const DISTRICT_SLOTS = [
   { x: -38, z: -38, y: 3 }, { x: -46, z: -22, y: 1 }, { x: -22, z: -46, y: -3 },
   { x: -58, z: -40, y: -14 }, { x: -40, z: -58, y: 4 }, { x: -64, z: -64, y: -6 },
 ];
+/** Where Skyhaven Inc.'s business district floats. */
+const BIZ_SLOT = { x: -22, z: -40, y: 9 };
 /** Floors merged per block. */
 const CHUNK = 16;
 
@@ -192,6 +194,9 @@ export class Renderer3D {
   private skyline: THREE.Group | null = null;
   private skylineKey = "";
   private skylineIn: unknown = null;
+  private biz: THREE.Group | null = null;
+  private bizKey = "";
+  private bizIn: unknown = null;
   private districtsIn: unknown = null;
 
   constructor(private readonly canvas: HTMLCanvasElement, glCanvas: HTMLCanvasElement) {
@@ -551,6 +556,7 @@ export class Renderer3D {
     this.updateLights(skyN);
     this.updateIsland(f);
     this.updateSkyline(f);
+    this.updateBiz(f);
     // Your skyline island is for looking at between towers, not while you build.
     if (this.skyline) {
       // Shown around a finished tower. Not while building, and not on the home screen,
@@ -752,6 +758,63 @@ export class Renderer3D {
       g.add(m);
     });
     return g;
+  }
+
+  /** Skyhaven Inc.'s business district: a floating island where each business stands as a
+   *  building that grows with it, from a little kiosk to a gleaming gold-crowned empire. */
+  private updateBiz(f: Frame): void {
+    if (f.biz === this.bizIn) return;
+    this.bizIn = f.biz;
+    const list = f.biz ?? [];
+    const key = JSON.stringify(list);
+    if (key === this.bizKey) return;
+    this.bizKey = key;
+    if (this.biz) { this.scene.remove(this.biz); disposeTree(this.biz); }
+    this.biz = null;
+    if (!list.length) return;
+    const { x: CX, z: CZ } = BIZ_SLOT, Y = BIZ_SLOT.y * FH, R = 8, g = new THREE.Group();
+    const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
+    const rock = own(new THREE.MeshStandardMaterial({ color: 0x9a8fb8, roughness: 1, flatShading: true }));
+    g.add(new THREE.Mesh(new THREE.ConeGeometry(R * 1.3, R * 1.5, 6).rotateX(Math.PI).translate(CX, Y - R * 0.75, CZ), rock));
+    const plaza = own(new THREE.MeshStandardMaterial({ color: 0xece6f7, roughness: 0.6 }));
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.96, 0.8, 6).translate(CX, Y - 0.42, CZ), plaza);
+    top.receiveShadow = true;
+    g.add(top);
+    // A little fountain in the middle of the plaza.
+    const water = own(new THREE.MeshStandardMaterial({ color: 0x7fd3ff, roughness: 0.1, emissive: 0x2a6fbf, emissiveIntensity: 0.3 }));
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.35, 16).translate(CX, Y + 0.15, CZ), plaza));
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.36, 16).translate(CX, Y + 0.17, CZ), water));
+    const gold = own(new THREE.MeshStandardMaterial({ color: 0xffc93c, roughness: 0.25, metalness: 0.8, emissive: 0x6a4a00, emissiveIntensity: 0.25 }));
+    const glass = own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.08, metalness: 0.3, emissive: 0x204060, emissiveIntensity: 0.15 }));
+    // Ten lots around the fountain, the first businesses nearest the front.
+    list.slice(0, 10).forEach((b, i) => {
+      const a = Math.PI * 0.25 + (i / 10) * Math.PI * 2, r = i % 2 ? 5.6 : 4.9;
+      const x = CX + Math.cos(a) * r, z = CZ + Math.sin(a) * r;
+      const s = b.s, h = (1.2 + s * 1.5) * FH, w = 0.75 + s * 0.16;
+      const body = own(new THREE.MeshStandardMaterial({ color: new THREE.Color(b.c).lerp(new THREE.Color(0xffffff), 0.35), roughness: 0.55 }));
+      const trim = own(new THREE.MeshStandardMaterial({ color: new THREE.Color(b.c2), roughness: 0.4, emissive: new THREE.Color(b.c2), emissiveIntensity: s >= 3 ? 0.35 : 0.08 }));
+      const bld = new THREE.Group();
+      bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2, h, w * 2).translate(0, h / 2, 0), body));
+      // A glass storefront at the bottom, a colored band (the sign) at the top.
+      bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2 + 0.06, Math.min(0.9, h * 0.3), w * 2 + 0.06).translate(0, Math.min(0.45, h * 0.15), 0), glass));
+      bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2 + 0.12, 0.28, w * 2 + 0.12).translate(0, h - 0.14, 0), trim));
+      // Bigger stages: setbacks, then a spire, then a gold crown.
+      if (s >= 2) bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 1.3, h * 0.25, w * 1.3).translate(0, h + h * 0.125, 0), body));
+      if (s >= 3) bld.add(new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.6, 6).translate(0, h * 1.25 + 0.8, 0), trim));
+      if (s >= 4) {
+        bld.add(new THREE.Mesh(new THREE.CylinderGeometry(w * 0.7, w * 0.9, 0.3, 8).translate(0, h * 1.25 + 0.15, 0), gold));
+        bld.add(new THREE.Mesh(new THREE.ConeGeometry(0.18, 2.4, 8).translate(0, h * 1.25 + 1.5, 0), gold));
+      }
+      if (s === 0) { // a kiosk: a striped awning
+        bld.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2.3, 0.12, 0.7).rotateX(0.35).translate(0, h * 0.7, w + 0.25), trim));
+      }
+      bld.position.set(x, Y, z);
+      bld.rotation.y = -a + Math.PI / 2;
+      bld.traverse(o => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      g.add(bld);
+    });
+    this.biz = g;
+    this.scene.add(g);
   }
 
   // ---------- The tower ----------

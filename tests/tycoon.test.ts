@@ -166,11 +166,12 @@ describe("tycoon evolution and live events", () => {
     expect(tick(s, T0 + 3600e3)).toBeCloseTo(tick(plain, T0 + 3600e3));
   });
 
-  it("a VIP tips about twenty seconds of earnings", () => {
+  it("a VIP tips half a minute of earnings, never less than a quarter of the next level", () => {
     const s = defaultSave();
     const b = BUSINESSES[0];
     const tip = vipTip(s, "coffee", T0);
-    expect(tip).toBeCloseTo((payOf(s, b, T0) / cycleOf(b, 1)) * 20);
+    expect(tip).toBeCloseTo(Math.max((payOf(s, b, T0) / cycleOf(b, 1)) * 30, costOf(b, 1, 1) * 0.25));
+    expect(tip).toBeGreaterThanOrEqual(costOf(b, 1, 1) * 0.25);
     expect(s.tycoon.coins).toBeCloseTo(tip);
     expect(vipTip(s, "spaceport", T0)).toBe(0);
   });
@@ -201,5 +202,63 @@ describe("tycoon economy reset", () => {
     const now = normalize(JSON.parse(JSON.stringify({ ...defaultSave(), tycoon: { ...t, coins: 500, levels: { coffee: 7 } } }))).tycoon;
     expect(now.coins).toBe(500);
     expect(now.levels).toEqual({ coffee: 7 });
+  });
+});
+
+import { basePay, dealGoals, goalStep, GOALS_BONUS_CRYSTALS } from "../src/logic/tycoon";
+
+describe("company goals and first steps", () => {
+  it("deals three different goals a day and pays stars, then a crystal bonus for all three", () => {
+    const s = defaultSave();
+    dealGoals(s, T0, () => 0.1);
+    const g = s.tycoon.goals.list;
+    expect(g).toHaveLength(3);
+    expect(new Set(g.map(x => x.t)).size).toBe(3);
+    const stars0 = s.stars, crystals0 = s.crystals;
+    for (const x of [...g]) {
+      const r = goalStep(s, x.t, x.n, T0);
+      expect(r.stars).toBeGreaterThan(0);
+    }
+    expect(s.stars).toBeGreaterThan(stars0);
+    expect(s.crystals).toBe(crystals0 + GOALS_BONUS_CRYSTALS);
+    // Nothing more today...
+    expect(goalStep(s, g[0].t, 5, T0).stars).toBe(0);
+    // ...and a new set tomorrow.
+    dealGoals(s, T0 + 86400e3);
+    expect(s.tycoon.goals.list.every(x => x.p === 0)).toBe(true);
+    expect(s.tycoon.goals.bonus).toBe(false);
+  });
+
+  it("goals and first steps survive a save round trip; old companies are told about the fresh start", () => {
+    const s = defaultSave();
+    dealGoals(s, T0);
+    goalStep(s, s.tycoon.goals.list[0].t, 1, T0);
+    s.tycoon.tips = 2;
+    const back = normalize(JSON.parse(JSON.stringify(s))).tycoon;
+    expect(back.goals).toEqual(s.tycoon.goals);
+    expect(back.tips).toBe(2);
+    expect(back.fresh).toBe(false);
+    const old = JSON.parse(JSON.stringify(defaultSave()));
+    old.tycoon = { coins: 5, levels: { coffee: 3 }, managers: [] };
+    expect(normalize(old).tycoon.fresh).toBe(true);
+  });
+});
+
+describe("rush hour fairness", () => {
+  it("triples a slow managed business's cycle that finishes during the rush, but not a time warp", () => {
+    const s = defaultSave();
+    s.tycoon.floors = 100;
+    s.tycoon.levels.cinema = 1;
+    s.tycoon.managers = ["cinema"];
+    const b = BUSINESSES.find(x => x.id === "cinema")!, c = cycleOf(b, 1) * 1000;
+    s.tycoon.runs.cinema = T0;
+    s.tycoon.rush = { id: "cinema", until: T0 + c + 10_000 };
+    const plain = basePay(s, b, T0);
+    expect(tick(s, T0 + c + 1000)).toBeCloseTo(plain * 3);
+    // A time warp during the rush pays the normal rate.
+    s.crystals = 1000;
+    const rate = perSecond(s, T0 + c + 2000, false);
+    expect(timeWarp(s, 1, T0 + c + 2000)).toBeCloseTo(rate * 3600);
+    expect(rate).toBeCloseTo(plain / cycleOf(b, 1));
   });
 });

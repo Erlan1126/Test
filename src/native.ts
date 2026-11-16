@@ -113,11 +113,13 @@ export interface ReminderInfo {
   rentFull: boolean;
   /** When the rent box fills up (ms), if it's still filling. */
   rentFullAt?: number;
+  /** When the Tycoon managers' vault fills up (they stop earning while away). */
+  vaultFullAt?: number;
   /** A holiday event's last day: its name and skin, if the skin isn't earned yet. */
   holidayEnds?: { at: number; name: string; skin: string };
 }
 
-const EXTRA_IDS = [104, 105];
+const EXTRA_IDS = [104, 105, 106];
 
 /**
  * Plans the next three reminders. Today's is skipped once today's tower is built, so a
@@ -153,6 +155,12 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       const at = new Date(info.rentFullAt), h = at.getHours();
       if (h < 9) at.setHours(9, 0, 0, 0); else if (h >= 22) { at.setDate(at.getDate() + 1); at.setHours(9, 0, 0, 0); }
       notifications.push({ id: 104, title: t("🏙️ Your rent box is full"), body: t("Collect it before it stops filling up."), schedule: { at, allowWhileIdle: true } });
+    }
+    // The managers' vault is full (again only at a sensible hour).
+    if (info.vaultFullAt && info.vaultFullAt > now + 60_000) {
+      const at = new Date(info.vaultFullAt), h = at.getHours();
+      if (h < 9) at.setHours(9, 0, 0, 0); else if (h >= 22) { at.setDate(at.getDate() + 1); at.setHours(9, 0, 0, 0); }
+      notifications.push({ id: 106, title: t("💰 Your managers' vault is full"), body: t("Skyhaven Inc. stopped earning. Collect your coins and keep growing!"), schedule: { at, allowWhileIdle: true } });
     }
     // The day before a holiday event ends, if its skin isn't earned yet.
     if (info.holidayEnds) {

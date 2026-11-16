@@ -2689,3 +2689,39 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
   background: radial-gradient(circle at 50% 84%, #fff8d0 0 5px, transparent 6px), linear-gradient(#c99a2e, #c99a2e) 50% 0 / 2px 46px no-repeat,
   radial-gradient(ellipse 15px 9px at 50% 86%, #ffd95e 0 98%, transparent 100%); }
 .ty-speedups { margin: 2px 4px 0; text-align: center; font-size: 12px; font-weight: 700; color: #6a6f99; }
+
+/* ── Tycoon: first steps coach ─────────────────────────────────────────────── */
+.ty-coach { display: flex; align-items: center; gap: 10px; margin: 0 6px 10px; padding: 10px 12px; border-radius: 18px; color: #2a1f3e;
+  background: linear-gradient(135deg, #fff7d6, #ffe6f0); box-shadow: 0 0 0 2px #fff, 0 6px 18px rgba(255, 140, 80, 0.25); animation: coach-in 0.5s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes coach-in { from { transform: translateY(-8px) scale(0.96); opacity: 0; } }
+.ty-coach-face { flex: none; width: 48px; height: 48px; }
+.ty-coach-face svg { width: 100%; height: 100%; }
+.ty-coach p { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.3; }
+.ty-coach small { display: block; font: 400 10px var(--display); letter-spacing: 0.06em; color: #ff4f8b; text-transform: uppercase; }
+.coach-here { position: relative; z-index: 2; animation: coach-pulse 1.1s ease-in-out infinite !important; }
+@keyframes coach-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 79, 139, 0.75); } 50% { box-shadow: 0 0 0 7px rgba(255, 79, 139, 0); } }
+.room-scene.coach-here { animation: none !important; outline: 3px solid #ff4f8b; outline-offset: -3px; }
+
+/* ── Tycoon: today's goals ─────────────────────────────────────────────────── */
+.ty-goals { display: grid; gap: 8px; margin: 0 4px; }
+.ty-goal { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(60, 40, 140, 0.08); }
+.ty-goal b { display: block; font-size: 13px; color: #2a1f3e; }
+.ty-goal em { font-style: normal; font-size: 12px; font-weight: 800; color: #6a6f99; white-space: nowrap; }
+.ty-goal-check { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #efeafc; color: #fff; font-weight: 900; }
+.ty-goal.done .ty-goal-check { background: linear-gradient(135deg, #5ee0a0, #19a87a); }
+.ty-goal.done b { color: #19a87a; }
+.ty-goal-bar { display: block; height: 6px; margin-top: 5px; border-radius: 4px; background: #efeafc; overflow: hidden; }
+.ty-goal-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffc93c, #ff8a3b); transition: width 0.3s; }
+.ty-goal.done .ty-goal-bar i { background: linear-gradient(90deg, #5ee0a0, #19a87a); }
+.ty-goal-bonus { margin: 2px 4px 0; text-align: center; font-size: 12px; font-weight: 800; color: #6a3cff; }
+.ty-goal-bonus.done { color: #19a87a; }
+
+/* ── Welcome back: the managers' vault ─────────────────────────────────────── */
+.vault { margin: -2px 0 12px; }
+.vault > i { display: block; height: 10px; border-radius: 6px; background: #efeafc; overflow: hidden; }
+.vault > i > i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ffe27a, #ffb13b); }
+.vault.full > i > i { background: linear-gradient(90deg, #ff8a3b, #ff4f8b); }
+.vault small { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; color: #6a6f99; }
+.vault.full small { color: #e8334f; }
+@media (prefers-reduced-motion: reduce) { .ty-coach, .coach-here { animation: none !important; } }
+.ty-list .ty-coach { margin: 0; border-radius: 0; box-shadow: inset 0 0 0 2px #fff; }

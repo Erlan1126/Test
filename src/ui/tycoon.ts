@@ -1,18 +1,18 @@
 // The Tycoon screens: the business list (tap to run, buy levels, hire managers), boosts,
 // the New Era, the live card on the home screen and the "while you were away" welcome.
 import { BUSINESSES, coins, RUSH_MULT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
-import { t } from "../i18n";
+import { t, tn } from "../i18n";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
-  payOf, perSecond, progressOf, runOnce, rushOn, speedupsLeft, warpPrice, doublePrice, doubleAway, stageName, stageOf, nextStage, startRush, tick, timeWarp, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageOf, nextStage, startRush, tick, timeWarp, unlockedBusiness, vipTip,
 } from "../logic/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
-import { mayorSvg } from "./mayor";
+import { MAYOR_SVG, mayorNote, mayorSvg } from "./mayor";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -65,6 +65,8 @@ export class TycoonUI {
     tick(this.save);
     this.render();
     openModal($("tycoon"));
+    // While learning, start at the coffee cart (it's at the foot of the tower).
+    if (this.save.tycoon.tips < 3) requestAnimationFrame(() => $("ty-list").querySelector(".ty-coach")?.scrollIntoView({ block: "start" }));
     const now = Date.now();
     this.nextVip = Math.max(this.nextVip, now + 6000);
     this.nextRush = Math.max(this.nextRush, now + 35000);
@@ -135,6 +137,7 @@ export class TycoonUI {
         const b = BUSINESSES.find(x => x.id === id)!;
         toast(t("Rush hour at {name}! ×{n} for a while", { name: t(stageName(id, levelOf(s, id))), n: RUSH_MULT }));
         this.host.sound.unlock();
+        this.goal("rush");
         this.render();
         $("ty-list").querySelector(`[data-id="${b.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -227,7 +230,7 @@ export class TycoonUI {
           ${vip ? `<span class="vip${this.vipFresh ? " fresh" : ""}" role="button" aria-label="${esc(t("VIP customer: tap for a tip"))}"><i>VIP</i>${PERSON_VIP}<em>${esc(t("Tap!"))}</em></span>` : ""}
           ${owned ? `<span class="room-props">${props}</span>${walkers}` : `<span class="room-lease">${esc(t("For lease"))}</span>`}
           ${managed ? `<i class="walker boss" style="--x:78%">${PERSON_BOSS}</i>` : ""}
-          ${owned ? `<b class="room-level">${esc(t("{n} floors", { n: fmt(lv) }))}</b>` : ""}
+          ${owned ? `<b class="room-level">${esc(tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }))}</b>` : ""}
           ${owned && !managed ? `<span class="tap-me">${esc(t("Tap!"))}</span>` : ""}
           <span class="room-pops"></span>
           <div class="ty-prog"><i></i><span>${owned ? esc(coins(payOf(s, b, now))) : esc(t("Opens with {n}", { n: coins(b.income * multiplier(s, now)) }))}</span></div>
@@ -239,6 +242,9 @@ export class TycoonUI {
         </div>`;
       row.querySelector(".vip")?.addEventListener("click", e => {
         e.stopPropagation();
+        // One tip per VIP: they leave the moment they're tapped.
+        (e.currentTarget as Element).remove();
+        if (this.vip.id !== b.id || this.vip.until < Date.now()) return;
         const tip = vipTip(s, b.id);
         this.vip.id = "";
         const box = row.querySelector(".room-pops")!;
@@ -247,12 +253,17 @@ export class TycoonUI {
         this.host.sound.coins();
         vibrate(s.settings.vibrate, 15);
         toast(t("A VIP tipped {n} coins!", { n: coins(tip) }));
+        this.goal("vip");
         this.host.persist();
         setTimeout(() => this.render(), 600);
       });
       row.querySelector(".room-scene")!.addEventListener("click", e => {
         if (!owned) return;
-        if (runOnce(s, b.id)) { this.host.sound.click(); burst(e.currentTarget as Element, 6); vibrate(s.settings.vibrate, 8); }
+        if (runOnce(s, b.id)) {
+          this.host.sound.click(); burst(e.currentTarget as Element, 6); vibrate(s.settings.vibrate, 8);
+          this.goal("taps");
+          if (s.tycoon.tips === 0) { s.tycoon.tips = 1; this.render(); }
+        }
       });
       const noRoom = freeFloors(s) < (this.amount === "max" ? 1 : this.amount);
       if (noRoom) {
@@ -265,6 +276,8 @@ export class TycoonUI {
         tick(s);
         const got = buyLevels(s, b.id, this.amount);
         if (!got) { this.host.sound.click(); return; }
+        this.goal("buy", got);
+        if (s.tycoon.tips === 1) s.tycoon.tips = 2;
         const crossed = nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
         this.host.sound.coins();
         burst(e.currentTarget as Element, crossed ? 20 : 8);
@@ -277,6 +290,7 @@ export class TycoonUI {
       row.querySelector(".ty-hire")?.addEventListener("click", e => {
         tick(s);
         if (!hireManager(s, b.id)) { this.host.sound.click(); return; }
+        if (s.tycoon.tips < 3) s.tycoon.tips = 3;
         this.host.sound.unlock();
         burst(e.currentTarget as Element, 16);
         toast(t("A manager now runs {name}, even while you're away", { name }));
@@ -289,8 +303,59 @@ export class TycoonUI {
     for (const r of rooms.reverse()) list.appendChild(r);
     this.vipFresh = false;
     list.insertAdjacentHTML("beforeend", `<div class="tw-lobby"><span class="tw-door"></span><span class="tw-door"></span><b>${esc(t("Lobby"))}</b></div>`);
+    // The first steps point at what to touch.
+    const step = ty.tips, first = list.querySelector<HTMLElement>('.ty-biz[data-id="coffee"]');
+    if (first && step < 3) {
+      first.querySelector(step === 0 ? ".room-scene" : step === 1 ? ".ty-buy" : ".ty-hire")?.classList.add("coach-here");
+      first.insertAdjacentHTML("beforebegin", this.coach());
+    }
+    this.renderGoals();
     this.renderBoosts();
     this.renderEra();
+  }
+
+  /** Mayor Pip's tip for the next first step, until the first manager is hired. */
+  private coach(): string {
+    const ty = this.save.tycoon, b = BUSINESSES[0];
+    if (ty.tips >= 3) return "";
+    const text = ty.tips === 0 ? t("Tap the Coffee Cart to sell your first coffee!")
+      : ty.tips === 1 ? t("Nice! Now buy a level: every level earns more each sale.")
+      : t("Save {n} coins to hire a manager. Managers sell for you, even while you're away!", { n: coins(b.manager) });
+    return `<div class="ty-coach"><span class="ty-coach-face">${COACH_FACE}</span><p><small>${esc(t("First steps · {n} of 3", { n: ty.tips + 1 }))}</small>${esc(text)}</p></div>`;
+  }
+
+  /** Counts toward today's goals and celebrates any that are done. */
+  private goal(kind: GoalType, by = 1): void {
+    const r = goalStep(this.save, kind, by);
+    if (r.stars) { toast(t("Goal done! +{n} ★", { n: r.stars })); this.host.sound.unlock(); }
+    if (r.crystals) { toast(t("All of today's goals done! +{n} Sky Crystals", { n: r.crystals })); fireworks(3, () => this.host.sound.firework()); }
+    if (r.stars || r.crystals) { this.host.persist(); this.host.refresh(); }
+    this.renderGoals();
+  }
+
+  private renderGoals(): void {
+    const s = this.save;
+    dealGoals(s);
+    const g = s.tycoon.goals;
+    const text = (k: GoalType, n: number) => k === "vip" ? t("Serve {n} VIP customers", { n }) : k === "buy" ? t("Buy {n} business levels", { n })
+      : k === "taps" ? t("Run a business by hand {n} times", { n }) : t("Catch {n} rush hours", { n });
+    $("ty-goals").innerHTML = g.list.map(x => {
+      const done = x.p >= x.n, stars = GOAL_STARS[Math.max(0, GOAL_TIERS[x.t].indexOf(x.n))];
+      return `<div class="ty-goal${done ? " done" : ""}"><span class="ty-goal-check">${done ? "✓" : ""}</span><span><b>${esc(text(x.t, x.n))}</b>
+        <i class="ty-goal-bar"><i style="width:${Math.min(100, (x.p / x.n) * 100)}%"></i></i></span><em>${done ? esc(t("Done")) : `${x.p}/${x.n}`} · ${stars} ★</em></div>`;
+    }).join("") + `<p class="ty-goal-bonus${g.bonus ? " done" : ""}">${esc(g.bonus ? t("Bonus collected! New goals tomorrow.") : t("Finish all three for +{n} Sky Crystals", { n: GOALS_BONUS_CRYSTALS }))}</p>`;
+  }
+
+  /** After the company was started over for the slower economy, Pip explains it once. */
+  freshStart(): void {
+    const s = this.save;
+    if (!s.tycoon.fresh) return;
+    if (!$("mayor").hidden || !$("welcome").hidden) { setTimeout(() => this.freshStart(), 1500); return; }
+    s.tycoon.fresh = false;
+    this.host.persist();
+    mayorNote(t("Skyhaven Inc. starts fresh!"),
+      t("We've rebuilt the company so every business grows step by step: from a little cart to a shop, a store, a flagship and an empire. You keep your {n} office floors. Let's build it up again!", { n: fmt(officeFloors(s)) }),
+      t("Let's go!"), () => this.open());
   }
 
   /** The company's office tower: each business's floors in its own color, empty floors as
@@ -314,7 +379,7 @@ export class TycoonUI {
   }
 
   private renderBoosts(): void {
-    const s = this.save, ty = s.tycoon, rate = perSecond(s);
+    const s = this.save, ty = s.tycoon, rate = perSecond(s, Date.now(), false);
     const card = (cls: string, icon: string, title: string, text: string, price: string, disabled: boolean) =>
       `<div class="ty-boost ${cls}"><span class="ty-bico">${iconSvg(icon)}</span><span><b>${esc(title)}</b><small>${esc(text)}</small></span><button type="button" class="buy"${disabled ? " disabled" : ""}>${price}</button></div>`;
     const left = speedupsLeft(s);
@@ -383,7 +448,7 @@ export class TycoonUI {
     $("tc-coins").textContent = coins(this.save.tycoon.coins);
     $("tc-floors").textContent = t("{used} of {total} office floors", { used: fmt(usedFloors(this.save)), total: fmt(officeFloors(this.save)) });
     const r = perSecond(this.save);
-    $("tc-rate").textContent = r > 0 ? t("+{n} a second", { n: coins(r) }) : t("Tap to run your businesses");
+    $("tc-rate").textContent = r > 0 ? t("+{n} a second · keeps earning {h}h while away", { n: coins(r), h: offlineHours(this.save) }) : t("Tap to run your businesses");
     // A dot when something can be bought.
     const any = BUSINESSES.some((b, i) => unlockedBusiness(this.save, i) && costOf(b, levelOf(this.save, b.id), 1) <= this.save.tycoon.coins);
     tile.querySelector<HTMLElement>(".dot")!.hidden = !any;
@@ -402,6 +467,12 @@ export class TycoonUI {
     $("welcome-face").innerHTML = mayorSvg("happy");
     $("welcome-amount").textContent = coins(earned);
     $("welcome-text").textContent = t("Your managers kept Skyhaven busy for {time}.", { time: fmtAway(awayMs) });
+    // The vault: how full it got (it stops filling after the offline limit).
+    const cap = offlineHours(this.save), h = Math.min(cap, awayMs / 3600e3);
+    $("welcome-vault-bar").style.width = `${(h / cap) * 100}%`;
+    $("welcome-vault").classList.toggle("full", h >= cap);
+    $("welcome-vault-text").textContent = h >= cap ? t("Vault full! Managers stop after {n} hours: come back sooner to earn more.", { n: cap })
+      : t("Vault {h} of {n} hours full", { h: h.toFixed(1), n: cap });
     const x3 = $<HTMLButtonElement>("welcome-x3"), price = doublePrice(this.save, awayMs);
     x3.textContent = t("Double it · 💎 {n}", { n: price });
     x3.hidden = speedupsLeft(this.save) <= 0;
@@ -437,6 +508,9 @@ const PROPS: Record<string, string[]> = {
 const SHIRTS = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff", "#ff8a5c"];
 /** A little office worker (shirt color from --shirt). */
 const PERSON = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f6c49e"/><path d="M6 5q4-5 8 0" fill="#5a3a22"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="var(--shirt)"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
+/** Mayor Pip for the coach, with his own gradient ids (the dialog's copy is hidden, and a
+ *  hidden gradient can't be drawn). */
+const COACH_FACE = MAYOR_SVG.replace(/id="mp-/g, 'id="mpc-').replace(/url\(#mp-/g, "url(#mpc-");
 /** A VIP customer: sunglasses, a gold jacket. */
 const PERSON_VIP = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#e8b48a"/><path d="M5 5q5-5 10 0v-1q-5-4-10 0z" fill="#1c1640"/><rect x="5.5" y="6" width="9" height="2.6" rx="1.2" fill="#1c1640"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#ffc93c"/><path d="M10 14l-2 18h4z" fill="#fff3b0"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
 /** The manager: a suit and a red tie. */

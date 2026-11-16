@@ -1,7 +1,7 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
 import { OLD_FEATURE_TOWERS } from "./features";
-import { ECONOMY, newTycoon, type TycoonState } from "./tycoon";
+import { ECONOMY, newTycoon, type CompanyGoal, type TycoonState } from "./tycoon";
 import { BUSINESSES } from "../data/tycoon";
 import { addXp, xpNeeded } from "./rules";
 import { LANGS, type LangSetting } from "../i18n";
@@ -499,6 +499,15 @@ export function importCode(code: string): SaveData | null {
 }
 
 /** Tycoon numbers can be astronomically large, so they're checked as finite, not capped. */
+function normalizeGoals(v: unknown): TycoonState["goals"] {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const kinds = ["vip", "buy", "taps", "rush"];
+  const list = Array.isArray(o.list) ? o.list.filter((g): g is CompanyGoal => !!g && typeof g === "object" && kinds.includes((g as CompanyGoal).t)
+    && Number.isInteger((g as CompanyGoal).n) && (g as CompanyGoal).n > 0 && typeof (g as CompanyGoal).p === "number").slice(0, 3)
+    .map(g => ({ t: g.t, n: g.n, p: Math.max(0, Math.min(g.n, Math.floor(g.p))) })) : [];
+  return { day: typeof o.day === "string" ? o.day.slice(0, 12) : "", list, bonus: o.bonus === true };
+}
+
 function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const big = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : 0);
@@ -508,10 +517,12 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     if (ids.includes(k) && Number.isInteger(x) && (x as number) > 0) levels[k] = Math.min(x as number, 100000);
   }
   if (!levels.coffee) levels.coffee = 1;
+  const managers0 = Array.isArray(o.managers) ? o.managers : [];
   // A company from the first economy (when everything grew far too fast) starts over once.
   // It keeps its office floors and the crystal coin booster it paid for.
   if (v && typeof v === "object" && o.econ !== ECONOMY) {
     const fresh = newTycoon();
+    fresh.fresh = true;
     fresh.floors = Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore));
     fresh.boost = o.boost === true;
     return fresh;
@@ -528,6 +539,9 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     floors: Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore)),
     speedups: { day: typeof (o.speedups as { day?: unknown })?.day === "string" ? String((o.speedups as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.speedups as { n?: unknown })?.n)) },
     econ: ECONOMY,
+    fresh: o.fresh === true,
+    tips: managers0.length ? 3 : Math.min(3, Math.floor(big(o.tips))),
+    goals: normalizeGoals(o.goals),
     rush: { id: typeof (o.rush as { id?: unknown })?.id === "string" && ids.includes((o.rush as { id: string }).id) ? (o.rush as { id: string }).id : "", until: big((o.rush as { until?: unknown })?.until) },
   };
 }
