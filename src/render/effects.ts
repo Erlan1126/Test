@@ -46,6 +46,10 @@ export class Effects {
   particles: Particle[] = [];
   debris: Debris[] = [];
   popups: Popup[] = [];
+  /** The current perfect streak and fever, for the screen-edge glow. */
+  combo = 0;
+  fever = false;
+  private glow = 0;
   /** Residents' speech bubbles out of the tower's windows. */
   bubbles: { text: string; y: number; life: number; max: number; side: -1 | 1 }[] = [];
   /** Landing squash on the top floor, 1 to 0. */
@@ -246,6 +250,29 @@ export class Effects {
     ctx.textBaseline = "alphabetic";
   }
 
+  /** The screen's edges glow with the streak: warmer, brighter and pulsing faster the longer
+   *  it runs, and fiery during a fever. */
+  drawStreakGlow(p: Paint, dt: number, time: number): void {
+    const { ctx, view } = p;
+    const want = this.fever ? 1 : clamp((this.combo - 2) / 8, 0, 0.85);
+    this.glow += (want - this.glow) * Math.min(1, dt * 4);
+    if (this.glow < 0.02) return;
+    const c: RGB = this.fever ? [255, 120, 40] : this.combo >= 8 ? [255, 79, 160] : this.combo >= 5 ? [255, 150, 60] : [90, 200, 255];
+    const pulse = 0.75 + 0.25 * Math.sin(time * (4 + this.glow * 6));
+    const a = this.glow * pulse * 0.55, W = view.W, H = view.H;
+    const edge = Math.min(W, H) * (0.18 + this.glow * 0.12);
+    const side = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${a})`);
+      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(rx, ry, rw, rh);
+    };
+    side(0, 0, edge, 0, 0, 0, edge, H);
+    side(W, 0, W - edge, 0, W - edge, 0, edge, H);
+    side(0, H, 0, H - edge, 0, H - edge, W, edge);
+  }
+
   drawPopups(p: Paint, _top: Box, minY = 0): void {
     const { ctx, view } = p;
     ctx.textAlign = "center";
@@ -263,7 +290,28 @@ export class Effects {
       ctx.translate(view.W / 2, y);
       ctx.rotate(q.tilt * (q.big ? 1 : 0.5));
       ctx.scale(scale, scale);
-      const size = q.big ? 36 : 28;
+      // Bigger words for longer streaks.
+      const size = (q.big ? 36 : 28) + Math.min(this.combo, 14) * 0.9;
+      if (q.big) {
+        // Light rays turning slowly behind the big words.
+        ctx.save();
+        ctx.globalAlpha *= 0.55;
+        ctx.rotate(age * 0.8);
+        const rays = 12, R = size * 2.6;
+        const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+        rg.addColorStop(0, q.color);
+        rg.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = rg;
+        for (let i = 0; i < rays; i++) {
+          const a0 = (i / rays) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, R, a0, a0 + Math.PI / rays * 0.7);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
       ctx.font = `${size}px ${DISPLAY_FONT}`;
       const [r, g, b] = hexRgb(q.color);
       const dark = rgb(mixRgb([r, g, b], [20, 10, 50], 0.72));

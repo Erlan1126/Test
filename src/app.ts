@@ -813,6 +813,7 @@ export class App implements DailyHost {
   private start(mode: Mode, challengeId?: string): void {
     this.endMove();
     this.endVisit();
+    $("mayor").hidden = true;
     $("levelup").hidden = true;
     this.chatIn = 10;
     this.sound.tune = currentTheme(this.save).id;
@@ -995,6 +996,8 @@ export class App implements DailyHost {
     this.sim.mover = null;
     this.renderer.fx.shake = Math.max(this.renderer.fx.shake, 0.6);
     this.renderer.fx.bubbles = [];
+    this.renderer.fx.combo = 0;
+    this.renderer.fx.fever = false;
     // Losing on a miss: watch the floor tumble away in slow motion before the camera
     // pulls back to show the whole tower.
     if (!silent && !this.calmMotion && this.renderer.fx.debris.length) {
@@ -1233,6 +1236,8 @@ export class App implements DailyHost {
     people.textContent = fmt(sim.score);
     if (bump) replay(people, "bump");
     // The fever meter: fills with perfect drops in a row, then counts the fever floors down.
+    this.renderer.fx.combo = this.state === "playing" ? sim.combo : 0;
+    this.renderer.fx.fever = this.state === "playing" && sim.feverLeft > 0;
     const fev = $("fever"), on = sim.feverLeft > 0, rules5 = (sim.cfg.rules ?? 1) >= 5 && this.mode !== "zen";
     const toward = sim.combo % FEVER_AT;
     fev.hidden = !rules5 || (!on && toward < 2);
@@ -1362,7 +1367,7 @@ export class App implements DailyHost {
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
-      if (this.state === "menu" && !openModalEl() && !this.moving && $("levelup").hidden && $("starter").hidden && $("mayor").hidden) introduce(save, () => this.persist());
+      if (this.state === "menu" && !$("menu").hidden && !openModalEl() && !this.moving && !this.visiting && $("levelup").hidden && $("starter").hidden && $("mayor").hidden) introduce(save, () => this.persist());
     }, 1100);
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);
