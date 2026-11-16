@@ -456,23 +456,36 @@
       <div class="ty-stats"><span id="ty-rate"></span><span id="ty-mult"></span></div>
       <div class="ty-events" id="ty-events"></div>
       <div class="ty-office">
-        <div class="ty-tower" id="ty-tower" aria-hidden="true"></div>
-        <div class="ty-floors"><small>Office floors</small><b id="ty-floors">0 / 10</b><i class="ty-fbar"><i id="ty-fbar"></i></i><button type="button" class="btn btn-primary" id="ty-build">Build more floors</button></div>
+        <div class="ty-floors"><small>Office floors</small><b id="ty-floors">0 / 10</b><i class="ty-fbar"><i id="ty-fbar"></i></i></div>
+        <button type="button" class="ty-build-btn" id="ty-build"><span>Build</span><small>more floors</small></button>
       </div>
-      <div class="ty-amount" role="radiogroup" aria-label="Buy amount"><button type="button" data-n="1" aria-checked="true">×1</button><button type="button" data-n="10">×10</button><button type="button" data-n="100">×100</button><button type="button" data-n="max">MAX</button></div>
     </div>
-    <div class="ty-list" id="ty-list"></div>
-    <h3 class="sheet-sub">Today's goals</h3>
-    <div class="ty-goals" id="ty-goals"></div>
-    <h3 class="sheet-sub">Upgrades</h3>
-    <div class="ty-upgrades" id="ty-upgrades"></div>
-    <h3 class="sheet-sub">Advisors</h3>
-    <div class="ty-advisors" id="ty-advisors"></div>
-    <h3 class="sheet-sub">Boosts</h3>
-    <div class="ty-boosts" id="ty-boosts"></div>
-    <h3 class="sheet-sub">New Era</h3>
-    <div class="ty-era" id="ty-era-card"></div>
-    <p class="sheet-note">Every person in your sky city works here: build taller towers to earn more. Managers keep businesses running even while Skyrise is closed (up to 8 hours, 24 with VIP).</p>
+    <div class="ty-tabs" role="tablist" aria-label="Skyhaven Inc.">
+      <button type="button" role="tab" data-tab="company" aria-selected="true"><span>Company</span><i class="dot" hidden></i></button>
+      <button type="button" role="tab" data-tab="upgrades" aria-selected="false"><span>Upgrades</span><i class="dot" hidden></i></button>
+      <button type="button" role="tab" data-tab="team" aria-selected="false"><span>Team</span><i class="dot" hidden></i></button>
+      <button type="button" role="tab" data-tab="boosts" aria-selected="false"><span>Boosts</span><i class="dot" hidden></i></button>
+    </div>
+    <div class="ty-panel" data-panel="company">
+      <div class="ty-amount" role="radiogroup" aria-label="Buy amount"><button type="button" data-n="1" aria-checked="true">×1</button><button type="button" data-n="10">×10</button><button type="button" data-n="100">×100</button><button type="button" data-n="max">MAX</button></div>
+      <div class="ty-sky" id="ty-sky"><div class="ty-list" id="ty-list"></div></div>
+      <h3 class="sheet-sub">Today's goals</h3>
+      <div class="ty-goals" id="ty-goals"></div>
+    </div>
+    <div class="ty-panel" data-panel="upgrades" hidden>
+      <p class="ty-panel-intro">One-time buys that multiply your earnings for good.</p>
+      <div class="ty-upgrades" id="ty-upgrades"></div>
+    </div>
+    <div class="ty-panel" data-panel="team" hidden>
+      <p class="ty-panel-intro">Advisors join your company with special perks. Collect all ten!</p>
+      <div class="ty-advisors" id="ty-advisors"></div>
+    </div>
+    <div class="ty-panel" data-panel="boosts" hidden>
+      <div class="ty-boosts" id="ty-boosts"></div>
+      <h3 class="sheet-sub">New Era</h3>
+      <div class="ty-era" id="ty-era-card"></div>
+      <p class="sheet-note">Every person in your sky city works here: build taller towers to earn more. Managers keep businesses running even while Skyrise is closed.</p>
+    </div>
   </div>
 </div>
 
@@ -555,7 +568,7 @@
         <summary><span class="set-ico" aria-hidden="true">📲</span><b>Move progress to another device</b><span class="chev" aria-hidden="true">›</span></summary>
         <div class="transfer">
           <p class="sheet-note">Copy your code here, then load it on the other device.</p>
-          <button type="button" class="btn btn-secondary wide" id="copy-code">Copy my save code</button>
+          <button type="button" class="btn btn-secondary wide" id="copy-save-code">Copy my save code</button>
           <textarea id="code-box" rows="3" spellcheck="false" autocomplete="off" aria-label="Save code" placeholder="Paste a save code here"></textarea>
           <button type="button" class="btn btn-secondary wide" id="load-code">Load save code</button>
           <p class="transfer-msg" id="code-msg" role="status"></p>

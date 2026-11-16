@@ -149,8 +149,6 @@ export class Renderer3D {
   private firstBuilt: Floor | null = null;
   private warmMats: THREE.Material[] = [];
   private topMesh: THREE.Mesh | null = null;
-  /** A tower crane that climbs the back corner while you build, with two builders. */
-  private crane: { root: THREE.Group; jib: THREE.Group; hook: THREE.Object3D; workers: THREE.Object3D[]; mast: THREE.Group; ties: THREE.Object3D[] } | null = null;
   private topOf: Floor | null = null;
   private towerKey = "";
   private readonly mats = new Map<string, FloorMats>();
@@ -576,7 +574,6 @@ export class Renderer3D {
 
     // Top floor squash when it lands
     if (this.topMesh) this.topMesh.scale.y = n > 1 ? 1 - fx.bounce * 0.3 : 1;
-    this.updateCrane(f);
 
     for (const o of this.floaters) o.visible = f.shot !== "menu";
     this.updateRoof(f);
@@ -943,85 +940,6 @@ export class Renderer3D {
       this.topOf = top ?? null;
       if (this.topMesh) this.tower.add(this.topMesh);
     }
-  }
-
-  private makeCrane(): NonNullable<Renderer3D["crane"]> {
-    const yellow = new THREE.MeshStandardMaterial({ color: 0xffc21a, roughness: 0.55, metalness: 0.2 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x2a2f4a, roughness: 0.7 });
-    const root = new THREE.Group(), jib = new THREE.Group();
-    // A lattice-looking mast (one unit tall, stretched to reach down the tower's side) with
-    // four thin corner posts and cross bracing.
-    const mast = new THREE.Group();
-    mast.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 0.5).translate(0, -0.5, 0), yellow));
-    for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) {
-      mast.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 1, 0.1).translate(x, -0.5, z), dark));
-    }
-    mast.position.y = FH * 3.4;
-    root.add(mast);
-    // Steel ties from the mast to the tower's corner every few floors: it climbs with the
-    // tower, held by the floors already built, the way real tower cranes do.
-    const ties: THREE.Object3D[] = [];
-    const len = Math.hypot(1.4, 1.4);
-    for (let i = 0; i < 5; i++) {
-      const tie = new THREE.Group();
-      tie.add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.14, 0.14).translate(len / 2, 0, -0.18), dark));
-      tie.add(new THREE.Mesh(new THREE.BoxGeometry(len, 0.14, 0.14).translate(len / 2, 0, 0.18), dark));
-      tie.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), yellow)); // the collar around the mast
-      tie.rotation.y = -Math.PI * 0.75; // pointing at the tower's corner
-      tie.position.y = -FH * (1 + i * 3);
-      root.add(tie);
-      ties.push(tie);
-    }
-    // The cab, the long arm and its counterweight, all turning together.
-    jib.position.y = FH * 3.4;
-    jib.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9).translate(0, 0.35, 0), yellow));
-    jib.add(new THREE.Mesh(new THREE.BoxGeometry(9, 0.32, 0.32).translate(3.6, 0.85, 0), yellow));
-    jib.add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 0.7).translate(-1.6, 0.7, 0), dark));
-    jib.add(new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.1, 4).translate(0, 1.55, 0), yellow));
-    const hook = new THREE.Group();
-    hook.position.set(6.5, 0.7, 0);
-    hook.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 0.05).translate(0, -1.1, 0), dark));
-    hook.add(new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.35).translate(0, -2.3, 0), dark));
-    jib.add(hook);
-    // Two little builders in hard hats on the cab roof.
-    const workers: THREE.Object3D[] = [];
-    for (const [x, c] of [[-0.18, 0xff7a3d], [0.22, 0x3a8dff]] as const) {
-      const w = new THREE.Group();
-      w.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.34, 8).translate(0, 0.17, 0), new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 })));
-      w.add(new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8).translate(0, 0.42, 0), new THREE.MeshStandardMaterial({ color: 0xf2c9a0, roughness: 0.8 })));
-      w.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.46, 0), yellow));
-      w.position.set(x, 0.7, 0.2);
-      jib.add(w);
-      workers.push(w);
-    }
-    root.add(jib);
-    root.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
-    return { root, jib, hook, workers, mast, ties };
-  }
-
-  /** The crane rides up with the tower while you build and swings its arm now and then. */
-  private updateCrane(f: Frame): void {
-    const sim = f.sim, top = sim.stack[sim.stack.length - 1];
-    const show = f.shot === "play" && !!top && sim.stack.length > 2;
-    if (!show) { if (this.crane) this.crane.root.visible = false; return; }
-    if (!this.crane) { this.crane = this.makeCrane(); this.scene.add(this.crane.root); }
-    const c = this.crane, t = this.env.time;
-    // Just outside the right-hand back corner, where the sliding floor never goes.
-    const y = (top.y + 1) * FH;
-    if (!c.root.visible) c.root.position.set(top.x1 + 1.4, y, top.z0 - 1.4);
-    c.root.visible = true;
-    c.root.position.x += (top.x1 + 1.4 - c.root.position.x) * 0.15;
-    c.root.position.z += (top.z0 - 1.4 - c.root.position.z) * 0.15;
-    c.root.position.y += (y - c.root.position.y) * 0.12;
-    c.jib.rotation.y = -Math.PI * 0.75 + Math.sin(t * 0.35) * 0.5;
-    // The mast reaches down to the ground or 14 floors, whichever is nearer; ties below the
-    // ground are hidden.
-    const above = c.root.position.y + FH * 3.4;
-    c.mast.scale.y = Math.max(1, Math.min(above, FH * 14));
-    c.ties.forEach(tie => { tie.visible = c.root.position.y + tie.position.y > FH * 0.5 && -tie.position.y < FH * 13; });
-    c.hook.rotation.z = Math.sin(t * 1.7) * 0.06;
-    // Builders bob, and jump for joy on a perfect drop.
-    c.workers.forEach((w, i) => { w.position.y = 0.7 + Math.abs(Math.sin(t * 3 + i * 1.7)) * 0.05 + this.fx.flash * 0.25; });
   }
 
   private dropTail(from: number): void {

@@ -2781,3 +2781,170 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 .critic { left: 44%; }
 .critic { left: 56%; }
 .critic em { left: auto; right: calc(100% + 2px); }
+
+/* ══════════ Tycoon redesign: a living company in the sky ══════════ */
+/* Compact header. */
+.ty-hero { margin-bottom: 0 !important; padding-bottom: 14px !important; border-radius: 22px 22px 0 0;
+  background: radial-gradient(120% 90% at 85% 0%, rgba(255, 140, 200, 0.45), transparent 60%), radial-gradient(90% 80% at 0% 100%, rgba(80, 200, 255, 0.3), transparent 60%), linear-gradient(135deg, #24186a 0%, #4b25a0 55%, #9a2f8a 100%) !important; }
+.ty-coins { font-size: 40px !important; }
+#ty-coins { display: inline-block; transform-origin: left center; }
+#ty-coins.pulse { animation: coin-pulse 0.35s ease-out; }
+@keyframes coin-pulse { 40% { transform: scale(1.08); color: #fff3b0; text-shadow: 0 0 22px rgba(255, 220, 90, 0.95); } }
+.ty-office { display: flex !important; align-items: center; gap: 12px; margin: 8px 0 0 !important; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
+.ty-office .ty-floors { flex: 1; }
+.ty-office .ty-fbar { margin: 4px 0 0; }
+.ty-build-btn { display: flex; flex-direction: column; align-items: center; padding: 8px 14px; border: 0; border-radius: 14px; cursor: pointer; color: #fff;
+  background: linear-gradient(180deg, #ff7aa8, #ff4f8b 55%, #e23a78); box-shadow: 0 4px 0 #a8204f, 0 8px 16px rgba(255, 79, 139, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.4); }
+.ty-build-btn span { font: 400 15px var(--display); }
+.ty-build-btn small { font-size: 10px; font-weight: 800; opacity: 0.9; }
+.ty-build-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8204f; }
+.ty-build-btn.urgent { animation: ready-bob 1.2s ease-in-out infinite; }
+
+/* Tabs. */
+.ty-tabs { position: sticky; top: 0; z-index: 6; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 0 -16px 12px; padding: 8px 10px;
+  background: rgba(246, 243, 255, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 6px 14px rgba(40, 20, 100, 0.08); }
+.ty-tabs button { position: relative; padding: 9px 0; border: 0; border-radius: 12px; cursor: pointer; font: 400 12px var(--display); color: #6a6f99; background: transparent; }
+.ty-tabs button[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 4px 12px rgba(106, 60, 255, 0.35); }
+.ty-tabs .dot { position: absolute; top: 4px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: #ff4f6a; box-shadow: 0 0 0 2px #fff; }
+.ty-panel-intro { margin: 0 6px 10px; font-size: 13px; font-weight: 700; color: #6a6f99; }
+.ty-panel[data-panel="company"] .ty-amount { margin: 0 4px 10px; padding: 4px; border-radius: 14px; background: #ece7fb; }
+.ty-panel[data-panel="company"] .ty-amount button { color: #6a5fa8; background: transparent; }
+.ty-panel[data-panel="company"] .ty-amount button[aria-checked="true"] { color: #4a2a00; background: linear-gradient(180deg, #fff3b0, #ffc93c); }
+
+/* The sky around the tower, by the real time of day. */
+.ty-sky { position: relative; margin: 0 -16px 8px; padding: 14px 14px 0; overflow: hidden; border-radius: 0 0 24px 24px; }
+.ty-sky::before, .ty-sky::after { content: ""; position: absolute; pointer-events: none; }
+.ty-sky.tod-day { background: linear-gradient(180deg, #7cc8ff 0%, #b9e4ff 60%, #e8f6ff 100%); }
+.ty-sky.tod-dusk { background: linear-gradient(180deg, #5a4ab8 0%, #ff8a7a 55%, #ffd29a 100%); }
+.ty-sky.tod-night { background: linear-gradient(180deg, #0e0b33 0%, #2a1f6e 60%, #4a2f8a 100%); }
+.ty-sky::before { left: -10%; top: 60px; width: 60%; height: 40px; border-radius: 40px; background: rgba(255, 255, 255, 0.65); filter: blur(6px); animation: sky-drift 40s linear infinite; }
+.ty-sky::after { right: -20%; top: 260px; width: 70%; height: 46px; border-radius: 46px; background: rgba(255, 255, 255, 0.5); filter: blur(8px); animation: sky-drift 55s linear infinite reverse; }
+.ty-sky.tod-night::before, .ty-sky.tod-night::after { background: rgba(255, 255, 255, 0.08); }
+.ty-sky.tod-night { box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0); background-image: radial-gradient(1px 1px at 20% 10%, #fff, transparent), radial-gradient(1px 1px at 70% 30%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 60%, #fff, transparent), radial-gradient(1px 1px at 85% 75%, #fff, transparent), radial-gradient(1px 1px at 10% 85%, #fff, transparent), linear-gradient(180deg, #0e0b33 0%, #2a1f6e 60%, #4a2f8a 100%); }
+@keyframes sky-drift { from { transform: translateX(0); } to { transform: translateX(40%); } }
+.ty-sky #ty-list { position: relative; z-index: 1; }
+/* The building: walls with depth on both sides. */
+.ty-sky .ty-biz.room { border-left: 6px solid #3a2f80 !important; border-right: 6px solid #2a1f6e !important; box-shadow: 0 0 0 0 transparent, 10px 0 20px rgba(20, 10, 60, 0.18) !important; }
+.tw-roof { margin-top: 26px !important; padding: 14px 0 12px !important; border-radius: 22px 22px 0 0 !important; background: linear-gradient(180deg, #4a3aa0, #2a1f6e) !important; box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.25), 0 -4px 14px rgba(255, 210, 63, 0.25) !important; }
+.tw-roof b { font-size: 18px !important; }
+.tw-flag { position: absolute; right: 22px; top: -26px; width: 3px; height: 28px; background: #8a86b5; }
+.tw-flag::after { content: ""; position: absolute; left: 3px; top: 1px; width: 18px; height: 12px; background: linear-gradient(90deg, #ff4f8b, #ffc93c); clip-path: polygon(0 0, 100% 30%, 70% 55%, 100% 100%, 0 100%); transform-origin: left; animation: flag-wave 1.6s ease-in-out infinite; }
+@keyframes flag-wave { 50% { transform: scaleX(0.82) skewY(4deg); } }
+.tw-lobby { height: 64px !important; margin-bottom: 0 !important; border-radius: 0 0 6px 6px !important; background: linear-gradient(180deg, #f4f0ff, #d9d0f7) !important; border-left: 6px solid #3a2f80; border-right: 6px solid #2a1f6e; }
+.tw-lobby::after { content: ""; position: absolute; left: -20px; right: -20px; bottom: -10px; height: 12px; border-radius: 50%; background: rgba(20, 10, 60, 0.22); filter: blur(4px); }
+.tw-door { width: 30px !important; height: 34px !important; background: linear-gradient(160deg, #cdeeff, #6fb6ff 55%, #4f8bff) !important; }
+.tw-plant { width: 14px; height: 26px; border-radius: 50% 50% 4px 4px; background: radial-gradient(circle at 50% 30%, #5ee0a0, #19a87a); box-shadow: 0 8px 0 -2px #8a5a3a; align-self: flex-end; margin-bottom: 4px; }
+
+/* Rooms: a back wall with wallpaper, a window to the sky, lamps, a shelf, a counter. */
+.room-scene { isolation: isolate; transition: transform 0.12s; }
+.room-scene:active { transform: scale(0.985); }
+.room-scene.bump { animation: room-bump 0.35s ease-out; }
+@keyframes room-bump { 30% { transform: scale(1.02); filter: brightness(1.12); } }
+.room-wall { position: absolute; inset: 0 0 30% 0; z-index: -1; opacity: 0.55;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0 2px, transparent 2px 22px), radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5), transparent 70%); }
+.biz-flowers .room-wall { background: radial-gradient(circle at 10px 10px, rgba(255, 255, 255, 0.6) 3px, transparent 4px) 0 0 / 26px 26px; }
+.biz-bakery .room-wall { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.4) 0 6px, transparent 6px 16px); }
+.biz-cinema .room-wall, .biz-casino .room-wall { opacity: 0.9; background: radial-gradient(circle at 15% 20%, rgba(255, 220, 120, 0.5) 2px, transparent 3px) 0 0 / 30px 24px, linear-gradient(180deg, rgba(20, 10, 60, 0.35), transparent); }
+.biz-spaceport .room-wall, .biz-airport .room-wall { background: radial-gradient(circle at 20% 30%, #fff 1px, transparent 2px) 0 0 / 34px 28px, linear-gradient(180deg, rgba(40, 60, 160, 0.35), transparent); opacity: 0.8; }
+.room-window { overflow: hidden; }
+.ty-sky.tod-dusk .room-window { background: linear-gradient(180deg, #7a5ad0, #ff9a7a 70%, #ffd29a) !important; }
+.ty-sky.tod-night .room-window { background: radial-gradient(1px 1px at 30% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 60%, #fff, transparent), linear-gradient(180deg, #120d40, #2a1f6e) !important; }
+.room-cloud { position: absolute; top: 8px; left: -40%; width: 40%; height: 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.85); animation: window-cloud 14s linear infinite; }
+.ty-sky.tod-night .room-cloud { opacity: 0.15; }
+@keyframes window-cloud { to { left: 110%; } }
+.room-lamp { position: absolute; top: 0; z-index: 1; width: 2px; height: 16px; background: #5a4a7a; }
+.room-lamp::after { content: ""; position: absolute; top: 14px; left: -9px; width: 20px; height: 10px; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, var(--b2), var(--b1)); box-shadow: 0 10px 26px 10px rgba(255, 230, 160, 0.35); }
+.room-lamp.l1 { left: 44%; }
+.room-lamp.l2 { left: 62%; }
+.ty-sky.tod-night .room-lamp::after, .ty-sky.tod-dusk .room-lamp::after { box-shadow: 0 12px 34px 16px rgba(255, 220, 140, 0.55); }
+.room-shelf { position: absolute; left: 44%; right: 8px; bottom: 54px; z-index: 0; display: flex; gap: 6px; justify-content: flex-start; padding-bottom: 3px; font-size: 18px; border-bottom: 4px solid color-mix(in srgb, var(--b2) 70%, #3a2a20); }
+.room-shelf .rp { width: 28px !important; height: 24px !important; background: rgba(255, 255, 255, 0.85) !important; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12) !important; }
+.room-props { display: none; }
+.room-counter { position: absolute; left: 6%; bottom: 22px; z-index: 2; width: 34%; height: 22px; border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--b1) 60%, #fff) 0 5px, color-mix(in srgb, var(--b2) 75%, #3a2a20) 5px); box-shadow: 0 -2px 0 rgba(255, 255, 255, 0.6) inset; }
+.room-counter .register { position: absolute; right: 8px; top: -12px; width: 18px; height: 13px; border-radius: 3px 3px 1px 1px; background: linear-gradient(180deg, #4a4f7a, #2a2f5a); }
+.room-counter .register::after { content: ""; position: absolute; left: 3px; right: 3px; top: 2px; height: 4px; border-radius: 1px; background: #5ee0a0; box-shadow: 0 0 6px #5ee0a0; }
+.room.st4 .room-counter { background: linear-gradient(180deg, #fff3b0 0 5px, #c99a2e 5px); }
+
+/* People: arms swing, a soft shadow. */
+.walker { z-index: 3 !important; }
+.walker::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: -2px; height: 4px; border-radius: 50%; background: rgba(0, 0, 0, 0.18); }
+.walker .arm { transform-origin: 50% 50%; animation: arm-swing 0.5s ease-in-out infinite alternate; }
+.walker .a2 { animation-delay: -0.25s; }
+@keyframes arm-swing { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+
+/* Ambient life in each business. */
+.room-fx { position: absolute; left: 44%; right: 8px; bottom: 80px; height: 34px; z-index: 1; pointer-events: none; }
+.room-fx i { position: absolute; bottom: 0; width: 8px; height: 8px; border-radius: 50%; opacity: 0; animation: fx-rise 3s ease-out infinite; }
+.room-fx i:nth-child(2) { left: 40%; animation-delay: 1s; }
+.room-fx i:nth-child(3) { left: 75%; animation-delay: 2s; }
+@keyframes fx-rise { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 20% { opacity: 0.8; } 100% { transform: translateY(-28px) scale(1.4); opacity: 0; } }
+.fx-coffee i, .fx-bakery i, .fx-pizza i { background: rgba(255, 255, 255, 0.9); filter: blur(1.5px); }
+.fx-flowers i { border-radius: 60% 0; background: #ff9ac8; animation-name: fx-fall; }
+@keyframes fx-fall { 0% { transform: translateY(-30px) rotate(0); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(6px) rotate(200deg); opacity: 0; } }
+.fx-cinema i, .fx-casino i, .fx-mall i, .fx-hotel i { width: 5px; height: 5px; background: #ffe27a; box-shadow: 0 0 8px #ffe27a; }
+.fx-airport i, .fx-spaceport i { width: 4px; height: 12px; border-radius: 2px; background: linear-gradient(#fff, #9fe6ff); }
+
+/* Feedback: a ripple where you tap, coins that fly to the counter. */
+.tap-ripple { position: absolute; z-index: 6; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; pointer-events: none; border: 3px solid rgba(255, 255, 255, 0.95); animation: tap-ring 0.55s ease-out forwards; }
+@keyframes tap-ring { to { transform: scale(5); opacity: 0; } }
+.fly-coin { position: fixed; z-index: 450; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; animation: fly-coin 0.7s cubic-bezier(.5, -0.3, .7, 1) forwards; }
+.fly-coin svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 4px rgba(120, 70, 0, 0.5)); }
+@keyframes fly-coin { 0% { transform: translate(0, 0) scale(0.6); } 30% { transform: translate(calc(var(--dx) * 0.1), calc(var(--dy) * 0.1 - 30px)) scale(1.15); } 100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0.6; } }
+.power-cut.zap { animation: zap 0.25s steps(2); }
+@keyframes zap { 50% { background: rgba(255, 240, 160, 0.35); } }
+
+/* Room bar: friendlier. */
+.room-bar { background: linear-gradient(180deg, #fff, #f7f4ff) !important; border-bottom: 1px solid #ece7fb; }
+.room-bar .room-info { display: block; color: #6a6f99; font-size: 11px; font-weight: 700; line-height: 1.25; }
+.room-bar .hq-btn { grid-column: 1; }
+
+/* Upgrades: progress toward each one. */
+.ty-up { position: relative; overflow: hidden; }
+.ty-up.ready { box-shadow: 0 0 0 2px #ffc93c, 0 6px 18px rgba(255, 180, 40, 0.3); }
+.ty-up-bar { display: block; height: 5px; margin-top: 5px; border-radius: 3px; background: #efeafc; overflow: hidden; }
+.ty-up-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--b1), var(--b2)); }
+.ty-up-ico { box-shadow: 0 4px 0 color-mix(in srgb, var(--b2) 70%, #000), inset 0 2px 0 rgba(255, 255, 255, 0.4); }
+
+/* Team. */
+.ty-adv-head { display: flex; align-items: center; gap: 10px; margin: 0 6px 10px; }
+.ty-adv-head b { font: 400 13px var(--display); color: #2a1f3e; white-space: nowrap; }
+.ty-adv-meter { flex: 1; height: 8px; border-radius: 4px; background: #efeafc; overflow: hidden; }
+.ty-adv-meter i { display: block; height: 100%; background: linear-gradient(90deg, #b48cff, #ff4f8b); }
+.ty-adv:not(.locked) { box-shadow: 0 0 0 2px color-mix(in srgb, var(--o) 50%, #fff), 0 6px 14px rgba(60, 40, 140, 0.12) !important; }
+.ty-adv:not(.locked) .ty-adv-face { animation: adv-bob 3s ease-in-out infinite; }
+@keyframes adv-bob { 50% { transform: translateY(-2px); } }
+.ty-crate { display: flex; align-items: center; gap: 12px; width: calc(100% - 8px); margin: 0 4px; padding: 12px 14px; border: 0; border-radius: 18px; cursor: pointer; text-align: left; color: #fff;
+  background: linear-gradient(135deg, #6a3cff, #b04ad8 60%, #ff4f8b); box-shadow: 0 5px 0 #3a1f9a, 0 12px 24px rgba(106, 60, 255, 0.35); }
+.ty-crate:active { transform: translateY(3px); box-shadow: 0 2px 0 #3a1f9a; }
+.ty-crate b { display: block; font: 400 16px var(--display); }
+.ty-crate small { font-size: 12px; font-weight: 700; opacity: 0.9; }
+.ty-crate em { margin-left: auto; padding: 6px 10px; border-radius: 12px; font: 400 14px var(--display); font-style: normal; background: rgba(255, 255, 255, 0.2); white-space: nowrap; }
+.crate-art { flex: none; width: 46px; height: 40px; border-radius: 8px; background: linear-gradient(180deg, #ffd23f 0 30%, #e0a020 30% 34%, #c9862a 34%); box-shadow: inset 0 0 0 3px #8a5a1a; animation: crate-wiggle 2.4s ease-in-out infinite; }
+@keyframes crate-wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-6deg); } 90% { transform: rotate(6deg); } 95% { transform: rotate(-3deg); } }
+
+/* Goals with icons. */
+.ty-goal-check svg.ic { width: 16px; height: 16px; }
+.ty-goal:not(.done) .ty-goal-check { background: linear-gradient(135deg, #fff3b0, #ffc93c); }
+.ty-goal em { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.ty-goal em small { font-size: 11px; color: #d0901a; }
+
+/* Big moments: light rays behind the card. */
+.evo-rays { position: absolute; inset: -40%; z-index: -1; pointer-events: none; background: repeating-conic-gradient(from 0deg, rgba(255, 230, 140, 0.35) 0 10deg, transparent 10deg 24deg); border-radius: 50%; animation: rays-spin 12s linear infinite; mask: radial-gradient(circle, #000 30%, transparent 70%); -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%); }
+@keyframes rays-spin { to { transform: rotate(360deg); } }
+.evo-card { isolation: isolate; }
+.evo-from.plain { text-decoration: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ty-sky::before, .ty-sky::after, .room-cloud, .walker .arm, .room-fx i, .tw-flag::after, .crate-art, .ty-adv-face, .evo-rays, .fly-coin { animation: none !important; }
+}
+#ty-build.ty-build-btn { width: auto !important; flex: none; padding: 10px 16px; }
+.ty-office .ty-floors { min-width: 0; }
+.ty-office .ty-floors b { display: block; white-space: nowrap; font-size: 22px; }
+.ty-office .ty-floors small { white-space: nowrap; }
+.room-lamp.l2 { display: none; }
+.room-lamp.l1 { left: 41%; }
+.room-sign { max-width: 52%; }
+.room-sign b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hq-tag { top: auto !important; bottom: 30px; left: 50% !important; right: auto !important; transform: translateX(-50%); white-space: nowrap; z-index: 5; }
+.ty-boost .buy { display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+.ty-boost .buy svg { width: 16px; height: 16px; flex: none; }

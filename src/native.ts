@@ -139,7 +139,7 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       if (day === 0 && info.doneToday) continue;
       const at = new Date();
       at.setDate(at.getDate() + day);
-      at.setHours(hh || 19, mm || 0, 0, 0);
+      at.setHours(Number.isFinite(hh) ? hh : 19, Number.isFinite(mm) ? mm : 0, 0, 0);
       if (at.getTime() <= now + 60_000) continue;
       const first = n === 0;
       notifications.push({
@@ -165,7 +165,7 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
     // The day before a holiday event ends, if its skin isn't earned yet.
     if (info.holidayEnds) {
       const at = new Date(info.holidayEnds.at - 864e5);
-      at.setHours(hh || 18, mm || 0, 0, 0);
+      at.setHours(Number.isFinite(hh) ? hh : 18, Number.isFinite(mm) ? mm : 0, 0, 0);
       if (at.getTime() > now + 60_000) {
         notifications.push({ id: 105, title: t("⏳ {name} ends tomorrow", { name: info.holidayEnds.name }), body: t("Last chance to earn the {skin} skin.", { skin: info.holidayEnds.skin }), schedule: { at, allowWhileIdle: true } });
       }

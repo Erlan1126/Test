@@ -573,7 +573,7 @@ export class DailySheets {
     if (!this.friendsWired) {
       this.friendsWired = true;
       $("copy-code").addEventListener("click", async () => {
-        const code = save.friendCode;
+        const code = this.host.save.friendCode;
         if (!code) return;
         try { await navigator.clipboard.writeText(code); toast(t("Copied! Send it to a friend")); } catch { toast(code); }
         this.click();

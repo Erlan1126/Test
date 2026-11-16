@@ -223,7 +223,10 @@ export function costOf(b: Business, level: number, n: number): number {
 export function affordable(b: Business, level: number, coinsHave: number): number {
   const g = b.growth, first = b.cost * Math.pow(g, level);
   if (coinsHave < first) return 0;
-  return Math.max(0, Math.floor(Math.log(coinsHave * (g - 1) / first + 1) / Math.log(g)));
+  let k = Math.max(0, Math.floor(Math.log(coinsHave * (g - 1) / first + 1) / Math.log(g)));
+  // (Rounding can make the formula one too generous.)
+  while (k > 0 && costOf(b, level, k) > coinsHave) k--;
+  return k;
 }
 
 /** Office floors: every floor the player has ever built is an office (plus the ten of the
@@ -248,9 +251,9 @@ export function buyLevels(s: SaveData, id: string, n: number | "max", now = Date
   const b = businessById(id), i = BUSINESSES.findIndex(x => x.id === id);
   if (!b || !unlockedBusiness(s, i)) return 0;
   const lv = levelOf(s, id);
-  // Never more levels than there are empty office floors.
+  // Never more levels than there are empty office floors (buying what fits).
   const count = Math.min(n === "max" ? affordable(b, lv, s.tycoon.coins) : n, freeFloors(s));
-  if (count <= 0 || (n !== "max" && count < n)) return 0;
+  if (count <= 0) return 0;
   const price = costOf(b, lv, count);
   if (price > s.tycoon.coins) return 0;
   s.tycoon.coins -= price;

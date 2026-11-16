@@ -348,6 +348,7 @@ export class App implements DailyHost {
   // ---------- Host (used by the sheets) ----------
 
   persist(): void {
+    if (this.reloading) return; // a restored backup is loading: don't write over it
     this.cityView = null; // the city may have changed
     writeSave(this.storage, this.save);
     this.scheduleBackup();
@@ -360,6 +361,8 @@ export class App implements DailyHost {
   }
 
   private backupTimer = 0;
+  /** Set while the page reloads into a restored backup. */
+  private reloading = false;
 
   /** If the phone cleared the web copy of the save, bring back the native backup. */
   private async restoreBackup(): Promise<void> {
@@ -368,6 +371,9 @@ export class App implements DailyHost {
     try {
       const backup = JSON.parse(json) as { profile?: { towers?: number } };
       if ((backup.profile?.towers ?? 0) > this.save.profile.towers) {
+        this.reloading = true;
+        clearTimeout(this.backupTimer);
+        clearTimeout(this.cloudTimer);
         this.storage?.setItem(SAVE_KEY, json);
         location.reload();
       }
@@ -591,7 +597,7 @@ export class App implements DailyHost {
   /** Backs the save up to the server a little after it changes. */
   private cloudTimer = 0;
   private scheduleBackup(delay = 20000): void {
-    if (this.online.kind !== "global") return;
+    if (this.online.kind !== "global" || this.reloading) return;
     clearTimeout(this.cloudTimer);
     this.cloudTimer = window.setTimeout(() => void this.online.backup(this.save, () => writeSave(this.storage, this.save)), delay);
   }
@@ -793,6 +799,8 @@ export class App implements DailyHost {
     if (this.visiting) { if (e.code === "Escape") this.endVisit(); return; }
     if (!$("mayor").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("mayor-ok").click(); } return; }
     if (!$("welcome").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("welcome-ok").click(); } return; }
+    const evo = document.getElementById("evolve");
+    if (evo && !evo.hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); evo.hidden = true; } return; }
     // The level-up card is up: keys close it rather than starting a tower underneath.
     if (!$("levelup").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("levelup").hidden = true; } return; }
     const modal = openModalEl();
@@ -842,6 +850,9 @@ export class App implements DailyHost {
   // ---------- Starting and ending towers ----------
 
   private start(mode: Mode, challengeId?: string): void {
+    clearTimeout(this.evolveTimer);
+    const evo = document.getElementById("evolve");
+    if (evo) evo.hidden = true;
     this.endMove();
     this.endVisit();
     $("mayor").hidden = true;
@@ -1090,7 +1101,8 @@ export class App implements DailyHost {
         if (to) {
           this.hq = null;
           this.outcome.rewards.unshift({ kind: "island", text: t("🏢 The {name} HQ is open!", { name: t(STAGE_NAMES[id][to]) }) });
-          setTimeout(() => this.tycoon.evolve(id, from, to), 1600);
+          clearTimeout(this.evolveTimer);
+          this.evolveTimer = window.setTimeout(() => { if (this.state !== "playing" && this.state !== "paused") this.tycoon.evolve(id, from, to); }, 1600);
         } else if (need) {
           this.outcome.rewards.unshift({ kind: "pass", text: t("🏗️ The HQ needs {n} floors: you built {m}. Try again!", { n: need, m: run.floors }) });
         }
@@ -1559,6 +1571,7 @@ export class App implements DailyHost {
   /** The business whose new headquarters this tower is (null for an ordinary tower). */
   private hq: string | null = null;
   private hqNext: string | null = null;
+  private evolveTimer = 0;
 
   /** From the Tycoon: build a business's new headquarters to let it grow a stage. */
   buildHQ(id: string): void {
@@ -1568,7 +1581,7 @@ export class App implements DailyHost {
   }
 
   canMove(): boolean { return this.renderer instanceof Renderer3D; }
-  onMenu(): boolean { return this.state === "menu"; }
+  onMenu(): boolean { return this.state === "menu" && !this.visiting && !this.moving; }
 
   startMove(id: string): void {
     if (!(this.renderer instanceof Renderer3D) || this.state !== "menu") return;
@@ -2055,7 +2068,7 @@ export class App implements DailyHost {
     this.homeMode = mode;
     for (const [id, m] of [["classic-btn", "classic"], ["daily-btn", "daily"], ["zen-btn", "zen"]] as const) $(id).setAttribute("aria-checked", String(m === mode));
     $("play-label").textContent = mode === "daily" ? t("Tap to play the Daily")
-      : mode === "zen" ? t("Tap to build in Zen") : this.save.profile.towers >= 1 ? t("Tap anywhere to build office floors") : t("Tap anywhere to build");
+      : mode === "zen" ? t("Tap to build in Zen") : t("Tap anywhere to build");
   }
 
   /** Optional rewarded ad after a tower: doubles the stars it earned. */

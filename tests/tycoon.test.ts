@@ -36,8 +36,8 @@ describe("Skyhaven Tycoon", () => {
     const s = defaultSave();
     s.tycoon.coins = 1e12;
     expect(freeFloors(s)).toBe(9); // ten floors, one used by the coffee cart
-    expect(buyLevels(s, "coffee", 10)).toBe(0);
-    expect(buyLevels(s, "coffee", "max")).toBe(9);
+    expect(buyLevels(s, "coffee", 10)).toBe(9); // buys what fits
+    expect(buyLevels(s, "coffee", "max")).toBe(0);
     expect(freeFloors(s)).toBe(0);
     towerBonus(s, 20); // a 20-floor tower
     expect(buyLevels(s, "coffee", 10)).toBe(10);

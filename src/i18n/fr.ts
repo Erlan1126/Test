@@ -1288,4 +1288,10 @@ export const FR: Record<string, string> = {
   "Hype planner": "Organisatrice d'événements",
   "Night manager": "Gérant de nuit",
   "Tycoon legend": "Légende des affaires",
+  "A new advisor you don't have yet": "Un nouveau conseiller que tu n'as pas encore",
+  "Company": "Entreprise",
+  "Team": "Équipe",
+  "One-time buys that multiply your earnings for good.": "Des achats uniques qui multiplient tes gains pour toujours.",
+  "Advisors join your company with special perks. Collect all ten!": "Les conseillers rejoignent ton entreprise avec des atouts spéciaux. Collectionne les dix !",
+  "more floors": "plus d'étages",
 };

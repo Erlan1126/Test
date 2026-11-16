@@ -804,7 +804,7 @@ export class Sheets {
       $("restore-btn").classList.remove("danger");
     });
 
-    $("copy-code").addEventListener("click", async () => {
+    $("copy-save-code").addEventListener("click", async () => {
       const code = exportCode(this.save);
       const box = $<HTMLTextAreaElement>("code-box");
       box.value = code;
@@ -835,6 +835,8 @@ export class Sheets {
         this.codeMsg(t("This code has a best of {n} people and builder level {level}.", { n: fmt(loaded.best), level: loaded.profile.level }), "");
         return;
       }
+      // This device keeps its own player id (so purchases are never credited twice).
+      loaded.playerId = this.host.save.playerId || loaded.playerId;
       this.host.replaceSave(loaded);
       this.resetTransfer();
       this.codeMsg(t("Progress loaded!"), "ok");
