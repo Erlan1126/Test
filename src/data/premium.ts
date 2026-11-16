@@ -61,7 +61,7 @@ export const PRODUCTS: Product[] = [
   { id: "skin_sakura", name: "Sakura Spire", kind: "skin", crystals: 200, text: "Blossom pink with warm paper lanterns", grants: { skins: ["sakura"] } },
   { id: "skin_royal", name: "Royal Amethyst", kind: "skin", crystals: 200, text: "Deep purple stone trimmed in gold", grants: { skins: ["royal"] } },
   { id: "skin_cyber", name: "Cyber City", kind: "skin", crystals: 300, text: "Black glass with glowing neon edges", grants: { skins: ["cyber"] } },
-  { id: "skin_aurora", name: "Aurora Glass", kind: "skin", legendary: true, crystals: 1500, text: "Northern lights ripple up the glass", grants: { skins: ["aurora"] } },
+  { id: "skin_aurora", name: "Aurora Glass", kind: "skin", legendary: true, crystals: 1500, text: "Northern lights ripple up the glass", grants: { skins: ["aurora_glass"] } },
   { id: "skin_gold", name: "Molten Gold", kind: "skin", legendary: true, crystals: 2000, text: "Solid gold that shimmers in the sun", grants: { skins: ["gold"] } },
   { id: "skin_lava", name: "Lava Core", kind: "skin", legendary: true, crystals: 2500, text: "Glowing lava pulses through dark stone", grants: { skins: ["lava"] } },
   { id: "island_volcano", name: "Volcano Island", kind: "island", crystals: 300, text: "Black rock, palm trees and glowing lava", grants: { themes: ["volcano"] } },
@@ -91,7 +91,7 @@ PRODUCTS.push({ id: "pack_diamond", name: "Diamond Skyline", kind: "skin", legen
 PRODUCTS.push({
   id: "set_legendary", name: "Legendary Collection", kind: "bundle", legendary: true, crystals: 5000,
   text: "Aurora Glass, Molten Gold and Lava Core, plus 200 stars",
-  grants: { skins: ["aurora", "gold", "lava"], stars: 200 },
+  grants: { skins: ["aurora_glass", "gold", "lava"], stars: 200 },
 });
 
 export const productById = (id: string): Product | undefined => PRODUCTS.find(p => p.id === id);

@@ -90,3 +90,11 @@ describe("daily deals", () => {
     expect(after.find(d => d.kind === "skin")!.ref).toBe(skin.ref);
   });
 });
+
+import { SKINS as ALL_SKINS } from "../src/data/skins";
+describe("skin list", () => {
+  it("has no two skins with the same id", () => {
+    const ids = ALL_SKINS.map(s => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
