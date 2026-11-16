@@ -2413,3 +2413,41 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 #pass .pass-hero h2 { text-shadow: 0 2px 14px rgba(40, 10, 80, 0.35) !important; }
 /* Glass chips get a crisper, brighter edge. */
 .corner-btn, .city-line, .mayor-strip, #dock.tiles, .mode-row { box-shadow: 0 8px 28px rgba(30, 24, 90, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55) !important; }
+
+/* ---------- Premium buttons: candy-glass with depth, gloss, a moving shine and a springy press ---------- */
+.btn-primary, .modal .btn-primary, .dialog .btn-primary, .card .btn-primary, .buy:not(.move):not(:disabled), .modal .buy:not(.move):not(:disabled) {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: linear-gradient(180deg, #ff9ac2 0%, #ff4f8b 48%, #e8336f 52%, #f0457a 100%) !important;
+  color: #fff !important; border: 0 !important;
+  box-shadow: 0 5px 0 #a8204f, 0 10px 22px rgba(232, 51, 111, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.55), inset 0 -3px 0 rgba(120, 10, 50, 0.25) !important;
+  text-shadow: 0 1px 2px rgba(120, 10, 50, 0.35) !important;
+  transition: transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1), box-shadow 0.12s !important;
+}
+/* the glossy top half and a shine that sweeps across now and then */
+.btn-primary::before, .buy:not(.move):not(:disabled)::before {
+  content: ""; position: absolute; left: 4%; right: 4%; top: 3px; height: 44%; border-radius: 999px 999px 40% 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.05)); pointer-events: none; z-index: -1;
+}
+.btn-primary::after, .buy:not(.move):not(:disabled)::after {
+  content: "" !important; display: block !important; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+  transform: translateX(-130%); animation: btn-shine 3.8s ease-in-out infinite;
+}
+@keyframes btn-shine { 0%, 70% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+.btn-primary:active, .buy:not(.move):not(:disabled):active {
+  transform: translateY(4px) scale(0.98) !important;
+  box-shadow: 0 1px 0 #a8204f, 0 4px 10px rgba(232, 51, 111, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.45) !important;
+}
+/* Secondary buttons: frosted glass with a clean edge. */
+.btn-secondary, .modal .btn-secondary {
+  background: linear-gradient(180deg, #ffffff, #eef0fb) !important; color: #2a1f6e !important; border: 0 !important;
+  box-shadow: 0 4px 0 #c9cbe6, 0 8px 18px rgba(42, 31, 110, 0.12), inset 0 1px 0 #fff !important;
+  transition: transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1), box-shadow 0.12s !important;
+}
+.btn-secondary:active { transform: translateY(3px) scale(0.98) !important; box-shadow: 0 1px 0 #c9cbe6, 0 4px 10px rgba(42, 31, 110, 0.1) !important; }
+/* Gold buttons keep their gold, with the same depth and shine. */
+#pass .pass-premium .buy, .premium-card.legendary .buy, .pack-card.hero .buy {
+  background: linear-gradient(180deg, #fff3b0 0%, #ffd23f 48%, #ffb13b 52%, #ffc24a 100%) !important; color: #4a2a00 !important; text-shadow: none !important;
+  box-shadow: 0 5px 0 #b8740c, 0 10px 22px rgba(255, 170, 40, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.7) !important;
+}
+@media (prefers-reduced-motion: reduce) { .btn-primary::after, .buy::after { animation: none !important; } }
