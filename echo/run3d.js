@@ -26,7 +26,7 @@ const RUN3D = (() => { try {
   const sun = new T.DirectionalLight(0xffffff, 1.3); sun.position.set(-30, 40, 50); scene.add(sun);
   const bipLight = new T.PointLight(0x7ff0ff, 0, 16, 2); scene.add(bipLight);
   let composer = null, bloom = null;
-  if (T.EffectComposer && T.UnrealBloomPass) {
+  if (false) {
     composer = new T.EffectComposer(renderer);
     composer.addPass(new T.RenderPass(scene, camera));
     bloom = new T.UnrealBloomPass(new T.Vector2(256, 256), 0.5, 0.45, 0.82);
@@ -39,22 +39,25 @@ const RUN3D = (() => { try {
   // ---------- Textures ----------
   const glowTex = canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.25, "rgba(255,255,255,0.55)"); r.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = r; g.fillRect(0, 0, w, w); });
   // A facade: slim frames and big glass panes (4 × 4 per tile); the lit map lights some panes.
-  const facadeTex = canvasTex(256, 256, (g) => {
-    g.fillStyle = "#e9edf3"; g.fillRect(0, 0, 256, 256);
+  const facadeTex = canvasTex(512, 512, (g) => {
+    g.fillStyle = "#eef1f5"; g.fillRect(0, 0, 512, 512);
     for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
-      const x = c * 64 + 6, y = r * 64 + 8, gr = g.createLinearGradient(x, y, x + 52, y + 50);
-      gr.addColorStop(0, "#6f8094"); gr.addColorStop(0.5, "#8fa2b8"); gr.addColorStop(1, "#5d6c80");
-      g.fillStyle = gr; g.fillRect(x, y, 52, 50);
-      g.fillStyle = "rgba(255,255,255,0.18)"; g.fillRect(x + 4, y + 4, 10, 42);
+      const x = c * 128 + 10, y = r * 128 + 14, w = 108, h = 92, gr = g.createLinearGradient(x, y, x + w, y + h);
+      gr.addColorStop(0, "#5f748c"); gr.addColorStop(0.45, "#9db3ca"); gr.addColorStop(0.55, "#7f95ad"); gr.addColorStop(1, "#4d5f74");
+      g.fillStyle = gr; g.fillRect(x, y, w, h);
+      g.fillStyle = "#dfe5ec"; g.fillRect(x + w / 2 - 2, y, 4, h);
+      g.fillStyle = "rgba(255,255,255,0.22)"; g.beginPath(); g.moveTo(x + 8, y + h); g.lineTo(x + 30, y); g.lineTo(x + 44, y); g.lineTo(x + 22, y + h); g.fill();
     }
-    g.fillStyle = "#cfd6df"; for (let r = 0; r < 4; r++) g.fillRect(0, r * 64 + 60, 256, 4);
+    g.fillStyle = "#c9d1db"; for (let r = 0; r < 4; r++) g.fillRect(0, r * 128 + 112, 512, 10);
+    g.fillStyle = "#b8c1cc"; for (let c = 0; c < 4; c++) g.fillRect(c * 128, 0, 3, 512);
   });
-  const litTex = canvasTex(256, 256, (g) => {
-    g.fillStyle = "#000"; g.fillRect(0, 0, 256, 256);
+  const litTex = canvasTex(512, 512, (g) => {
+    g.fillStyle = "#000"; g.fillRect(0, 0, 512, 512);
     const rnd = seeded(77);
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (rnd() < 0.45) { const k = 0.55 + rnd() * 0.45; g.fillStyle = `rgba(255,255,255,${k})`; g.fillRect(c * 64 + 6, r * 64 + 8, 52, 50); }
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (rnd() < 0.45) { const k = 0.55 + rnd() * 0.45, x = c * 128 + 10, y = r * 128 + 14; g.fillStyle = `rgba(255,${235 + rnd() * 20},${200 + rnd() * 55},${k})`; g.fillRect(x, y, 52, 92); g.fillRect(x + 56, y, 52, 92); }
   });
-  for (const t of [facadeTex, litTex]) { t.wrapS = t.wrapT = T.RepeatWrapping; }
+  const aniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+  for (const t of [facadeTex, litTex, glowTex]) { t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = aniso; }
   const signTex = {};
   const signFor = word => signTex[word] || (signTex[word] = canvasTex(128, 48, (g) => {
     g.strokeStyle = "#fff"; g.lineWidth = 4; g.strokeRect(4, 4, 120, 40);
@@ -97,7 +100,7 @@ const RUN3D = (() => { try {
   // ---------- Towers ----------
   const towerMats = [];
   for (let q = 0; q < 6; q++) {
-    const map = facadeTex.clone(), em = litTex.clone(); map.needsUpdate = em.needsUpdate = true;
+    const map = facadeTex.clone(), em = litTex.clone(); map.needsUpdate = em.needsUpdate = true; map.anisotropy = em.anisotropy = aniso;
     map.repeat.set(1.5, 1); em.repeat.set(1.5, 1); map.offset.set(q * 0.25, q * 0.37); em.offset.copy(map.offset);
     towerMats.push(new T.MeshStandardMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, metalness: 0.35, roughness: 0.3 }));
   }
@@ -125,7 +128,7 @@ const RUN3D = (() => { try {
     const bulb = new T.Mesh(new T.SphereGeometry(0.1, 16, 12), bulbMat); bulb.position.set(0, 1.0, 0); g.add(bulb);
     const flameMat = new T.MeshBasicMaterial({ color: 0xbff4ff, toneMapped: false, transparent: true, opacity: 0.9 });
     const flame = new T.Mesh(new T.ConeGeometry(0.16, 0.6, 16), flameMat); flame.rotation.x = Math.PI; flame.position.set(0, -0.82, 0); g.add(flame);
-    const halo = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0x7ff0ff, transparent: true, opacity: 0.55, blending: T.AdditiveBlending, depthWrite: false })); halo.scale.set(4, 4, 1); g.add(halo);
+    const halo = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0x7ff0ff, transparent: true, opacity: 0.55, blending: T.AdditiveBlending, depthWrite: false })); halo.scale.set(2.6, 2.6, 1); g.add(halo);
     g.scale.setScalar(scale);
     g.userData = { shell, eyeMat, bulbMat, flame, eyes, halo };
     return g;
@@ -137,7 +140,7 @@ const RUN3D = (() => { try {
   const glowSpr = (c, s, a = 0.8) => { const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: c, transparent: true, opacity: a, blending: T.AdditiveBlending, depthWrite: false })); sp.scale.set(s, s, 1); return sp; };
   const starGeo2 = new T.OctahedronGeometry(0.42, 0);
   const makers = {
-    light: () => { const g = new T.Group(); g.add(new T.Mesh(starGeo2, basic(0xffc94a))); g.add(glowSpr(0xffb030, 2.2, 0.7)); return g; },
+    light: () => { const g = new T.Group(); g.add(new T.Mesh(starGeo2, basic(0xffc94a))); g.add(glowSpr(0xffb030, 1.5, 0.45)); return g; },
     heart: () => { const s = new T.Shape(); s.moveTo(0, -0.5); s.bezierCurveTo(-0.9, 0.1, -0.45, 0.75, 0, 0.3); s.bezierCurveTo(0.45, 0.75, 0.9, 0.1, 0, -0.5); const g = new T.Group(); const m = new T.Mesh(new T.ExtrudeGeometry(s, { depth: 0.25, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3 }), new T.MeshPhysicalMaterial({ color: 0xff4d7a, emissive: 0x661030, roughness: 0.25, clearcoat: 1 })); m.position.z = -0.12; g.add(m); g.add(glowSpr(0xff5d8a, 2.6, 0.5)); return g; },
     rock: () => {
       const g = new T.Group(), dark = new T.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.6, roughness: 0.35 });
@@ -153,7 +156,7 @@ const RUN3D = (() => { try {
       const mats = [basic(0xff2a7a), basic(0x22eeff), new T.MeshStandardMaterial({ color: 0x1a1024, roughness: 0.4, metalness: 0.3, emissive: 0x200818 })];
       for (let q = 0; q < 14; q++) { const m = new T.Mesh(boxGeo, mats[q < 4 ? 0 : q < 7 ? 1 : 2]); g.add(m); cubes.push(m); }
       const eyes = []; for (const sd of [-1, 1]) { const e = new T.Mesh(boxGeo, basic(0xff3d7f)); e.scale.set(0.22, 0.22, 0.1); e.position.set(sd * 0.25, 0.08, 0.5); g.add(e); eyes.push(e); }
-      g.add(glowSpr(0xff2a7a, 3.2, 0.45));
+      g.add(glowSpr(0xff2a7a, 2.2, 0.3));
       g.userData = { cubes, eyes }; return g;
     },
     laser: () => { const g = new T.Group(); const core = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 1, 8), basic(0xffe6f0)); core.rotation.z = Math.PI / 2; g.add(core); const outer = new T.Mesh(new T.CylinderGeometry(0.14, 0.14, 1, 8), basic(0xff2a6a, { transparent: true, opacity: 0.45, depthWrite: false })); outer.rotation.z = Math.PI / 2; g.add(outer); return g; },
@@ -189,6 +192,7 @@ const RUN3D = (() => { try {
     back: () => new T.Mesh(boxGeo, backMat),
     sign: () => new T.Mesh(new T.PlaneGeometry(2.6, 1), new T.MeshBasicMaterial({ transparent: true, toneMapped: false, depthWrite: false })),
     halo: () => glowSpr(0xffffff, 1, 0.3),
+    nglow: () => glowSpr(0xffffff, 1, 0.5),
   };
   const get = kind => pool(kind, makers[kind]);
   const islandMeshes = new WeakMap();
@@ -197,7 +201,7 @@ const RUN3D = (() => { try {
   let W0 = 0, H0 = 0, dpr0 = 0, envT = -9, pxU = 1, onFail = false;
   const v3 = new T.Vector3();
   function size(W, H) {
-    const dpr = Math.min(typeof modestPhone !== "undefined" && modestPhone ? 1 : 1.5, window.devicePixelRatio || 1);
+    const dpr = Math.min(typeof modestPhone !== "undefined" && modestPhone ? 1.5 : 2.5, window.devicePixelRatio || 1);
     if (W === W0 && H === H0 && dpr === dpr0) return;
     W0 = W; H0 = H; dpr0 = dpr;
     renderer.setPixelRatio(dpr); renderer.setSize(W, H, false);
@@ -225,7 +229,7 @@ const RUN3D = (() => { try {
     skyU.top.value.copy(C(P.sky[0])); skyU.mid.value.copy(C(P.sky[1])); skyU.bot.value.copy(C(P.sky[2]));
     sky.position.copy(camera.position);
     scene.fog.color.copy(C(P.sky[2])).lerp(C(P.sky[1]), 0.4);
-    scene.fog.near = 95; scene.fog.far = 330 + night * 60;
+    scene.fog.near = 130 - night * 30; scene.fog.far = 420;
     hemi.color.copy(C(P.sky[1])).lerp(new T.Color(1, 1, 1), 0.5); hemi.groundColor.copy(C(P.tower)).multiplyScalar(0.4);
     hemi.intensity = 0.35 + day * 0.65;
     sun.color.copy(C(P.sky[2])).lerp(new T.Color(1, 1, 1), 0.5); sun.intensity = 0.15 + day * 1.25;
@@ -256,11 +260,12 @@ const RUN3D = (() => { try {
       const y0 = wy(k * BLOCK), h = BLOCK * U;
       for (const side of [-1, 1]) {
         const r = seeded(k * 31 + (side > 0 ? 17 : 0)), ex = wx(blockEdge(k, side)), w = 26, z0 = 0; r();
-        const m = get("tower"); m.material = towerMats[Math.floor(r() * 6)];
+        const bld = Math.floor(k / 3), m = get("tower"); m.material = towerMats[Math.floor(seeded(bld * 31 + side * 5)() * 6)];
         m.scale.set(w, h - 0.12, DEPTH); m.position.set(ex + side * w / 2, y0 + h / 2, z0 - DEPTH / 2 + 2);
         m.material.map.repeat.set(1.5, 1);
-        const ld = get("ledge"); ld.scale.set(w + 0.3, 0.1, DEPTH + 0.3); ld.position.set(ex + side * (w / 2 - 0.3), y0 + 0.05, z0 - DEPTH / 2 + 2);
+        if (k % 3 === 0) { const ld = get("ledge"); ld.scale.set(w + 0.8, 0.3, DEPTH + 0.8); ld.position.set(ex + side * (w / 2 - 0.4), y0 + 0.1, z0 - DEPTH / 2 + 2); }
         const n = get("neon"); n.material = side < 0 ? neonMatL : neonMatR; n.scale.set(0.14, h, 0.14); n.position.set(ex + side * 0.07, y0 + h / 2, z0 + 2.05);
+        if (night > 0.3) { const ng = get("nglow"); ng.scale.set(1.4, h, 1); ng.position.set(ex + side * 0.1, y0 + h / 2, z0 + 2.2); ng.material.color.copy(C(side < 0 ? P.neon : P.neon2)); ng.material.opacity = (night - 0.3) * 0.7; }
         if (r() < 0.25) {
           const words = ["OPEN", "24H", "CAFE", "HOTEL", "BAR", "NEON", "TAXI", "ROBO"], word = words[Math.floor(r() * words.length)], nc = r() < 0.5 ? P.neon : P.neon2;
           const s = get("sign"), key = word + (nc === P.neon ? "a" : "b");
