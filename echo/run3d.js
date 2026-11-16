@@ -23,7 +23,15 @@ const RUN3D = (() => { try {
   const camera = new T.PerspectiveCamera(46, 0.5, 0.5, 600);
   scene.fog = new T.Fog(0xffffff, 40, 170);
   const hemi = new T.HemisphereLight(0xffffff, 0x334455, 0.9); scene.add(hemi);
-  const sun = new T.DirectionalLight(0xffffff, 1.3); sun.position.set(-30, 40, 50); scene.add(sun);
+  const sun = new T.DirectionalLight(0xffffff, 1.3); sun.position.set(-30, 40, 50); scene.add(sun); scene.add(sun.target);
+  // Real shadows: the sun casts them from towers, ledges, Bip and everything in the street.
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+  sun.castShadow = true;
+  { const sm = typeof modestPhone !== "undefined" && modestPhone ? 1024 : 2048; sun.shadow.mapSize.set(sm, sm); }
+  Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 60, bottom: -60, near: 1, far: 260 });
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
+  const SUN_DIR = new T.Vector3(-0.35, 0.5, 0.8).normalize();
   const bipLight = new T.PointLight(0x7ff0ff, 0, 16, 2); scene.add(bipLight);
   let composer = null, bloom = null;
   if (false) {
@@ -56,8 +64,14 @@ const RUN3D = (() => { try {
     const rnd = seeded(77);
     for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (rnd() < 0.45) { const k = 0.55 + rnd() * 0.45, x = c * 128 + 10, y = r * 128 + 14; g.fillStyle = `rgba(255,${235 + rnd() * 20},${200 + rnd() * 55},${k})`; g.fillRect(x, y, 52, 92); g.fillRect(x + 56, y, 52, 92); }
   });
+  // Roughness (green) and metalness (blue): glass panes are smooth mirrors, frames are matte.
+  const rmTex = canvasTex(512, 512, (g) => {
+    g.fillStyle = "rgb(0,150,20)"; g.fillRect(0, 0, 512, 512);
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { g.fillStyle = "rgb(0,22,235)"; g.fillRect(c * 128 + 10, r * 128 + 14, 108, 92); g.fillStyle = "rgb(0,120,40)"; g.fillRect(c * 128 + 62, r * 128 + 14, 4, 92); }
+  });
+  rmTex.encoding = T.LinearEncoding;
   const aniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
-  for (const t of [facadeTex, litTex, glowTex]) { t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = aniso; }
+  for (const t of [facadeTex, litTex, glowTex, rmTex]) { t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = aniso; }
   const signTex = {};
   const signFor = word => signTex[word] || (signTex[word] = canvasTex(128, 48, (g) => {
     g.strokeStyle = "#fff"; g.lineWidth = 4; g.strokeRect(4, 4, 120, 40);
@@ -91,7 +105,10 @@ const RUN3D = (() => { try {
   const pools = {};
   function pool(kind, make) {
     const P = pools[kind] || (pools[kind] = { list: [], used: 0, make });
-    if (P.used >= P.list.length) { const o = make(); scene.add(o); P.list.push(o); }
+    if (P.used >= P.list.length) {
+      const o = make(); scene.add(o); P.list.push(o);
+      o.traverse(m => { if (m.isMesh && !m.material.isMeshBasicMaterial && !m.material.transparent && m.userData.cast !== false) m.castShadow = true; });
+    }
     const o = P.list[P.used++]; o.visible = true; return o;
   }
   function poolsReset() { for (const k in pools) { const P = pools[k]; for (let q = P.used; q < P.list.length; q++) P.list[q].visible = false; P.used = 0; } }
@@ -102,38 +119,96 @@ const RUN3D = (() => { try {
   for (let q = 0; q < 6; q++) {
     const map = facadeTex.clone(), em = litTex.clone(); map.needsUpdate = em.needsUpdate = true; map.anisotropy = em.anisotropy = aniso;
     map.repeat.set(1.5, 1); em.repeat.set(1.5, 1); map.offset.set(q * 0.25, q * 0.37); em.offset.copy(map.offset);
-    towerMats.push(new T.MeshStandardMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, metalness: 0.35, roughness: 0.3 }));
+    towerMats.push(new T.MeshStandardMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, roughnessMap: rmTex, metalnessMap: rmTex, metalness: 1, roughness: 1, envMapIntensity: 1.1 }));
   }
   const boxGeo = new T.BoxGeometry(1, 1, 1);
   const neonMatL = new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), neonMatR = new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
-  const ledgeMat = new T.MeshStandardMaterial({ color: 0xffffff, metalness: 0.2, roughness: 0.5 });
-  const backMat = new T.MeshStandardMaterial({ map: facadeTex, emissiveMap: litTex, emissive: 0xffffff, emissiveIntensity: 0, metalness: 0.2, roughness: 0.6 });
+  const ledgeMat = new T.MeshStandardMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.7 });
+  const backMat = new T.MeshStandardMaterial({ map: facadeTex, emissiveMap: litTex, emissive: 0xffffff, emissiveIntensity: 0, roughnessMap: rmTex, metalnessMap: rmTex, metalness: 0.7, roughness: 1 });
   const signMats = {};
+  // The back of the street: matte panelled concrete, so shadows read clearly and the street edges stay clear.
+  const panelTex = canvasTex(256, 256, (g) => {
+    g.fillStyle = "#e4e6ea"; g.fillRect(0, 0, 256, 256);
+    const r = seeded(9); for (let q = 0; q < 900; q++) { g.fillStyle = `rgba(0,0,0,${r() * 0.04})`; g.fillRect(r() * 256, r() * 256, 2, 2); }
+    g.fillStyle = "rgba(0,0,0,0.16)"; for (let x = 0; x < 256; x += 64) g.fillRect(x, 0, 2, 256); for (let y = 0; y < 256; y += 128) g.fillRect(0, y, 256, 2);
+    g.fillStyle = "rgba(255,255,255,0.35)"; for (let x = 2; x < 256; x += 64) g.fillRect(x, 0, 1, 256);
+  });
+  panelTex.wrapS = panelTex.wrapT = T.RepeatWrapping; panelTex.repeat.set(3, 1); panelTex.anisotropy = aniso;
+  const rearMat = new T.MeshStandardMaterial({ map: panelTex, roughness: 0.85, metalness: 0, envMapIntensity: 0.4 });
   const DEPTH = 10;                 // how deep the street-side towers are, front to back
 
-  // ---------- Bip and friends: glossy little robots ----------
+  // ---------- Bip and friends: glossy little robots with a face screen ----------
+  function faceTexture() { const c = document.createElement("canvas"); c.width = 256; c.height = 128; const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = aniso; return t; }
+  // Faces: idle, blink, happy, wow (a pulse), worried (danger close), hurt, star (a power).
+  function paintFace(tex, expr, eye) {
+    const g = tex.image.getContext("2d"), W = 256, H = 128, L = 96, Rr = 160, Y = 60;
+    const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#1d263d"); bg.addColorStop(1, "#05070f"); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.save(); g.shadowColor = eye; g.shadowBlur = 16; g.fillStyle = eye; g.strokeStyle = eye; g.lineWidth = 9; g.lineCap = "round"; g.lineJoin = "round";
+    const rr = (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); g.fill(); };
+    if (expr === "blink") { for (const x of [L, Rr]) { g.beginPath(); g.moveTo(x - 13, Y + 4); g.lineTo(x + 13, Y + 4); g.stroke(); } }
+    else if (expr === "happy") { for (const x of [L, Rr]) { g.beginPath(); g.arc(x, Y + 12, 15, Math.PI * 1.12, Math.PI * 1.88); g.stroke(); } g.lineWidth = 6; g.beginPath(); g.arc(128, Y + 16, 13, 0.18 * Math.PI, 0.82 * Math.PI); g.stroke(); }
+    else if (expr === "hurt") { g.strokeStyle = g.shadowColor = "#ff6b8b"; for (const x of [L, Rr]) { g.beginPath(); g.moveTo(x - 11, Y - 11); g.lineTo(x + 11, Y + 11); g.moveTo(x + 11, Y - 11); g.lineTo(x - 11, Y + 11); g.stroke(); } g.lineWidth = 6; g.beginPath(); g.moveTo(114, Y + 32); g.lineTo(121, Y + 27); g.lineTo(128, Y + 32); g.lineTo(135, Y + 27); g.lineTo(142, Y + 32); g.stroke(); }
+    else if (expr === "worried") { for (const x of [L, Rr]) rr(x - 10, Y - 10, 20, 30, 10); g.lineWidth = 5; g.beginPath(); g.moveTo(L - 16, Y - 16); g.lineTo(L + 10, Y - 25); g.moveTo(Rr + 16, Y - 16); g.lineTo(Rr - 10, Y - 25); g.stroke(); g.beginPath(); g.moveTo(118, Y + 32); g.quadraticCurveTo(128, Y + 25, 138, Y + 32); g.stroke(); }
+    else if (expr === "wow") { g.lineWidth = 7; for (const x of [L, Rr]) { g.beginPath(); g.arc(x, Y, 15, 0, Math.PI * 2); g.stroke(); } g.beginPath(); g.ellipse(128, Y + 30, 7, 8, 0, 0, Math.PI * 2); g.fill(); }
+    else if (expr === "star") { g.font = "900 46px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; for (const x of [L, Rr]) g.fillText("\u2605", x, Y + 3); }
+    else { for (const x of [L, Rr]) rr(x - 12, Y - 20, 24, 40, 12); g.shadowBlur = 0; g.fillStyle = "rgba(255,255,255,0.9)"; for (const x of [L, Rr]) rr(x - 6, Y - 15, 7, 11, 3); }
+    g.restore();
+    g.fillStyle = "rgba(255,255,255,0.07)"; g.beginPath(); g.ellipse(84, 20, 74, 13, -0.12, 0, Math.PI * 2); g.fill();
+    tex.needsUpdate = true;
+  }
+  function setFace(bot, expr, eye) { const ud = bot.userData, key = expr + eye; if (ud.face === key) return; ud.face = key; paintFace(ud.faceTex, expr, eye); }
   function makeBot(scale) {
     const g = new T.Group();
-    const shell = new T.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.15 });
-    const body = new T.Mesh(new T.SphereGeometry(0.62, 32, 24), shell); body.scale.set(1.12, 0.98, 0.95); g.add(body);
-    const visor = new T.Mesh(new T.SphereGeometry(0.5, 32, 16), new T.MeshPhysicalMaterial({ color: 0x141a2c, roughness: 0.08, metalness: 0.3, clearcoat: 1 }));
-    visor.scale.set(1.08, 0.72, 0.6); visor.position.set(0, 0.04, 0.32); g.add(visor);
-    const eyeMat = new T.MeshBasicMaterial({ color: 0x7ff0ff, toneMapped: false });
-    const eyes = [];
-    for (const sd of [-1, 1]) { const e = new T.Mesh(new T.SphereGeometry(0.1, 16, 12), eyeMat); e.position.set(sd * 0.2, 0.05, 0.62); g.add(e); eyes.push(e); }
-    const earMat = new T.MeshStandardMaterial({ color: 0xa9b6c9, metalness: 0.5, roughness: 0.3 });
-    for (const sd of [-1, 1]) { const e = new T.Mesh(new T.CylinderGeometry(0.16, 0.16, 0.14, 20), earMat); e.rotation.z = Math.PI / 2; e.position.set(sd * 0.72, 0, 0); g.add(e); }
-    const ant = new T.Mesh(new T.CylinderGeometry(0.025, 0.025, 0.4, 8), earMat); ant.position.set(0, 0.78, 0); g.add(ant);
+    const shell = new T.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.24, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.1 });
+    const trim = new T.MeshStandardMaterial({ color: 0x8e9bb0, metalness: 0.85, roughness: 0.22 });
+    const accent = new T.MeshBasicMaterial({ color: 0x7ff0ff, toneMapped: false });
+    const head = new T.Group(); head.position.y = 0.26; g.add(head);
+    const skull = new T.Mesh(new T.SphereGeometry(0.62, 40, 28), shell); skull.scale.set(1.18, 0.9, 1); head.add(skull);
+    const faceTex = faceTexture();
+    const visor = new T.Mesh(new T.SphereGeometry(0.636, 48, 20, Math.PI / 2 - 0.95, 1.9, Math.PI / 2 - 0.56, 1.06),
+      new T.MeshPhysicalMaterial({ color: 0xffffff, map: faceTex, emissiveMap: faceTex, emissive: 0xffffff, emissiveIntensity: 0.85, roughness: 0.05, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03 }));
+    visor.scale.copy(skull.scale); head.add(visor);
+    for (const sd of [-1, 1]) {
+      const ear = new T.Mesh(new T.CylinderGeometry(0.17, 0.17, 0.16, 28), trim); ear.rotation.z = Math.PI / 2; ear.position.set(sd * 0.74, 0, 0); head.add(ear);
+      const ring = new T.Mesh(new T.TorusGeometry(0.11, 0.025, 8, 28), accent); ring.rotation.y = Math.PI / 2; ring.position.set(sd * 0.825, 0, 0); head.add(ring);
+    }
+    const ant = new T.Mesh(new T.CylinderGeometry(0.022, 0.03, 0.34, 10), trim); ant.position.set(0, 0.72, 0); head.add(ant);
     const bulbMat = new T.MeshBasicMaterial({ color: 0x7ff0ff, toneMapped: false });
-    const bulb = new T.Mesh(new T.SphereGeometry(0.1, 16, 12), bulbMat); bulb.position.set(0, 1.0, 0); g.add(bulb);
-    const flameMat = new T.MeshBasicMaterial({ color: 0xbff4ff, toneMapped: false, transparent: true, opacity: 0.9 });
-    const flame = new T.Mesh(new T.ConeGeometry(0.16, 0.6, 16), flameMat); flame.rotation.x = Math.PI; flame.position.set(0, -0.82, 0); g.add(flame);
-    const halo = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0x7ff0ff, transparent: true, opacity: 0.55, blending: T.AdditiveBlending, depthWrite: false })); halo.scale.set(2.6, 2.6, 1); g.add(halo);
+    const bulb = new T.Mesh(new T.SphereGeometry(0.09, 18, 12), bulbMat); bulb.position.set(0, 0.92, 0); head.add(bulb);
+    const torso = new T.Mesh(new T.SphereGeometry(0.42, 32, 24), shell); torso.scale.set(1, 0.82, 0.88); torso.position.y = -0.5; g.add(torso);
+    const belt = new T.Mesh(new T.TorusGeometry(0.4, 0.035, 10, 40), trim); belt.rotation.x = Math.PI / 2; belt.position.y = -0.56; g.add(belt);
+    const core = new T.Mesh(new T.CircleGeometry(0.085, 28), accent); core.position.set(0, -0.44, 0.372); g.add(core);
+    const hands = [];
+    for (const sd of [-1, 1]) { const h = new T.Mesh(new T.SphereGeometry(0.13, 20, 14), shell); h.position.set(sd * 0.64, -0.45, 0.06); g.add(h); hands.push(h); }
+    const flameMat = new T.MeshBasicMaterial({ color: 0xbff4ff, toneMapped: false, transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false });
+    const flames = [];
+    for (const sd of [-1, 1]) {
+      const pack = new T.Mesh(new T.CylinderGeometry(0.11, 0.13, 0.42, 20), trim); pack.position.set(sd * 0.2, -0.48, -0.36); g.add(pack);
+      const nz = new T.Mesh(new T.CylinderGeometry(0.08, 0.11, 0.1, 16), new T.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.8, roughness: 0.3 })); nz.position.set(sd * 0.2, -0.74, -0.36); g.add(nz);
+      const fl = new T.Mesh(new T.ConeGeometry(0.1, 0.55, 16), flameMat); fl.rotation.x = Math.PI; fl.position.set(sd * 0.2, -1.05, -0.36); g.add(fl); flames.push(fl);
+    }
+    const halo = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: 0x7ff0ff, transparent: true, opacity: 0.3, blending: T.AdditiveBlending, depthWrite: false })); halo.scale.set(2.6, 2.6, 1); g.add(halo);
     g.scale.setScalar(scale);
-    g.userData = { shell, eyeMat, bulbMat, flame, eyes, halo };
+    g.userData = { shell, accent, bulbMat, flames, flameMat, hands, head, faceTex, face: "", halo };
+    paintFace(faceTex, "idle", "#7ff0ff");
     return g;
   }
   const bip = makeBot(1); scene.add(bip);
+  bip.traverse(m => { if (m.isMesh && !m.material.isMeshBasicMaterial && !m.material.transparent) m.castShadow = true; });
+
+  // Glitches: angry little screens. Two frames: steady, and torn.
+  const glitchFaces = [0, 1].map(f => canvasTex(128, 96, (g) => {
+    g.fillStyle = "#0a0410"; g.fillRect(0, 0, 128, 96);
+    g.save(); g.shadowColor = "#ff2a6a"; g.shadowBlur = 10; g.fillStyle = "#ff3d7f";
+    const off = f ? 7 : 0;
+    g.beginPath(); g.moveTo(22 + off, 30); g.lineTo(56 + off, 40); g.lineTo(54 + off, 54); g.lineTo(24 + off, 50); g.fill();
+    g.beginPath(); g.moveTo(106 - off, 30); g.lineTo(72 - off, 40); g.lineTo(74 - off, 54); g.lineTo(104 - off, 50); g.fill();
+    g.fillStyle = "#ffffff"; g.fillRect(40 + off, 42, 6, 6); g.fillRect(82 - off, 42, 6, 6);
+    g.fillStyle = "#ff3d7f"; g.beginPath(); g.moveTo(34, 70); for (let q = 0; q <= 6; q++) g.lineTo(34 + q * 10, q % 2 ? 62 : 76); g.lineTo(94, 70); g.lineTo(94, 78); g.lineTo(34, 78); g.fill();
+    g.restore();
+    if (f) { g.fillStyle = "rgba(34,238,255,0.8)"; g.fillRect(0, 36, 128, 5); g.fillStyle = "rgba(255,42,122,0.7)"; g.fillRect(0, 64, 128, 4); }
+    g.fillStyle = "rgba(255,255,255,0.06)"; for (let y = 0; y < 96; y += 4) g.fillRect(0, y, 128, 1);
+  }));
 
   // ---------- Item makers ----------
   const basic = (c, extra) => new T.MeshBasicMaterial(Object.assign({ color: c, toneMapped: false }, extra || {}));
@@ -143,21 +218,38 @@ const RUN3D = (() => { try {
     light: () => { const g = new T.Group(); g.add(new T.Mesh(starGeo2, basic(0xffc94a))); g.add(glowSpr(0xffb030, 1.5, 0.45)); return g; },
     heart: () => { const s = new T.Shape(); s.moveTo(0, -0.5); s.bezierCurveTo(-0.9, 0.1, -0.45, 0.75, 0, 0.3); s.bezierCurveTo(0.45, 0.75, 0.9, 0.1, 0, -0.5); const g = new T.Group(); const m = new T.Mesh(new T.ExtrudeGeometry(s, { depth: 0.25, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3 }), new T.MeshPhysicalMaterial({ color: 0xff4d7a, emissive: 0x661030, roughness: 0.25, clearcoat: 1 })); m.position.z = -0.12; g.add(m); g.add(glowSpr(0xff5d8a, 2.6, 0.5)); return g; },
     rock: () => {
-      const g = new T.Group(), dark = new T.MeshStandardMaterial({ color: 0x2a2f3d, metalness: 0.6, roughness: 0.35 });
-      const body = new T.Mesh(boxGeo, dark); body.scale.set(1.1, 0.4, 0.8); g.add(body);
-      const dome = new T.Mesh(new T.SphereGeometry(0.32, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshPhysicalMaterial({ color: 0x8fd3ff, roughness: 0.1, clearcoat: 1, transparent: true, opacity: 0.8 })); dome.position.y = 0.2; g.add(dome);
-      const rotors = [];
-      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const arm = new T.Mesh(boxGeo, dark); arm.scale.set(0.5, 0.06, 0.06); arm.position.set(dx * 0.6, 0.1, dz * 0.4); arm.rotation.y = dx * dz * 0.6; g.add(arm); const r = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 0.02, 24), new T.MeshBasicMaterial({ color: 0xd8e2f0, transparent: true, opacity: 0.4, depthWrite: false })); r.position.set(dx * 0.85, 0.22, dz * 0.6); g.add(r); rotors.push(r); }
-      const led = new T.Mesh(new T.SphereGeometry(0.08, 10, 8), basic(0xff3b5c)); led.position.set(0, -0.05, 0.42); g.add(led);
-      g.userData = { led }; return g;
+      // A security drone: a glossy pod, a red camera eye that tracks Bip, four spinning props.
+      const g = new T.Group();
+      const metal = new T.MeshPhysicalMaterial({ color: 0x2b3142, metalness: 0.75, roughness: 0.28, clearcoat: 0.6 });
+      const pod = new T.MeshPhysicalMaterial({ color: 0xeef1f6, metalness: 0.15, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08 });
+      const body = new T.Mesh(new T.SphereGeometry(0.55, 36, 22), pod); body.scale.set(1.15, 0.6, 1); g.add(body);
+      const band = new T.Mesh(new T.TorusGeometry(0.58, 0.06, 10, 48), metal); band.rotation.x = Math.PI / 2; band.scale.set(1.12, 1, 1); g.add(band);
+      const lensRing = new T.Mesh(new T.TorusGeometry(0.2, 0.05, 12, 32), metal); lensRing.position.set(0, -0.04, 0.52); g.add(lensRing);
+      const lensBack = new T.Mesh(new T.CircleGeometry(0.2, 28), new T.MeshStandardMaterial({ color: 0x0a0b10, roughness: 0.2 })); lensBack.position.set(0, -0.04, 0.5); g.add(lensBack);
+      const eye = new T.Mesh(new T.SphereGeometry(0.1, 20, 14), basic(0xff2b4a)); eye.position.set(0, -0.04, 0.52); g.add(eye);
+      const eyeGlow = glowSpr(0xff2b4a, 0.9, 0.7); eyeGlow.position.set(0, -0.04, 0.6); g.add(eyeGlow);
+      const strip = new T.Mesh(boxGeo, basic(0xff3b5c)); strip.scale.set(0.5, 0.04, 0.04); strip.position.set(0, -0.3, 0.38); g.add(strip);
+      const props = [], blade = new T.MeshStandardMaterial({ color: 0x1c2030, metalness: 0.5, roughness: 0.4 });
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const px = dx * 0.95, pz = dz * 0.7, arm = new T.Mesh(boxGeo, metal); arm.scale.set(Math.hypot(px, pz) * 0.9, 0.07, 0.09); arm.position.set(px * 0.55, 0.06, pz * 0.55); arm.rotation.y = -Math.atan2(pz, px); g.add(arm);
+        const hub = new T.Mesh(new T.CylinderGeometry(0.08, 0.1, 0.16, 16), metal); hub.position.set(px, 0.12, pz); g.add(hub);
+        const prop = new T.Group(); prop.position.set(px, 0.22, pz); g.add(prop);
+        for (const r of [0, Math.PI / 2]) { const b = new T.Mesh(boxGeo, blade); b.scale.set(0.78, 0.015, 0.07); b.rotation.y = r; prop.add(b); }
+        const disc = new T.Mesh(new T.CircleGeometry(0.42, 32), new T.MeshBasicMaterial({ color: 0xd8e2f0, transparent: true, opacity: 0.18, depthWrite: false, side: T.DoubleSide })); disc.rotation.x = -Math.PI / 2; disc.position.set(px, 0.225, pz); g.add(disc);
+        props.push(prop);
+      }
+      g.userData = { eye, eyeGlow, props }; return g;
     },
     shadow: () => {
-      const g = new T.Group(), cubes = [];
-      const mats = [basic(0xff2a7a), basic(0x22eeff), new T.MeshStandardMaterial({ color: 0x1a1024, roughness: 0.4, metalness: 0.3, emissive: 0x200818 })];
-      for (let q = 0; q < 14; q++) { const m = new T.Mesh(boxGeo, mats[q < 4 ? 0 : q < 7 ? 1 : 2]); g.add(m); cubes.push(m); }
-      const eyes = []; for (const sd of [-1, 1]) { const e = new T.Mesh(boxGeo, basic(0xff3d7f)); e.scale.set(0.22, 0.22, 0.1); e.position.set(sd * 0.25, 0.08, 0.5); g.add(e); eyes.push(e); }
-      g.add(glowSpr(0xff2a7a, 2.2, 0.3));
-      g.userData = { cubes, eyes }; return g;
+      // A glitch: a glossy dark cube with an angry screen face, colour-split ghosts and orbiting shards.
+      const g = new T.Group();
+      const body = new T.Mesh(boxGeo, new T.MeshPhysicalMaterial({ color: 0x2a1442, roughness: 0.25, metalness: 0.5, clearcoat: 1, emissive: 0x14061e }));
+      body.scale.set(1, 0.9, 0.9); g.add(body);
+      const face = new T.Mesh(new T.PlaneGeometry(0.86, 0.68), new T.MeshBasicMaterial({ map: glitchFaces[0], toneMapped: false })); face.position.z = 0.452; g.add(face);
+      const ghosts = [0x22eeff, 0xff2a7a].map(c => { const m = new T.Mesh(boxGeo, new T.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35, blending: T.AdditiveBlending, depthWrite: false })); m.scale.copy(body.scale); g.add(m); return m; });
+      const shards = []; for (let q = 0; q < 9; q++) { const m = new T.Mesh(boxGeo, basic(q % 3 === 0 ? 0x22eeff : q % 3 === 1 ? 0xff2a7a : 0xffffff)); m.scale.setScalar(0.09 + (q % 3) * 0.04); g.add(m); shards.push(m); }
+      g.add(glowSpr(0xff2a7a, 2.4, 0.28));
+      g.userData = { body, face, ghosts, shards }; return g;
     },
     laser: () => { const g = new T.Group(); const core = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 1, 8), basic(0xffe6f0)); core.rotation.z = Math.PI / 2; g.add(core); const outer = new T.Mesh(new T.CylinderGeometry(0.14, 0.14, 1, 8), basic(0xff2a6a, { transparent: true, opacity: 0.45, depthWrite: false })); outer.rotation.z = Math.PI / 2; g.add(outer); return g; },
     emitter: () => { const g = new T.Group(); const b = new T.Mesh(boxGeo, new T.MeshStandardMaterial({ color: 0x1c1f2b, metalness: 0.6, roughness: 0.3 })); b.scale.set(0.35, 0.9, 0.5); g.add(b); const l = new T.Mesh(new T.SphereGeometry(0.1, 10, 8), basic(0xff3d7f)); l.position.z = 0.26; g.add(l); return g; },
@@ -178,18 +270,20 @@ const RUN3D = (() => { try {
     },
     streak: () => new T.Mesh(boxGeo, basic(0xffffff, { transparent: true, opacity: 0.5, depthWrite: false })),
     power: () => { const g = new T.Group(); const core = new T.Mesh(new T.IcosahedronGeometry(0.45, 1), new T.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6, roughness: 0.2, clearcoat: 1 })); g.add(core); const ring = new T.Mesh(new T.TorusGeometry(0.75, 0.05, 8, 40), basic(0xffffff)); g.add(ring); const gl = glowSpr(0xffffff, 3.4, 0.6); g.add(gl); g.userData = { core, ring, gl }; return g; },
-    friend: () => { const g = new T.Group(); const b = makeBot(0.6); b.userData.shell.color.set(0xffe0ef); b.userData.eyeMat.color.set(0xff9ad0); b.userData.bulbMat.color.set(0xff9ad0); b.userData.halo.material.color.set(0xff9ad0); g.add(b); const s = new T.Sprite(new T.SpriteMaterial({ map: helpTex, transparent: true, depthWrite: false })); s.scale.set(1.5, 0.62, 1); s.position.y = 1.2; g.add(s); g.userData = { b }; return g; },
-    puff: () => new T.Mesh(new T.SphereGeometry(1, 20, 14), new T.MeshStandardMaterial({ color: 0x1c1a2c, roughness: 0.9 })),
+    friend: () => { const g = new T.Group(); const b = makeBot(0.6); b.userData.shell.color.set(0xffe0ef); b.userData.accent.color.set(0xff9ad0); b.userData.bulbMat.color.set(0xff9ad0); b.userData.halo.material.color.set(0xff9ad0); setFace(b, "worried", "#ff9ad0"); g.add(b); const s = new T.Sprite(new T.SpriteMaterial({ map: helpTex, transparent: true, depthWrite: false })); s.scale.set(1.5, 0.62, 1); s.position.y = 1.2; g.add(s); g.userData = { b }; return g; },
+    puff: () => new T.Mesh(new T.SphereGeometry(1, 24, 16), new T.MeshStandardMaterial({ color: 0x1c1a2c, roughness: 0.85, emissive: 0x0c0614 })),
+    zap: () => { const g = new T.Group(); for (let q = 0; q < 7; q++) { const m = new T.Mesh(boxGeo, basic(0xe6dcff)); g.add(m); } g.add(glowSpr(0xb08cff, 6, 0.5)); return g; },
     beye: () => new T.Mesh(new T.SphereGeometry(1, 16, 10), basic(0xbe96ff)),
     pip: () => new T.Mesh(new T.SphereGeometry(0.12, 10, 8), basic(0xffd98a)),
     bolt: () => { const g = new T.Group(); g.add(new T.Mesh(new T.OctahedronGeometry(0.22, 0), basic(0xffffff))); g.add(glowSpr(0xaa78ff, 1.6, 0.9)); return g; },
     ring: () => new T.Mesh(new T.TorusGeometry(1, 0.035, 6, 64), basic(0x7ff0ff, { transparent: true, depthWrite: false })),
     spark: () => glowSpr(0xffffff, 0.6, 1),
     trail: () => glowSpr(0x7ff0ff, 1, 0.6),
-    tower: () => new T.Mesh(boxGeo, towerMats[0]),
+    tower: () => { const m = new T.Mesh(boxGeo, towerMats[0]); m.receiveShadow = true; return m; },
+    rear: () => { const m = new T.Mesh(boxGeo, rearMat); m.receiveShadow = true; m.userData.cast = false; return m; },
     neon: () => new T.Mesh(boxGeo, neonMatL),
-    ledge: () => new T.Mesh(boxGeo, ledgeMat),
-    back: () => new T.Mesh(boxGeo, backMat),
+    ledge: () => { const m = new T.Mesh(boxGeo, ledgeMat); m.receiveShadow = true; return m; },
+    back: () => { const m = new T.Mesh(boxGeo, backMat); m.receiveShadow = true; m.userData.cast = false; return m; },
     sign: () => new T.Mesh(new T.PlaneGeometry(2.6, 1), new T.MeshBasicMaterial({ transparent: true, toneMapped: false, depthWrite: false })),
     halo: () => glowSpr(0xffffff, 1, 0.3),
     nglow: () => glowSpr(0xffffff, 1, 0.5),
@@ -251,13 +345,20 @@ const RUN3D = (() => { try {
 
     poolsReset();
     // ---------- The street: towers either side ----------
+    sun.target.position.set(camera.position.x, 12, -4); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 120);
+    sun.shadow.radius = 2.5;
+    try { skyEnv(P, night); } catch (e) { noEnv = true; scene.environment = null; }
     const tower = P.tower, k0 = Math.floor((R.dist - 520) / BLOCK), k1 = Math.ceil((R.dist + 1500) / BLOCK);
     towerMats.forEach((m, q) => { const sh = 0.84 + q * 0.05; m.color.copy(C(tower)).multiplyScalar(sh).lerp(new T.Color(1, 1, 1), day * 0.15); m.emissive.copy(C(P.winC)); m.emissiveIntensity = 0.04 + night * 1.6; });
     backMat.color.copy(C(tower)).multiplyScalar(0.8); backMat.emissive.copy(C(P.winC)); backMat.emissiveIntensity = night * 0.9;
     ledgeMat.color.copy(C(tower)).lerp(new T.Color(1, 1, 1), 0.5);
+    rearMat.color.copy(C(tower)).lerp(C(P.sky[1]), 0.35).multiplyScalar(0.82 - night * 0.42);
     neonMatL.color.copy(C(P.neon)).multiplyScalar(0.35 + night * 1.6); neonMatR.color.copy(C(P.neon2)).multiplyScalar(0.35 + night * 1.6);
     for (let k = k0; k <= k1; k++) {
       const y0 = wy(k * BLOCK), h = BLOCK * U;
+      // Some stretches have a glass building across the back of the street: everything in the
+      // street casts its shadow onto it. Gaps between them show the skyline.
+      { const bld = Math.floor(k / 3), rb = seeded(bld * 97 + 13); if (rb() < 0.6) { const xl = wx(blockEdge(k, -1)), xr = wx(blockEdge(k, 1)), m = get("rear"); m.scale.set(xr - xl + 2, h, 1.2); m.position.set((xl + xr) / 2, y0 + h / 2, -7.2); } }
       for (const side of [-1, 1]) {
         const r = seeded(k * 31 + (side > 0 ? 17 : 0)), ex = wx(blockEdge(k, side)), w = 26, z0 = 0; r();
         const bld = Math.floor(k / 3), m = get("tower"); m.material = towerMats[Math.floor(seeded(bld * 31 + side * 5)() * 6)];
@@ -300,16 +401,23 @@ const RUN3D = (() => { try {
         }
         case "heart": { const o = get("heart"); o.position.set(wx(it.x), y + Math.sin(t * 3) * 0.15, 0); o.rotation.set(0, Math.sin(t * 2) * 0.6, 0); o.scale.setScalar(0.9 + Math.sin(t * 6) * 0.05); break; }
         case "rock": {
-          const o = get("rock"), s = it.r / 22; o.scale.setScalar(s); o.position.set(wx(it.x), y + Math.sin(t * 4 + it.seed) * 0.1, 0); o.rotation.set(0.35, Math.sin(t + it.seed) * 0.3, Math.sin(t * 2 + it.seed) * 0.08);
-          o.userData.led.visible = Math.sin(t * 6 + it.seed) > 0;
+          const o = get("rock"), s = it.r / 22, ud = o.userData; o.scale.setScalar(s);
+          o.position.set(wx(it.x), y + Math.sin(t * 4 + it.seed) * 0.1, 0); o.rotation.set(0.25 + Math.sin(t * 1.7 + it.seed) * 0.06, Math.sin(t * 0.8 + it.seed) * 0.25, Math.sin(t * 2 + it.seed) * 0.08);
+          ud.props.forEach((p, q) => (p.rotation.y = t * 38 + q));
+          const lx = Math.max(-0.07, Math.min(0.07, (R.x - it.x) * 0.002)), ly = Math.max(-0.06, Math.min(0.03, (R.dist - it.at) * 0.0004));
+          ud.eye.position.set(lx, -0.04 + ly, 0.52); ud.eyeGlow.position.set(lx, -0.04 + ly, 0.62); ud.eyeGlow.material.opacity = 0.5 + 0.4 * Math.sin(t * 6 + it.seed);
           break;
         }
         case "shadow": {
           if (it.freed) break;
-          const o = get("shadow"), x = wx(it.cx ?? it.x), fr = Math.floor(t * 14 + (it.ph || 0) * 10), jr = seeded(fr * 7 + Math.floor(it.at));
-          o.position.set(x, y, 0); o.rotation.set(0, (Math.min(2, Math.max(-2, (R.x - (it.cx ?? it.x)) * 0.02))) * 0.2, 0);
-          o.userData.cubes.forEach((c, q) => { const s = q < 7 ? 0.15 + jr() * 0.2 : 0.3 + jr() * 0.3; c.scale.set(s * (q < 7 ? 1.8 : 1), s, s); c.position.set((jr() - 0.5) * (q < 7 ? 1.6 : 0.9), (jr() - 0.5) * 1.2, (jr() - 0.5) * 0.6); });
-          const blink = (t * 0.6 + it.ph) % 3 < 0.1 ? 0.2 : 1; o.userData.eyes.forEach(e => (e.scale.y = 0.22 * blink));
+          const o = get("shadow"), ud = o.userData, x = wx(it.cx ?? it.x), fr = Math.floor(t * 14 + (it.ph || 0) * 10), jr = seeded(fr * 7 + Math.floor(it.at));
+          const torn = jr() < 0.16, look = Math.max(-1, Math.min(1, (R.x - (it.cx ?? it.x)) * 0.02));
+          o.position.set(x + (torn ? (jr() - 0.5) * 0.35 : 0), y + Math.sin(t * 3 + it.ph) * 0.12, 0);
+          o.rotation.set(Math.sin(t * 1.7 + it.ph) * 0.18, look * 0.35 + Math.sin(t * 1.3 + it.ph) * 0.25, Math.sin(t * 2.1 + it.ph) * 0.08);
+          ud.face.material.map = glitchFaces[torn ? 1 : 0];
+          ud.body.scale.set(torn ? 1.18 : 1, torn ? 0.78 : 0.9, 0.9);
+          ud.ghosts.forEach((m, q) => { m.visible = torn || jr() < 0.25; m.scale.copy(ud.body.scale); m.position.set((q ? 1 : -1) * (0.07 + jr() * 0.14), (jr() - 0.5) * 0.08, 0); });
+          ud.shards.forEach((m, q) => { const a = t * (1.4 + q * 0.12) + q * 0.7, r = 0.82 + Math.sin(t * 2 + q) * 0.12; m.position.set(Math.cos(a) * r, Math.sin(a * 1.3 + q) * 0.55, Math.sin(a) * r * 0.6); m.rotation.set(a, a * 1.2, 0); });
           break;
         }
         case "gate": {
@@ -380,6 +488,7 @@ const RUN3D = (() => { try {
       for (let q = 0; q < 9; q++) { const a = q / 9 * Math.PI * 2 + t * 0.3, rr = (0.55 + 0.15 * Math.sin(t * 1.5 + q)) * 2.6 * s, p = get("puff"); p.scale.setScalar(rr); p.position.set(x + Math.cos(a) * 2.2, y - 1 + Math.sin(a) * 1.3, -1 + Math.sin(a * 2) * 0.6); p.material.color.set(B.hurt > 0 ? 0x5a4682 : 0x1c1a2c); }
       const core = get("puff"); core.scale.set(3.6, 2.4, 2); core.position.set(x, y - 1, 0);
       const listen = B.listen > 0;
+      if ((Math.floor(t * 9) * 7919) % 11 < 1) { const z = get("zap"), zr = seeded(Math.floor(t * 9)); let zx = x + (zr() - 0.5) * 3, zy = y - 2.2; z.position.set(0, 0, 0.5); z.children.forEach((m, q) => { if (!m.isMesh) { m.position.set(zx, zy, 0); return; } const nx = zx + (zr() - 0.5) * 1.4, ny = zy - 0.9 - zr() * 0.6; m.position.set((zx + nx) / 2, (zy + ny) / 2, 0); m.scale.set(0.07, Math.hypot(nx - zx, ny - zy), 0.07); m.rotation.set(0, 0, Math.atan2(-(nx - zx), ny - zy) + Math.PI); zx = nx; zy = ny; }); }
       for (const sd of [-1, 1]) { const e = get("beye"); e.scale.set(0.5, listen ? 0.36 : 0.2, 0.2); e.position.set(x + sd * 1.1, y - 1.1, 2); e.rotation.z = sd * -0.3; e.material.color.set(listen ? 0xffd778 : 0xbe96ff); }
       for (let q = 0; q < B.hp; q++) { const p = get("pip"); p.position.set(x + (q - (B.hp - 1) / 2) * 0.6, y + 2.2, 1); }
       for (const bl of B.bolts) { const o = get("bolt"); o.position.set(wx(bl.x), wy(bl.at), 0.3); o.rotation.set(t * 4, t * 3, 0); }
@@ -401,13 +510,16 @@ const RUN3D = (() => { try {
     bip.rotation.set(0.12, -tilt * 0.9 + (R.happy > 0 ? (1 - Math.min(1, R.happy)) * Math.PI * 2 : 0), -tilt * 1.1);
     bip.scale.setScalar((!R.attract && perk(9) ? 0.8 : 1) * 1.35);
     const playingFriend = !R.attract && playingAs() >= 0, sk = playingFriend ? ["#fff4fa", "#ffd6ea", "#e98ab8"] : SKINS[save.skin] && skinUnlocked(save.skin) && SKINS[save.skin].body ? SKINS[save.skin].body : ["#ffffff", "#f2f5fa", "#a9b6c9"];
-    bip.userData.shell.color.set(sk[1]);
-    const eyeC = playingFriend ? 0xff9ad0 : 0x7ff0ff, pc = R.power ? C(rgbArr(RUN_POWERS[R.power.kind].rgb)) : new T.Color(eyeC);
-    bip.userData.eyeMat.color.set(eyeC).multiplyScalar(1.6); bip.userData.bulbMat.color.copy(pc).multiplyScalar(1.8); bip.userData.halo.material.color.copy(pc);
-    bip.userData.halo.material.opacity = 0.08 + night * 0.5 + (R.songCd > 0.8 ? 0.3 : 0);
-    const blinkE = (t % 3.4) < 0.12 ? 0.15 : 1, happy = R.happy > 0;
-    bip.userData.eyes.forEach(e => { e.scale.set(0.75, (happy ? 0.6 : 1.35) * blinkE, 0.5); e.position.x = Math.sign(e.position.x) * 0.2 + Math.max(-0.08, Math.min(0.08, (R.vx || 0) * 0.0006)); });
-    const fl = 1 + Math.sin(t * 30) * 0.15 + speedK * 0.6; bip.userData.flame.scale.set(1, fl, 1); bip.userData.flame.position.y = -0.7 - 0.3 * fl;
+    const ud = bip.userData; ud.shell.color.set(sk[1]);
+    const eyeHex = playingFriend ? "#ff9ad0" : "#7ff0ff", pc = R.power ? C(rgbArr(RUN_POWERS[R.power.kind].rgb)) : new T.Color(eyeHex);
+    ud.accent.color.set(eyeHex); ud.bulbMat.color.copy(pc); ud.halo.material.color.copy(pc); ud.flameMat.color.copy(pc).lerp(new T.Color(1, 1, 1), 0.5);
+    ud.halo.material.opacity = 0.05 + night * 0.35 + (R.songCd > 0.85 ? 0.3 : 0);
+    const danger = R.items.some(it => ((it.type === "shadow" && !it.freed) || it.type === "rock" || it.type === "ice") && !it.gone && it.at > R.dist && it.at - R.dist < 120 && Math.abs((it.cx ?? it.x) - R.x) < 55);
+    const expr = R.inv > 1.0 ? "hurt" : R.happy > 0 ? "happy" : R.songCd > 0.85 ? "wow" : R.power ? "star" : danger ? "worried" : (t % 3.4) < 0.12 ? "blink" : "idle";
+    setFace(bip, expr, R.power && expr === "star" ? `rgb(${RUN_POWERS[R.power.kind].rgb})` : eyeHex);
+    ud.head.rotation.set(0, Math.max(-0.35, Math.min(0.35, (R.vx || 0) * 0.002)), 0);
+    ud.hands.forEach((h, q) => { const sd = q ? 1 : -1, up = R.happy > 0 ? 0.55 : expr === "worried" ? 0.25 : 0; h.position.set(sd * (0.64 + up * 0.15), -0.45 + Math.sin(t * 5 + q * 2) * 0.05 + up, 0.06 + up * 0.2); });
+    const fl = 1 + Math.sin(t * 30) * 0.15 + speedK * 0.7; ud.flames.forEach((f, q) => { f.scale.set(1, fl * (1 + Math.sin(t * 27 + q) * 0.1), 1); f.position.y = -0.8 - 0.27 * fl; });
     poolsHideRest();
     // Glass reflects the sky: refresh the reflections now and then as the sky changes.
     try { if (composer) composer.render(); else renderer.render(scene, camera); } catch (e) { onFail = true; view.remove(); return null; }
@@ -417,7 +529,26 @@ const RUN3D = (() => { try {
   }
   function project(x, at, W, H) { v3.set((x - 200) * U, (at - run.dist) * U, 0).project(camera); return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H]; }
   // Reflections: the sky dome rendered into an environment map for the glass and gloss.
-  let pmrem = null, envRT = null, noEnv = false;
+  let pmrem = null, envRT = null, noEnv = false, envKey = "";
+  const envCanvas = document.createElement("canvas"); envCanvas.width = 512; envCanvas.height = 256;
+  const envTex = new T.CanvasTexture(envCanvas); envTex.mapping = T.EquirectangularReflectionMapping; envTex.encoding = T.sRGBEncoding;
+  // The sky (and a city below the horizon) painted into a panorama that glass and gloss reflect.
+  function skyEnv(P, night) {
+    const key = P.sky.map(c => c.map(v => v >> 4).join(".")).join("|") + "|" + Math.round(night * 5);
+    if (key === envKey || noEnv) return; envKey = key;
+    const g = envCanvas.getContext("2d"), css = c => `rgb(${c.map(v => Math.round(v)).join(",")})`, gr = g.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, css(P.sky[0])); gr.addColorStop(0.32, css(P.sky[1])); gr.addColorStop(0.49, css(P.sky[2]));
+    gr.addColorStop(0.51, css(P.tower.map(v => v * (0.55 - night * 0.35)))); gr.addColorStop(1, "#06070b");
+    g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
+    const r = seeded(3);
+    for (let q = 0; q < 40; q++) { const x = r() * 512, w = 8 + r() * 26, h = 10 + r() * 40; g.fillStyle = css(P.tower.map(v => v * (0.5 - night * 0.3))); g.fillRect(x, 128 - h, w, h + 2); }
+    if (night > 0.3) for (let q = 0; q < 260; q++) { g.fillStyle = `rgba(${P.winC.join(",")},${0.4 + r() * 0.6})`; g.fillRect(r() * 512, 100 + r() * 120, 2, 2); }
+    if (night < 0.7) { const sg = g.createRadialGradient(380, 60, 0, 380, 60, 60); sg.addColorStop(0, `rgba(255,250,235,${1 - night})`); sg.addColorStop(1, "rgba(255,240,210,0)"); g.fillStyle = sg; g.fillRect(300, 0, 160, 130); }
+    envTex.needsUpdate = true;
+    if (!pmrem) pmrem = new T.PMREMGenerator(renderer);
+    const rt = pmrem.fromEquirectangular(envTex);
+    if (envRT) envRT.dispose(); envRT = rt; scene.environment = rt.texture;
+  }
   const envScene = new T.Scene(); const envSky = new T.Mesh(new T.SphereGeometry(100, 24, 12), skyMat); envScene.add(envSky);
   function refreshEnv() {
     if (noEnv) { scene.environment = null; return; }
