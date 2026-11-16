@@ -610,6 +610,11 @@ function runDraw(ctx, W, H) {
   const w1 = runWorld(b), w2 = runWorld(b + 1), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
   const rim = neon, rock = tower, deep = mixC(w1.sky[0], w2.sky[0], f);
+  // The 3D city when the phone can draw it (run3d.js); the flat city otherwise.
+  const proj = typeof RUN3D !== "undefined" && RUN3D && !(save.set && save.set.flat) ? RUN3D.draw(ctx, W, H, { night, tower, winC, neon, neon2, rain: f < 0.5 ? w1.rain : w2.rain,
+    sky: [mixC(w1.sky[0], w2.sky[0], f), mixC(w1.sky[1], w2.sky[1], f), mixC(w1.sky[2], w2.sky[2], f)] }) : null;
+  if (!proj && typeof RUN3D !== "undefined" && RUN3D) RUN3D.hide();
+  if (proj) ctx.clearRect(0, 0, W, H); else {
   // The sky.
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, `rgb(${mixC(w1.sky[0], w2.sky[0], f)})`); sky.addColorStop(0.55, `rgb(${mixC(w1.sky[1], w2.sky[1], f)})`); sky.addColorStop(1, `rgb(${mixC(w1.sky[2], w2.sky[2], f)})`);
@@ -885,6 +890,8 @@ function runDraw(ctx, W, H) {
     ctx.restore();
   }
   ctx.restore();
+  }
+  const P2 = proj || ((x, at) => [W / 2 + (x - 200 - camX) * S, (LY - (at - R.dist)) * S]), pxU = proj ? RUN3D.pxU : S;
   // The Hunter: a vast shadow rising behind Lumi, closer as the gap closes.
   if (R.event && R.event.kind === "hunter") {
     const gy = H * (1.15 - (1 - R.hunterGap) * 0.42), gx = W / 2 + Math.sin(t * 0.8) * W * 0.1;
@@ -901,22 +908,24 @@ function runDraw(ctx, W, H) {
     m2.globalCompositeOperation = "destination-out";
     const hole = (x, y, r) => { const g = m2.createRadialGradient(x, y, r * 0.3, x, y, r); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)"); m2.fillStyle = g; m2.fillRect(x - r, y - r, r * 2, r * 2); };
     const toX = x => W / 2 + (x - 200 - camX) * S;
-    hole(toX(R.x), LY * S, 95 * S);
-    for (const ring of R.rings) hole(toX(ring.x), (LY - (ring.at - R.dist)) * S, (ring.r + 60) * S);
+    { const q = P2(R.x, R.dist); hole(q[0], q[1], 95 * pxU); }
+    for (const ring of R.rings) { const q = P2(ring.x, ring.at); hole(q[0], q[1], (ring.r + 60) * pxU); }
     ctx.drawImage(mk, 0, 0, W, H);
   }
   // Close dark rock rushing past at the edges: depth.
+  if (!proj) {
   ctx.save(); ctx.scale(S, S); ctx.fillStyle = `rgba(${mixC(tower, [0, 0, 0], 0.55 + night * 0.35)},0.9)`;
   for (let q = -1; q < 4; q++) { const base = Math.floor(R.dist * 1.6 / 420) + q, r = seeded(base * 29 + 11); if (r() < 0.4) continue; const side = r() < 0.5 ? -1 : 1, y = LY - (base * 420 - R.dist * 1.6), x = side < 0 ? -20 + r() * 20 : W / S + 20 - r() * 20, w = 50 + r() * 40, h = 120 + r() * 90;
     ctx.fillRect(x - w, y - h, w * 2, h * 2); }
   ctx.restore();
+  }
   // Touched: a flash of violet.
   if (R.flash > 0) { ctx.fillStyle = `rgba(120,40,160,${R.flash * 0.3})`; ctx.fillRect(0, 0, W, H); }
   if (R.flash < 0) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); R.flash = Math.min(0, R.flash + 0.03); }
   // The combo counter.
   // The combo: a ring around Lumi filling toward the next ten, and the count above it.
   if (R.combo >= 3 && !R.attract) {
-    const cx = W / 2 + (R.x - 200 - camX) * S, cy = LY * S, rr = 26 * S, k = (R.combo % 10) / 10;
+    const [cx, cy] = P2(R.x, R.dist), rr = 26 * pxU, k = (R.combo % 10) / 10;
     ctx.globalAlpha = Math.min(1, 0.5 + R.comboT);
     ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = "#ffd98a"; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, k)); ctx.stroke();
@@ -943,7 +952,7 @@ function runDraw(ctx, W, H) {
   const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${0.2 + night * 0.35})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   // Floating "+3" when a shadow is sung free.
   ctx.textAlign = "center";
-  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px Inter, system-ui, sans-serif`; ctx.fillText(p.text, W / 2 + (p.x - 200 - camX) * S, (yOf(p.at) - k * 40) * S); }
+  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px Inter, system-ui, sans-serif`; const q = P2(p.x, p.at); ctx.fillText(p.text, q[0], q[1] - k * 40 * pxU); }
   ctx.globalAlpha = 1;
   // The world's name as you enter it; mission messages.
   if (R.banner > 0) {

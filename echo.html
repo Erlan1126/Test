@@ -618,6 +618,7 @@
   .run-panel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8fa6c8; font-weight: 500; }
 
   /* The title is a live run: Lumi gliding up the glowing cave behind the name. */
+  #run3d, #titleScreen > #run3d, #runScreen > #run3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
   #titleCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
   #titleScreen > :not(#titleCanvas) { position: relative; z-index: 1; }
   #titleScreen { background: none; }
@@ -1096,6 +1097,7 @@
 <script src="echo/meta.js"></script>
 <script src="echo/city.js"></script>
 <script src="echo/run.js"></script>
+<script src="echo/run3d.js"></script>
 <script src="echo/progress.js"></script>
 <script src="echo/ui.js"></script>
 </body>
