@@ -1,0 +1,32 @@
+# A daily health check of the live Skyrise server. It only reads (nothing is deployed or
+# changed). If the server is down or answers wrongly, this run fails and GitHub emails you.
+name: Server health
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # every day at 13:17 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check rankings and friends' cities
+        run: |
+          URL="https://skyrise.erlanstudios.workers.dev"
+          ok=1
+          check() {
+            # $1 = name, $2 = path, $3 = text the answer must contain
+            for i in 1 2 3; do
+              OUT=$(curl -sS -m 20 "$URL$2" 2>&1 || true)
+              if echo "$OUT" | grep -q "$3"; then echo "✅ $1"; return 0; fi
+              sleep 15
+            done
+            echo "❌ $1 is not answering as it should. Got: $OUT"
+            ok=0
+          }
+          check "Rankings (all time)" "/board?board=all&period=0" '"board":"all"'
+          check "Rankings (this week)" "/board?board=all&period=1" '"board":"all"'
+          check "Friends' cities" "/city?code=ZZZZZZ" '"error":"not found"'
+          if [ "$ok" = 1 ]; then echo "Everything is working."; else exit 1; fi
