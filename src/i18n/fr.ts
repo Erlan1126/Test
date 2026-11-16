@@ -1122,4 +1122,9 @@ export const FR: Record<string, string> = {
   "Office floors": "Étages de bureaux",
   "Build more floors": "Construire plus d'étages",
   "Tap anywhere to build office floors": "Touche n'importe où pour construire des étages de bureaux",
+  "For lease": "À louer",
+  "Tap!": "Touche !",
+  "Opens with {n}": "Ouvre avec {n}",
+  "{n} floors: twice as fast": "{n} étages : deux fois plus vite",
+  "Lobby": "Hall",
 };

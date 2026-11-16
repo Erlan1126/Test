@@ -33,6 +33,8 @@ export class TycoonUI {
   private lastTick = 0;
   private lastSave = 0;
   private pending = 0;
+  private lastP = new Map<string, number>();
+  private lastPop = new Map<string, number>();
 
   constructor(private readonly host: TycoonHost) {
     wireModal($("tycoon"));
@@ -78,6 +80,14 @@ export class TycoonUI {
     $("ty-coins").textContent = coins(this.save.tycoon.coins);
     for (const row of $("ty-list").querySelectorAll<HTMLElement>(".ty-biz[data-id]")) {
       const id = row.dataset.id!, p = progressOf(this.save, id, now);
+      // A finished cycle pops a coin out of the room (no more than twice a second).
+      const was = this.lastP.get(id) ?? 0, running = !!this.save.tycoon.runs[id];
+      if ((p < was - 0.05 || (was > 0.6 && !running)) && now - (this.lastPop.get(id) ?? 0) > 450) {
+        this.lastPop.set(id, now);
+        const b = BUSINESSES.find(x => x.id === id)!;
+        popCoin(row.querySelector(".room-pops")!, coins(payOf(this.save, b, now) * Math.max(1, Math.round(450 / (cycleOf(b, levelOf(this.save, id)) * 1000)))));
+      }
+      this.lastP.set(id, p);
       (row.querySelector(".ty-prog i") as HTMLElement).style.width = `${p * 100}%`;
       const b = BUSINESSES.find(x => x.id === id)!;
       const lv = levelOf(this.save, id), n = this.amount === "max" ? Math.max(1, affordable(b, lv, this.save.tycoon.coins)) : this.amount;
@@ -98,8 +108,12 @@ export class TycoonUI {
     $("ty-rate").textContent = t("{n} a second", { n: coins(perSecond(s, now)) });
     $("ty-mult").textContent = t("×{n} earnings", { n: multiplier(s, now).toFixed(2) });
     this.renderOffice();
+    // The company as a cut-away skyscraper: a roof with the company sign, one room per
+    // business (newest at the top), and the lobby at the bottom. Rooms are alive: people
+    // walk around, the manager stands at the counter, coins pop out as it earns.
     const list = $("ty-list");
-    list.innerHTML = "";
+    list.innerHTML = `<div class="tw-roof"><span class="tw-antenna"></span><b>${esc(t("Skyhaven Inc."))}</b></div><div class="tw-shaft" aria-hidden="true"><i class="tw-car"></i></div>`;
+    const rooms: HTMLElement[] = [];
     BUSINESSES.forEach((b, i) => {
       if (!unlockedBusiness(s, i)) {
         if (i === 0 || !unlockedBusiness(s, i - 1)) return;
@@ -108,20 +122,31 @@ export class TycoonUI {
       const n = this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount;
       const price = costOf(b, lv, n), next = nextMilestone(lv);
       const row = document.createElement("div");
-      row.className = `ty-biz${owned ? "" : " locked"}${managed ? " managed" : ""}`;
+      row.className = `ty-biz room${owned ? "" : " locked"}${managed ? " managed" : ""}`;
       if (owned) row.dataset.id = b.id;
       row.style.setProperty("--b1", b.color[0]);
       row.style.setProperty("--b2", b.color[1]);
+      const people = owned ? Math.min(6, 1 + Math.floor(Math.log2(lv + 1))) : 0;
+      const props = (PROPS[b.id] ?? [b.icon]).map((ic, k) => `<span class="rp rp${k}">${iconSvg(ic)}</span>`).join("");
+      const walkers = Array.from({ length: people }, (_, k) =>
+        `<i class="walker" style="--d:${(k * 1.7) % 5}s;--t:${5 + ((k * 3) % 4)}s;--x:${12 + ((k * 37) % 60)}%;--shirt:${SHIRTS[(k + i) % SHIRTS.length]}">${PERSON}</i>`).join("");
       row.innerHTML = `
-        <button type="button" class="ty-icon" aria-label="${esc(t("Run {name}", { name: t(b.name) }))}">${iconSvg(b.icon)}<b>${owned ? lv : ""}</b></button>
-        <div class="ty-mid">
-          <div class="ty-name"><b>${esc(t(b.name))}</b>${managed ? `<span class="ty-auto">${esc(t("Auto"))}</span>` : ""}</div>
-          <div class="ty-prog"><i></i><span>${owned ? esc(coins(payOf(s, b, now))) : esc(t("Locked"))}</span></div>
-          <small>${owned ? esc(next ? t("Level {n}: twice as fast", { n: next }) : t("Top speed!")) + " · " + esc(fmtSec(cycleOf(b, lv))) : esc(t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }))}</small>
-        </div>
-        <button type="button" class="buy ty-buy"><small>${esc(owned ? t("Buy ×{n}", { n: fmt(n) }) : t("Open"))}</small>${COIN_SVG}${esc(coins(price))}</button>
-        ${owned && !managed ? `<button type="button" class="ty-hire">${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : ""}`;
-      row.querySelector(".ty-icon")!.addEventListener("click", e => {
+        <button type="button" class="room-scene" aria-label="${esc(owned ? t("Run {name}", { name: t(b.name) }) : t(b.name))}">
+          <span class="room-wall"></span><span class="room-window"></span>
+          <span class="room-sign">${iconSvg(b.icon)}<b>${esc(t(b.name))}</b></span>
+          ${owned ? `<span class="room-props">${props}</span>${walkers}` : `<span class="room-lease">${esc(t("For lease"))}</span>`}
+          ${managed ? `<i class="walker boss" style="--x:78%">${PERSON_BOSS}</i>` : ""}
+          ${owned ? `<b class="room-level">${esc(t("{n} floors", { n: fmt(lv) }))}</b>` : ""}
+          ${owned && !managed ? `<span class="tap-me">${esc(t("Tap!"))}</span>` : ""}
+          <span class="room-pops"></span>
+          <div class="ty-prog"><i></i><span>${owned ? esc(coins(payOf(s, b, now))) : esc(t("Opens with {n}", { n: coins(b.income * multiplier(s, now)) }))}</span></div>
+        </button>
+        <div class="room-bar">
+          <small>${owned ? esc(next ? t("{n} floors: twice as fast", { n: next }) : t("Top speed!")) + " · " + esc(fmtSec(cycleOf(b, lv))) : esc(t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }))}</small>
+          ${owned && !managed ? `<button type="button" class="ty-hire">${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : managed ? `<span class="ty-auto">${esc(t("Auto"))}</span>` : ""}
+          <button type="button" class="buy ty-buy"><small>${esc(owned ? t("Buy ×{n}", { n: fmt(n) }) : t("Open"))}</small>${COIN_SVG}${esc(coins(price))}</button>
+        </div>`;
+      row.querySelector(".room-scene")!.addEventListener("click", e => {
         if (!owned) return;
         if (runOnce(s, b.id)) { this.host.sound.click(); burst(e.currentTarget as Element, 6); vibrate(s.settings.vibrate, 8); }
       });
@@ -153,8 +178,11 @@ export class TycoonUI {
         this.host.persist();
         this.render();
       });
-      list.appendChild(row);
+      rooms.push(row);
     });
+    // Newest business on top, like floors built up over time.
+    for (const r of rooms.reverse()) list.appendChild(r);
+    list.insertAdjacentHTML("beforeend", `<div class="tw-lobby"><span class="tw-door"></span><span class="tw-door"></span><b>${esc(t("Lobby"))}</b></div>`);
     this.renderBoosts();
     this.renderEra();
   }
@@ -287,4 +315,25 @@ const fmtSec = (s: number): string => (s >= 3600 ? `${(s / 3600).toFixed(1)}h` :
 function fmtAway(ms: number): string {
   const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
   return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** Props in each business's room. */
+const PROPS: Record<string, string[]> = {
+  coffee: ["coffee", "dish", "coffee"], flowers: ["leaf", "balloon", "leaf"], bakery: ["sun", "dish", "gift"],
+  pizza: ["dish", "fire", "dish"], cinema: ["film", "star", "film"], hotel: ["home", "building", "star"],
+  mall: ["gift", "star", "gift"], airport: ["airship", "cloud", "flag"], casino: ["star", "sparkle", "gem"], spaceport: ["rocket", "sparkle", "globe"],
+};
+const SHIRTS = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff", "#ff8a5c"];
+/** A little office worker (shirt color from --shirt). */
+const PERSON = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f6c49e"/><path d="M6 5q4-5 8 0" fill="#5a3a22"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="var(--shirt)"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
+/** The manager: a suit and a red tie. */
+const PERSON_BOSS = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f2c39a"/><path d="M5 6q5-6 10 0v-2q-5-4-10 0z" fill="#3a3a4a"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#2a3590"/><path d="M10 14l-2 3 2 9 2-9z" fill="#e8334f"/><path d="M8 14h4l-2 2z" fill="#fff"/></svg>`;
+
+function popCoin(box: Element, text: string): void {
+  const el = document.createElement("span");
+  el.className = "coin-pop";
+  el.innerHTML = `${COIN_SVG}+${text}`;
+  el.style.left = `${20 + Math.random() * 50}%`;
+  box.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
 }
