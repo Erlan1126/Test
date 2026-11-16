@@ -70,6 +70,20 @@
 </button>
 <div id="banner" hidden role="status"><span class="banner-text"><small id="banner-eyebrow"></small><strong id="banner-title"></strong></span></div>
 
+<div id="mayor" class="mayor-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="mayor-name">
+  <div class="mayor-card">
+    <div class="mayor-face" id="mayor-face"></div>
+    <div class="mayor-talk">
+      <small id="mayor-chapter"></small>
+      <b id="mayor-name">Mayor Pip</b>
+      <p id="mayor-text"></p>
+      <ul class="mayor-goals" id="mayor-goals"></ul>
+      <div class="mayor-reward" id="mayor-reward" hidden></div>
+      <button type="button" class="btn btn-primary wide" id="mayor-ok">Let's build!</button>
+    </div>
+  </div>
+</div>
+
 <div id="place-layer" hidden>
   <div class="place-bar"><b id="place-title"></b><small id="place-sub"></small><button type="button" class="btn btn-secondary" id="place-cancel">Done</button></div>
   <div id="place-spots"></div>
@@ -98,6 +112,7 @@
     <p class="tagline">Build the tallest skyscraper in the world</p>
     <button type="button" class="city-line" id="city-line" hidden></button>
     <button type="button" class="rank-line" id="rank-line" hidden></button>
+    <button type="button" class="mayor-strip" id="mayor-strip" hidden></button>
     <div class="rules" id="rules">
       <span>Tap to drop a floor</span>
       <span>Wider floors fit more people</span>

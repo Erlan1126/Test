@@ -2289,3 +2289,42 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
 .legend-tag { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 3px 9px; border-radius: 8px; font: 400 10px var(--display); letter-spacing: 0.06em; color: #4a2a00; background: linear-gradient(90deg, #ffe680, #ffb13b); }
 @media (prefers-reduced-motion: reduce) { .pack-card .first-x2, .pack-card.hero .pack-skin, .premium-card.legendary::after { animation: none; } }
 .pack-card.hero .best-value { position: absolute; top: 8px; right: 10px; left: auto; transform: none; }
+
+/* ---------- Mayor Pip ---------- */
+.mayor-strip {
+  display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px;
+  width: min(340px, calc(100% - 32px)); margin: 8px auto 0; padding: 6px 14px 6px 6px; border: 0; border-radius: 18px; text-align: left; cursor: pointer;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.8)); color: #2a1f6e;
+  box-shadow: 0 6px 16px rgba(20, 24, 70, 0.16), inset 0 1px 0 #fff; pointer-events: auto;
+}
+.mayor-strip[hidden] { display: none; }
+.mayor-mini { width: 44px; height: 44px; border-radius: 14px; overflow: hidden; background: linear-gradient(160deg, #cfe6ff, #ffe6f2); }
+.mayor-mini svg { width: 100%; height: 100%; transform: translateY(3px); }
+.mayor-goal { min-width: 0; }
+.mayor-goal small { display: block; font: 400 10px var(--display); letter-spacing: 0.04em; color: #7b6cff; }
+.mayor-goal b { display: block; font: 400 13px/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mayor-bar { display: block; height: 6px; margin-top: 4px; border-radius: 3px; background: rgba(42, 31, 110, 0.1); overflow: hidden; }
+.mayor-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #7b6cff, #ff6fa0); }
+.mayor-strip.ready { background: linear-gradient(135deg, #fff6c8, #ffd36b); box-shadow: 0 0 0 3px #ffb13b, 0 8px 22px rgba(255, 160, 40, 0.45); animation: ready-bob 1.4s ease-in-out infinite; }
+.mayor-strip.ready .mayor-bar i { background: linear-gradient(90deg, #ffb13b, #ff6fa0); }
+
+.mayor-dialog { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: rgba(10, 12, 40, 0.45); }
+.mayor-dialog[hidden] { display: none; }
+.mayor-card { position: relative; width: min(420px, 100%); padding: 18px 18px 18px; border-radius: 26px; background: linear-gradient(180deg, #fff, #f3f0ff); color: #2a1f6e; box-shadow: 0 20px 50px rgba(10, 12, 40, 0.4); animation: mayor-in 0.45s cubic-bezier(0.25, 1.4, 0.5, 1); }
+@keyframes mayor-in { from { transform: translateY(60px) scale(0.92); opacity: 0; } }
+.mayor-face { position: absolute; top: -64px; left: 18px; width: 104px; height: 104px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #e8f2ff, #c9dbff); box-shadow: 0 0 0 5px #fff, 0 10px 24px rgba(20, 24, 70, 0.3); overflow: hidden; animation: mayor-bob 2.4s ease-in-out infinite; }
+.mayor-face svg { width: 100%; height: 100%; transform: translateY(6px); }
+@keyframes mayor-bob { 50% { transform: translateY(-4px) rotate(-2deg); } }
+.mayor-talk { padding-top: 40px; }
+.mayor-talk small { display: block; font: 400 11px var(--display); letter-spacing: 0.05em; color: #7b6cff; }
+.mayor-talk > b { display: block; font: 400 20px var(--display); color: #ff4f8b; }
+.mayor-talk p { margin: 6px 0 10px; font-size: 15px; font-weight: 700; line-height: 1.4; color: #3a3570; }
+.mayor-goals { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.mayor-goals li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(123, 108, 255, 0.08); font: 400 13px var(--display); }
+.mayor-goals li span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px rgba(42, 31, 110, 0.15); color: #fff; font-size: 12px; }
+.mayor-goals li.done span { background: #2bc48a; box-shadow: none; }
+.mayor-goals li.done { color: #1e8c62; }
+.mayor-goals li em { font-style: normal; font-size: 11px; color: #8a86b5; }
+.mayor-reward { display: flex; justify-content: center; gap: 10px; margin: 0 0 12px; }
+.mayor-reward span { padding: 8px 16px; border-radius: 14px; font: 400 20px var(--display); background: linear-gradient(180deg, #fff6c8, #ffd36b); box-shadow: 0 3px 0 #d79a1a; animation: unlock-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.2s both; }
+@media (prefers-reduced-motion: reduce) { .mayor-card, .mayor-face, .mayor-strip.ready { animation: none; } }

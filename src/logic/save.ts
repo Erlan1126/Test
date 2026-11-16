@@ -81,6 +81,8 @@ export interface SaveData {
   vip: { until: number; claimed: number; gift: number };
   /** Crystal packs bought at least once (each one's first purchase pays double). */
   packsFirst: string[];
+  /** The story (see chapters.ts): chapters finished, and the last chapter Mayor Pip introduced. */
+  chapters: { done: number; seen: number };
   boosts: Record<BoostId, number>;
   missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
@@ -172,6 +174,7 @@ export function defaultSave(): SaveData {
     holiday: { key: "", towers: 0 },
     vip: { until: 0, claimed: 0, gift: 0 },
     packsFirst: [],
+    chapters: { done: 0, seen: -1 },
     boosts: { rewind: 0, xp: 0, gold: 0 },
     missions: { slots: [], done: 0, seen: 0, day: "", chest: "" },
     profile: {
@@ -288,6 +291,7 @@ export function normalize(raw: unknown): SaveData {
     holiday: { key: str(obj(r.holiday).key, "").slice(0, 40), towers: int(obj(r.holiday).towers, 0, 0, 9999) },
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0), gift: num(obj(r.vip).gift, 0, 0, 1e15) },
     packsFirst: strList(r.packsFirst),
+    chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99) },
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
     profile: {

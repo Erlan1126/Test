@@ -59,6 +59,7 @@ import { CITY } from "./data/daily";
 import { BUILD_SPOTS } from "./data/spots";
 import { iconSvg, withIcons } from "./ui/icons";
 import { towerName } from "./data/towernames";
+import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -361,6 +362,7 @@ export class App implements DailyHost {
   private back(): boolean {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
+    if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
     if (this.moving) { this.endMove(); return true; }
     const modal = openModalEl();
     if (modal) { if (modal.id === "settings") $("settings").querySelector<HTMLElement>(".close-btn")!.click(); else closeModal(modal); return true; }
@@ -640,10 +642,10 @@ export class App implements DailyHost {
     }
     // Taps on the empty parts of the home screen (the sky, the island, the logo) start too.
     $("menu").addEventListener("click", e => {
-      if (this.state !== "menu" || this.moving || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
+      if (this.state !== "menu" || this.moving || !$("mayor").hidden || (e.target as Element).closest("button, a, input, select, label, .tiles, .mode-row")) return;
       this.start(this.homeMode);
     });
-    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving) this.start(this.homeMode); });
+    this.canvas.addEventListener("click", () => { if (this.state === "menu" && !openModalEl() && !this.moving && $("mayor").hidden) this.start(this.homeMode); });
     $("challenges-btn").addEventListener("click", () => this.sheets.openChallenges());
     $("missions-btn").addEventListener("click", () => this.daily.openMissions());
     $("city-btn").addEventListener("click", () => this.daily.openCity());
@@ -750,6 +752,7 @@ export class App implements DailyHost {
   private key(e: KeyboardEvent): void {
     if (this.video) return; // recording the clip
     if (this.moving) { if (e.code === "Escape") this.endMove(); return; }
+    if (!$("mayor").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("mayor-ok").click(); } return; }
     // The level-up card is up: keys close it rather than starting a tower underneath.
     if (!$("levelup").hidden) { if (["Escape", "Enter", "Space"].includes(e.code)) { e.preventDefault(); $("levelup").hidden = true; } return; }
     const modal = openModalEl();
@@ -1343,6 +1346,11 @@ export class App implements DailyHost {
     if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => { if (this.state === "menu" && !openModalEl() && !this.moving) this.openStarter(); }, 700); }
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
+    // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
+    renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
+    if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
+      if (this.state === "menu" && !openModalEl() && !this.moving && $("levelup").hidden && $("starter").hidden && $("mayor").hidden) introduce(save, () => this.persist());
+    }, 1100);
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");

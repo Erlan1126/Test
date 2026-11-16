@@ -164,3 +164,25 @@ describe("island upgrades", () => {
     expect(islandLevel(fresh)).toBe(12);
   });
 });
+
+import { CHAPTERS, claimChapter } from "../src/data/chapters";
+import { FEATURE_LEVEL } from "../src/logic/features";
+import { defaultSave as freshSave } from "../src/logic/save";
+describe("Mayor Pip's chapters", () => {
+  it("never asks for a city building before the City opens", () => {
+    for (const [i, c] of CHAPTERS.entries()) {
+      if (!c.goals.some(g => g.text.includes("city building"))) continue;
+      const levelGoal = CHAPTERS.slice(0, i + 1).flatMap(x => x.goals).filter(g => g.text.includes("builder level")).map(g => g.need);
+      expect(Math.max(0, ...levelGoal)).toBeGreaterThanOrEqual(FEATURE_LEVEL.city);
+    }
+  });
+  it("pays a chapter once, only when every goal is met", () => {
+    const s = freshSave();
+    expect(claimChapter(s)).toBeNull();
+    s.profile.towers = 3; s.bestMeters = 40; s.profile.level = 2;
+    const stars = s.stars;
+    expect(claimChapter(s)).toEqual(CHAPTERS[0].reward);
+    expect(s.stars).toBe(stars + CHAPTERS[0].reward.stars);
+    expect(claimChapter(s)).toBeNull();
+  });
+});
