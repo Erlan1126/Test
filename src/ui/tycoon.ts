@@ -910,7 +910,11 @@ export class TycoonUI {
       const room = Math.max(1, freeFloors(s));
       const n = Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
       const price = costOf(b, lv, n), next = nextMilestone(lv), ns = owned ? nextStage(lv) : undefined;
-      set(row.querySelector(".room-level"), tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }));
+      // On the Company page the banner says it all in one line: floors, and what's next.
+      const cards = document.body.classList.contains("city-home");
+      const nextLine = !owned ? "" : ns && ns <= (next ?? Infinity) ? t("Next: {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
+        : next ? t("×2 speed at {n}", { n: next }) : t("Top speed!");
+      set(row.querySelector(".room-level"), tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }) + (cards && nextLine ? ` · ${nextLine}` : ""));
       set(row.querySelector(".ty-prog span"), owned ? coins(payOf(s, b, now)) : t("Opens with {n}", { n: coins(b.income * multiplier(s, now)) }));
       set(row.querySelector(".room-info"), owned
         ? (ns && ns <= (next ?? Infinity) ? t("Grows into {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
@@ -918,7 +922,7 @@ export class TycoonUI {
         : t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }));
       set(row.querySelector(".power-cut small"), t("Tap {n} times to fix", { n: this.power.taps }));
       const hire = row.querySelector<HTMLButtonElement>(".ty-hire");
-      if (hire) { set(hire, `${esc(t("Hire manager"))} · ${esc(coins(b.manager))}`, true); hire.disabled = ty.coins < b.manager; }
+      if (hire) { set(hire, cards ? `<small>${esc(t("Manager"))}</small>${esc(coins(b.manager))}` : `${esc(t("Hire manager"))} · ${esc(coins(b.manager))}`, true); hire.disabled = ty.coins < b.manager; }
       const buy = row.querySelector<HTMLButtonElement>(".ty-buy")!;
       if (buy.classList.contains("need-floors")) set(buy, `<small>${esc(t("No empty floors"))}</small>${esc(t("Build"))}`, true);
       else {

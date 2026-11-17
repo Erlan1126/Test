@@ -3410,3 +3410,18 @@ body.tabs-open .tab-page .tab-seg { position: sticky; top: 0; z-index: 7; margin
 body.tabs-open .tab-page .tab-seg button { background: #e9e4fa; }
 body.tabs-open .tab-page .tab-seg button.on { background: linear-gradient(135deg, #6a3cff, #b04ad8); }
 body.tabs-open .tab-page .sheet:has(> .tab-seg) .sheet-top { top: 52px; }
+
+/* ---- Company cards, simplest form: banner + one row with the manager and a big Buy ---- */
+body.tabs-open #tycoon .room-scene { height: 92px !important; }
+body.tabs-open #tycoon .room-level { top: 42px !important; right: 12px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.tabs-open #tycoon .room-bar { display: flex !important; align-items: stretch; gap: 8px !important; padding: 10px !important; }
+body.tabs-open #tycoon .room-bar > small.room-info { display: none !important; }
+body.tabs-open #tycoon .room-bar .ty-buy { order: 2; flex: 1; display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 17px !important; }
+body.tabs-open #tycoon .room-bar .ty-buy small { font-size: 12px !important; opacity: 0.9; }
+body.tabs-open #tycoon .room-bar .ty-buy svg { width: 20px; height: 20px; }
+body.tabs-open #tycoon .room-bar :is(.ty-hire, .ty-auto) { order: 1; flex: none; display: flex !important; flex-direction: column; align-items: center; justify-content: center; min-width: 92px; max-width: none !important; padding: 6px 10px !important; border-radius: 16px !important; font: 400 13px var(--display) !important; }
+body.tabs-open #tycoon .room-bar .ty-hire small { font: 800 10px var(--ui); opacity: 0.8; }
+body.tabs-open #tycoon .room-bar .ty-auto { color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); font-size: 12px !important; }
+body.tabs-open #tycoon .room-bar .hq-btn { order: 0; flex: 1 1 100%; }
+body.tabs-open #tycoon .room-bar:has(.hq-btn) { flex-wrap: wrap; }
+body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !important; opacity: 0.95; }

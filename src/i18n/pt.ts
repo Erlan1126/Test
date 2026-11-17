@@ -1375,4 +1375,7 @@ export const PT: Record<string, string> = {
   "✨ The golden customer tipped {n}!": "✨ O cliente dourado deu {n} de gorjeta!",
   "Golden customer · {n}s": "Cliente dourado · {n}s",
   "BUILD!": "CONSTRUA!",
+  "Next: {name} at {n}": "Próximo: {name} aos {n}",
+  "×2 speed at {n}": "×2 de velocidade aos {n}",
+  "Manager": "Gerente",
 };
