@@ -331,3 +331,17 @@ describe("grand openings, upgrades, advisors and the vault", () => {
     expect(ids.size).toBe(10);
   });
 });
+
+it("the daily calendar pays more each day and the week repeats", async () => {
+  const { defaultSave } = await import("../src/logic/save");
+  const { claimDaily, dailyReward } = await import("../src/logic/tycoon");
+  const s = defaultSave();
+  expect(dailyReward(s, 1).cash).toBe(300);       // a young company gets the floor
+  expect(dailyReward(s, 2).gems).toBe(10);
+  expect(dailyReward(s, 8)).toEqual(dailyReward(s, 1));
+  const r = claimDaily(s, 7, Date.now(), () => 0);
+  expect(r.gems).toBe(50);
+  expect(s.crystals).toBe(50);
+  expect(r.advisor).toBeDefined();
+  expect(s.tycoon.coins).toBeGreaterThanOrEqual(5000);
+});

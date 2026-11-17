@@ -23,7 +23,7 @@ export interface Business {
 }
 
 export const BUSINESSES: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 12, growth: 1.17, income: 1, cycle: 6, manager: 1500 },
+  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 12, growth: 1.17, income: 1, cycle: 6, manager: 300 },
   { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 150, growth: 1.13, income: 0.133, cycle: 6, manager: 10000 },
   { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 3000, growth: 1.13, income: 1, cycle: 15, manager: 150000 },
   { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 50000, growth: 1.13, income: 8.33, cycle: 40, manager: 3e6 },
@@ -174,3 +174,17 @@ export const VAULT_COST = [2e4, 2e6, 2e8];
 // ---------- Weekly festival: one business earns more all week ----------
 
 export const FESTIVAL_MULT = 2;
+
+/** The daily rewards calendar: seven days, each better than the last; day 7 is the big one.
+ *  Cash is minutes of your company's earnings (with a floor for young companies). The
+ *  streak resets if a day is missed, and the week starts again after day 7. */
+export interface DailyReward { cash?: number; min?: number; gems?: number; advisor?: boolean }
+export const DAILY_REWARDS: DailyReward[] = [
+  { cash: 20, min: 300 },
+  { gems: 10 },
+  { cash: 45, min: 800 },
+  { gems: 15 },
+  { cash: 90, min: 2000 },
+  { gems: 25 },
+  { advisor: true, gems: 50, cash: 180, min: 5000 },
+];

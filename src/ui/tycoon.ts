@@ -6,7 +6,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
-  payOf, perSecond, progressOf, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, openCrate, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, openCrate, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
 } from "../logic/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
@@ -61,6 +61,9 @@ export class TycoonUI {
   private html = new Map<HTMLElement, string>();
   /** A VIP customer waiting in a room to be tapped, and when the next ones come. */
   private vip = { id: "", until: 0 };
+  /** A golden customer: rare, sparkling, and gone in a minute. */
+  private golden = { id: "", until: 0 };
+  private nextGolden = 0;
   private nextVip = 0;
   private nextRush = 0;
   private rushWas = "";
@@ -93,6 +96,7 @@ export class TycoonUI {
     $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.host.buildFloors(); });
     $("tycity").addEventListener("click", e => this.onCityTap(e));
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
+    $("tcy-events").addEventListener("click", e => { if ((e.target as Element).closest("[data-golden]")) { e.stopPropagation(); this.catchGolden(); } });
     $("tcy-next").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.nextAct?.(); });
     $("tcy-gems").addEventListener("click", e => { e.stopPropagation(); $("shop-btn").click(); });
     $("tcy-bar").querySelectorAll<HTMLButtonElement>("button").forEach(b => b.addEventListener("click", e => {
@@ -186,6 +190,8 @@ export class TycoonUI {
     if (!this.host.onMenu() || this.inCity) return;
     tick(this.save);
     this.inCity = true;
+    // A brand-new company opens with a bang: everything earns more for its first minutes.
+    if (startOpening(this.save)) { this.host.persist(); setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1500); }
     this.host.setBizFocus(true);
     document.body.classList.add("in-tycity");
     $("tycity").hidden = false;
@@ -246,7 +252,7 @@ export class TycoonUI {
   }
 
   /** What's happening right now, for the 3D district. */
-  liveState(): { rush: string; vip: string; critic: string; power: string; sel: string; pulse: string; pulseAt: number } {
+  liveState(): { golden: string; rush: string; vip: string; critic: string; power: string; sel: string; pulse: string; pulseAt: number } {
     const now = Date.now(), s = this.save;
     return {
       pulse: this.pulse.id,
@@ -254,6 +260,7 @@ export class TycoonUI {
       sel: this.inCity ? this.selected : "",
       rush: rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "",
       vip: this.vip.until > now ? this.vip.id : "",
+      golden: this.golden.until > now ? this.golden.id : "",
       critic: this.critic.until > now ? this.critic.id : "",
       power: this.power.until > now ? this.power.id : "",
     };
@@ -325,7 +332,8 @@ export class TycoonUI {
     if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("First steps · {n} of 3", { n: 1 }), tone: "learn", act: () => { this.selected = "coffee"; this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
     if (ty.tips === 1) return { text: t("Buy a level for the Coffee Cart"), sub: t("First steps · {n} of 3", { n: 2 }), tone: "learn", act: select("coffee") };
     if (ty.tips === 2) return { text: t("Hire a manager for the Coffee Cart"), sub: t("Managers sell for you, even while you're away"), pct: Math.min(1, ty.coins / cart.manager), tone: "learn", act: select("coffee") };
-    // Live moments.
+    // Live moments: a golden customer beats everything.
+    if (live.golden) return { text: t("✨ A golden customer is at {name}!", { name: nameOf(live.golden) }), sub: t("Catch them before they leave: {n}s", { n: Math.max(0, Math.ceil((this.golden.until - Date.now()) / 1000)) }), tone: "gold", act: () => this.catchGolden() };
     if (live.vip) return { text: t("A VIP is at {name}!", { name: nameOf(live.vip) }), sub: t("Tap them for a big tip"), tone: "hot", act: select(live.vip) };
     if (live.critic) return { text: t("A food critic is at {name}!", { name: nameOf(live.critic) }), sub: t("Serve them for a five-star review"), tone: "hot", act: select(live.critic) };
     if (live.power) return { text: t("Power cut at {name}!", { name: nameOf(live.power) }), sub: t("Tap it to fix the lights"), tone: "hot", act: select(live.power) };
@@ -363,15 +371,17 @@ export class TycoonUI {
     $("tcy-rate").textContent = t("{n} a second", { n: coins(perSecond(s, now)) });
     $("tcy-gems-n").textContent = fmt(s.crystals);
     if (this.shownCoins < 0) $("tcy-coins").textContent = coins(ty.coins);
-    this.put($("tcy-events"), $("ty-events").querySelector(".boom")?.outerHTML ?? "");
     const live = this.liveState();
+    const gold = live.golden ? `<button type="button" class="ty-chip golden-chip" data-golden="1">✨ ${esc(t("Golden customer · {n}s", { n: Math.max(0, Math.ceil((this.golden.until - now) / 1000)) }))}</button>` : "";
+    this.put($("tcy-events"), gold + ($("ty-events").querySelector(".boom")?.outerHTML ?? ""));
     this.put($("tcy-labels"), BUSINESSES.map((b, i) => {
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
       if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
       const st = stageNow(s, b.id), grow = readyStage(s, b.id), sel = this.selected === b.id;
       // At most one badge: what needs you most.
-      const badge = live.vip === b.id ? `<span class="badge vip" data-act="vip">VIP</span>`
+      const badge = live.golden === b.id ? `<span class="badge golden" data-act="golden">✨</span>`
+        : live.vip === b.id ? `<span class="badge vip" data-act="vip">VIP</span>`
         : live.critic === b.id ? `<span class="badge critic" data-act="critic">★</span>`
         : live.power === b.id ? `<span class="badge power" data-act="power">!</span>`
         : grow ? `<span class="badge grow">↑</span>`
@@ -615,6 +625,21 @@ export class TycoonUI {
   /** Live moments while the tower is open: VIPs, critics, power cuts and rush hours. */
   private events(now: number): void {
     const s = this.save, owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
+    // Golden customers: the first a few minutes in, then every 15-30 minutes, a few a day.
+    if (owned.length && s.tycoon.tips >= 3 && this.inCity) {
+      if (!this.nextGolden) this.nextGolden = now + 150000 + Math.random() * 150000;
+      if (this.golden.id && this.golden.until < now) { this.golden.id = ""; this.render(); }
+      if (!this.golden.id && now > this.nextGolden) {
+        this.nextGolden = now + 900000 + Math.random() * 900000;
+        if (goldenArrives(s, now)) {
+          this.golden = { id: owned[Math.floor(Math.random() * owned.length)].id, until: now + GOLDEN_SECONDS * 1000 };
+          this.host.sound.unlock();
+          vibrate(s.settings.vibrate, [10, 40, 10]);
+          this.host.persist();
+          this.render();
+        }
+      }
+    }
     // Nothing pops up while a new player learns, and never two things at once.
     if (!owned.length || s.tycoon.tips < 3 || owned.length < 2) return;
     const pick = () => owned[Math.floor(Math.random() * owned.length)];
@@ -839,6 +864,25 @@ export class TycoonUI {
     this.doAct(el.dataset.act!, row.dataset.biz!, el, e as MouseEvent, row.querySelector(".room-pops")!, row.querySelector(".room-scene")!);
   }
 
+  /** Catching the golden customer: a big tip, gold everywhere. */
+  private catchGolden(popBox?: Element, flyFrom?: Element): void {
+    const s = this.save, id = this.golden.id;
+    if (!id || this.golden.until < Date.now()) return;
+    this.golden.id = "";
+    const tip = goldenTip(s);
+    const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`);
+    const box = popBox ?? tag?.querySelector(".tag-pops") ?? $("tcy-labels"), from = flyFrom ?? tag ?? $("tcy-next");
+    for (let k = 0; k < 8; k++) setTimeout(() => popCoin(box, k === 0 ? coins(tip) : ""), k * 80);
+    for (let k = 0; k < 8; k++) setTimeout(() => flyCoin(from, this.inCity && $("tycoon").hidden ? "tcy-coins" : "ty-coins"), k * 60);
+    fireworks(2, () => this.host.sound.firework());
+    this.host.sound.coins();
+    vibrate(s.settings.vibrate, [20, 40, 20]);
+    this.pulse = { id, at: Date.now() };
+    toast(t("✨ The golden customer tipped {n}!", { n: coins(tip) }));
+    this.host.persist();
+    this.render();
+  }
+
   /** What a tap does (from a room in the list, or a building in the city). */
   private doAct(act: string, id: string, el: HTMLElement, e: MouseEvent | null, popBox: Element, flyFrom: Element): void {
     const s = this.save, b = BUSINESSES.find(x => x.id === id)!;
@@ -861,6 +905,10 @@ export class TycoonUI {
         this.leave();
         this.host.buildHQ(b.id);
         return;
+      case "golden": {
+        this.catchGolden(popBox, flyFrom);
+        return;
+      }
       case "vip": {
         el.remove();
         if (this.vip.id !== b.id || this.vip.until < Date.now()) return;
@@ -952,6 +1000,10 @@ export class TycoonUI {
     if (s.tycoon.boom > now) {
       const left = Math.ceil((s.tycoon.boom - now) / 1000);
       chips.unshift(`<span class="ty-chip boom">🏗️ ${esc(t("Construction boom ×{n} · {t}", { n: BOOM_MULT, t: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }))}</span>`);
+    }
+    if (s.tycoon.opening > now) {
+      const left = Math.ceil((s.tycoon.opening - now) / 1000);
+      chips.unshift(`<span class="ty-chip boom opening">🎉 ${esc(t("Grand opening ×{n} · {t}", { n: OPENING_MULT, t: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }))}</span>`);
     }
     this.put($("ty-events"), chips.join(""));
   }

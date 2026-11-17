@@ -1,6 +1,6 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
-import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business } from "../data/tycoon";
+import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { vipActive } from "./vip";
 import { dayKey } from "./rules";
@@ -45,6 +45,10 @@ export interface TycoonState {
   boom: number;
   /** Five-star reviews from a food critic: business id → until. */
   reviews: Record<string, number>;
+  /** A brand-new company's grand opening: everything earns more until this time (0 = not yet). */
+  opening: number;
+  /** Golden customers seen today. */
+  golden: { day: string; n: number };
 }
 
 export type GoalType = "vip" | "buy" | "taps" | "rush";
@@ -54,7 +58,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], vault: 0, boom: 0, reviews: {} });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 } });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -71,7 +75,17 @@ export function multiplier(s: SaveData, now = Date.now(), live = true): number {
   const ups = UPGRADES.filter(u => u.biz === "all" && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
   const adv = perkOf(s, "all").reduce((m, a) => m * a.n, 1);
   return workerBonus(s) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1) * ups * adv
-    * (live && s.tycoon.boom > now ? BOOM_MULT : 1);
+    * (live && s.tycoon.boom > now ? BOOM_MULT : 1) * (live && s.tycoon.opening > now ? OPENING_MULT : 1);
+}
+
+/** A grand opening for a brand-new company: its first minutes earn five times as much, so
+ *  a new player opens a second business, hires a manager and grows a building in their
+ *  first session. It happens once, ever. Returns true when it starts now. */
+export const OPENING_MULT = 5, OPENING_MINUTES = 20;
+export function startOpening(s: SaveData, now = Date.now()): boolean {
+  if (s.tycoon.opening !== 0 || s.tycoon.lifetime > 2000 || s.tycoon.eras > 0) return false;
+  s.tycoon.opening = now + OPENING_MINUTES * 60e3;
+  return true;
 }
 
 /** This week's festival business (it earns more all week). */
@@ -436,4 +450,42 @@ export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now(), 
     if (!out.advisor) { s.crystals += GOALS_BONUS_CRYSTALS; out.crystals = GOALS_BONUS_CRYSTALS; }
   }
   return out;
+}
+
+/** What day `streak` of the daily calendar pays (1-based; the week repeats). */
+export function dailyReward(s: SaveData, streak: number, now = Date.now()): { cash: number; gems: number; advisor: boolean } {
+  const r = DAILY_REWARDS[(Math.max(1, streak) - 1) % DAILY_REWARDS.length];
+  const rate = perSecond(s, now, false);
+  const cash = r.cash ? Math.max(r.min ?? 0, Math.round(rate * r.cash * 60)) : 0;
+  return { cash, gems: r.gems ?? 0, advisor: !!r.advisor && ADVISORS.some(a => !has(s, a.id)) };
+}
+/** Pays day `streak` of the calendar. Returns what it gave (and the advisor, if one joined). */
+export function claimDaily(s: SaveData, streak: number, now = Date.now(), rnd = Math.random): { cash: number; gems: number; advisor?: Advisor } {
+  const r = dailyReward(s, streak, now);
+  earn(s, r.cash);
+  s.crystals += r.gems;
+  const advisor = r.advisor ? giveAdvisor(s, rnd) : undefined;
+  return { cash: r.cash, gems: r.gems, advisor };
+}
+
+/** Golden customers: rare, sparkling, gone in a minute, and they tip big (about ten minutes
+ *  of earnings). A few a day, so it's worth popping in to catch one. */
+export const GOLDEN_PER_DAY = 5, GOLDEN_SECONDS = 60;
+export const goldenLeft = (s: SaveData, now = Date.now()): number =>
+  s.tycoon.golden.day === dayKey(0, now) ? Math.max(0, GOLDEN_PER_DAY - s.tycoon.golden.n) : GOLDEN_PER_DAY;
+/** A golden customer arrives (counts toward today's). */
+export function goldenArrives(s: SaveData, now = Date.now()): boolean {
+  if (goldenLeft(s, now) <= 0) return false;
+  const day = dayKey(0, now);
+  s.tycoon.golden = { day, n: (s.tycoon.golden.day === day ? s.tycoon.golden.n : 0) + 1 };
+  return true;
+}
+/** What a golden customer tips (and pays it). */
+export function goldenTip(s: SaveData, now = Date.now()): number {
+  const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
+  if (!owned.length) return 0;
+  const cheapest = Math.min(...owned.map(x => costOf(x, levelOf(s, x.id), 1)));
+  const n = Math.max(perSecond(s, now, false) * 600, cheapest * 0.6, 250) * tipMult(s);
+  earn(s, n);
+  return n;
 }

@@ -557,6 +557,9 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     boom: big(o.boom),
     reviews: Object.fromEntries(Object.entries((o.reviews && typeof o.reviews === "object" ? o.reviews : {}) as Record<string, unknown>).filter(([k]) => ids.includes(k)).map(([k, x]) => [k, big(x)])),
     fresh: o.fresh === true,
+    // Grown companies from before grand openings count as having had theirs.
+    opening: typeof o.opening === "number" ? big(o.opening) : big(o.lifetime) > 2000 ? 1 : 0,
+    golden: { day: typeof (o.golden as { day?: unknown })?.day === "string" ? String((o.golden as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.golden as { n?: unknown })?.n)) },
     tips: managers0.length ? 3 : Math.min(3, Math.floor(big(o.tips))),
     goals: normalizeGoals(o.goals),
     rush: { id: typeof (o.rush as { id?: unknown })?.id === "string" && ids.includes((o.rush as { id: string }).id) ? (o.rush as { id: string }).id : "", until: big((o.rush as { until?: unknown })?.until) },

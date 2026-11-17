@@ -62,11 +62,11 @@ import { towerName } from "./data/towernames";
 import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
-import { TycoonUI } from "./ui/tycoon";
-import { evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, unlockedBusiness } from "./logic/tycoon";
+import { COIN_SVG, TycoonUI } from "./ui/tycoon";
+import { claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, unlockedBusiness } from "./logic/tycoon";
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
-import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
+import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, DAILY_REWARDS, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -710,6 +710,7 @@ export class App implements DailyHost {
     $("visit-back").addEventListener("click", () => { this.sound.click(); this.endVisit(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
+    wireModal($("daily"));
     $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });
     wireModal($("modes"));
     // Picking a mode closes the list first (its own button then starts it or opens it).
@@ -1452,6 +1453,15 @@ export class App implements DailyHost {
     const cityHome = p.towers >= 1 && this.canCity();
     document.body.classList.toggle("city-home", cityHome);
     if (cityHome && this.state === "menu" && !this.moving && !this.visiting) this.tycoon.enterCity();
+    // The first visit of the day opens the rewards calendar (once the first-day welcome is done).
+    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && giftState(this.save.profile.gift).ready) {
+      this.dailyAuto = dayKey(0);
+      setTimeout(() => {
+        // Another window is up (welcome back, Mayor Pip): try again once it's closed.
+        if (this.state !== "menu" || document.querySelector(".modal:not([hidden]), .overlay:not([hidden])")) { this.dailyAuto = ""; return; }
+        this.showDaily();
+      }, 1400);
+    }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
@@ -1707,8 +1717,52 @@ export class App implements DailyHost {
   }
 
   /** Collects everything at once and shows what came in. */
+  /** The daily rewards calendar: the week's seven days, today's waiting to be claimed. */
+  private dailyAuto = "";
+  showDaily(): void {
+    const save = this.save, g = giftState(save.profile.gift);
+    if (!g.ready || save.profile.towers < 1) return;
+    const slot = (g.streak - 1) % DAILY_REWARDS.length, first = g.streak - slot;
+    const tile = (i: number, state: string) => {
+      const r = dailyReward(save, first + i), big = i === DAILY_REWARDS.length - 1;
+      const what = r.advisor ? `🎁<b>${esc(t("Mystery crate"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
+      return `<div class="daily-day ${state}${big ? " big" : ""}"><small>${esc(t("Day {n}", { n: i + 1 }))}</small><span class="daily-what">${what}</span>${state === "done" ? `<i class="daily-check">✓</i>` : ""}</div>`;
+    };
+    const paint = (claimed: boolean) => {
+      $("daily-grid").innerHTML = DAILY_REWARDS.map((_, i) => tile(i, i < slot || (claimed && i === slot) ? "done" : i === slot ? "today" : "later")).join("");
+    };
+    paint(false);
+    $("daily-sub").textContent = g.streak > 1 ? t("🔥 {n} days in a row! Come back tomorrow to keep it going.", { n: g.streak }) : t("Come back every day for bigger rewards. Day 7 is the big one!");
+    const btn = $("daily-claim") as HTMLButtonElement;
+    btn.textContent = t("Claim");
+    btn.classList.remove("done");
+    btn.onclick = () => {
+      if (btn.classList.contains("done")) { closeModal($("daily")); return; }
+      const gift = this.sheets.claimGift();
+      if (!gift) { closeModal($("daily")); return; }
+      const r = claimDaily(save, gift.day);
+      paint(true);
+      const today = $("daily-grid").querySelectorAll<HTMLElement>(".daily-day")[slot];
+      today?.classList.add("pop");
+      burst(today ?? btn, 22);
+      confetti();
+      this.sound.coins(); this.sound.unlock();
+      vibrate(save.settings.vibrate, [15, 30, 15]);
+      if (r.advisor) setTimeout(() => toast(t("{name} joined your company!", { name: t(r.advisor!.name) })), 600);
+      const next = dailyReward(save, gift.day + 1);
+      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("Mystery crate") : next.gems ? `${fmt(next.gems)} 💎` : tycoonCoins(next.cash) });
+      btn.textContent = t("See you tomorrow!");
+      btn.classList.add("done");
+      this.persist();
+      this.renderMenu();
+    };
+    openModal($("daily"), btn);
+  }
+
   private collectAll(): void {
     this.sound.ensure();
+    // Today's gift opens the calendar (the rest is collected after it).
+    if (giftState(this.save.profile.gift).ready && this.save.profile.towers >= 1) { this.showDaily(); return; }
     const save = this.save, lines: string[] = [];
     const gift = this.sheets.claimGift();
     if (gift) {

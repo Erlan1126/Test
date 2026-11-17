@@ -36,6 +36,8 @@ export interface BizLive {
   pulse?: string;
   pulseAt?: number;
   rush: string;
+  /** A golden customer waiting outside this business. */
+  golden?: string;
   vip: string;
   critic: string;
   power: string;
@@ -309,7 +311,20 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     life.add(mesh);
     return { mesh, m };
   };
-  const rush = ring(0xff4f8b, 2.5, 2.9), critic = ring(0x9a6cff, 2.3, 2.55), sel = ring(0xffe27a, 2.6, 2.95);
+  // The golden customer: a shining figure at the door, a gold ring and a column of sparkle.
+  const goldFig = new THREE.Group();
+  const goldM = own(std("#ffd23f", { metalness: 0.9, roughness: 0.2, emissive: 0xb07a00, emissiveIntensity: 0.6 }));
+  goldM.userData.dynamic = true;
+  goldFig.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.32, 4, 8).translate(0, 0.4, 0), goldM));
+  goldFig.add(new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8).translate(0, 0.8, 0), goldM));
+  goldFig.add(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.18, 10).translate(0, 1.0, 0), goldM));
+  goldFig.visible = false;
+  life.add(goldFig);
+  const goldBeamM = own(new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  const goldBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 6, 16, 1, true).translate(0, 3, 0), goldBeamM);
+  goldBeam.visible = false;
+  life.add(goldBeam);
+  const rush = ring(0xff4f8b, 2.5, 2.9), critic = ring(0x9a6cff, 2.3, 2.55), sel = ring(0xffe27a, 2.6, 2.95), gold = ring(0xffc93c, 2.2, 2.7);
 
   mergeStatic(g);
 
@@ -384,6 +399,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       });
       if (lotRing(rush, live.rush)) { rush.m.opacity = 0.45 + Math.sin(t * 6) * 0.2; rush.mesh.scale.setScalar(1 + Math.sin(t * 3) * 0.05); }
       if (lotRing(critic, live.critic)) critic.mesh.rotation.y = t;
+      const gd = live.golden ? doors.get(live.golden) : undefined;
+      goldFig.visible = goldBeam.visible = !!gd;
+      if (lotRing(gold, live.golden ?? "")) { gold.m.opacity = 0.6 + Math.sin(t * 8) * 0.3; gold.mesh.scale.setScalar(1 + Math.sin(t * 5) * 0.08); }
+      if (gd) {
+        goldFig.position.set(gd.x, 0.2 + Math.abs(Math.sin(t * 5)) * 0.25, gd.z);
+        goldFig.rotation.y = t * 2;
+        goldBeam.position.set(gd.x, 0.2, gd.z);
+        goldBeamM.opacity = 0.25 + Math.sin(t * 6) * 0.12;
+        goldM.emissiveIntensity = 0.5 + Math.sin(t * 9) * 0.3;
+      }
       if (lotRing(sel, live.sel ?? "")) { sel.m.opacity = 0.55 + Math.sin(t * 4) * 0.25; sel.mesh.scale.setScalar(1 + Math.sin(t * 4) * 0.03); }
       // The VIP's limousine drives round to the nearest corner of their block and parks.
       const vi = idx(live.vip);
