@@ -52,6 +52,8 @@ export class TycoonUI {
   private shownCoins = -1;
   private lastP = new Map<string, number>();
   private lastPop = new Map<string, number>();
+  /** The building that last sold or grew, which bounces in the 3D street. */
+  private pulse = { id: "", at: 0 };
   /** Each section's last HTML: a section is only rebuilt when it really changes, so
    *  animations keep running and a tap never lands on a button that just got replaced. */
   private html = new Map<HTMLElement, string>();
@@ -154,9 +156,26 @@ export class TycoonUI {
     if (tab !== this.tab) this.showTab(tab);
     this.render();
     openModal($("tycoon"));
+    // The slim header stays pinned; the tabs pin just under it.
+    const hero = $("tycoon").querySelector<HTMLElement>(".ty-hero")!;
+    $("tycoon").style.setProperty("--ty-hero-h", `${hero.offsetHeight}px`);
     // While learning, start at the coffee cart (it's at the foot of the tower).
     if (focus) requestAnimationFrame(() => $("ty-list").querySelector(`[data-biz="${focus}"]`)?.scrollIntoView({ block: "center" }));
     else if (this.save.tycoon.tips < 3 && this.tab === "company") requestAnimationFrame(() => $("ty-list").querySelector(".ty-coach")?.scrollIntoView({ block: "start" }));
+    // Otherwise open at your newest business (not at the empty floors waiting at the top).
+    else if (this.tab === "company") {
+      // The rooms draw a moment after the sheet opens: wait for them, then scroll.
+      let tries = 0;
+      const go = (): void => {
+        if ($("tycoon").hidden) return;
+        const sheet = $("tycoon").querySelector<HTMLElement>(".sheet")!, room = $("ty-list").querySelector<HTMLElement>(".ty-biz:not(.locked)");
+        if (!room) { if (++tries < 40) requestAnimationFrame(go); return; }
+        // Just under the pinned header and tabs.
+        const below = $("tycoon").querySelector<HTMLElement>(".ty-tabs")!.getBoundingClientRect().bottom;
+        sheet.scrollTop += room.getBoundingClientRect().top - below - 8;
+      };
+      requestAnimationFrame(go);
+    }
     this.startLoop();
   }
 
@@ -225,9 +244,11 @@ export class TycoonUI {
   }
 
   /** What's happening right now, for the 3D district. */
-  liveState(): { rush: string; vip: string; critic: string; power: string; sel: string } {
+  liveState(): { rush: string; vip: string; critic: string; power: string; sel: string; pulse: string; pulseAt: number } {
     const now = Date.now(), s = this.save;
     return {
+      pulse: this.pulse.id,
+      pulseAt: this.pulse.at,
       sel: this.inCity ? this.selected : "",
       rush: rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "",
       vip: this.vip.until > now ? this.vip.id : "",
@@ -265,14 +286,16 @@ export class TycoonUI {
         } else if (this.inCity) {
           const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`);
           if (tag && !tag.hidden) { popCoin(tag.querySelector(".tag-pops")!, amount); if (Math.random() < 0.5) flyCoin(tag, "tcy-coins"); }
+          // The building itself bounces as it sells (not too often, so the street stays calm).
+          if (now - this.pulse.at > 900) this.pulse = { id, at: now };
         }
       }
       this.lastP.set(id, p);
       const bar = sheet ? $("ty-list").querySelector<HTMLElement>(`.ty-biz[data-id="${id}"] .ty-prog i`) : null;
       if (bar) bar.style.width = `${p * 100}%`;
       if (this.inCity) {
-        const tb = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"] .tag-prog i`);
-        if (tb) tb.style.width = `${p * 100}%`;
+        const tb = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"] .tag-ico`);
+        if (tb) tb.style.setProperty("--p", p.toFixed(3));
         if (this.selected === id) { const cb = $("tcy-card").querySelector<HTMLElement>(".card-prog i"); if (cb) cb.style.width = `${p * 100}%`; }
       }
     }
@@ -343,16 +366,17 @@ export class TycoonUI {
     this.put($("tcy-labels"), BUSINESSES.map((b, i) => {
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
-      if (!owned) return `<button type="button" class="tag lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="1.6"><b>${esc(t("For lease"))}</b></button>`;
-      const st = stageNow(s, b.id), grow = readyStage(s, b.id);
+      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="0.6"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
+      const st = stageNow(s, b.id), grow = readyStage(s, b.id), sel = this.selected === b.id;
       // At most one badge: what needs you most.
       const badge = live.vip === b.id ? `<span class="badge vip" data-act="vip">VIP</span>`
         : live.critic === b.id ? `<span class="badge critic" data-act="critic">★</span>`
         : live.power === b.id ? `<span class="badge power" data-act="power">!</span>`
         : grow ? `<span class="badge grow">↑</span>`
         : live.rush === b.id ? `<span class="badge rush">×${RUSH_MULT}</span>` : "";
-      return `<button type="button" class="tag${this.selected === b.id ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="${STAGE_H[st] + (st >= 3 ? STAGE_H[st] * 0.2 : 0) + 0.6}" style="--b1:${b.color[0]};--b2:${b.color[1]}">
-        ${badge}<b>${esc(t(stageName(b.id, st)))}</b><i class="tag-prog"><i></i></i><span class="tag-pops"></span>
+      // A round icon bubble whose ring fills as the building works; its name shows once tapped.
+      return `<button type="button" class="tag bub${sel ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="${STAGE_H[st] + (st >= 3 ? STAGE_H[st] * 0.2 : 0) + 0.6}" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+        ${badge}<span class="tag-ico">${iconSvg(b.icon)}</span>${sel ? `<b>${esc(t(stageName(b.id, st)))}</b>` : ""}<span class="tag-pops"></span>
       </button>`;
     }).join(""));
     // The next step.
@@ -794,6 +818,7 @@ export class TycoonUI {
         if (e) ripple(el, e);
         if (runOnce(s, b.id)) {
           this.host.sound.click(); vibrate(s.settings.vibrate, 8);
+          this.pulse = { id: b.id, at: Date.now() };
           this.goal("taps");
           if (s.tycoon.tips === 0) s.tycoon.tips = 1;
           this.render();
@@ -868,6 +893,7 @@ export class TycoonUI {
         const got = buyLevels(s, b.id, this.amount);
         if (!got) { this.host.sound.click(); return; }
         this.goal("buy", got);
+        this.pulse = { id: b.id, at: Date.now() };
         if (s.tycoon.tips === 1) s.tycoon.tips = 2;
         const crossed = nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
         this.host.sound.coins();

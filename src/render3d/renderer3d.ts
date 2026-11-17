@@ -28,7 +28,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
-import { buildBizCity, lotPos, type BizCity, type BizStyle } from "./bizcity";
+import { buildBizCity, lotPos, streetFocus, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -197,6 +197,8 @@ export class Renderer3D {
   private skylineIn: unknown = null;
   private biz: BizCity | null = null;
   private bizKey = "";
+  /** Where on Main Street the camera looks (eases as the street grows). */
+  private bizLook = { x: 0, z: 0, zoom: 1, tx: 0, tz: 0, tzoom: 1 };
   private bizIn: unknown = null;
   private bizStyleKey = "";
   /** 0 = looking at the home island, 1 = over the business district. */
@@ -501,9 +503,9 @@ export class Renderer3D {
   /** Points the 3D camera so world points land exactly where View.project puts them. */
   private placeCamera(shake: number): void {
     const v = this.view, k = this.bizK * this.bizK * (3 - 2 * this.bizK);
-    const S = ISO_SCALE * v.s * lerp(v.zoom, BIZ_ZOOM, k);
+    const S = ISO_SCALE * v.s * lerp(v.zoom, BIZ_ZOOM * this.bizLook.zoom, k);
     // Over the business district, the camera looks at its plaza instead of the tower.
-    const target = this.tmpA.set(lerp(0, BIZ_SLOT.x, k), lerp(v.level * FH, BIZ_SLOT.y + 2, k), lerp(0, BIZ_SLOT.z, k));
+    const target = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(v.level * FH, BIZ_SLOT.y + 2, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
     // Straight isometric while playing; on the home screen the camera can swing around the
     // island (nothing on the overlay needs to line up there).
     const d = CAM_DIST / Math.sqrt(3), a = this.azimuth;
@@ -511,12 +513,12 @@ export class Renderer3D {
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(target);
     const sx = shake ? rand(-1, 1) * 10 * shake : 0, sy = shake ? rand(-1, 1) * 10 * shake : 0;
-    const cx = lerp(v.cx, v.W / 2, k) + sx, cy = lerp(v.originY, v.H * (this.bizCardK > 0.5 ? 0.36 : 0.5), k) + sy;
+    const cx = lerp(v.cx, v.W / 2, k) + sx, cy = lerp(v.originY, v.H * (this.bizCardK > 0.5 ? 0.34 : 0.4), k) + sy;
     this.cam.left = -cx / S; this.cam.right = (v.W - cx) / S;
     this.cam.top = cy / S; this.cam.bottom = -(v.H - cy) / S;
     this.cam.updateProjectionMatrix();
     // The sun follows what the camera looks at, so shadows stay sharp where you are.
-    const focus = this.tmpA.set(lerp(0, BIZ_SLOT.x, k), lerp(Math.max(0, v.level) * FH, BIZ_SLOT.y, k), lerp(0, BIZ_SLOT.z, k));
+    const focus = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(Math.max(0, v.level) * FH, BIZ_SLOT.y, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
     const span = Math.max(34, (v.H / S) * 0.75);
@@ -793,6 +795,12 @@ export class Renderer3D {
       }
     }
     if (!this.biz) return;
+    const fo = streetFocus(lots);
+    this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom;
+    const e = this.bizK < 0.02 ? 1 : Math.min(1, dt * 2);
+    this.bizLook.x += (this.bizLook.tx - this.bizLook.x) * e;
+    this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;
+    this.bizLook.zoom += (this.bizLook.tzoom - this.bizLook.zoom) * e;
     this.biz.group.visible = this.bizK > 0.01;
     if (this.biz.group.visible) this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
   }

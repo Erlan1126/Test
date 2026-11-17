@@ -3155,3 +3155,52 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .tcy-goals .more-mayor { width: 100%; }
 .goals-more { display: block; margin: 10px auto 0; }
 .tcy-bar button[data-open="goals"] svg, .tcy-bar button[data-open="more"] svg { color: #6a3cff; }
+
+/* When the business district is home, the old home screen never shows (not even for a
+   moment between screens); its buttons are still pressed from the city's Menu. */
+body.city-home #menu, body.city-home #dock, body.city-home .corner-left, body.city-home #settings-btn, body.city-home #stars-btn, body.city-home #level-btn, body.city-home #streak-btn { display: none !important; }
+body.city-home.visiting .corner-left, body.city-home.placing .corner-left { display: none !important; }
+
+/* ---- Main Street: round icon bubbles over the buildings ---- */
+#tcy-labels .tag.bub { flex-direction: row !important; align-items: center; gap: 6px !important; padding: 3px !important; border-radius: 999px !important; background: rgba(255, 255, 255, 0.94); box-shadow: 0 6px 14px rgba(40, 20, 100, 0.28); color: #2a1f5c; }
+#tcy-labels .tag.bub::after { width: 8px; height: 8px; margin-left: -4px; bottom: -4px; }
+#tcy-labels .tag.bub .tag-ico { --p: 0; position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  background: conic-gradient(var(--b2, #6a3cff) calc(var(--p) * 1turn), rgba(42, 31, 92, 0.12) 0); }
+#tcy-labels .tag.bub .tag-ico::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: linear-gradient(160deg, #fff, color-mix(in srgb, var(--b1, #fff) 35%, #fff)); }
+#tcy-labels .tag.bub .tag-ico svg.ic { position: relative; width: 18px; height: 18px; }
+#tcy-labels .tag.bub b { padding-right: 8px; font: 400 12px var(--display); }
+#tcy-labels .tag.bub.sel { background: linear-gradient(135deg, var(--b1), var(--b2)); color: #fff; transform-origin: 50% 100%; }
+#tcy-labels .tag.bub.sel .tag-ico { width: 40px; height: 40px; background: conic-gradient(#fff calc(var(--p) * 1turn), rgba(255, 255, 255, 0.3) 0); }
+#tcy-labels .tag.bub.sel .tag-ico svg.ic { filter: none; width: 22px; height: 22px; }
+#tcy-labels .tag.bub.lease { background: #ff4f6d; color: #fff; padding-right: 4px !important; animation: bub-call 1.6s ease-in-out infinite; }
+#tcy-labels .tag.bub.lease .tag-ico { width: 26px; height: 26px; background: #fff; color: #ff4f6d; font: 400 20px/1 var(--display); }
+#tcy-labels .tag.bub.lease .tag-ico::before { display: none; }
+#tcy-labels .tag.bub.lease b { font-size: 12px; }
+#tcy-labels .tag.bub .badge { position: absolute; top: -8px; right: -8px; z-index: 1; }
+@keyframes bub-call { 0%, 100% { box-shadow: 0 6px 14px rgba(255, 79, 109, 0.35); } 50% { box-shadow: 0 0 0 6px rgba(255, 79, 109, 0.25), 0 6px 14px rgba(255, 79, 109, 0.35); } }
+
+/* ---- Company sheet: a slim, light header instead of the big purple block ---- */
+#tycoon .ty-hero { padding: 12px 16px 10px !important; color: #2a1f5c; background: linear-gradient(180deg, #ffffff, #f4f0ff) !important; box-shadow: 0 1px 0 rgba(42, 31, 110, 0.08), 0 6px 14px rgba(42, 31, 110, 0.06); }
+#tycoon .ty-top { align-items: center; }
+#tycoon .ty-top small { display: none; }
+#tycoon.modal .ty-top h2 { font-size: 18px; color: #2a1f5c; -webkit-text-fill-color: #2a1f5c; }
+#tycoon.modal .ty-hero .close-btn { background: #efeaff; color: #4b2fb0; }
+#tycoon .ty-coins { margin-top: 2px; font-size: 26px !important; color: #2a1f5c; text-shadow: none; }
+#tycoon .ty-coins .tc-coin { width: 26px; height: 26px; }
+#tycoon .ty-stats { margin: 2px 0 6px; font-size: 12px; color: #6b5fa0; }
+#tycoon .ty-office { gap: 10px; margin-top: 4px !important; padding: 6px 6px 6px 12px; border-radius: 14px; background: #efeaff; box-shadow: none; }
+#tycoon .ty-office .ty-floors small { color: #6b5fa0; }
+#tycoon .ty-office .ty-floors b { color: #2a1f5c; }
+#tycoon .ty-build-btn { flex-direction: row; gap: 4px; padding: 8px 12px; }
+#tycoon .ty-build-btn small { display: none; }
+#tycoon .ty-build-btn span { font-size: 13px; }
+#tycoon .ty-tabs { margin-top: 8px; }
+#tycoon .ty-amount button:not([aria-checked="true"]) { color: #4b2fb0; background: #efeaff; }
+#tycoon .ty-floors b { font-size: 15px; }
+#tycoon .ty-fbar { height: 6px; margin: 3px 0 0; background: rgba(75, 47, 176, 0.14); }
+#tycoon .ty-stats span { color: #6b5fa0; }
+#tycoon .ty-chip { color: #4b2fb0; background: #efeaff; box-shadow: none; }
+#tycoon .ty-chip.boom { color: #fff; background: linear-gradient(90deg, #ff8a3b, #ff4f8b); }
+#tycoon .ty-hero { position: sticky !important; top: 0; z-index: 7; }
+#tycoon .ty-tabs { top: var(--ty-hero-h, 0px); margin-top: 0; }
+#tycoon .ty-tabs { background: #fbfaff; }

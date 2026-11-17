@@ -20,7 +20,8 @@ export function startTabNav(): void {
   const sync = (): void => {
     const at = openTab();
     // Only from the home screen (Ranks can also open from a finished tower's card).
-    const want = at >= 0 && !byId("menu")?.hidden;
+    // Not in the city home, whose own bar (Menu, BUILD, Goals) replaces the dock.
+    const want = at >= 0 && !byId("menu")?.hidden && !document.body.classList.contains("city-home");
     if (want !== lifted) {
       lifted = want;
       if (want) document.body.appendChild(dock);
@@ -62,6 +63,7 @@ export function startTabNav(): void {
 
   const watch = new MutationObserver(sync);
   for (const [m] of TABS) { const el = byId(m); if (el) watch.observe(el, { attributes: true, attributeFilter: ["hidden"] }); }
+  watch.observe(document.body, { attributes: true, attributeFilter: ["class"] });
   sync();
 
   for (const id of SHEETS) pullToClose(byId(id));

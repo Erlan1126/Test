@@ -263,6 +263,12 @@ export class App implements DailyHost {
     setTimeout(() => void flushStats(getLang()), 8000);
     this.sound = new Sound(() => this.save.settings);
     // Real 3D on the graphics chip when the device can; the old 2D drawing otherwise.
+    // Phones switched to flat graphics automatically (after one slow tower) get the 3D
+    // city back once; the "flat" setting chosen by hand is kept.
+    if (this.save.settings.quality === "auto" && this.save.settings.flat && !this.save.seenFeatures.includes("flat-reset")) {
+      this.save.settings.flat = false;
+      this.save.seenFeatures.push("flat-reset");
+    }
     this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d") && !(this.save.settings.quality === "auto" && this.save.settings.flat)
       ? new Renderer3D(this.canvas, $<HTMLCanvasElement>("fx"))
       : new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
@@ -1134,11 +1140,8 @@ export class App implements DailyHost {
     this.persist();
     this.postScores();
     const fs = this.frameStats;
-    // Still under 24 fps in smooth mode: next time, use the flat graphics instead.
-    if (fs.n > 120 && fs.n / fs.time < 24 && this.low && this.save.settings.quality === "auto" && this.renderer instanceof Renderer3D) {
-      this.save.settings.flat = true;
-      this.persist();
-    }
+    // (The game no longer drops to the flat 2D graphics by itself after one slow tower:
+    // that also hid the business district. Smooth mode keeps slower phones fast instead.)
     if (fs.n > 120) {
       reportPerf({ fps: Math.round(fs.n / fs.time), slow: fs.slow, worst: Math.round(fs.worst), floors: run.floors, gfx: this.renderer instanceof Renderer3D ? (this.low ? "3d-low" : "3d") : "2d" });
     }
@@ -1444,8 +1447,11 @@ export class App implements DailyHost {
     this.renderCorners();
     // The Tycoon: the business card on the home screen and its dock tile.
     this.tycoon.renderHome(p.towers >= 1);
-    // The business district is the game's home (once the first tower is built).
-    if (p.towers >= 1 && this.state === "menu" && !this.moving && !this.visiting && this.canCity()) this.tycoon.enterCity();
+    // The business district is the game's home (once the first tower is built). The old
+    // home screen stays hidden underneath, so it never flashes up between screens.
+    const cityHome = p.towers >= 1 && this.canCity();
+    document.body.classList.toggle("city-home", cityHome);
+    if (cityHome && this.state === "menu" && !this.moving && !this.visiting) this.tycoon.enterCity();
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
