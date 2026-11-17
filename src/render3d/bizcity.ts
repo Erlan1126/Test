@@ -16,6 +16,8 @@ export interface BizLot {
   /** Stage 0-4 (only for open businesses). */
   s: number;
   state: "open" | "lease" | "locked";
+  /** Ready to grow to its next stage (scaffolding goes up). */
+  ready?: boolean;
 }
 
 /** The look of the district: your island's ground and trees, your skin's glass. */
@@ -80,7 +82,7 @@ export interface BizCity {
   top(i: number): number;
 }
 
-export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizCity {
+export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = []): BizCity {
   const g = new THREE.Group();
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
   const cache = new Map<string, THREE.MeshStandardMaterial>();
@@ -112,11 +114,23 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizC
   const lawn = own(std(st.lawn, { roughness: 0.95 }));
   const pave = own(std(st.plaza, { roughness: 0.7 }));
   const lane = own(new THREE.MeshBasicMaterial({ color: 0xffe27a }));
+  // One island under the whole town: a grassy verge round the streets, layered rock below.
+  const hull = islandOutline();
+  const slab = (pts: [number, number][], depth: number, top: number, m: THREE.Material) => {
+    const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+    g.add(new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, top - depth, 0), m));
+  };
+  slab(hull, 0.12, -0.0, lawn);
+  slab(grow(hull, -0.25), 1.3, -0.12, earth);
+  const cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
+  const shrink = (k: number) => hull.map(([x, z]): [number, number] => [cx + (x - cx) * k, cz + (z - cz) * k]);
+  slab(shrink(0.95), 1.8, -1.35, rock);
+  slab(shrink(0.8), 2.2, -3.1, rock);
+  slab(shrink(0.58), 2.6, -5.2, rock);
+  slab(shrink(0.3), 3.0, -7.7, rock);
   for (const cell of ALL) {
     const { x, z } = cellXZ(cell);
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(C, 1.2, C).translate(x, -0.6, z), earth));
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(C, 0.08, C).translate(x, 0.0, z), road));
-    { const h = 5 + ((cell[0] * 7 + cell[1] * 3) % 4); g.add(new THREE.Mesh(new THREE.ConeGeometry(C * 0.7, h, 4).rotateX(Math.PI).rotateY(Math.PI / 4).translate(x, -1.2 - h / 2, z), rock)); }
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road));
     g.add(new THREE.Mesh(new THREE.BoxGeometry(C - 1.7, 0.2, C - 1.7).translate(x, 0.1, z), walk));
     // Dashes down the middle of the streets (on this block's +x and +z sides).
     for (const [dx, dz, along] of [[C / 2, 0, "z"], [0, C / 2, "x"]] as const) {
@@ -132,6 +146,20 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizC
     const { x, z } = cellXZ(cell);
     g.add(new THREE.Mesh(new THREE.BoxGeometry(C - 2.1, 0.1, C - 2.1).translate(x, 0.24, z), lawn));
     for (const [a, b] of [[-1.3, -1.2], [1.2, -1.0], [-0.9, 1.3], [1.4, 1.4], [0.1, 0.1]]) tree(x + a, z + b, 0.9 + ((a * 3 + b) % 0.3));
+  }
+  // Trees, bushes and flowers on the verge round the town.
+  {
+    const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
+    const inside = (x: number, z: number) => { for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; if ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0.45 * Math.hypot(b[0] - a[0], b[1] - a[1])) return false; } return true; };
+    let k = 0;
+    for (let x = -OFF - C; x <= OFF + 3 * C; x += 1.3) for (let z = -OFF - C; z <= OFF + 3 * C; z += 1.3) {
+      const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7)) ;
+      k++;
+      if (inCell(jx, jz) || !inside(jx, jz)) continue;
+      if (r < 0.45) tree(jx, jz, 0.7 + r);
+      else if (r < 0.75) g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0).translate(jx, 0.2, jz), leaf));
+      else g.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4).translate(jx, 0.15, jz), mats.c(["#ff6fa0", "#ffe27a", "#ffffff", "#b48cff"][k % 4], 0.8)));
+    }
   }
   const pz = cellXZ(PLAZA);
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.06, 32).translate(pz.x, 0.23, pz.z), pave));
@@ -157,6 +185,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizC
 
   // ---- The lots: each business's own building for its stage ----
   const beacons: THREE.Mesh[] = [];
+  const arrows: THREE.Group[] = [];
+  const rising: { lg: THREE.Group; puff: THREE.MeshBasicMaterial; glow: THREE.MeshBasicMaterial; puffMesh: THREE.Mesh; at: number }[] = [];
   const doors = new Map<string, THREE.Vector3>();
   const lotGroups = new Map<string, THREE.Group>();
   const tops: number[] = [];
@@ -204,9 +234,40 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizC
       beacons.push(beam);
       g.add(beam);
     }
+    if (lot.ready) {
+      // Ready to grow: scaffolding round the building and a glowing arrow above it.
+      const sc = mats.c("#ff9a3b", 0.5, 0.3), plank = mats.c("#c8a070");
+      const h = Math.max(1.6, tops[i] * 0.85), w = 2.25;
+      for (const [px, pz] of [[-w, -w], [w, -w], [-w, w], [w, w]]) lotG.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, h, 5).translate(px, h / 2, pz), sc));
+      for (let y = 0.9; y < h; y += 0.9) {
+        lotG.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2, 0.05, 0.05).translate(0, y, w), sc));
+        for (const sd of [-1, 1]) lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, w * 2).translate(sd * w, y, 0), sc));
+        lotG.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2, 0.04, 0.35).translate(0, y - 0.04, w - 0.2), plank));
+      }
+      const arrow = new THREE.Group();
+      const am = mats.sign("#b48cff");
+      arrow.add(new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.6, 4).translate(0, 0.6, 0), am));
+      arrow.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.3).translate(0, 0.08, 0), am));
+      arrow.position.set(x, tops[i] + 1.2, z);
+      arrow.userData.dynamic = true;
+      arrows.push(arrow);
+      g.add(arrow);
+    }
     mergeStatic(lotG);
     lotG.userData.dynamic = true;
     lotGroups.set(lot.id, lotG);
+    if (grown.includes(lot.id)) {
+      // Just grew: it rises out of the ground in a puff of dust.
+      const m = own(new THREE.MeshBasicMaterial({ color: 0xfff3d0, transparent: true, opacity: 0, depthWrite: false }));
+      const puff = new THREE.Mesh(new THREE.RingGeometry(0.6, 2.4, 32).rotateX(-Math.PI / 2).translate(x, 0.35, z), m);
+      puff.userData.dynamic = true;
+      g.add(puff);
+      const glowM = own(new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.4, 14, 20, 1, true).translate(x, 7, z), glowM);
+      glow.userData.dynamic = true;
+      g.add(glow);
+      rising.push({ lg: lotG, puff: m, glow: glowM, puffMesh: puff, at: -1 });
+    }
   });
 
   // ---- Life: cars round the edge of town, people on the sidewalks, a limo, rush crowds ----
@@ -278,9 +339,23 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE): BizC
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
       g.traverse(o => { if (o.userData.spin) o.rotation.y = t * 0.6; });
-      // A building that just sold (or grew) bounces.
+      for (const a of arrows) { a.rotation.y = t * 2; a.position.y += (Math.sin(t * 3) * 0.004); }
+      // A building that just grew rises from the ground, with dust and a burst of light.
+      const risingNow = new Set<THREE.Group>();
+      for (const r of rising) {
+        if (r.at < 0) r.at = t;
+        const k = (t - r.at) / 1.3;
+        if (k >= 1.6) { r.puff.opacity = 0; r.glow.opacity = 0; continue; }
+        const e = k >= 1 ? 1 : 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
+        if (k < 1) { r.lg.scale.set(1, Math.max(0.02, e), 1); risingNow.add(r.lg); }
+        r.puff.opacity = Math.max(0, 0.7 * (1 - k / 1.6));
+        r.puffMesh.scale.setScalar(1 + k * 0.8);
+        r.glow.opacity = Math.max(0, Math.sin(Math.min(1, k / 1.4) * Math.PI) * 0.35);
+      }
+      // A building that just sold bounces.
       const now = Date.now();
       for (const [id, lg] of lotGroups) {
+        if (risingNow.has(lg)) continue;
         const k = id === live.pulse ? (now - (live.pulseAt ?? 0)) / 450 : 1;
         if (k >= 0 && k < 1) { const b = Math.sin(k * Math.PI) * (1 - k); lg.scale.set(1 - b * 0.06, 1 + b * 0.14, 1 - b * 0.06); }
         else lg.scale.set(1, 1, 1);
@@ -427,4 +502,30 @@ function roofProp(id: string, c1: THREE.Color, c2: THREE.Color): THREE.Group {
       break;
   }
   return p;
+}
+
+/** The island's edge: the town's blocks wrapped in one smooth, convex outline with a verge. */
+function islandOutline(): [number, number][] {
+  const pts: [number, number][] = [];
+  for (const c of ALL) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: [number, number][] = [], upper: [number, number][] = [];
+  for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+  for (const p of [...pts].reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  return grow(hull, 1.2);
+}
+
+/** Pushes a convex, counter-clockwise outline out (or in, when negative) by d. */
+function grow(pts: [number, number][], d: number): [number, number][] {
+  const n = pts.length;
+  return pts.map((p, i) => {
+    const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n];
+    const e1 = [p[0] - a[0], p[1] - a[1]], e2 = [b[0] - p[0], b[1] - p[1]];
+    const l1 = Math.hypot(e1[0], e1[1]) || 1, l2 = Math.hypot(e2[0], e2[1]) || 1;
+    const n1 = [e1[1] / l1, -e1[0] / l1], n2 = [e2[1] / l2, -e2[0] / l2];
+    const k = 1 + n1[0] * n2[0] + n1[1] * n2[1];
+    return [p[0] + ((n1[0] + n2[0]) / k) * d, p[1] + ((n1[1] + n2[1]) / k) * d];
+  });
 }

@@ -197,6 +197,8 @@ export class Renderer3D {
   private skylineIn: unknown = null;
   private biz: BizCity | null = null;
   private bizKey = "";
+  /** Each business's stage at the last rebuild (-1 while not open). */
+  private bizPrev = new Map<string, number>();
   /** Where on Main Street the camera looks (eases as the street grows). */
   private bizLook = { x: 0, z: 0, zoom: 1, tx: 0, tz: 0, tzoom: 1 };
   private bizIn: unknown = null;
@@ -788,8 +790,11 @@ export class Renderer3D {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
         this.biz = null;
+        // Businesses that just grew (or opened) rise out of the ground.
+        const grown = this.bizPrev.size ? lots.filter(l => l.state === "open" && (this.bizPrev.get(l.id) ?? -1) < l.s).map(l => l.id) : [];
+        this.bizPrev = new Map(lots.map(l => [l.id, l.state === "open" ? l.s : -1]));
         if (lots.length) {
-          this.biz = buildBizCity(lots, style);
+          this.biz = buildBizCity(lots, style, grown);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
         }
@@ -798,6 +803,9 @@ export class Renderer3D {
     if (!this.biz) return;
     const fo = streetFocus(lots);
     this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom;
+    // A tapped building: the camera glides over and comes closer.
+    const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
+    if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
     const e = this.bizK < 0.02 ? 1 : Math.min(1, dt * 2);
     this.bizLook.x += (this.bizLook.tx - this.bizLook.x) * e;
     this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;

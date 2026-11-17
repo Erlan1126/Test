@@ -397,13 +397,27 @@ export class TycoonUI {
 
   /** Keeps each tag floating over its building as the camera moves. */
   private placeTags(): void {
+    const items: { tag: HTMLElement; x: number; y: number; base: number }[] = [];
     for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) {
       const p = this.host.bizScreen(Number(tag.dataset.i), Number(tag.dataset.h));
       if (!p) { tag.style.visibility = "hidden"; continue; }
       tag.style.visibility = "";
-      tag.style.transform = `translate(${p.top[0].toFixed(1)}px, ${p.top[1].toFixed(1)}px) translate(-50%, -100%)`;
+      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1] });
+    }
+    // Front buildings keep their spot; a bubble that would sit on another moves up a little.
+    items.sort((a, b) => b.base - a.base);
+    const placed: { x: number; y: number; w: number }[] = [];
+    for (const it of items) {
+      const w = it.tag.offsetWidth || 44;
+      for (let guard = 0; guard < 6; guard++) {
+        const hit = placed.find(o => Math.abs(o.x - it.x) < (o.w + w) / 2 - 2 && Math.abs(o.y - it.y) < 42);
+        if (!hit) break;
+        it.y = hit.y - 44;
+      }
+      placed.push({ x: it.x, y: it.y, w });
+      it.tag.style.transform = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       // Buildings nearer the front draw their tags on top.
-      tag.style.zIndex = tag.classList.contains("sel") ? "999" : String(Math.round(p.base[1]));
+      it.tag.style.zIndex = it.tag.classList.contains("sel") ? "999" : String(Math.round(it.base));
     }
   }
 

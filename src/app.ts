@@ -2330,6 +2330,7 @@ export class App implements DailyHost {
     const s = this.save, lots: BizLot[] = BUSINESSES.map((b, i) => ({
       id: b.id, c: b.color[0], c2: b.color[1], s: stageNow(s, b.id),
       state: (s.tycoon.levels[b.id] ?? 0) > 0 ? "open" : unlockedBusiness(s, i) ? "lease" : "locked",
+      ready: (s.tycoon.levels[b.id] ?? 0) > 0 && readyStage(s, b.id) > 0,
     }));
     const key = JSON.stringify(lots);
     if (key !== this.bizCache.key) this.bizCache = { key, list: lots };
