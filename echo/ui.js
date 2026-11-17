@@ -497,7 +497,7 @@ function renderTitle() {
   $("playLabel").textContent = "Play";
   const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
   $("homeBest").textContent = best.toLocaleString();
-  $("playSub").textContent = "Tap anywhere to glide";
+  $("playSub").textContent = "Swipe to dodge, grab the lights";
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
   $("dailyRunBtn").textContent = daily ? `Daily · ${daily.toLocaleString()}` : "Daily run";
