@@ -681,7 +681,7 @@ export class App implements DailyHost {
     this.canvas.addEventListener("pointerdown", e => {
       e.preventDefault();
       if (!e.isPrimary) return; // a second finger on the screen isn't a new tap
-      if (this.state === "playing") this.drop();
+      if (this.state === "playing" && this.countIn <= 0) this.drop();
       else if (this.peek) this.setPeek(false);
       // Impatient? A tap brings the results card (and its Build again button) right away.
       else if (this.state === "over" && !this.overReady) { this.fallCam = 0; this.overTimer = Math.min(this.overTimer, 0.12); }
@@ -836,7 +836,7 @@ export class App implements DailyHost {
     if (go) {
       e.preventDefault();
       if (e.repeat) return;
-      if (this.state === "playing") this.drop();
+      if (this.state === "playing" && this.countIn <= 0) this.drop();
       else if (this.state === "menu") this.start(this.homeMode);
       else if (this.state === "over" && this.overReady) this.start(this.mode, this.challenge?.id);
     }
@@ -858,6 +858,20 @@ export class App implements DailyHost {
   }
 
   // ---------- Starting and ending towers ----------
+
+  /** Seconds left of the 3-2-1 before a tower starts (the floor waits, taps do nothing). */
+  private countIn = 0;
+  private countShown = 0;
+  private countLast = 0;
+  /** Shows one beat of the countdown in the streak words' style. */
+  private countBeat(text: string, tone: string, go = false): void {
+    const el = $("countin");
+    el.hidden = false;
+    el.className = `countin tone-${tone}${go ? " go" : ""}`;
+    el.innerHTML = `<i class="countin-rays"></i><b data-text="${esc(text)}">${esc(text)}</b>`;
+    if (go) { this.sound.unlock(); vibrate(this.save.settings.vibrate, [20, 30, 20]); setTimeout(() => { if (this.countIn <= 0) el.hidden = true; }, 700); }
+    else { this.sound.clockTick(0.4 + (3 - Number(text)) * 0.3); vibrate(this.save.settings.vibrate, 12); }
+  }
 
   private start(mode: Mode, challengeId?: string): void {
     this.tycoon.exitCity();
@@ -913,6 +927,11 @@ export class App implements DailyHost {
     this.outcome = null;
     this.shareBlob = null;
     this.state = "playing";
+    // 3, 2, 1, BUILD! (not on the very first guided tower).
+    this.countIn = this.tutorial ? 0 : 3;
+    this.countShown = 0;
+    this.countLast = performance.now();
+    $("countin").hidden = true;
     for (const id of ["menu", "over", "rewards", "pause-menu", "rescue", "settings-btn", "level-btn", "stars-btn", "streak-btn", "banner"]) $(id).hidden = true;
     $("hud").hidden = false;
     $("pause").hidden = false;
@@ -2293,7 +2312,19 @@ export class App implements DailyHost {
 
   private update(dt: number): void {
     const sim = this.sim;
-    if (this.state === "playing") {
+    // Paused or left during the count-in: hide it (it comes back on resume).
+    // It runs on the real clock (always three seconds, however slow the frames), and not
+    // while paused.
+    const clock = performance.now(), real = Math.min(0.5, (clock - this.countLast) / 1000);
+    this.countLast = clock;
+    if (this.state !== "playing" && this.countIn > 0 && !$("countin").hidden) { $("countin").hidden = true; this.countShown = 0; }
+    if (this.state === "playing" && this.countIn > 0) {
+      // The count-in: the tower waits.
+      const beat = Math.ceil(this.countIn);
+      if (beat !== this.countShown) { this.countShown = beat; this.countBeat(String(beat), ["", "gold", "orange", "pink"][beat] ?? "pink"); }
+      this.countIn -= real;
+      if (this.countIn <= 0) { this.countIn = 0; this.countBeat(t("BUILD!"), "green", true); }
+    } else if (this.state === "playing") {
       // Fixed steps, so the same taps always build the same tower.
       this.stepTime = Math.min(this.stepTime + dt, 0.25);
       while (this.stepTime >= TICK) { sim.step(); this.stepTime -= TICK; }

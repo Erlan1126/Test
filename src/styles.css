@@ -3281,3 +3281,26 @@ body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%
 .tcy-next.tone-gold { background: linear-gradient(135deg, #fff8d6, #ffe27a); box-shadow: 0 0 0 2px #ffc93c, 0 10px 24px rgba(255, 180, 40, 0.45); }
 #tcy-events .opening { color: #fff; background: linear-gradient(90deg, #ff7aa8, #b04ad8); }
 @media (prefers-reduced-motion: reduce) { .badge.golden, #tcy-events .golden-chip { animation: none !important; } }
+
+/* ---- 3, 2, 1, BUILD! in the streak words' style ---- */
+.countin { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; }
+.countin b { position: relative; isolation: isolate; font: 400 128px/1 var(--display); letter-spacing: 0.02em; color: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, var(--c1) 45%, var(--c2) 100%); -webkit-background-clip: text; background-clip: text;
+  animation: countin-pop 0.9s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+/* The white edge, the colored depth and the glow sit on a copy of the word behind it. */
+.countin b::before { content: attr(data-text); position: absolute; inset: 0; z-index: -1; color: var(--c2); -webkit-text-stroke: 14px #fff;
+  text-shadow: 0 9px 0 var(--c3), 0 0 34px var(--c1), 0 0 60px var(--c1); }
+.countin.go b { font-size: 92px; animation: countin-go 0.75s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.countin-rays { position: absolute; width: 520px; height: 520px; border-radius: 50%; opacity: 0.55;
+  background: repeating-conic-gradient(from 0deg, var(--c1) 0deg 9deg, transparent 9deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 65%); mask: radial-gradient(circle, #000 0%, transparent 65%);
+  animation: countin-rays 3s linear infinite, countin-fade 0.9s ease-out both; }
+.countin.tone-pink { --c1: #ff4f8b; --c2: #c2207a; --c3: #6a1048; }
+.countin.tone-orange { --c1: #ff9a3b; --c2: #e25a12; --c3: #7a2a06; }
+.countin.tone-gold { --c1: #ffd23f; --c2: #e89a00; --c3: #7a4e00; }
+.countin.tone-green { --c1: #5ee0a0; --c2: #12a86a; --c3: #0a5a3a; }
+@keyframes countin-pop { 0% { transform: scale(2.4) rotate(-8deg); opacity: 0; } 35% { transform: scale(0.9) rotate(3deg); opacity: 1; } 55% { transform: scale(1.06) rotate(-1deg); } 75% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.82); opacity: 0; } }
+@keyframes countin-go { 0% { transform: scale(0.3); opacity: 0; } 40% { transform: scale(1.18); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes countin-rays { to { transform: rotate(360deg); } }
+@keyframes countin-fade { 0% { opacity: 0; } 30% { opacity: 0.55; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .countin b, .countin-rays { animation-duration: 0.01s !important; } }

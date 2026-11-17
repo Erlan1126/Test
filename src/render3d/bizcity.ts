@@ -64,6 +64,15 @@ export function lotPos(i: number): { x: number; z: number; a: number } {
   const a = gx < gz || (gx === gz && gx % 2 === 1) ? Math.PI / 2 : 0;
   return { x, z, a };
 }
+/** How far the island reaches on screen: across (t, screen x) and into the screen (s), local units. */
+let bounds: { tMin: number; tMax: number; sMin: number; sMax: number } | null = null;
+export function townBounds(): { tMin: number; tMax: number; sMin: number; sMax: number } {
+  if (!bounds) {
+    const pts = islandOutline(), ts = pts.map(([x, z]) => (x - z) * Math.SQRT1_2), ss = pts.map(([x, z]) => (x + z) * Math.SQRT1_2);
+    bounds = { tMin: Math.min(...ts), tMax: Math.max(...ts), sMin: Math.min(...ss), sMax: Math.max(...ss) };
+  }
+  return bounds;
+}
 /** Where the camera should look: the blocks you've built so far (and the next to open). */
 export function streetFocus(lots: BizLot[]): { x: number; z: number; zoom: number } {
   let last = 0;
@@ -109,79 +118,156 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
 
   // ---- The island: city blocks with streets between, on a rock that floats ----
+  // The town keeps proper city colors (asphalt, pale sidewalks, green parks) on every island;
+  // the island's own ground, trees and rock show round the edge.
   const rock = own(std(st.rock, { roughness: 1, flatShading: true }));
+  const rockDark = own(std(new THREE.Color(st.rock).lerp(new THREE.Color("#2a2340"), 0.3), { roughness: 1, flatShading: true }));
   const earth = own(std(st.dirt, { roughness: 1 }));
-  const road = own(std(st.road, { roughness: 0.9 }));
-  const walk = own(std("#e6e1f2", { roughness: 0.8 }));
-  const lawn = own(std(st.lawn, { roughness: 0.95 }));
-  const pave = own(std(st.plaza, { roughness: 0.7 }));
+  const road = own(std("#4b4f66", { roughness: 0.85 }));
+  const walk = own(std("#dedbe6", { roughness: 0.8 }));
+  const curb = own(std("#b9b5c8", { roughness: 0.7 }));
+  const verge = own(std(st.lawn, { roughness: 0.95 }));
+  const grass = own(std(new THREE.Color("#7ccf6a").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
+  const grass2 = own(std(new THREE.Color("#6cbf5c").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
+  const pave = own(std("#efe9df", { roughness: 0.7 }));
   const lane = own(new THREE.MeshBasicMaterial({ color: 0xffe27a }));
-  // One island under the whole town: a grassy verge round the streets, layered rock below.
+  const zebra = own(new THREE.MeshBasicMaterial({ color: 0xf4f2fa }));
+  const water = own(std("#5fc2ff", { roughness: 0.1, metalness: 0.2, emissive: 0x2a6fbf, emissiveIntensity: 0.25 }));
+  const stone = own(std("#d9d2e6", { roughness: 0.6 }));
+  const wood = own(std("#b07a4a", { roughness: 0.8 }));
+  const metal = own(std("#4a4f7a", { metalness: 0.4, roughness: 0.5 }));
+  const add = (geo: THREE.BufferGeometry, m: THREE.Material) => { const mesh = new THREE.Mesh(geo, m); g.add(mesh); return mesh; };
+  // One island under the whole town: a verge round the streets, layered rock below.
   const hull = islandOutline();
   const slab = (pts: [number, number][], depth: number, top: number, m: THREE.Material) => {
     const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-    g.add(new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, top - depth, 0), m));
+    add(new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, top - depth, 0), m);
   };
-  slab(hull, 0.12, -0.0, lawn);
-  slab(grow(hull, -0.25), 1.3, -0.12, earth);
+  slab(hull, 0.12, 0, verge);
+  slab(grow(hull, -0.05), 0.5, -0.12, earth);
+  slab(grow(hull, -0.2), 1.0, -0.62, rock);
   const cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
   const shrink = (k: number) => hull.map(([x, z]): [number, number] => [cx + (x - cx) * k, cz + (z - cz) * k]);
-  slab(shrink(0.95), 1.8, -1.35, rock);
-  slab(shrink(0.8), 2.2, -3.1, rock);
-  slab(shrink(0.58), 2.6, -5.2, rock);
-  slab(shrink(0.3), 3.0, -7.7, rock);
+  slab(shrink(0.9), 1.6, -1.6, rockDark);
+  slab(shrink(0.72), 2.2, -3.2, rock);
+  slab(shrink(0.5), 2.6, -5.4, rockDark);
+  slab(shrink(0.26), 3.0, -8.0, rock);
+  // Stalactite rocks hanging under the island.
+  for (let k = 0; k < 14; k++) {
+    const a = (k / 14) * Math.PI * 2, r = 0.35 + (k % 3) * 0.12, h = 2 + (k * 37 % 5);
+    const p = shrink(r)[Math.floor((k / 14) * hull.length) % hull.length];
+    add(new THREE.ConeGeometry(0.9 + (k % 2) * 0.5, h, 5).rotateX(Math.PI).translate(p[0] + Math.cos(a), -3 - h / 2 - (k % 4), p[1] + Math.sin(a)), k % 2 ? rock : rockDark);
+  }
+  // Streets: asphalt, a curb round every block, a sidewalk, lane dashes and crosswalks.
+  const q = C / 2;
   for (const cell of ALL) {
     const { x, z } = cellXZ(cell);
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road));
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(C - 1.7, 0.2, C - 1.7).translate(x, 0.1, z), walk));
-    // Dashes down the middle of the streets (on this block's +x and +z sides).
-    for (const [dx, dz, along] of [[C / 2, 0, "z"], [0, C / 2, "x"]] as const) {
-      for (let k = -2; k <= 2; k++) g.add(new THREE.Mesh(along === "z" ? new THREE.BoxGeometry(0.08, 0.02, 0.6).translate(x + dx, 0.05, z + k * 1.3) : new THREE.BoxGeometry(0.6, 0.02, 0.08).translate(x + k * 1.3, 0.05, z + dz), lane));
+    add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
+    add(new THREE.BoxGeometry(C - 1.6, 0.18, C - 1.6).translate(x, 0.09, z), curb);
+    add(new THREE.BoxGeometry(C - 1.75, 0.2, C - 1.75).translate(x, 0.1, z), walk);
+    for (const [dx, dz, along] of [[q, 0, "z"], [0, q, "x"]] as const) {
+      for (let k = -1; k <= 1; k++) add(along === "z" ? new THREE.BoxGeometry(0.08, 0.02, 0.6).translate(x + dx, 0.06, z + k * 1.3) : new THREE.BoxGeometry(0.6, 0.02, 0.08).translate(x + k * 1.3, 0.06, z + dz), lane);
+      // Zebra crossings near both ends of this street.
+      for (const end of [-1, 1]) for (let b = -2; b <= 2; b++) {
+        const o = end * (q - 1.25);
+        add(along === "z" ? new THREE.BoxGeometry(0.22, 0.02, 0.5).translate(x + dx + b * 0.3, 0.06, z + o) : new THREE.BoxGeometry(0.5, 0.02, 0.22).translate(x + o, 0.06, z + dz + b * 0.3), zebra);
+      }
     }
   }
-  // Parks beside the entrance, and the plaza with its fountain.
-  const tree = (x: number, z: number, s = 1) => {
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06 * s, 0.1 * s, 0.6 * s, 6).translate(x, 0.2 + 0.3 * s, z), trunk));
-    g.add(new THREE.Mesh(st.tree === "pine" ? new THREE.ConeGeometry(0.5 * s, 1.3 * s, 7).translate(x, 0.8 + 0.65 * s, z) : new THREE.IcosahedronGeometry(0.5 * s, 0).translate(x, 0.8 + 0.4 * s, z), leaf));
+  // Trees in the island's style.
+  const tree = (x: number, z: number, s = 1, y = 0.2) => {
+    add(new THREE.CylinderGeometry(0.06 * s, 0.1 * s, 0.6 * s, 6).translate(x, y + 0.3 * s, z), trunk);
+    if (st.tree === "palm") for (let k = 0; k < 5; k++) add(new THREE.BoxGeometry(0.8 * s, 0.05, 0.2 * s).translate(0.35 * s, 0, 0).rotateZ(-0.35).rotateY((k / 5) * Math.PI * 2).translate(x, y + 0.65 * s, z), leaf);
+    else add(st.tree === "pine" ? new THREE.ConeGeometry(0.5 * s, 1.3 * s, 7).translate(x, y + 0.6 * s + 0.65 * s, z) : new THREE.IcosahedronGeometry(0.5 * s, 0).translate(x, y + 0.6 * s + 0.4 * s, z), leaf);
   };
-  for (const cell of PARKS) {
+  const bench = (x: number, z: number, ry: number) => {
+    add(new THREE.BoxGeometry(0.7, 0.06, 0.22).rotateY(ry).translate(x, 0.42, z), wood);
+    add(new THREE.BoxGeometry(0.7, 0.2, 0.05).translate(0, 0, -0.1).rotateY(ry).translate(x, 0.55, z), wood);
+    for (const s of [-0.28, 0.28]) add(new THREE.BoxGeometry(0.05, 0.22, 0.2).translate(s, 0, 0).rotateY(ry).translate(x, 0.3, z), metal);
+  };
+  const planter = (x: number, z: number, c: string) => {
+    add(new THREE.BoxGeometry(0.5, 0.25, 0.5).translate(x, 0.32, z), stone);
+    add(new THREE.IcosahedronGeometry(0.24, 0).translate(x, 0.55, z), leaf);
+    for (let k = 0; k < 3; k++) add(new THREE.SphereGeometry(0.07, 6, 4).translate(x - 0.12 + k * 0.12, 0.72, z + 0.08), mats.c(c, 0.8));
+  };
+  const flowersOn = ["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"];
+  // The two parks by the entrance: lawns, a path, a pond, benches.
+  for (const [n, cell] of PARKS.entries()) {
     const { x, z } = cellXZ(cell);
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(C - 2.1, 0.1, C - 2.1).translate(x, 0.24, z), lawn));
-    for (const [a, b] of [[-1.3, -1.2], [1.2, -1.0], [-0.9, 1.3], [1.4, 1.4], [0.1, 0.1]]) tree(x + a, z + b, 0.9 + ((a * 3 + b) % 0.3));
+    add(new THREE.BoxGeometry(C - 2.2, 0.06, C - 2.2).translate(x, 0.23, z), grass);
+    add(new THREE.BoxGeometry(0.7, 0.07, C - 2.2).translate(x, 0.24, z), pave);
+    add(new THREE.BoxGeometry(C - 2.2, 0.07, 0.7).translate(x, 0.24, z), pave);
+    add(new THREE.CylinderGeometry(0.75, 0.75, 0.06, 20).translate(x + (n ? -1.15 : 1.15), 0.25, z - 1.15), water);
+    add(new THREE.TorusGeometry(0.78, 0.06, 6, 20).rotateX(Math.PI / 2).translate(x + (n ? -1.15 : 1.15), 0.28, z - 1.15), stone);
+    for (const [a, b] of [[-1.3, 1.2], [1.3, 1.3], [n ? 1.3 : -1.3, -1.2]]) tree(x + a, z + b, 0.95);
+    bench(x + 0.7, z + 0.55, 0); bench(x - 0.55, z - 0.7, Math.PI / 2);
+    for (let k = 0; k < 6; k++) add(new THREE.SphereGeometry(0.09, 6, 4).translate(x - 1.8 + k * 0.22, 0.32, z + 1.95), mats.c(flowersOn[k % 4], 0.8));
   }
-  // Trees, bushes and flowers on the verge round the town.
+  // Street furniture round the business blocks: planters at the corners, benches and bins.
+  for (const [n, cell] of CELLS.entries()) {
+    const { x, z } = cellXZ(cell), e = q - 1.1;
+    planter(x - e, z + e, flowersOn[n % 4]);
+    planter(x + e, z - e, flowersOn[(n + 1) % 4]);
+    if (n % 2 === 0) bench(x - 0.9, z + e + 0.05, 0); else bench(x + e + 0.05, z - 0.9, -Math.PI / 2);
+    add(new THREE.CylinderGeometry(0.11, 0.1, 0.32, 8).translate(x + e - 0.05, 0.36, z + e - 0.9), mats.c("#3fae6a", 0.6));
+  }
+  // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
-    const inside = (x: number, z: number) => { for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; if ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0.45 * Math.hypot(b[0] - a[0], b[1] - a[1])) return false; } return true; };
+    const inside = (x: number, z: number, m = 0.45) => { for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; if ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0]) < m * Math.hypot(b[0] - a[0], b[1] - a[1])) return false; } return true; };
     let k = 0;
-    for (let x = -OFF - C; x <= OFF + 3 * C; x += 1.3) for (let z = -OFF - C; z <= OFF + 3 * C; z += 1.3) {
-      const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7)) ;
+    for (let x = -OFF - C; x <= OFF + 3 * C; x += 1.2) for (let z = -OFF - C; z <= OFF + 3 * C; z += 1.2) {
+      const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
       k++;
       if (inCell(jx, jz) || !inside(jx, jz)) continue;
-      if (r < 0.45) tree(jx, jz, 0.7 + r);
-      else if (r < 0.75) g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0).translate(jx, 0.2, jz), leaf));
-      else g.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4).translate(jx, 0.15, jz), mats.c(["#ff6fa0", "#ffe27a", "#ffffff", "#b48cff"][k % 4], 0.8)));
+      if (r < 0.4) tree(jx, jz, 0.7 + r, 0);
+      else if (r < 0.6) add(new THREE.IcosahedronGeometry(0.28, 0).translate(jx, 0.15, jz), leaf);
+      else if (r < 0.72) add(new THREE.DodecahedronGeometry(0.22 + r * 0.2, 0).translate(jx, 0.1, jz), stone);
+      else add(new THREE.SphereGeometry(0.1, 6, 4).translate(jx, 0.12, jz), mats.c(flowersOn[k % 4], 0.8));
+    }
+    // A low railing of posts and a rail along the island's edge.
+    const rail = grow(hull, -0.3);
+    for (let i = 0; i < rail.length; i++) {
+      const a = rail[i], b = rail[(i + 1) % rail.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
+      add(new THREE.BoxGeometry(0.06, 0.06, len).rotateY(ang).translate((a[0] + b[0]) / 2, 0.45, (a[1] + b[1]) / 2), stone);
+      for (let d = 0; d < len; d += 1.4) add(new THREE.BoxGeometry(0.12, 0.45, 0.12).translate(a[0] + ((b[0] - a[0]) * d) / len, 0.22, a[1] + ((b[1] - a[1]) * d) / len), stone);
     }
   }
+  // A waterfall pouring off the island's left edge from a little pond.
+  const fallAt = (() => { let best = hull[0]; for (const p of hull) if (p[0] - p[1] < best[0] - best[1]) best = p; return best; })();
+  const fx0 = fallAt[0] * 0.8 + cx * 0.2 + 1.2, fz0 = fallAt[1] * 0.8 + cz * 0.2 - 1.2;
+  add(new THREE.CylinderGeometry(1.1, 1.1, 0.08, 20).translate(fx0, 0.06, fz0), water);
+  const fallM = own(new THREE.MeshStandardMaterial({ color: 0xbfe9ff, transparent: true, opacity: 0.75, roughness: 0.1, emissive: 0x3a8fdf, emissiveIntensity: 0.3 }));
+  fallM.userData.dynamic = true;
+  const fallDir = new THREE.Vector2(fallAt[0] - cx, fallAt[1] - cz).normalize();
+  const fall = new THREE.Mesh(new THREE.BoxGeometry(0.9, 9, 0.12).translate(0, -4.4, 0), fallM);
+  fall.position.set(fallAt[0] - fallDir.x * 0.1, 0.05, fallAt[1] - fallDir.y * 0.1);
+  fall.rotation.y = Math.atan2(fallDir.x, fallDir.y);
+  fall.userData.dynamic = true;
+  g.add(fall);
+  add(new THREE.BoxGeometry(0.9, 0.06, Math.hypot(fallAt[0] - fx0, fallAt[1] - fz0)).rotateY(Math.atan2(fallAt[0] - fx0, fallAt[1] - fz0)).translate((fallAt[0] + fx0) / 2, 0.07, (fallAt[1] + fz0) / 2), water);
+  // The plaza with its fountain.
   const pz = cellXZ(PLAZA);
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.06, 32).translate(pz.x, 0.23, pz.z), pave));
-  const stone = own(std("#d9d2e6", { roughness: 0.6 }));
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.4, 24).translate(pz.x, 0.4, pz.z), stone));
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.42, 24).translate(pz.x, 0.41, pz.z), own(std("#6fc6ff", { roughness: 0.1, metalness: 0.2, emissive: 0x2a6fbf, emissiveIntensity: 0.25 }))));
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 1.1, 10).translate(pz.x, 0.9, pz.z), stone));
-  const jet = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 14).translate(pz.x, 1.9, pz.z), own(new THREE.MeshStandardMaterial({ color: 0xcff0ff, transparent: true, opacity: 0.65, roughness: 0.1 })));
+  add(new THREE.CylinderGeometry(2.4, 2.4, 0.06, 32).translate(pz.x, 0.23, pz.z), pave);
+  add(new THREE.TorusGeometry(2.4, 0.08, 6, 40).rotateX(Math.PI / 2).translate(pz.x, 0.26, pz.z), stone);
+  add(new THREE.CylinderGeometry(1.2, 1.3, 0.4, 24).translate(pz.x, 0.4, pz.z), stone);
+  add(new THREE.CylinderGeometry(1.05, 1.05, 0.42, 24).translate(pz.x, 0.41, pz.z), water);
+  add(new THREE.CylinderGeometry(0.14, 0.2, 1.1, 10).translate(pz.x, 0.9, pz.z), stone);
+  add(new THREE.CylinderGeometry(0.5, 0.35, 0.12, 14).translate(pz.x, 1.45, pz.z), stone);
+  const jet = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 14).translate(pz.x, 2.0, pz.z), own(new THREE.MeshStandardMaterial({ color: 0xcff0ff, transparent: true, opacity: 0.65, roughness: 0.1 })));
   jet.userData.dynamic = true;
   g.add(jet);
-  for (const [a, b] of [[-2.2, 2.2], [2.2, -2.2], [2.3, 2.3]]) tree(pz.x + a, pz.z + b, 0.8);
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; planter(pz.x + Math.cos(a) * 2.0, pz.z + Math.sin(a) * 2.0, flowersOn[k % 4]); }
   // Street lamps on the block corners.
-  const pole = own(std("#4a4f7a", { metalness: 0.4, roughness: 0.5 }));
+  const pole = metal;
   const lampMat = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 0.2 }));
   lampMat.userData.dynamic = true;
   for (const cell of CELLS) {
-    const { x, z } = cellXZ(cell), q = C / 2 - 1.0;
-    for (const [a, b] of [[q, q], [-q, q], [q, -q]]) {
-      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a, 0.9, z + b), pole));
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a, 1.65, z + b), lampMat));
+    const { x, z } = cellXZ(cell), e = q - 1.0;
+    for (const [a, b] of [[e, e], [-e, -e]]) {
+      add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a, 0.9, z + b), pole);
+      add(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a, 1.65, z + b), lampMat);
     }
   }
 
@@ -205,7 +291,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // Locked: a little park. For lease: a cleared plot with a sale sign.
       const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lotG.add(new THREE.Mesh(geo, m));
       if (lot.state === "lease") {
-        K(new THREE.BoxGeometry(4.2, 0.06, 4.2).translate(0, 0.03, 0), earth);
+        K(new THREE.BoxGeometry(4.2, 0.06, 4.2).translate(0, 0.03, 0), grass2);
+        K(new THREE.BoxGeometry(3.2, 0.07, 3.2).translate(0, 0.04, -0.2), earth);
+        for (const [sx, sz] of [[-1.6, -1.8], [1.6, -1.8], [-1.6, 1.4], [1.6, 1.4]]) K(new THREE.BoxGeometry(0.06, 0.5, 0.06).translate(sx, 0.25, sz), wood);
+        for (const [sx, sz, w, d] of [[0, -1.8, 3.2, 0.03], [0, 1.4, 3.2, 0.03], [-1.6, -0.2, 0.03, 3.2], [1.6, -0.2, 0.03, 3.2]] as const) K(new THREE.BoxGeometry(w, 0.05, d).translate(sx, 0.42, sz), mats.c("#ff8a3b"));
         K(new THREE.BoxGeometry(0.08, 1.3, 0.08).translate(0, 0.65, 1.4), pole);
         K(new THREE.BoxGeometry(1.5, 0.8, 0.08).translate(0, 1.4, 1.4), mats.sign("#ff4f6d"));
         K(new THREE.BoxGeometry(1.1, 0.12, 0.09).translate(0, 1.4, 1.42), mats.c("#ffffff"));
@@ -213,17 +302,25 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         K(new THREE.BoxGeometry(0.9, 0.3, 0.5).translate(0.9, 0.15, 0.4), mats.c("#c86a4a"));
         tops[i] = 1.9;
       } else {
-        K(new THREE.BoxGeometry(4.2, 0.06, 4.2).translate(0, 0.03, 0), lawn);
-        const tr = new THREE.Group(); lotG.add(tr);
-        for (const [tx, tz] of [[-1.1, -1.0], [1.0, 0.6], [-0.4, 1.2]]) {
-          tr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(tx, 0.3, tz), trunk));
-          tr.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0).translate(tx, 0.95, tz), leaf));
+        // A little park until the business comes: lawn, a winding path, trees, a bench.
+        K(new THREE.BoxGeometry(4.2, 0.06, 4.2).translate(0, 0.03, 0), i % 2 ? grass : grass2);
+        K(new THREE.BoxGeometry(0.6, 0.07, 2.4).rotateY(0.5).translate(-0.3, 0.04, 0.9), pave);
+        K(new THREE.BoxGeometry(0.6, 0.07, 2.2).rotateY(-0.6).translate(0.4, 0.04, -0.9), pave);
+        for (const [tx, tz, ts] of [[-1.3, -1.2, 1], [1.3, 0.8, 0.9], [-1.4, 1.5, 0.75], [1.4, -1.5, 0.8]]) {
+          K(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk);
+          K(new THREE.IcosahedronGeometry(0.5 * ts, 0).translate(tx, 0.95 * ts, tz), leaf);
         }
+        for (let k = 0; k < 5; k++) K(new THREE.SphereGeometry(0.09, 6, 4).translate(0.6 + k * 0.2, 0.12, 1.6), mats.c(flowersOn[(k + i) % 4], 0.8));
+        K(new THREE.BoxGeometry(0.7, 0.06, 0.22).translate(0.9, 0.42, -0.1), wood);
+        K(new THREE.BoxGeometry(0.7, 0.2, 0.05).translate(0.9, 0.55, -0.2), wood);
         tops[i] = 1.5;
       }
       mergeStatic(lotG);
       return;
     }
+    // The lot: a paved forecourt with a strip of lawn round the back.
+    lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.05, 4.3).translate(0, 0.025, 0), grass));
+    lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.06, 2.6).translate(0, 0.03, 0.85), pave));
     buildModel(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
     lotG.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(lotG);
@@ -353,6 +450,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         b.rotation.x = Math.cos(t * 0.4) * 0.25;
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
+      fallM.opacity = 0.65 + Math.sin(t * 10) * 0.1;
+      fall.scale.x = 1 + Math.sin(t * 7) * 0.04;
       g.traverse(o => { if (o.userData.spin) o.rotation.y = t * 0.6; });
       for (const a of arrows) { a.rotation.y = t * 2; a.position.y += (Math.sin(t * 3) * 0.004); }
       // A building that just grew rises from the ground, with dust and a burst of light.

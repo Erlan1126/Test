@@ -1374,4 +1374,5 @@ export const FR: Record<string, string> = {
   "Catch them before they leave: {n}s": "Attrape-le avant qu'il parte : {n} s",
   "✨ The golden customer tipped {n}!": "✨ Le client en or a laissé {n} de pourboire !",
   "Golden customer · {n}s": "Client en or · {n} s",
+  "BUILD!": "CONSTRUIS !",
 };

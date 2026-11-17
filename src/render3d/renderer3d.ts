@@ -28,7 +28,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
-import { buildBizCity, lotPos, streetFocus, type BizCity, type BizStyle } from "./bizcity";
+import { buildBizCity, lotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -505,7 +505,11 @@ export class Renderer3D {
   /** Points the 3D camera so world points land exactly where View.project puts them. */
   private placeCamera(shake: number): void {
     const v = this.view, k = this.bizK * this.bizK * (3 - 2 * this.bizK);
-    const S = ISO_SCALE * v.s * lerp(v.zoom, BIZ_ZOOM * this.bizLook.zoom, k);
+    // Over the district the whole width of the island always fits the screen (phones are
+    // narrow); the camera then only slides up and down the town.
+    const tb = townBounds(), fitS = (v.W * 0.94) / (tb.tMax - tb.tMin);
+    const bizS = Math.min(ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom, fitS);
+    const S = lerp(ISO_SCALE * v.s * v.zoom, bizS, k);
     // Over the business district, the camera looks at its plaza instead of the tower.
     const target = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(v.level * FH, BIZ_SLOT.y + 2, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
     // Straight isometric while playing; on the home screen the camera can swing around the
@@ -803,9 +807,17 @@ export class Renderer3D {
     if (!this.biz) return;
     const fo = streetFocus(lots);
     this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom;
-    // A tapped building: the camera glides over and comes closer.
+    // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
+    // Only up and down: across, the island stays centred; along, it never slides off.
+    {
+      const tb = townBounds(), tc = (tb.tMin + tb.tMax) / 2;
+      let sv = (this.bizLook.tx + this.bizLook.tz) * Math.SQRT1_2;
+      sv = Math.min(tb.sMax - 6, Math.max(tb.sMin + 6, sv));
+      this.bizLook.tx = (sv + tc) * Math.SQRT1_2;
+      this.bizLook.tz = (sv - tc) * Math.SQRT1_2;
+    }
     const e = this.bizK < 0.02 ? 1 : Math.min(1, dt * 2);
     this.bizLook.x += (this.bizLook.tx - this.bizLook.x) * e;
     this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;
