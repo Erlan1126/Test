@@ -651,6 +651,8 @@ export class TycoonUI {
         this.host.sound.click();
         closeModal($(open.id));
         to.open();
+        // A page switched to starts at its top.
+        requestAnimationFrame(() => { const sh = $(to.id).querySelector<HTMLElement>(".sheet"); if (sh && to.id !== "profile") sh.scrollTop = 0; });
       };
     };
     const watch = new MutationObserver(sync);
