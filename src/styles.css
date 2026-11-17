@@ -3332,3 +3332,44 @@ body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-op
 .tab-seg button { flex: 1 0 auto; padding: 9px 12px; border: 0; border-radius: 13px; cursor: pointer; white-space: nowrap; font: 400 12.5px var(--display); color: #6b5fa0; background: transparent; }
 .tab-seg button.on { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 5px 12px rgba(106, 60, 255, 0.3); }
 @media (prefers-reduced-motion: reduce) { body.tabs-open .modal.tab-page > .sheet { animation: none; } }
+
+/* ════════ Company page: clean business cards ════════ */
+/* A slim header that scrolls away; the tabs stay pinned at the top. */
+body.tabs-open #tycoon .ty-hero { position: static !important; padding: 10px 6px 8px !important; background: none !important; box-shadow: none !important; margin: 0 !important; }
+body.tabs-open #tycoon .ty-events { margin: 0 0 6px; }
+body.tabs-open #tycoon .ty-office { padding: 8px 8px 8px 14px; border-radius: 18px; }
+body.tabs-open #tycoon .ty-floors small { font-size: 10px; }
+body.tabs-open #tycoon .ty-floors b { font-size: 16px; }
+body.tabs-open #tycoon .ty-tabs { position: sticky !important; top: 0 !important; margin: 0 -10px 10px !important; padding: 8px 10px !important; background: #fbfaff !important; box-shadow: 0 6px 12px -8px rgba(42, 31, 110, 0.25); }
+body.tabs-open #tycoon .ty-panel[data-panel="company"] .ty-amount { margin: 0 2px 12px; }
+/* No sky, roof, lift shaft or lobby: just the businesses. */
+body.tabs-open #tycoon .ty-sky { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
+body.tabs-open #tycoon .ty-sky::before, body.tabs-open #tycoon .ty-sky::after, body.tabs-open #tycoon .tw-roof, body.tabs-open #tycoon .tw-shaft, body.tabs-open #tycoon .tw-lobby { display: none !important; }
+body.tabs-open #tycoon .ty-list { gap: 12px !important; padding: 0 2px 8px !important; background: none !important; border: 0 !important; }
+body.tabs-open #tycoon .ty-biz.room { display: block !important; padding: 0 !important; border-radius: 22px !important; overflow: hidden; background: #fff !important; border: 0 !important;
+  box-shadow: 0 4px 0 rgba(42, 31, 110, 0.06), 0 10px 22px rgba(42, 31, 110, 0.1) !important; }
+/* The banner: the business's colors, its icon, name, stars and floors; earnings along the bottom. */
+body.tabs-open #tycoon .room-scene { height: 88px !important; background: linear-gradient(120deg, var(--b1), var(--b2)) !important; border-radius: 0 !important; }
+body.tabs-open #tycoon .room-scene > :is(.room-wall, .room-window, .room-lamp, .room-awning, .room-light, .room-chand, .room-sparkle, .room-shelf, .room-fx, .room-counter, .walker, .tap-me) { display: none !important; }
+body.tabs-open #tycoon .room-scene::before { content: ""; position: absolute; right: -30px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
+body.tabs-open #tycoon .room-sign { top: 12px !important; left: 12px !important; right: auto !important; gap: 10px !important; padding: 0 !important; background: none !important; box-shadow: none !important; font-size: 22px !important; color: #fff; }
+body.tabs-open #tycoon .room-sign svg.ic { box-sizing: content-box; width: 24px !important; height: 24px !important; padding: 10px; border-radius: 16px; background: rgba(255, 255, 255, 0.25); }
+body.tabs-open #tycoon .room-sign b { font-size: 15px !important; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
+body.tabs-open #tycoon .room-level { top: 40px !important; left: 66px !important; padding: 0 !important; background: none !important; color: rgba(255, 255, 255, 0.92) !important; font: 800 12px var(--ui) !important; }
+body.tabs-open #tycoon .room-stars { top: 12px !important; right: 12px !important; left: auto !important; color: #fff3b0; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
+body.tabs-open #tycoon .room-lease { position: absolute; top: 44px; left: 66px; padding: 2px 8px; border-radius: 8px; font: 400 11px var(--display); color: #fff; background: rgba(0, 0, 0, 0.18); transform: none !important; }
+body.tabs-open #tycoon .room-scene .ty-prog { position: absolute !important; left: 0; right: 0; bottom: 0; height: 18px !important; margin: 0 !important; border-radius: 0 !important; background: rgba(0, 0, 0, 0.16) !important; }
+body.tabs-open #tycoon .room-scene .ty-prog i { background: linear-gradient(90deg, #fff3b0, #ffc93c) !important; border-radius: 0 !important; }
+body.tabs-open #tycoon .room-scene .ty-prog span { font-size: 11px !important; line-height: 18px !important; color: #2a1f5c !important; text-shadow: none !important; }
+body.tabs-open #tycoon .room-scene :is(.hq-tag, .fest-tag, .review-tag, .rush-tag) { top: auto !important; bottom: 24px !important; right: 12px !important; left: auto !important; transform: none !important; }
+/* The action row: what's next, the manager, and a big Buy. */
+body.tabs-open #tycoon .room-bar { grid-template-columns: 1fr auto auto !important; gap: 8px !important; padding: 10px 10px 10px 14px !important; background: #fff !important; }
+body.tabs-open #tycoon .room-bar small { font-size: 12px !important; color: #7a70a8 !important; }
+body.tabs-open #tycoon .room-bar .ty-buy { min-width: 108px; padding: 8px 12px !important; border-radius: 16px !important; }
+body.tabs-open #tycoon .ty-auto { padding: 6px 10px; border-radius: 12px; font: 400 11px var(--display); color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); }
+body.tabs-open #tycoon .ty-biz.locked .room-scene { filter: saturate(0.55) brightness(1.05); }
+body.tabs-open #tycoon .ty-list { display: flex !important; flex-direction: column-reverse; }
+body.tabs-open #tycoon .ty-biz.room { margin: 0 !important; flex: none; }
+body.tabs-open #tycoon .room-scene :is(.vip, .critic, .power-cut) { left: auto !important; right: 44px !important; top: 6px !important; bottom: auto !important; transform: scale(0.85); transform-origin: top right; }
+body.tabs-open #tycoon .room-bar small { font-size: 11.5px !important; line-height: 1.25 !important; }
+body.tabs-open #tycoon .room-bar .ty-hire { max-width: 118px; white-space: normal; line-height: 1.15; font-size: 10.5px !important; padding: 6px 8px !important; }

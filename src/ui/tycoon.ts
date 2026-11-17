@@ -170,6 +170,7 @@ export class TycoonUI {
     if (focus) requestAnimationFrame(() => $("ty-list").querySelector(`[data-biz="${focus}"]`)?.scrollIntoView({ block: "center" }));
     else if (this.save.tycoon.tips < 3 && this.tab === "company") requestAnimationFrame(() => $("ty-list").querySelector(".ty-coach")?.scrollIntoView({ block: "start" }));
     // Otherwise open at your newest business (not at the empty floors waiting at the top).
+    else if (this.tab === "company" && document.body.classList.contains("city-home")) requestAnimationFrame(() => $("tycoon").querySelector<HTMLElement>(".sheet")!.scrollTo({ top: 0 }));
     else if (this.tab === "company") {
       // The rooms draw a moment after the sheet opens: wait for them, then scroll.
       let tries = 0;
