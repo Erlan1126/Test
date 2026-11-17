@@ -1098,7 +1098,7 @@ export class App implements DailyHost {
     if (this.save.profile.towers >= 1 && this.mode !== "zen") {
       tickTycoon(this.save);
       const bonus = towerBonus(this.save, run.floors);
-      if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} coins for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
+      if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
       if (run.floors > 0) this.outcome.rewards.unshift({ kind: "pass", text: t("+{n} office floors for Skyhaven Inc.: open more business levels!", { n: run.floors }) });
       // A long perfect streak starts a construction boom.
       if (this.sim.bestStreak >= BOOM_STREAK) {

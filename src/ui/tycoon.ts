@@ -13,7 +13,6 @@ import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal }
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
 import { missionText } from "../data/missions";
-import { STAGE_H } from "../render3d/bizcity";
 import { MAYOR_SVG, mayorNote, mayorSvg } from "./mayor";
 
 export interface TycoonHost {
@@ -39,7 +38,8 @@ export interface TycoonHost {
 }
 
 /** A gold coin with a star, for counters. */
-export const COIN_SVG = `<svg viewBox="0 0 24 24"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset="0.5" stop-color="#ffc93c"/><stop offset="1" stop-color="#d8901a"/></linearGradient></defs><circle cx="12" cy="12" r="10" fill="url(#cg)" stroke="#b8740c" stroke-width="1.2"/><circle cx="12" cy="12" r="7" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1"/><path d="M12 7.2l1.4 2.9 3.2.4-2.3 2.2.6 3.2-2.9-1.6-2.9 1.6.6-3.2-2.3-2.2 3.2-.4z" fill="#fff8d6"/></svg>`;
+/** Skyhaven Inc.'s cash: a green banknote. */
+export const COIN_SVG = `<svg viewBox="0 0 24 24"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9df5b8"/><stop offset="0.55" stop-color="#3fcf7a"/><stop offset="1" stop-color="#1f9a55"/></linearGradient></defs><rect x="1.5" y="7" width="21" height="13" rx="2.5" fill="#1f8a4c" transform="rotate(-8 12 13.5)"/><rect x="1.5" y="5" width="21" height="13" rx="2.5" fill="url(#cg)" stroke="#167a42" stroke-width="1.1"/><rect x="4" y="7.5" width="16" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.9"/><circle cx="12" cy="11.5" r="3.3" fill="#e9ffe9"/><text x="12" y="13.7" text-anchor="middle" font-size="6" font-weight="900" font-family="Arial,sans-serif" fill="#167a42">$</text></svg>`;
 
 export class TycoonUI {
   private amount: number | "max" = 1;
@@ -74,7 +74,7 @@ export class TycoonUI {
     wireModal($("tycoon"));
     // The coin's gold gradient, defined once where it's always drawable (a gradient inside
     // a hidden element can't be used by the coins elsewhere on the page).
-    document.body.insertAdjacentHTML("afterbegin", `<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset="0.5" stop-color="#ffc93c"/><stop offset="1" stop-color="#d8901a"/></linearGradient></defs></svg>`);
+    document.body.insertAdjacentHTML("afterbegin", `<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9df5b8"/><stop offset="0.55" stop-color="#3fcf7a"/><stop offset="1" stop-color="#1f9a55"/></linearGradient></defs></svg>`);
     document.querySelectorAll<HTMLElement>(".tc-coin").forEach(el => { el.innerHTML = COIN_SVG; });
     $("tycoon-card").addEventListener("click", () => this.open());
     $("tycoon-btn").addEventListener("click", () => this.open());
@@ -366,7 +366,7 @@ export class TycoonUI {
     this.put($("tcy-labels"), BUSINESSES.map((b, i) => {
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
-      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="0.6"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
+      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
       const st = stageNow(s, b.id), grow = readyStage(s, b.id), sel = this.selected === b.id;
       // At most one badge: what needs you most.
       const badge = live.vip === b.id ? `<span class="badge vip" data-act="vip">VIP</span>`
@@ -375,7 +375,7 @@ export class TycoonUI {
         : grow ? `<span class="badge grow">↑</span>`
         : live.rush === b.id ? `<span class="badge rush">×${RUSH_MULT}</span>` : "";
       // A round icon bubble whose ring fills as the building works; its name shows once tapped.
-      return `<button type="button" class="tag bub${sel ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="${STAGE_H[st] + (st >= 3 ? STAGE_H[st] * 0.2 : 0) + 0.6}" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+      return `<button type="button" class="tag bub${sel ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1" style="--b1:${b.color[0]};--b2:${b.color[1]}">
         ${badge}<span class="tag-ico">${iconSvg(b.icon)}</span>${sel ? `<b>${esc(t(stageName(b.id, st)))}</b>` : ""}<span class="tag-pops"></span>
       </button>`;
     }).join(""));
@@ -417,7 +417,7 @@ export class TycoonUI {
       let best = 56;
       BUSINESSES.forEach((b, i) => {
         if (levelOf(this.save, b.id) === 0 && !unlockedBusiness(this.save, i)) return;
-        const h = Number($("tcy-labels").querySelector<HTMLElement>(`[data-tag="${b.id}"]`)?.dataset.h ?? 1.5);
+        const h = -1;
         const p = this.host.bizScreen(i, h);
         if (!p) return;
         const d = distToSeg(e.clientX, e.clientY, p.base, p.top);
@@ -510,7 +510,7 @@ export class TycoonUI {
       const dot = src && $(src).querySelector(".dot:not([hidden])") ? `<i class="dot"></i>` : "";
       rows.push(`<button type="button" class="tcy-mode" data-mode="${k}"><span class="mode-ico">${ico}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span>${dot}</button>`);
     };
-    mode("classic", "🏢", t("Classic tower"), t("Earn office floors and coins for your company"));
+    mode("classic", "🏢", t("Classic tower"), t("Earn office floors and cash for your company"));
     mode("daily", "📅", t("Daily tower"), t("The same tower for everyone today"), "daily-btn");
     mode("journey", "🗺️", t("Journey"), t("Landmark challenges, one by one"), "challenges-btn");
     mode("zen", "🍃", t("Zen"), t("Relax and build, no pressure"), "zen-btn");
@@ -840,7 +840,7 @@ export class TycoonUI {
         for (let k = 0; k < 4; k++) setTimeout(() => flyCoin(flyFrom, this.inCity && $("tycoon").hidden ? "tcy-coins" : "ty-coins"), k * 70);
         this.host.sound.coins();
         vibrate(s.settings.vibrate, 15);
-        toast(t("A VIP tipped {n} coins!", { n: coins(tip) }));
+        toast(t("A VIP tipped {n}!", { n: coins(tip) }));
         this.goal("vip");
         this.host.persist();
         this.render();
@@ -870,7 +870,7 @@ export class TycoonUI {
         const box = popBox;
         for (let k = 0; k < 5; k++) setTimeout(() => popCoin(box, k === 0 ? coins(got) : ""), k * 90);
         this.host.sound.coins();
-        toast(t("Lights back on! The customers stayed: +{n} coins", { n: coins(got) }));
+        toast(t("Lights back on! The customers stayed: +{n}", { n: coins(got) }));
         this.host.persist();
         this.render();
         return;
@@ -1004,7 +1004,7 @@ export class TycoonUI {
     if (ty.tips >= 3) return "";
     const text = ty.tips === 0 ? t("Tap the Coffee Cart to sell your first coffee!")
       : ty.tips === 1 ? t("Nice! Now buy a level: every level earns more each sale.")
-      : t("Save {n} coins to hire a manager. Managers sell for you, even while you're away!", { n: coins(b.manager) });
+      : t("Save {n} to hire a manager. Managers sell for you, even while you're away!", { n: coins(b.manager) });
     return `<div class="ty-coach"><span class="ty-coach-face">${COACH_FACE}</span><p><small>${esc(t("First steps · {n} of 3", { n: ty.tips + 1 }))}</small>${esc(text)}</p></div>`;
   }
 
@@ -1064,7 +1064,7 @@ export class TycoonUI {
       rate <= 0 ? t("Hire a manager first") : left <= 0 ? t("No more speed-ups today. Come back tomorrow!") : t("Get {n} right now", { n: coins(rate * h * 3600) }),
       `💎 ${warpPrice(h)}`, rate <= 0 || left <= 0);
     this.put($("ty-boosts"),
-      card("boost", "bolt", t("Coin booster ×2"), ty.boost ? t("Active forever. Every coin counts twice") : t("Double every coin you earn, forever"), ty.boost ? esc(t("✓ Owned")) : `💎 ${fmt(COIN_BOOST_CRYSTALS)}`, ty.boost)
+      card("boost", "bolt", t("Cash booster ×2"), ty.boost ? t("Active forever. Every dollar counts twice") : t("Double all the cash you earn, forever"), ty.boost ? esc(t("✓ Owned")) : `💎 ${fmt(COIN_BOOST_CRYSTALS)}`, ty.boost)
       + (vaultCost(s) !== undefined ? card("vault", "lock", t("Bigger vault"), t("Managers earn {n} more hours while you're away (now {h}h)", { n: VAULT_HOURS, h: offlineHours(s) }), `${COIN_SVG}${esc(coins(vaultCost(s)!))}`, s.tycoon.coins < vaultCost(s)!) : "")
       + warp("warp1", "clock", 1, t("Time warp: 1 hour"))
       + warp("warp8", "rocket", 8, t("Time warp: 8 hours"))
@@ -1078,7 +1078,7 @@ export class TycoonUI {
     if (act === "boost") {
       if (s.crystals < COIN_BOOST_CRYSTALS) { this.short(COIN_BOOST_CRYSTALS); return; }
       if (!buyBoost(s)) return;
-      this.host.sound.purchase(); confetti(); toast(t("Coin booster on: every coin counts twice!"));
+      this.host.sound.purchase(); confetti(); toast(t("Cash booster on: every dollar counts twice!"));
     } else if (act === "vault") {
       tick(s);
       if (!buyVault(s)) return;
@@ -1091,7 +1091,7 @@ export class TycoonUI {
       const n = timeWarp(s, h);
       if (!n) return;
       this.host.sound.purchase(); fireworks(3, () => this.host.sound.firework());
-      toast(t("Time warp! +{n} coins", { n: coins(n) }));
+      toast(t("Time warp! +{n}", { n: coins(n) }));
     }
     this.done();
   }
@@ -1099,7 +1099,7 @@ export class TycoonUI {
   private renderEra(): void {
     const s = this.save, g = eraGems(s);
     this.put($("ty-era-card"), `<span class="ty-gem">${iconSvg("gem")}</span>
-      <span><b>${esc(t("{n} Sky Gems", { n: fmt(s.tycoon.gems) }))}</b><small>${esc(t("Each gem adds 2% to all earnings, for good. Start a New Era to collect the gems your coins have earned."))}</small></span>
+      <span><b>${esc(t("{n} Sky Gems", { n: fmt(s.tycoon.gems) }))}</b><small>${esc(t("Each gem adds 2% to all earnings, for good. Start a New Era to collect the gems your cash has earned."))}</small></span>
       <button type="button" class="buy era-go"${g > 0 ? "" : " disabled"}>${g > 0 ? esc(this.eraArmed ? t("Tap again to reset businesses") : t("New Era: +{n}", { n: fmt(g) })) : esc(t("Keep earning"))}</button>`);
   }
 

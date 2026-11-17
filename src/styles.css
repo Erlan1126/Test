@@ -2587,7 +2587,7 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 .room .ty-prog span { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); line-height: 22px; }
 .room .ty-prog i { background: linear-gradient(90deg, #ffe27a, #ffb13b); }
 .room-pops { position: absolute; inset: 0; pointer-events: none; }
-.coin-pop { position: absolute; bottom: 40px; display: flex; align-items: center; gap: 3px; font: 400 14px var(--display); color: #fff; text-shadow: 0 1px 3px rgba(80, 40, 0, 0.6), 0 0 8px rgba(255, 200, 60, 0.9); animation: coin-up 1.1s ease-out forwards; }
+.coin-pop { position: absolute; bottom: 40px; display: flex; align-items: center; gap: 3px; font: 400 14px var(--display); color: #fff; text-shadow: 0 1px 3px rgba(0, 60, 30, 0.6), 0 0 8px rgba(80, 220, 130, 0.9); animation: coin-up 1.1s ease-out forwards; }
 .coin-pop svg { width: 16px; height: 16px; }
 @keyframes coin-up { from { transform: translateY(0) scale(0.6); opacity: 0; } 15% { transform: translateY(-8px) scale(1.15); opacity: 1; } to { transform: translateY(-60px) scale(1); opacity: 0; } }
 .room-bar { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px; padding: 6px 8px; background: #fff; }

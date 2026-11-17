@@ -160,7 +160,7 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
     if (info.vaultFullAt && info.vaultFullAt > now + 60_000) {
       const at = new Date(info.vaultFullAt), h = at.getHours();
       if (h < 9) at.setHours(9, 0, 0, 0); else if (h >= 22) { at.setDate(at.getDate() + 1); at.setHours(9, 0, 0, 0); }
-      notifications.push({ id: 106, title: t("💰 Your managers' vault is full"), body: t("Skyhaven Inc. stopped earning. Collect your coins and keep growing!"), schedule: { at, allowWhileIdle: true } });
+      notifications.push({ id: 106, title: t("💰 Your managers' vault is full"), body: t("Skyhaven Inc. stopped earning. Collect your cash and keep growing!"), schedule: { at, allowWhileIdle: true } });
     }
     // The day before a holiday event ends, if its skin isn't earned yet.
     if (info.holidayEnds) {

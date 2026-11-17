@@ -666,7 +666,8 @@ export class Renderer3D {
   }
 
   private updateLights(n: number): void {
-    const nf = this.env.nf, sunset = clamp((n - 18) / 30, 0, 1) * (1 - nf);
+    // Over the business district night is softer, so the town stays bright and readable.
+    const nf = this.env.nf * (1 - 0.55 * this.bizK), sunset = clamp((n - 18) / 30, 0, 1) * (1 - nf);
     this.sun.color.setRGB(1, 0.97, 0.9).lerp(this.tmpC.setRGB(1, 0.62, 0.38), sunset).lerp(this.tmpC.setRGB(0.55, 0.65, 1), nf);
     this.sun.intensity = lerp(2.4, 0.95, nf);   // moonlight, not darkness
     const top = this.env.skyTop;
@@ -809,6 +810,8 @@ export class Renderer3D {
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
     const { x, z } = lotPos(i), r = this.gl.domElement.getBoundingClientRect();
+    // A negative height means "the top of whatever stands there", plus room for the bubble.
+    if (height < 0) height = this.biz.top(i) + 0.5;
     const at = (y: number): [number, number] => {
       const v = new THREE.Vector3(BIZ_SLOT.x + x, BIZ_SLOT.y + y, BIZ_SLOT.z + z).project(this.cam);
       return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];

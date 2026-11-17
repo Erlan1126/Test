@@ -53,8 +53,12 @@ export const DOUBLE_CRYSTALS_PER_HOUR = 40;
 export const ERA_SCALE = 2e8;
 
 const SUFFIX = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
-/** 1234 → "1.23K", 5.6e15 → "5.60Qa", then aa, ab, ac... for the truly endless. */
+/** Skyhaven Inc.'s money is cash: 1234 → "$1.23K", 5.6e15 → "$5.60Qa", then aa, ab... */
 export function coins(n: number): string {
+  return (n < 0 ? "-$" : "$") + amount(Math.abs(n));
+}
+/** The number alone: 1234 → "1.23K". */
+export function amount(n: number): string {
   if (!Number.isFinite(n)) return "∞";
   if (n < 1000) return n < 10 && n % 1 ? n.toFixed(1) : String(Math.floor(n));
   let tier = Math.floor(Math.log10(n) / 3);

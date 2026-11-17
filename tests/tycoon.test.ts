@@ -119,9 +119,10 @@ describe("Skyhaven Tycoon", () => {
     expect(back.tycoon.coins).toBe(1.5e20);
     expect(back.tycoon.levels.pizza).toBe(30);
     expect(back.tycoon.managers).toEqual(["coffee"]);
-    expect(coins(1234)).toBe("1.23K");
-    expect(coins(5.6e15)).toBe("5.60Qa");
-    expect(coins(1e40)).toMatch(/^10\\.0[a-z]{2}$|^10.0[a-z]{2}$/);
+    expect(coins(1234)).toBe("$1.23K");
+    expect(coins(12)).toBe("$12");
+    expect(coins(5.6e15)).toBe("$5.60Qa");
+    expect(coins(1e40)).toMatch(/^\$10\.0[a-z]{2}$/);
   });
 });
 
