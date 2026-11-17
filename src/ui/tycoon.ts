@@ -12,6 +12,8 @@ import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
+import { titleFor } from "../data/titles";
+import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
 import { MAYOR_SVG, mayorNote, mayorSvg } from "./mayor";
 
@@ -578,12 +580,27 @@ export class TycoonUI {
 
   /** More: everything else, in one simple grid. */
   private openMore(): void {
-    const tiles = MORE.filter(m => !$(m.id).hidden || m.id === "settings-btn").map(m => {
-      const dot = $(m.id).querySelector(".dot:not([hidden]), .new-dot:not([hidden])") ? `<i class="dot"></i>` : "";
-      return `<button type="button" class="more-tile" data-src="${m.id}"><span class="more-ico">${m.ico}</span><b>${esc(t(m.name))}</b>${dot}</button>`;
-    }).join("");
-    const company = `<button type="button" class="more-tile" data-company="1"><span class="more-ico">🏢</span><b>${esc(t("My company"))}</b></button>`;
-    $("tcy-more").innerHTML = `<div class="more-grid">${company}${tiles}</div>`;
+    const s = this.save, p = s.profile, title = titleFor(p.level), need = xpNeeded(p.level);
+    const dotOf = (id: string) => !!$(id).querySelector(".dot:not([hidden]), .new-dot:not([hidden])");
+    const shown = (id: string) => !$(id).hidden;
+    // Who you are: name, title and level (tap for the profile), stars, and a gear for settings.
+    const me = `<div class="more-me">
+      <button type="button" class="more-me-main" data-src="level-btn"><span class="more-av" style="--tc:${title.color}">${title.icon}</span>
+        <span class="more-me-txt"><b>${esc(s.nickname || t("Builder"))}</b><small>${esc(t(title.name))} · ${esc(t("Level {n}", { n: p.level }))}</small><i class="more-xp"><i style="width:${Math.min(100, (p.xp / need) * 100).toFixed(0)}%"></i></i></span></button>
+      <span class="more-stars">★ ${fmt(s.stars)}</span>
+      <button type="button" class="more-gear" data-src="settings-btn" aria-label="${esc(t("Settings"))}"><svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm8.4 4.6l1.6 1.2-1.6 2.8-1.9-.7a7 7 0 01-1.6.9l-.3 2H12.8l-.3-2a7 7 0 01-1.6-.9l-1.9.7-1.6-2.8 1.6-1.2a7 7 0 010-1.8L7.4 10l1.6-2.8 1.9.7a7 7 0 011.6-.9l.3-2h3.2l.3 2c.6.2 1.1.5 1.6.9l1.9-.7 1.6 2.8-1.6 1.2a7 7 0 010 1.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+    </div>`;
+    // What's inside each place, at a glance.
+    const tile = (src: string, ico: string, name: string, sub: string, tone: string, show = true) => !show ? "" :
+      `<button type="button" class="more-tile tone-${tone}" ${src === "company" ? `data-company="1"` : `data-src="${src}"`}><span class="more-ico">${ico}</span><span class="more-txt"><b>${esc(name)}</b><small>${esc(sub)}</small></span>${src !== "company" && dotOf(src) ? `<i class="dot"></i>` : ""}</button>`;
+    const owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0).length;
+    $("tcy-more").innerHTML = me + `<div class="more-grid">
+      ${tile("company", "🏢", t("My company"), t("{n} of {total} businesses", { n: owned, total: BUSINESSES.length }), "violet")}
+      ${tile("shop-btn", "🛍️", t("Shop"), t("Skins, islands, gems"), "pink", shown("shop-btn"))}
+      ${tile("pass-btn", "🎟️", t("Sky Pass"), dotOf("pass-btn") ? t("Rewards to claim!") : t("This month's rewards"), "orange", shown("pass-btn"))}
+      ${tile("ranks-btn", "🏆", t("Ranks"), t("Beat the best builders"), "gold", shown("ranks-btn"))}
+      ${tile("city-btn", "🏙️", t("Sky City"), t("{n} people", { n: fmt(s.population) }), "blue", shown("city-btn"))}
+    </div>`;
     openModal($("tcy-moresheet"));
   }
 

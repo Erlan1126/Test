@@ -1355,4 +1355,9 @@ export const FR: Record<string, string> = {
   "New in your company: {name}!": "Nouveau dans ton entreprise : {name} !",
   "Welcome to Skyhaven Inc.!": "Bienvenue chez Skyhaven Inc. !",
   "This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!": "Voici ton quartier d'affaires. Chaque bâtiment est l'un de tes commerces, et ils grandissent avec toi. La carte en bas te dit toujours quoi faire ensuite. Et pour construire une tour, touche CONSTRUIRE !",
+  "{n} of {total} businesses": "{n} sur {total} commerces",
+  "Skins, islands, gems": "Skins, îles, gemmes",
+  "Rewards to claim!": "Des récompenses à récupérer !",
+  "This month's rewards": "Les récompenses du mois",
+  "Beat the best builders": "Bats les meilleurs bâtisseurs",
 };

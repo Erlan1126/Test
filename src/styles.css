@@ -3204,3 +3204,46 @@ body.city-home.visiting .corner-left, body.city-home.placing .corner-left { disp
 #tycoon .ty-hero { position: sticky !important; top: 0; z-index: 7; }
 #tycoon .ty-tabs { top: var(--ty-hero-h, 0px); margin-top: 0; }
 #tycoon .ty-tabs { background: #fbfaff; }
+
+/* ════════ Seamless: every screen is the same card sliding up over your city ════════ */
+body.city-home .modal { background: rgba(30, 20, 80, 0.22); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+body.city-home .modal > .sheet { max-height: calc(100dvh - 70px - env(safe-area-inset-top, 0px)); border-radius: 28px 28px 0 0; padding-top: 6px;
+  background: #fbfaff; box-shadow: 0 -12px 40px rgba(20, 24, 70, 0.25); animation: sheet-up 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.05); }
+@keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+body.city-home .modal .sheet-top { background: #fbfaff; }
+body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 22px; line-height: 1; color: #4b2fb0; background: #efeaff; box-shadow: none; }
+/* The city's own sheets: title on the left, close on the right like everywhere else. */
+.tcy-sheet > .close-btn { float: right; margin: 10px 0 0 10px; }
+.tcy-sheet > h2 { margin: 14px 0 10px !important; font: 400 24px var(--display) !important; color: #2a1f5c; }
+
+/* ---- Menu: who you are on top, then where to go ---- */
+.more-me { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px; border-radius: 22px; background: linear-gradient(135deg, #6a3cff, #b04ad8); color: #fff; box-shadow: 0 10px 22px rgba(106, 60, 255, 0.3); }
+.more-me-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.more-av { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; font-size: 26px; background: rgba(255, 255, 255, 0.95); box-shadow: inset 0 -3px 0 var(--tc, #c9d3e6); }
+.more-me-txt { min-width: 0; display: grid; gap: 2px; }
+.more-me-txt b { font: 400 16px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more-me-txt small { font-size: 12px; font-weight: 800; opacity: 0.9; }
+.more-xp { display: block; width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.more-xp i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ffe27a, #ffb13b); }
+.more-stars { flex: none; padding: 6px 10px; border-radius: 12px; font: 400 14px var(--display); color: #4a2a00; background: linear-gradient(180deg, #fff3b0, #ffc93c); }
+.more-gear { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 14px; cursor: pointer; color: #fff; background: rgba(255, 255, 255, 0.18); }
+.more-gear svg { width: 24px; height: 24px; }
+.more-gear:active, .more-me-main:active { transform: scale(0.95); }
+#tcy-more .more-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+#tcy-more .more-tile { flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px; border-radius: 20px; text-align: left; background: #fff; box-shadow: 0 4px 0 rgba(42, 31, 110, 0.05), 0 8px 18px rgba(42, 31, 110, 0.08); }
+#tcy-more .more-tile:first-child { grid-column: span 2; }
+#tcy-more .more-ico { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 24px; background: var(--tb, #efeaff); }
+#tcy-more .more-txt { min-width: 0; display: grid; gap: 1px; }
+#tcy-more .more-txt b { font: 400 14px var(--display); color: #2a1f5c; }
+#tcy-more .more-txt small { font-size: 11.5px; font-weight: 700; color: #7a70a8; line-height: 1.25; }
+#tcy-more .tone-violet { --tb: #ece4ff; } #tcy-more .tone-pink { --tb: #ffe3ef; } #tcy-more .tone-orange { --tb: #ffead6; }
+#tcy-more .tone-gold { --tb: #fff3c4; } #tcy-more .tone-blue { --tb: #dff1ff; }
+#tcy-more .more-tile .dot { top: 10px; right: 10px; }
+
+/* ---- Top bar: cash and gems in the same glass ---- */
+.tcy-wallet { padding: 7px 14px 8px !important; color: #2a1f5c !important; background: rgba(255, 255, 255, 0.88) !important; box-shadow: 0 6px 16px rgba(40, 20, 100, 0.18) !important; }
+.tcy-wallet small { color: #7a70a8 !important; }
+.tcy-coins { color: #157a43; text-shadow: none !important; font-size: 24px !important; }
+.tcy-wallet em { color: #7a70a8; opacity: 1 !important; }
+.tcy-gems { align-self: stretch; padding: 0 12px !important; gap: 6px !important; border-radius: 20px !important; background: rgba(255, 255, 255, 0.88) !important; }
+.tcy-gems::after { content: "+"; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: 400 16px/1 var(--display); color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); }
