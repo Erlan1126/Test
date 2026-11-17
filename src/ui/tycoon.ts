@@ -98,15 +98,16 @@ export class TycoonUI {
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
     $("tcy-events").addEventListener("click", e => { if ((e.target as Element).closest("[data-golden]")) { e.stopPropagation(); this.catchGolden(); } });
     $("tcy-next").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.nextAct?.(); });
-    $("tcy-gems").addEventListener("click", e => { e.stopPropagation(); $("shop-btn").click(); });
+    $("tcy-gems").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); if (this.currentTab() !== "shop") this.openTab("shop"); });
     $("tcy-bar").querySelectorAll<HTMLButtonElement>("button").forEach(b => b.addEventListener("click", e => {
       e.stopPropagation();
       this.host.sound.click();
       const k = b.dataset.open!;
-      if (k === "build") this.openBuild();
+      if (k === "build") { this.closeTabs(); this.openBuild(); }
       else if (k === "more") this.openMore();
-      else this.openGoals();
+      else this.openTab(k);
     }));
+    this.wireTabs();
     wireModal($("tcy-buildsheet"));
     wireModal($("tcy-goalsheet"));
     $("tcy-goals").addEventListener("click", e => this.onGoalsTap(e));
@@ -402,9 +403,11 @@ export class TycoonUI {
     // Dots on the bar: only for something you can act on.
     const dot = (k: string, on: boolean) => { $("tcy-bar").querySelector<HTMLElement>(`[data-open="${k}"] .dot`)!.hidden = !on; };
     const lit = (id: string) => !!document.querySelector(`#${id}:not([hidden]) .dot:not([hidden])`);
-    dot("more", MORE.some(m => lit(m.id)));
+    dot("shop", lit("shop-btn"));
+    dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     dot("build", BUSINESSES.some(b => readyStage(s, b.id) > 0));
-    dot("goals", lit("missions-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", lit("missions-btn") || lit("pass-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn"));
   }
 
   /** Keeps each tag floating over its building as the camera moves. */
@@ -589,6 +592,73 @@ export class TycoonUI {
   }
 
   /** More: everything else, in one simple grid. */
+  // ---------- The tab bar: Shop, Company, BUILD, Goals, Me ----------
+  // Each tab is a full page between the top bar (cash, gems) and the tab bar, which both stay;
+  // tapping another tab switches straight to it, tapping the open one closes it. Goals and Me
+  // hold several pages, switched by the chips at their top.
+  private tabDefs(): Record<string, { id: string; name: string; open: () => void; show?: () => boolean }[]> {
+    return {
+      shop: [{ id: "shop", name: "Shop", open: () => $("shop-btn").click() }],
+      company: [{ id: "tycoon", name: "Company", open: () => this.openSheet("company") }],
+      goals: [
+        { id: "tcy-goalsheet", name: "Goals", open: () => this.openGoals() },
+        { id: "pass", name: "Sky Pass", open: () => $("pass-btn").click(), show: () => !$("pass-btn").hidden },
+      ],
+      me: [
+        { id: "profile", name: "Profile", open: () => $("level-btn").click() },
+        { id: "ranks", name: "Ranks", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
+        { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !$("city-btn").hidden },
+        { id: "settings", name: "Settings", open: () => $("settings-btn").click() },
+      ],
+    };
+  }
+  private lastPage: Record<string, string> = {};
+  currentTab(): string {
+    for (const [k, pages] of Object.entries(this.tabDefs())) if (pages.some(p => !$(p.id).hidden)) return k;
+    return "";
+  }
+  closeTabs(): void {
+    for (const pages of Object.values(this.tabDefs())) for (const p of pages) if (!$(p.id).hidden) closeModal($(p.id));
+  }
+  openTab(k: string): void {
+    const cur = this.currentTab();
+    this.closeTabs();
+    if (cur === k) return;
+    const pages = this.tabDefs()[k].filter(p => !p.show || p.show());
+    (pages.find(p => p.id === this.lastPage[k]) ?? pages[0])?.open();
+  }
+  /** Marks the open tab, adds the page chips to grouped tabs, and lays the pages out. */
+  private wireTabs(): void {
+    const defs = this.tabDefs();
+    const sync = () => {
+      const k = this.currentTab();
+      document.body.classList.toggle("tabs-open", !!k && this.inCity);
+      $("tcy-bar").querySelectorAll<HTMLElement>("[data-open]").forEach(b => b.classList.toggle("on", b.dataset.open === k));
+      if (!k) return;
+      const pages = defs[k].filter(p => !p.show || p.show()), open = pages.find(p => !$(p.id).hidden);
+      if (!open) return;
+      this.lastPage[k] = open.id;
+      const sheet = $(open.id).querySelector<HTMLElement>(".sheet")!;
+      let seg = sheet.querySelector<HTMLElement>(":scope > .tab-seg");
+      if (pages.length < 2) { seg?.remove(); return; }
+      if (!seg) { seg = document.createElement("div"); seg.className = "tab-seg"; sheet.prepend(seg); }
+      seg.innerHTML = pages.map(p => `<button type="button" data-page="${p.id}"${p.id === open.id ? ` class="on"` : ""}>${esc(t(p.name))}</button>`).join("");
+      seg.onclick = e => {
+        const id = (e.target as Element).closest<HTMLElement>("[data-page]")?.dataset.page;
+        const to = pages.find(p => p.id === id);
+        if (!to || to.id === open.id) return;
+        this.host.sound.click();
+        closeModal($(open.id));
+        to.open();
+      };
+    };
+    const watch = new MutationObserver(sync);
+    for (const pages of Object.values(defs)) for (const p of pages) {
+      $(p.id).classList.add("tab-page");
+      watch.observe($(p.id), { attributes: true, attributeFilter: ["hidden"] });
+    }
+  }
+
   private openMore(): void {
     const s = this.save, p = s.profile, title = titleFor(p.level), need = xpNeeded(p.level);
     const dotOf = (id: string) => !!$(id).querySelector(".dot:not([hidden]), .new-dot:not([hidden])");
@@ -1389,12 +1459,5 @@ function distToSeg(x: number, y: number, a: [number, number], b: [number, number
 }
 
 /** The More grid: each tile presses the button it stands for (so locked ones stay hidden). */
-const MORE: { id: string; name: string; ico: string }[] = [
-  { id: "shop-btn", name: "Shop", ico: "🛍️" },
-  { id: "pass-btn", name: "Sky Pass", ico: "🎟️" },
-  { id: "ranks-btn", name: "Ranks", ico: "🏆" },
-  { id: "city-btn", name: "Sky City", ico: "🏙️" },
-  { id: "level-btn", name: "Profile", ico: "👤" },
-  { id: "settings-btn", name: "Settings", ico: "⚙️" },
-];
+
 

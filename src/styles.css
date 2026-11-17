@@ -3304,3 +3304,31 @@ body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%
 @keyframes countin-rays { to { transform: rotate(360deg); } }
 @keyframes countin-fade { 0% { opacity: 0; } 30% { opacity: 0.55; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .countin b, .countin-rays { animation-duration: 0.01s !important; } }
+
+/* ════════ Tab bar: Shop · Company · BUILD · Goals · Me ════════ */
+.tcy-bar { grid-template-columns: repeat(5, 1fr) !important; left: 10px !important; right: 10px !important; padding: 8px 4px 6px !important; }
+.tcy-bar button { gap: 2px; }
+.tcy-bar svg { width: 24px; height: 24px; padding: 8px; transition: transform 0.15s, background 0.15s, color 0.15s; }
+.tcy-bar button.on:not(.tcy-build) svg { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 6px 14px rgba(106, 60, 255, 0.35); transform: translateY(-3px); }
+.tcy-bar button.on:not(.tcy-build) span { color: #6a3cff; }
+.tcy-bar .tcy-build svg { width: 30px; height: 30px; }
+
+/* A tab's page fills the space between the top bar and the tab bar, which stay put. */
+body.tabs-open #tycity { z-index: 40; pointer-events: none; }
+body.tabs-open #tycity .tcy-bar, body.tabs-open #tycity .tcy-top { pointer-events: auto; }
+body.tabs-open #tycity .tcy-labels, body.tabs-open #tycity .tcy-next, body.tabs-open #tycity .tcy-events, body.tabs-open #tycity .tcy-card { visibility: hidden; }
+body.tabs-open .modal.tab-page { padding: calc(env(safe-area-inset-top, 0px) + 84px) 10px calc(env(safe-area-inset-bottom, 0px) + 100px); align-items: stretch;
+  background: linear-gradient(180deg, rgba(30, 20, 80, 0.35), rgba(30, 20, 80, 0.15)); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+body.tabs-open .modal.tab-page > .sheet { height: 100%; max-height: none !important; border-radius: 26px !important; padding-top: 4px; animation: tab-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1); box-shadow: 0 16px 40px rgba(20, 24, 70, 0.3); }
+body.tabs-open .modal.tab-page > .sheet::before { display: none; }
+@keyframes tab-in { from { transform: translateY(14px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+/* The tab bar closes pages: no close buttons needed on them. */
+body.tabs-open .modal.tab-page .close-btn { display: none !important; }
+/* The Company page: cash is already in the top bar. */
+body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-open #tycoon .ty-top { display: none !important; }
+/* Page chips (Goals | Sky Pass, Profile | Ranks | Sky City | Settings). */
+.tab-seg { position: sticky; top: 0; z-index: 8; display: flex; gap: 6px; margin: 8px -6px 10px; padding: 6px; border-radius: 18px; background: #efeaff; overflow-x: auto; scrollbar-width: none; }
+.tab-seg::-webkit-scrollbar { display: none; }
+.tab-seg button { flex: 1 0 auto; padding: 9px 12px; border: 0; border-radius: 13px; cursor: pointer; white-space: nowrap; font: 400 12.5px var(--display); color: #6b5fa0; background: transparent; }
+.tab-seg button.on { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 5px 12px rgba(106, 60, 255, 0.3); }
+@media (prefers-reduced-motion: reduce) { body.tabs-open .modal.tab-page > .sheet { animation: none; } }
