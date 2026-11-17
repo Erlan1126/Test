@@ -669,7 +669,7 @@ async function shareMap() {
     const blob = await new Promise(res => c.toBlob(res, "image/png"));
     const file = new File([blob], "echo-cave-map.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "Echo", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
+      await navigator.share({ files: [file], title: "Lumen Rush", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
       return;
     }
     toast("Press and hold the map to save or share it");
@@ -682,9 +682,9 @@ async function shareMap() {
 async function shareGame() {
   const url = "https://erlan1126.github.io/Test/echo.html";
   const t = totalStars();
-  const text = t ? `I've collected ${t} stars in Echo, a game about finding your way through dark caves with sound. Can you beat me?` : "Echo: find your way through dark caves using only sound.";
+  const text = "Lumen Rush: race through a living city, dodge trams and grab the lights. Can you beat my best?";
   try {
-    if (navigator.share) { await navigator.share({ title: "Echo", text, url }); return; }
+    if (navigator.share) { await navigator.share({ title: "Lumen Rush", text, url }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
   try {
     await navigator.clipboard.writeText(`${text} ${url}`);
@@ -730,12 +730,12 @@ function renderToday2() {
 tap("cityGo", () => startRun());
 tap("cityBack", showTitle);
 
-for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"], ["tabShop", "upgrades"], ["tabFriends", "friends"], ["todayAwards", "awards"]])
+for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"], ["tabShop", "upgrades"], ["tabFriends", "ranks"], ["todayAwards", "awards"]])
   tap(id, () => openSheet(kind));
 tap("tabHome", () => showTitle());
 // Tapping the dimmed backdrop closes a sheet.
 for (const id of ["sheet", "todayPanel"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
-tap("levelsBtn", () => (CORE ? showCity() : openMap()));
+tap("levelsBtn", () => (CORE ? openSheet("locker") : openMap()));
 // A soft tick when a switch or option changes, so settings feel alive.
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
 tap("weekLink", () => { renderChallenges(); show("challenges"); });
@@ -804,7 +804,7 @@ $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
 tap("setView3d", () => { save.settings.view3d = save.settings.view3d === false; persist(); renderSettings(); });
-tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); });
+tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
 tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
 tap("setRelaxed", () => { save.settings.relaxed = !save.settings.relaxed; persist(); renderSettings(); toast(save.settings.relaxed ? "Relaxed mode on. It starts with your next cave" : "Relaxed mode off"); });
 [...$("setControls").children].forEach(b => b.addEventListener("click", () => { save.settings.controls = b.dataset.v; persist(); renderSettings(); }));

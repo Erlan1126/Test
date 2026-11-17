@@ -218,7 +218,7 @@ function openSheet(kind) { cityPanel = kind; renderShop(); $("todayPanel").hidde
 function renderShop() {
   const glow = save.glow || 0;
   const head = { upgrades: ["Shop", `Upgrades for every run. You have ${glow.toLocaleString()} lights.`], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
-    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
+    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], locker: ["Locker", `Characters, outfits and boards. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your best runs on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
   $("shopTitle").textContent = head[0]; $("shopSub").textContent = head[1];
   if (cityPanel === "upgrades") $("shopList").innerHTML = runShopHtml();
   if (cityPanel === "build") $("shopList").innerHTML = CITY_BUILDS.map(b => `<li class="${built(b.id) ? "won" : ""}"><span><b>${b.name}</b><small>${b.text}</small></span>` + (built(b.id) ? "<em>Rebuilt</em>" : `<button data-build="${b.id}" ${glow >= b.cost ? "" : "disabled"}>✦ ${b.cost}</button>`) + "</li>").join("");
@@ -227,6 +227,8 @@ function renderShop() {
     $("shopList").innerHTML = `<li><span><b>Bip</b><small>A little city robot</small></span>${as < 0 ? "<em>Playing</em>" : `<button data-char="-1">Play</button>`}</li>` +
       RUN_FRIENDS.map((f, i) => met[i] ? `<li><span><b>${f.name}</b><small>${FRIEND_PERKS[i]}</small></span>${as === i ? "<em>Playing</em>" : `<button data-char="${i}">Play</button>`}</li>` : `<li class="locked"><span><b>???</b><small>Still lost somewhere in the caves</small></span></li>`).join("");
   }
+  if (cityPanel === "locker") $("shopList").innerHTML = lockerHtml();
+  if (cityPanel === "ranks") $("shopList").innerHTML = ranksHtml();
   if (cityPanel === "awards") $("shopList").innerHTML = RUN_ACHS.map(a => `<li class="${(save.runAch || {})[a.id] ? "won" : "locked"}"><span><b>${a.name}</b><small>${a.text}</small></span><em>+${a.r} ✦</em></li>`).join("");
 }
 document.getElementById("shopList").addEventListener("click", e => {
@@ -248,4 +250,37 @@ document.getElementById("cityCanvas").addEventListener("click", e => {
   if (!near || near.d > 40) return;
   audio(); citySay = { p: near.f.p, x: near.f.x, y: near.f.y, t: 4 };
   note(pitch(cityFloat.indexOf(near.f) % 7, 2), { dur: 0.6, vol: 0.05, fm: 2, echo: 0.8 });
+});
+
+// ---------- The locker: characters, hoodies, sneakers, boards ----------
+const hex = c => "#" + (c >>> 0).toString(16).padStart(6, "0");
+function lockerHtml() {
+  const L = runnerLook(), glow = save.glow || 0, row = (key, i, it, swatch, sub, cur) => {
+    const own = L.own[key + i], btn = cur ? "<em>Wearing</em>" : own ? `<button data-lk="${key}:${i}">Wear</button>` : `<button data-lk="${key}:${i}" ${glow >= it.cost ? "" : "disabled"}>✦ ${it.cost.toLocaleString()}</button>`;
+    return `<li class="${cur ? "won" : ""}"><span><i class="sw" style="background:${swatch}"></i><b>${it.name}</b><small>${sub}</small></span>${btn}</li>`;
+  };
+  const ch = runnerChar();
+  return `<li class="sec">Characters</li>` + RUNNER_CHARS.map((c, i) => row("c", i, c, hex(c.look.top), c.perk, L.char === i)).join("") +
+    `<li class="sec">Hoodies</li>` + RUNNER_TOPS.map((c, i) => row("t", i, c, hex(c.c ?? ch.look.top), i ? "Hoodie colour" : `${ch.name}'s own`, L.top === i)).join("") +
+    `<li class="sec">Sneakers</li>` + RUNNER_SHOES.map((c, i) => row("s", i, c, hex(c.c ?? ch.look.shoe), i ? "Sneaker colour" : `${ch.name}'s own`, L.shoe === i)).join("") +
+    `<li class="sec">Jetboards</li>` + RUNNER_BOARDS.map((c, i) => row("b", i, c, c.c === "prism" ? "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)" : hex(c.c), "Glows under your board", L.board === i)).join("");
+}
+// ---------- Ranks: your best runs ----------
+function ranksHtml() {
+  const r = runSave(), top = r.top || [], h = huntState(), today = dayNumber();
+  const when = d => d === today ? "today" : d === today - 1 ? "yesterday" : `${today - d} days ago`;
+  return `<li class="sec">Records</li>` +
+    `<li><span><b>Best score</b><small>All runs</small></span><em>${(r.best || 0).toLocaleString()}</em></li>` +
+    `<li><span><b>Longest run</b><small>The arch on the avenue marks it</small></span><em>${(r.bestM || 0).toLocaleString()} m</em></li>` +
+    `<li><span><b>Today's daily run</b><small>${save.ghost && save.ghost.day === today ? "Your ghost is waiting in today's daily run" : "Play the daily run to set a ghost to race"}</small></span><em>${(r.dailyDay === today ? r.dailyBest || 0 : 0).toLocaleString()}</em></li>` +
+    `<li><span><b>Letter hunt</b><small>Find L·U·M·E·N on the streets today for ✦ 250</small></span><em>${HUNT.split("").map((c, i) => (i < h.got.length ? c : "·")).join(" ")}</em></li>` +
+    `<li class="sec">Top runs</li>` + (top.length ? top.map((t, i) => `<li><span><b>#${i + 1}  ${t.s.toLocaleString()}</b><small>${t.m.toLocaleString()} m · ${t.c || "Kai"}${t.daily ? " · daily" : ""} · ${when(t.d)}</small></span></li>`).join("") : `<li class="locked"><span><b>No runs yet</b><small>Your best ten runs will show here</small></span></li>`) +
+    `<li class="locked"><span><b>Friends and world rankings</b><small>Coming with online accounts</small></span></li>`;
+}
+document.getElementById("shopList").addEventListener("click", e => {
+  const b = e.target.closest("button[data-lk]"); if (!b) return;
+  const [k, i0] = b.dataset.lk.split(":"), i = +i0, L = runnerLook(), list = { c: RUNNER_CHARS, t: RUNNER_TOPS, s: RUNNER_SHOES, b: RUNNER_BOARDS }[k], it = list[i];
+  if (!L.own[k + i]) { if ((save.glow || 0) < it.cost) return; save.glow -= it.cost; L.own[k + i] = 1; sfx.unlock(); buzz(20); } else sfx.tick();
+  ({ c: () => (L.char = i), t: () => (L.top = i), s: () => (L.shoe = i), b: () => (L.board = i) })[k]();
+  persist(); renderShop(); if (typeof renderTitle === "function") renderTitle();
 });

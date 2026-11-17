@@ -133,12 +133,14 @@ function musicStart(seed, layers) {
   music.bass = Array.from({ length: 4 }, (_, k) => (k ? [0, 3, 4, 2, 5][Math.floor(r() * 5)] : 0));
   music.layers = layers;
   music.tension = 0;
+  music.style = typeof run !== "undefined" && run && run.mode3 ? "beat" : "calm"; music.intensity = 0;
   if (!music.on && AC) { music.step = 0; music.next = AC.currentTime + 0.15; }
   music.on = true;
 }
 function musicStop() { music.on = false; music.tension = 0; }
 function musicTick() {
   if (!AC || !music.on || muted || AC.state !== "running") { if (AC) music.next = AC.currentTime + 0.1; return; }
+  if (music.style === "beat") { beatTick(); return; }
   const beat = 60 / 84 / 2;
   while (music.next < AC.currentTime + 0.3) {
     const k = music.step, t = music.next;
@@ -155,7 +157,35 @@ function musicTick() {
   }
 }
 
+// The runner's music: an upbeat electronic groove in A minor. Kick on every beat, claps on two and
+// four, shuffling hats, a pumping bass and syncopated chord stabs; a lead joins on long combos.
+// It gets a little faster and fuller the faster you run.
+const BEAT_SCALE = [0, 2, 3, 5, 7, 8, 10], BEAT_PROG = [0, 5, 2, 6];
+const beatHz = (deg, oct) => 110 * Math.pow(2, (BEAT_SCALE[((deg % 7) + 7) % 7] + 12 * (oct + Math.floor(deg / 7))) / 12);
+function beatTick() {
+  const bpm = 116 + (music.intensity || 0) * 14, step = 60 / bpm / 4;
+  while (music.next < AC.currentTime + 0.3) {
+    const k = music.step, t = music.next, bar = Math.floor(k / 16), root = BEAT_PROG[bar % 4], s = k % 16, full = music.layers >= 2;
+    if (s % 4 === 0) note(150, { time: t, dur: 0.28, vol: 0.32, glide: 42, echo: 0, attack: 0.003, music: true });
+    if (s === 4 || s === 12) noise({ time: t, filter: "bandpass", freq: 1700, q: 0.7, dur: 0.16, attack: 0.002, vol: 0.16, music: true });
+    if (full && s % 2 === 0) noise({ time: t, filter: "highpass", freq: 8500, q: 0.5, dur: s % 4 === 2 ? 0.12 : 0.04, attack: 0.001, vol: s % 4 === 2 ? 0.05 : 0.03, music: true });
+    if (s % 2 === 0) note(beatHz(root, -1) * (s % 8 === 6 ? 2 : 1), { time: t, dur: step * 1.7, vol: 0.09, type: "sawtooth", lowpass: 380 + (music.intensity || 0) * 500, attack: 0.004, echo: 0, music: true });
+    if (full && (s === 0 || s === 6 || s === 10)) [0, 2, 4].forEach(d => note(beatHz(root + d, 1), { time: t, dur: step * 2.2, vol: 0.022, type: "sawtooth", chorus: 8, lowpass: 1800, attack: 0.005, echo: 0.25, music: true }));
+    if (music.layers >= 3 && s % 2 === 0) { const arp = [0, 2, 4, 7, 4, 2, 7, 9][(s / 2) % 8]; note(beatHz(root + arp, 2), { time: t, dur: step * 1.6, vol: 0.02, type: "square", lowpass: 2600, attack: 0.003, echo: 0.4, music: true }); }
+    music.step++; music.next += step;
+  }
+}
+
 const sfx = {
+  coin(n = 0) { const p = [0, 2, 4, 7, 9][n % 5] + 12 * Math.min(2, Math.floor(n / 5) % 3); note(988 * Math.pow(2, p / 12), { dur: 0.13, vol: 0.07, type: "square", lowpass: 4200, attack: 0.002, echo: 0.15 }); note(1976 * Math.pow(2, p / 12), { at: 0.04, dur: 0.1, vol: 0.03, type: "triangle", echo: 0 }); },
+  jump() { noise({ filter: "highpass", freq: 900, glide: 3200, dur: 0.22, attack: 0.01, vol: 0.07 }); note(330, { dur: 0.16, vol: 0.06, type: "square", lowpass: 1600, glide: 660, attack: 0.003, echo: 0 }); },
+  slide() { noise({ filter: "lowpass", freq: 2600, glide: 300, dur: 0.35, attack: 0.01, vol: 0.12 }); },
+  land() { note(110, { dur: 0.1, vol: 0.12, glide: 60, echo: 0, attack: 0.002 }); },
+  crash() { noise({ filter: "lowpass", freq: 1800, glide: 120, dur: 0.6, attack: 0.002, vol: 0.3 }); note(90, { dur: 0.45, vol: 0.3, glide: 35, echo: 0.2, attack: 0.002 }); note(220, { at: 0.02, dur: 0.25, vol: 0.08, type: "square", lowpass: 900, glide: 80, echo: 0 }); },
+  power() { [0, 4, 7, 12, 16].forEach((d, i) => note(523 * Math.pow(2, d / 12), { at: i * 0.05, dur: 0.3, vol: 0.06, type: "square", lowpass: 3000, echo: 0.3 })); },
+  close() { noise({ filter: "bandpass", freq: 600, glide: 2400, q: 1.2, dur: 0.3, attack: 0.02, vol: 0.12 }); },
+  clear() { note(784, { dur: 0.12, vol: 0.05, type: "triangle", echo: 0.2 }); note(1175, { at: 0.06, dur: 0.16, vol: 0.05, type: "triangle", echo: 0.2 }); },
+  flip() { [0, 7, 12].forEach((d, i) => note(659 * Math.pow(2, d / 12), { at: i * 0.06, dur: 0.18, vol: 0.06, type: "square", lowpass: 3200, echo: 0.3 })); },
   ping(n) {
     const f = pitch(n % 7, 1);
     note(f, { dur: 1.2, vol: 0.15, fm: 2.01, fmDepth: 1.4, echo: 0.9 });
@@ -215,7 +245,7 @@ let noiseBuf = null;
 function noise(o = {}) {
   if (!AC) return;
   if (!noiseBuf) { noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1; }
-  const t = AC.currentTime + (o.at || 0), dur = o.dur || 0.5;
+  const t = o.time ? Math.max(AC.currentTime, o.time) : AC.currentTime + (o.at || 0), dur = o.dur || 0.5;
   const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
   src.buffer = noiseBuf; src.loop = true;
   f.type = o.filter || "bandpass"; f.frequency.setValueAtTime(o.freq || 800, t); f.Q.value = o.q || 1;
@@ -226,7 +256,7 @@ function noise(o = {}) {
   src.connect(f); f.connect(g);
   let out = g;
   if (o.pan && AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = Math.max(-0.95, Math.min(0.95, o.pan)); g.connect(p); out = p; }
-  out.connect(sfxBus);
+  out.connect(o.music ? musicBus : sfxBus);
   if (o.echo) { const s = AC.createGain(); s.gain.value = o.echo * save.settings.sfx * 0.75; out.connect(s); s.connect(echoBus); }
   src.start(t, Math.random()); src.stop(t + dur + 0.05);
 }

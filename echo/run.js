@@ -117,7 +117,7 @@ function runSing() {
 }
 function runHit() {
   run.hearts--; run.inv = 1.6; run.flash = 1; run.nohit = false; run.hitAt = runMetres(); run.shake = 1;
-  sfx.caught(); buzz([30, 40, 30]);
+  if (run.mode3) sfx.crash(); else sfx.caught(); buzz([30, 40, 30]);
   if (run.hearts <= 0) { if (!run.hard && run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
 function runMission(kind, value) {
@@ -150,6 +150,10 @@ function runEnd() {
   progressEvent("dist", runMetres());
   run.seasonPaid = seasonGain(Math.round(score / 10));
   if (run.hard) { save.prog = save.prog || {}; save.prog.hardDist = Math.max(save.prog.hardDist || 0, runMetres()); }
+  // Your best distance (the arch on the avenue), your top runs, and today's daily ghost.
+  r.bestM = Math.max(r.bestM || 0, runMetres());
+  r.top = (r.top || []).concat([{ s: score, m: runMetres(), d: dayNumber(), c: typeof runnerChar === "function" ? runnerChar().name : "", daily: !!run.daily }]).sort((a, b) => b.s - a.s).slice(0, 10);
+  if (run.mode3 && run.daily && run.rec && (!save.ghost || save.ghost.day !== dayNumber() || score >= (save.ghost.s || 0))) save.ghost = { day: dayNumber(), s: score, rec: Array.from(run.rec, v => v ?? null) };
   persist();
   checkAchievements();
   musicStop(); sfx.fail();
@@ -161,6 +165,7 @@ function runEnd() {
     tick();
     $("runOver").classList.toggle("best", best);
     $("runOverBest").textContent = best ? "New best" : `Best ${r.best.toLocaleString()}`;
+    $("runTrail").hidden = !!run.mode3;
     $("roDist").textContent = runMetres().toLocaleString(); $("roLights").textContent = (run.lights + (run.streakBonus || 0)).toLocaleString(); $("roCombo").textContent = run.comboBest;
     const li = run.levelInfo;
     $("runLevel").textContent = `Level ${li.after.lv}` + (li.after.lv > li.before.lv ? " · Level up!" : "") + ` · +${li.gained} xp`;
@@ -615,6 +620,7 @@ function runDraw(ctx, W, H) {
   const rim = neon, rock = tower, deep = mixC(w1.sky[0], w2.sky[0], f);
   // The 3D city when the phone can draw it (run3d.js); the flat city otherwise.
   const pal = { night, tower, winC, neon, neon2, rain: f < 0.5 ? w1.rain : w2.rain, sky: [mixC(w1.sky[0], w2.sky[0], f), mixC(w1.sky[1], w2.sky[1], f), mixC(w1.sky[2], w2.sky[2], f)] };
+  if (R.mode3 && R.ev && R.ev.kind === "blackout") Object.assign(pal, { night: 1, blackout: true, sky: [[3, 4, 9], [7, 9, 16], [12, 14, 24]] });
   const R3 = R.mode3 && typeof runner3D === "function" ? runner3D() : null;
   const proj = R3 ? R3.draw(ctx, W, H, pal) : !R.mode3 && typeof RUN3D !== "undefined" && RUN3D && !(save.set && save.set.flat) ? RUN3D.draw(ctx, W, H, pal) : null;
   if (typeof RUN3D !== "undefined" && RUN3D && (R.mode3 || !proj)) RUN3D.hide();
@@ -954,6 +960,12 @@ function runDraw(ctx, W, H) {
   }
   // The first run teaches by doing.
   if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
+  // Speed: streaks rushing out from the middle when the runner is flying.
+  if (R.mode3 && (R.v || 0) > 16 && !R.over) {
+    const k = Math.min(1, ((R.v || 0) - 16) / 12) * (R.power && R.power.kind === "jet" ? 1.4 : 1), cx = W / 2, cy = H * 0.42;
+    ctx.strokeStyle = `rgba(255,255,255,${0.16 * k})`; ctx.lineWidth = 1.5;
+    for (let q = 0; q < 26; q++) { const r = seeded(q * 31 + Math.floor(R.t * 12)), a = r() * Math.PI * 2, d0 = W * (0.35 + r() * 0.3), d1 = d0 + W * (0.1 + k * 0.25); ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d0 * 1.4); ctx.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1 * 1.4); ctx.stroke(); }
+  }
   // A vignette.
   const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${0.2 + night * 0.35})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   // Floating "+3" when a shadow is sung free.
@@ -963,8 +975,8 @@ function runDraw(ctx, W, H) {
   // The world's name as you enter it; mission messages.
   if (R.banner > 0) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(`DISTRICT ${R.biome + 1}`.split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
-    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.mode3 ? runWorld(R.biome).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
   }
 
 }

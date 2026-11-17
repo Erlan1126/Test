@@ -453,6 +453,29 @@ const SIM = `
       out.theAvenueRollsOnAndSpeedsUp = runnerM() > d0 + 300 && R.v > v0 && R.obs.length > 0 && R.coins.length > 0;
       run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
       out.theRunEndsAndPays = !!run.over && save.run.best > 0;
+      out.yourTopRunsAndBestDistanceAreKept = (save.run.top || []).length >= 1 && save.run.bestM > 0;
+      // Ramps, roofs and flips.
+      save.run.tutDone = 1; startRun(); const Q = run, clr = () => { Q.obs = []; Q.coins = []; Q.ups = []; Q.nextRow = 1e9; Q.nextEv = 1e9; Q.inv = 0; };
+      clr(); let mm = runnerM(); runnerAddObs("ramp", 0, mm + 1, { len: 7 }); runnerAddObs("tram", 0, mm + 8, { len: 20, ramp: true }); for (let q = 0; q < 60; q++) runUpdate(1 / 60);
+      out.aRampTakesYouOntoTheTramRoof = Q.py > 3.2 && Q.hearts === 3;
+      const l0 = Q.lights; runnerSwipe("up"); for (let q = 0; q < 90; q++) runUpdate(1 / 60);
+      out.jumpingOffARoofFlipsForABonus = Q.lights >= l0 + 5;
+      clr(); for (let q = 0; q < 120; q++) runUpdate(1 / 60); mm = runnerM(); runnerAddObs("drone", 0, mm + 3, { ph: 0, sweep: true }); Q.obs[0].lane = Q.lane; Q.obs[0].sweep = false; runnerSwipe("down"); for (let q = 0; q < 30; q++) runUpdate(1 / 60);
+      out.slidingUnderADroneIsSafe = Q.hearts === 3;
+      // Events.
+      clr(); Q.nextEv = runnerM() - 1; runUpdate(1 / 60);
+      out.eventsHappenOnTheWay = !!Q.ev && ["rush", "blackout", "chase"].includes(Q.ev.kind);
+      Q.ev = { kind: "rush", t: 8, gap: 1 }; Q.nextRow = runnerM() + 5; for (let q = 0; q < 30; q++) runUpdate(1 / 60);
+      out.aCoinRushFillsTheLanes = Q.coins.length >= 16 && Q.obs.length === 0;
+      // The letter hunt.
+      save.hunt = null; const h0 = huntState(); clr(); mm = runnerM(); Q.ups.push({ lane: Q.lane, z: mm + 1, kind: "letter", ch: "L" }); for (let q = 0; q < 20; q++) runUpdate(1 / 60);
+      out.lettersCountForTheHunt = huntState().got === "L";
+      // The locker.
+      save.glow = 1000; save.look = null; openSheet("locker"); document.querySelector('#shopList button[data-lk="c:1"]').click();
+      out.theLockerSellsAndEquipsCharacters = runnerLook().char === 1 && runnerLook().own.c1 === 1 && save.glow === 400;
+      document.querySelector('#shopList button[data-lk="c:0"]').click(); out.ownedThingsCanBeWornAgainForFree = runnerLook().char === 0 && save.glow === 400;
+      openSheet("ranks"); out.ranksListYourRuns = document.querySelectorAll("#shopList li").length > 5;
+      document.getElementById("sheet").hidden = true;
       // The title plays itself.
       showTitle(); out.theTitlePlaysTheRunner = !!titleRun && titleRun.mode3 === true;
       return out;

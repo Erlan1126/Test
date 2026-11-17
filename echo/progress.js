@@ -174,7 +174,7 @@ async function shareRun(score, metres, combo, seed) {
   g.font = "600 110px system-ui, sans-serif"; g.fillText(score.toLocaleString(), 360, 300);
   g.font = "34px system-ui, sans-serif"; g.fillStyle = "#ffd98a"; g.fillText(`${metres} m  ·  ${combo} combo`, 360, 370);
   g.font = "italic 34px Georgia, serif"; g.fillStyle = "#c8d6ee"; g.fillText("Can you glide further?", 360, 780);
-  const url = challengeLink(seed, score), text = `I scored ${score.toLocaleString()} in Echo (${metres} m). Play my cave and beat me: ${url}`;
+  const url = challengeLink(seed, score), text = `I scored ${score.toLocaleString()} in Lumen Rush (${metres} m). Run my street and beat me: ${url}`;
   try {
     const blob = await new Promise(res => c.toBlob(res, "image/png"));
     const file = new File([blob], "echo-run.png", { type: "image/png" });

@@ -25,6 +25,18 @@ Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted g
 - **When a run ends**: one card slides up with the score counting, best, metres, lights and best combo, the level bar, today's progress, and Play again in the middle (Home and Share on either side).
 - **Friends' abilities**: playing as a friend gives an ability button (a four-second Magnet, Comet, Lantern or Choir), ready again after 25 s.
 
+## Lumen Rush (the game's new name)
+
+The runner is now called **Lumen Rush**: new wordmark, page title and home-screen name, and an upbeat generated soundtrack (kick, claps, hats, pumping bass and chord stabs that speed up and fill out as you run, a lead on long combos), with new effects for coins (rising with your combo), jumps, slides, landings, crashes, power-ups, close calls and flips.
+
+- **More to do on the street:** ramps up onto parked trams (run along the roofs, jump off for a **flip bonus**), buses (some roll toward you), drones that sweep across all lanes at head height (slide under), close-call slow motion, speed streaks, a camera kick on landing and a forward fall when you crash.
+- **Districts with their own streets:** Downtown, Market Street (lanterns strung across the avenue, fruit stalls), Waterfront (railings, the harbour, boats and the far shore), Neon Arcade (signs and screens everywhere) and Park Avenue (lawns, big trees, hedges); the time of day still changes as you go.
+- **Events:** Coin Rush (every lane fills with coins), Blackout (the city goes dark except for neon) and a Security Drone chase (trip twice and it catches you).
+- **Locker** (tab): five characters with perks (Kai; Mika: stronger magnet; Zee: extra heart; Ray: longer jetboard; Nova: combo coins), hoodie colours, sneakers and jetboards, bought with lights.
+- **Ranks** (tab): best score, longest run (an arch marks it on the avenue), today's daily best, the letter hunt and your top ten runs. The daily run has a **ghost** of your best daily run that day.
+- **Letter hunt:** find L-U-M-E-N on the streets in one day for 250 lights.
+- **Settings → Full graphics:** off (or on a slow phone) means no shadows, lower resolution and fewer people.
+
 ## The runner (new)
 
 Play is now a **3D endless runner** (echo/runner.js, Three.js). A runner in a hoodie, cap, headphones and bright sneakers races down a three-lane tram avenue: **swipe left/right** to change lanes, **up** to jump, **down** to slide (arrow keys and space on a computer). Gather gold coins (they are your lights), jump hurdles, slide under low bars, dodge roadworks, trams (later ones come toward you) and oncoming cars. Power-ups: **Magnet**, **Shield** (takes one hit) and **Jetboard** (ride high above the street over a trail of coins).

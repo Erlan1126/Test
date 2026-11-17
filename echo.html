@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Echo</title>
+<title>Lumen Rush</title>
 <meta name="description" content="A little robot flying up through a glowing city. Tap to pulse, dodge the glitches.">
 <meta name="theme-color" content="#05060f">
 <link rel="manifest" href="echo.webmanifest">
@@ -12,7 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Echo">
+<meta name="apple-mobile-web-app-title" content="Lumen Rush">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@1,500&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -618,7 +618,7 @@
   .run-panel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8fa6c8; font-weight: 500; }
 
   /* The title is a live run: Lumi gliding up the glowing cave behind the name. */
-  #runner3d, #titleScreen > #runner3d, #runScreen > #runner3d, #run3d, #titleScreen > #run3d, #runScreen > #run3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
+  #runner3d, #titleScreen > #runner3d, #runScreen > #runner3d, #run3d, #titleScreen > #run3d, #runScreen > #run3d { position: absolute !important; inset: 0; width: 100%; height: 100%; display: block; z-index: 0 !important; pointer-events: none; }
   #titleCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
   #titleScreen > :not(#titleCanvas) { position: relative; z-index: 1; }
   #titleScreen { background: none; }
@@ -700,6 +700,9 @@
   #titleScreen.launch .home-center, #titleScreen.launch .home-top { opacity: 0; transform: translateY(12px); }
 
   /* The tab bar */
+  #shopList li.sec { display: block; background: none; border: 0; padding: 14px 4px 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mut); }
+  #shopList .sw { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; vertical-align: -2px; border: 1px solid rgba(255,255,255,0.3); }
+  .wordmark b { font-weight: 900; color: var(--acc); margin-left: 0.35em; }
   .tabbar { position: fixed; left: 12px; right: 12px; bottom: calc(10px + var(--bottom)); height: 64px; border-radius: 22px; display: none; z-index: 20; padding: 0 6px; }
   body.tabs .tabbar { display: flex; }
   .tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--mut); font-size: 11px; font-weight: 600; position: relative; border-radius: 16px; }
@@ -807,7 +810,7 @@
 <div class="screen on" id="titleScreen">
   <canvas id="titleCanvas" aria-hidden="true"></canvas>
   <div class="home-top">
-    <div class="wordmark">ECHO</div>
+    <div class="wordmark">LUMEN<b>RUSH</b></div>
     <div class="home-chips">
       <span class="chip2" id="chipLights"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg><b>0</b></span>
       <span class="chip2" id="chipLevel">Lv 1</span>
@@ -922,9 +925,9 @@
 </div></div>
 <nav class="tabbar" id="tabbar" aria-label="Menu">
   <button id="tabHome" class="on"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
-  <button id="levelsBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V10l4-3v14"/><path d="M9 21V4l6 3v14"/><path d="M15 21v-9l4 2v7"/></svg><span>City</span></button>
+  <button id="levelsBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4 4 6.5 5.5 10 7 9.4V20h10V9.4l1.5.6L20 6.5 16 4c-.6 1.5-2.1 2.5-4 2.5S8.6 5.5 8 4z"/></svg><span>Locker</span></button>
   <button id="tabShop"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.4 5.6L20 9.3l-4.3 3.9 1.2 5.8L12 16.2 7.1 19l1.2-5.8L4 9.3l5.6-.7z"/></svg><span>Shop</span></button>
-  <button id="tabFriends"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10.5" r="2.4"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><path d="M14.5 15.2c2.6-.4 4.8.8 5.8 3.3"/></svg><span>Friends</span></button>
+  <button id="tabFriends"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3a3 3 0 0 1-3 4"/><path d="M7 6H4a3 3 0 0 0 3 4"/></svg><span>Ranks</span></button>
   <button id="todayBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/></svg><span>Today</span><i class="dot" id="todayDot" hidden></i></button>
 </nav>
 
@@ -1009,9 +1012,9 @@
 <div class="screen dim-bg" id="installScreen">
   <div class="panel">
     <div class="story-num">Keep Lumi close</div>
-    <h2>Add Echo to your home screen</h2>
+    <h2>Add Lumen Rush to your home screen</h2>
     <p class="sub card-text" id="installText"></p>
-    <button class="btn main" id="installGo">Add Echo</button>
+    <button class="btn main" id="installGo">Add Lumen Rush</button>
     <button class="btn" id="installLater">Maybe later</button>
   </div>
 </div>
@@ -1053,7 +1056,7 @@
       </section>
       <section class="set-group"><h3>Look &amp; comfort</h3>
       <div class="set"><label>3D view<small>The caves in 3D. Turn off for the classic flat view</small></label><button class="toggle" id="setView3d" aria-label="3D view"></button></div>
-      <div class="set"><label>Lighting<small>Light and shadow on the rock. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
+      <div class="set"><label>Full graphics<small>Real-time shadows and full sharpness. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
       <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
       <div class="set"><label>Guiding glow<small>Lights, the portal and creatures show a little even before your song finds them</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
