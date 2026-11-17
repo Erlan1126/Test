@@ -44,7 +44,7 @@ const runnerTheme = m => RUNNER_THEMES[Math.floor(Math.max(0, m) / RUN.BIOME_M) 
 const HUNT = "LUMEN";
 function huntState() { const d = dayNumber(); if (!save.hunt || save.hunt.day !== d) save.hunt = { day: d, got: "" }; return save.hunt; }
 
-const SWING = { G: 24, REACH: 24, MAXV: 44 };
+const SWING = { G: 23, REACH: 25, MAXV: 44 };
 
 function runnerStart(R) {
   Object.assign(R, {
@@ -68,7 +68,7 @@ function swingGen(R, toX) {
     const m = Math.max(0, R.genX), th = runnerTheme(m), hard = Math.min(1, m / 3000);
     // Anchors: a chain ahead, always reachable from the one before.
     while (R.lastA.x < R.genX + 70) {
-      const p = R.lastA, ax = p.x + 10 + r() * 6 + hard * 3, ath = runnerTheme(ax);
+      const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * 3, ath = runnerTheme(ax);
       const a = { x: ax, y: Math.max(27, Math.min(46, p.y + (r() - 0.5) * 12)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
       R.anchors.push(a); R.lastA = a;
       // Lights along the arc you'd swing between them.
@@ -170,7 +170,7 @@ function runnerUpdate(dt) {
     if (R.teth) {
       const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1, tx = -dy / d, ty = dx / d, along = R.vx * tx + R.vy * ty;
       // A little push along the swing keeps it lively; a gentle reel-in.
-      if (dy < 0) { const sg = along >= 0 ? 1 : -1; R.vx += tx * sg * 7 * h; R.vy += ty * sg * 7 * h; }
+      if (dy < 0) { const sg = along >= 0 ? 1 : -1; R.vx += tx * sg * 8.5 * h; R.vy += ty * sg * 8.5 * h; }
       R.L = Math.max(5, R.L - h * 1.5);
     } else R.vx *= 1 - 0.03 * h;
     R.px += R.vx * h; R.py += R.vy * h;
@@ -584,11 +584,19 @@ function makeSwing3D() {
     lastPx = R.px;
     // Camera: side-on, looking ahead, pulling back as you speed up.
     const spd = R.v || 10, fit = Math.max(1, 0.5 / (W / H)) * 0.9;
-    const tx = R.px + 7 + Math.max(0, R.vx) * 0.16, ty = Math.max(14, Math.min(60, R.py * 0.65 + 9));
-    const cam = camera.userData; if (jumped) cam.x = cam.y = null; cam.x = cam.x == null ? tx : cam.x + (tx - cam.x) * Math.min(1, dt * 4); cam.y = cam.y == null ? ty : cam.y + (ty - cam.y) * Math.min(1, dt * 3);
-    const D = (48 + Math.min(16, spd * 0.35)) * fit, sh = R.shake > 0 ? R.shake * 0.5 : 0;
+    const aim = R.teth || swingFindAnchor(R);
+    let tx = R.px + 5 + Math.max(0, R.vx) * 0.12, ty = R.py + 4;
+    if (aim) { tx = tx * 0.6 + (aim.x + 2) * 0.4; ty = ty * 0.55 + (aim.y - 2) * 0.45; }
+    ty = Math.max(9, Math.min(60, ty));
+    // Always keep the figure in view: in the left part of the screen, with room ahead and above.
+    const Dt = (34 + Math.min(12, Math.max(0, spd - 10) * 0.45)) * fit, halfH = Dt * Math.tan(25 * Math.PI / 180), halfW = halfH * (W / H);
+    tx = Math.max(R.px + halfW * 0.15, Math.min(R.px + halfW * 0.55, tx));
+    ty = Math.max(R.py - halfH * 0.35, Math.min(R.py + halfH * 0.45, ty));
+    const cam = camera.userData; if (jumped) cam.x = cam.y = null; cam.x = cam.x == null ? tx : cam.x + (tx - cam.x) * Math.min(1, dt * 3.5); cam.y = cam.y == null ? ty : cam.y + (ty - cam.y) * Math.min(1, dt * 2.5);
+    cam.x = Math.max(R.px + halfW * 0.05, Math.min(R.px + halfW * 0.7, cam.x)); cam.y = Math.max(R.py - halfH * 0.55, Math.min(R.py + halfH * 0.6, cam.y));
+    const D = Dt, sh = R.shake > 0 ? R.shake * 0.5 : 0;
     camera.fov = 50; camera.updateProjectionMatrix();
-    camera.position.set(cam.x + (Math.random() - 0.5) * sh, cam.y + 3 - (R.kick || 0) + (Math.random() - 0.5) * sh, D); camera.lookAt(cam.x, cam.y, 0);
+    camera.position.set(cam.x + (Math.random() - 0.5) * sh, cam.y + 1.5 - (R.kick || 0) + (Math.random() - 0.5) * sh, D); camera.lookAt(cam.x, cam.y, 0);
     // Sky and light.
     skyU.top.value.copy(C(P.sky[0])); skyU.mid.value.copy(C(P.sky[1])); skyU.bot.value.copy(C(P.sky[2]));
     sky.position.copy(camera.position);
@@ -646,7 +654,7 @@ function makeSwing3D() {
     // The being of light.
     const lk = JSON.stringify(runnerLook()); if (lk !== lookKey) { lookKey = lk; scene.remove(hero); hero = makeLight(runnerLook()); scene.add(hero); }
     const u = hero.userData, blink = R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
-    hero.visible = !blink; hero.position.set(R.px, R.py, 0);
+    hero.visible = !blink; hero.position.set(R.px, R.py, 0); hero.scale.setScalar(1.3);
     const p = R.phase, s = Math.sin(p), air = !R.teth && !R.roof;
     const lr = (o, k, v) => (o[k] += (v - o[k]) * Math.min(1, dt * 14));
     if (R.roof) { lr(u.legs[0].hip.rotation, "z", s * 0.9); lr(u.legs[1].hip.rotation, "z", -s * 0.9); u.legs.forEach((l, q) => lr(l.kn.rotation, "z", -(0.2 + Math.max(0, (q ? 1 : -1) * Math.sin(p - 0.9)) * 1.2))); lr(u.arms[0].sh.rotation, "z", -s * 0.8); lr(u.arms[1].sh.rotation, "z", s * 0.8); u.arms.forEach(a => lr(a.el.rotation, "z", 1.2)); lr(hero.rotation, "z", -0.25); }
@@ -702,7 +710,9 @@ function makeSwing3D() {
     for (; fi < fwN; fi++) fwCol.set([0, 0, 0], fi * 3);
     fwGeo.attributes.position.needsUpdate = true; fwGeo.attributes.color.needsUpdate = true;
     try { renderer.render(scene, camera); } catch (e) { console.warn("swing render failed", e); onFail = true; view.remove(); return null; }
-    return (x, at) => { v3.set(R.px, R.py + 2.2, 0).project(camera); return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H]; };
+    const scr = (x, y) => { v3.set(x, y, 0).project(camera); return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H]; };
+    R.scrAim = aim ? scr(aim.x, aim.y) : null; R.scrDark = scr(R.darkX, cam.y)[0];
+    return (x, at) => scr(R.px, R.py + 2.6);
   }
   function hide() { if (view.parentNode) view.remove(); }
   function destroy() { hide(); renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); }

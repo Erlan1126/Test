@@ -967,6 +967,16 @@ function runDraw(ctx, W, H) {
     ctx.strokeStyle = `rgba(255,255,255,${0.16 * k})`; ctx.lineWidth = 1.5;
     for (let q = 0; q < 26; q++) { const r = seeded(q * 31 + Math.floor(R.t * 12)), a = r() * Math.PI * 2, d0 = W * (0.35 + r() * 0.3), d1 = d0 + W * (0.1 + k * 0.25); ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d0 * 1.4); ctx.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1 * 1.4); ctx.stroke(); }
   }
+  // The swing: an arrow to the next anchor when it's off screen, and the darkness creeping in.
+  if (R.mode3 && !R.attract && !R.over) {
+    if (R.scrDark != null && R.scrDark > -W * 0.6) { const k = Math.max(0, Math.min(1, (R.scrDark + W * 0.6) / (W * 0.8))), g = ctx.createLinearGradient(0, 0, W * (0.15 + 0.35 * k), 0); g.addColorStop(0, `rgba(10,3,24,${0.85 * k})`); g.addColorStop(1, "rgba(10,3,24,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+    const a = R.scrAim;
+    if (a && (a[0] < 16 || a[0] > W - 16 || a[1] < 16 || a[1] > H - 16)) {
+      const cx = Math.max(22, Math.min(W - 22, a[0])), cy = Math.max(70, Math.min(H - 90, a[1])), ang = Math.atan2(a[1] - cy, a[0] - cx) || -Math.PI / 4;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.globalAlpha = 0.6 + 0.4 * Math.sin(R.t * 8); ctx.fillStyle = "#bff4ff"; ctx.shadowColor = "#7fe8ff"; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
+    }
+  }
   // A vignette.
   const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${0.2 + night * 0.35})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   // Floating "+3" when a shadow is sung free.
