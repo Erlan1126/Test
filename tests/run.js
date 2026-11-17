@@ -425,59 +425,57 @@ const SIM = `
     await page.close();
   }
 
-  // ---------------------------------------------------------------- The 3D runner
-  section("The 3D runner");
+  // ---------------------------------------------------------------- Lumen Rush: the swing
+  section("Lumen Rush: the swing");
   {
     const { page, errors } = await openGame(browser);
     const r = await page.evaluate(() => {
       const out = {}, step = (n = 1) => { for (let q = 0; q < n; q++) runUpdate(1 / 60); };
       save.set = {}; save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; startRun();
-      const R = run, clear = () => { R.obs = []; R.coins = []; R.ups = []; R.nextRow = 1e9; R.inv = 0; };
-      out.runnerStartsIn3D = screen === "run" && R.mode3 === true && R.hearts === 3;
-      clear(); runnerSwipe("right"); step(30);
-      out.swipesChangeLanes = R.lane === 1 && Math.abs(R.px - LANE_W) < 0.2;
-      runnerSwipe("right"); out.theEdgeStopsYou = R.lane === 1;
-      clear(); let m = runnerM(); R.coins.push({ lane: 1, z: m + 0.5, y: 0.9, line: 0 }); R.lines[0] = { n: 1, got: 0 }; step(2);
-      out.coinsAreCollected = R.lights === (weekEvent().id === "gold" ? 2 : 1);
-      clear(); m = runnerM(); runnerAddObs("hurdle", 1, m + 3.2); runnerSwipe("up"); step(60);
-      out.jumpingClearsAHurdle = R.hearts === 3 && R.freed === 1;
-      clear(); step(30); m = runnerM(); runnerAddObs("bar", 1, m + 3); runnerSwipe("down"); step(40);
-      out.slidingGoesUnderABar = R.hearts === 3 && R.freed === 2;
-      clear(); step(30); m = runnerM(); runnerAddObs("hurdle", 1, m + 1.5); step(30);
-      out.runningIntoAHurdleHurts = R.hearts === 2;
-      clear(); step(10); R.inv = 0; m = runnerM(); runnerAddObs("tram", 0, m - 3, { len: 14 }); runnerSwipe("left"); step(12);
-      out.aTramBumpsYouBackToYourLane = R.lane === 1 && R.hearts === 2;
-      clear(); step(10); R.inv = 0; R.power = { kind: "shield", t: 5 }; m = runnerM(); runnerAddObs("wall", 1, m + 1); step(20);
+      const R = run;
+      out.aRunStartsMidSwing = screen === "run" && R.mode3 === true && !!R.teth && R.hearts === 3;
+      R.darkX = -1e4; step(30);
+      out.theTetherHoldsYouOnAnArc = Math.abs(Math.hypot(R.px - R.teth.x, R.py - R.teth.y) - R.L) < 0.3;
+      // Let go when swinging forward and up: a Perfect.
+      R.vx = 15; R.vy = 9;
+      const p0 = R.perfects, v0 = Math.hypot(R.vx, R.vy); swingHold(false);
+      out.lettingGoAtTheRightMomentIsPerfect = R.perfects === p0 + 1 && Math.hypot(R.vx, R.vy) > v0 && !R.teth;
+      step(20); out.youFlyOnAfterLettingGo = R.vx > 5 && !R.teth;
+      swingHold(true); out.holdingGrabsTheNextAnchorAhead = !!R.teth && R.teth.x > R.px - 3;
+      // Lights and relit buildings.
+      const l0 = R.lights; R.motes.push({ x: R.px, y: R.py + 0.9, line: 0 }); step(1);
+      out.lightsAreCollected = R.lights > l0;
+      for (let q = 0; q < 600; q++) { R.inv = 1; runnerAuto(); step(); }
+      out.buildingsLightUpAsYouPass = R.lit >= 3 && R.blds.some(b => b.litT >= 0);
+      out.theSkylineGoesOnAhead = runnerM() > 60 && R.anchors.some(a => a.x > R.px + 40);
+      // Hits: the street, a wall, the darkness.
+      R.blds.length = 0; R.haz.length = 0; R.inv = 0; R.teth = null; R.roof = null; R.hold = false; R.py = 0.6; R.vy = -8; step(3);
+      out.theStreetCostsAHeart = R.hearts === 2 && R.vy > 0;
+      R.inv = 0; R.power = { kind: "shield", t: 5 }; R.py = 0.6; R.vy = -8; step(3);
       out.aShieldTakesTheHit = R.hearts === 2 && !R.power;
-      clear(); R.nextRow = runnerM() + 20; const d0 = runnerM(), v0 = R.v; for (let q = 0; q < 1800; q++) { R.inv = 1; runnerAuto(); runUpdate(1 / 60); }
-      out.theAvenueRollsOnAndSpeedsUp = runnerM() > d0 + 300 && R.v > v0 && R.obs.length > 0 && R.coins.length > 0;
-      run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
-      out.theRunEndsAndPays = !!run.over && save.run.best > 0;
-      out.yourTopRunsAndBestDistanceAreKept = (save.run.top || []).length >= 1 && save.run.bestM > 0;
-      // Ramps, roofs and flips.
-      save.run.tutDone = 1; startRun(); const Q = run, clr = () => { Q.obs = []; Q.coins = []; Q.ups = []; Q.nextRow = 1e9; Q.nextEv = 1e9; Q.inv = 0; };
-      clr(); let mm = runnerM(); runnerAddObs("ramp", 0, mm + 1, { len: 7 }); runnerAddObs("tram", 0, mm + 8, { len: 20, ramp: true }); for (let q = 0; q < 60; q++) runUpdate(1 / 60);
-      out.aRampTakesYouOntoTheTramRoof = Q.py > 3.2 && Q.hearts === 3;
-      const l0 = Q.lights; runnerSwipe("up"); for (let q = 0; q < 90; q++) runUpdate(1 / 60);
-      out.jumpingOffARoofFlipsForABonus = Q.lights >= l0 + 5;
-      clr(); for (let q = 0; q < 120; q++) runUpdate(1 / 60); mm = runnerM(); runnerAddObs("drone", 0, mm + 3, { ph: 0, sweep: true }); Q.obs[0].lane = Q.lane; Q.obs[0].sweep = false; runnerSwipe("down"); for (let q = 0; q < 30; q++) runUpdate(1 / 60);
-      out.slidingUnderADroneIsSafe = Q.hearts === 3;
+      R.inv = 0; R.blds.push({ x0: R.px + 0.3, x1: R.px + 10, h: R.py + 10, style: 0, litT: -1, n: 999, seed: 0.5 }); R.teth = null; R.vx = 12; R.vy = 0; step(3);
+      out.flyingIntoAWallHurts = R.hearts === 1;
+      R.blds.pop(); R.inv = 0; R.hearts = 3; R.darkX = R.px + 2; step(1);
+      out.theDarknessCatchesTheSlow = R.hearts === 2 && R.darkX < R.px - 10;
+      // Landing on a roof: you run along it.
+      R.inv = 1; R.teth = null; R.hold = false; R.blds.push({ x0: R.px - 2, x1: R.px + 30, h: R.py - 0.5, style: 0, litT: -1, n: 998, seed: 0.3 }); R.vy = -3; step(10);
+      out.youCanLandAndRunOnRooftops = !!R.roof && R.vx >= 9;
+      R.blds.pop(); R.roof = null;
       // Events.
-      clr(); Q.nextEv = runnerM() - 1; runUpdate(1 / 60);
-      out.eventsHappenOnTheWay = !!Q.ev && ["rush", "blackout", "chase"].includes(Q.ev.kind);
-      Q.ev = { kind: "rush", t: 8, gap: 1 }; Q.nextRow = runnerM() + 5; for (let q = 0; q < 30; q++) runUpdate(1 / 60);
-      out.aCoinRushFillsTheLanes = Q.coins.length >= 16 && Q.obs.length === 0;
+      R.nextEv = runnerM() - 1; R.tut = 0; step(1);
+      out.eventsHappenOnTheWay = !!R.ev && ["shower", "surge"].includes(R.ev.kind);
       // The letter hunt.
-      save.hunt = null; const h0 = huntState(); clr(); mm = runnerM(); Q.ups.push({ lane: Q.lane, z: mm + 1, kind: "letter", ch: "L" }); for (let q = 0; q < 20; q++) runUpdate(1 / 60);
+      save.hunt = null; R.ups.push({ x: R.px, y: R.py + 0.9, kind: "letter", ch: "L" }); step(1);
       out.lettersCountForTheHunt = huntState().got === "L";
-      // The locker.
+      run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
+      out.theRunEndsAndPays = !!run.over && save.run.best > 0 && (save.run.top || []).length >= 1;
+      // The locker and ranks.
       save.glow = 1000; save.look = null; openSheet("locker"); document.querySelector('#shopList button[data-lk="c:1"]').click();
-      out.theLockerSellsAndEquipsCharacters = runnerLook().char === 1 && runnerLook().own.c1 === 1 && save.glow === 400;
+      out.theLockerSellsAndEquipsForms = runnerLook().char === 1 && runnerLook().own.c1 === 1 && save.glow === 400;
       document.querySelector('#shopList button[data-lk="c:0"]').click(); out.ownedThingsCanBeWornAgainForFree = runnerLook().char === 0 && save.glow === 400;
       openSheet("ranks"); out.ranksListYourRuns = document.querySelectorAll("#shopList li").length > 5;
       document.getElementById("sheet").hidden = true;
-      // The title plays itself.
-      showTitle(); out.theTitlePlaysTheRunner = !!titleRun && titleRun.mode3 === true;
+      showTitle(); out.theTitleSwingsByItself = !!titleRun && titleRun.mode3 === true;
       return out;
     });
     for (const [k, v] of Object.entries(r)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);

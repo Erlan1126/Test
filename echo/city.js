@@ -218,7 +218,7 @@ function openSheet(kind) { cityPanel = kind; renderShop(); $("todayPanel").hidde
 function renderShop() {
   const glow = save.glow || 0;
   const head = { upgrades: ["Shop", `Upgrades for every run. You have ${glow.toLocaleString()} lights.`], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
-    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], locker: ["Locker", `Characters, outfits and boards. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your best runs on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
+    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], locker: ["Locker", `Forms of light, glows, scarves and tethers. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your best runs on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
   $("shopTitle").textContent = head[0]; $("shopSub").textContent = head[1];
   if (cityPanel === "upgrades") $("shopList").innerHTML = runShopHtml();
   if (cityPanel === "build") $("shopList").innerHTML = CITY_BUILDS.map(b => `<li class="${built(b.id) ? "won" : ""}"><span><b>${b.name}</b><small>${b.text}</small></span>` + (built(b.id) ? "<em>Rebuilt</em>" : `<button data-build="${b.id}" ${glow >= b.cost ? "" : "disabled"}>✦ ${b.cost}</button>`) + "</li>").join("");
@@ -259,11 +259,11 @@ function lockerHtml() {
     const own = L.own[key + i], btn = cur ? "<em>Wearing</em>" : own ? `<button data-lk="${key}:${i}">Wear</button>` : `<button data-lk="${key}:${i}" ${glow >= it.cost ? "" : "disabled"}>✦ ${it.cost.toLocaleString()}</button>`;
     return `<li class="${cur ? "won" : ""}"><span><i class="sw" style="background:${swatch}"></i><b>${it.name}</b><small>${sub}</small></span>${btn}</li>`;
   };
-  const ch = runnerChar();
-  return `<li class="sec">Characters</li>` + RUNNER_CHARS.map((c, i) => row("c", i, c, hex(c.look.top), c.perk, L.char === i)).join("") +
-    `<li class="sec">Hoodies</li>` + RUNNER_TOPS.map((c, i) => row("t", i, c, hex(c.c ?? ch.look.top), i ? "Hoodie colour" : `${ch.name}'s own`, L.top === i)).join("") +
-    `<li class="sec">Sneakers</li>` + RUNNER_SHOES.map((c, i) => row("s", i, c, hex(c.c ?? ch.look.shoe), i ? "Sneaker colour" : `${ch.name}'s own`, L.shoe === i)).join("") +
-    `<li class="sec">Jetboards</li>` + RUNNER_BOARDS.map((c, i) => row("b", i, c, c.c === "prism" ? "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)" : hex(c.c), "Glows under your board", L.board === i)).join("");
+  const ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";
+  return `<li class="sec">Forms of light</li>` + RUNNER_CHARS.map((c, i) => row("c", i, c, hex(c.look.glow), c.perk, L.char === i)).join("") +
+    `<li class="sec">Glow</li>` + RUNNER_TOPS.map((c, i) => row("t", i, c, hex(c.c ?? ch.look.glow), i ? "Your colour of light" : `${ch.name}'s own`, L.top === i)).join("") +
+    `<li class="sec">Scarves</li>` + RUNNER_SHOES.map((c, i) => row("s", i, c, c.c === "prism" ? prism : hex(c.c ?? runnerGlow()), c.twin ? "Two ribbons" : c.len > 30 ? "A long trail" : "A ribbon of light", L.shoe === i)).join("") +
+    `<li class="sec">Tethers</li>` + RUNNER_BOARDS.map((c, i) => row("b", i, c, c.c === "prism" ? prism : hex(c.c), "The colour of your tether", L.board === i)).join("");
 }
 // ---------- Ranks: your best runs ----------
 function ranksHtml() {
@@ -271,9 +271,9 @@ function ranksHtml() {
   const when = d => d === today ? "today" : d === today - 1 ? "yesterday" : `${today - d} days ago`;
   return `<li class="sec">Records</li>` +
     `<li><span><b>Best score</b><small>All runs</small></span><em>${(r.best || 0).toLocaleString()}</em></li>` +
-    `<li><span><b>Longest run</b><small>The arch on the avenue marks it</small></span><em>${(r.bestM || 0).toLocaleString()} m</em></li>` +
+    `<li><span><b>Longest run</b><small>Your best distance</small></span><em>${(r.bestM || 0).toLocaleString()} m</em></li>` +
     `<li><span><b>Today's daily run</b><small>${save.ghost && save.ghost.day === today ? "Your ghost is waiting in today's daily run" : "Play the daily run to set a ghost to race"}</small></span><em>${(r.dailyDay === today ? r.dailyBest || 0 : 0).toLocaleString()}</em></li>` +
-    `<li><span><b>Letter hunt</b><small>Find L·U·M·E·N on the streets today for ✦ 250</small></span><em>${HUNT.split("").map((c, i) => (i < h.got.length ? c : "·")).join(" ")}</em></li>` +
+    `<li><span><b>Letter hunt</b><small>Find L·U·M·E·N in the sky today for ✦ 250</small></span><em>${HUNT.split("").map((c, i) => (i < h.got.length ? c : "·")).join(" ")}</em></li>` +
     `<li class="sec">Top runs</li>` + (top.length ? top.map((t, i) => `<li><span><b>#${i + 1}  ${t.s.toLocaleString()}</b><small>${t.m.toLocaleString()} m · ${t.c || "Kai"}${t.daily ? " · daily" : ""} · ${when(t.d)}</small></span></li>`).join("") : `<li class="locked"><span><b>No runs yet</b><small>Your best ten runs will show here</small></span></li>`) +
     `<li class="locked"><span><b>Friends and world rankings</b><small>Coming with online accounts</small></span></li>`;
 }

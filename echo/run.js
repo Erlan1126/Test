@@ -12,13 +12,13 @@ const RUN = {
   missions: [
     { kind: "lights", goal: 40, text: n => `Gather ${n} lights in one run` },
     { kind: "dist", goal: 400, text: n => `Reach ${n} m` },
-    { kind: "free", goal: 6, text: n => `Jump or slide past ${n} obstacles in one run` },
+    { kind: "free", goal: 6, text: n => `Light up ${n} buildings in one run` },
     { kind: "nohit", goal: 300, text: n => `Reach ${n} m without being touched` },
-    { kind: "trail", goal: 3, text: n => `Collect ${n} whole coin lines in one run` },
+    { kind: "trail", goal: 3, text: n => `Make ${n} perfect releases in one run` },
     { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
-    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `The magnet reaches ${14 + lv * 4} m` : "A stronger magnet power-up" },
+    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `The magnet reaches ${9 + lv * 2} m` : "A stronger magnet power-up" },
     { id: "song", name: "Longer power-ups", tiers: [50, 110, 190], tip: lv => `Power-ups last ${100 + lv * 20}% as long` },
     { id: "heart", name: "Brighter heart", tiers: [120], tip: lv => `Start each run with ${3 + lv} lights of your own` },
   ],
@@ -615,7 +615,8 @@ function runDraw(ctx, W, H) {
   const LY = H / S * (0.7 + Math.min(0.05, (R.speed - 200) / 4000));
   const shake = R.shake > 0 ? R.shake * 6 : 0, camX = R.camX || 0;
   const m = R.dist / RUN.M, b = Math.floor(m / RUN.BIOME_M), f = Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
-  const w1 = runWorld(b), w2 = runWorld(b + 1), mixW = k => mixC(w1[k], w2[k], f);
+  const wb = R.mode3 ? 7 - (b % 8) : b, wb2 = R.mode3 ? 7 - ((b + 1) % 8) : b + 1;
+  const w1 = runWorld(wb), w2 = runWorld(wb2), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
   const rim = neon, rock = tower, deep = mixC(w1.sky[0], w2.sky[0], f);
   // The 3D city when the phone can draw it (run3d.js); the flat city otherwise.
@@ -975,7 +976,7 @@ function runDraw(ctx, W, H) {
   // The world's name as you enter it; mission messages.
   if (R.banner > 0 && !R.attract) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.mode3 ? runWorld(R.biome).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
     ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
   }
 
@@ -996,21 +997,17 @@ function runLoop(now) {
 {
   const c = document.getElementById("runCanvas");
   let p = null;
-  c.addEventListener("pointerdown", e => { audio(); p = { x: e.clientX, y: e.clientY, sx: e.clientX, t: performance.now(), moved: false, tx: run ? run.tx : 0 }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
+  c.addEventListener("pointerdown", e => { audio(); if (run && run.mode3) swingHold(true); p = { x: e.clientX, y: e.clientY, sx: e.clientX, t: performance.now(), moved: false, tx: run ? run.tx : 0 }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
   c.addEventListener("pointermove", e => {
     if (!p || !run) return;
-    if (run.mode3) {
-      const dx = e.clientX - p.x, dy = e.clientY - p.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) > 26) { runnerSwipe(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down")); p.x = e.clientX; p.y = e.clientY; p.moved = true; }
-      return;
-    }
+    if (run.mode3) return;
     if (Math.abs(e.clientX - p.sx) > 6) p.moved = true;
     if (!p.dashed && p.y - e.clientY > 45 && performance.now() - p.t < 300) { p.dashed = true; p.moved = true; runDash(); }
     run.tx = p.tx + (e.clientX - p.sx) / (c.clientWidth / 400) * 1.25;
   });
-  const end = () => { if (p && !p.moved && performance.now() - p.t < 350 && run && !run.mode3) runSing(); p = null; };
+  const end = () => { if (run && run.mode3) swingHold(false); if (p && !p.moved && performance.now() - p.t < 350 && run && !run.mode3) runSing(); p = null; };
   c.addEventListener("pointerup", end);
-  c.addEventListener("pointercancel", () => { p = null; });
+  c.addEventListener("pointercancel", () => { if (run && run.mode3) swingHold(false); p = null; });
   window.addEventListener("keydown", e => { if (screen !== "run") return; if (e.key === " ") { e.preventDefault(); if (run && run.mode3) runnerSwipe("up"); else runSing(); } if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") { e.preventDefault(); runDash(); } });
 }
 document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; $("runPause").hidden = false; musicStop(); });
