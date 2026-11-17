@@ -82,6 +82,7 @@ function swingGen(R, toX) {
     // One building (or a tree in the park), never so tall that it blocks the anchors.
     const gap = (th.water ? 6 : 3) + r() * (th.water ? 10 : 7) + (r() < 0.12 ? 8 : 0), w = 9 + r() * 10, x0 = R.genX + gap, x1 = x0 + w;
     let maxH = 60; for (const a of R.anchors) if (a.x > x0 - 5 && a.x < x1 + 5) maxH = Math.min(maxH, a.y - 11);
+    if (x0 < 45) maxH = Math.min(maxH, 15);   // the opening swing always has room
     const tall = (th.low ? 9 : 14) + r() * (th.low ? 12 : 26) + hard * 8;
     const tree = th.park && r() < 0.5;
     const b = { x0, x1: tree ? x0 + 8 + r() * 4 : x1, h: Math.max(7, Math.min(maxH, tree ? 12 + r() * 8 : tall)), style: th.fac[Math.floor(r() * th.fac.length)], litT: -1, n: R.blds.length, tree, seed: r() };

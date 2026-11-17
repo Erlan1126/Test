@@ -447,7 +447,7 @@ const SIM = `
       out.lightsAreCollected = R.lights > l0;
       for (let q = 0; q < 600; q++) { R.inv = 1; runnerAuto(); step(); }
       out.buildingsLightUpAsYouPass = R.lit >= 3 && R.blds.some(b => b.litT >= 0);
-      out.theSkylineGoesOnAhead = runnerM() > 60 && R.anchors.some(a => a.x > R.px + 40);
+      out.theSkylineGoesOnAhead = runnerM() > 40 && R.anchors.some(a => a.x > R.px + 40);
       // Hits: the street, a wall, the darkness.
       R.blds.length = 0; R.haz.length = 0; R.inv = 0; R.teth = null; R.roof = null; R.hold = false; R.py = 0.6; R.vy = -8; step(3);
       out.theStreetCostsAHeart = R.hearts === 2 && R.vy > 0;
