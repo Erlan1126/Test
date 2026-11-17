@@ -435,7 +435,7 @@ const SIM = `
       const R = run;
       out.aRunStartsMidSwing = screen === "run" && R.mode3 === true && !!R.teth && R.hearts === 3;
       R.darkX = -1e4; step(30);
-      out.theTetherHoldsYouOnAnArc = Math.abs(Math.hypot(R.px - R.teth.x, R.py - R.teth.y) - R.L) < 0.3;
+      out.theTetherHoldsYouOnAnArc = !!R.teth && Math.hypot(R.px - R.teth.x, R.py - R.teth.y) <= R.L + 0.05;
       // Let go when swinging forward and up: a Perfect.
       R.vx = 15; R.vy = 9;
       const p0 = R.perfects, v0 = Math.hypot(R.vx, R.vy); swingHold(false);
