@@ -258,7 +258,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
-    const inside = (x: number, z: number, m = 0.45) => { for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; if ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0]) < m * Math.hypot(b[0] - a[0], b[1] - a[1])) return false; } return true; };
+    const inside = (x: number, z: number, m = 0.45) => insidePoly(hull, x, z, m);
     let k = 0;
     for (let x = -OFF - C; x <= OFF + 3 * C; x += 1.2) for (let z = -OFF - C; z <= OFF + 3 * C; z += 1.2) {
       const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
@@ -271,12 +271,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     }
     // A low railing of posts and a rail along the island's edge.
     const rail = grow(hull, -0.3);
+    let railRun = 0;
     for (let i = 0; i < rail.length; i++) {
       const a = rail[i], b = rail[(i + 1) % rail.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if ((a[1] + b[1]) / 2 < beachZ - 0.5) continue; // the beach is open to the sea
       const ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
       add(new THREE.BoxGeometry(0.06, 0.06, len).rotateY(ang).translate((a[0] + b[0]) / 2, 0.45, (a[1] + b[1]) / 2), stone);
-      for (let d = 0; d < len; d += 1.4) add(new THREE.BoxGeometry(0.12, 0.45, 0.12).translate(a[0] + ((b[0] - a[0]) * d) / len, 0.22, a[1] + ((b[1] - a[1]) * d) / len), stone);
+      // A post every 1.4 along the edge (the curved coastline has many short pieces).
+      for (let d = (1.4 - (railRun % 1.4)) % 1.4; d < len; d += 1.4) add(new THREE.BoxGeometry(0.12, 0.45, 0.12).translate(a[0] + ((b[0] - a[0]) * d) / len, 0.22, a[1] + ((b[1] - a[1]) * d) / len), stone);
+      railRun += len;
     }
   }
   // A waterfall pouring off the island's left edge from a little pond.
@@ -353,7 +356,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     {
       let k = 0;
       const sx = seaPoly.map(q => q[0]), sz = seaPoly.map(q => q[1]);
-      const inSea = (x: number, z: number) => { for (let i = 0; i < seaPoly.length; i++) { const a = seaPoly[i], b = seaPoly[(i + 1) % seaPoly.length]; if ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0.3 * Math.hypot(b[0] - a[0], b[1] - a[1])) return false; } return true; };
+      const inSea = (x: number, z: number) => insidePoly(seaPoly, x, z, 0.3);
       for (let x = Math.min(...sx); x < Math.max(...sx); x += 1.1) for (let z = Math.min(...sz); z < zShore - 0.8; z += 0.9) {
         const jx = x + Math.sin(k * 12.9898) * 0.45, jz = z + Math.cos(k * 78.233) * 0.35;
         k++;
@@ -956,8 +959,50 @@ function islandOutline(): [number, number][] {
   const lower: [number, number][] = [], upper: [number, number][] = [];
   for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
   for (const p of [...pts].reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
-  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
-  return grow(hull, 1.2);
+  const hull = grow([...lower.slice(0, -1), ...upper.slice(0, -1)], 1.0);
+  // A natural coastline instead of a cut shape: walk round the outline and push each point
+  // out by a smooth, uneven amount (bays and headlands), then round it off. It never comes
+  // in past the streets.
+  const pts2: [number, number][] = [];
+  let dist = 0;
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i], b = hull[(i + 1) % hull.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const nx = (b[1] - a[1]) / len, nz = -(b[0] - a[0]) / len;
+    const steps = Math.max(1, Math.ceil(len / 0.8));
+    for (let j = 0; j < steps; j++) {
+      const f = j / steps, d = dist + f * len;
+      const out = 0.6 + 0.8 * Math.sin(d * 0.21 + 0.6) + 0.7 * Math.sin(d * 0.47 + 2.1) + 0.25 * Math.sin(d * 1.31 + 0.3);
+      const o = Math.max(0.12, out);
+      pts2.push([a[0] + (b[0] - a[0]) * f + nx * o, a[1] + (b[1] - a[1]) * f + nz * o]);
+    }
+    dist += len;
+  }
+  // Two rounds of corner-cutting: soft curves, no sharp points.
+  let ring = pts2;
+  for (let r = 0; r < 2; r++) {
+    const next: [number, number][] = [];
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      next.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    ring = next;
+  }
+  return ring;
+}
+
+/** Whether a point is inside an outline (any shape), at least `m` from its edge. */
+function insidePoly(poly: [number, number][], x: number, z: number, m = 0): boolean {
+  let inn = false, near = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i], [xj, zj] = poly[j];
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inn = !inn;
+    if (m > 0) {
+      const ex = xj - xi, ez = zj - zi, L = ex * ex + ez * ez || 1;
+      const t = Math.max(0, Math.min(1, ((x - xi) * ex + (z - zi) * ez) / L));
+      near = Math.min(near, Math.hypot(x - (xi + ex * t), z - (zi + ez * t)));
+    }
+  }
+  return inn && (m <= 0 || near >= m);
 }
 
 /** Pushes a convex, counter-clockwise outline out (or in, when negative) by d. */
