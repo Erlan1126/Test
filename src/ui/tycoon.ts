@@ -579,7 +579,7 @@ export class TycoonUI {
     const price = costOf(b, lv, n), canBuy = price <= ty.coins && !noRoom;
     const ns = owned ? nextStage(lv) : undefined;
     const goal = !owned ? t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) })
-      : grow ? t("Ready to grow! Build its HQ to make it bigger")
+      : grow ? t("Ready to grow! HQ order: {order} for ×{m} earnings", { order: orderText(orderFor(i, grow)), m: ORDER_MULT })
       : ns ? t("Grows into {name} at {n} floors", { name: t(stageName(b.id, st + 1)), n: ns }) : t("Fully grown!");
     const amountLabel = this.amount === "max" ? "MAX" : `×${this.amount}`;
     const main = grow
@@ -1360,7 +1360,7 @@ export class TycoonUI {
       const done = x.p >= x.n, stars = GOAL_STARS[Math.max(0, GOAL_TIERS[x.t].indexOf(x.n))];
       return `<div class="ty-goal${done ? " done" : ""}"><span class="ty-goal-check">${done ? "✓" : iconSvg(icon[x.t])}</span><span><b>${esc(text(x.t, x.n))}</b>
         <i class="ty-goal-bar"><i style="width:${Math.min(100, (x.p / x.n) * 100)}%"></i></i></span><em>${done ? esc(t("Done")) : `${x.p}/${x.n}`}<small>+${stars} ★</small></em></div>`;
-    }).join("") + `<p class="ty-goal-bonus${g.bonus ? " done" : ""}">${esc(g.bonus ? t("Bonus collected! New goals tomorrow.") : (ADVISORS.some(a => !s.tycoon.advisors.includes(a.id)) ? t("Finish all three for a new advisor") : t("Finish all three for +{n} Sky Crystals", { n: GOALS_BONUS_CRYSTALS })))}</p></div>`;
+    }).join("") + `<p class="ty-goal-bonus${g.bonus ? " done" : ""}">${esc(g.bonus ? t("Bonus collected! New goals tomorrow.") : (ADVISORS.some(a => !s.tycoon.advisors.includes(a.id)) ? t("Finish all three for a free advisor of your choice") : t("Finish all three for +{n} Sky Crystals", { n: GOALS_BONUS_CRYSTALS })))}</p></div>`;
   }
 
   /** After the company was started over for the slower economy, Pip explains it once. */

@@ -1460,4 +1460,6 @@ export const FR: Record<string, string> = {
   "🔥 Best streak {s} · 🏢 {n} people": "🔥 Meilleure série {s} · 🏢 {n} habitants",
   "🗼 Community Spire: +{n} ★": "🗼 Flèche commune : +{n} ★",
   "🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?": "🟩 parfait 🟨 large 🟧 rogné. Tu peux faire mieux aujourd'hui ?",
+  "Finish all three for a free advisor of your choice": "Termine les trois pour un conseiller gratuit de ton choix",
+  "Ready to grow! HQ order: {order} for ×{m} earnings": "Prêt à grandir ! Commande du siège : {order} pour gagner ×{m}",
 };

@@ -1461,4 +1461,6 @@ export const ES: Record<string, string> = {
   "🔥 Best streak {s} · 🏢 {n} people": "🔥 Mejor racha {s} · 🏢 {n} personas",
   "🗼 Community Spire: +{n} ★": "🗼 Aguja Comunitaria: +{n} ★",
   "🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?": "🟩 perfecto 🟨 ancho 🟧 recortado. ¿Puedes superarlo hoy?",
+  "Finish all three for a free advisor of your choice": "Completa las tres para un asesor gratis a tu elección",
+  "Ready to grow! HQ order: {order} for ×{m} earnings": "¡Lista para crecer! Pedido de la sede: {order} para ganar ×{m}",
 };
