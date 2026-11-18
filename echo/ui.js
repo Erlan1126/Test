@@ -503,7 +503,7 @@ function renderTitle() {
   $("dailyRunBtn").textContent = daily ? `Daily · ${daily.toLocaleString()}` : "Daily run";
   $("hardBtn").textContent = rs.hardOn ? "Hard · ×2" : "Hard"; $("hardBtn").classList.toggle("on", !!rs.hardOn);
   const we = weekEvent(), sn = streakNow();
-  $("titleMeta").textContent = (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
+  $("titleMeta").textContent = `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · ` + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
   $("playLabel").textContent = "Play";
   if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()} in their cave`; }

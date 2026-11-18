@@ -35,6 +35,11 @@ Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted g
 - The night brightens toward dawn as you go. Districts have their own buildings and anchors: Downtown (hover-lamps and roof masts), Market Street (lanterns strung between rooftops), Waterfront (the harbour below, balloons), Neon Arcade (neon hoops, signs and screens everywhere) and Park Avenue (giant trees lit with fairy lights, balloons).
 - Power-ups: **Magnet**, **Shield**, **Comet** (blaze straight across the sky). Events: **Light shower** and **The dark surges**. Fireworks every 500 m.
 - **Locker:** forms of light with perks (Aurora; Ember: longer reach; Tide: extra heart; Volt: stronger Perfects; Nova: combo lights), glow colours, scarves (ribbon, long silk, comet tail, twin, ember, prism) and tether colours. **Ranks:** records, top ten runs, today's daily best and a ghost of your best daily run. **Letter hunt:** find L-U-M-E-N in the sky in one day.
+- **Flow and Overdrive:** Perfects, lights and gold anchors fill the Flow bar (it fades slowly, a hit halves it). Full Flow sets off **Overdrive** for 6 s: double lights, lights fly to you, a golden glow, and the dark falls back.
+- **Air dash:** swipe forward in mid-air (or press →) for a burst of speed; one charge, back when you grab an anchor.
+- **Special anchors:** **gold** (+5 lights and Flow), **crumbling** (orange; breaks if you hang on more than about a second), **drifting** (slides side to side) and **spring** (green; launches you upward on release).
+- **Restore the city:** every relit building counts toward the whole city across all runs (shown on the home screen); every 150 pays 50 lights. **Light capsules** (for 600 m or 10 Perfects in a run) open in the Locker into lights or a random look.
+- **Visuals:** windows flick on in steps with a burst ring, LED strips and blinking roof beacons; energy pulses run along the tether; a flash, ring and slow motion on every Perfect; shooting stars and an aurora at night, sun rays at dawn; drifting tendrils and violet lightning at the edge of the dark.
 - Generated electronic soundtrack that builds with your speed; **Settings → Full graphics** off for slower phones. Code: echo/swing.js (logic and the Three.js view) on top of the run shell in echo/run.js.
 ## The city (new look)
 

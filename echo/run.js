@@ -152,6 +152,14 @@ function runEnd() {
   if (run.hard) { save.prog = save.prog || {}; save.prog.hardDist = Math.max(save.prog.hardDist || 0, runMetres()); }
   // Your best distance (the arch on the avenue), your top runs, and today's daily ghost.
   r.bestM = Math.max(r.bestM || 0, runMetres());
+  // Restoring the city: every building you relight counts for good; every 150 pays out.
+  if (run.mode3) {
+    const c = save.city || (save.city = { lit: 0 }), before = Math.floor(c.lit / 150); c.lit += run.lit || 0;
+    const tiers = Math.floor(c.lit / 150) - before; if (tiers > 0) save.glow = (save.glow || 0) + tiers * 50;
+    run.cityTiers = tiers;
+    // A light capsule for a long or skilful run.
+    if (runMetres() >= 600 || (run.perfects || 0) >= 10) { save.capsules = (save.capsules || 0) + 1; run.gotCapsule = true; }
+  }
   r.top = (r.top || []).concat([{ s: score, m: runMetres(), d: dayNumber(), c: typeof runnerChar === "function" ? runnerChar().name : "", daily: !!run.daily }]).sort((a, b) => b.s - a.s).slice(0, 10);
   if (run.mode3 && run.daily && run.rec && (!save.ghost || save.ghost.day !== dayNumber() || score >= (save.ghost.s || 0))) save.ghost = { day: dayNumber(), s: score, rec: Array.from(run.rec, v => v ?? null) };
   persist();
@@ -169,6 +177,7 @@ function runEnd() {
     $("roDist").textContent = runMetres().toLocaleString(); $("roLights").textContent = (run.lights + (run.streakBonus || 0)).toLocaleString(); $("roCombo").textContent = run.comboBest;
     const li = run.levelInfo;
     $("runLevel").textContent = `Level ${li.after.lv}` + (li.after.lv > li.before.lv ? " · Level up!" : "") + ` · +${li.gained} xp`;
+    if (run.mode3) $("runLevel").textContent += ` · ${run.lit} relit · City ${cityPct()}%` + (run.cityTiers ? ` · +${run.cityTiers * 50} ✦` : "") + (run.gotCapsule ? " · Light capsule!" : "");
     $("runLevelBar").style.width = `${Math.round(li.after.into / li.after.need * 100)}%`;
     $("runTrail").textContent = `Trail · ${RUN_TRAILS[r.trail || 0].name}` + (li.newTrails.length ? " · new" : "") + " ›";
     if (best) { sfx.win(); buzz([20, 40, 20, 40]); }
@@ -969,6 +978,18 @@ function runDraw(ctx, W, H) {
   }
   // The swing: an arrow to the next anchor when it's off screen, and the darkness creeping in.
   if (R.mode3 && !R.attract && !R.over) {
+    // Flow: a slim bar under the score; gold and pulsing in Overdrive.
+    { const bw = W * 0.34, bx = W / 2 - bw / 2, by = W * 0.245, k = R.od > 0 ? R.od / 6 : R.flow, od = R.od > 0;
+      ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, 5, 3); else ctx.rect(bx, by, bw, 5); ctx.fill();
+      const g = ctx.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, od ? "#ffb21c" : "#5fe0ff"); g.addColorStop(1, od ? "#fff2b0" : "#b8a8ff"); ctx.fillStyle = g;
+      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, Math.max(5, bw * k), 5, 3); else ctx.rect(bx, by, bw * k, 5); ctx.fill();
+      ctx.font = `700 ${Math.round(W * 0.026)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = od ? `rgba(255,217,138,${0.7 + 0.3 * Math.sin(R.t * 10)})` : "rgba(220,235,255,0.7)";
+      ctx.fillText(od ? "OVERDRIVE" : R.combo >= 3 ? `FLOW · ×${R.combo}` : "FLOW", W / 2, by + W * 0.045);
+      // Dash charge: a small chevron beside it.
+      ctx.fillStyle = R.dashes > 0 ? "rgba(191,244,255,0.9)" : "rgba(255,255,255,0.18)"; ctx.beginPath(); ctx.moveTo(bx + bw + 10, by - 3); ctx.lineTo(bx + bw + 18, by + 2.5); ctx.lineTo(bx + bw + 10, by + 8); ctx.closePath(); ctx.fill(); }
+    // A Perfect: a white flash and a ring around the figure.
+    if (R.perfT > 0) { const k = 1 - R.perfT / 0.45, q = proj ? proj(R.x, R.dist) : [W / 2, H / 2]; ctx.fillStyle = `rgba(255,255,255,${0.18 * (1 - k)})`; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1] + W * 0.05, W * (0.05 + k * 0.3), 0, Math.PI * 2); ctx.stroke(); }
+    if (R.od > 0) { const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); g.addColorStop(0, "rgba(255,190,60,0)"); g.addColorStop(1, `rgba(255,190,60,${0.18 + 0.06 * Math.sin(R.t * 8)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     if (R.scrDark != null && R.scrDark > -W * 0.6) { const k = Math.max(0, Math.min(1, (R.scrDark + W * 0.6) / (W * 0.8))), g = ctx.createLinearGradient(0, 0, W * (0.15 + 0.35 * k), 0); g.addColorStop(0, `rgba(10,3,24,${0.85 * k})`); g.addColorStop(1, "rgba(10,3,24,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     const a = R.scrAim;
     if (a && (a[0] < 16 || a[0] > W - 16 || a[1] < 16 || a[1] > H - 16)) {
@@ -1010,7 +1031,7 @@ function runLoop(now) {
   c.addEventListener("pointerdown", e => { audio(); if (run && run.mode3) swingHold(true); p = { x: e.clientX, y: e.clientY, sx: e.clientX, t: performance.now(), moved: false, tx: run ? run.tx : 0 }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
   c.addEventListener("pointermove", e => {
     if (!p || !run) return;
-    if (run.mode3) return;
+    if (run.mode3) { if (!p.dashed && e.clientX - p.sx > 45 && Math.abs(e.clientY - p.y) < 70) { p.dashed = true; p.moved = true; swingDash(); } return; }
     if (Math.abs(e.clientX - p.sx) > 6) p.moved = true;
     if (!p.dashed && p.y - e.clientY > 45 && performance.now() - p.t < 300) { p.dashed = true; p.moved = true; runDash(); }
     run.tx = p.tx + (e.clientX - p.sx) / (c.clientWidth / 400) * 1.25;

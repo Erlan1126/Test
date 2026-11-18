@@ -464,11 +464,29 @@ const SIM = `
       // Events.
       R.nextEv = runnerM() - 1; R.tut = 0; step(1);
       out.eventsHappenOnTheWay = !!R.ev && ["shower", "surge"].includes(R.ev.kind);
+      // Flow, Overdrive and the dash.
+      R.ev = null; R.od = 0; R.flow = 0.9; swingFlow(R, 0.2);
+      out.fullFlowSetsOffOverdrive = R.od > 5 && R.flow === 1;
+      const lo = R.lights; R.motes.push({ x: R.px, y: R.py + 0.9, line: 0 }); step(1);
+      out.overdriveDoublesLights = R.lights - lo >= 2;
+      R.od = 0; R.flow = 0; R.teth = null; R.roof = null; R.dashes = 1; R.vx = 10; swingDash();
+      out.aDashBurstsYouForward = R.vx >= 20 && R.dashes === 0;
+      const v1 = R.vx; swingDash(); out.oneDashUntilYouGrabAgain = R.vx === v1;
+      // Special anchors: spring, crumble, gold.
+      R.anchors.push({ x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9001, type: "spring" }); R.teth = R.anchors[R.anchors.length - 1]; R.L = 10; R.vy = 0; swingHold(false);
+      out.aSpringAnchorLaunchesYou = R.vy >= 9;
+      const cr = { x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9002, type: "crumble" }; R.anchors.push(cr); R.teth = cr; R.L = 10; R.tethT = 0; R.hold = true; step(90);
+      out.aCrumblingAnchorBreaks = cr.broken === true && R.teth !== cr;
+      const gl = { x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9003, type: "gold" }; R.anchors = [gl]; R.teth = null; R.hold = false; const lg = R.lights; swingAttach(R);
+      out.goldAnchorsPayLights = R.teth === gl && R.lights === lg + 5;
       // The letter hunt.
       save.hunt = null; R.ups.push({ x: R.px, y: R.py + 0.9, kind: "letter", ch: "L" }); step(1);
       out.lettersCountForTheHunt = huntState().got === "L";
       run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
       out.theRunEndsAndPays = !!run.over && save.run.best > 0 && (save.run.top || []).length >= 1;
+      out.relitBuildingsRestoreTheCity = (save.city && save.city.lit) >= 3;
+      save.capsules = 1; save.glow = 0; const got = openCapsule();
+      out.capsulesOpenIntoRewards = !!got && save.capsules === 0 && (save.glow > 0 || /New/.test(got));
       // The locker and ranks.
       save.glow = 1000; save.look = null; openSheet("locker"); document.querySelector('#shopList button[data-lk="c:1"]').click();
       out.theLockerSellsAndEquipsForms = runnerLook().char === 1 && runnerLook().own.c1 === 1 && save.glow === 400;

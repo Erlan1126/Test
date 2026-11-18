@@ -44,6 +44,19 @@ const runnerTheme = m => RUNNER_THEMES[Math.floor(Math.max(0, m) / RUN.BIOME_M) 
 const HUNT = "LUMEN";
 function huntState() { const d = dayNumber(); if (!save.hunt || save.hunt.day !== d) save.hunt = { day: d, got: "" }; return save.hunt; }
 
+// The city you've restored across all runs (3,000 buildings is the whole city).
+const cityPct = () => Math.min(100, Math.floor(((save.city && save.city.lit) || 0) / 30));
+// Light capsules: open them for lights or a random look you don't own yet.
+function openCapsule() {
+  if (!(save.capsules > 0)) return null;
+  save.capsules--;
+  const L = runnerLook(), pool = [];
+  [["t", RUNNER_TOPS], ["s", RUNNER_SHOES], ["b", RUNNER_BOARDS]].forEach(([k, list]) => list.forEach((it, i) => { if (!L.own[k + i]) pool.push([k, i, it.name]); }));
+  let out;
+  if (pool.length && Math.random() < 0.4) { const [k, i, name] = pool[Math.floor(Math.random() * pool.length)]; L.own[k + i] = 1; out = `New: ${name}!`; }
+  else { const n = [40, 60, 80, 120, 200, 300][Math.floor(Math.random() ** 1.6 * 6)]; save.glow = (save.glow || 0) + n; out = `+${n} ✦`; }
+  persist(); return out;
+}
 const SWING = { G: 23, REACH: 25, MAXV: 44 };
 
 function runnerStart(R) {
@@ -51,6 +64,7 @@ function runnerStart(R) {
     mode3: true, px: -6, py: 30, vx: 13, vy: 0, hold: false, teth: null, L: 0, anchors: [], blds: [], motes: [], haz: [], ups: [],
     genX: -60, lastA: null, darkX: -50, lit: 0, perfects: 0, roof: null, spin: 0, spinV: 0, fizzle: 0, fireworks: [], nextMile: 500,
     ev: null, nextEv: 380, rec: [], letterOut: false, phase: 0, kick: 0, slowT: 0, nearT: 0, v: 13, nextEvent: 1e9,
+    flow: 0, od: 0, dashes: 1, tethT: 0, perfT: 0, dashT: 0, bursts: [], restored: 0,
   });
   if (runnerPerk("Tide")) R.hearts++;
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
@@ -70,6 +84,10 @@ function swingGen(R, toX) {
     while (R.lastA.x < R.genX + 70) {
       const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * 3, ath = runnerTheme(ax);
       const a = { x: ax, y: Math.max(27, Math.min(46, p.y + (r() - 0.5) * 12)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
+      // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
+      const roll = r();
+      a.type = ax < 60 ? "" : roll < 0.07 ? "gold" : roll < 0.07 + (ax > 400 ? 0.11 : 0) ? "crumble" : roll < 0.18 + (ax > 700 ? 0.11 : 0) ? "drift" : roll < 0.37 ? "spring" : "";
+      if (a.type === "drift") a.bx = ax;
       R.anchors.push(a); R.lastA = a;
       // Lights along the arc you'd swing between them.
       if (r() < 0.8 && ax > 10) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 13 * Math.sin(Math.PI * t) - 1, line: a.id }); } }
@@ -102,7 +120,7 @@ function swingFindAnchor(R) {
   for (const a of R.anchors) {
     if (a.x < R.px - 3 || a.x > R.px + reach) continue;
     const d = Math.hypot(a.x - R.px, a.y - R.py);
-    if (d > reach || d < 3 || a.y < R.py + 1) continue;
+    if (d > reach || d < 3 || a.y < R.py + 1 || a.broken) continue;
     const s = (a.x - R.px) - Math.abs(d - 13) * 0.6;
     if (s > bs) { bs = s; best = a; }
   }
@@ -111,7 +129,9 @@ function swingFindAnchor(R) {
 function swingAttach(R) {
   const a = swingFindAnchor(R);
   if (!a) { R.fizzle = 0.25; return false; }
-  R.teth = a; R.L = Math.hypot(R.px - a.x, R.py - a.y); R.roof = null; R.spinV = 0;
+  R.teth = a; R.L = Math.hypot(R.px - a.x, R.py - a.y); R.roof = null; R.spinV = 0; R.tethT = 0; R.dashes = 1;
+  R.bursts.push({ x: a.x, y: a.y, t: 0, c: a.type === "gold" ? 0xffd25a : null });
+  if (a.type === "gold" && !a.paid) { a.paid = true; R.lights += 5; swingFlow(R, 0.15); if (!R.attract) { runBonus("Gold! +5 ✦", 0, R.dist + 2, R.x); sfx.unlock(); } }
   if (!R.attract) sfx.jump();
   if (R.tut === 2) runnerTutStep();
   return true;
@@ -122,11 +142,15 @@ function swingHold(down) {
   if (down) { R.hold = true; if (!R.teth) swingAttach(R); return; }
   R.hold = false;
   if (!R.teth) return;
-  R.teth = null;
+  const was = R.teth; R.teth = null;
+  // A spring anchor launches you on release.
+  if (was.type === "spring") { R.vy = Math.max(R.vy, 0) + 9; R.vx += 3; if (!R.attract) { runBonus("Boing!", 0, R.dist + 2, R.x); sfx.jump(); } }
   // A Perfect: let go moving forward and up, fast.
   const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, spd = Math.hypot(R.vx, R.vy);
   if (R.vx > 6 && ang > 12 && ang < 68 && spd > 13) {
     const k = runnerPerk("Volt") ? 1.2 : 1.1; R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9;
+    R.perfT = 0.45; R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.22); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
+    if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
     if (!R.attract) { runBonus("Perfect! +2 ✦", 2, R.dist + 2, R.x); sfx.flip(); runMission("trail", R.perfects); }
   } else R.spinV = 4;
@@ -137,12 +161,31 @@ function runnerTutStep() {
   R.tut++; R.slow = 1; R.tutText = "";
   if (R.tut > 2) { R.tut = 0; const s = runSave(); s.tutDone = true; persist(); runMsg("You've got it!", "Swing on, and light up the city", 2.4, true); }
 }
+// Flow: Perfects, lights and gold anchors fill it; full Flow sets off Overdrive.
+function swingFlow(R, k) {
+  if (R.od > 0) return;
+  R.flow = Math.min(1, R.flow + k);
+  if (R.flow >= 1) {
+    R.od = 6; R.flow = 1; R.darkX -= 20; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffd25a, big: true });
+    if (!R.attract) { runMsg("OVERDRIVE!", "Double lights · the dark falls back", 2, true); sfx.power(); buzz([20, 30, 20]); }
+  }
+}
+// A dash: swipe forward in the air. One charge, back when you grab an anchor.
+function swingDash() {
+  const R = run;
+  if (!R || !R.mode3 || R.over || R.paused || R.roof) return;
+  if (R.teth) swingHold(false);
+  if (R.dashes <= 0) { R.fizzle = 0.25; return; }
+  R.dashes--; R.dashT = 0.35; R.vx = Math.min(SWING.MAXV, Math.max(R.vx, 8) + 11); R.vy = Math.max(R.vy, 2.5); R.spinV = 0;
+  R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: null });
+  if (!R.attract) sfx.close();
+}
 // Keep the old swipe entry point harmless.
 function runnerSwipe() {}
 
 function swingHit(R, why) {
   if (R.inv > 0 || R.attract) { if (R.attract) R.inv = 1; return; }
-  R.combo = 0; R.shake = 0.7;
+  R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5);
   if (R.power && R.power.kind === "shield") { R.power = null; R.inv = 1; R.flash = -0.6; runMsg("Shield!", "", 1.2); sfx.gate(); return; }
   if (why) runMsg(why, "", 1.4);
   runHit();
@@ -159,8 +202,15 @@ function runnerUpdate(dt) {
   if (R.msgs.length) { R.msgs[0].t -= dt; if (R.msgs[0].t <= 0) R.msgs.shift(); }
   for (const p of R.pops || []) p.t += dt; R.pops = (R.pops || []).filter(p => p.t < 1.2);
   if (R.power) { R.power.t -= dt; if (R.power.t <= 0) R.power = null; }
-  if (!R.attract) { const k = !!(keys && (keys[" "] || keys.arrowup)); if (k !== !!R.kHold) { R.kHold = k; swingHold(k); } }
+  if (!R.attract) { const k = !!(keys && (keys[" "] || keys.arrowup)); if (k !== !!R.kHold) { R.kHold = k; swingHold(k); } const kd = !!(keys && keys.arrowright); if (kd && !R.kDash) swingDash(); R.kDash = kd; }
   if (R.hold && !R.teth && !R.roof) swingAttach(R);
+  // Anchors that move, and anchors that crumble under you.
+  for (const a of R.anchors) if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2;
+  if (R.teth) { R.tethT += dt; if (R.teth.type === "crumble" && R.tethT > 1.25) { const a = R.teth; a.broken = true; R.teth = null; R.hold = false; R.bursts.push({ x: a.x, y: a.y, t: 0, c: 0xff6a3d, big: true }); if (!R.attract) { runMsg("It crumbled!", "Let go of orange anchors quickly", 1.4); sfx.bump(); } } }
+  // Flow fades slowly; Overdrive runs down.
+  if (R.od > 0) { R.od -= dt; R.darkX = Math.min(R.darkX, R.px - 35); if (R.od <= 0) { R.od = 0; R.flow = 0; } } else R.flow = Math.max(0, R.flow - dt * 0.045);
+  R.perfT = Math.max(0, R.perfT - dt); R.dashT = Math.max(0, R.dashT - dt);
+  for (const b of R.bursts) b.t += dt; R.bursts = R.bursts.filter(b => b.t < 0.8);
   const comet = R.power && R.power.kind === "comet";
   // Physics in small steps: gravity, the tether (a pendulum), rooftops, walls and the street.
   const N = 3, h = dt / N;
@@ -211,15 +261,15 @@ function runnerUpdate(dt) {
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 28; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
-  for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.attract) { runMission("free", R.lit); progressEvent("free"); } }
+  for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.attract) { runMission("free", R.lit); progressEvent("free"); if (!b.tree) sfx.clear(); } }
   // Lights.
   const mag = R.power && R.power.kind === "magnet";
   for (const c of R.motes) {
     if (c.got) { c.t += dt; if (c.t > 0.35) c.gone = true; continue; }
     const d = Math.hypot(c.x - R.px, c.y - R.py - 0.9);
-    if (mag && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
+    if ((mag || R.od > 0) && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
     if (d < 1.5 || comet && d < 3) {
-      c.got = true; c.t = 0; R.lights += weekEvent().id === "gold" ? 2 : 1;
+      c.got = true; c.t = 0; R.lights += (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1); swingFlow(R, 0.03);
       R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
       if (runnerPerk("Nova") && R.combo % 10 === 0) { R.lights += 5; runBonus("+5 ✦", 0, R.dist + 2, R.x); }
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }
@@ -250,7 +300,7 @@ function runnerUpdate(dt) {
   // The first run teaches by doing: let go, then hold.
   if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.3; R.tutText = "Let go to fly!"; } else if (a) R.tutText = "Hold on…"; }
   else if (R.tut === 2) { R.tutText = "Hold to grab the next light"; R.slow = R.vy < 0 ? 0.35 : 1; }
-  else { R.slow = R.slowT > 0 ? 0.5 : 1; }
+  else { R.slow = R.slowT > 0 ? (R.perfT > 0.3 ? 0.35 : 0.5) : 1; }
   R.slowT = Math.max(0, R.slowT - dt * 2);
   // Events: a light shower, a surge of darkness.
   if (!R.attract && !R.tut) {
@@ -276,7 +326,7 @@ function runnerUpdate(dt) {
 // The title screen swings by itself.
 function runnerAuto() {
   const R = run;
-  if (R.teth) { if (R.px > R.teth.x + 1 && R.vy > 0.5 && R.vx > 5) swingHold(false); }
+  if (R.teth) { if ((R.px > R.teth.x + 1 && R.vy > 0.5 && R.vx > 5) || (R.teth.type === "crumble" && R.tethT > 1)) swingHold(false); }
   else if (R.roof) { const b = R.roof; if (R.px > b.x1 - 4) swingHold(true); }
   else if ((R.vy < -2 || R.py < 16) && !R.hold) swingHold(true);
 }
@@ -466,7 +516,10 @@ function makeSwing3D() {
     else if (roll < th.ad + th.neon && b.h > 12) { const wi = Math.floor(r() * NEON_WORDS.length), col = NEON_COL[Math.floor(r() * NEON_COL.length)], faceM = new T.MeshBasicMaterial({ map: neonTex[wi], color: col, toneMapped: false }); const s2 = new T.Mesh(boxGeo, [metalDark, metalDark, metalDark, metalDark, faceM, faceM]); s2.scale.set(1.3, 5, 0.4); s2.position.set(b.x0 + 1.2 + r() * (w - 2.4), 6 + r() * Math.max(1, b.h - 12), 1.9); g.add(s2); g.userData.neon = faceM; g.userData.neonCol = col; }
     // A street lamp in front, dark until the building lights up.
     const lamp = makeLamp(); lamp.position.set(cx, 0.25, 3); lamp.rotation.y = -Math.PI / 2; g.add(lamp);
-    g.userData = Object.assign(g.userData, { mat, rim, sweep, lamp });
+    const leds = []; for (const ex of [b.x0 + 0.08, b.x1 - 0.08]) { const ld = new T.Mesh(boxGeo, new T.MeshBasicMaterial({ color: runnerGlow(), toneMapped: false, transparent: true, opacity: 0 })); ld.scale.set(0.14, b.h, 0.14); ld.position.set(ex, b.h / 2, 1.58); g.add(ld); leds.push(ld); }
+    const beacon = glow(0xff3048, 1.6, 0); beacon.position.set(b.x0 + w * (0.3 + r() * 0.4), b.h + 1.6, -3); g.add(beacon);
+    const pole = new T.Mesh(new T.CylinderGeometry(0.05, 0.07, 1.6, 6), metalDark); pole.position.set(beacon.position.x, b.h + 0.8, -3); g.add(pole);
+    g.userData = Object.assign(g.userData, { mat, rim, sweep, lamp, leds, beacon, ph: r() * 6 });
     scene.add(g); b.mesh = g; return g;
   }
   // The skyline behind: three layers that wake up as you pass.
@@ -504,6 +557,11 @@ function makeSwing3D() {
       const props2 = []; for (const sd of [-1, 1]) { const pr = new T.Mesh(boxGeo, std({ color: 0x2b2f38, roughness: 0.4 })); pr.scale.set(1.1, 0.02, 0.08); pr.position.set(sd * 0.95, 1.05, 0); g.add(pr); props2.push(pr); }
       g.userData.props = props2; g.userData.bob = true;
     }
+    // Special anchors: gold shimmer, crumbling cracks, drifting arrows, a spring coil.
+    if (a.type === "gold") { node.material.color.set(0xffd25a); g.add(glow(0xffd25a, 5.5, 0.5)); }
+    else if (a.type === "crumble") { node.material.color.set(0xff7a3d); for (let q = 0; q < 3; q++) { const cr = new T.Mesh(boxGeo, basic(0x3a1408)); cr.scale.set(0.05, 0.5, 0.05); cr.rotation.z = q * 1.1 + 0.3; cr.position.z = 0.42; g.add(cr); } }
+    else if (a.type === "drift") { node.material.color.set(0x7ff0ff); for (const sd of [-1, 1]) { const ar = new T.Mesh(new T.ConeGeometry(0.22, 0.45, 3), basic(0x7ff0ff)); ar.rotation.z = -sd * Math.PI / 2; ar.position.set(sd * 1.25, 0, 0); g.add(ar); } }
+    else if (a.type === "spring") { node.material.color.set(0x8dff6a); for (let q = 0; q < 4; q++) { const co = new T.Mesh(new T.TorusGeometry(0.32, 0.05, 6, 20), basic(0x8dff6a)); co.rotation.x = Math.PI / 2; co.position.y = -0.55 - q * 0.22; g.add(co); } }
     g.userData.node = node; g.userData.halo = halo; g.userData.ring = ring;
     g.position.set(a.x, a.y, 0); scene.add(g); a.mesh = g; return g;
   }
@@ -547,6 +605,17 @@ function makeSwing3D() {
   const darkTex = tex(128, 256, (g2) => { const gr = g2.createLinearGradient(0, 0, 128, 0); gr.addColorStop(0, "rgba(4,2,10,1)"); gr.addColorStop(0.75, "rgba(10,4,24,0.92)"); gr.addColorStop(1, "rgba(40,10,70,0)"); g2.fillStyle = gr; g2.fillRect(0, 0, 128, 256); });
   const darkWall = new T.Mesh(new T.PlaneGeometry(90, 140), new T.MeshBasicMaterial({ map: darkTex, transparent: true, depthWrite: false, fog: false })); darkWall.position.z = 6; scene.add(darkWall);
   const darkEdge = []; for (let q = 0; q < 10; q++) { const s2 = glow(0x8a3dff, 10, 0.35); scene.add(s2); darkEdge.push(s2); }
+  const smokeTex = tex(128, 128, (g2) => { const gr = g2.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "rgba(6,2,16,0.95)"); gr.addColorStop(0.6, "rgba(16,6,36,0.6)"); gr.addColorStop(1, "rgba(16,6,36,0)"); g2.fillStyle = gr; g2.beginPath(); for (let q = 0; q < 9; q++) { const a3 = q / 9 * Math.PI * 2, rr = 40 + (q % 3) * 12; g2.lineTo(64 + Math.cos(a3) * rr, 64 + Math.sin(a3) * rr); } g2.fill(); });
+  const tendrils = []; for (let q = 0; q < 12; q++) { const td = new T.Sprite(new T.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, fog: false })); scene.add(td); tendrils.push(td); }
+  const boltGeo = new T.BufferGeometry(); boltGeo.setAttribute("position", new T.BufferAttribute(new Float32Array(24), 3));
+  const bolt = new T.Line(boltGeo, new T.LineBasicMaterial({ color: 0xc9a8ff, transparent: true, opacity: 0.9, fog: false })); bolt.frustumCulled = false; scene.add(bolt);
+  // Sky extras.
+  const starTex = tex(256, 16, (g2) => { const gr = g2.createLinearGradient(0, 0, 256, 0); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.9, "rgba(255,255,255,0.9)"); gr.addColorStop(1, "rgba(255,255,255,1)"); g2.fillStyle = gr; g2.fillRect(0, 6, 256, 4); });
+  const star2 = new T.Mesh(new T.PlaneGeometry(26, 1.2), new T.MeshBasicMaterial({ map: starTex, transparent: true, blending: T.AdditiveBlending, depthWrite: false, fog: false })); star2.rotation.z = 0.34; star2.visible = false; scene.add(star2);
+  const auroraTex = tex(256, 128, (g2) => { for (let x = 0; x < 256; x += 2) { const h2 = 50 + Math.sin(x * 0.05) * 20 + Math.sin(x * 0.13) * 10, gr = g2.createLinearGradient(0, 128 - h2, 0, 128); gr.addColorStop(0, "rgba(120,255,210,0)"); gr.addColorStop(0.5, `rgba(${x % 64 < 32 ? "120,255,210" : "150,140,255"},0.5)`); gr.addColorStop(1, "rgba(120,255,210,0)"); g2.fillStyle = gr; g2.fillRect(x, 128 - h2, 2, h2); } });
+  const auroras = [0, 1, 2].map(() => { const au = new T.Mesh(new T.PlaneGeometry(160, 60), new T.MeshBasicMaterial({ map: auroraTex, transparent: true, blending: T.AdditiveBlending, depthWrite: false, fog: false, opacity: 0 })); scene.add(au); return au; });
+  const rayTex = tex(256, 256, (g2) => { g2.translate(128, 128); for (let q = 0; q < 14; q++) { g2.rotate(Math.PI * 2 / 14); const gr = g2.createLinearGradient(0, 0, 128, 0); gr.addColorStop(0, "rgba(255,236,200,0.6)"); gr.addColorStop(1, "rgba(255,236,200,0)"); g2.fillStyle = gr; g2.beginPath(); g2.moveTo(0, 0); g2.lineTo(128, -6 - (q % 3) * 3); g2.lineTo(128, 6 + (q % 3) * 3); g2.fill(); } });
+  const rays = new T.Sprite(new T.SpriteMaterial({ map: rayTex, transparent: true, blending: T.AdditiveBlending, depthWrite: false, fog: false, opacity: 0 })); rays.scale.set(300, 300, 1); scene.add(rays);
   // Pickups and hazards.
   const pools = {};
   const get = (kind, make) => { const P = pools[kind] || (pools[kind] = { list: [], used: 0 }); if (P.used >= P.list.length) { const o = make(); scene.add(o); P.list.push(o); } const o = P.list[P.used++]; o.visible = true; return o; };
@@ -559,6 +628,9 @@ function makeSwing3D() {
     wire: () => { const g = new T.Group(); const w2 = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 1, 6), basic(0x2b2f38)); w2.rotation.z = Math.PI / 2; g.add(w2); const sp = []; for (let q = 0; q < 4; q++) { const s2 = glow(0x7fd8ff, 1.2, 0.9); g.add(s2); sp.push(s2); } for (const sd of [-1, 1]) { const pole = new T.Mesh(new T.CylinderGeometry(0.08, 0.1, 2.6, 8), metalDark); pole.position.set(sd * 0.5, -1.3, 0); g.add(pole); g.userData["p" + sd] = pole; } g.userData.w = w2; g.userData.sp = sp; return g; },
     drone: () => { const g = new T.Group(); const b2 = new T.Mesh(new T.SphereGeometry(0.55, 20, 12), phys({ color: 0x1f2430, metalness: 0.7, roughness: 0.25, clearcoat: 1 })); b2.scale.set(1.3, 0.6, 1); g.add(b2); const eye = new T.Mesh(new T.SphereGeometry(0.16, 14, 10), basic(0xff2b4a)); eye.position.z = 0.55; g.add(eye); g.add(glow(0xff2b4a, 2.4, 0.7)); const pr = []; for (const sd of [-1, 1]) { const p2 = new T.Mesh(boxGeo, std({ color: 0xbfc5cc, roughness: 0.4 })); p2.scale.set(1, 0.02, 0.08); p2.position.set(sd * 0.9, 0.35, 0); g.add(p2); pr.push(p2); } g.userData.pr = pr; return g; },
     spark: () => glow(0xffd25a, 0.8, 1),
+    shock: () => new T.Mesh(new T.TorusGeometry(1, 0.07, 6, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false })),
+    burst: () => new T.Mesh(new T.TorusGeometry(1, 0.06, 6, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false })),
+    pulse: () => glow(0xffffff, 0.9, 0.9),
   };
   const letterMaker = ch => () => { const g = new T.Group(); const t2 = letterTex[ch] || (letterTex[ch] = tex(128, 128, (c) => { c.fillStyle = "#ffffff"; c.font = "900 104px Inter, system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.shadowColor = "#ffd25a"; c.shadowBlur = 16; c.fillText(ch, 64, 70); })); g.add(new T.Mesh(new T.PlaneGeometry(1.8, 1.8), new T.MeshBasicMaterial({ map: t2, color: 0xffe08a, transparent: true, toneMapped: false, depthWrite: false }))); g.add(new T.Mesh(new T.TorusGeometry(1.15, 0.06, 10, 40), basic(0xffd25a))); g.add(glow(0xffd25a, 4, 0.5)); return g; };
 
@@ -617,13 +689,19 @@ function makeSwing3D() {
     let wx = null; for (const s0 of [dStart - RUN.BIOME_M, dStart, dStart + RUN.BIOME_M]) if (s0 >= 0 && runnerTheme(s0).water && Math.abs(s0 + RUN.BIOME_M / 2 - cam.x) < RUN.BIOME_M) wx = s0;
     water.visible = wx != null; if (wx != null) water.position.set(wx + RUN.BIOME_M / 2, 0.08, -8);
     cars.forEach(cr => { cr.x += cr.v * dt; if (cr.x < cam.x - 80) cr.x += 160; if (cr.x > cam.x + 80) cr.x -= 160; cr.g.position.set(cr.x, 0, cr.z); cr.g.rotation.y = cr.v > 0 ? 0 : Math.PI; cr.hl.position.set(2.2, 0.8, 0); cr.tl.position.set(-2.2, 0.8, 0); cr.hl.material.opacity = 0.3 + night * 0.6; cr.tl.material.opacity = 0.2 + night * 0.5; cr.g.visible = !water.visible || Math.abs(cr.x - (wx + RUN.BIOME_M / 2)) > RUN.BIOME_M / 2; });
+    poolsBegin();
     // Play-line buildings: lit ones glow; the sweep climbs as they wake.
     const glowC = new T.Color(runnerGlow());
     for (const b of R.blds) {
       const g = bldMesh(b); g.userData.swingOld = true; g.visible = true;
       const k = b.litT < 0 ? 0 : Math.min(1, (b.litT += dt) / 0.9), u = g.userData;
       if (b.tree) { u.leaf.emissiveIntensity = k * 0.35 * night; u.lights.forEach(s2 => (s2.material.opacity = k * (0.4 + night * 0.6))); continue; }
-      u.mat.emissiveIntensity = k * (blackout ? 0.3 : 0.2 + night * 0.6);
+      // Windows flick on in steps, with a little flicker while they wake.
+      const ks = k >= 1 ? 1 : Math.floor(k * 6) / 6 * (0.75 + 0.25 * Math.random());
+      u.mat.emissiveIntensity = ks * (blackout ? 0.3 : 0.2 + night * 0.6);
+      u.leds.forEach(ld => { ld.material.opacity = k * (0.55 + 0.35 * Math.sin(t * 2 + u.ph)) * (0.4 + night * 0.6); ld.material.color.copy(glowC); });
+      u.beacon.material.opacity = k > 0.5 ? (Math.sin(t * 3 + u.ph) > 0.6 ? 0.9 : 0.1) * (0.3 + night * 0.7) : 0;
+      if (b.litT >= 0 && b.litT < 0.8) { const sw = get("shock", makers.shock), q2 = b.litT / 0.8; sw.position.set((b.x0 + b.x1) / 2, b.h * 0.6, 1.8); sw.scale.setScalar(1 + q2 * (b.x1 - b.x0) * 0.9); sw.material.opacity = 0.8 * (1 - q2); sw.material.color.copy(glowC); }
       u.mat.color.copy(C(P.tower)).lerp(new T.Color(1, 1, 1), 0.55 + day * 0.2); if (k < 1) u.mat.color.lerp(darkTint, (1 - k) * (0.5 + night * 0.45));
       u.rim.material.opacity = k * 0.9; u.rim.material.color.copy(glowC);
       u.sweep.material.opacity = k > 0 && k < 1 ? 0.55 * Math.sin(k * Math.PI) : 0; u.sweep.position.y = k * b.h;
@@ -648,8 +726,12 @@ function makeSwing3D() {
       const hot = a === best || a === R.teth;
       u.ring.material.opacity = hot ? 0.9 : a.kind === "ring" ? 0.8 : 0.25; u.ring.scale.setScalar((a.kind === "ring" ? 1.9 : 1) * (hot ? 1 + 0.12 * Math.sin(t * 8) : 1));
       u.halo.material.opacity = hot ? 0.95 : 0.45; u.halo.material.color.copy(glowC);
-      if (u.bob) g.position.y = a.y + Math.sin(t * 1.5 + (a.ph || 0)) * 0.12;
+      if (u.bob && !a.broken) g.position.y = a.y + Math.sin(t * 1.5 + (a.ph || 0)) * 0.12;
       if (u.props) u.props.forEach((p2, q) => (p2.rotation.y = t * 30 + q));
+      if (a.type === "drift") g.position.x = a.x;
+      if (a.type === "gold") { g.rotation.z = t * 0.8; u.halo.material.color.set(0xffd25a); }
+      if (a.type === "crumble") { const shake = a === R.teth ? Math.min(1, R.tethT / 1.25) : 0; g.position.x = a.x + (Math.random() - 0.5) * shake * 0.3; u.node.material.color.setRGB(1, 0.48 - shake * 0.3, 0.24 - shake * 0.2); }
+      if (a.broken) { a.fallV = (a.fallV || 0) + dt * 25; g.position.y -= a.fallV * dt; g.rotation.z += dt * 3; u.halo.material.opacity = 0; u.ring.material.opacity = 0; }
     }
     scene.children.forEach(o => { if (o.userData && o.userData.swingAnchor && !R.anchors.some(a => a.mesh === o)) scene.remove(o); });
     // The being of light.
@@ -670,12 +752,12 @@ function makeSwing3D() {
       u.legs.forEach(l => { lr(l.hip.rotation, "z", 1.3 * tuck + 0.2); lr(l.kn.rotation, "z", -1.8 * tuck); }); u.arms.forEach((a, q) => { lr(a.sh.rotation, "z", (q ? 2.6 : 2.2) * (1 - tuck) + 0.6 * tuck); lr(a.el.rotation, "z", 1 * tuck); });
     }
     u.shield.visible = R.power && R.power.kind === "shield";
-    u.aura.material.opacity = 0.45 + night * 0.3 + (R.power ? 0.25 : 0); u.aura.material.color.copy(R.power ? new T.Color(`rgb(${RUNNER_POWERS[R.power.kind].rgb})`) : glowC);
+    u.aura.material.opacity = 0.45 + night * 0.3 + (R.power ? 0.25 : 0) + (R.od > 0 ? 0.35 : 0); u.aura.material.color.copy(R.od > 0 ? new T.Color(0xffc23d) : R.power ? new T.Color(`rgb(${RUNNER_POWERS[R.power.kind].rgb})`) : glowC); u.aura.scale.setScalar(R.od > 0 ? 6.5 + Math.sin(t * 10) * 0.4 : R.dashT > 0 ? 6 : 4.6);
     if (R.over) { hero.rotation.z += dt * 6; }
     // The scarf follows the shoulders.
     const nk = new T.Vector3(0, 1.45, 0).applyMatrix4(hero.matrixWorld.compose(hero.position, hero.quaternion.setFromEuler(hero.rotation), hero.scale));
     hist.unshift([nk.x, nk.y]); const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N2 = Math.min(SC, scf.len); if (hist.length > SC) hist.length = SC;
-    const scC = scf.c === "prism" ? null : new T.Color(scf.c ?? runnerGlow());
+    const scC = scf.c === "prism" || R.od > 0 ? null : new T.Color(scf.c ?? runnerGlow());
     const fill = (geo, off) => { const pos = geo.attributes.position.array, col = geo.attributes.color.array;
       for (let q = 0; q < SC; q++) { const h0 = hist[Math.min(q, hist.length - 1)] || [R.px, R.py + 1.45], k = q / (N2 - 1), wv = q < N2 ? scf.w * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)) : 0, yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k + off;
         pos.set([h0[0], h0[1] + yo + wv / 2, -0.15, h0[0], h0[1] + yo - wv / 2, -0.15], q * 6);
@@ -687,10 +769,19 @@ function makeSwing3D() {
     if (R.teth) { const bc = (RUNNER_BOARDS[runnerLook().board] || RUNNER_BOARDS[0]).c, tc = bc === "prism" ? new T.Color().setHSL((t * 0.4) % 1, 0.9, 0.65) : new T.Color(bc); const hy = R.py + 1.7; placeBetween(tether, R.px, hy, R.teth.x, R.teth.y); placeBetween(tetherGlow, R.px, hy, R.teth.x, R.teth.y); tether.material.color.copy(tc); tetherGlow.material.color.copy(tc); tetherGlow.material.opacity = 0.3 + Math.sin(t * 20) * 0.08; }
     // The ghost.
     const gy = R.ghost && !R.attract ? R.ghost[Math.floor(Math.max(0, R.px)) + 6] : null; ghost.visible = gy != null; if (gy != null) ghost.position.set(R.px + 6, gy + 1, -0.3);
+    if (R.teth) { const hy = R.py + 1.7; for (let q = 0; q < 4; q++) { const f2 = (t * 1.8 + q / 4) % 1, pu = get("pulse", makers.pulse); pu.position.set(R.px + (R.teth.x - R.px) * f2, hy + (R.teth.y - hy) * f2, 0.1); pu.material.opacity = 0.9 * Math.sin(f2 * Math.PI); pu.material.color.copy(tether.material.color); } }
+    for (const bu of R.bursts) { const ring2 = get("burst", makers.burst), q2 = bu.t / 0.8; ring2.position.set(bu.x, bu.y, 0.3); ring2.scale.setScalar((bu.big ? 1 : 0.5) + q2 * (bu.big ? 5 : 2.5)); ring2.material.opacity = 0.9 * (1 - q2); ring2.material.color.set(bu.c ?? runnerGlow()); }
+    // The darkness: tendrils curling at its edge, violet lightning now and then.
+    tendrils.forEach((td, q) => { const a2 = t * (0.4 + q * 0.05) + q; td.position.set(R.darkX + 2 + Math.sin(a2) * 3, cam.y - 26 + q * 4.5 + Math.cos(a2 * 1.3) * 2, 6.1); td.material.rotation = a2; td.scale.setScalar(7 + Math.sin(a2 * 2) * 2); });
+    bolt.visible = Math.random() < 0.04; if (bolt.visible) { const pos = bolt.geometry.attributes.position.array; let bx2 = R.darkX + 1, by2 = cam.y + 20; for (let q = 0; q < 8; q++) { pos[q * 3] = bx2; pos[q * 3 + 1] = by2; pos[q * 3 + 2] = 6.3; bx2 += (Math.random() - 0.3) * 3; by2 -= 4 + Math.random() * 3; } bolt.geometry.attributes.position.needsUpdate = true; }
+    // The sky: shooting stars and an aurora at night, rays of light at dawn.
+    if (!star2.userData.t || star2.userData.t > 1.2) { if (night > 0.6 && Math.random() < dt * 0.25) star2.userData = { t: 0, x: cam.x + (Math.random() - 0.2) * 80, y: cam.y + 40 + Math.random() * 30 }; }
+    if (star2.userData.t != null && star2.userData.t <= 1.2) { star2.userData.t += dt; const k2 = star2.userData.t / 1.2; star2.visible = true; star2.position.set(star2.userData.x - k2 * 50, star2.userData.y - k2 * 18, -150); star2.material.opacity = Math.sin(k2 * Math.PI); } else star2.visible = false;
+    auroras.forEach((au, q) => { au.position.set(cam.x + (q - 1) * 120, cam.y + 70 + q * 8, -260); au.material.opacity = Math.max(0, night - 0.6) * 1.4 * (0.6 + 0.4 * Math.sin(t * 0.3 + q * 2)); au.rotation.z = Math.sin(t * 0.1 + q) * 0.06; });
+    rays.position.set(camera.position.x + 120, 170, -320); rays.material.opacity = Math.max(0, Math.min(night - 0.15, 0.65 - night)) * 1.6; rays.material.rotation = t * 0.02;
     // The darkness.
     darkWall.position.set(R.darkX - 45, cam.y, 6); darkEdge.forEach((e2, q) => { e2.position.set(R.darkX + Math.sin(t * 2 + q) * 1.5, cam.y - 30 + q * 7, 6.2); e2.material.opacity = 0.3 + Math.sin(t * 3 + q) * 0.1; });
     // Lights, power-ups, letters, wires, drones.
-    poolsBegin();
     for (const c of R.motes) { if (Math.abs(c.x - cam.x) > 45) continue; const g = get("mote", makers.mote); if (c.got) { const k = c.t / 0.35; g.position.set(c.x + (R.px - c.x) * k, c.y + (R.py + 1 - c.y) * k, 0); g.scale.setScalar(1 - k * 0.7); continue; } g.scale.setScalar(1); g.position.set(c.x, c.y + Math.sin(t * 3 + c.x) * 0.1, 0); g.rotation.y = t * 3 + c.x; }
     for (const u2 of R.ups) {
       if (Math.abs(u2.x - cam.x) > 50) continue;

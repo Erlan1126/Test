@@ -259,8 +259,10 @@ function lockerHtml() {
     const own = L.own[key + i], btn = cur ? "<em>Wearing</em>" : own ? `<button data-lk="${key}:${i}">Wear</button>` : `<button data-lk="${key}:${i}" ${glow >= it.cost ? "" : "disabled"}>✦ ${it.cost.toLocaleString()}</button>`;
     return `<li class="${cur ? "won" : ""}"><span><i class="sw" style="background:${swatch}"></i><b>${it.name}</b><small>${sub}</small></span>${btn}</li>`;
   };
+  const caps = save.capsules || 0;
+  const capRow = `<li class="sec">Light capsules</li><li class="${caps ? "won" : "locked"}"><span><b>${caps} capsule${caps === 1 ? "" : "s"}</b><small>Earn one by swinging 600 m or making 10 Perfects in a run</small></span>${caps ? `<button data-cap="1">Open</button>` : ""}</li>`;
   const ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";
-  return `<li class="sec">Forms of light</li>` + RUNNER_CHARS.map((c, i) => row("c", i, c, hex(c.look.glow), c.perk, L.char === i)).join("") +
+  return capRow + `<li class="sec">Forms of light</li>` + RUNNER_CHARS.map((c, i) => row("c", i, c, hex(c.look.glow), c.perk, L.char === i)).join("") +
     `<li class="sec">Glow</li>` + RUNNER_TOPS.map((c, i) => row("t", i, c, hex(c.c ?? ch.look.glow), i ? "Your colour of light" : `${ch.name}'s own`, L.top === i)).join("") +
     `<li class="sec">Scarves</li>` + RUNNER_SHOES.map((c, i) => row("s", i, c, c.c === "prism" ? prism : hex(c.c ?? runnerGlow()), c.twin ? "Two ribbons" : c.len > 30 ? "A long trail" : "A ribbon of light", L.shoe === i)).join("") +
     `<li class="sec">Tethers</li>` + RUNNER_BOARDS.map((c, i) => row("b", i, c, c.c === "prism" ? prism : hex(c.c), "The colour of your tether", L.board === i)).join("");
@@ -278,6 +280,8 @@ function ranksHtml() {
     `<li class="locked"><span><b>Friends and world rankings</b><small>Coming with online accounts</small></span></li>`;
 }
 document.getElementById("shopList").addEventListener("click", e => {
+  const cb = e.target.closest("button[data-cap]");
+  if (cb) { const got = openCapsule(); if (got) { sfx.unlock(); buzz(20); toast(`<b>Light capsule</b> ${got}`); } renderShop(); return; }
   const b = e.target.closest("button[data-lk]"); if (!b) return;
   const [k, i0] = b.dataset.lk.split(":"), i = +i0, L = runnerLook(), list = { c: RUNNER_CHARS, t: RUNNER_TOPS, s: RUNNER_SHOES, b: RUNNER_BOARDS }[k], it = list[i];
   if (!L.own[k + i]) { if ((save.glow || 0) < it.cost) return; save.glow -= it.cost; L.own[k + i] = 1; sfx.unlock(); buzz(20); } else sfx.tick();
