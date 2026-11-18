@@ -913,7 +913,7 @@ function runDraw(ctx, W, H) {
   }
   ctx.restore();
   }
-  const P2 = proj || ((x, at) => [W / 2 + (x - 200 - camX) * S, (LY - (at - R.dist)) * S]), pxU = proj ? RUN3D.pxU : S;
+  const P2 = proj || ((x, at) => [W / 2 + (x - 200 - camX) * S, (LY - (at - R.dist)) * S]), pxU = proj ? (R3 || RUN3D).pxU : S;
   // The Hunter: a vast shadow rising behind Lumi, closer as the gap closes.
   if (R.event && R.event.kind === "hunter") {
     const gy = H * (1.15 - (1 - R.hunterGap) * 0.42), gx = W / 2 + Math.sin(t * 0.8) * W * 0.1;

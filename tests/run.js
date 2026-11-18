@@ -449,20 +449,22 @@ const SIM = `
       out.buildingsLightUpAsYouPass = R.lit >= 3 && R.blds.some(b => b.litT >= 0);
       out.theSkylineGoesOnAhead = runnerM() > 40 && R.anchors.some(a => a.x > R.px + 40);
       // Hits: the street, a wall, the darkness.
-      R.blds.length = 0; R.haz.length = 0; R.inv = 0; R.teth = null; R.roof = null; R.hold = false; R.py = 0.6; R.vy = -8; step(3);
-      out.theStreetCostsAHeart = R.hearts === 2 && R.vy > 0;
-      R.inv = 0; R.power = { kind: "shield", t: 5 }; R.py = 0.6; R.vy = -8; step(3);
+      R.blds.length = 0; R.haz.length = 0; R.power = null; R.od = 0; R.streetT = 0; R.inv = 0; R.teth = null; R.roof = null; R.hold = false; R.py = 0.6; R.vy = -8; step(3);
+      out.theFirstStreetTouchIsAFreeBounce = R.hearts === 3 && R.vy > 0;
+      R.py = 0.6; R.vy = -8; step(3);
+      out.aSecondTouchSoonAfterCostsAHeart = R.hearts === 2;
+      R.inv = 0; R.streetT = 2; R.power = { kind: "shield", t: 5 }; R.py = 0.6; R.vy = -8; step(3);
       out.aShieldTakesTheHit = R.hearts === 2 && !R.power;
       R.inv = 0; R.blds.push({ x0: R.px + 0.3, x1: R.px + 10, h: R.py + 10, style: 0, litT: -1, n: 999, seed: 0.5 }); R.teth = null; R.vx = 12; R.vy = 0; step(3);
-      out.flyingIntoAWallHurts = R.hearts === 1;
-      R.blds.pop(); R.inv = 0; R.hearts = 3; R.darkX = R.px + 2; step(1);
+      out.wallsAreRunUpNotCrashedInto = R.hearts === 2 && R.vy > 5;
+      R.blds.pop(); R.inv = 0; R.hearts = 3; R.streetT = 0; R.power = null; R.py = 30; R.vy = 0; R.darkX = R.px + 2; step(1);
       out.theDarknessCatchesTheSlow = R.hearts === 2 && R.darkX < R.px - 10;
       // Landing on a roof: you run along it.
       R.inv = 1; R.teth = null; R.hold = false; R.blds.push({ x0: R.px - 2, x1: R.px + 30, h: R.py - 0.5, style: 0, litT: -1, n: 998, seed: 0.3 }); R.vy = -3; step(10);
       out.youCanLandAndRunOnRooftops = !!R.roof && R.vx >= 9;
       R.blds.pop(); R.roof = null;
       // Events.
-      R.nextEv = runnerM() - 1; R.tut = 0; step(1);
+      { const d0 = Math.floor(runnerM() / RUN.BIOME_M) * RUN.BIOME_M + 40; R.dist = d0 * RUN.M; R.px = d0; R.darkX = R.px - 50; } R.ev = null; R.nextEv = runnerM() - 1; R.tut = 0; step(1);
       out.eventsHappenOnTheWay = !!R.ev && ["shower", "surge"].includes(R.ev.kind);
       // Flow, Overdrive and the dash.
       R.ev = null; R.od = 0; R.flow = 0.9; swingFlow(R, 0.2);
@@ -475,10 +477,15 @@ const SIM = `
       // Special anchors: spring, crumble, gold.
       R.anchors.push({ x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9001, type: "spring" }); R.teth = R.anchors[R.anchors.length - 1]; R.L = 10; R.vy = 0; swingHold(false);
       out.aSpringAnchorLaunchesYou = R.vy >= 9;
-      const cr = { x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9002, type: "crumble" }; R.anchors.push(cr); R.teth = cr; R.L = 10; R.tethT = 0; R.hold = true; step(90);
+      const cr = { x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9002, type: "crumble" }; R.anchors.push(cr); R.teth = cr; R.L = 10; R.tethT = 0; R.hold = true; step(130);
       out.aCrumblingAnchorBreaks = cr.broken === true && R.teth !== cr;
       const gl = { x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9003, type: "gold" }; R.anchors = [gl]; R.teth = null; R.hold = false; const lg = R.lights; swingAttach(R);
       out.goldAnchorsPayLights = R.teth === gl && R.lights === lg + 5;
+      // The Heart of the Dark: three shards break it.
+      R.over = 0; R.hearts = 3; R.inv = 5; R.paused = false; R.ev = null; R.hearted = {}; R.tut = 0; const mm = runnerM(); R.dist = (Math.floor(mm / RUN.BIOME_M) * RUN.BIOME_M + RUN.BIOME_M - 60) * RUN.M; R.px = R.dist / RUN.M; R.darkX = R.px - 50; step(1);
+      out.theHeartOfTheDarkComesNearTheEndOfADistrict = !!R.ev && R.ev.kind === "heart" && R.ups.filter(u => u.kind === "shard").length >= 2;
+      const l9 = R.lights; for (let q = 0; q < 3; q++) { R.ups.push({ x: R.px, y: R.py + 0.9, kind: "shard" }); step(1); }
+      out.threeShardsBreakTheHeart = !R.ev && R.lights >= l9 + 60;
       // The letter hunt.
       save.hunt = null; R.ups.push({ x: R.px, y: R.py + 0.9, kind: "letter", ch: "L" }); step(1);
       out.lettersCountForTheHunt = huntState().got === "L";

@@ -74,9 +74,10 @@ function progressEvent(k, v = 1) {
 // ---------- The weekly event ----------
 const WEEK_EVENTS = [
   { id: "gold", name: "Golden Week", text: "Every light counts double" },
-  { id: "frost", name: "Frost Week", text: "Icicles fall in every world" },
-  { id: "shadow", name: "Glitch Week", text: "More glitches, ×1.5 score" },
-  { id: "rush", name: "Rush Week", text: "Every big moment is a rush" },
+  { id: "frost", name: "Gold Rush Week", text: "Gold anchors everywhere" },
+  { id: "shadow", name: "Dark Week", text: "The dark is faster, ×1.5 score" },
+  { id: "rush", name: "Overdrive Week", text: "Flow fills twice as fast" },
+  { id: "spring", name: "Spring Week", text: "Spring anchors everywhere" },
 ];
 const weekEvent = () => WEEK_EVENTS[weekNumber() % WEEK_EVENTS.length];
 
