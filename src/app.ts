@@ -1532,8 +1532,9 @@ export class App implements DailyHost {
     document.body.classList.toggle("city-home", cityHome);
     if (cityHome && this.state === "menu" && !this.moving && !this.visiting) this.tycoon.enterCity();
     // The first visit of the day opens the rewards calendar (once the first-day welcome is done).
-    // (Not before the first sale: a new player's first visit is about the Coffee Cart.)
-    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && this.save.tycoon.tips >= 1 && giftState(this.save.profile.gift).ready) {
+    // (Not during the first steps: a new player's first visit is about the Coffee Cart, its
+    // first sale, the café terrace and the manager. The calendar is in Goals all along.)
+    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && (this.save.tycoon.tips >= 3 || p.towers >= 4) && giftState(this.save.profile.gift).ready) {
       this.dailyAuto = dayKey(0);
       setTimeout(() => {
         // Another window is up (welcome back, Mayor Pip): try again once it's closed.

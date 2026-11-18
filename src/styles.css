@@ -3448,7 +3448,7 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 .over-cafe-txt b { font: 800 13px/1.25 var(--ui); color: #7a3a10; }
 .over-cafe-bar { display: block; height: 7px; border-radius: 4px; overflow: hidden; background: rgba(224, 116, 58, 0.18); }
 .over-cafe-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb36b, #e0743a); transition: width 0.8s ease-out; }
-#go-town { order: -1; flex-basis: 100%; }
+#over-actions #go-town { grid-column: 1 / -1; order: -2; font-size: 16px; white-space: nowrap; padding-left: 10px; padding-right: 10px; }
 /* While building: the café contract's wide floors. */
 .contract-chip { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 118px); left: 50%; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; pointer-events: none;
   font: 400 13px var(--display); color: #7a3a10; background: rgba(255, 244, 230, 0.94); box-shadow: 0 4px 14px rgba(120, 60, 10, 0.2); }

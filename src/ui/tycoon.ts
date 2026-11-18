@@ -217,25 +217,30 @@ export class TycoonUI {
       const intro = !c.framed;
       c.framed = true;
       this.host.persist();
-      this.frameUntil = Date.now() + 3600;
+      // The close-up holds while Mayor Pip explains it (the camera may still be flying in
+      // on a slow phone), and ends when the note is closed; a revisit just looks for a moment.
+      this.frameUntil = Date.now() + (intro ? 120000 : 4000);
       this.render();
-      setTimeout(() => { this.frameUntil = 0; this.render(); if (intro) this.welcomeNote(); }, 3600);
+      const end = () => { this.frameUntil = 0; this.render(); };
+      if (intro) setTimeout(() => this.welcomeNote(end), 2200);
+      else setTimeout(end, 4000);
     } else if (!this.save.seenFeatures.includes("ty-city")) setTimeout(() => this.welcomeNote(), 1200);
-    if (dest === "terrace") setTimeout(() => this.openTerrace(), 900);
+    // The first sale comes first: until then the terrace waits in the next-step card.
+    if (dest === "terrace" && this.save.tycoon.tips > 0) setTimeout(() => this.openTerrace(), 900);
     if (dest === "cafe") { this.selected = "coffee"; this.render(); }
   }
 
   /** The first visit: Mayor Pip says what this place is, and what to do first. */
-  private welcomeNote(): void {
-    if (!this.inCity || this.save.seenFeatures.includes("ty-city")) return;
+  private welcomeNote(done: () => void = () => {}): void {
+    if (!this.inCity || this.save.seenFeatures.includes("ty-city")) { done(); return; }
     // Wait for any other dialog (the welcome-back card) to close first.
-    if (!$("mayor").hidden || !$("welcome").hidden || openModalEl()) { setTimeout(() => this.welcomeNote(), 1500); return; }
+    if (!$("mayor").hidden || !$("welcome").hidden || openModalEl()) { setTimeout(() => this.welcomeNote(done), 1500); return; }
     this.save.seenFeatures.push("ty-city");
     this.host.persist();
     const own = this.save.cafe.starter;
     mayorNote(t("Welcome to Skyhaven Inc.!"), own
       ? t("That's your first tower, standing in your own town now! Every floor you build becomes office space here. Now tap the Coffee Cart and make your first sale.")
-      : t("This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!"), t("Let's go!"));
+      : t("This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!"), t("Let's go!"), done);
   }
 
   /** The café terrace is ready: open it (exactly once), with a celebration. */
@@ -272,6 +277,7 @@ export class TycoonUI {
     if (!this.inCity) return;
     this.inCity = false;
     this.selected = "";
+    this.frameUntil = 0;
     this.host.setBizFocus(false);
     document.body.classList.remove("in-tycity");
     $("tycity").hidden = true;
@@ -382,13 +388,15 @@ export class TycoonUI {
     const s = this.save, ty = s.tycoon, live = this.liveState();
     const nameOf = (id: string) => t(stageName(id, stageNow(s, id)));
     const select = (id: string) => () => { this.selected = id; this.render(); };
-    // First steps come before anything else: the first sale, then a level, then a manager.
+    // First steps come before anything else: the first sale, then (if ready) the café
+    // terrace, then a level, then a manager.
     const cart = BUSINESSES[0];
     if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("First steps · {n} of 3", { n: 1 }), tone: "learn", act: () => { this.selected = "coffee"; this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
+    // Right after the first sale: the café terrace, if ready (the town changed because of
+    // the player's towers). The level and the manager come after.
+    if (s.cafe.terrace === 1) return { text: t("☕ Your café terrace is ready!"), sub: t("Open it: the Coffee Cart earns more"), tone: "gift", act: () => this.openTerrace() };
     if (ty.tips === 1) return { text: t("Buy a level for the Coffee Cart"), sub: t("First steps · {n} of 3", { n: 2 }), tone: "learn", act: select("coffee") };
     if (ty.tips === 2) return { text: t("Hire a manager for the Coffee Cart"), sub: t("Managers sell for you, even while you're away"), pct: Math.min(1, ty.coins / cart.manager), tone: "learn", act: select("coffee") };
-    // The café terrace is ready: the town changed because of the player's towers.
-    if (s.cafe.terrace === 1) return { text: t("☕ Your café terrace is ready!"), sub: t("Open it: the Coffee Cart earns more"), tone: "gift", act: () => this.openTerrace() };
     // A first-time objective stays in view until it's tried: the café contract, then a
     // business's first HQ (both cost nothing but a tower).
     if (contractOpen(s.cafe) && !s.seenFeatures.includes("try-contract")) return { text: t("☕ Café contract: land {n} wide floors", { n: CONTRACT_WIDE }), sub: t("The terrace gets lights, flowers and more customers"), tone: "grow", act: () => { this.leave(); this.host.playContract(); } };

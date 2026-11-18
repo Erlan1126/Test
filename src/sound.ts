@@ -48,7 +48,9 @@ export class Sound {
     // Pause audio while the page is in the background.
     document.addEventListener("visibilitychange", () => {
       if (!this.ac) return;
-      if (document.hidden) void this.ac.suspend(); else void this.ac.resume();
+      // Coming back: resume (iOS may report "interrupted" after a call; the next tap
+      // retries through ensure() if the browser wants a gesture first).
+      if (document.hidden) void this.ac.suspend(); else void this.ac.resume().catch(() => {});
     });
   }
 
@@ -62,7 +64,7 @@ export class Sound {
       this.build(this.ac);
       setInterval(() => this.tick(), 60);
     }
-    if (this.ac.state === "suspended") void this.ac.resume();
+    if (this.ac.state !== "running" && this.ac.state !== "closed") void this.ac.resume().catch(() => {});
   }
 
   private build(ac: AudioContext): void {
