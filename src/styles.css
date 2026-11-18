@@ -3439,3 +3439,23 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 .ty-adv-hire small { font: 800 11px var(--ui); opacity: 0.95; }
 .ty-adv-hire[data-short] { filter: grayscale(0.5); opacity: 0.8; }
 .ty-adv-on { flex: none; padding: 6px 10px; border-radius: 12px; font: 400 11px var(--display); color: #19a87a; background: #e3f8ee; }
+
+/* ════════ Café loop ════════ */
+/* Results: what this tower did for the café, and the button that goes to see it. */
+.over-cafe { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; padding: 10px 12px; border-radius: 16px; text-align: left; background: #fff4e6; box-shadow: inset 0 0 0 1.5px #ffd9b0; }
+.over-cafe-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; font-size: 20px; background: #fff; }
+.over-cafe-txt { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.over-cafe-txt b { font: 800 13px/1.25 var(--ui); color: #7a3a10; }
+.over-cafe-bar { display: block; height: 7px; border-radius: 4px; overflow: hidden; background: rgba(224, 116, 58, 0.18); }
+.over-cafe-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb36b, #e0743a); transition: width 0.8s ease-out; }
+#go-town { order: -1; flex-basis: 100%; }
+/* While building: the café contract's wide floors. */
+.contract-chip { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 118px); left: 50%; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; pointer-events: none;
+  font: 400 13px var(--display); color: #7a3a10; background: rgba(255, 244, 230, 0.94); box-shadow: 0 4px 14px rgba(120, 60, 10, 0.2); }
+.contract-chip small { font: 800 11px var(--ui); color: #a0582a; }
+.contract-chip.done { color: #fff; background: linear-gradient(90deg, #5ee0a0, #19a87a); }
+.contract-chip.done small { color: #e9fff3; }
+/* The build sheet's contract card and the town's first-tower bubble. */
+.tcy-mode.contract { background: linear-gradient(135deg, #fff4e6, #ffe2c4) !important; box-shadow: inset 0 0 0 2px #ffc48a !important; }
+#tcy-labels .tag.bub.starter .tag-ico { font-size: 18px; }
+#tcy-labels .tag.bub.starter.sel { background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }

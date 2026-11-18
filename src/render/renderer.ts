@@ -23,7 +23,7 @@ import { t } from "../i18n";
 /** What the screen is showing, which decides where the camera goes. */
 export type Shot = "menu" | "play" | "over";
 
-import type { BizLive, BizLot } from "../render3d/bizcity";
+import type { BizCafe, BizLive, BizLot } from "../render3d/bizcity";
 
 export interface Frame {
   sim: TowerSim;
@@ -59,6 +59,8 @@ export interface Frame {
   /** Skyhaven Inc.'s business district: its lots, what's happening right now, and whether
    *  the camera is over there (the Tycoon is open). */
   bizLots?: BizLot[];
+  /** The café loop's pieces in the district: the starter tower and the terrace. */
+  bizCafe?: BizCafe | null;
   bizLive?: BizLive;
   bizFocus?: boolean;
   /** A building's card is open in the district. */

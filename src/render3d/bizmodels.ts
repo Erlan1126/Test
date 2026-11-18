@@ -385,3 +385,47 @@ export function buildModel(g: G, id: string, s: number, c1: string, c2: string, 
       }
   }
 }
+
+/** The Coffee Cart's café terrace, in front of whatever stage it's at (local +z is the
+ *  street). `state` 1: ready to open (wrapped up, chairs stacked, a sign); 2: open (a
+ *  wooden deck under an awning, tables with umbrellas, customers). `lights`: the café
+ *  contract is done (string lights, flower boxes, a gold star sign). */
+export function buildTerrace(g: G, state: 1 | 2, lights: boolean, m: ModelMats): void {
+  const K = kit(m);
+  const wood = m.c("#c8925a", 0.75), dark = m.c("#3a2f5a"), red = "#e0743a";
+  const z0 = 1.5;
+  K.box(g, wood, 4.1, 0.08, 1.05, 0, 0.02, z0 + 0.1);
+  if (state === 1) {
+    // Wrapped up, waiting to open: stacked chairs, a ribbon across, an "opening" sign.
+    for (const x of [-1.2, 1.2]) for (let k = 0; k < 3; k++) K.box(g, m.c("#ffffff", 0.6), 0.34, 0.08, 0.34, x, 0.12 + k * 0.1, z0);
+    for (const x of [-2.0, 2.0]) K.box(g, dark, 0.06, 0.7, 0.06, x, 0, z0 + 0.5);
+    K.box(g, m.sign("#ff4f8b"), 4.0, 0.08, 0.03, 0, 0.55, z0 + 0.5);
+    K.box(g, dark, 0.06, 1.0, 0.06, 0, 0, z0 + 0.45);
+    K.board(g, "#ffc93c", 1.0, 0.45, 0, 1.0, z0 + 0.5);
+    return;
+  }
+  // Open: an awning on posts across the front, three tables with umbrellas and customers.
+  for (const x of [-1.95, 1.95]) K.box(g, dark, 0.07, 1.25, 0.07, x, 0, z0 + 0.6);
+  K.awning(g, 4.0, 0, 1.3, z0 + 0.05, red, "#ffffff", 0.6);
+  const shirts = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff"];
+  [-1.35, 0, 1.35].forEach((x, i) => {
+    K.table(g, x, z0 + 0.15, "#ffffff");
+    if (i !== 1) K.umbrella(g, x, z0 + 0.15, i ? "#ff4f8b" : red, 1.15, 0.45);
+    // A customer on one side of each table, a cup in front of them.
+    const sx = x + (i % 2 ? 0.42 : -0.42);
+    K.box(g, m.c(shirts[i], 0.6), 0.2, 0.26, 0.16, sx, 0.4, z0 + 0.15);
+    K.sph(g, m.c("#f2c39a", 0.6), 0.1, sx, 0.75, z0 + 0.15);
+    K.cyl(g, m.c("#ffffff", 0.4), 0.05, 0.04, 0.09, x + (i % 2 ? 0.12 : -0.12), 0.47, z0 + 0.15, 8);
+  });
+  if (lights) {
+    // The contract's reward: string lights, flower boxes and a gold star over the café.
+    for (let k = 0; k < 11; k++) {
+      const x = -1.95 + k * 0.39, sag = Math.sin((k / 10) * Math.PI) * 0.12;
+      K.sph(g, m.bulb, 0.05, x, 1.42 - sag, z0 + 0.62);
+    }
+    K.flowers(g, -1.3, z0 + 0.62, 1.1, undefined, 0.02);
+    K.flowers(g, 1.3, z0 + 0.62, 1.1, undefined, 0.02);
+    K.cone(g, m.gold, 0.22, 0.12, 0, 1.6, z0 + 0.6, 5, Math.PI / 2);
+    K.board(g, "#ffc93c", 0.9, 0.3, 0, 1.36, z0 + 0.66);
+  }
+}

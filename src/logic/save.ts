@@ -11,6 +11,7 @@ import { MISSION_KEYS, type Mission } from "../data/missions";
 import { OLD_SKIN_HEIGHTS, SKINS } from "../data/skins";
 import { SHAPES } from "../data/shapes";
 import { SKYLINE_SIZE, type SkylineTower } from "./skyline";
+import { newCafe, normalizeCafe, type CafeState } from "./cafe";
 import { ALL_POSTCARDS, migratePostcard } from "./postcards";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES, OLD_DISTRICT_PEOPLE, OLD_UPGRADE_HEIGHTS } from "../data/islands";
@@ -114,6 +115,8 @@ export interface SaveData {
   challenges: string[];
   /** Your most recent finished tower: floors, metres, residents it added, district. */
   lastTower: { f: number; m: number; p: number; d: string } | null;
+  /** The café loop: the starter tower, the terrace and the café contract (logic/cafe.ts). */
+  cafe: CafeState;
   /** The last week whose tournament prize was collected (or checked with no prize). */
   tourney: number;
   /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts), and its score. */
@@ -202,6 +205,7 @@ export function defaultSave(): SaveData {
     ghostScore: 0,
     tourney: -1,
     lastTower: null,
+    cafe: newCafe(),
     history: [],
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto" },
     tutorialDone: false,
@@ -326,6 +330,7 @@ export function normalize(raw: unknown): SaveData {
     ghost: cleanPace(r.ghost),
     ghostScore: typeof r.ghostScore === "number" && Number.isFinite(r.ghostScore) ? Math.max(0, Math.floor(r.ghostScore)) : 0,
     lastTower: lastTower(r.lastTower),
+    cafe: normalizeCafe(r.cafe, { floors: typeof obj(r.tycoon).floors === "number" ? Number(obj(r.tycoon).floors) : int(obj(r.profile).floors, 0), towers: int(obj(r.profile).towers, 0) }),
     tourney: typeof r.tourney === "number" && Number.isFinite(r.tourney) ? Math.floor(r.tourney) : -1,
     history,
     settings: {

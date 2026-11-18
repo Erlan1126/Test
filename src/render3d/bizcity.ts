@@ -6,7 +6,7 @@
 // at night the windows, signs and an empire's searchlight come on.
 import * as THREE from "three";
 import { mergeStatic } from "./world";
-import { buildModel, type ModelMats } from "./bizmodels";
+import { buildModel, buildTerrace, type ModelMats } from "./bizmodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -38,6 +38,8 @@ export interface BizLive {
   rush: string;
   /** A golden customer waiting outside this business. */
   golden?: string;
+  /** The first visit's close look at the starter tower and the Coffee Cart. */
+  frame?: boolean;
   vip: string;
   critic: string;
   power: string;
@@ -51,7 +53,11 @@ const C = 6.5;
 const CELLS: [number, number][] = [[0, 0], [1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2], [3, 2], [2, 3], [3, 3]];
 const PARKS: [number, number][] = [[4, 3], [3, 4]];
 const PLAZA: [number, number] = [4, 4];
-const ALL = [...CELLS, ...PARKS, PLAZA];
+/** The plot beside the Coffee Cart where the player's first tower stands. */
+const PLOT: [number, number] = [-1, 0];
+const ALL = [...CELLS, ...PARKS, PLAZA, PLOT];
+/** The starter tower's spot (local to the district), for the camera and its bubble. */
+export function plotPos(): { x: number; z: number } { return cellXZ(PLOT); }
 const OFF = 2 * C;
 const cellXZ = ([gx, gz]: [number, number]) => ({ x: gx * C - OFF, z: gz * C - OFF });
 const U = new THREE.Vector3(Math.SQRT1_2, 0, Math.SQRT1_2);
@@ -86,6 +92,14 @@ export function streetFocus(lots: BizLot[]): { x: number; z: number; zoom: numbe
 const col = (c: string) => new THREE.Color(c);
 const std = (c: string | number | THREE.Color, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c instanceof THREE.Color ? c : typeof c === "number" ? c : col(c), roughness: 0.7, ...o });
 
+/** The café loop, as the town shows it (see logic/cafe.ts). */
+export interface BizCafe {
+  /** The first tower: its floors (x, z, width, depth relative to its base), skin colors and shape. */
+  starter: { b: [number, number, number, number][]; floors: string[]; glass: string; slab: string; lit: string; pts: (f: number) => [number, number][] } | null;
+  terrace: 0 | 1 | 2;
+  contract: 0 | 1 | 2;
+}
+
 export interface BizCity {
   group: THREE.Group;
   update(t: number, night: number, live: BizLive, lots: BizLot[]): void;
@@ -93,7 +107,7 @@ export interface BizCity {
   top(i: number): number;
 }
 
-export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = []): BizCity {
+export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
   const g = new THREE.Group();
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
   const cache = new Map<string, THREE.MeshStandardMaterial>();
@@ -271,6 +285,52 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     }
   }
 
+  // ---- The player's first tower, on its own plot beside the Coffee Cart ----
+  let plotTop = 1.2;
+  let starterGlass: THREE.MeshStandardMaterial | null = null;
+  {
+    const { x, z } = cellXZ(PLOT);
+    add(new THREE.BoxGeometry(C - 2.2, 0.06, C - 2.2).translate(x, 0.23, z), grass);
+    add(new THREE.BoxGeometry(2.9, 0.08, 2.9).translate(x, 0.25, z), pave);
+    const sc = cafe.starter;
+    if (sc) {
+      // Its real floors, stacked: every floor's footprint (narrower where overhangs broke
+      // off), in the skin's colors, with a band of windows and a slab between floors.
+      const n = sc.b.length, fh = Math.min(0.55, 11 / Math.max(1, n)), S = 1.15;
+      const glassM = own(std(sc.glass, { roughness: 0.15, metalness: 0.3, emissive: new THREE.Color(sc.lit), emissiveIntensity: 0.05 }));
+      glassM.userData.dynamic = true;
+      starterGlass = glassM;
+      const slabM = mats.c(sc.slab, 0.6);
+      const floorGeo = (pts: [number, number][], [cx, cz, w, d]: [number, number, number, number], grow: number, h: number, y: number) => {
+        const shape = new THREE.Shape(pts.map(([px, pz]) => new THREE.Vector2((cx + px * w * grow) * S, -(cz + pz * d * grow) * S)));
+        return new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(x, y, z);
+      };
+      // The lobby.
+      add(floorGeo(sc.pts(0), [0, 0, 1, 1], 1.02, 0.3, 0.3), mats.c("#e9e4f5", 0.6));
+      let y = 0.6;
+      sc.b.forEach((box, i) => {
+        const pts = sc.pts(i + 1);
+        add(floorGeo(pts, box, 1, fh * 0.86, y), mats.c(sc.floors[i % sc.floors.length], 0.55));
+        add(floorGeo(pts, box, 1.025, fh * 0.42, y + fh * 0.22), glassM);
+        add(floorGeo(pts, box, 1.04, fh * 0.12, y + fh * 0.86), slabM);
+        y += fh;
+      });
+      plotTop = y;
+      // A flag on the roof and a plaque and flowers at its foot.
+      const top = sc.b[n - 1];
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6).translate(x + top[0] * S, y + 0.45, z + top[1] * S), metal);
+      add(new THREE.BoxGeometry(0.5, 0.3, 0.03).translate(x + top[0] * S + 0.25, y + 0.72, z + top[1] * S), mats.sign("#ff4f8b"));
+      add(new THREE.BoxGeometry(0.9, 0.5, 0.1).translate(x + 1.1, 0.55, z + 1.55), mats.c("#c8a070", 0.6));
+      add(new THREE.BoxGeometry(0.7, 0.32, 0.12).translate(x + 1.1, 0.58, z + 1.56), mats.gold);
+      for (let k = 0; k < 5; k++) add(new THREE.SphereGeometry(0.1, 6, 4).translate(x - 1.3 + k * 0.28, 0.36, z + 1.55), mats.c(flowersOn[k % 4], 0.8));
+    } else {
+      // No first tower yet: a little garden waiting for one.
+      tree(x - 0.9, z - 0.8, 0.9); tree(x + 0.9, z + 0.7, 0.8);
+      bench(x, z + 1.0, 0);
+      plotTop = 1.4;
+    }
+  }
+
   // ---- The lots: each business's own building for its stage ----
   const beacons: THREE.Mesh[] = [];
   const arrows: THREE.Group[] = [];
@@ -322,6 +382,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.05, 4.3).translate(0, 0.025, 0), grass));
     lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.06, 2.6).translate(0, 0.03, 0.85), pave));
     buildModel(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+    // The Coffee Cart's café terrace (see logic/cafe.ts).
+    if (lot.id === "coffee" && cafe.terrace > 0) buildTerrace(lotG, cafe.terrace as 1 | 2, cafe.contract === 2, mats);
     lotG.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(lotG);
     tops[i] = Math.max(1.4, box.max.y - 0.2);
@@ -421,6 +483,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const goldBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 6, 16, 1, true).translate(0, 3, 0), goldBeamM);
   goldBeam.visible = false;
   life.add(goldBeam);
+  // The open café terrace sells: a coin rises over it every couple of seconds.
+  const saleCoin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 16).rotateX(Math.PI / 2), mats.gold);
+  saleCoin.visible = false;
+  life.add(saleCoin);
   const rush = ring(0xff4f8b, 2.5, 2.9), critic = ring(0x9a6cff, 2.3, 2.55), sel = ring(0xffe27a, 2.6, 2.95), gold = ring(0xffc93c, 2.2, 2.7);
 
   mergeStatic(g);
@@ -436,11 +502,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let last = 0;
   return {
     group: g,
-    top: i => tops[i] ?? 2,
+    top: i => (i < 0 ? plotTop : tops[i] ?? 2),
     update(t, night, live) {
       const dt = Math.min(0.1, last ? t - last : 0.016);
       last = t;
       winMat.emissiveIntensity = 0.05 + night * 0.9;
+      if (starterGlass) starterGlass.emissiveIntensity = 0.05 + night * 0.9;
       lampMat.emissiveIntensity = 0.2 + night * 2.2;
       bulb.emissiveIntensity = 0.5 + night * 1.5 + Math.sin(t * 8) * 0.25;
       for (const m of signs) m.emissiveIntensity = 0.15 + night * 0.9;
@@ -450,6 +517,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         b.rotation.x = Math.cos(t * 0.4) * 0.25;
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
+      const cd = cafe.terrace === 2 ? doors.get("coffee") : undefined;
+      saleCoin.visible = !!cd;
+      if (cd) {
+        const k = (t % 2.6) / 2.6;
+        saleCoin.position.set(cd.x, 1.0 + k * 1.4, cd.z);
+        saleCoin.rotation.y = t * 5;
+        saleCoin.scale.setScalar(k < 0.75 ? 1 : Math.max(0.01, (1 - k) * 4));
+      }
       fallM.opacity = 0.65 + Math.sin(t * 10) * 0.1;
       fall.scale.x = 1 + Math.sin(t * 7) * 0.04;
       g.traverse(o => { if (o.userData.spin) o.rotation.y = t * 0.6; });

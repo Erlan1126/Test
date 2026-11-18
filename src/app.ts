@@ -36,7 +36,9 @@ import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
-import { flushStats, statsOpen, statsTower } from "./stats";
+import { flushStats, statsOpen, statsTower, track } from "./stats";
+import { cafeRun, contractOpen, CONTRACT_WIDE, isWide, TERRACE_FLOORS, WIDE_SHARE } from "./logic/cafe";
+import type { BizCafe } from "./render3d/bizcity";
 import { adsReady, showRewarded } from "./ads";
 import { gameCenterAvailable, gameCenterSignIn, gameCenterSync, showGameCenter } from "./gamecenter";
 import { challengeIdFrom, createChallenge, fetchChallenge, fetchTries, postTry, type Challenge as FriendChallenge } from "./challenge";
@@ -762,6 +764,8 @@ export class App implements DailyHost {
       if (next) this.start("challenge", next.id);
     });
     $("to-menu").addEventListener("click", () => this.goToMenu());
+    // The results card's main button: off to the town, to the new tower or the café.
+    $("go-town").addEventListener("click", () => { this.townDest = this.overDest; this.goToMenu(); });
     $("over-more").addEventListener("click", () => {
       const r = $("over-rewards"), open = !r.classList.contains("open");
       r.classList.toggle("open", open);
@@ -943,6 +947,14 @@ export class App implements DailyHost {
     this.outcome = null;
     this.shareBlob = null;
     this.state = "playing";
+    // The café contract: count wide floors this tower (previewed on the banner).
+    this.contractRun = mode === "classic" && this.contractNext && contractOpen(this.save.cafe);
+    this.contractNext = false;
+    this.wideCount = 0;
+    this.updateContractChip();
+    if (this.contractRun) { track("contract_started"); if (!this.save.seenFeatures.includes("try-contract")) this.save.seenFeatures.push("try-contract"); }
+    if (this.hq && !this.save.seenFeatures.includes("try-hq")) this.save.seenFeatures.push("try-hq");
+    if (mode === "classic" && this.save.profile.towers === 2) track("third_tower_started");
     // 3, 2, 1, BUILD! (not on the very first guided tower).
     this.countIn = this.tutorial ? 0 : 3;
     this.countShown = 0;
@@ -958,6 +970,7 @@ export class App implements DailyHost {
     if (challenge) this.banner(stageName(challenge.id), stageGoal(challenge));
     else if (used.length) this.banner(t("Boosts on"), used.join(" · "));
     else if (mode === "daily") this.banner(t("Daily tower #{n}", { n: dayNumber() }), t("Same tower for everyone"));
+    if (this.contractRun) this.banner(t("☕ Café contract"), t("Land {n} wide floors (keep {pct}% of the first floor's width)", { n: CONTRACT_WIDE, pct: Math.round(WIDE_SHARE * 100) }));
     if (this.hq) {
       const b = BUSINESSES.find(x => x.id === this.hq)!, next = readyStage(this.save, b.id);
       this.banner(t("{name} HQ", { name: t(STAGE_NAMES[b.id][next]) }), t("Build {n} floors to open it!", { n: hqFloors(next) }));
@@ -1154,8 +1167,33 @@ export class App implements DailyHost {
         }
       }
     }
-    // Tall towers stand in their district for good.
-    if ((this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
+    // The café loop: tower one becomes the starter building, floors open the terrace, and
+    // the contract's wide floors are counted.
+    const terraceBefore = this.save.cafe.terrace, wasContract = this.contractRun;
+    const cafeR = cafeRun(this.save.cafe, { mode: this.mode, floors: run.floors, stack: this.sim.stack, skin: this.builtSkin || this.save.skin, shape: this.builtShape || "square", wide: this.wideCount, contract: this.contractRun });
+    this.contractRun = false;
+    $("contract-chip").hidden = true;
+    this.overDest = cafeR.starter ? "tower" : this.save.cafe.terrace === 1 ? "terrace" : cafeR.contractDone ? "cafe" : "";
+    this.cafeLine = "";
+    if (cafeR.starter) {
+      this.outcome.rewards.unshift({ kind: "island", text: t("🏢 Your first tower now stands in Skyhaven, beside the Coffee Cart!") });
+      track("first_tower_completed", { floors: run.floors });
+    }
+    if (cafeR.terraceReady) {
+      this.outcome.rewards.unshift({ kind: "island", text: t("☕ The café terrace is ready to open!") });
+      track("terrace_unlocked", { floors: this.save.cafe.floors });
+    }
+    if (cafeR.contractDone) {
+      this.outcome.rewards.unshift({ kind: "island", text: t("☕ Café contract done! The terrace gets lights, flowers and more customers") });
+      track("contract_done");
+    }
+    if (this.mode !== "zen" && run.floors > 0) {
+      if (terraceBefore === 0 && !cafeR.terraceReady) this.cafeLine = t("+{n} floors · Café terrace {have} of {need} floors", { n: run.floors, have: this.save.cafe.floors, need: TERRACE_FLOORS });
+      else if (wasContract) this.cafeLine = t("Café contract: {n} of {total} wide floors", { n: Math.min(this.wideCount, CONTRACT_WIDE), total: CONTRACT_WIDE });
+      else this.cafeLine = t("+{n} office floors for Skyhaven Inc.", { n: run.floors });
+    }
+    // Tall towers stand in their district for good (the starter stands in Skyhaven instead).
+    if (!cafeR.starter && (this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {
       this.outcome.rewards.push({ kind: "island", text: t("Your tower now stands in {name}", { name: t(district.name) }) });
     }
     // Taller towers earn grander rooftops; say which one this tower got and what's next.
@@ -1232,6 +1270,11 @@ export class App implements DailyHost {
 
   private landed(out: Extract<DropOutcome, { type: "land" }>): void {
     const fx = this.renderer.fx, f = out.floor, s = this.sound, vib = this.save.settings.vibrate;
+    if (this.contractRun && this.wideCount < CONTRACT_WIDE && isWide(f, this.sim.stack[0])) {
+      this.wideCount++;
+      this.updateContractChip();
+      if (this.wideCount === CONTRACT_WIDE) { s.unlock(); vibrate(vib, [15, 30, 15]); }
+    }
     if (out.perfect && this.tutorial && this.sim.perfects === 1) {
       // A new player's first perfect drop deserves a cheer.
       fx.popup(t("NICE!"), t("That's how it's done!"), f.y + 3, "#ffe08a", 1.6, true);
@@ -1489,7 +1532,8 @@ export class App implements DailyHost {
     document.body.classList.toggle("city-home", cityHome);
     if (cityHome && this.state === "menu" && !this.moving && !this.visiting) this.tycoon.enterCity();
     // The first visit of the day opens the rewards calendar (once the first-day welcome is done).
-    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && giftState(this.save.profile.gift).ready) {
+    // (Not before the first sale: a new player's first visit is about the Coffee Cart.)
+    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && this.save.tycoon.tips >= 1 && giftState(this.save.profile.gift).ready) {
       this.dailyAuto = dayKey(0);
       setTimeout(() => {
         // Another window is up (welcome back, Mayor Pip): try again once it's closed.
@@ -1499,7 +1543,8 @@ export class App implements DailyHost {
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
-    if (p.towers >= 1 && save.chapters.seen < save.chapters.done) setTimeout(() => {
+    // (In the town, Pip's chapter waits until the first steps there are done.)
+    if (p.towers >= 1 && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) setTimeout(() => {
       if (this.state === "menu" && !$("menu").hidden && !openModalEl() && !this.moving && !this.visiting && $("levelup").hidden && $("starter").hidden && $("mayor").hidden && $("welcome").hidden) introduce(save, () => this.persist());
     }, 1100);
     $("rules").hidden = p.towers >= 3;
@@ -1626,6 +1671,53 @@ export class App implements DailyHost {
     if (this.state !== "menu") return;
     this.setHomeMode(mode);
     this.start(mode);
+  }
+
+  /** From the build sheet: a Classic tower that works on the café contract. */
+  playContract(): void {
+    if (this.state !== "menu" || !contractOpen(this.save.cafe)) return;
+    this.contractNext = true;
+    this.play("classic");
+  }
+
+  // ---------- The café loop (logic/cafe.ts) ----------
+  /** The next tower is a café-contract tower; the one being built is; its wide floors so far. */
+  private contractNext = false;
+  private contractRun = false;
+  private wideCount = 0;
+  /** Where the results card's main button goes, if somewhere other than another tower. */
+  private overDest: "" | "tower" | "terrace" | "cafe" = "";
+  /** What the results card says this tower did for the café. */
+  private cafeLine = "";
+  /** Set when the results card's main button sent the player to the town. */
+  townDest: "" | "tower" | "terrace" | "cafe" = "";
+
+  private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
+  /** The café loop's pieces for the 3D town (the same object until something changes). */
+  private bizCafe(): BizCafe | null {
+    const c = this.save.cafe, key = JSON.stringify([c.starter, c.terrace, c.contract]);
+    if (key !== this.cafeCache.key) {
+      const sk = c.starter ? skinById(c.starter.s) : null;
+      this.cafeCache = {
+        key,
+        val: {
+          starter: c.starter && sk ? { b: c.starter.b, floors: sk.floors, glass: sk.glass, slab: sk.slab, lit: sk.lit[0] ?? "#ffd99a", pts: shapeById(c.starter.h).pts } : null,
+          terrace: c.terrace,
+          contract: c.contract,
+        },
+      };
+    }
+    return this.cafeCache.val;
+  }
+
+  /** The contract chip while building: wide floors so far. */
+  private updateContractChip(): void {
+    const chip = $("contract-chip");
+    chip.hidden = !this.contractRun;
+    if (!this.contractRun) return;
+    const n = Math.min(this.wideCount, CONTRACT_WIDE), done = n >= CONTRACT_WIDE;
+    chip.classList.toggle("done", done);
+    chip.innerHTML = `<span>☕</span><b>${n}/${CONTRACT_WIDE}</b><small>${esc(done ? t("Café contract done!") : t("wide floors"))}</small>`;
   }
 
   /** From the Tycoon: build a tower to add office floors. */
@@ -2043,6 +2135,20 @@ export class App implements DailyHost {
     nb.className = `btn ${next ? "btn-primary" : "btn-secondary"} wide`;
     nb.hidden = !next;
     if (next) nb.textContent = t("Next: {name}", { name: stageName(next.id) });
+    // Where this tower's floors went: the main button goes there, and another tower stays
+    // one tap away. (Once the loop is known, it's just "Build again".)
+    const go = $("go-town"), dest = mode === "challenge" ? "" : this.overDest;
+    go.hidden = !dest;
+    if (dest) {
+      go.textContent = dest === "tower" ? t("See my tower in Skyhaven") : dest === "terrace" ? t("Open my café terrace") : t("See my café");
+      again.className = "btn btn-secondary";
+    }
+    const cafeEl = $("over-cafe");
+    cafeEl.hidden = !this.cafeLine;
+    if (this.cafeLine) {
+      const c = save.cafe, pct = c.terrace === 0 ? Math.min(1, c.floors / TERRACE_FLOORS) : c.contract === 1 ? Math.min(1, this.wideCount / CONTRACT_WIDE) : 1;
+      cafeEl.innerHTML = `<span class="over-cafe-ico">☕</span><span class="over-cafe-txt"><b>${esc(this.cafeLine)}</b>${c.terrace === 0 || c.contract === 1 ? `<i class="over-cafe-bar"><i style="width:${Math.round(pct * 100)}%"></i></i>` : ""}</span>`;
+    }
     $("share").hidden = mode === "challenge";
     $("share-video").hidden = mode === "challenge" || !(this.renderer instanceof Renderer3D) || typeof MediaRecorder === "undefined";
     $("over-actions").classList.toggle("single", mode === "challenge");
@@ -2457,6 +2563,7 @@ export class App implements DailyHost {
       skyline: this.city().skyline,
       districts: this.city().districts,
       bizLots: this.visiting ? NO_LOTS : this.bizView(),
+      bizCafe: this.visiting ? null : this.bizCafe(),
       bizLive: this.tycoon.liveState(),
       bizFocus: this.bizFocus && this.state === "menu",
       bizCard: this.tycoon.cardOpen,

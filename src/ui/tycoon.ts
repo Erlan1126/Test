@@ -12,6 +12,8 @@ import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
+import { track } from "../stats";
+import { claimTerrace, contractOpen, CONTRACT_WIDE, TERRACE_MULT } from "../logic/cafe";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
@@ -35,8 +37,12 @@ export interface TycoonHost {
   canCity(): boolean;
   /** Flies the camera over the business district (or back). */
   setBizFocus(on: boolean): void;
-  /** Where a lot's building is on screen. */
+  /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
+  /** Set when the results card sent the player here, to see their tower or the café. */
+  townDest: "" | "tower" | "terrace" | "cafe";
+  /** Starts a café-contract tower. */
+  playContract(): void;
 }
 
 /** A gold coin with a star, for counters. */
@@ -63,6 +69,8 @@ export class TycoonUI {
   private vip = { id: "", until: 0 };
   /** A golden customer: rare, sparkling, and gone in a minute. */
   private golden = { id: "", until: 0 };
+  /** The first visit's close look at the starter tower runs until this time. */
+  private frameUntil = 0;
   private nextGolden = 0;
   private nextVip = 0;
   private nextRush = 0;
@@ -200,16 +208,63 @@ export class TycoonUI {
     this.html.delete($("tcy-labels"));
     this.render();
     this.startLoop();
-    // The first visit: Mayor Pip says what this place is.
-    const welcome = () => {
-      if (!this.inCity || this.save.seenFeatures.includes("ty-city")) return;
-      // Wait for any other dialog (Pip's chapter intro, the welcome-back card) to close first.
-      if (!$("mayor").hidden || !$("welcome").hidden || openModalEl()) { setTimeout(welcome, 1500); return; }
-      this.save.seenFeatures.push("ty-city");
+    track("first_district_visit");
+    // The first visit (or "See my tower" from the results): a close look at the player's
+    // first tower beside the Coffee Cart, then on to the first sale. Once seen, skipped.
+    const dest = this.host.townDest, c = this.save.cafe;
+    this.host.townDest = "";
+    if (c.starter && (!c.framed || dest === "tower")) {
+      const intro = !c.framed;
+      c.framed = true;
       this.host.persist();
-      mayorNote(t("Welcome to Skyhaven Inc.!"), t("This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!"), t("Let's go!"));
-    };
-    if (!this.save.seenFeatures.includes("ty-city")) setTimeout(welcome, 1200);
+      this.frameUntil = Date.now() + 3600;
+      this.render();
+      setTimeout(() => { this.frameUntil = 0; this.render(); if (intro) this.welcomeNote(); }, 3600);
+    } else if (!this.save.seenFeatures.includes("ty-city")) setTimeout(() => this.welcomeNote(), 1200);
+    if (dest === "terrace") setTimeout(() => this.openTerrace(), 900);
+    if (dest === "cafe") { this.selected = "coffee"; this.render(); }
+  }
+
+  /** The first visit: Mayor Pip says what this place is, and what to do first. */
+  private welcomeNote(): void {
+    if (!this.inCity || this.save.seenFeatures.includes("ty-city")) return;
+    // Wait for any other dialog (the welcome-back card) to close first.
+    if (!$("mayor").hidden || !$("welcome").hidden || openModalEl()) { setTimeout(() => this.welcomeNote(), 1500); return; }
+    this.save.seenFeatures.push("ty-city");
+    this.host.persist();
+    const own = this.save.cafe.starter;
+    mayorNote(t("Welcome to Skyhaven Inc.!"), own
+      ? t("That's your first tower, standing in your own town now! Every floor you build becomes office space here. Now tap the Coffee Cart and make your first sale.")
+      : t("This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!"), t("Let's go!"));
+  }
+
+  /** The café terrace is ready: open it (exactly once), with a celebration. */
+  openTerrace(): void {
+    const c = this.save.cafe;
+    if (c.terrace !== 1 || !this.inCity) return;
+    const el = overlay();
+    el.style.setProperty("--b1", "#ffb36b");
+    el.style.setProperty("--b2", "#e0743a");
+    el.innerHTML = `<div class="evo-card"><span class="evo-rays" aria-hidden="true"></span>
+      <small>${esc(t("{n} floors built", { n: c.floors }))}</small>
+      <div class="evo-from plain">${esc(t("Your towers grew the Coffee Cart"))}</div>
+      <div class="evo-icon">☕</div>
+      <b class="evo-to">${esc(t("Café terrace"))}</b>
+      <span class="evo-label">${esc(t("Outdoor seats, an awning and more customers"))}</span>
+      <p class="adv-perk">${esc(t("The Coffee Cart earns ×{n}", { n: TERRACE_MULT }))}</p>
+      <button type="button" class="btn btn-primary">${esc(t("Open it!"))}</button>
+    </div>`;
+    showOverlay(el, () => {
+      if (!claimTerrace(this.save.cafe)) return;
+      track("terrace_claimed");
+      this.host.persist();
+      this.host.sound.unlock();
+      this.pulse = { id: "coffee", at: Date.now() };
+      fireworks(2, () => this.host.sound.firework());
+      this.selected = "coffee";
+      toast(t("☕ The café terrace is open!"));
+      this.render();
+    });
   }
 
   /** Back to the home screen. */
@@ -254,7 +309,7 @@ export class TycoonUI {
   }
 
   /** What's happening right now, for the 3D district. */
-  liveState(): { golden: string; rush: string; vip: string; critic: string; power: string; sel: string; pulse: string; pulseAt: number } {
+  liveState(): { frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; pulse: string; pulseAt: number } {
     const now = Date.now(), s = this.save;
     return {
       pulse: this.pulse.id,
@@ -263,6 +318,7 @@ export class TycoonUI {
       rush: rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "",
       vip: this.vip.until > now ? this.vip.id : "",
       golden: this.golden.until > now ? this.golden.id : "",
+      frame: this.frameUntil > now,
       critic: this.critic.until > now ? this.critic.id : "",
       power: this.power.until > now ? this.power.id : "",
     };
@@ -326,14 +382,24 @@ export class TycoonUI {
     const s = this.save, ty = s.tycoon, live = this.liveState();
     const nameOf = (id: string) => t(stageName(id, stageNow(s, id)));
     const select = (id: string) => () => { this.selected = id; this.render(); };
-    // Rewards waiting and a finished chapter come first.
-    if (!$("collect-chip").hidden) return { text: $("collect-chip").textContent ?? "", sub: t("Tap to collect"), tone: "gift", act: () => $("collect-chip").click() };
-    if ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden) return { text: t("Chapter complete!"), sub: t("Tap to celebrate with Mayor Pip"), tone: "gift", act: () => $("mayor-strip").click() };
-    // First steps.
+    // First steps come before anything else: the first sale, then a level, then a manager.
     const cart = BUSINESSES[0];
     if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("First steps · {n} of 3", { n: 1 }), tone: "learn", act: () => { this.selected = "coffee"; this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
     if (ty.tips === 1) return { text: t("Buy a level for the Coffee Cart"), sub: t("First steps · {n} of 3", { n: 2 }), tone: "learn", act: select("coffee") };
     if (ty.tips === 2) return { text: t("Hire a manager for the Coffee Cart"), sub: t("Managers sell for you, even while you're away"), pct: Math.min(1, ty.coins / cart.manager), tone: "learn", act: select("coffee") };
+    // The café terrace is ready: the town changed because of the player's towers.
+    if (s.cafe.terrace === 1) return { text: t("☕ Your café terrace is ready!"), sub: t("Open it: the Coffee Cart earns more"), tone: "gift", act: () => this.openTerrace() };
+    // A first-time objective stays in view until it's tried: the café contract, then a
+    // business's first HQ (both cost nothing but a tower).
+    if (contractOpen(s.cafe) && !s.seenFeatures.includes("try-contract")) return { text: t("☕ Café contract: land {n} wide floors", { n: CONTRACT_WIDE }), sub: t("The terrace gets lights, flowers and more customers"), tone: "grow", act: () => { this.leave(); this.host.playContract(); } };
+    const firstHq = !s.seenFeatures.includes("try-hq") ? BUSINESSES.find(b => readyStage(s, b.id)) : undefined;
+    if (firstHq) {
+      const st = readyStage(s, firstHq.id);
+      return { text: t("Build the {name} HQ", { name: t(stageName(firstHq.id, st)) }), sub: t("A {n}-floor tower makes it grow", { n: hqFloors(st) }), tone: "grow", act: () => { this.leave(); this.host.buildHQ(firstHq.id); } };
+    }
+    // Rewards waiting and a finished chapter.
+    if (!$("collect-chip").hidden) return { text: $("collect-chip").textContent ?? "", sub: t("Tap to collect"), tone: "gift", act: () => $("collect-chip").click() };
+    if ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden) return { text: t("Chapter complete!"), sub: t("Tap to celebrate with Mayor Pip"), tone: "gift", act: () => $("mayor-strip").click() };
     // Live moments: a golden customer beats everything.
     if (live.golden) return { text: t("✨ A golden customer is at {name}!", { name: nameOf(live.golden) }), sub: t("Catch them before they leave: {n}s", { n: Math.max(0, Math.ceil((this.golden.until - Date.now()) / 1000)) }), tone: "gold", act: () => this.catchGolden() };
     if (live.vip) return { text: t("A VIP is at {name}!", { name: nameOf(live.vip) }), sub: t("Tap them for a big tip"), tone: "hot", act: select(live.vip) };
@@ -376,7 +442,9 @@ export class TycoonUI {
     const live = this.liveState();
     const gold = live.golden ? `<button type="button" class="ty-chip golden-chip" data-golden="1">✨ ${esc(t("Golden customer · {n}s", { n: Math.max(0, Math.ceil((this.golden.until - now) / 1000)) }))}</button>` : "";
     this.put($("tcy-events"), gold + ($("ty-events").querySelector(".boom")?.outerHTML ?? ""));
-    this.put($("tcy-labels"), BUSINESSES.map((b, i) => {
+    // The player's first tower has its own bubble (a caption during the first look at it).
+    const starterTag = s.cafe.starter ? `<button type="button" class="tag bub starter${live.frame ? " sel" : ""}" data-tag="starter" data-i="-1" data-h="-1"><span class="tag-ico">🏢</span>${live.frame ? `<b>${esc(t("Your first tower!"))}</b>` : ""}</button>` : "";
+    this.put($("tcy-labels"), starterTag + BUSINESSES.map((b, i) => {
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
       if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
@@ -443,6 +511,11 @@ export class TycoonUI {
     if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-next")) return;
     const act = target.closest<HTMLElement>("[data-act]"), tag = target.closest<HTMLElement>(".tag");
     let id = tag?.dataset.tag ?? "";
+    if (id === "starter") {
+      const st = this.save.cafe.starter;
+      if (st) toast(tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));
+      return;
+    }
     if (!id) {
       let best = 56;
       BUSINESSES.forEach((b, i) => {
@@ -529,8 +602,10 @@ export class TycoonUI {
   private openBuild(): void {
     const s = this.save, rows: string[] = [];
     // No choice to make (no HQ waiting, no other modes yet): straight into a tower.
-    const choice = BUSINESSES.some(b => readyStage(s, b.id)) || ["daily-btn", "challenges-btn", "zen-btn"].some(id => !$(id).hidden);
+    const choice = contractOpen(s.cafe) || BUSINESSES.some(b => readyStage(s, b.id)) || ["daily-btn", "challenges-btn", "zen-btn"].some(id => !$(id).hidden);
     if (!choice) { this.leave(); this.host.play("classic"); return; }
+    // The café contract, previewed: what to do and what the café gets.
+    if (contractOpen(s.cafe)) rows.push(`<button type="button" class="tcy-mode contract" data-mode="contract"><span class="mode-ico">☕</span><span><b>${esc(t("Café contract: land {n} wide floors", { n: CONTRACT_WIDE }))}</b><small>${esc(s.cafe.wideBest ? t("Best so far: {n} of {total}. The terrace gets lights, flowers and more customers", { n: s.cafe.wideBest, total: CONTRACT_WIDE }) : t("Keep floors wide. The terrace gets lights, flowers and more customers"))}</small></span></button>`);
     for (const b of BUSINESSES) {
       const st = readyStage(s, b.id);
       if (st) rows.push(`<button type="button" class="tcy-mode hq" data-mode="hq" data-id="${b.id}"><span class="mode-ico">🏗️</span><span><b>${esc(t("Build the {name} HQ", { name: t(stageName(b.id, st)) }))}</b><small>${esc(t("A {n}-floor tower makes it grow", { n: hqFloors(st) }))}</small></span></button>`);
@@ -556,6 +631,7 @@ export class TycoonUI {
     const m = el.dataset.mode!;
     if (m === "journey") { $("challenges-btn").click(); return; }
     this.leave();
+    if (m === "contract") { this.host.playContract(); return; }
     if (m === "hq") this.host.buildHQ(el.dataset.id!);
     else this.host.play(m as "classic" | "daily" | "zen");
   }
@@ -972,7 +1048,7 @@ export class TycoonUI {
           this.host.sound.click(); vibrate(s.settings.vibrate, 8);
           this.pulse = { id: b.id, at: Date.now() };
           this.goal("taps");
-          if (s.tycoon.tips === 0) s.tycoon.tips = 1;
+          if (s.tycoon.tips === 0) { s.tycoon.tips = 1; track("first_sale"); }
           this.render();
         }
         return;

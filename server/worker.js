@@ -322,8 +322,18 @@ async function rankings(request, url, env, now) {
     if (!install) return json({ error: "no id" }, 400);
     const v = String(body?.v ?? "").slice(0, 24), lang = String(body?.lang ?? "").slice(0, 5);
     const int = (x, max) => Math.max(0, Math.min(max, Math.round(Number(x) || 0)));
-    const stmts = items.map(it => db.prepare("INSERT INTO stats (at, install, kind, day, towers, v, lang, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(now, install, it?.kind === "tower" ? "tower" : "open", int(it?.day, 100000), int(it?.towers, 10000000), v, lang, JSON.stringify(it?.data ?? {}).slice(0, 500)));
+    // Each item may carry its own id (eid): an item sent again (after a lost reply, or
+    // from a queue kept on the phone) is stored once.
+    const kindOf = k => (k === "tower" || k === "event" ? k : "open");
+    const stmts = items.map(it => {
+      const eid = String(it?.eid ?? "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 24);
+      const data = JSON.stringify(eid ? { ...(it?.data ?? {}), eid } : (it?.data ?? {})).slice(0, 500);
+      const row = [now, install, kindOf(it?.kind), int(it?.day, 100000), int(it?.towers, 10000000), v, lang, data];
+      return eid
+        ? db.prepare("INSERT INTO stats (at, install, kind, day, towers, v, lang, data) SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM stats WHERE install = ? AND json_extract(data, '$.eid') = ?)")
+          .bind(...row, install, eid)
+        : db.prepare("INSERT INTO stats (at, install, kind, day, towers, v, lang, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(...row);
+    });
     if (stmts.length) await db.batch(stmts);
     if (Math.random() < 0.01) await db.prepare("DELETE FROM stats WHERE id <= (SELECT MAX(id) - 300000 FROM stats)").run();
     return json({ ok: true });

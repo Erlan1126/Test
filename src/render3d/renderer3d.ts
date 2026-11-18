@@ -28,7 +28,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
-import { buildBizCity, lotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
+import { buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -197,9 +197,12 @@ export class Renderer3D {
   private skylineIn: unknown = null;
   private biz: BizCity | null = null;
   private bizKey = "";
+  private bizCafeIn: unknown = null;
   /** Each business's stage at the last rebuild (-1 while not open). */
   private bizPrev = new Map<string, number>();
   /** Where on Main Street the camera looks (eases as the street grows). */
+  /** The first-visit close-up of the starter tower (allowed closer than the island's width). */
+  private bizFraming = false;
   private bizLook = { x: 0, z: 0, zoom: 1, tx: 0, tz: 0, tzoom: 1 };
   private bizIn: unknown = null;
   private bizStyleKey = "";
@@ -508,7 +511,7 @@ export class Renderer3D {
     // Over the district the whole width of the island always fits the screen (phones are
     // narrow); the camera then only slides up and down the town.
     const tb = townBounds(), fitS = (v.W * 0.94) / (tb.tMax - tb.tMin);
-    const bizS = Math.min(ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom, fitS);
+    const bizS = this.bizFraming ? ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom : Math.min(ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom, fitS);
     const S = lerp(ISO_SCALE * v.s * v.zoom, bizS, k);
     // Over the business district, the camera looks at its plaza instead of the tower.
     const target = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(v.level * FH, BIZ_SLOT.y + 2, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
@@ -786,10 +789,12 @@ export class Renderer3D {
     const look = lookFor(f.skin, "normal"), th = f.theme;
     const style: BizStyle = { lawn: th.lawn, rock: th.rockL, dirt: th.dirtL, plaza: th.plaza, road: th.road, leaf: th.leaf[0], trunk: th.trunk, tree: th.tree, glass: look.glass, lit: look.lit[0] ?? "#ffd99a" };
     const styleKey = `${th.id}|${f.skin.id}`;
-    if (lots !== this.bizIn || styleKey !== this.bizStyleKey) {
+    if (lots !== this.bizIn || styleKey !== this.bizStyleKey || f.bizCafe !== this.bizCafeIn) {
       this.bizIn = lots;
+      this.bizCafeIn = f.bizCafe;
       this.bizStyleKey = styleKey;
-      const key = JSON.stringify(lots) + styleKey;
+      const cafe = f.bizCafe ?? null;
+      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
@@ -798,7 +803,7 @@ export class Renderer3D {
         const grown = this.bizPrev.size ? lots.filter(l => l.state === "open" && (this.bizPrev.get(l.id) ?? -1) < l.s).map(l => l.id) : [];
         this.bizPrev = new Map(lots.map(l => [l.id, l.state === "open" ? l.s : -1]));
         if (lots.length) {
-          this.biz = buildBizCity(lots, style, grown);
+          this.biz = buildBizCity(lots, style, grown, cafe ?? undefined);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
         }
@@ -807,11 +812,15 @@ export class Renderer3D {
     if (!this.biz) return;
     const fo = streetFocus(lots);
     this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom;
+    // The first visit: a close look at the player's first tower and the Coffee Cart together.
+    const framing = !!f.bizLive?.frame;
+    if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
+    this.bizFraming = framing;
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
     // Only up and down: across, the island stays centred; along, it never slides off.
-    {
+    if (!framing) {
       const tb = townBounds(), tc = (tb.tMin + tb.tMax) / 2;
       let sv = (this.bizLook.tx + this.bizLook.tz) * Math.SQRT1_2;
       sv = Math.min(tb.sMax - 6, Math.max(tb.sMin + 6, sv));
@@ -829,7 +838,7 @@ export class Renderer3D {
   /** Where a lot's building shows on screen: its base and its top (page px). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
-    const { x, z } = lotPos(i), r = this.gl.domElement.getBoundingClientRect();
+    const { x, z } = i < 0 ? plotPos() : lotPos(i), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     const at = (y: number): [number, number] => {
