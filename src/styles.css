@@ -3425,3 +3425,17 @@ body.tabs-open #tycoon .room-bar .ty-auto { color: #fff; background: linear-grad
 body.tabs-open #tycoon .room-bar .hq-btn { order: 0; flex: 1 1 100%; }
 body.tabs-open #tycoon .room-bar:has(.hq-btn) { flex-wrap: wrap; }
 body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !important; opacity: 0.95; }
+
+/* ---- Team: every advisor with their perk; hire the one you want ---- */
+.ty-adv-list { display: grid; gap: 8px; margin: 0 2px 10px; }
+.ty-adv-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 18px; background: #fff; box-shadow: 0 4px 14px rgba(42, 31, 110, 0.07); }
+.ty-adv-row .ty-adv-face { flex: none; width: 46px; height: 46px; border-radius: 14px; background: color-mix(in srgb, var(--o) 18%, #fff); }
+.ty-adv-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ty-adv-txt b { font: 400 13.5px var(--display); color: #2a1f5c; }
+.ty-adv-txt b small { font: 800 11px var(--ui); color: #8a80b8; }
+.ty-adv-txt em { font-style: normal; font-size: 12px; font-weight: 700; color: #6a3cff; line-height: 1.25; }
+.ty-adv-hire { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 74px; padding: 7px 10px; border: 0; border-radius: 14px; cursor: pointer; font: 400 13px var(--display); color: #fff;
+  background: linear-gradient(180deg, #8a5cff, #6a3cff); box-shadow: 0 3px 0 #4a24c0; }
+.ty-adv-hire small { font: 800 11px var(--ui); opacity: 0.95; }
+.ty-adv-hire[data-short] { filter: grayscale(0.5); opacity: 0.8; }
+.ty-adv-on { flex: none; padding: 6px 10px; border-radius: 12px; font: 400 11px var(--display); color: #19a87a; background: #e3f8ee; }

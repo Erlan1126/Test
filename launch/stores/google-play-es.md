@@ -51,8 +51,10 @@ Spanish section):
 > Clásico, Diaria, un modo Zen relajante en el que no puedes perder, y seis desafíos de
 > monumentos. Decenas de aspectos de torre, islas, trofeos y niveles de constructor.
 >
-> Gratis y sin anuncios. Los aspectos e islas premium son opcionales, solo cambian cómo
-> se ve el juego y nunca te ayudan a puntuar.
+> Gratis y sin anuncios. Los Cristales Celestes opcionales compran aspectos, islas y
+> formas, el pase premium y mejoras para tus negocios de Skyhaven Inc. Siempre ves
+> exactamente lo que recibes antes de comprar; nada de lo que compras con cristales es
+> al azar.
 
 **Graphics:** reuse the English ones (`feature-graphic.png` and `google-play-screenshots/`),
 or replace the phone screenshots with Spanish ones taken from the game with the phone set

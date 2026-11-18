@@ -24,7 +24,8 @@ import { FEATURE_LEVEL, FEATURE_NAMES, isNew, isOpen, openedBetween, type Featur
 import { FEATURE_ICON, FEATURE_TEXT } from "./data/levels";
 import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayKey, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
-import { loadSave, normalize, SAVE_KEY, writeSave, type SaveData } from "./logic/save";
+import { loadSave, normalize, SAVE_KEY, writeSave, writeSaveChecked, type SaveData } from "./logic/save";
+import { creditDurably } from "./logic/purchase-flow";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { FEVER_AT, FEVER_FLOORS, POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
 import { RunRecorder, simFor } from "./logic/replay";
@@ -72,14 +73,14 @@ import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
 import { choosePayments, purchaseReturn } from "./payments";
-import { buyWithCrystals, grantPack, newPlayerId } from "./logic/premium";
+import { buyWithCrystals, newPlayerId } from "./logic/premium";
 import { carriedOver, passTier, refreshPass, rewardText, unclaimed } from "./logic/pass";
 import type { CrystalPack, Product } from "./data/premium";
 import type { PackPurchase } from "./payments";
 import { chestReady, claimChest, collectRent, lateChest, refreshMissions, rentFullIn, rentPerHour, rentWaiting, streakView } from "./logic/daily";
 import { CHEST } from "./data/daily";
 import { getLang, resolveLang, setLang, t, tn, translateDom } from "./i18n";
-import { askForReview, backupSave, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, onOpenUrl, readBackup, scheduleReminders, type ReminderInfo } from "./native";
+import { askForReview, backupSave, backupSaveNow, isNative, nativeReady, nativeShare, onAppHidden, onBackButton, onOpenUrl, readBackup, scheduleReminders, type ReminderInfo } from "./native";
 import { maybeOfferStarter, starterLeft } from "./logic/starter";
 import { formatPrice, packById, STARTER_PACK, STARTER_SKIN } from "./data/premium";
 import { drawSkinPreview } from "./render/previews";
@@ -462,23 +463,37 @@ export class App implements DailyHost {
   }
 
   /** A pack purchase finished: add its crystals (once per transaction). */
-  private packBought(p: PackPurchase, test: boolean): boolean {
-    const added = grantPack(this.save, p.pack, p.tx);
-    if (!added) return false;
-    if (p.pack === STARTER_PACK.id) {
-      closeModal($("starter"));
-      this.save.skin = STARTER_SKIN;
+  /** A crystal pack was paid for. Resolves true once the crystals and the purchase's
+   *  transaction id are durably saved (only then may the store be told it's done). */
+  private async packBought(p: PackPurchase, test: boolean): Promise<boolean> {
+    const { added, durable } = await creditDurably(this.save, p.pack, p.tx, () => this.saveDurably());
+    if (added) {
+      if (p.pack === STARTER_PACK.id) {
+        closeModal($("starter"));
+        this.save.skin = STARTER_SKIN;
+        void this.saveDurably();
+      }
+      this.sound.purchase();
+      const extra = packById(p.pack)?.extras;
+      toast((test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }))
+        + (extra?.vipDays ? " " + t("Plus {n} days of VIP!", { n: extra.vipDays }) : ""));
+      if (extra && !this.calmMotion) fireworks(4, () => this.sound.firework());
+      this.refresh();
+      this.sheets?.refreshShop();
+      this.daily?.refreshPass();
     }
-    this.persist();
-    this.sound.purchase();
-    const extra = packById(p.pack)?.extras;
-    toast((test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }))
-      + (extra?.vipDays ? " " + t("Plus {n} days of VIP!", { n: extra.vipDays }) : ""));
-    if (extra && !this.calmMotion) fireworks(4, () => this.sound.firework());
-    this.refresh();
-    this.sheets?.refreshShop();
-    this.daily?.refreshPass();
-    return true;
+    return durable;
+  }
+
+  /** Saves now and checks it worked: the save on this device, and on the phones the native
+   *  backup copy too. Used before confirming purchases to the store. */
+  private async saveDurably(): Promise<boolean> {
+    if (this.reloading) return false; // a restored backup is loading: confirm it next launch
+    this.cityView = null;
+    const local = writeSaveChecked(this.storage, this.save);
+    const native = await backupSaveNow(JSON.stringify(this.save));
+    this.scheduleBackup();
+    return local && native;
   }
 
   /** The one-time Starter Pack offer. */
@@ -534,9 +549,10 @@ export class App implements DailyHost {
       if (attempt) await new Promise(r => setTimeout(r, wait));
       const list = await pay.purchases(this.save.playerId);
       if (!list) continue;
-      let any = false;
-      for (const p of list) any = this.packBought(p, false) || any;
-      if (any) return;
+      // Stop checking once something new has been credited.
+      const before = this.save.crystalTx.length;
+      for (const p of list) await this.packBought(p, false);
+      if (this.save.crystalTx.length > before) return;
     }
   }
 

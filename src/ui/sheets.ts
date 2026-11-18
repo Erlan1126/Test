@@ -299,13 +299,13 @@ export class Sheets {
       const first = !save.packsFirst.includes(pk.id);
       const card = document.createElement("button");
       card.type = "button";
-      card.className = `pack-card${pk.best || pk.value ? " best" : ""}${pk.extras ? " hero" : ""}`;
+      card.className = `pack-card${pk.value ? " best" : ""}${pk.extras ? " hero" : ""}`;
       card.disabled = !pay;
       const extras = [
         ...(pk.extras?.skins ?? []).map(id => t("{name} skin (only here)", { name: t(skinById(id).name) })),
         pk.extras?.vipDays ? t("{n} days of VIP", { n: pk.extras.vipDays }) : "",
       ].filter(Boolean);
-      card.innerHTML = `${pk.best ? `<span class="best-value">${esc(t("Most popular"))}</span>` : pk.value ? `<span class="best-value">${esc(t("Best value"))}</span>` : ""}
+      card.innerHTML = `${pk.value ? `<span class="best-value">${esc(t("Best value"))}</span>` : ""}
         ${first ? `<span class="first-x2">${esc(t("2× first time"))}</span>` : ""}
         ${pk.extras?.skins?.length ? `<canvas class="pack-skin" aria-hidden="true"></canvas>` : ""}
         <span class="pack-gems" aria-hidden="true">${"💎".repeat(Math.min(3, 1 + shown.indexOf(pk) / 2 | 0))}</span>

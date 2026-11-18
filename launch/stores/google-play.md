@@ -73,8 +73,10 @@ products"; leave them as consumable, which is the default for this game's purcha
 | crystals_8000 | 8,000 Sky Crystals | 6,000 Sky Crystals + 33% bonus | $59.99 |
 | crystals_14000 | 14,000 Sky Crystals | 10,000 Sky Crystals + 40% bonus | $99.99 |
 
-Premium skins, islands and the Sky Pass premium track are bought with Sky Crystals inside
-the game, so they don't need their own products.
+Skins, islands, shapes, the Sky Pass premium track and Skyhaven Inc. boosts (cash booster,
+time warps, doubling away earnings, hiring a chosen advisor) are bought with Sky Crystals
+inside the game, so they don't need their own products. Nothing bought with crystals is
+random.
 
 Product IDs must match exactly. Set up a **payments profile** (Monetize → Monetization
 setup) before you can sell anything.

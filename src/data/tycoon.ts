@@ -162,7 +162,7 @@ export const ADVISORS: Advisor[] = [
   { id: "otto", name: "Otto", title: "Night manager", perk: "away", n: 4, look: { skin: "#e8b48a", hair: "#9a9aa8", outfit: "#2a3590", extra: "none" } },
   { id: "gus", name: "Gus", title: "Tycoon legend", perk: "all", n: 1.5, look: { skin: "#f2c39a", hair: "#e2e2ea", outfit: "#1c1640", extra: "crown" } },
 ];
-/** An advisor crate in the shop costs this many crystals. */
+/** Hiring an advisor of your choice costs this many crystals. */
 export const CRATE_CRYSTALS = 150;
 
 // ---------- The managers' vault: more hours away ----------

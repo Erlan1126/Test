@@ -1378,4 +1378,8 @@ export const FR: Record<string, string> = {
   "Next: {name} at {n}": "Ensuite : {name} à {n}",
   "×2 speed at {n}": "Vitesse ×2 à {n}",
   "Manager": "Gérant",
+  "On your team": "Dans ton équipe",
+  "Hire": "Recruter",
+  "Hired": "Recruté",
+  "Finish all of today's goals for a free advisor (one you don't have yet, picked at random).": "Termine tous les objectifs du jour pour un conseiller gratuit (un que tu n'as pas encore, tiré au hasard).",
 };

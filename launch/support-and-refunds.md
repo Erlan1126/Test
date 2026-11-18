@@ -16,7 +16,8 @@ payment server again.
 
 ## Refunds
 
-Premium items are cosmetic and optional.
+Sky Crystals are optional. They buy skins, islands and shapes, the Sky Pass premium
+track, and Skyhaven Inc. business boosts; nothing bought with them is random.
 
 - **Bought in the Android or iPhone app:** refunds go through the store you paid. On
   Android, open Google Play → Profile → Payments & subscriptions → Budget & history, or

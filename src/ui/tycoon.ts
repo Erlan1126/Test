@@ -6,7 +6,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, openCrate, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
 } from "../logic/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
@@ -1114,27 +1114,31 @@ export class TycoonUI {
     this.render();
   }
 
-  /** The advisor collection, and a crate to open for crystals. */
+  /** The advisor collection: every advisor's perk is shown, and any not on the team yet
+   *  can be hired by choice for crystals (no random crates). */
   private renderAdvisors(): void {
-    const s = this.save, have = s.tycoon.advisors, left = ADVISORS.length - have.length;
+    const s = this.save, have = s.tycoon.advisors;
     this.put($("ty-advisors"), `<div class="ty-adv-head"><b>${esc(t("{n} of {total} collected", { n: have.length, total: ADVISORS.length }))}</b><i class="ty-adv-meter"><i style="width:${(have.length / ADVISORS.length) * 100}%"></i></i></div>
-      <div class="ty-adv-grid">${ADVISORS.map(a => {
+      <div class="ty-adv-list">${ADVISORS.map(a => {
         const own = have.includes(a.id);
-        return `<div class="ty-adv${own ? "" : " locked"}" style="--o:${a.look.outfit}"><span class="ty-adv-face">${advisorSvg(a, own)}</span><b>${esc(own ? t(a.name) : "?")}</b><small>${esc(own ? perkText(a) : t(a.title))}</small></div>`;
+        return `<div class="ty-adv-row${own ? " own" : ""}" style="--o:${a.look.outfit}"><span class="ty-adv-face">${advisorSvg(a, true)}</span>
+          <span class="ty-adv-txt"><b>${esc(t(a.name))} <small>${esc(t(a.title))}</small></b><em>${esc(perkText(a))}</em></span>
+          ${own ? `<span class="ty-adv-on">${esc(t("On your team"))}</span>` : `<button type="button" class="ty-adv-hire" data-hire="${a.id}"${s.crystals < CRATE_CRYSTALS ? " data-short=\"1\"" : ""}>${esc(t("Hire"))}<small>💎 ${CRATE_CRYSTALS}</small></button>`}
+        </div>`;
       }).join("")}</div>
-      ${left ? `<button type="button" class="ty-crate"><span class="crate-art" aria-hidden="true"></span><span><b>${esc(t("Advisor crate"))}</b><small>${esc(t("A new advisor you don't have yet"))}</small></span><em>💎 ${CRATE_CRYSTALS}</em></button>` : ""}
-      <p class="sheet-note">${esc(t("Finish all of today's goals to get a new advisor for free."))}</p>`);
+      <p class="sheet-note">${esc(t("Finish all of today's goals for a free advisor (one you don't have yet, picked at random)."))}</p>`);
   }
 
   private onAdvisorClick(e: Event): void {
-    if (!(e.target as Element).closest(".ty-crate")) return;
+    const btn = (e.target as Element).closest<HTMLElement>("[data-hire]");
+    if (!btn) return;
     const s = this.save;
     if (s.crystals < CRATE_CRYSTALS) { this.short(CRATE_CRYSTALS); return; }
-    const a = openCrate(s);
+    const a = hireAdvisor(s, btn.dataset.hire!);
     if (!a) return;
     this.host.persist();
     this.host.refresh();
-    this.showAdvisor(a, t("Advisor crate"));
+    this.showAdvisor(a, t("Hired"));
     this.render();
   }
 

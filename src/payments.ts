@@ -16,6 +16,7 @@ import { VIP_ID as VIP_ANDROID, VIP_ID_IOS } from "./logic/vip";
 const VIP_ID = platform() === "ios" ? VIP_ID_IOS : VIP_ANDROID;
 import { CRYSTAL_PACKS, PAYMENTS_API, STARTER_PACK, type CrystalPack } from "./data/premium";
 import { isNative, platform } from "./native";
+import { approvalHandler } from "./logic/purchase-flow";
 
 export type BuyResult = "ok" | "redirect" | "cancelled" | "error";
 
@@ -34,8 +35,9 @@ export interface PaymentProvider {
   /** The store's own price text in the player's currency, once it has loaded. */
   price?(pack: CrystalPack): string | null;
   /** Called whenever a purchase completes, including ones that finish later (a pending
-   *  payment) or were interrupted last time. */
-  onPurchase?: (p: PackPurchase) => void;
+   *  payment) or were interrupted last time. Resolves true once it's durably saved; store
+   *  purchases are only confirmed to the store after that. */
+  onPurchase?: (p: PackPurchase) => boolean | Promise<boolean>;
   /** Skyrise VIP (app stores and test mode only). */
   buyVip?(): Promise<BuyResult>;
   vipPrice?(): string | null;
@@ -46,7 +48,7 @@ export interface PaymentProvider {
 /** Test mode: adds crystals instantly and charges nothing. */
 class TestProvider implements PaymentProvider {
   readonly live = false;
-  onPurchase?: (p: PackPurchase) => void;
+  onPurchase?: (p: PackPurchase) => boolean | Promise<boolean>;
   onVip?: (active: boolean) => void;
   async buyVip(): Promise<BuyResult> {
     this.onVip?.(true);
@@ -61,7 +63,7 @@ class TestProvider implements PaymentProvider {
 /** Stripe Checkout through the Skyrise payment server. */
 class StripeProvider implements PaymentProvider {
   readonly live = true;
-  onPurchase?: (p: PackPurchase) => void;
+  onPurchase?: (p: PackPurchase) => boolean | Promise<boolean>;
   constructor(private readonly api: string) {}
 
   async buy(pack: CrystalPack, playerId: string): Promise<BuyResult> {
@@ -141,7 +143,7 @@ function purchasePlugin(): Promise<Cdv | null> {
 class StoreProvider implements PaymentProvider {
   readonly live = true;
   readonly store = true;
-  onPurchase?: (p: PackPurchase) => void;
+  onPurchase?: (p: PackPurchase) => boolean | Promise<boolean>;
   private readonly ready: Promise<Cdv | null>;
   private waiting: { id: string; done: (r: BuyResult) => void } | null = null;
 
@@ -156,22 +158,11 @@ class StoreProvider implements PaymentProvider {
     cdv.store.register([...CRYSTAL_PACKS, STARTER_PACK].map(p => ({ id: p.id, type: cdv.ProductType.CONSUMABLE, platform: plat })));
     cdv.store.register([{ id: VIP_ID, type: cdv.ProductType.PAID_SUBSCRIPTION, platform: plat }]);
     cdv.store.when()
-      // The crystals are added (and saved) first, then the store is told the purchase is
-      // done. If the app closes in between, the store hands the purchase over again on the
-      // next launch, and its transaction id stops it counting twice.
-      .approved(t => {
-        for (const p of t.products) {
-          if (p.id === VIP_ID) {
-            this.onVip?.(true);
-            if (this.waiting?.id === VIP_ID) { this.waiting.done("ok"); this.waiting = null; }
-            continue;
-          }
-          if (![...CRYSTAL_PACKS, STARTER_PACK].some(x => x.id === p.id)) continue;
-          this.onPurchase?.({ pack: p.id, tx: `${plat}:${t.transactionId}` });
-          if (this.waiting?.id === p.id) { this.waiting.done("ok"); this.waiting = null; }
-        }
-        void t.finish();
-      })
+      // The crystals and the transaction id are saved durably first; only then is the
+      // store told the purchase is done (see logic/purchase-flow.ts). If saving fails or
+      // the app closes in between, the store hands the purchase over again, and the saved
+      // transaction id stops it counting twice.
+      .approved(t => void this.onApproved({ id: t.transactionId, products: t.products.map(p => p.id), finish: () => t.finish() }))
       .productUpdated(() => this.onPrices())
       // Once the store has loaded the player's purchases, it knows whether VIP is still on
       // (renewed or cancelled).
@@ -183,6 +174,14 @@ class StoreProvider implements PaymentProvider {
   }
 
   onVip?: (active: boolean) => void;
+
+  private readonly onApproved = approvalHandler({
+    isPack: id => [...CRYSTAL_PACKS, STARTER_PACK].some(x => x.id === id),
+    isVip: id => id === VIP_ID,
+    vip: () => this.onVip?.(true),
+    credit: async (pack, tx) => (await this.onPurchase?.({ pack, tx })) === true,
+    delivered: id => { if (this.waiting?.id === id) { this.waiting.done("ok"); this.waiting = null; } },
+  }, platform() === "ios" ? "ios-appstore" : "android-playstore");
 
   vipPrice(): string | null {
     const cdv = (window as unknown as { CdvPurchase?: Cdv }).CdvPurchase;

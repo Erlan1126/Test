@@ -185,11 +185,14 @@ export function giveAdvisor(s: SaveData, rnd = Math.random): Advisor | undefined
   s.tycoon.advisors.push(a.id);
   return a;
 }
-/** Opens an advisor crate for crystals. */
-export function openCrate(s: SaveData, rnd = Math.random): Advisor | undefined {
-  if (s.crystals < CRATE_CRYSTALS || ADVISORS.every(a => has(s, a.id))) return undefined;
+/** Hires the advisor the player chose, for crystals: no randomness, the perk is shown
+ *  before buying, and an advisor already on the team can't be bought again. */
+export function hireAdvisor(s: SaveData, id: string): Advisor | undefined {
+  const a = ADVISORS.find(x => x.id === id);
+  if (!a || has(s, a.id) || s.crystals < CRATE_CRYSTALS) return undefined;
   s.crystals -= CRATE_CRYSTALS;
-  return giveAdvisor(s, rnd);
+  s.tycoon.advisors.push(a.id);
+  return a;
 }
 /** VIPs come this many times as often; their tips are this many times bigger. */
 export const vipRate = (s: SaveData): number => perkOf(s, "vip").reduce((m, a) => m * a.n, 1);

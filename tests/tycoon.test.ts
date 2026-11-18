@@ -266,7 +266,7 @@ describe("rush hour fairness", () => {
 });
 
 import { ADVISORS, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST } from "../src/data/tycoon";
-import { buyUpgrade, buyVault, evolve, festivalBiz, giveAdvisor, offlineHours, openCrate, readyStage, stageNow, startBoom, review } from "../src/logic/tycoon";
+import { buyUpgrade, buyVault, evolve, festivalBiz, giveAdvisor, offlineHours, hireAdvisor, readyStage, stageNow, startBoom, review } from "../src/logic/tycoon";
 
 describe("grand openings, upgrades, advisors and the vault", () => {
   it("a business only evolves once its new headquarters is built tall enough", () => {
@@ -308,9 +308,24 @@ describe("grand openings, upgrades, advisors and the vault", () => {
     expect(new Set(s.tycoon.advisors).size).toBe(ADVISORS.length);
     expect(giveAdvisor(s)).toBeUndefined();
     s.crystals = 1000;
-    expect(openCrate(s)).toBeUndefined(); // nothing left: no crystals taken
+    expect(hireAdvisor(s, "otto")).toBeUndefined(); // already on the team: no crystals taken
     expect(s.crystals).toBe(1000);
     expect(offlineHours(s, T0)).toBe(8 + 4); // Otto
+  });
+
+  it("crystals hire the advisor you choose, once, with nothing random", () => {
+    const s = defaultSave();
+    s.tycoon.advisors.push("penny"); // owned before stays owned
+    s.crystals = 400;
+    const a = hireAdvisor(s, "gus");
+    expect(a?.id).toBe("gus");
+    expect(s.crystals).toBe(400 - 150);
+    expect(s.tycoon.advisors).toEqual(["penny", "gus"]);
+    expect(hireAdvisor(s, "gus")).toBeUndefined();
+    expect(hireAdvisor(s, "nobody")).toBeUndefined();
+    s.crystals = 100;
+    expect(hireAdvisor(s, "nova")).toBeUndefined(); // not enough crystals
+    expect(s.crystals).toBe(100);
   });
 
   it("the vault adds hours away; booms and reviews are short boosts warps leave out", () => {

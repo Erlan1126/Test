@@ -27,8 +27,6 @@ export interface CrystalPack {
   cents: number;
   /** "+20% bonus" style tag. */
   bonus?: string;
-  /** Tagged "Most popular". */
-  best?: boolean;
   /** Tagged "Best value". */
   value?: boolean;
   /** No longer offered (kept so past purchases and restores still work). */
@@ -40,7 +38,7 @@ export interface CrystalPack {
 export const CRYSTAL_PACKS: CrystalPack[] = [
   { id: "crystals_200", crystals: 200, cents: 199 },
   { id: "crystals_650", crystals: 650, cents: 599, bonus: "+8%", retired: true },
-  { id: "crystals_1250", crystals: 1250, cents: 1099, bonus: "+14%", best: true },
+  { id: "crystals_1250", crystals: 1250, cents: 1099, bonus: "+14%" },
   { id: "crystals_2600", crystals: 2600, cents: 2099, bonus: "+24%" },
   { id: "crystals_8000", crystals: 8000, cents: 5999, bonus: "+33%", extras: { vipDays: 7 } },
   { id: "crystals_14000", crystals: 14000, cents: 9999, bonus: "+40%", value: true, extras: { skins: ["diamond_sky"], vipDays: 30 } },

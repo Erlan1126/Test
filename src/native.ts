@@ -186,6 +186,12 @@ export function onAppHidden(fn: () => void): void {
 // copy of the save in native storage and restore it if the web copy goes missing.
 const BACKUP_KEY = "skyrise.save.backup";
 
+/** Writes the native backup copy now and says whether it worked. */
+export async function backupSaveNow(json: string): Promise<boolean> {
+  if (!isNative()) return true;
+  try { await Preferences.set({ key: BACKUP_KEY, value: json }); return true; } catch { return false; }
+}
+
 export function backupSave(json: string): void {
   if (!isNative()) return;
   void Preferences.set({ key: BACKUP_KEY, value: json }).catch(() => {});

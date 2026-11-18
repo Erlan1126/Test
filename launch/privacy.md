@@ -82,7 +82,7 @@ saved with it so you can see who tried.
 
 ## Crystal purchases on the website
 
-Sky Crystals and everything they buy are optional and cosmetic. If you buy a pack on the website:
+Sky Crystals and everything they buy are optional. If you buy a pack on the website:
 
 - **Stripe handles your payment.** You pay on Stripe's checkout page. Stripe handles your
   card details, and the game never sees them. Stripe may ask for your email address for

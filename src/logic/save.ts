@@ -453,6 +453,19 @@ export function writeSave(storage: Pick<Storage, "setItem"> | null, save: SaveDa
   try { storage?.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage full or blocked */ }
 }
 
+/** Writes the save and reads it back: true only if it's really there (for purchases, which
+ *  must not be confirmed to the store before they're saved). */
+export function writeSaveChecked(storage: Pick<Storage, "setItem" | "getItem"> | null, save: SaveData): boolean {
+  if (!storage) return false;
+  const json = JSON.stringify(save);
+  try {
+    storage.setItem(SAVE_KEY, json);
+    return storage.getItem(SAVE_KEY) === json;
+  } catch {
+    return false;
+  }
+}
+
 // ---------- Transfer codes ----------
 // A code is the save as base64 text with a short checksum, so a mistyped or cut-off
 // code is rejected instead of loading broken progress.

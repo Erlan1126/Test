@@ -83,8 +83,9 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 > Classic, Daily, a relaxing Zen mode with no way to fail, and six landmark challenges.
 > 43 tower skins, island themes, trophies and builder levels.
 >
-> Free to play with no ads. Optional premium skins and islands are cosmetic only and
-> never help you score.
+> Free to play with no ads. Optional Sky Crystals buy skins, islands and shapes, the
+> Sky Pass premium track, and boosts for your Skyhaven Inc. businesses. You always see
+> exactly what you get before you buy; nothing bought with crystals is random.
 
 **Keywords** (100 max, commas, no spaces):
 
@@ -134,10 +135,15 @@ and tax details (Business → Agreements). Without it, purchases won't load.
 > Skyrise is a one-tap tower stacking game. Tap anywhere to drop the sliding floor.
 > In-app purchases are packs of Sky Crystals (consumable), in Shop → 💎 Crystals. The
 > shop appears after the first 3 towers (one tower takes under a minute); then tap the
-> bag icon at the bottom of the home screen. Crystals buy cosmetic skins and islands and
-> the monthly Sky Pass premium track (Pass button). Everything is cosmetic and nothing is
-> random: players always see exactly what they get. No account is needed. The worldwide
-> leaderboard (Ranks button) shows a nickname the player chooses.
+> bag icon at the bottom of the home screen. Crystals buy: cosmetic tower skins, islands
+> and shapes; the monthly Sky Pass premium track; and boosts for the Skyhaven Inc.
+> business mode (a permanent x2 cash booster, time warps that add hours of earnings,
+> doubling what businesses earned while away, and hiring a chosen advisor whose perk is
+> shown first). Nothing bought with crystals is random: players always see exactly what
+> they get. (Finishing a day's free goals gives a random advisor the player doesn't own;
+> it costs nothing.) Paid items never change tower scores, except that VIP includes one
+> free rewind a day. No account is needed. The worldwide leaderboard (Ranks button)
+> shows a nickname the player chooses.
 
 ## Spanish (Mexico) localization
 

@@ -118,11 +118,13 @@ How many people can you house before you run out of room?
 - Drop a floor: tap, click, or press Space
 - Pause: Esc or P
 
-## Premium is cosmetic only
+## What crystals buy
 
-Skyrise is free to play. There are a few optional premium items (4 tower skins,
-2 islands and a Founder's Pack) that change how your tower and island look.
-They never help you score, and everything else is unlocked by playing.
+Skyrise is free to play. Optional Sky Crystals buy tower skins, islands and shapes, the
+Sky Pass premium track, and boosts for your Skyhaven Inc. businesses (a cash booster,
+time warps, doubling away earnings, and hiring the advisor you choose). You always see
+exactly what you get before buying; nothing bought with crystals is random. Paid items
+never change your tower scores.
 Payments go through Stripe. Skyrise never sees your card details.
 
 ## Good to know
