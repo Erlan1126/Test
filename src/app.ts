@@ -1189,6 +1189,7 @@ export class App implements DailyHost {
     }
     if (this.mode !== "zen" && run.floors > 0) {
       if (terraceBefore === 0 && !cafeR.terraceReady) this.cafeLine = t("+{n} floors · Café terrace {have} of {need} floors", { n: run.floors, have: this.save.cafe.floors, need: TERRACE_FLOORS });
+      else if (cafeR.terraceReady) this.cafeLine = t("+{n} floors · Café terrace ready to open!", { n: run.floors });
       else if (wasContract) this.cafeLine = t("Café contract: {n} of {total} wide floors", { n: Math.min(this.wideCount, CONTRACT_WIDE), total: CONTRACT_WIDE });
       else this.cafeLine = t("+{n} office floors for Skyhaven Inc.", { n: run.floors });
     }

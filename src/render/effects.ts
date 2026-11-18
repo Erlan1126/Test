@@ -399,3 +399,19 @@ export function drawGuide(p: Paint, top: Floor, moverY: number, ready: boolean, 
   }
   ctx.restore();
 }
+
+/** During a streak: a thin solid outline round the top floor's rim (where the moving floor
+ *  lands), dark outside and light inside, so it stays readable through the fever glow, the
+ *  glass tint and the night bloom. */
+export function drawLandingEdge(p: Paint, top: Floor, y: number, shape?: Shape): void {
+  const { ctx, view } = p;
+  let foot: [number, number][] = shape && shape.id !== "square" ? footprint(shape, top, top.y, top.frame) : [];
+  if (foot.length < 3) foot = [[top.x0, top.z0], [top.x1, top.z0], [top.x1, top.z1], [top.x0, top.z1]];
+  const pts = foot.map(([x, z]) => view.project(x, y, z));
+  ctx.save();
+  ctx.lineJoin = "round";
+  const path = () => { ctx.beginPath(); pts.forEach(([x, yy], i) => (i ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy))); ctx.closePath(); };
+  path(); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(20, 24, 70, 0.55)"; ctx.stroke();
+  path(); ctx.lineWidth = 1.2; ctx.strokeStyle = "rgba(255, 255, 255, 0.85)"; ctx.stroke();
+  ctx.restore();
+}

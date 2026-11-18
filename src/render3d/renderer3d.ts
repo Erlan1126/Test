@@ -19,7 +19,7 @@ import { landmarkIndex, metersFor, type Box } from "../logic/rules";
 import type { SkylineTower } from "../logic/skyline";
 import { drawLandmarkLabel, drawLandmarkShape, landmarkAspect, Weather } from "../render/atmosphere";
 import { floorColor, lookFor } from "../render/buildings";
-import { drawGuide, Effects, type Debris } from "../render/effects";
+import { drawGuide, drawLandingEdge, Effects, type Debris } from "../render/effects";
 import { clipConvex, footprint, type XZ } from "../render/footprint";
 import { ISO_X, View, type Env, type Paint } from "../render/paint";
 import type { Frame, Shot } from "../render/renderer";
@@ -1166,6 +1166,8 @@ export class Renderer3D {
     if (m && f.showMover) {
       if (m.power || m.kind === "magnet") this.drawBadge(m, m.power ? POWER_ICON[m.power] : MAGNET_ICON);
       if (f.guide) drawGuide(p, top, m.y, sim.wouldBePerfect(), f.shape);
+      // A streak's glow can wash out the edge the player aims at: outline it.
+      else if (sim.combo >= 5 || sim.feverLeft > 0) drawLandingEdge(p, top, m.y, f.shape);
     }
     fx.drawFlash(p, top, f.shape);
     fx.drawParticles(p);

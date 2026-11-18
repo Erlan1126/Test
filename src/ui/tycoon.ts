@@ -47,7 +47,7 @@ export interface TycoonHost {
 
 /** A gold coin with a star, for counters. */
 /** Skyhaven Inc.'s cash: a green banknote. */
-export const COIN_SVG = `<svg viewBox="0 0 24 24"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9df5b8"/><stop offset="0.55" stop-color="#3fcf7a"/><stop offset="1" stop-color="#1f9a55"/></linearGradient></defs><rect x="1.5" y="7" width="21" height="13" rx="2.5" fill="#1f8a4c" transform="rotate(-8 12 13.5)"/><rect x="1.5" y="5" width="21" height="13" rx="2.5" fill="url(#cg)" stroke="#167a42" stroke-width="1.1"/><rect x="4" y="7.5" width="16" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.9"/><circle cx="12" cy="11.5" r="3.3" fill="#e9ffe9"/><text x="12" y="13.7" text-anchor="middle" font-size="6" font-weight="900" font-family="Arial,sans-serif" fill="#167a42">$</text></svg>`;
+export const COIN_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="7" width="21" height="13" rx="2.5" fill="#1f8a4c" transform="rotate(-8 12 13.5)"/><rect x="1.5" y="5" width="21" height="13" rx="2.5" fill="url(#cg)" stroke="#167a42" stroke-width="1.1"/><rect x="4" y="7.5" width="16" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.9"/><circle cx="12" cy="11.5" r="3.3" fill="#e9ffe9"/><text x="12" y="13.7" text-anchor="middle" font-size="6" font-weight="900" font-family="Arial,sans-serif" fill="#167a42">$</text></svg>`;
 
 export class TycoonUI {
   private amount: number | "max" = 1;
