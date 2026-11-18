@@ -794,7 +794,7 @@ export class Renderer3D {
       this.bizCafeIn = f.bizCafe;
       this.bizStyleKey = styleKey;
       const cafe = f.bizCafe ?? null;
-      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract } : null);
+      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }

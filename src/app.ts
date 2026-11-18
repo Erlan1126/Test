@@ -37,6 +37,9 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
+import { orderFor, orderProgress, recordHq, ORDER_MULT, type Order, type OrderRun } from "./logic/orders";
+import { orderText, orderUnit } from "./ui/orders";
+import type { StarterTower } from "./logic/cafe";
 import { cafeRun, claimTerrace, contractOpen, CONTRACT_WIDE, isWide, TERRACE_FLOORS, TERRACE_MULT, WIDE_SHARE } from "./logic/cafe";
 import type { BizCafe } from "./render3d/bizcity";
 import { adsReady, showRewarded } from "./ads";
@@ -290,6 +293,7 @@ export class App implements DailyHost {
         if (this.state === "menu" && this.save.profile.towers >= 1 && !this.visiting) this.tycoon.open();
         if (this.state === "menu") this.tycoon.welcome(earned, away);
         if (this.state === "menu") this.tycoon.freshStart();
+        this.startupShown = true;
       };
       setTimeout(show, 1500);
     }
@@ -405,6 +409,32 @@ export class App implements DailyHost {
 
   /** The Android back button: closes what's open, pauses, or steps back to the menu.
    *  Returns false on the main menu, where the app goes to the background. */
+  /** Nothing else is up: no splash, sheet, Pip, welcome-back card, celebration or level-up. */
+  private calm(): boolean {
+    return this.state === "menu" && this.startupShown && !document.getElementById("splash") && !openModalEl() && !this.moving && !this.visiting
+      && !document.querySelector(".modal:not([hidden]), .overlay:not([hidden]), #evolve:not([hidden])")
+      && $("mayor").hidden && $("welcome").hidden && $("levelup").hidden && $("starter").hidden && $("rewards").hidden;
+  }
+  private popups: { key: string; run: () => void }[] = [];
+  private popTimer = 0;
+  /** Shows a pop-up once the screen is calm, after the ones queued before it. */
+  private queuePopup(key: string, run: () => void): void {
+    if (!this.popups.some(x => x.key === key)) this.popups.push({ key, run });
+    this.pumpPopups();
+  }
+  private pumpPopups(): void {
+    if (this.popTimer || !this.popups.length) return;
+    this.popTimer = window.setTimeout(() => {
+      this.popTimer = 0;
+      // A beat of calm between two pop-ups, so they never arrive back to back.
+      if (this.calm()) { if (this.calmSince && Date.now() - this.calmSince > 700) { this.calmSince = 0; this.popups.shift()!.run(); } else if (!this.calmSince) this.calmSince = Date.now(); }
+      else this.calmSince = 0;
+      this.pumpPopups();
+    }, 400);
+  }
+  private calmSince = 0;
+  private startupShown = false;
+
   private back(): boolean {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
@@ -957,6 +987,8 @@ export class App implements DailyHost {
     this.contractRun = mode === "classic" && this.contractNext && contractOpen(this.save.cafe);
     this.contractNext = false;
     this.wideCount = 0;
+    this.orderDone = false;
+    { const bi = this.hq ? BUSINESSES.findIndex(b => b.id === this.hq) : -1; this.hqOrder = bi >= 0 ? orderFor(bi, readyStage(this.save, this.hq!)) : null; }
     this.updateContractChip();
     if (this.contractRun) { track("contract_started"); if (!this.save.seenFeatures.includes("try-contract")) this.save.seenFeatures.push("try-contract"); }
     if (this.hq && !this.save.seenFeatures.includes("try-hq")) this.save.seenFeatures.push("try-hq");
@@ -976,10 +1008,10 @@ export class App implements DailyHost {
     if (challenge) this.banner(stageName(challenge.id), stageGoal(challenge));
     else if (used.length) this.banner(t("Boosts on"), used.join(" · "));
     else if (mode === "daily") this.banner(t("Daily tower #{n}", { n: dayNumber() }), t("Same tower for everyone"));
-    if (this.contractRun) this.banner(t("☕ Café contract"), t("Land {n} wide floors (keep {pct}% of the first floor's width)", { n: CONTRACT_WIDE, pct: Math.round(WIDE_SHARE * 100) }));
+    if (this.contractRun) this.banner(t("☕ Café contract · keep floors {pct}% wide", { pct: Math.round(WIDE_SHARE * 100) }), t("Land {n} wide floors", { n: CONTRACT_WIDE }));
     if (this.hq) {
       const b = BUSINESSES.find(x => x.id === this.hq)!, next = readyStage(this.save, b.id);
-      this.banner(t("{name} HQ", { name: t(STAGE_NAMES[b.id][next]) }), t("Build {n} floors to open it!", { n: hqFloors(next) }));
+      this.banner(t("{name} HQ · order: {order}", { name: t(STAGE_NAMES[b.id][next]), order: this.hqOrder ? orderText(this.hqOrder) : "" }), t("Build {n} floors to open it!", { n: hqFloors(next) }));
     }
   }
 
@@ -1173,7 +1205,15 @@ export class App implements DailyHost {
         const id = this.hq, from = stageNow(this.save, id), need = hqFloors(readyStage(this.save, id)), to = evolveBiz(this.save, id, run.floors);
         if (to) {
           this.hq = null;
-          this.outcome.rewards.unshift({ kind: "island", text: t("🏢 The {name} HQ is open!", { name: t(STAGE_NAMES[id][to]) }) });
+          // The tower just built stands as the HQ, and the order's bonus if it was filled.
+          if (this.hqOrder) {
+            const filled = recordHq(this.save.orders, id, this.hqOrder, { ...this.orderRun(), floors: run.floors, stack: this.sim.stack, skin: this.builtSkin || this.save.skin, shape: this.builtShape || "square" });
+            this.outcome.rewards.unshift(filled
+              ? { kind: "star", text: t("📋 Order filled! {name} earns ×{n} for good", { name: t(STAGE_NAMES[id][to]), n: ORDER_MULT }) }
+              : { kind: "pass", text: t("📋 Order missed ({have} of {n}): try it on the next HQ", { have: orderProgress(this.hqOrder, this.orderRun()), n: this.hqOrder.n }) });
+            track(filled ? "order_filled" : "order_missed", { biz: id, stage: to }, false);
+          }
+          this.outcome.rewards.unshift({ kind: "island", text: t("🏢 The {name} HQ is open! Your tower stands in Skyhaven now", { name: t(STAGE_NAMES[id][to]) }) });
           clearTimeout(this.evolveTimer);
           this.evolveTimer = window.setTimeout(() => { if (this.state !== "playing" && this.state !== "paused") this.tycoon.evolve(id, from, to); }, 1600);
         } else if (need) {
@@ -1290,11 +1330,16 @@ export class App implements DailyHost {
 
   private landed(out: Extract<DropOutcome, { type: "land" }>): void {
     const fx = this.renderer.fx, f = out.floor, s = this.sound, vib = this.save.settings.vibrate;
-    if (this.contractRun && this.wideCount < CONTRACT_WIDE && isWide(f, this.sim.stack[0])) {
+    if ((this.contractRun || this.hqOrder) && isWide(f, this.sim.stack[0])) {
       this.wideCount++;
-      this.updateContractChip();
-      if (this.wideCount === CONTRACT_WIDE) { s.unlock(); vibrate(vib, [15, 30, 15]); }
+      if (this.contractRun && this.wideCount === CONTRACT_WIDE) { s.unlock(); vibrate(vib, [15, 30, 15]); }
     }
+    if (this.hqOrder) {
+      const was = this.orderDone;
+      this.orderDone = orderProgress(this.hqOrder, this.orderRun()) >= this.hqOrder.n;
+      if (this.orderDone && !was) { s.unlock(); vibrate(vib, [15, 30, 15]); }
+    }
+    this.updateContractChip();
     if (out.perfect && this.tutorial && this.sim.perfects === 1) {
       // A new player's first perfect drop deserves a cheer.
       fx.popup(t("NICE!"), t("That's how it's done!"), f.y + 3, "#ffe08a", 1.6, true);
@@ -1554,20 +1599,16 @@ export class App implements DailyHost {
     // The first visit of the day opens the rewards calendar (once the first-day welcome is done).
     // (Not during the first steps: a new player's first visit is about the Coffee Cart, its
     // first sale, the café terrace and the manager. The calendar is in Goals all along.)
+    // Pop-ups come one at a time, in this order: the welcome-back card (at launch), then
+    // the daily calendar, then Mayor Pip's new chapter (see queuePopup).
     if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && (this.save.tycoon.tips >= 3 || p.towers >= 4) && giftState(this.save.profile.gift).ready) {
       this.dailyAuto = dayKey(0);
-      setTimeout(() => {
-        // Another window is up (welcome back, Mayor Pip): try again once it's closed.
-        if (this.state !== "menu" || document.querySelector(".modal:not([hidden]), .overlay:not([hidden])")) { this.dailyAuto = ""; return; }
-        this.showDaily();
-      }, 1400);
+      this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); });
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     // (In the town, Pip's chapter waits until the first steps there are done.)
-    if (p.towers >= 1 && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) setTimeout(() => {
-      if (this.state === "menu" && !$("menu").hidden && !openModalEl() && !this.moving && !this.visiting && $("levelup").hidden && $("starter").hidden && $("mayor").hidden && $("welcome").hidden) introduce(save, () => this.persist());
-    }, 1100);
+    if (p.towers >= 1 && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");
@@ -1706,6 +1747,10 @@ export class App implements DailyHost {
   private contractNext = false;
   private contractRun = false;
   private wideCount = 0;
+  /** The HQ tower's building order, and whether it's filled yet. */
+  private hqOrder: Order | null = null;
+  private orderDone = false;
+  private orderRun(): OrderRun { return { wide: this.wideCount, perfects: this.sim.perfects, bestStreak: this.sim.bestStreak }; }
   /** Where the results card's main button goes, if somewhere other than another tower. */
   private overDest: "" | "tower" | "terrace" | "cafe" = "";
   /** What the results card says this tower did for the café. */
@@ -1716,15 +1761,17 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, key = JSON.stringify([c.starter, c.terrace, c.contract]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, hqs]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
+      const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
       this.cafeCache = {
         key,
         val: {
           starter: c.starter && sk ? { b: c.starter.b, floors: sk.floors, glass: sk.glass, slab: sk.slab, lit: sk.lit[0] ?? "#ffd99a", pts: shapeById(c.starter.h).pts } : null,
           terrace: c.terrace,
           contract: c.contract,
+          hq: Object.fromEntries(Object.entries(hqs).map(([id, tw]) => [id, look(tw)])),
         },
       };
     }
@@ -1734,7 +1781,13 @@ export class App implements DailyHost {
   /** The contract chip while building: wide floors so far. */
   private updateContractChip(): void {
     const chip = $("contract-chip");
-    chip.hidden = !this.contractRun;
+    chip.hidden = !this.contractRun && !this.hqOrder;
+    if (this.hqOrder && !this.contractRun) {
+      const o = this.hqOrder, n = orderProgress(o, this.orderRun());
+      chip.classList.toggle("done", n >= o.n);
+      chip.innerHTML = `<span>📋</span><b>${n}/${o.n}</b><small>${esc(n >= o.n ? t("Order filled!") : orderUnit(o))}</small>`;
+      return;
+    }
     if (!this.contractRun) return;
     const n = Math.min(this.wideCount, CONTRACT_WIDE), done = n >= CONTRACT_WIDE;
     chip.classList.toggle("done", done);
@@ -2217,7 +2270,7 @@ export class App implements DailyHost {
       lines.push({ cls: "reward star", text: tn(trophies.length, "Trophy: {names} (+{n} ★)", "Trophies: {names} (+{n} ★)", { names }) });
     }
     if (this.opened.length) {
-      lines.push({ cls: "reward new", text: t("Now on the main menu: {list}", { list: this.opened.map(f => t(FEATURE_NAMES[f])).join(", ") }) });
+      lines.push({ cls: "reward new", text: t("New to try: {list}", { list: this.opened.map(f => t(FEATURE_NAMES[f])).join(", ") }) });
     }
     return lines;
   }

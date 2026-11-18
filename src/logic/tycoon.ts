@@ -3,6 +3,7 @@
 import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { cafeMult } from "./cafe";
+import { orderMult } from "./orders";
 import { vipActive } from "./vip";
 import { dayKey } from "./rules";
 
@@ -102,7 +103,7 @@ export function festivalBiz(now = Date.now()): string {
 export function bizMult(s: SaveData, b: Business, now = Date.now(), live = true): number {
   const ups = UPGRADES.filter(u => u.biz === b.id && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
   const adv = perkOf(s, "biz").filter(a => a.biz?.includes(b.id)).reduce((m, a) => m * a.n, 1);
-  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1) * (b.id === "coffee" ? cafeMult(s.cafe) : 1)
+  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1) * (b.id === "coffee" ? cafeMult(s.cafe) : 1) * orderMult(s.orders, b.id)
     * (live && (s.tycoon.reviews[b.id] ?? 0) > now ? 2 : 1);
 }
 
@@ -372,7 +373,9 @@ export function tick(s: SaveData, now = Date.now()): number {
         // A rush hour that came and went between two cycles still pays one rushed cycle.
         if (!rushed && t.rush.id === b.id) {
           const rs = t.rush.until - rushSeconds(s) * 1000;
-          if (t.rush.until > start && rs < end) {
+          // (Only when the whole rush fell between two finished cycles: a cycle that finished
+          // during it was already paid rushed, by an earlier tick in live play.)
+          if (rs >= start && t.rush.until > start && rs < end) {
             const at = Math.min(end, t.rush.until);
             total += basePay(s, b, at) * (RUSH_MULT - 1);
           }
@@ -472,13 +475,17 @@ export function doubleAway(s: SaveData, earned: number, awayMs: number, now = Da
 /** Goal kinds with three sizes; each pays stars by size, all three a crystal bonus. */
 export const GOAL_TIERS: Record<GoalType, number[]> = { vip: [2, 4, 6], buy: [10, 25, 50], taps: [30, 60, 120], rush: [1, 2, 3] };
 export const GOAL_STARS = [3, 5, 8], GOALS_BONUS_CRYSTALS = 10;
+/** The hand-selling goal for a company with no manager yet. */
+export const FRESH_TAPS = 15;
 
 /** Deals today's goals if they're from another day. */
 export function dealGoals(s: SaveData, now = Date.now(), rnd = Math.random): void {
   const day = dayKey(0, now), g = s.tycoon.goals;
   if (g.day === day && g.list.length) return;
   const kinds = (Object.keys(GOAL_TIERS) as GoalType[]).sort(() => rnd() - 0.5).slice(0, 3);
-  s.tycoon.goals = { day, bonus: false, list: kinds.map(k => ({ t: k, n: GOAL_TIERS[k][Math.floor(rnd() * 3)], p: 0 })) };
+  // Before the first manager, selling by hand is slow work: a day-one goal stays small.
+  const fresh = s.tycoon.managers.length === 0;
+  s.tycoon.goals = { day, bonus: false, list: kinds.map(k => ({ t: k, n: fresh && k === "taps" ? FRESH_TAPS : GOAL_TIERS[k][Math.floor(rnd() * 3)], p: 0 })) };
 }
 
 /** Counts progress toward today's goals. Returns the stars paid (and the crystals, if the

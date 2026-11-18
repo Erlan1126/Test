@@ -2,6 +2,8 @@
 // the New Era, the live card on the home screen and the "while you were away" welcome.
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
 import { t, tn } from "../i18n";
+import { orderFor, ORDER_MULT } from "../logic/orders";
+import { orderText } from "./orders";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
@@ -71,6 +73,7 @@ export class TycoonUI {
   private golden = { id: "", until: 0 };
   /** The first visit's close look at the starter tower runs until this time. */
   private frameUntil = 0;
+  private openingWas = false;
   private nextGolden = 0;
   private nextVip = 0;
   private nextRush = 0;
@@ -201,7 +204,8 @@ export class TycoonUI {
     tick(this.save);
     this.inCity = true;
     // A brand-new company opens with a bang: everything earns more for its first minutes.
-    if (startOpening(this.save)) { this.host.persist(); setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1500); }
+    // (A brand-new company's grand opening starts with its first sale: see doAct.)
+    if (this.save.tycoon.tips > 0 && startOpening(this.save)) { this.host.persist(); setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1500); }
     this.host.setBizFocus(true);
     document.body.classList.add("in-tycity");
     $("tycity").hidden = false;
@@ -315,6 +319,10 @@ export class TycoonUI {
     cancelAnimationFrame(this.loop);
     const frame = () => {
       if ($("tycoon").hidden && !this.inCity) { this.host.persist(); return; }
+      // The grand opening just ended: say so, so the lower prices don't feel like a loss.
+      const opening = this.save.tycoon.opening > Date.now();
+      if (this.openingWas && !opening) toast(t("Grand opening is over: sales are back to normal prices. Buy levels to earn more!"));
+      this.openingWas = opening;
       this.live();
       this.loop = requestAnimationFrame(frame);
     };
@@ -410,7 +418,7 @@ export class TycoonUI {
     const firstHq = !s.seenFeatures.includes("try-hq") ? BUSINESSES.find(b => readyStage(s, b.id)) : undefined;
     if (firstHq) {
       const st = readyStage(s, firstHq.id);
-      return { text: t("Build the {name} HQ", { name: t(stageName(firstHq.id, st)) }), sub: t("A {n}-floor tower makes it grow", { n: hqFloors(st) }), tone: "grow", act: () => { this.leave(); this.host.buildHQ(firstHq.id); } };
+      return { text: t("Build the {name} HQ", { name: t(stageName(firstHq.id, st)) }), sub: this.hqSub(firstHq.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(firstHq.id); } };
     }
     // Rewards waiting and a finished chapter.
     if (!$("collect-chip").hidden) return { text: $("collect-chip").textContent ?? "", sub: t("Tap to collect"), tone: "gift", act: () => $("collect-chip").click() };
@@ -424,7 +432,7 @@ export class TycoonUI {
     const grow = BUSINESSES.find(b => readyStage(s, b.id));
     if (grow) {
       const st = readyStage(s, grow.id);
-      return { text: t("Build the {name} HQ", { name: t(stageName(grow.id, st)) }), sub: t("A {n}-floor tower makes it grow", { n: hqFloors(st) }), tone: "grow", act: () => { this.leave(); this.host.buildHQ(grow.id); } };
+      return { text: t("Build the {name} HQ", { name: t(stageName(grow.id, st)) }), sub: this.hqSub(grow.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(grow.id); } };
     }
     // The next business to open.
     const ni = BUSINESSES.findIndex((b, i) => levelOf(s, b.id) === 0 && unlockedBusiness(s, i));
@@ -451,7 +459,7 @@ export class TycoonUI {
   private renderCity(now: number): void {
     const s = this.save, ty = s.tycoon;
     $("tcy-era").textContent = t("Skyhaven Inc.");
-    $("tcy-rate").textContent = t("{n} a second", { n: coins(perSecond(s, now)) });
+    { const ps = perSecond(s, now); $("tcy-rate").textContent = ps > 0 ? t("{n} a second", { n: coins(ps) }) : t("Tap a business to sell"); }
     $("tcy-gems-n").textContent = fmt(s.crystals);
     if (this.shownCoins < 0) $("tcy-coins").textContent = coins(ty.coins);
     const live = this.liveState();
@@ -489,7 +497,8 @@ export class TycoonUI {
     const lit = (id: string) => !!document.querySelector(`#${id}:not([hidden]) .dot:not([hidden])`);
     dot("shop", lit("shop-btn"));
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
-    dot("build", BUSINESSES.some(b => readyStage(s, b.id) > 0));
+    // Red dots mean "something to collect right now", never "you could buy something".
+    dot("build", false);
     dot("goals", lit("missions-btn") || lit("pass-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn"));
   }
@@ -588,7 +597,7 @@ export class TycoonUI {
       <div class="card-row">
         ${owned && !managed ? `<button type="button" class="card-small run" data-card="run">${esc(t("Sell now"))}</button>
           <button type="button" class="card-small" data-card="hire"${ty.coins < b.manager ? " disabled" : ""}>${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : owned ? `<span class="card-auto">${esc(t("A manager runs it"))}</span>` : ""}
-        ${owned ? `<button type="button" class="card-small" data-card="look">${esc(t("Look inside"))}</button>` : ""}
+        ${owned ? `<button type="button" class="card-small" data-card="look">${esc(t("All businesses"))}</button>` : ""}
       </div>
       <span class="tag-pops card-pops"></span>`);
   }
@@ -615,6 +624,12 @@ export class TycoonUI {
 
   // ---------- Build and More ----------
 
+  /** An HQ's ask: its height, and its building order (filled, the business earns more for good). */
+  private hqSub(id: string, stage: number): string {
+    const o = orderFor(BUSINESSES.findIndex(b => b.id === id), stage);
+    return t("{n} floors · order: {order} for ×{m} earnings", { n: hqFloors(stage), order: orderText(o), m: ORDER_MULT });
+  }
+
   /** Build: the tower modes in one place (and any headquarters waiting to be built). */
   private openBuild(): void {
     const s = this.save, rows: string[] = [];
@@ -625,7 +640,7 @@ export class TycoonUI {
     if (contractOpen(s.cafe)) rows.push(`<button type="button" class="tcy-mode contract" data-mode="contract"><span class="mode-ico">☕</span><span><b>${esc(t("Café contract: land {n} wide floors", { n: CONTRACT_WIDE }))}</b><small>${esc(s.cafe.wideBest ? t("Best so far: {n} of {total}. The terrace gets lights, flowers and more customers", { n: s.cafe.wideBest, total: CONTRACT_WIDE }) : t("Keep floors wide. The terrace gets lights, flowers and more customers"))}</small></span></button>`);
     for (const b of BUSINESSES) {
       const st = readyStage(s, b.id);
-      if (st) rows.push(`<button type="button" class="tcy-mode hq" data-mode="hq" data-id="${b.id}"><span class="mode-ico">🏗️</span><span><b>${esc(t("Build the {name} HQ", { name: t(stageName(b.id, st)) }))}</b><small>${esc(t("A {n}-floor tower makes it grow", { n: hqFloors(st) }))}</small></span></button>`);
+      if (st) rows.push(`<button type="button" class="tcy-mode hq" data-mode="hq" data-id="${b.id}"><span class="mode-ico">🏗️</span><span><b>${esc(t("Build the {name} HQ", { name: t(stageName(b.id, st)) }))}</b><small>${esc(this.hqSub(b.id, st))}</small></span></button>`);
     }
     const mode = (k: string, ico: string, title: string, sub: string, src?: string) => {
       if (src && $(src).hidden) return;
@@ -876,7 +891,7 @@ export class TycoonUI {
     const s = this.save, ty = s.tycoon, now = Date.now();
     $("ty-era").textContent = t("Era {n}", { n: ty.eras + 1 });
     if (this.shownCoins < 0) $("ty-coins").textContent = coins(ty.coins);
-    $("ty-rate").textContent = t("{n} a second", { n: coins(perSecond(s, now)) });
+    { const ps = perSecond(s, now); $("ty-rate").textContent = ps > 0 ? t("{n} a second", { n: coins(ps) }) : t("Tap a business to sell"); }
     $("ty-mult").textContent = t("×{n} earnings", { n: multiplier(s, now).toFixed(2) });
     this.renderOffice();
     this.renderEvents(now);
@@ -918,9 +933,9 @@ export class TycoonUI {
     const open = [...$("tycoon").querySelectorAll<HTMLElement>(".ty-tabs button")].filter(b => !b.hidden).length;
     $("tycoon").querySelector<HTMLElement>(".ty-tabs")!.hidden = open < 2;
     const s = this.save, dot = (tab: string, on: boolean) => { $("tycoon").querySelector<HTMLElement>(`.ty-tabs [data-tab="${tab}"] .dot`)!.hidden = !on || this.tab === tab; };
-    dot("upgrades", upgradesOnOffer(s).some(u => u.cost <= s.tycoon.coins));
-    dot("team", (s.tycoon.picks > 0 || s.crystals >= CRATE_CRYSTALS) && ADVISORS.some(a => !s.tycoon.advisors.includes(a.id)));
-    dot("boosts", eraGems(s) > 0 || (vaultCost(s) !== undefined && s.tycoon.coins >= vaultCost(s)!));
+    dot("upgrades", false);
+    dot("team", s.tycoon.picks > 0 && ADVISORS.some(a => !s.tycoon.advisors.includes(a.id)));
+    dot("boosts", eraGems(s) > 0);
   }
 
   /** The company as a cut-away skyscraper in the sky: a roof with the company sign, one
@@ -1008,7 +1023,7 @@ export class TycoonUI {
       const nextLine = !owned ? "" : ns && ns <= (next ?? Infinity) ? t("Next: {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
         : next ? t("×2 speed at {n}", { n: next }) : t("Top speed!");
       set(row.querySelector(".room-level"), tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }) + (cards && nextLine ? ` · ${nextLine}` : ""));
-      set(row.querySelector(".ty-prog span"), owned ? coins(payOf(s, b, now)) : t("Opens with {n}", { n: coins(b.income * multiplier(s, now)) }));
+      set(row.querySelector(".ty-prog span"), owned ? t("{n} a sale", { n: coins(payOf(s, b, now)) }) : t("Earns {n} a sale", { n: coins(b.income * multiplier(s, now)) }));
       set(row.querySelector(".room-info"), owned
         ? (ns && ns <= (next ?? Infinity) ? t("Grows into {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
           : next ? t("{n} floors: twice as fast", { n: next }) : t("Top speed!")) + " · " + fmtSec(cycleOf(b, lv))
@@ -1067,7 +1082,11 @@ export class TycoonUI {
           this.host.sound.click(); vibrate(s.settings.vibrate, 8);
           this.pulse = { id: b.id, at: Date.now() };
           this.goal("taps");
-          if (s.tycoon.tips === 0) { s.tycoon.tips = 1; track("first_sale"); }
+          if (s.tycoon.tips === 0) {
+            s.tycoon.tips = 1; track("first_sale");
+            // The first sale opens the doors: everything earns more for the first minutes.
+            if (startOpening(s)) setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1200);
+          }
           this.render();
         }
         return;
@@ -1168,14 +1187,15 @@ export class TycoonUI {
   /** The hero's live chips: this week's festival, a construction boom. */
   private renderEvents(now: number): void {
     const s = this.save, f = BUSINESSES.find(b => b.id === festivalBiz(now))!;
-    const chips = [`<span class="ty-chip fest">🎪 ${esc(t("Festival week: {name} ×{n}", { name: t(stageName(f.id, stageNow(s, f.id))), n: FESTIVAL_MULT }))}</span>`];
+    // This week's festival, only once the player owns that business (else it means nothing yet).
+    const chips = levelOf(s, f.id) > 0 ? [`<span class="ty-chip fest">🎪 ${esc(t("Festival week: {name} ×{n}", { name: t(stageName(f.id, stageNow(s, f.id))), n: FESTIVAL_MULT }))}</span>`] : [];
     if (s.tycoon.boom > now) {
       const left = Math.ceil((s.tycoon.boom - now) / 1000);
       chips.unshift(`<span class="ty-chip boom">🏗️ ${esc(t("Construction boom ×{n} · {t}", { n: BOOM_MULT, t: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }))}</span>`);
     }
     if (s.tycoon.opening > now) {
       const left = Math.ceil((s.tycoon.opening - now) / 1000);
-      chips.unshift(`<span class="ty-chip boom opening">🎉 ${esc(t("Grand opening ×{n} · {t}", { n: OPENING_MULT, t: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }))}</span>`);
+      chips.unshift(`<span class="ty-chip boom opening">🎉 ${esc(t("Grand opening: everything ×{n} · {t}", { n: OPENING_MULT, t: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }))}</span>`);
     }
     this.put($("ty-events"), chips.join(""));
   }
@@ -1318,7 +1338,7 @@ export class TycoonUI {
   /** Office floors in use, and the button to build more. */
   private renderOffice(): void {
     const s = this.save, total = officeFloors(s), used = usedFloors(s);
-    $("ty-floors").textContent = `${fmt(used)} / ${fmt(total)}`;
+    $("ty-floors").textContent = t("{used} of {total} used", { used: fmt(used), total: fmt(total) });
     $("ty-fbar").style.width = `${Math.min(100, (used / total) * 100)}%`;
     $("ty-build").classList.toggle("urgent", freeFloors(s) === 0);
   }

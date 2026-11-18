@@ -23,7 +23,7 @@ export interface Business {
 }
 
 export const BUSINESSES: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 12, growth: 1.17, income: 1, cycle: 6, manager: 300 },
+  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 12, growth: 1.17, income: 1, cycle: 6, manager: 75 },
   { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 150, growth: 1.13, income: 0.133, cycle: 6, manager: 10000 },
   { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 3000, growth: 1.13, income: 1, cycle: 15, manager: 150000 },
   { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 50000, growth: 1.13, income: 8.33, cycle: 40, manager: 3e6 },
@@ -31,7 +31,7 @@ export const BUSINESSES: Business[] = [
   { id: "hotel", name: "Cloud Hotel", icon: "building", color: ["#7fd3ff", "#3a8dff"], cost: 3e6, growth: 1.11, income: 1000, cycle: 300, manager: 2e8 },
   { id: "mall", name: "Sky Mall", icon: "gift", color: ["#5ee0a0", "#19a87a"], cost: 4e7, growth: 1.1, income: 11700, cycle: 900, manager: 3e9 },
   { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 6e8, growth: 1.09, income: 133000, cycle: 1800, manager: 5e10 },
-  { id: "casino", name: "Star Casino", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1e10, growth: 1.08, income: 1.67e+06, cycle: 3600, manager: 1e12 },
+  { id: "casino", name: "Starlight Stage", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1e10, growth: 1.08, income: 1.67e+06, cycle: 3600, manager: 1e12 },
   { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 2e11, growth: 1.07, income: 3.33e+07, cycle: 7200, manager: 2e13 },
 ];
 
@@ -84,7 +84,7 @@ export const STAGE_NAMES: Record<string, string[]> = {
   hotel: ["Cloud Hotel", "Boutique Hotel", "Grand Hotel", "Luxury Resort", "Hotel Empire"],
   mall: ["Sky Mall", "Shopping Center", "Mega Mall", "Shopping Plaza", "Mall Empire"],
   airport: ["Airship Port", "Airfield", "Sky Airport", "Air Hub", "Sky Gateway"],
-  casino: ["Star Casino", "Game Hall", "Grand Casino", "Casino Resort", "Casino Empire"],
+  casino: ["Starlight Stage", "Concert Hall", "Starlight Arena", "Arena Resort", "Arena Empire"],
   spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate"],
 };
 /** Rush hour: one business earns this many times more for a short while. */
@@ -122,7 +122,7 @@ const BIZ_UPGRADES: Record<string, [string, string, string]> = {
   hotel: ["Rooftop Pool", "Spa", "Concierge"],
   mall: ["Escalators", "Food Court", "Fashion Week"],
   airport: ["Second Runway", "VIP Lounge", "Duty Free"],
-  casino: ["Light Show", "High-roller Room", "Jackpot"],
+  casino: ["Light Show", "VIP Box", "Encore"],
   spaceport: ["Reusable Rockets", "Moon Tours", "Warp Drive"],
 };
 /** Upgrade prices, as multiples of the business's first-level price. */

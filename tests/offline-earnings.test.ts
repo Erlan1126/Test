@@ -77,3 +77,21 @@ it("a part-done cycle carries over instead of being lost or paid early", () => {
   tick(s, T0 + 6000 + 2500); // one 6 s cycle done, 2.5 s into the next
   expect(s.tycoon.runs.coffee).toBe(T0 + 6000);
 });
+
+it("a rush hour pays its rushed cycles once in live play (no extra one when it ends)", () => {
+  const T1 = T0 + 2 * 864e5; // mid-week, away from the festival's edges
+  for (const lv of [1, 30, 120]) {
+    const mk = () => {
+      const s = defaultSave();
+      s.tycoon.last = T1; s.tycoon.floors = 2000; s.tycoon.coins = 1e30;
+      buyLevels(s, "coffee", lv - 1, T1); hireManager(s, "coffee", T1);
+      s.tycoon.runs.coffee = T1; s.tycoon.coins = 0; s.tycoon.lifetime = 0; s.tycoon.opening = 1;
+      s.tycoon.rush = { id: "coffee", until: T1 + 10_000 + RUSH_SECONDS * 1000 };
+      return s;
+    };
+    const end = T1 + 300_000, live = mk(), settled = mk();
+    for (let t = T1 + 120; t <= end; t += 120) tick(live, t);
+    tick(settled, end);
+    expect(live.tycoon.coins).toBeCloseTo(settled.tycoon.coins, 6);
+  }
+});

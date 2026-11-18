@@ -124,6 +124,8 @@ export function introduce(save: SaveData, persist: () => void): boolean {
   if (!c || save.chapters.seen >= i) return false;
   save.chapters.seen = i;
   persist();
+  // Its goals are already done: no introduction, the strip says "Chapter complete!" instead.
+  if (chapterReady(save)) return false;
   show(t("Chapter {n}: {title}", { n: i + 1, title: t(c.title) }), say(c.intro), goalsHtml(save, c), "", t("Let's build!"), () => {});
   return true;
 }

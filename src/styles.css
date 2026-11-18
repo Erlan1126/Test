@@ -3450,7 +3450,7 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 .over-cafe-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb36b, #e0743a); transition: width 0.8s ease-out; }
 #over-actions #go-town { grid-column: 1 / -1; order: -2; font-size: 16px; white-space: nowrap; padding-left: 10px; padding-right: 10px; }
 /* While building: the café contract's wide floors. */
-.contract-chip { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 118px); left: 50%; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; pointer-events: none;
+.contract-chip { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 192px); left: 50%; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; pointer-events: none;
   font: 400 13px var(--display); color: #7a3a10; background: rgba(255, 244, 230, 0.94); box-shadow: 0 4px 14px rgba(120, 60, 10, 0.2); }
 .contract-chip small { font: 800 11px var(--ui); color: #a0582a; }
 .contract-chip.done { color: #fff; background: linear-gradient(90deg, #5ee0a0, #19a87a); }
@@ -3460,3 +3460,11 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 #tcy-labels .tag.bub.starter .tag-ico { font-size: 18px; }
 #tcy-labels .tag.bub.starter.sel { background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }
 .ty-adv-hire.free { background: linear-gradient(180deg, #2fd17a, #13a95a); box-shadow: 0 3px 0 #0b7a40; }
+/* Ranks, Sky City, Shop and Missions as tab pages: their header sticks under the tabs like
+   every other page (an older rule made it "relative", so "top" shifted it down instead,
+   leaving a gap above and covering the first lines below). */
+body.tabs-open :is(#city, #shop, #missions, #ranks).tab-page .sheet-top { position: sticky; }
+/* The company list: the yellow "Build the … HQ" row already says it, so no badge on top. */
+body.tabs-open #tycoon .room-scene .hq-tag { display: none; }
+/* Trophy names are single long words in a wide font: a touch smaller, and never cut off. */
+.modal .trophy b { font-size: 12.5px !important; overflow-wrap: anywhere; }
