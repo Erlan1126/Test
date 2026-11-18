@@ -998,8 +998,8 @@ function runDraw(ctx, W, H) {
       ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
     }
   }
-  // A vignette.
-  const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${0.2 + night * 0.35})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  // A vignette (the 3D view has its own mood; skip the extra full-screen layer there).
+  if (!R.mode3) { const v = ctx.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${0.2 + night * 0.35})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H); }
   // Floating "+3" when a shadow is sung free.
   ctx.textAlign = "center";
   for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px Inter, system-ui, sans-serif`; const q = P2(p.x, p.at); ctx.fillText(p.text, q[0], q[1] - k * 40 * pxU); }
@@ -1015,12 +1015,13 @@ function runDraw(ctx, W, H) {
 
 function runLoop(now) {
   if (!run || screen !== "run") return;
-  const c = $("runCanvas"), d = Math.min(modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c = $("runCanvas"), d = Math.min(run.mode3 ? 1.5 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now;
   if (!run.paused) runUpdate(dt * (run.slow || 1));
   const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
-  runDraw(ctx, W, H);
+  // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
+  if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
   requestAnimationFrame(runLoop);
 }
 
@@ -1075,7 +1076,7 @@ function startTitleRun() {
 function titleLoop(now) {
   titleRaf = 0;
   if (screen !== "title" || !titleRun) return;
-  const c = $("titleCanvas"), d = Math.min(modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c = $("titleCanvas"), d = Math.min(modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
   if (W && c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const keep = run; run = titleRun;
   const dt = Math.min(0.05, (now - (titleRun.last || now)) / 1000); titleRun.last = now;
@@ -1112,3 +1113,8 @@ function runShop() {
   $("runShopList").innerHTML = runShopHtml();
   $("runGlowLeft").textContent = save.glow || 0;
 }
+
+// Leaving the app mid-run pauses it.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; $("runPause").hidden = false; musicStop(); }
+});

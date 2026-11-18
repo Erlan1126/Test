@@ -657,7 +657,7 @@
   /* ================= Echo 2.0: sleek, dark, minimal =================
      One modern face (Inter), deep dark tones, frosted glass, crisp white type and quiet
      colour accents. Big tabular numbers; one tab bar; sheets that slide up from the bottom. */
-  :root { --bg2: #06070b; --glass: rgba(20, 22, 30, 0.62); --glass-hi: rgba(36, 40, 54, 0.7); --edge: rgba(255, 255, 255, 0.09); --txt: #f5f7fb; --mut: #8b91a3; --acc: #8be9ff; --acc2: #c7b6ff; --gold2: #ffd98a; --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  :root { --bg2: #06070b; --glass: rgba(18, 20, 28, 0.84); --glass-hi: rgba(36, 40, 54, 0.7); --edge: rgba(255, 255, 255, 0.09); --txt: #f5f7fb; --mut: #8b91a3; --acc: #8be9ff; --acc2: #c7b6ff; --gold2: #ffd98a; --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
   html, body { font-family: var(--font); background: var(--bg2); letter-spacing: -0.005em; }
   button { font-family: var(--font); }
   .logo, .panel h2, .levels-title, .story-name, .lc-name, .ch-name, .looks-head, .journal-h, .city-title, .movie-cap, .tagline, .city-sub, #encounter b, .story-text { font-family: var(--font) !important; font-style: normal !important; }
@@ -702,6 +702,8 @@
   /* The tab bar */
   #shopList li.sec { display: block; background: none; border: 0; padding: 14px 4px 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mut); }
   #shopList .sw { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; vertical-align: -2px; border: 1px solid rgba(255,255,255,0.3); }
+  /* Live background blur is costly over an animated 3D view on phones: panels are solid glass instead. */
+  *, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
   .wordmark b { font-weight: 900; color: var(--acc); margin-left: 0.35em; }
   .tabbar { position: fixed; left: 12px; right: 12px; bottom: calc(10px + var(--bottom)); height: 64px; border-radius: 22px; display: none; z-index: 20; padding: 0 6px; }
   body.tabs .tabbar { display: flex; }

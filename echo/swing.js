@@ -381,7 +381,8 @@ function makeSwing3D() {
   const T = window.THREE;
   if (!T) return null;
   const view = document.createElement("canvas"); view.id = "runner3d";
-  const renderer = new T.WebGLRenderer({ canvas: view, antialias: true, powerPreference: "high-performance" });
+  const hiDpi = (window.devicePixelRatio || 1) >= 2;
+  const renderer = new T.WebGLRenderer({ canvas: view, antialias: !hiDpi, powerPreference: "high-performance", stencil: false });
   if (!renderer.getContext()) return null;
   renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   const modest = typeof modestPhone !== "undefined" && modestPhone;
@@ -396,7 +397,7 @@ function makeSwing3D() {
   Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 26, bottom: -26, near: 1, far: 120 }); sun.shadow.camera.updateProjectionMatrix();
   sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
   const SUN_DIR = new T.Vector3(-0.55, 0.75, 0.35).normalize();
-  const aniso = renderer.capabilities.getMaxAnisotropy();
+  const aniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
   const C = c => new T.Color(c[0] / 255, c[1] / 255, c[2] / 255);
   const tex = (w, h, paint, srgb = true) => { const c = document.createElement("canvas"); c.width = w; c.height = h; paint(c.getContext("2d"), w, h); const t = new T.CanvasTexture(c); if (srgb) t.encoding = T.sRGBEncoding; t.anisotropy = aniso; t.wrapS = t.wrapT = T.RepeatWrapping; return t; };
   const rnd = seeded(2024);
@@ -404,7 +405,8 @@ function makeSwing3D() {
   const glowTex = tex(64, 64, (g) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.3, "rgba(255,255,255,0.5)"); r.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 64, 64); });
   const glow = (c, s, a = 0.8) => { const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: c, transparent: true, opacity: a, blending: T.AdditiveBlending, depthWrite: false })); sp.scale.set(s, s, 1); return sp; };
   const std = (o) => new T.MeshStandardMaterial(o);
-  const phys = (o) => new T.MeshPhysicalMaterial(o);
+  // Gloss without the cost: plain standard materials everywhere.
+  const phys = (o) => { const q = Object.assign({}, o); delete q.clearcoat; delete q.clearcoatRoughness; delete q.sheen; return new T.MeshStandardMaterial(q); };
   const basic = (c, o) => new T.MeshBasicMaterial(Object.assign({ color: c, toneMapped: false }, o || {}));
   const shadowAll = (g, cast = true, rec = false) => g.traverse(m => { if (m.isMesh && !m.material.isMeshBasicMaterial && !m.material.transparent) { m.castShadow = cast; m.receiveShadow = rec; } });
 
@@ -573,7 +575,7 @@ function makeSwing3D() {
     if (a.mesh) return a.mesh;
     const g = new T.Group(), col = new T.Color(runnerGlow());
     const node = new T.Mesh(nodeGeo, new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); g.add(node);
-    const halo = glow(col, 3.6, 0.7); g.add(halo);
+    const halo = glow(col, 2.4, 0.7); g.add(halo);
     const ring = new T.Mesh(new T.TorusGeometry(0.9, 0.05, 8, 40), new T.MeshBasicMaterial({ color: col, toneMapped: false, transparent: true, opacity: 0.6 })); g.add(ring);
     const b = R.blds.find(q => a.x >= q.x0 - 0.5 && a.x <= q.x1 + 0.5 && !q.tree);
     if (b && a.y - b.h < 22) {
@@ -619,7 +621,7 @@ function makeSwing3D() {
       const sh = new T.Group(); sh.position.set(0, 0.58, s * 0.2); torso.add(sh); const up = cap(0.055, 0.28, core); sh.add(up); const el = new T.Group(); el.position.y = -0.28; sh.add(el); el.add(cap(0.045, 0.26, core)); arms.push({ sh, el });
       const hip = new T.Group(); hip.position.set(0, 0, s * 0.1); hips.add(hip); hip.add(cap(0.075, 0.42, core)); const kn = new T.Group(); kn.position.y = -0.42; hip.add(kn); kn.add(cap(0.06, 0.42, core)); legs.push({ hip, kn });
     }
-    const aura = glow(glowC, 4.6, 0.6); aura.position.y = 1.1; g.add(aura);
+    const aura = glow(glowC, 3.4, 0.6); aura.position.y = 1.1; g.add(aura);
     const aura2 = glow(0xffffff, 1.4, 0.8); aura2.position.y = 1.2; g.add(aura2);
     const shield = new T.Mesh(new T.SphereGeometry(1.3, 28, 18), new T.MeshBasicMaterial({ color: 0x5ad2ff, transparent: true, opacity: 0.18, depthWrite: false, blending: T.AdditiveBlending })); shield.position.y = 1; shield.visible = false; g.add(shield);
     g.userData = { body, hips, torso, arms, legs, aura, shield, core, soft };
@@ -664,7 +666,7 @@ function makeSwing3D() {
   const poolsEnd = () => { for (const k in pools) { const P = pools[k]; for (let q = P.used; q < P.list.length; q++) P.list[q].visible = false; } };
   const letterTex = {};
   const makers = {
-    mote: () => { const g = new T.Group(); g.add(new T.Mesh(new T.OctahedronGeometry(0.28, 0), basic(0xffd25a))); g.add(glow(0xffc23d, 1.8, 0.6)); return g; },
+    mote: () => { const g = new T.Group(); g.add(new T.Mesh(new T.OctahedronGeometry(0.3, 0), basic(0xffd25a))); g.add(glow(0xffc23d, 1.2, 0.55)); return g; },
     up: () => { const g = new T.Group(); const ring = new T.Mesh(new T.TorusGeometry(0.75, 0.07, 10, 40), basic(0xffffff)); g.add(ring); const core = new T.Mesh(new T.IcosahedronGeometry(0.42, 1), new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); g.add(core); const gl = glow(0xffffff, 3.4, 0.7); g.add(gl); g.userData = { ring, core, gl }; return g; },
     wire: () => { const g = new T.Group(); const w2 = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 1, 6), basic(0x2b2f38)); w2.rotation.z = Math.PI / 2; g.add(w2); const sp = []; for (let q = 0; q < 4; q++) { const s2 = glow(0x7fd8ff, 1.2, 0.9); g.add(s2); sp.push(s2); } for (const sd of [-1, 1]) { const pole = new T.Mesh(new T.CylinderGeometry(0.08, 0.1, 2.6, 8), metalDark); pole.position.set(sd * 0.5, -1.3, 0); g.add(pole); g.userData["p" + sd] = pole; } g.userData.w = w2; g.userData.sp = sp; return g; },
     drone: () => { const g = new T.Group(); const b2 = new T.Mesh(new T.SphereGeometry(0.55, 20, 12), phys({ color: 0x1f2430, metalness: 0.7, roughness: 0.25, clearcoat: 1 })); b2.scale.set(1.3, 0.6, 1); g.add(b2); const eye = new T.Mesh(new T.SphereGeometry(0.16, 14, 10), basic(0xff2b4a)); eye.position.z = 0.55; g.add(eye); g.add(glow(0xff2b4a, 2.4, 0.7)); const pr = []; for (const sd of [-1, 1]) { const p2 = new T.Mesh(boxGeo, std({ color: 0xbfc5cc, roughness: 0.4 })); p2.scale.set(1, 0.02, 0.08); p2.position.set(sd * 0.9, 0.35, 0); g.add(p2); pr.push(p2); } g.userData.pr = pr; return g; },
@@ -678,7 +680,8 @@ function makeSwing3D() {
 
   // ---------- Size ----------
   let W0 = 0, H0 = 0, dpr0 = 0, last = 0, onFail = false, adT = 0, lastPx = null;
-  let dprCap = lite ? 1.25 : 1.75, ema = 0.016, emaT = 0;
+  const dprMax = lite ? 1 : 1.5;
+  let dprCap = dprMax, ema = 0.016, emaT = 0;
   function size(W, H) {
     const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
     if (W === W0 && H === H0 && dpr === dpr0) return;
@@ -695,7 +698,7 @@ function makeSwing3D() {
     const now = performance.now(), dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016); last = now;
     // Adaptive resolution: if frames are slow, draw fewer pixels; if there's room, more.
     ema += (dt - ema) * 0.05; emaT += dt;
-    if (emaT > 2) { emaT = 0; if (ema > 0.026 && dprCap > 1) { dprCap = Math.max(1, dprCap - 0.25); W0 = 0; } else if (ema < 0.015 && dprCap < (lite ? 1.25 : 1.75)) { dprCap += 0.25; W0 = 0; } }
+    if (emaT > 1) { emaT = 0; if (ema > 0.021 && dprCap > 0.75) { dprCap = Math.max(0.75, dprCap - 0.25); W0 = 0; } else if (ema < 0.0145 && dprCap < dprMax) { dprCap = Math.min(dprMax, dprCap + 0.25); W0 = 0; } }
     const night = P.night, day = 1 - night, blackout = !!P.blackout;
     // A new run: clear the old skyline.
     const jumped = lastPx == null || R.px < lastPx - 40 || R.px > lastPx + 300;
@@ -722,10 +725,10 @@ function makeSwing3D() {
     scene.fog.color.copy(C(P.sky[2])).lerp(C(P.sky[1]), 0.35); scene.fog.near = 50; scene.fog.far = 210 + night * 40;
     hemi.color.copy(C(P.sky[1])).lerp(new T.Color(1, 1, 1), 0.5); hemi.groundColor.copy(C(P.tower)).multiplyScalar(0.4); hemi.intensity = blackout ? 0.15 : 0.35 + day * 0.6;
     sun.color.copy(C(P.sky[2])).lerp(new T.Color(1, 1, 1), 0.5); sun.intensity = blackout ? 0.05 : 0.2 + day * 1.3; sun.position.set(camera.position.x - 40, 80, 60); sun.target.position.set(camera.position.x, 0, 0);
-    stars.material.opacity = Math.max(0, night - 0.35) / 0.65; stars.position.copy(camera.position);
-    sunSpr.material.opacity = day * 0.9; sunSpr.position.set(camera.position.x + 120, 170, -330);
+    stars.material.opacity = Math.max(0, night - 0.35) / 0.65; stars.visible = stars.material.opacity > 0.01; stars.position.copy(camera.position);
+    sunSpr.material.opacity = day * 0.9; sunSpr.visible = day > 0.05; sunSpr.position.set(camera.position.x + 120, 170, -330);
     moon.visible = night > 0.3; moon.material.opacity = Math.max(0, night - 0.3) / 0.7; moon.position.set(camera.position.x - 60, 150, -330);
-    clouds.forEach(cl => { cl.s.position.set(camera.position.x + cl.x * 0.6, cl.y, cl.z); cl.s.scale.set(cl.w, cl.w * 0.45, 1); cl.s.material.opacity = Math.max(0, 0.8 - night); cl.s.material.color.copy(C(P.sky[2])).lerp(new T.Color(1, 1, 1), 0.55); });
+    clouds.forEach(cl => { cl.s.position.set(camera.position.x + cl.x * 0.6, cl.y, cl.z); cl.s.scale.set(cl.w, cl.w * 0.45, 1); cl.s.material.opacity = Math.max(0, 0.8 - night); cl.s.visible = night < 0.78; cl.s.material.color.copy(C(P.sky[2])).lerp(new T.Color(1, 1, 1), 0.55); });
     scene.environment = null;
     rain.visible = !!P.rain;
     if (P.rain) { for (let q = 0; q < rainN; q++) { const s = rainSeed[q], x = (s[0] - 0.5) * 70 + cam.x, z = 10 - s[1] * 40, y = cam.y + 30 - ((s[2] * 60 + t * 30) % 60); rainPos.set([x, y, z, x - 0.1, y - 1.2, z], q * 6); } rainGeo.attributes.position.needsUpdate = true; }
@@ -750,7 +753,7 @@ function makeSwing3D() {
       if (b.litT >= 0 && b.litT < 0.8) { const sw = get("shock", makers.shock), q2 = b.litT / 0.8; sw.position.set((b.x0 + b.x1) / 2, b.h * 0.6, 1.8); sw.scale.setScalar(1 + q2 * (b.x1 - b.x0) * 0.9); sw.material.opacity = 0.8 * (1 - q2); sw.material.color.copy(glowC); }
       u.mat.color.copy(C(P.tower)).lerp(new T.Color(1, 1, 1), 0.55 + day * 0.2); if (k < 1) u.mat.color.lerp(darkTint, (1 - k) * (0.5 + night * 0.45));
       u.rim.material.opacity = k * 0.9; u.rim.material.color.copy(glowC);
-      u.sweep.material.opacity = k > 0 && k < 1 ? 0.55 * Math.sin(k * Math.PI) : 0; u.sweep.position.y = k * b.h;
+      u.sweep.visible = k > 0 && k < 1; u.sweep.material.opacity = u.sweep.visible ? 0.55 * Math.sin(k * Math.PI) : 0; u.sweep.position.y = k * b.h;
       if (u.neon) u.neon.color.set(u.neonCol).multiplyScalar(0.2 + k * (0.5 + night * 0.9));
     }
     { const live = new Set(); for (const b of R.blds) if (b.mesh) live.add(b.mesh);
@@ -798,7 +801,7 @@ function makeSwing3D() {
       u.legs.forEach(l => { lr(l.hip.rotation, "z", 1.3 * tuck + 0.2); lr(l.kn.rotation, "z", -1.8 * tuck); }); u.arms.forEach((a, q) => { lr(a.sh.rotation, "z", (q ? 2.6 : 2.2) * (1 - tuck) + 0.6 * tuck); lr(a.el.rotation, "z", 1 * tuck); });
     }
     u.shield.visible = R.power && R.power.kind === "shield";
-    u.aura.material.opacity = 0.45 + night * 0.3 + (R.power ? 0.25 : 0) + (R.od > 0 ? 0.35 : 0); u.aura.material.color.copy(R.od > 0 ? new T.Color(0xffc23d) : R.power ? new T.Color(`rgb(${RUNNER_POWERS[R.power.kind].rgb})`) : glowC); u.aura.scale.setScalar(R.od > 0 ? 6.5 + Math.sin(t * 10) * 0.4 : R.dashT > 0 ? 6 : 4.6);
+    u.aura.material.opacity = 0.45 + night * 0.3 + (R.power ? 0.25 : 0) + (R.od > 0 ? 0.35 : 0); u.aura.material.color.copy(R.od > 0 ? new T.Color(0xffc23d) : R.power ? new T.Color(`rgb(${RUNNER_POWERS[R.power.kind].rgb})`) : glowC); u.aura.scale.setScalar(R.od > 0 ? 4.6 + Math.sin(t * 10) * 0.3 : R.dashT > 0 ? 4.2 : 3.4);
     if (R.over) { hero.rotation.z += dt * 6; }
     // The scarf follows the shoulders.
     const nk = new T.Vector3(0, 1.45, 0).applyMatrix4(hero.matrixWorld.compose(hero.position, hero.quaternion.setFromEuler(hero.rotation), hero.scale));
@@ -826,9 +829,10 @@ function makeSwing3D() {
     // The sky: shooting stars and an aurora at night, rays of light at dawn.
     if (!star2.userData.t || star2.userData.t > 1.2) { if (night > 0.6 && Math.random() < dt * 0.25) star2.userData = { t: 0, x: cam.x + (Math.random() - 0.2) * 80, y: cam.y + 40 + Math.random() * 30 }; }
     if (star2.userData.t != null && star2.userData.t <= 1.2) { star2.userData.t += dt; const k2 = star2.userData.t / 1.2; star2.visible = true; star2.position.set(star2.userData.x - k2 * 50, star2.userData.y - k2 * 18, -150); star2.material.opacity = Math.sin(k2 * Math.PI); } else star2.visible = false;
-    auroras.forEach((au, q) => { au.position.set(cam.x + (q - 1) * 120, cam.y + 70 + q * 8, -260); au.material.opacity = Math.max(0, night - 0.6) * 1.4 * (0.6 + 0.4 * Math.sin(t * 0.3 + q * 2)); au.rotation.z = Math.sin(t * 0.1 + q) * 0.06; });
-    rays.position.set(camera.position.x + 120, 170, -320); rays.material.opacity = Math.max(0, Math.min(night - 0.15, 0.65 - night)) * 1.6; rays.material.rotation = t * 0.02;
+    auroras.forEach((au, q) => { au.position.set(cam.x + (q - 1) * 120, cam.y + 70 + q * 8, -260); au.material.opacity = Math.max(0, night - 0.6) * 1.4 * (0.6 + 0.4 * Math.sin(t * 0.3 + q * 2)); au.visible = !lite && au.material.opacity > 0.01; au.rotation.z = Math.sin(t * 0.1 + q) * 0.06; });
+    rays.position.set(camera.position.x + 120, 170, -320); rays.material.opacity = Math.max(0, Math.min(night - 0.15, 0.65 - night)) * 1.6; rays.visible = rays.material.opacity > 0.01; rays.material.rotation = t * 0.02;
     // The darkness.
+    const darkOn = R.darkX > cam.x - 45; darkWall.visible = darkOn; darkEdge.forEach(e2 => (e2.visible = darkOn)); tendrils.forEach(td => (td.visible = darkOn));
     darkWall.position.set(R.darkX - 45, cam.y, 6); darkEdge.forEach((e2, q) => { e2.position.set(R.darkX + Math.sin(t * 2 + q) * 1.5, cam.y - 28 + q * 11, 6.2); e2.material.opacity = 0.3 + Math.sin(t * 3 + q) * 0.1; });
     // Lights, power-ups, letters, wires, drones.
     for (const c of R.motes) { if (Math.abs(c.x - cam.x) > 45) continue; const g = get("mote", makers.mote); if (c.got) { const k = c.t / 0.35; g.position.set(c.x + (R.px - c.x) * k, c.y + (R.py + 1 - c.y) * k, 0); g.scale.setScalar(1 - k * 0.7); continue; } g.scale.setScalar(1); g.position.set(c.x, c.y + Math.sin(t * 3 + c.x) * 0.1, 0); g.rotation.y = t * 3 + c.x; }
