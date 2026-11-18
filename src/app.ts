@@ -2220,6 +2220,9 @@ export class App implements DailyHost {
     if (next) nb.textContent = t("Next: {name}", { name: stageName(next.id) });
     // Where this tower's floors went: the main button goes there, and another tower stays
     // one tap away. (Once the loop is known, it's just "Build again".)
+    // A new player's first towers: a simpler card (the level bar, extra rewards and sharing
+    // come once the loop is known).
+    document.body.classList.toggle("simple-results", save.profile.towers <= 3 && mode !== "challenge");
     const go = $("go-town"), dest = mode === "challenge" ? "" : this.overDest;
     go.hidden = !dest;
     if (dest) {

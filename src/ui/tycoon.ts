@@ -292,6 +292,8 @@ export class TycoonUI {
     this.inCity = false;
     this.selected = "";
     this.frameUntil = 0;
+    const hand = document.getElementById("guide-hand");
+    if (hand) hand.hidden = true;
     this.host.setBizFocus(false);
     document.body.classList.remove("in-tycity");
     $("tycity").hidden = true;
@@ -351,6 +353,7 @@ export class TycoonUI {
   /** Every frame while Skyhaven Inc. is open: earnings, the rolling counter, progress, and
    *  coins popping out of the rooms or buildings. */
   private live(): void {
+    this.guideHand();
     const now = Date.now(), s = this.save, sheet = !$("tycoon").hidden;
     if (now - this.lastTick > 120) {
       this.lastTick = now;
@@ -504,6 +507,62 @@ export class TycoonUI {
     dot("build", false);
     dot("goals", (!!this.spire && spireReady(s.spire, this.spire) > 0) || lit("missions-btn") || lit("pass-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn"));
+    this.unlockTabs();
+  }
+
+  /** A new player's bar starts with BUILD alone; the rest appear as they're needed: Company
+   *  after the first sale, Goals once the first steps are done, Shop and Me after the third
+   *  tower. Each new tab pops in with a note (not on launch: then it's just there). */
+  private barReady = false;
+  private unlockTabs(): void {
+    const s = this.save, tw = s.profile.towers, tips = s.tycoon.tips;
+    const open: Record<string, boolean> = { company: tips >= 1 || tw >= 3, goals: tips >= 3 || tw >= 3, shop: tw >= 3, me: tw >= 3, build: true };
+    const names: Record<string, string> = { company: "Company", goals: "Goals", shop: "Shop", me: "Me" };
+    let n = 0;
+    for (const btn of $("tcy-bar").querySelectorAll<HTMLElement>("[data-open]")) {
+      const k = btn.dataset.open!, on = open[k] ?? true;
+      if (on) n++;
+      if (btn.hidden === !on) continue;
+      btn.hidden = !on;
+      const key = `tab-${k}`;
+      if (on && k !== "build" && !s.seenFeatures.includes(key)) {
+        s.seenFeatures.push(key);
+        this.host.persist();
+        if (this.barReady) {
+          replayPop(btn);
+          toast(t("New: {name} unlocked!", { name: t(names[k]) }));
+        }
+      }
+    }
+    $("tcy-bar").style.setProperty("--tabs", String(n));
+    $("tcy-gems").hidden = s.crystals <= 0 && tw < 3;
+    this.barReady = true;
+  }
+
+  /** The guide's pointing hand for a new player: on the Coffee Cart for the first sale, then
+   *  on the Next step card, until the first steps are done. */
+  private guideHand(): void {
+    let hand = document.getElementById("guide-hand");
+    const s = this.save, tw = s.profile.towers, tips = s.tycoon.tips;
+    const busy = !this.inCity || !$("mayor").hidden || !$("welcome").hidden || !!openModalEl() || !!document.querySelector("#evolve:not([hidden])") || this.frameUntil > Date.now();
+    let target: Element | null = null;
+    if (!busy && (tips < 3 || tw < 3)) {
+      if (tips === 0) target = document.querySelector('.tag[data-tag="coffee"]');
+      else if ($("tcy-card").hidden && !$("tcy-next").hidden) target = $("tcy-next");
+    }
+    if (!target) { if (hand) hand.hidden = true; return; }
+    if (!hand) {
+      hand = document.createElement("div");
+      hand.id = "guide-hand";
+      hand.setAttribute("aria-hidden", "true");
+      hand.textContent = "👇";
+      document.body.appendChild(hand);
+    }
+    const r = target.getBoundingClientRect();
+    const x = target.id === "tcy-next" ? r.right - 44 : r.left + r.width / 2;
+    hand.style.left = `${Math.round(x)}px`;
+    hand.style.top = `${Math.round(r.top - 6)}px`;
+    hand.hidden = false;
   }
 
   /** Keeps each tag floating over its building as the camera moves. */
@@ -1635,4 +1694,8 @@ function distToSeg(x: number, y: number, a: [number, number], b: [number, number
 
 /** The More grid: each tile presses the button it stands for (so locked ones stay hidden). */
 
-
+/** Plays a tab's "just unlocked" pop. */
+function replayPop(el: HTMLElement): void {
+  el.classList.remove("tab-new"); void el.offsetWidth; el.classList.add("tab-new");
+  setTimeout(() => el.classList.remove("tab-new"), 2400);
+}

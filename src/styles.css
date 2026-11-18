@@ -3481,3 +3481,22 @@ body.tabs-open #tycoon .room-scene .hq-tag { display: none; }
 .spire-txt small { font: 700 12px var(--ui); color: #6a6199; }
 .spire-hint { margin-top: auto; }
 .spire-claim { margin-top: auto; }
+
+/* A new player's bar: only the tabs unlocked so far, centered (see unlockTabs). */
+#tcy-bar { grid-template-columns: repeat(var(--tabs, 5), 1fr) !important; max-width: calc(var(--tabs, 5) * 78px + 12px); margin: 0 auto; }
+#tcy-bar > [hidden] { display: none !important; }
+#tcy-bar .tab-new { animation: tab-new 0.9s cubic-bezier(.3, 1.6, .5, 1) 2; }
+@keyframes tab-new { 0% { transform: scale(0.4); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+/* The guide's pointing hand. */
+#guide-hand { position: fixed; z-index: 40; pointer-events: none; font-size: 38px; line-height: 1; transform: translate(-50%, -100%); filter: drop-shadow(0 4px 6px rgba(42, 31, 110, 0.35)); animation: hand-bob 0.9s ease-in-out infinite; }
+#guide-hand[hidden] { display: none; }
+@keyframes hand-bob { 0%, 100% { margin-top: -6px; } 50% { margin-top: 4px; } }
+@media (prefers-reduced-motion: reduce) { #guide-hand { animation: none; } }
+/* A new player's results: just the tower, what it added, and where to go next. */
+body.simple-results #over :is(#over-xp, #over-more, #share, #share-video, .stats) { display: none !important; }
+body.simple-results #over .reward.new { display: none !important; }
+/* Narrow phones: the title clear of the eye button, the buttons' words never cut. */
+#over .card-head .eyebrow { padding: 0 30px; }
+/* A new player's card: the home button alone is a small round one, centered. */
+body.simple-results #over-actions .home-btn { grid-column: 1 / -1; justify-self: center; width: 64px; }
+@media (max-width: 380px) { #over-actions .btn { font-size: 14px; } #over-actions #share { font-size: 13px; padding: 0 8px; } }

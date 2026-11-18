@@ -1462,4 +1462,5 @@ export const PT: Record<string, string> = {
   "🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?": "🟩 perfeito 🟨 largo 🟧 cortado. Consegue superar hoje?",
   "Finish all three for a free advisor of your choice": "Conclua as três para um consultor grátis à sua escolha",
   "Ready to grow! HQ order: {order} for ×{m} earnings": "Pronto para crescer! Pedido da sede: {order} para render ×{m}",
+  "New: {name} unlocked!": "Novo: {name} desbloqueado!",
 };

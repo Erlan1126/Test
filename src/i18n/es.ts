@@ -1463,4 +1463,5 @@ export const ES: Record<string, string> = {
   "🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?": "🟩 perfecto 🟨 ancho 🟧 recortado. ¿Puedes superarlo hoy?",
   "Finish all three for a free advisor of your choice": "Completa las tres para un asesor gratis a tu elección",
   "Ready to grow! HQ order: {order} for ×{m} earnings": "¡Lista para crecer! Pedido de la sede: {order} para ganar ×{m}",
+  "New: {name} unlocked!": "Nuevo: ¡{name} desbloqueado!",
 };

@@ -56,6 +56,8 @@ const PLAZA: [number, number] = [4, 4];
 /** The plot beside the Coffee Cart where the player's first tower stands. */
 const PLOT: [number, number] = [-1, 0];
 const ALL = [...CELLS, ...PARKS, PLAZA, PLOT];
+/** The back of the island: a beach and a stretch of sea (no streets). */
+const BEACH: [number, number][] = [[-1, -1], [0, -1], [-1, -2]];
 /** The starter tower's spot (local to the district), for the camera and its bubble. */
 export function plotPos(): { x: number; z: number } { return cellXZ(PLOT); }
 const OFF = 2 * C;
@@ -220,6 +222,28 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (const [a, b] of [[-1.3, 1.2], [1.3, 1.3], [n ? 1.3 : -1.3, -1.2]]) tree(x + a, z + b, 0.95);
     bench(x + 0.7, z + 0.55, 0); bench(x - 0.55, z - 0.7, Math.PI / 2);
     for (let k = 0; k < 6; k++) add(new THREE.SphereGeometry(0.09, 6, 4).translate(x - 1.8 + k * 0.22, 0.32, z + 1.95), mats.c(flowersOn[k % 4], 0.8));
+    // One park has a playground (slide and swings), the other a gazebo.
+    const px = x + (n ? 1.15 : -1.15), pz = z - 1.15;
+    if (n === 0) {
+      add(new THREE.BoxGeometry(1.3, 0.04, 1.1).translate(px, 0.27, pz), mats.c("#e8c48a", 0.9));
+      add(new THREE.BoxGeometry(0.4, 0.06, 0.4).translate(px - 0.3, 0.75, pz), mats.c("#ff5f6d", 0.6));
+      for (const [dx, dz] of [[-0.48, -0.18], [-0.12, -0.18], [-0.48, 0.18], [-0.12, 0.18]]) add(new THREE.BoxGeometry(0.04, 0.5, 0.04).translate(px + dx, 0.5, pz + dz), metal);
+      add(new THREE.BoxGeometry(0.7, 0.04, 0.26).rotateZ(-0.55).translate(px + 0.18, 0.55, pz), mats.c("#ffd23f", 0.5));
+      for (const dx of [0.0, 0.5]) add(new THREE.BoxGeometry(0.04, 0.7, 0.04).translate(px + dx, 0.6, pz + 0.45), mats.c("#4fc3ff", 0.6));
+      add(new THREE.BoxGeometry(0.58, 0.04, 0.04).translate(px + 0.25, 0.95, pz + 0.45), mats.c("#4fc3ff", 0.6));
+      add(new THREE.BoxGeometry(0.16, 0.03, 0.1).translate(px + 0.25, 0.5, pz + 0.45), mats.c("#ff5f6d", 0.6));
+    } else {
+      add(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 8).translate(px, 0.29, pz), stone);
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; add(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6).translate(px + Math.cos(a) * 0.5, 0.65, pz + Math.sin(a) * 0.5), mats.c("#ffffff", 0.6)); }
+      add(new THREE.ConeGeometry(0.75, 0.4, 8).translate(px, 1.2, pz), mats.c("#ff8a5c", 0.6));
+    }
+  }
+  // Fire hydrants and mailboxes on the street corners.
+  for (const [n, cell] of CELLS.entries()) {
+    const { x, z } = cellXZ(cell), e = q - 0.95;
+    add(new THREE.CylinderGeometry(0.07, 0.08, 0.26, 8).translate(x - e, 0.33, z - e + 0.4), mats.c("#ff4f4f", 0.5));
+    add(new THREE.SphereGeometry(0.07, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(x - e, 0.46, z - e + 0.4), mats.c("#ff4f4f", 0.5));
+    if (n % 3 === 0) { add(new THREE.BoxGeometry(0.22, 0.28, 0.18).translate(x + e - 0.4, 0.48, z - e), mats.c("#3a6fe0", 0.5)); add(new THREE.BoxGeometry(0.06, 0.26, 0.06).translate(x + e - 0.4, 0.22, z - e), metal); }
   }
   // Street furniture round the business blocks: planters at the corners, benches and bins.
   for (const [n, cell] of CELLS.entries()) {
@@ -229,6 +253,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     if (n % 2 === 0) bench(x - 0.9, z + e + 0.05, 0); else bench(x + e + 0.05, z - 0.9, -Math.PI / 2);
     add(new THREE.CylinderGeometry(0.11, 0.1, 0.32, 8).translate(x + e - 0.05, 0.36, z + e - 0.9), mats.c("#3fae6a", 0.6));
   }
+  /** Where the beach starts: just behind the back row of streets. */
+  const beachZ = cellXZ([0, 0]).z - C / 2;
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
@@ -237,7 +263,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let x = -OFF - C; x <= OFF + 3 * C; x += 1.2) for (let z = -OFF - C; z <= OFF + 3 * C; z += 1.2) {
       const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
       k++;
-      if (inCell(jx, jz) || !inside(jx, jz)) continue;
+      if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3) continue;
       if (r < 0.4) tree(jx, jz, 0.7 + r, 0);
       else if (r < 0.6) add(new THREE.IcosahedronGeometry(0.28, 0).translate(jx, 0.15, jz), leaf);
       else if (r < 0.72) add(new THREE.DodecahedronGeometry(0.22 + r * 0.2, 0).translate(jx, 0.1, jz), stone);
@@ -247,6 +273,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const rail = grow(hull, -0.3);
     for (let i = 0; i < rail.length; i++) {
       const a = rail[i], b = rail[(i + 1) % rail.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if ((a[1] + b[1]) / 2 < beachZ - 0.5) continue; // the beach is open to the sea
       const ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
       add(new THREE.BoxGeometry(0.06, 0.06, len).rotateY(ang).translate((a[0] + b[0]) / 2, 0.45, (a[1] + b[1]) / 2), stone);
       for (let d = 0; d < len; d += 1.4) add(new THREE.BoxGeometry(0.12, 0.45, 0.12).translate(a[0] + ((b[0] - a[0]) * d) / len, 0.22, a[1] + ((b[1] - a[1]) * d) / len), stone);
@@ -287,7 +314,199 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a, 0.9, z + b), pole);
       add(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a, 1.65, z + b), lampMat);
     }
+  }  // ---- The beach and the sea, along the back of the island ----
+  // Sand just behind the back streets, then shallow turquoise water and the sea out to the
+  // island's edge: palms, umbrellas and loungers, a beach hut, a lifeguard chair, a pier
+  // with a bobbing sailboat, buoys, waves washing in, and a lighthouse on the corner.
+  const clipZ = (poly: [number, number][], z0: number, keepBelow: boolean): [number, number][] => {
+    const out: [number, number][] = [], inn = (p: [number, number]) => (keepBelow ? p[1] <= z0 : p[1] >= z0);
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      if (inn(a)) out.push(a);
+      if (inn(a) !== inn(b)) { const k = (z0 - a[1]) / (b[1] - a[1]); out.push([a[0] + (b[0] - a[0]) * k, z0]); }
+    }
+    return out;
+  };
+  const zShore = beachZ - 2.3;
+  const shoreIn = grow(hull, -0.22);
+  const sandPoly = clipZ(clipZ(shoreIn, beachZ - 0.05, true), zShore - 0.4, false);
+  const seaPoly = clipZ(shoreIn, zShore, true);
+  const sandM = own(std("#f3dca4", { roughness: 1 }));
+  const wetSandM = own(std("#dcc28a", { roughness: 0.9 }));
+  const seaM = own(std("#2aa6e6", { roughness: 0.08, metalness: 0.15, emissive: 0x0a4a8a, emissiveIntensity: 0.15 }));
+  seaM.userData.dynamic = true;
+  const shallowM = own(std("#7fe0e6", { roughness: 0.1, metalness: 0.1, emissive: 0x1a6a7a, emissiveIntensity: 0.1 }));
+  shallowM.userData.dynamic = true;
+  let beachLive = (_t: number, _night: number) => {};
+  if (sandPoly.length >= 3 && seaPoly.length >= 3) {
+    slab(sandPoly, 0.08, 0.06, sandM);
+    slab(clipZ(sandPoly, zShore + 0.35, true), 0.02, 0.065, wetSandM);
+    slab(seaPoly, 0.08, 0.035, seaM);
+    slab(clipZ(seaPoly, zShore - 0.9, false), 0.02, 0.045, shallowM);
+    // Deeper water further out, and glints of light on the waves.
+    const deepM = own(std("#1a7fd0", { roughness: 0.06, metalness: 0.2, emissive: 0x062a5a, emissiveIntensity: 0.15 }));
+    slab(clipZ(grow(seaPoly, -0.6), zShore - 3.2, true), 0.02, 0.042, deepM);
+    const glintM = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
+    glintM.userData.dynamic = true;
+    const glints = new THREE.Group();
+    glints.userData.dynamic = true;
+    {
+      let k = 0;
+      const sx = seaPoly.map(q => q[0]), sz = seaPoly.map(q => q[1]);
+      const inSea = (x: number, z: number) => { for (let i = 0; i < seaPoly.length; i++) { const a = seaPoly[i], b = seaPoly[(i + 1) % seaPoly.length]; if ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0.3 * Math.hypot(b[0] - a[0], b[1] - a[1])) return false; } return true; };
+      for (let x = Math.min(...sx); x < Math.max(...sx); x += 1.1) for (let z = Math.min(...sz); z < zShore - 0.8; z += 0.9) {
+        const jx = x + Math.sin(k * 12.9898) * 0.45, jz = z + Math.cos(k * 78.233) * 0.35;
+        k++;
+        if (!inSea(jx, jz) || Math.abs(Math.sin(k * 3.1)) < 0.35) continue;
+        glints.add(new THREE.Mesh(new THREE.BoxGeometry(0.32 + Math.abs(Math.sin(k)) * 0.3, 0.01, 0.04).translate(jx, 0.07, jz), glintM));
+      }
+    }
+    g.add(glints);
+    const xs = sandPoly.map(p => p[0]), x0 = Math.min(...xs) + 0.9, x1 = Math.max(...xs) - 0.9;
+    const seaXs = (z: number) => { const c = clipZ(clipZ(seaPoly, z + 0.05, true), z - 0.05, false).map(p => p[0]); return c.length ? [Math.min(...c), Math.max(...c)] : [x0, x1]; };
+    const zs = (beachZ + zShore) / 2;
+    // Palms: a leaning, ringed trunk, drooping fronds and coconuts.
+    const palmLeaf = own(std("#3fae5a", { roughness: 0.9, flatShading: true }));
+    const palm = (x: number, z: number, h: number, lean: number) => {
+      const top = new THREE.Vector3(x + lean, 0.1 + h, z);
+      for (let k = 0; k < 4; k++) {
+        const f0 = k / 4, f1 = (k + 1) / 4, y0 = 0.1 + h * f0, y1 = 0.1 + h * f1;
+        const seg = new THREE.CylinderGeometry(0.07 - k * 0.008, 0.09 - k * 0.008, h / 4 + 0.02, 6);
+        const m = new THREE.Mesh(seg, trunk);
+        m.position.set(x + lean * (f0 + f1) / 2 * ((f0 + f1) / 2), (y0 + y1) / 2, z);
+        m.rotation.z = -lean * 0.35 * (k + 1) / 4;
+        g.add(m);
+      }
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * Math.PI * 2;
+        const fr = new THREE.BoxGeometry(0.9, 0.04, 0.22).translate(0.42, 0, 0).rotateZ(-0.45).rotateY(a);
+        add(fr.translate(top.x, top.y, top.z), palmLeaf);
+      }
+      for (let k = 0; k < 3; k++) add(new THREE.SphereGeometry(0.06, 6, 4).translate(top.x + Math.cos(k * 2.1) * 0.1, top.y - 0.08, top.z + Math.sin(k * 2.1) * 0.1), mats.c("#7a5230", 0.8));
+    };
+    // Umbrellas with towels and loungers under them.
+    const stripes = ["#ff5f6d", "#ffd23f", "#4fc3ff", "#b48cff", "#3fd18a"];
+    const umbrella = (x: number, z: number, n: number) => {
+      add(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 6).translate(x, 0.6, z), mats.c("#ffffff", 0.5));
+      const c1 = stripes[n % stripes.length], c2 = "#ffffff";
+      for (let k = 0; k < 8; k++) {
+        const cone = new THREE.ConeGeometry(0.6, 0.3, 8, 1, true, (k / 8) * Math.PI * 2, Math.PI / 4).translate(x, 1.15, z);
+        add(cone, mats.c(k % 2 ? c1 : c2, 0.7));
+      }
+      add(new THREE.BoxGeometry(0.42, 0.02, 0.8).translate(x + 0.25, 0.12, z + 0.15), mats.c(stripes[(n + 2) % stripes.length], 0.8));
+      const lx = x - 0.45;
+      add(new THREE.BoxGeometry(0.34, 0.06, 0.6).translate(lx, 0.22, z + 0.1), mats.c("#ffffff", 0.6));
+      add(new THREE.BoxGeometry(0.34, 0.06, 0.3).rotateX(-0.6).translate(lx, 0.33, z - 0.27), mats.c("#ffffff", 0.6));
+      for (const [dx, dz] of [[-0.14, 0.32], [0.14, 0.32], [-0.14, -0.15], [0.14, -0.15]]) add(new THREE.BoxGeometry(0.03, 0.12, 0.03).translate(lx + dx, 0.14, z + dz), metal);
+    };
+    const span = x1 - x0;
+    palm(x0 + 0.2, zs + 0.5, 1.7, 0.25);
+    palm(x0 + span * 0.36, zs - 0.4, 2.0, -0.2);
+    palm(x0 + span * 0.7, zs + 0.6, 1.8, 0.2);
+    palm(x1 - 0.1, zs - 0.2, 2.1, -0.25);
+    umbrella(x0 + span * 0.16, zs - 0.15, 0);
+    umbrella(x0 + span * 0.5, zs + 0.2, 1);
+    umbrella(x0 + span * 0.84, zs - 0.1, 2);
+    // A beach hut with a striped awning, a lifeguard chair, a sandcastle and a beach ball.
+    {
+      const hx = x0 + span * 0.28, hz = beachZ - 0.55;
+      add(new THREE.BoxGeometry(1.0, 0.7, 0.7).translate(hx, 0.45, hz), mats.c("#fff6e0", 0.7));
+      add(new THREE.CylinderGeometry(0.01, 0.72, 0.4, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.75).translate(hx, 1.0, hz), mats.c("#4fc3ff", 0.6));
+      add(new THREE.BoxGeometry(0.4, 0.45, 0.03).translate(hx, 0.33, hz - 0.36), mats.c("#c86a4a", 0.7));
+      for (let k = 0; k < 5; k++) add(new THREE.BoxGeometry(0.2, 0.03, 0.3).rotateX(0.4).translate(hx - 0.4 + k * 0.2, 0.72, hz - 0.45), mats.c(k % 2 ? "#ffffff" : "#ff5f6d", 0.7));
+      const gx = x0 + span * 0.62, gz = zs - 0.1;
+      for (const [dx, dz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) add(new THREE.BoxGeometry(0.05, 1.0, 0.05).translate(gx + dx, 0.55, gz + dz), mats.c("#ffffff", 0.6));
+      add(new THREE.BoxGeometry(0.5, 0.06, 0.5).translate(gx, 1.05, gz), mats.c("#ff4f4f", 0.6));
+      add(new THREE.BoxGeometry(0.4, 0.35, 0.05).translate(gx, 1.25, gz + 0.22), mats.c("#ff4f4f", 0.6));
+      const cxs = x0 + span * 0.42, czs = zShore + 0.55;
+      add(new THREE.BoxGeometry(0.4, 0.18, 0.4).translate(cxs, 0.16, czs), sandM);
+      for (const [dx, dz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) add(new THREE.CylinderGeometry(0.07, 0.08, 0.32, 6).translate(cxs + dx, 0.22, czs + dz), sandM);
+      add(new THREE.CylinderGeometry(0.1, 0.12, 0.38, 6).translate(cxs, 0.37, czs), sandM);
+      add(new THREE.SphereGeometry(0.13, 10, 8).translate(x0 + span * 0.92, 0.2, zs + 0.5), mats.c("#ff6fa0", 0.5));
+    }
+    // The pier out into the sea, on posts, with a lamp at the end.
+    const px = x0 + span * 0.55, pz0 = zShore + 0.3, pz1 = Math.max(zShore - 3.2, Math.min(...seaPoly.map(q => q[1])) + 0.7);
+    add(new THREE.BoxGeometry(0.7, 0.07, pz0 - pz1).translate(px, 0.32, (pz0 + pz1) / 2), wood);
+    for (let z = pz0 - 0.3; z > pz1; z -= 0.7) for (const dx of [-0.3, 0.3]) add(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6).translate(px + dx, 0.12, z), wood);
+    add(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 6).translate(px + 0.3, 0.75, pz1 + 0.1), metal);
+    add(new THREE.SphereGeometry(0.08, 8, 6).translate(px + 0.3, 1.18, pz1 + 0.1), lampMat);
+    // A sailboat tied up by the pier, bobbing.
+    const boat = new THREE.Group();
+    {
+      const hullShape = new THREE.Shape([new THREE.Vector2(-0.55, 0), new THREE.Vector2(0.55, 0), new THREE.Vector2(0.75, 0.22), new THREE.Vector2(-0.7, 0.22)]);
+      boat.add(new THREE.Mesh(new THREE.ExtrudeGeometry(hullShape, { depth: 0.36, bevelEnabled: false }).translate(0, 0, -0.18), mats.c("#ffffff", 0.5)));
+      boat.add(new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.05, 0.38).translate(0, 0.22, 0), mats.c("#c8a070", 0.8)));
+      boat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.3, 6).translate(0, 0.85, 0), metal));
+      const sail = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0.6, 0), new THREE.Vector2(0, 1.05)]);
+      boat.add(new THREE.Mesh(new THREE.ShapeGeometry(sail).translate(0.02, 0.32, 0), own(new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.6 }))));
+      boat.add(new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.05, 0.37).translate(0, 0.08, 0), mats.c("#ff5f6d", 0.6)));
+    }
+    boat.position.set(px + 1.2, 0.02, (pz0 + pz1) / 2 - 0.4);
+    boat.rotation.y = Math.PI / 2 + 0.3;
+    boat.userData.dynamic = true;
+    g.add(boat);
+    // Buoys out at sea.
+    const buoys: THREE.Mesh[] = [];
+    const [sx0, sx1] = seaXs(zShore - 2.4);
+    for (let k = 0; k < 4; k++) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), mats.c(k % 2 ? "#ffffff" : "#ff4f4f", 0.5));
+      b.position.set(sx0 + 0.8 + ((sx1 - sx0 - 1.6) * k) / 3, 0.1, zShore - 2.4 - (k % 2) * 0.3);
+      b.userData.dynamic = true;
+      buoys.push(b); g.add(b);
+    }
+    // Waves washing in: soft white foam lines that roll up the sand and fade.
+    const foams: { m: THREE.Mesh; z: number; k: number }[] = [];
+    for (let k = 0; k < 3; k++) {
+      const z = zShore - 0.25 - k * 0.55, [fx0, fx1] = seaXs(z);
+      const fm = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
+      const m = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.5, fx1 - fx0 - 0.5), 0.015, 0.09).translate((fx0 + fx1) / 2, 0.085, 0), fm);
+      m.position.z = z;
+      m.userData.dynamic = true;
+      foams.push({ m, z, k }); g.add(m);
+    }
+    // Out at sea: a second sailboat and a little rocky islet with a palm.
+    const boat2 = boat.clone();
+    boat2.scale.setScalar(0.8);
+    const [ox0, ox1] = seaXs(zShore - 3.6);
+    boat2.position.set(ox0 + (ox1 - ox0) * 0.3, 0.02, zShore - 3.6);
+    boat2.rotation.y = -0.4;
+    boat2.userData.dynamic = true;
+    g.add(boat2);
+    const islet = { x: ox0 + (ox1 - ox0) * 0.72, z: zShore - 4.6 };
+    {
+      const { x: ix, z: iz } = islet;
+      add(new THREE.DodecahedronGeometry(1.2, 0).scale(1.3, 0.35, 1).translate(ix, 0.05, iz), rock);
+      add(new THREE.CylinderGeometry(1.15, 1.35, 0.12, 12).translate(ix, 0.16, iz), sandM);
+      palm(ix + 0.55, iz + 0.45, 1.3, 0.2);
+    }
+    // A lighthouse on the back corner, its lamp glowing at night.
+    // (It stands on the islet, where it's always in view.)
+    const lx = islet.x - 0.35, lz = islet.z - 0.2;
+    add(new THREE.CylinderGeometry(0.55, 0.65, 0.3, 10).translate(lx, 0.3, lz), rockDark);
+    for (let k = 0; k < 5; k++) add(new THREE.CylinderGeometry(0.42 - k * 0.04, 0.46 - k * 0.04, 0.5, 14).translate(lx, 0.7 + k * 0.5, lz), mats.c(k % 2 ? "#ff4f4f" : "#ffffff", 0.5));
+    add(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 14).translate(lx, 3.2, lz), metal);
+    const lhLamp = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 0.3 }));
+    lhLamp.userData.dynamic = true;
+    add(new THREE.CylinderGeometry(0.22, 0.22, 0.32, 10).translate(lx, 3.42, lz), lhLamp);
+    add(new THREE.ConeGeometry(0.32, 0.35, 10).translate(lx, 3.75, lz), mats.c("#ff4f4f", 0.5));
+    beachLive = (t, night) => {
+      boat.position.y = 0.02 + Math.sin(t * 1.4) * 0.04;
+      boat.rotation.z = Math.sin(t * 1.1) * 0.05;
+      boat2.position.y = 0.02 + Math.sin(t * 1.2 + 1) * 0.05;
+      boat2.rotation.z = Math.sin(t * 0.9 + 1) * 0.06;
+      buoys.forEach((b, k) => { b.position.y = 0.1 + Math.sin(t * 1.7 + k) * 0.05; });
+      for (const f of foams) {
+        const ph = (t * 0.35 + f.k / 3) % 1;
+        f.m.position.z = f.z + ph * 0.5;
+        (f.m.material as THREE.MeshBasicMaterial).opacity = Math.sin(ph * Math.PI) * 0.6;
+      }
+      seaM.emissiveIntensity = 0.15 + Math.sin(t * 0.8) * 0.04 + night * 0.1;
+      glintM.opacity = 0.2 + Math.abs(Math.sin(t * 0.9)) * 0.3;
+      glints.position.x = Math.sin(t * 0.3) * 0.25;
+      lhLamp.emissiveIntensity = 0.3 + night * 2.5 * (0.6 + 0.4 * Math.sin(t * 2.5));
+    };
   }
+
 
   // ---- Towers the player built (the first one, and HQs): their real floors, stacked ----
   // Every floor's footprint (narrower where overhangs broke off), in the skin's colors, with
@@ -541,6 +760,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         b.rotation.x = Math.cos(t * 0.4) * 0.25;
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
+      beachLive(t, night);
       const cd = cafe.terrace === 2 ? doors.get("coffee") : undefined;
       saleCoin.visible = !!cd;
       if (cd) {
@@ -730,7 +950,7 @@ function roofProp(id: string, c1: THREE.Color, c2: THREE.Color): THREE.Group {
 /** The island's edge: the town's blocks wrapped in one smooth, convex outline with a verge. */
 function islandOutline(): [number, number][] {
   const pts: [number, number][] = [];
-  for (const c of ALL) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
+  for (const c of [...ALL, ...BEACH]) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
   pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const lower: [number, number][] = [], upper: [number, number][] = [];
