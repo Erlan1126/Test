@@ -482,8 +482,8 @@ const SIM = `
       const gl = { x: R.px + 6, y: R.py + 8, kind: "lamp", id: 9003, type: "gold" }; R.anchors = [gl]; R.teth = null; R.hold = false; const lg = R.lights; swingAttach(R);
       out.goldAnchorsPayLights = R.teth === gl && R.lights === lg + 5;
       // The Heart of the Dark: three shards break it.
-      R.over = 0; R.hearts = 3; R.inv = 5; R.paused = false; R.ev = null; R.hearted = {}; R.tut = 0; const mm = runnerM(); R.dist = (Math.floor(mm / RUN.BIOME_M) * RUN.BIOME_M + RUN.BIOME_M - 60) * RUN.M; R.px = R.dist / RUN.M; R.darkX = R.px - 50; R.teth = null; R.roof = null; R.py = 30; R.vy = 0; for (let q = 0; q < 10 && !R.ev; q++) step(1);
-      out.theHeartOfTheDarkComesNearTheEndOfADistrict = !!R.ev && R.ev.kind === "heart" && R.ups.filter(u => u.kind === "shard").length >= 2;
+      R.over = 0; R.hearts = 3; R.inv = 5; R.paused = false; R.ev = null; R.hearted = {}; R.ups = R.ups.filter(u => u.kind !== "shard"); R.tut = 0; const mm = runnerM(); R.dist = (Math.floor(mm / RUN.BIOME_M) * RUN.BIOME_M + RUN.BIOME_M - 60) * RUN.M; R.px = R.dist / RUN.M; R.darkX = R.px - 50; R.teth = null; R.roof = null; R.py = 30; R.vy = 0; for (let q = 0; q < 10 && !R.ev; q++) step(1);
+      out.theHeartOfTheDarkComesNearTheEndOfADistrict = !!R.ev && R.ev.kind === "heart" && R.ups.filter(u => u.kind === "shard").length === 3;
       const l9 = R.lights; for (let q = 0; q < 3; q++) { R.ups.push({ x: R.px, y: R.py + 0.9, kind: "shard" }); step(1); }
       out.threeShardsBreakTheHeart = !R.ev && R.lights >= l9 + 60;
       // The letter hunt.

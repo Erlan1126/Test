@@ -636,6 +636,13 @@ function runDraw(ctx, W, H) {
   if (typeof RUN3D !== "undefined" && RUN3D && (R.mode3 || !proj)) RUN3D.hide();
   if (!R.mode3 && typeof RUNNER3D_ !== "undefined" && RUNNER3D_) RUNNER3D_.hide();
   if (R.mode3 && !proj) { ctx.fillStyle = "#0b0d14"; ctx.fillRect(0, 0, W, H); return; }
+  // The swing's overlay layer is left alone when there's nothing on it (cheaper on phones).
+  if (R.mode3 && proj) {
+    const a0 = R.scrAim, offA = a0 && !R.attract && (a0[0] < 16 || a0[0] > W - 16 || a0[1] < 16 || a0[1] > H - 16);
+    const need = R.msgs.length || (R.pops && R.pops.length) || R.perfT > 0 || (R.banner > 0 && !R.attract) || R.tutText || R.flash !== 0 || (R.od > 0 && !R.attract) || offA || (!R.attract && R.scrDark != null && R.scrDark > -W * 0.6) || R.over;
+    if (!need) { if (!R.ovClear) { ctx.clearRect(0, 0, W, H); R.ovClear = true; } return; }
+    R.ovClear = false;
+  }
   if (proj) ctx.clearRect(0, 0, W, H); else {
   // The sky.
   const sky = ctx.createLinearGradient(0, 0, 0, H);
@@ -971,22 +978,13 @@ function runDraw(ctx, W, H) {
   // The first run teaches by doing.
   if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // Speed: streaks rushing out from the middle when the runner is flying.
-  if (R.mode3 && (R.v || 0) > 16 && !R.over) {
+  if (R.mode3 && R.od > 0 && (R.v || 0) > 16 && !R.over && !R.attract) {
     const k = Math.min(1, ((R.v || 0) - 16) / 12) * (R.power && R.power.kind === "jet" ? 1.4 : 1), cx = W / 2, cy = H * 0.42;
     ctx.strokeStyle = `rgba(255,255,255,${0.16 * k})`; ctx.lineWidth = 1.5;
     for (let q = 0; q < 26; q++) { const r = seeded(q * 31 + Math.floor(R.t * 12)), a = r() * Math.PI * 2, d0 = W * (0.35 + r() * 0.3), d1 = d0 + W * (0.1 + k * 0.25); ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d0 * 1.4); ctx.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1 * 1.4); ctx.stroke(); }
   }
   // The swing: an arrow to the next anchor when it's off screen, and the darkness creeping in.
   if (R.mode3 && !R.attract && !R.over) {
-    // Flow: a slim bar under the score; gold and pulsing in Overdrive.
-    { const bw = W * 0.34, bx = W / 2 - bw / 2, by = W * 0.245, k = R.od > 0 ? R.od / 6 : R.flow, od = R.od > 0;
-      ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, 5, 3); else ctx.rect(bx, by, bw, 5); ctx.fill();
-      const g = ctx.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, od ? "#ffb21c" : "#5fe0ff"); g.addColorStop(1, od ? "#fff2b0" : "#b8a8ff"); ctx.fillStyle = g;
-      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, Math.max(5, bw * k), 5, 3); else ctx.rect(bx, by, bw * k, 5); ctx.fill();
-      ctx.font = `700 ${Math.round(W * 0.026)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = od ? `rgba(255,217,138,${0.7 + 0.3 * Math.sin(R.t * 10)})` : "rgba(220,235,255,0.7)";
-      ctx.fillText(od ? "OVERDRIVE" : R.combo >= 3 ? `FLOW · ×${R.combo}` : "FLOW", W / 2, by + W * 0.045);
-      // Dash charge: a small chevron beside it.
-      ctx.fillStyle = R.dashes > 0 ? "rgba(191,244,255,0.9)" : "rgba(255,255,255,0.18)"; ctx.beginPath(); ctx.moveTo(bx + bw + 10, by - 3); ctx.lineTo(bx + bw + 18, by + 2.5); ctx.lineTo(bx + bw + 10, by + 8); ctx.closePath(); ctx.fill(); }
     // A Perfect: a white flash and a ring around the figure.
     if (R.perfT > 0) { const k = 1 - R.perfT / 0.45, q = proj ? proj(R.x, R.dist) : [W / 2, H / 2]; ctx.fillStyle = `rgba(255,255,255,${0.18 * (1 - k)})`; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1] + W * 0.05, W * (0.05 + k * 0.3), 0, Math.PI * 2); ctx.stroke(); }
     if (R.od > 0) { const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); g.addColorStop(0, "rgba(255,190,60,0)"); g.addColorStop(1, `rgba(255,190,60,${0.18 + 0.06 * Math.sin(R.t * 8)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
@@ -994,7 +992,7 @@ function runDraw(ctx, W, H) {
     const a = R.scrAim;
     if (a && (a[0] < 16 || a[0] > W - 16 || a[1] < 16 || a[1] > H - 16)) {
       const cx = Math.max(22, Math.min(W - 22, a[0])), cy = Math.max(70, Math.min(H - 90, a[1])), ang = Math.atan2(a[1] - cy, a[0] - cx) || -Math.PI / 4;
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.globalAlpha = 0.6 + 0.4 * Math.sin(R.t * 8); ctx.fillStyle = "#bff4ff"; ctx.shadowColor = "#7fe8ff"; ctx.shadowBlur = 12;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.globalAlpha = 0.6 + 0.4 * Math.sin(R.t * 8); ctx.fillStyle = "#bff4ff";
       ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
     }
   }

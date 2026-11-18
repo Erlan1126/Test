@@ -596,6 +596,13 @@
   .run-hud .score { font-family: "Cinzel", Georgia, serif; font-size: 30px; color: #f2f8ff; text-shadow: 0 0 16px rgba(126, 232, 255, 0.4); line-height: 1; }
   .run-hud .sub { display: flex; gap: 10px; margin-top: 6px; font-size: 14px; color: #ffd98a; }
   .run-hud .sub span:last-child { color: #9fe8ff; }
+  .run-hud .flow { position: relative; width: 132px; height: 5px; margin: 10px auto 0; border-radius: 3px; background: rgba(255,255,255,0.13); }
+  .run-hud .flow i { position: absolute; inset: 0; border-radius: 3px; background: linear-gradient(90deg, #5fe0ff, #b8a8ff); transform-origin: 0 50%; transform: scaleX(0); will-change: transform; }
+  .run-hud .flow.od i { background: linear-gradient(90deg, #ffb21c, #fff2b0); }
+  .run-hud .flow b { position: absolute; right: -16px; top: -3px; width: 0; height: 0; border-left: 8px solid rgba(191,244,255,0.9); border-top: 5.5px solid transparent; border-bottom: 5.5px solid transparent; }
+  .run-hud .flow b.off { border-left-color: rgba(255,255,255,0.18); }
+  .run-hud .flow span { position: absolute; left: 0; right: 0; top: 9px; text-align: center; font: 700 10px Inter, system-ui, sans-serif; letter-spacing: 0.08em; color: rgba(220,235,255,0.75); }
+  .run-hud .flow.od span { color: #ffd98a; }
   .run-hud .hearts { font-size: 15px; letter-spacing: 3px; color: #bff4ff; text-align: right; margin-top: 8px; }
   #runPauseBtn { pointer-events: auto; width: 40px; height: 40px; border-radius: 50%; background: rgba(12, 18, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.15); color: #dfefff; font-size: 14px; }
   .run-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(360px, calc(100% - 32px)); padding: 22px 18px; border-radius: 22px; background: rgba(8, 12, 30, 0.92); border: 1px solid rgba(160, 238, 255, 0.25); text-align: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
@@ -885,7 +892,7 @@
   <canvas id="runCanvas" aria-label="Bip flying up through the city"></canvas>
   <div class="run-hud">
     <div class="hud-side"><div class="hearts" id="runHearts"></div></div>
-    <div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div></div>
+    <div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div><div class="flow" id="flowBar" hidden><i id="flowFill"></i><b id="flowDash"></b><span id="flowText">FLOW</span></div></div>
     <div class="hud-side right"><button class="icon2" id="runPauseBtn" aria-label="Pause"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></div>
   </div>
   <button class="ability" id="abilityBtn" hidden aria-label="Ability"><span id="abilityName"></span></button>

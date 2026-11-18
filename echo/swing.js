@@ -171,6 +171,17 @@ function runnerTutStep() {
   R.tut++; R.slow = 1; R.tutText = "";
   if (R.tut > 2) { R.tut = 0; const s = runSave(); s.tutDone = true; persist(); runMsg("You've got it!", "Swing on, and light up the city", 2.4, true); }
 }
+// The Flow bar lives in the page (not the canvas), touched only when it changes.
+const flowEls = {};
+function swingFlowHud(R) {
+  const el = flowEls.bar || (flowEls.bar = document.getElementById("flowBar")); if (!el) return;
+  if (el.hidden) { el.hidden = false; flowEls.fill = document.getElementById("flowFill"); flowEls.dash = document.getElementById("flowDash"); flowEls.text = document.getElementById("flowText"); }
+  const od = R.od > 0, k = Math.round((od ? R.od / 6 : R.flow) * 100) / 100, txt = od ? "OVERDRIVE" : R.combo >= 3 ? `FLOW · ×${R.combo}` : "FLOW";
+  if (k !== flowEls.k) { flowEls.k = k; flowEls.fill.style.transform = `scaleX(${k})`; }
+  if (od !== flowEls.od) { flowEls.od = od; el.classList.toggle("od", od); }
+  if (txt !== flowEls.txt) { flowEls.txt = txt; flowEls.text.textContent = txt; }
+  const dz = R.dashes > 0; if (dz !== flowEls.dz) { flowEls.dz = dz; flowEls.dash.classList.toggle("off", !dz); }
+}
 // Flow: Perfects, lights and gold anchors fill it; full Flow sets off Overdrive.
 function swingFlow(R, k) {
   if (R.od > 0) return;
@@ -350,14 +361,16 @@ function runnerUpdate(dt) {
   // The Heart of the Dark: near the end of every district it comes for you. Grab its three shards.
   if (!R.attract && !R.tut && !R.ev && m % RUN.BIOME_M > RUN.BIOME_M - 110 && !(R.hearted || (R.hearted = {}))[bb] && m > 200) {
     R.hearted[bb] = true; R.ev = { kind: "heart", t: 22, hits: 0 };
+    // Three shards ahead, always: on swing arcs where there are anchors, at a reachable height otherwise.
     const ahead = R.anchors.filter(a => a.x > R.px + 8).slice(0, 7);
-    for (let q = 0; q < 3 && q * 2 + 1 < ahead.length; q++) { const a = ahead[q * 2], b2 = ahead[q * 2 + 1]; R.ups.push({ x: (a.x + b2.x) / 2, y: (a.y + b2.y) / 2 - 10, kind: "shard" }); }
+    for (let q = 0; q < 3; q++) { const a = ahead[q * 2], b2 = ahead[q * 2 + 1]; R.ups.push(a && b2 ? { x: (a.x + b2.x) / 2, y: (a.y + b2.y) / 2 - 10, kind: "shard" } : { x: R.px + 24 + q * 26, y: 24 + runR() * 6, kind: "shard" }); }
     runMsg("The Heart of the Dark!", "Grab its 3 shards to break it", 2.6, true); sfx.power(); buzz([30, 40, 30]);
   }
   if (!R.attract) runMission("dist", Math.floor(m));
   if (m >= R.nextMile) { R.nextMile += 500; R.fireworks.push({ t: 0, seed: Math.random() }); if (!R.attract) { runMsg(`${Math.floor(m)} m!`, "The city glows for you", 1.8, true); sfx.unlock(); } }
   for (const f of R.fireworks) f.t += dt; R.fireworks = R.fireworks.filter(f => f.t < 3);
   if (!R.attract) { music.intensity = Math.min(1, (R.v - 10) / 22); music.layers = R.combo >= 12 ? 3 : 2; }
+  if (!R.attract) swingFlowHud(R);
   if (!R.attract && Math.floor(R.t * 4) !== Math.floor((R.t - dt) * 4)) runHud();
 }
 
@@ -398,7 +411,8 @@ function makeSwing3D() {
   sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
   const SUN_DIR = new T.Vector3(-0.55, 0.75, 0.35).normalize();
   const aniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-  const C = c => new T.Color(c[0] / 255, c[1] / 255, c[2] / 255);
+  const C = (c, out) => (out || new T.Color()).setRGB(c[0] / 255, c[1] / 255, c[2] / 255);
+  const WHITE = new T.Color(1, 1, 1), tmpGlow = new T.Color(), tmpTower = new T.Color(), tmpTowerL = new T.Color(), tmpA = new T.Color(), tmpB = new T.Color(), tmpCloud = new T.Color();
   const tex = (w, h, paint, srgb = true) => { const c = document.createElement("canvas"); c.width = w; c.height = h; paint(c.getContext("2d"), w, h); const t = new T.CanvasTexture(c); if (srgb) t.encoding = T.sRGBEncoding; t.anisotropy = aniso; t.wrapS = t.wrapT = T.RepeatWrapping; return t; };
   const rnd = seeded(2024);
   const boxGeo = new T.BoxGeometry(1, 1, 1);
@@ -466,6 +480,11 @@ function makeSwing3D() {
     f.mat = std({ map: f.map, emissiveMap: f.lit, emissive: 0xffffff, emissiveIntensity: 0, roughnessMap: f.rm, metalnessMap: f.rm, roughness: 1, metalness: facMetal });
   });
   const TILE = 9;                        // metres of facade per texture tile
+  const boxCache = new Map();
+  function boxUVc(w, h, d) {
+    const W2 = Math.max(0.5, Math.round(w * 2) / 2), H2 = Math.max(0.5, Math.round(h * 2) / 2), D2 = Math.round(d), key = W2 + "|" + H2 + "|" + D2;
+    let g = boxCache.get(key); if (!g) { g = boxUV(W2, H2, D2); g.userData.cached = true; boxCache.set(key, g); } return g;
+  }
   function boxUV(w, h, d) {
     const g = new T.BoxGeometry(w, h, d), uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
     for (let f = 0; f < 6; f++) for (let q = 0; q < 4; q++) { const i = f * 4 + q; uv.setXY(i, uv.getX(i) * dims[f][0] / TILE, uv.getY(i) * dims[f][1] / TILE); }
@@ -493,6 +512,7 @@ function makeSwing3D() {
       adTex[i].needsUpdate = true;
     });
   }
+  paintAds(1.3);
   const NEON_WORDS = ["HOTEL", "BAR", "OPEN", "CAFE", "TAXI", "CLUB", "24H"];
   const neonTex = NEON_WORDS.map(w => tex(64, 320, (g) => { g.fillStyle = "#121318"; g.fillRect(0, 0, 64, 320); g.strokeStyle = "#fff"; g.lineWidth = 4; g.strokeRect(4, 4, 56, 312); g.fillStyle = "#fff"; g.font = "800 40px Inter, system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; [...w].forEach((ch, q) => g.fillText(ch, 32, 160 + (q - (w.length - 1) / 2) * 50)); }));
   const NEON_COL = [0xff3d7f, 0x22e0ff, 0xffc23d, 0x9b6bff, 0x3dffa8];
@@ -544,7 +564,7 @@ function makeSwing3D() {
       g.userData = { leaf, lights }; scene.add(g); b.mesh = g; bldGroups.add(g); return g;
     }
     const st = FAC[b.style], mat = st.mat.clone(); mat.emissiveIntensity = 0;
-    const main = new T.Mesh(boxUV(w, b.h, 12), mat); main.position.set(cx, b.h / 2, -4.5); g.add(main);
+    const main = new T.Mesh(boxUVc(w, b.h, 12), mat); main.position.set(cx, b.h / 2, -4.5); g.add(main);
     const cap = new T.Mesh(boxGeo, roofMat); cap.scale.set(w + 0.4, 0.5, 12.4); cap.position.set(cx, b.h + 0.25 - 0.5, -4.5); g.add(cap);
     for (let q = 0; q < 2; q++) { const ac = new T.Mesh(boxGeo, roofMat); ac.scale.set(1.6 + r() * 1.5, 1, 1.6 + r()); ac.position.set(b.x0 + 1.5 + r() * (w - 3), b.h + 0.5, -6 - r() * 3); g.add(ac); }
     if (r() < 0.3 && w > 10) { const tank = new T.Mesh(new T.CylinderGeometry(1.2, 1.2, 2.4, 16), std({ color: 0x8a6a4a, roughness: 0.8 })); tank.position.set(b.x0 + 2 + r() * (w - 4), b.h + 2.6, -7); g.add(tank); const capT = new T.Mesh(new T.ConeGeometry(1.4, 0.9, 16), std({ color: 0x5a4632, roughness: 0.8 })); capT.position.set(tank.position.x, b.h + 4.2, -7); g.add(capT); for (const [a2, c2] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) { const leg = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 1.4, 6), metalDark); leg.position.set(tank.position.x + a2, b.h + 0.7, -7 + c2); g.add(leg); } }
@@ -728,7 +748,8 @@ function makeSwing3D() {
     stars.material.opacity = Math.max(0, night - 0.35) / 0.65; stars.visible = stars.material.opacity > 0.01; stars.position.copy(camera.position);
     sunSpr.material.opacity = day * 0.9; sunSpr.visible = day > 0.05; sunSpr.position.set(camera.position.x + 120, 170, -330);
     moon.visible = night > 0.3; moon.material.opacity = Math.max(0, night - 0.3) / 0.7; moon.position.set(camera.position.x - 60, 150, -330);
-    clouds.forEach(cl => { cl.s.position.set(camera.position.x + cl.x * 0.6, cl.y, cl.z); cl.s.scale.set(cl.w, cl.w * 0.45, 1); cl.s.material.opacity = Math.max(0, 0.8 - night); cl.s.visible = night < 0.78; cl.s.material.color.copy(C(P.sky[2])).lerp(new T.Color(1, 1, 1), 0.55); });
+    const cloudC = C(P.sky[2], tmpCloud).lerp(WHITE, 0.55);
+    clouds.forEach(cl => { cl.s.position.set(camera.position.x + cl.x * 0.6, cl.y, cl.z); cl.s.scale.set(cl.w, cl.w * 0.45, 1); cl.s.material.opacity = Math.max(0, 0.8 - night); cl.s.visible = night < 0.78; cl.s.material.color.copy(cloudC); });
     scene.environment = null;
     rain.visible = !!P.rain;
     if (P.rain) { for (let q = 0; q < rainN; q++) { const s = rainSeed[q], x = (s[0] - 0.5) * 70 + cam.x, z = 10 - s[1] * 40, y = cam.y + 30 - ((s[2] * 60 + t * 30) % 60); rainPos.set([x, y, z, x - 0.1, y - 1.2, z], q * 6); } rainGeo.attributes.position.needsUpdate = true; }
@@ -740,7 +761,7 @@ function makeSwing3D() {
     cars.forEach(cr => { cr.x += cr.v * dt; if (cr.x < cam.x - 80) cr.x += 160; if (cr.x > cam.x + 80) cr.x -= 160; cr.g.position.set(cr.x, 0, cr.z); cr.g.rotation.y = cr.v > 0 ? 0 : Math.PI; cr.hl.position.set(2.2, 0.8, 0); cr.tl.position.set(-2.2, 0.8, 0); cr.hl.material.opacity = 0.3 + night * 0.6; cr.tl.material.opacity = 0.2 + night * 0.5; cr.g.visible = !water.visible || Math.abs(cr.x - (wx + RUN.BIOME_M / 2)) > RUN.BIOME_M / 2; });
     poolsBegin();
     // Play-line buildings: lit ones glow; the sweep climbs as they wake.
-    const glowC = new T.Color(runnerGlow());
+    const glowC = tmpGlow.set(runnerGlow()), towerC = C(P.tower, tmpTower), towerLight = tmpTowerL.copy(towerC).lerp(WHITE, 0.55 + day * 0.2);
     for (const b of R.blds) {
       const g = bldMesh(b); g.userData.swingOld = true; g.visible = true;
       const k = b.litT < 0 ? 0 : Math.min(1, (b.litT += dt) / 0.9), u = g.userData;
@@ -751,23 +772,23 @@ function makeSwing3D() {
       u.leds.forEach(ld => { ld.material.opacity = k * (0.55 + 0.35 * Math.sin(t * 2 + u.ph)) * (0.4 + night * 0.6); ld.material.color.copy(glowC); });
       u.beacon.material.opacity = k > 0.5 ? (Math.sin(t * 3 + u.ph) > 0.6 ? 0.9 : 0.1) * (0.3 + night * 0.7) : 0;
       if (b.litT >= 0 && b.litT < 0.8) { const sw = get("shock", makers.shock), q2 = b.litT / 0.8; sw.position.set((b.x0 + b.x1) / 2, b.h * 0.6, 1.8); sw.scale.setScalar(1 + q2 * (b.x1 - b.x0) * 0.9); sw.material.opacity = 0.8 * (1 - q2); sw.material.color.copy(glowC); }
-      u.mat.color.copy(C(P.tower)).lerp(new T.Color(1, 1, 1), 0.55 + day * 0.2); if (k < 1) u.mat.color.lerp(darkTint, (1 - k) * (0.5 + night * 0.45));
+      u.mat.color.copy(towerLight); if (k < 1) u.mat.color.lerp(darkTint, (1 - k) * (0.5 + night * 0.45));
       u.rim.material.opacity = k * 0.9; u.rim.material.color.copy(glowC);
       u.sweep.visible = k > 0 && k < 1; u.sweep.material.opacity = u.sweep.visible ? 0.55 * Math.sin(k * Math.PI) : 0; u.sweep.position.y = k * b.h;
       if (u.neon) u.neon.color.set(u.neonCol).multiplyScalar(0.2 + k * (0.5 + night * 0.9));
     }
     { const live = new Set(); for (const b of R.blds) if (b.mesh) live.add(b.mesh);
-      for (const o of bldGroups) if (!live.has(o)) { scene.remove(o); bldGroups.delete(o); o.traverse(q => { if (q.geometry && q.geometry !== boxGeo) q.geometry.dispose(); if (q.material && q.material.isMaterial && q.material !== roofMat && q.material !== metalDark && !q.material.map) q.material.dispose(); }); } }
-    adT += dt; if (adT > 0.2 && R.blds.some(b => b.mesh && b.mesh.userData.ad && Math.abs(b.x0 - cam.x) < 40)) { adT = 0; paintAds(t); }
+      for (const o of bldGroups) if (!live.has(o)) { scene.remove(o); bldGroups.delete(o); o.traverse(q => { if (q.geometry && q.geometry !== boxGeo && !q.geometry.userData.cached) q.geometry.dispose(); if (q.material && q.material.isMaterial && q.material !== roofMat && q.material !== metalDark && !q.material.map) q.material.dispose(); }); } }
+
     // The skyline behind.
     layers.forEach((Ly, li) => {
       const L2 = bgList[li]; if (L2.next == null) L2.next = cam.x - 120;
-      while (L2.next < cam.x + 200) { const r = seeded(Math.floor(L2.next * 7.31) + li * 999), w = Ly.sp * (0.6 + r() * 0.6), hh = Ly.h[0] + r() * (Ly.h[1] - Ly.h[0]), st = li, m2 = new T.Mesh(boxUV(w, hh, 14), bgDark[li]); m2.position.set(L2.next + w / 2, hh / 2, Ly.z); scene.add(m2); L2.list.push({ m: m2, x: L2.next + w / 2, st }); L2.next += w + 2 + r() * 6; }
-      L2.list = L2.list.filter(o => { if (o.x < cam.x - 160) { scene.remove(o.m); o.m.geometry.dispose(); return false; } return true; });
+      while (L2.next < cam.x + 200) { const r = seeded(Math.floor(L2.next * 7.31) + li * 999), w = Ly.sp * (0.6 + r() * 0.6), hh = Ly.h[0] + r() * (Ly.h[1] - Ly.h[0]), st = li, m2 = new T.Mesh(boxUVc(w, hh, 14), bgDark[li]); m2.position.set(L2.next + w / 2, hh / 2, Ly.z); scene.add(m2); L2.list.push({ m: m2, x: L2.next + w / 2, st }); L2.next += w + 2 + r() * 6; }
+      L2.list = L2.list.filter(o => { if (o.x < cam.x - 160) { scene.remove(o.m); return false; } return true; });
       for (const o of L2.list) o.m.material = (o.x < R.px + 10 + li * 6) && !blackout ? bgLit[o.st] : bgDark[o.st];
     });
     // Each layer fades toward the horizon colour with distance (aerial perspective).
-    layers.forEach((Ly, li) => { const base = C(P.tower).multiplyScalar(0.18 + day * 0.35).lerp(C(P.sky[2]), 0.15 + li * 0.22); bgLit[li].color.copy(base); bgDark[li].color.copy(base); bgLit[li].emissiveIntensity = (0.25 + night * 0.75) * (1 - li * 0.25); });
+    layers.forEach((Ly, li) => { const base = C(P.tower, tmpA).multiplyScalar(0.18 + day * 0.35).lerp(C(P.sky[2], tmpB), 0.15 + li * 0.22); bgLit[li].color.copy(base); bgDark[li].color.copy(base); bgLit[li].emissiveIntensity = (0.25 + night * 0.75) * (1 - li * 0.25); });
     // Anchors: the best one to grab glows brighter, with a ring.
     const best = !R.teth ? swingFindAnchor(R) : null;
     for (const a of R.anchors) {
@@ -805,12 +826,12 @@ function makeSwing3D() {
     if (R.over) { hero.rotation.z += dt * 6; }
     // The scarf follows the shoulders.
     const nk = new T.Vector3(0, 1.45, 0).applyMatrix4(hero.matrixWorld.compose(hero.position, hero.quaternion.setFromEuler(hero.rotation), hero.scale));
-    hist.unshift([nk.x, nk.y]); const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N2 = Math.min(SC, scf.len); if (hist.length > SC) hist.length = SC;
-    const scC = scf.c === "prism" || R.od > 0 ? null : new T.Color(scf.c ?? runnerGlow());
+    { const e = hist.length >= SC ? hist.pop() : [0, 0]; e[0] = nk.x; e[1] = nk.y; hist.unshift(e); } const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N2 = Math.min(SC, scf.len); if (hist.length > SC) hist.length = SC;
+    const scC = scf.c === "prism" || R.od > 0 ? null : tmpB.set(scf.c ?? runnerGlow());
     const fill = (geo, off) => { const pos = geo.attributes.position.array, col = geo.attributes.color.array;
       for (let q = 0; q < SC; q++) { const h0 = hist[Math.min(q, hist.length - 1)] || [R.px, R.py + 1.45], k = q / (N2 - 1), wv = q < N2 ? scf.w * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)) : 0, yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k + off;
-        pos.set([h0[0], h0[1] + yo + wv / 2, -0.15, h0[0], h0[1] + yo - wv / 2, -0.15], q * 6);
-        const c3 = scC || new T.Color().setHSL((t * 0.3 + q * 0.03) % 1, 0.9, 0.6), f = q < N2 ? (1 - k) : 0; col.set([c3.r * f, c3.g * f, c3.b * f, c3.r * f, c3.g * f, c3.b * f], q * 6); }
+        const o = q * 6; pos[o] = pos[o + 3] = h0[0]; pos[o + 1] = h0[1] + yo + wv / 2; pos[o + 4] = h0[1] + yo - wv / 2; pos[o + 2] = pos[o + 5] = -0.15;
+        const c3 = scC || tmpA.setHSL((t * 0.3 + q * 0.03) % 1, 0.9, 0.6), f = q < N2 ? (1 - k) : 0; col[o] = col[o + 3] = c3.r * f; col[o + 1] = col[o + 4] = c3.g * f; col[o + 2] = col[o + 5] = c3.b * f; }
       geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; };
     fill(scGeo, 0); scarf2.visible = !!scf.twin; if (scf.twin) fill(scarf2.geometry, -0.35);
     // The tether.
