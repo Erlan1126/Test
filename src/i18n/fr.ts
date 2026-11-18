@@ -1412,4 +1412,11 @@ export const FR: Record<string, string> = {
   "Keep floors wide. The terrace gets lights, flowers and more customers": "Garde des étages larges. La terrasse gagne des lumières, des fleurs et plus de clients",
   "Your first tower: {n} floor": "Ta première tour : {n} étage",
   "Your first tower: {n} floors": "Ta première tour : {n} étages",
+  "Free advisor": "Conseiller gratuit",
+  "🎁 Free advisor: choose who joins in Company → Team": "🎁 Conseiller gratuit : choisis qui rejoint dans Entreprise → Équipe",
+  "a free advisor of your choice": "un conseiller gratuit de ton choix",
+  "Pick": "Choisir",
+  "Free advisor picks: {n}. Choose any advisor above.": "Conseillers gratuits à choisir : {n}. Choisis-en un ci-dessus.",
+  "Finish all of today's goals, or reach day 7 of the daily calendar, for a free pick of the advisor you want.": "Termine tous les objectifs du jour, ou atteins le jour 7 du calendrier, pour choisir gratuitement le conseiller que tu veux.",
+  "All of today's goals done! 🎁 Free advisor: choose who joins in Company → Team": "Tous les objectifs du jour sont faits ! 🎁 Conseiller gratuit : choisis qui rejoint dans Entreprise → Équipe",
 };

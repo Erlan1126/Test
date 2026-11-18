@@ -728,7 +728,7 @@ export class App implements DailyHost {
     $("visit-back").addEventListener("click", () => { this.sound.click(); this.endVisit(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
-    wireModal($("daily"));
+    wireModal($("daily-rewards"));
     $("modes-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("modes")); });
     wireModal($("modes"));
     // Picking a mode closes the list first (its own button then starts it or opens it).
@@ -1606,7 +1606,7 @@ export class App implements DailyHost {
     const cl = $("city-line");
     cl.hidden = p.towers < 1 || !isOpen(save, "city");
     cl.innerHTML = t("🏙️ {city} · <b>{n}</b> people", { city: esc(t(CITY_NAME)), n: fmt(save.population) });
-    $("daily-title").textContent = t("Daily");
+    $("daily-tower-label").textContent = t("Daily");
     // Daily, Journey and Zen live behind one Modes button; its dot means one of them has news.
     // The other modes sit as chips beside Classic, right on the home screen.
     const modeIds = ["daily-btn", "challenges-btn", "zen-btn"];
@@ -1852,7 +1852,7 @@ export class App implements DailyHost {
     const slot = (g.streak - 1) % DAILY_REWARDS.length, first = g.streak - slot;
     const tile = (i: number, state: string) => {
       const r = dailyReward(save, first + i), big = i === DAILY_REWARDS.length - 1;
-      const what = r.advisor ? `🎁<b>${esc(t("Mystery crate"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
+      const what = r.advisor ? `🎁<b>${esc(t("Free advisor"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
       return `<div class="daily-day ${state}${big ? " big" : ""}"><small>${esc(t("Day {n}", { n: i + 1 }))}</small><span class="daily-what">${what}</span>${state === "done" ? `<i class="daily-check">✓</i>` : ""}</div>`;
     };
     const paint = (claimed: boolean) => {
@@ -1864,9 +1864,9 @@ export class App implements DailyHost {
     btn.textContent = t("Claim");
     btn.classList.remove("done");
     btn.onclick = () => {
-      if (btn.classList.contains("done")) { closeModal($("daily")); return; }
+      if (btn.classList.contains("done")) { closeModal($("daily-rewards")); return; }
       const gift = this.sheets.claimGift();
-      if (!gift) { closeModal($("daily")); return; }
+      if (!gift) { closeModal($("daily-rewards")); return; }
       const r = claimDaily(save, gift.day);
       paint(true);
       const today = $("daily-grid").querySelectorAll<HTMLElement>(".daily-day")[slot];
@@ -1875,15 +1875,15 @@ export class App implements DailyHost {
       confetti();
       this.sound.coins(); this.sound.unlock();
       vibrate(save.settings.vibrate, [15, 30, 15]);
-      if (r.advisor) setTimeout(() => toast(t("{name} joined your company!", { name: t(r.advisor!.name) })), 600);
+      if (r.pick) setTimeout(() => toast(t("🎁 Free advisor: choose who joins in Company → Team")), 600);
       const next = dailyReward(save, gift.day + 1);
-      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("Mystery crate") : next.gems ? `${fmt(next.gems)} 💎` : tycoonCoins(next.cash) });
+      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("a free advisor of your choice") : next.gems ? `${fmt(next.gems)} 💎` : tycoonCoins(next.cash) });
       btn.textContent = t("See you tomorrow!");
       btn.classList.add("done");
       this.persist();
       this.renderMenu();
     };
-    openModal($("daily"), btn);
+    openModal($("daily-rewards"), btn);
   }
 
   private collectAll(): void {

@@ -40,6 +40,8 @@ export interface TycoonState {
   upgrades: string[];
   /** Advisors collected. */
   advisors: string[];
+  /** Free advisor picks earned (daily calendar, all daily goals): spent on the advisor the player chooses. */
+  picks: number;
   /** Vault upgrades bought (each adds hours of earning while away). */
   vault: number;
   /** A construction boom (after a tower with a long perfect streak) until this time. */
@@ -59,7 +61,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 } });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 } });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -186,12 +188,20 @@ export function giveAdvisor(s: SaveData, rnd = Math.random): Advisor | undefined
   s.tycoon.advisors.push(a.id);
   return a;
 }
-/** Hires the advisor the player chose, for crystals: no randomness, the perk is shown
+/** Earns a free advisor pick while any advisor is left to collect. False when all are collected. */
+export function earnPick(s: SaveData): boolean {
+  if (ADVISORS.filter(a => !has(s, a.id)).length <= s.tycoon.picks) return false;
+  s.tycoon.picks++;
+  return true;
+}
+/** Hires the advisor the player chose, with a free pick if they have one, else for crystals: no randomness, the perk is shown
  *  before buying, and an advisor already on the team can't be bought again. */
 export function hireAdvisor(s: SaveData, id: string): Advisor | undefined {
   const a = ADVISORS.find(x => x.id === id);
-  if (!a || has(s, a.id) || s.crystals < CRATE_CRYSTALS) return undefined;
-  s.crystals -= CRATE_CRYSTALS;
+  if (!a || has(s, a.id)) return undefined;
+  if (s.tycoon.picks > 0) s.tycoon.picks--;
+  else if (s.crystals >= CRATE_CRYSTALS) s.crystals -= CRATE_CRYSTALS;
+  else return undefined;
   s.tycoon.advisors.push(a.id);
   return a;
 }
@@ -473,9 +483,9 @@ export function dealGoals(s: SaveData, now = Date.now(), rnd = Math.random): voi
 
 /** Counts progress toward today's goals. Returns the stars paid (and the crystals, if the
  *  last of the three was finished). */
-export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now(), rnd = Math.random): { stars: number; crystals: number; advisor?: Advisor; done: CompanyGoal[] } {
+export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()): { stars: number; crystals: number; pick?: boolean; done: CompanyGoal[] } {
   dealGoals(s, now);
-  const out: { stars: number; crystals: number; advisor?: Advisor; done: CompanyGoal[] } = { stars: 0, crystals: 0, done: [] };
+  const out: { stars: number; crystals: number; pick?: boolean; done: CompanyGoal[] } = { stars: 0, crystals: 0, done: [] };
   for (const g of s.tycoon.goals.list) {
     if (g.t !== kind || g.p >= g.n) continue;
     g.p = Math.min(g.n, g.p + by);
@@ -486,9 +496,9 @@ export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now(), 
   }
   if (!s.tycoon.goals.bonus && s.tycoon.goals.list.every(g => g.p >= g.n)) {
     s.tycoon.goals.bonus = true;
-    // An advisor while there are any left to collect, else crystals.
-    out.advisor = giveAdvisor(s, rnd);
-    if (!out.advisor) { s.crystals += GOALS_BONUS_CRYSTALS; out.crystals = GOALS_BONUS_CRYSTALS; }
+    // A free advisor pick while there are any left to collect, else crystals.
+    out.pick = earnPick(s);
+    if (!out.pick) { s.crystals += GOALS_BONUS_CRYSTALS; out.crystals = GOALS_BONUS_CRYSTALS; }
   }
   return out;
 }
@@ -501,12 +511,14 @@ export function dailyReward(s: SaveData, streak: number, now = Date.now()): { ca
   return { cash, gems: r.gems ?? 0, advisor: !!r.advisor && ADVISORS.some(a => !has(s, a.id)) };
 }
 /** Pays day `streak` of the calendar. Returns what it gave (and the advisor, if one joined). */
-export function claimDaily(s: SaveData, streak: number, now = Date.now(), rnd = Math.random): { cash: number; gems: number; advisor?: Advisor } {
+export function claimDaily(s: SaveData, streak: number, now = Date.now()): { cash: number; gems: number; pick: boolean } {
   const r = dailyReward(s, streak, now);
   earn(s, r.cash);
   s.crystals += r.gems;
-  const advisor = r.advisor ? giveAdvisor(s, rnd) : undefined;
-  return { cash: r.cash, gems: r.gems, advisor };
+  // Day 7's advisor is a free pick: the player chooses who joins (with crystals once all are collected).
+  let gems = r.gems, pick = false;
+  if (r.advisor) { pick = earnPick(s); if (!pick) { gems += CRATE_CRYSTALS; s.crystals += CRATE_CRYSTALS; } }
+  return { cash: r.cash, gems, pick };
 }
 
 /** Golden customers: rare, sparkling, gone in a minute, and they tip big (about ten minutes

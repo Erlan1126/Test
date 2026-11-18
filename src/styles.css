@@ -3459,3 +3459,4 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 .tcy-mode.contract { background: linear-gradient(135deg, #fff4e6, #ffe2c4) !important; box-shadow: inset 0 0 0 2px #ffc48a !important; }
 #tcy-labels .tag.bub.starter .tag-ico { font-size: 18px; }
 #tcy-labels .tag.bub.starter.sel { background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }
+.ty-adv-hire.free { background: linear-gradient(180deg, #2fd17a, #13a95a); box-shadow: 0 3px 0 #0b7a40; }

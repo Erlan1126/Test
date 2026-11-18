@@ -221,7 +221,8 @@ describe("company goals and first steps", () => {
       expect(r.stars).toBeGreaterThan(0);
     }
     expect(s.stars).toBeGreaterThan(stars0);
-    expect(s.tycoon.advisors).toHaveLength(1); // the bonus: a new advisor while any are left
+    expect(s.tycoon.picks).toBe(1); // the bonus: a free advisor pick while any are left
+    expect(s.tycoon.advisors).toHaveLength(0); // the player chooses who joins
     expect(s.crystals).toBe(crystals0);
     // Nothing more today...
     expect(goalStep(s, g[0].t, 5, T0).stars).toBe(0);
@@ -354,9 +355,27 @@ it("the daily calendar pays more each day and the week repeats", async () => {
   expect(dailyReward(s, 1).cash).toBe(300);       // a young company gets the floor
   expect(dailyReward(s, 2).gems).toBe(10);
   expect(dailyReward(s, 8)).toEqual(dailyReward(s, 1));
-  const r = claimDaily(s, 7, Date.now(), () => 0);
+  const r = claimDaily(s, 7, Date.now());
   expect(r.gems).toBe(50);
   expect(s.crystals).toBe(50);
-  expect(r.advisor).toBeDefined();
+  // Day 7's advisor is a free pick, not a random one: nobody joins until the player chooses.
+  expect(r.pick).toBe(true);
+  expect(s.tycoon.picks).toBe(1);
+  expect(s.tycoon.advisors).toHaveLength(0);
   expect(s.tycoon.coins).toBeGreaterThanOrEqual(5000);
+});
+
+it("a free advisor pick hires the advisor the player chooses, without crystals", async () => {
+  const { defaultSave } = await import("../src/logic/save");
+  const { earnPick, hireAdvisor } = await import("../src/logic/tycoon");
+  const { ADVISORS } = await import("../src/data/tycoon");
+  const s = defaultSave();
+  expect(hireAdvisor(s, ADVISORS[2].id)).toBeUndefined(); // no pick, no crystals
+  expect(earnPick(s)).toBe(true);
+  expect(hireAdvisor(s, ADVISORS[2].id)?.id).toBe(ADVISORS[2].id);
+  expect(s.tycoon.picks).toBe(0);
+  expect(s.crystals).toBe(0);
+  // Never more picks than advisors left to collect.
+  for (const a of ADVISORS) if (!s.tycoon.advisors.includes(a.id)) s.tycoon.advisors.push(a.id);
+  expect(earnPick(s)).toBe(false);
 });

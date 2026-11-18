@@ -571,6 +571,7 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     evolved: normalizeEvolved(o.evolved, levels),
     upgrades: Array.isArray(o.upgrades) ? [...new Set(o.upgrades.filter((x): x is string => typeof x === "string" && UPGRADES.some(u => u.id === x)))] : [],
     advisors: Array.isArray(o.advisors) ? [...new Set(o.advisors.filter((x): x is string => typeof x === "string" && ADVISORS.some(a => a.id === x)))] : [],
+    picks: Math.min(ADVISORS.length, Math.floor(big(o.picks))),
     vault: Math.min(VAULT_COST.length, Math.floor(big(o.vault))),
     boom: big(o.boom),
     reviews: Object.fromEntries(Object.entries((o.reviews && typeof o.reviews === "object" ? o.reviews : {}) as Record<string, unknown>).filter(([k]) => ids.includes(k)).map(([k, x]) => [k, big(x)])),

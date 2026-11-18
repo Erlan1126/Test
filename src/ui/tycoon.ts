@@ -902,7 +902,7 @@ export class TycoonUI {
     $("tycoon").querySelector<HTMLElement>(".ty-tabs")!.hidden = open < 2;
     const s = this.save, dot = (tab: string, on: boolean) => { $("tycoon").querySelector<HTMLElement>(`.ty-tabs [data-tab="${tab}"] .dot`)!.hidden = !on || this.tab === tab; };
     dot("upgrades", upgradesOnOffer(s).some(u => u.cost <= s.tycoon.coins));
-    dot("team", s.crystals >= CRATE_CRYSTALS && ADVISORS.some(a => !s.tycoon.advisors.includes(a.id)));
+    dot("team", (s.tycoon.picks > 0 || s.crystals >= CRATE_CRYSTALS) && ADVISORS.some(a => !s.tycoon.advisors.includes(a.id)));
     dot("boosts", eraGems(s) > 0 || (vaultCost(s) !== undefined && s.tycoon.coins >= vaultCost(s)!));
   }
 
@@ -1199,17 +1199,17 @@ export class TycoonUI {
         const own = have.includes(a.id);
         return `<div class="ty-adv-row${own ? " own" : ""}" style="--o:${a.look.outfit}"><span class="ty-adv-face">${advisorSvg(a, true)}</span>
           <span class="ty-adv-txt"><b>${esc(t(a.name))} <small>${esc(t(a.title))}</small></b><em>${esc(perkText(a))}</em></span>
-          ${own ? `<span class="ty-adv-on">${esc(t("On your team"))}</span>` : `<button type="button" class="ty-adv-hire" data-hire="${a.id}"${s.crystals < CRATE_CRYSTALS ? " data-short=\"1\"" : ""}>${esc(t("Hire"))}<small>💎 ${CRATE_CRYSTALS}</small></button>`}
+          ${own ? `<span class="ty-adv-on">${esc(t("On your team"))}</span>` : (s.tycoon.picks > 0 ? `<button type="button" class="ty-adv-hire free" data-hire="${a.id}">${esc(t("Pick"))}<small>${esc(t("Free"))}</small></button>` : `<button type="button" class="ty-adv-hire" data-hire="${a.id}"${s.crystals < CRATE_CRYSTALS ? " data-short=\"1\"" : ""}>${esc(t("Hire"))}<small>💎 ${CRATE_CRYSTALS}</small></button>`)}
         </div>`;
       }).join("")}</div>
-      <p class="sheet-note">${esc(t("Finish all of today's goals for a free advisor (one you don't have yet, picked at random)."))}</p>`);
+      <p class="sheet-note">${esc(s.tycoon.picks > 0 ? t("Free advisor picks: {n}. Choose any advisor above.", { n: s.tycoon.picks }) : t("Finish all of today's goals, or reach day 7 of the daily calendar, for a free pick of the advisor you want."))}</p>`);
   }
 
   private onAdvisorClick(e: Event): void {
     const btn = (e.target as Element).closest<HTMLElement>("[data-hire]");
     if (!btn) return;
     const s = this.save;
-    if (s.crystals < CRATE_CRYSTALS) { this.short(CRATE_CRYSTALS); return; }
+    if (s.tycoon.picks < 1 && s.crystals < CRATE_CRYSTALS) { this.short(CRATE_CRYSTALS); return; }
     const a = hireAdvisor(s, btn.dataset.hire!);
     if (!a) return;
     this.host.persist();
@@ -1253,8 +1253,8 @@ export class TycoonUI {
     const r = goalStep(this.save, kind, by);
     if (r.stars) { toast(t("Goal done! +{n} ★", { n: r.stars })); this.host.sound.unlock(); }
     if (r.crystals) { toast(t("All of today's goals done! +{n} Sky Crystals", { n: r.crystals })); fireworks(3, () => this.host.sound.firework()); }
-    if (r.advisor) this.showAdvisor(r.advisor, t("All of today's goals done!"));
-    if (r.stars || r.crystals || r.advisor) { this.host.persist(); this.host.refresh(); }
+    if (r.pick) toast(t("All of today's goals done! 🎁 Free advisor: choose who joins in Company → Team"));
+    if (r.stars || r.crystals || r.pick) { this.host.persist(); this.host.refresh(); }
   }
 
   private renderGoals(): void {
