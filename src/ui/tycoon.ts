@@ -227,7 +227,15 @@ export class TycoonUI {
     } else if (!this.save.seenFeatures.includes("ty-city")) setTimeout(() => this.welcomeNote(), 1200);
     // The first sale comes first: until then the terrace waits in the next-step card.
     if (dest === "terrace" && this.save.tycoon.tips > 0) setTimeout(() => this.openTerrace(), 900);
-    if (dest === "cafe") { this.selected = "coffee"; this.render(); }
+    if (dest === "cafe") this.glance("coffee");
+  }
+
+  /** A look at a building (the camera glides there), then its card closes by itself so the
+   *  Next step guide is back in view, unless the player picked something else meanwhile. */
+  private glance(id: string): void {
+    this.selected = id;
+    this.render();
+    setTimeout(() => { if (this.inCity && this.selected === id) { this.selected = ""; this.render(); } }, 4500);
   }
 
   /** The first visit: Mayor Pip says what this place is, and what to do first. */
@@ -266,9 +274,8 @@ export class TycoonUI {
       this.host.sound.unlock();
       this.pulse = { id: "coffee", at: Date.now() };
       fireworks(2, () => this.host.sound.firework());
-      this.selected = "coffee";
       toast(t("☕ The café terrace is open!"));
-      this.render();
+      this.glance("coffee");
     });
   }
 
@@ -391,7 +398,7 @@ export class TycoonUI {
     // First steps come before anything else: the first sale, then (if ready) the café
     // terrace, then a level, then a manager.
     const cart = BUSINESSES[0];
-    if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("First steps · {n} of 3", { n: 1 }), tone: "learn", act: () => { this.selected = "coffee"; this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
+    if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("First steps · {n} of 3", { n: 1 }), tone: "learn", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
     // Right after the first sale: the café terrace, if ready (the town changed because of
     // the player's towers). The level and the manager come after.
     if (s.cafe.terrace === 1) return { text: t("☕ Your café terrace is ready!"), sub: t("Open it: the Coffee Cart earns more"), tone: "gift", act: () => this.openTerrace() };
@@ -538,6 +545,8 @@ export class TycoonUI {
     // Tapping empty sky or grass closes the card.
     if (!id) { if (this.selected) { this.selected = ""; this.render(); } return; }
     const s = this.save, owned = levelOf(s, id) > 0, pop = tag?.querySelector(".tag-pops") ?? $("tcy-labels");
+    // The very first sale: one tap on the cart sells (no card in the way of the guide).
+    if (owned && !act && s.tycoon.tips === 0 && id === BUSINESSES[0].id) { this.doAct("run", id, tag ?? $("tcy-labels"), e, pop, tag ?? $("tcy-labels")); return; }
     if (act && owned) this.doAct(act.dataset.act!, id, act, e, pop, tag ?? $("tcy-labels"));
     // Tapping the selected building (with no manager yet) sells.
     else if (owned && this.selected === id && !s.tycoon.managers.includes(id)) this.doAct("run", id, tag ?? $("tcy-labels"), null, pop, tag ?? $("tcy-labels"));
@@ -1053,6 +1062,8 @@ export class TycoonUI {
         if (levelOf(s, b.id) === 0) return;
         if (e) ripple(el, e);
         if (runOnce(s, b.id)) {
+          // The first coffee is served at once, so the player sees the cash arrive.
+          if (s.tycoon.tips === 0) s.tycoon.runs[b.id] = Date.now() - cycleOf(b, levelOf(s, b.id)) * 1000 + 500;
           this.host.sound.click(); vibrate(s.settings.vibrate, 8);
           this.pulse = { id: b.id, at: Date.now() };
           this.goal("taps");
