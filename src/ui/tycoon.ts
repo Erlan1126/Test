@@ -1218,6 +1218,15 @@ export class TycoonUI {
     if (!btn) return;
     const s = this.save;
     if (s.tycoon.picks < 1 && s.crystals < CRATE_CRYSTALS) { this.short(CRATE_CRYSTALS); return; }
+    // Two taps: the first asks, so a stray tap while scrolling never spends anything.
+    if (!btn.dataset.armed) {
+      this.host.sound.click();
+      const was = btn.innerHTML;
+      btn.dataset.armed = "1";
+      btn.innerHTML = `${esc(t("Tap again"))}<small>${esc(t("to hire"))}</small>`;
+      setTimeout(() => { if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.innerHTML = was; } }, 3000);
+      return;
+    }
     const a = hireAdvisor(s, btn.dataset.hire!);
     if (!a) return;
     this.host.persist();

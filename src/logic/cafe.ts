@@ -109,7 +109,8 @@ export interface CafeResult {
 export function cafeRun(c: CafeState, run: CafeRun): CafeResult {
   const out: CafeResult = { starter: false, added: 0, terraceReady: false, contractDone: false };
   if (run.mode === "zen" || run.floors < 1) return out;
-  if (!c.starter && run.mode === "classic") {
+  // Only a new player's first tower (saves from before the café loop skip the intro).
+  if (!c.starter && !c.framed && run.mode === "classic") {
     c.starter = { f: run.floors, s: run.skin, h: run.shape, b: towerShape(run.stack) };
     out.starter = true;
   }

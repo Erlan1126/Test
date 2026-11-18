@@ -37,7 +37,7 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
-import { cafeRun, contractOpen, CONTRACT_WIDE, isWide, TERRACE_FLOORS, WIDE_SHARE } from "./logic/cafe";
+import { cafeRun, claimTerrace, contractOpen, CONTRACT_WIDE, isWide, TERRACE_FLOORS, TERRACE_MULT, WIDE_SHARE } from "./logic/cafe";
 import type { BizCafe } from "./render3d/bizcity";
 import { adsReady, showRewarded } from "./ads";
 import { gameCenterAvailable, gameCenterSignIn, gameCenterSync, showGameCenter } from "./gamecenter";
@@ -623,10 +623,16 @@ export class App implements DailyHost {
 
   /** Backs the save up to the server a little after it changes. */
   private cloudTimer = 0;
+  private cloudAt = 0;
   private scheduleBackup(delay = 20000): void {
     if (this.online.kind !== "global" || this.reloading) return;
+    // A backup already waiting isn't pushed back by every save (the town saves every few
+    // seconds), only brought forward.
+    const at = Date.now() + delay;
+    if (this.cloudTimer && this.cloudAt <= at) return;
     clearTimeout(this.cloudTimer);
-    this.cloudTimer = window.setTimeout(() => void this.online.backup(this.save, () => writeSave(this.storage, this.save)), delay);
+    this.cloudAt = at;
+    this.cloudTimer = window.setTimeout(() => { this.cloudTimer = 0; void this.online.backup(this.save, () => writeSave(this.storage, this.save)); }, delay);
   }
 
   replaceSave(save: SaveData): void {
@@ -1020,6 +1026,14 @@ export class App implements DailyHost {
   private goToMenu(): void {
     // Quitting a tower mid-way earns nothing, so the boosts it took go back.
     if (this.state === "playing" || this.state === "paused" || this.state === "rescue") {
+      // The café contract's goal was reached (the chip said so): it counts even when quitting.
+      const c = this.save.cafe;
+      if (this.contractRun && this.wideCount >= CONTRACT_WIDE && c.contract === 1) {
+        c.contract = 2; c.wideBest = Math.max(c.wideBest, this.wideCount);
+        track("contract_done");
+        toast(t("☕ Café contract done! The terrace gets lights, flowers and more customers"));
+        this.persist();
+      }
       const b = this.save.boosts, B = this.boosts, cap = (n: number) => Math.min(n, MAX_BOOSTS);
       if (B.xp) b.xp = cap(b.xp + 1);
       if (B.gold) b.gold = cap(b.gold + 1);
@@ -1173,7 +1187,12 @@ export class App implements DailyHost {
     const cafeR = cafeRun(this.save.cafe, { mode: this.mode, floors: run.floors, stack: this.sim.stack, skin: this.builtSkin || this.save.skin, shape: this.builtShape || "square", wide: this.wideCount, contract: this.contractRun });
     this.contractRun = false;
     $("contract-chip").hidden = true;
-    this.overDest = cafeR.starter ? "tower" : this.save.cafe.terrace === 1 ? "terrace" : cafeR.contractDone ? "cafe" : "";
+    // Without the 3D town (some low-end phones), the terrace opens right here instead.
+    if (!this.canCity() && claimTerrace(this.save.cafe)) {
+      this.outcome.rewards.unshift({ kind: "island", text: t("☕ The café terrace is open!") + " " + t("The Coffee Cart earns ×{n}", { n: TERRACE_MULT }) });
+      track("terrace_claimed");
+    }
+    this.overDest = !this.canCity() ? "" : cafeR.starter ? "tower" : this.save.cafe.terrace === 1 ? "terrace" : cafeR.contractDone ? "cafe" : "";
     this.cafeLine = "";
     if (cafeR.starter) {
       this.outcome.rewards.unshift({ kind: "island", text: t("🏢 Your first tower now stands in Skyhaven, beside the Coffee Cart!") });

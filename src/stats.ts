@@ -83,9 +83,9 @@ export function setStatsVersion(v: string): void { version = v; }
 /** Once a day, that this install opened the game (for "do players come back?"). */
 export function statsOpen(towers: number): void {
   const l = SERVER_URL ? load() : null;
+  lastTowers = towers;
   if (!l || l.lastOpen === today()) return;
   l.lastOpen = today();
-  lastTowers = towers;
   save();
   enqueue(l, { kind: "open", day: today() - l.first, towers });
 }

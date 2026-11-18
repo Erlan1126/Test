@@ -102,6 +102,10 @@ describe("the first two towers grow the café", () => {
     expect(normalizeCafe(undefined, { floors: 3, towers: 2 }).terrace).toBe(0);
     // A brand-new save gets the intro.
     expect(defaultSave().cafe.framed).toBe(false);
+    // Their next tower is not announced as a "first tower" (it can still join the skyline).
+    const r = cafeRun(s.cafe, run(9));
+    expect(r.starter).toBe(false);
+    expect(s.cafe.starter).toBeNull();
   });
 });
 

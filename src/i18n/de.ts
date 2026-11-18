@@ -1420,4 +1420,6 @@ export const DE: Record<string, string> = {
   "Finish all of today's goals, or reach day 7 of the daily calendar, for a free pick of the advisor you want.": "Schaffe alle heutigen Ziele oder erreiche Tag 7 des Tageskalenders, um den Berater deiner Wahl gratis zu bekommen.",
   "All of today's goals done! 🎁 Free advisor: choose who joins in Company → Team": "Alle heutigen Ziele geschafft! 🎁 Gratis-Berater: Wähle unter Firma → Team, wer dazukommt",
   "+{n} floors · Café terrace ready to open!": "+{n} Etagen · Café-Terrasse bereit zum Öffnen!",
+  "Tap again": "Nochmal tippen",
+  "to hire": "zum Einstellen",
 };
