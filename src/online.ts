@@ -1,3 +1,4 @@
+import type { SpireNow } from "./logic/spire";
 // Leaderboards. Two kinds:
 //
 // - Worldwide (the apps and the website, once SERVER_URL is set): each Classic or Daily
@@ -363,6 +364,21 @@ export class Online {
       return rank ? { rank, total: Math.max(rank, num(body.total)) } : null;
     } catch {
       return undefined;
+    }
+  }
+
+  /** This week's Community Spire (null when it can't be reached, or the server doesn't
+   *  have it yet: the game then simply doesn't show it). */
+  async spire(): Promise<SpireNow | null> {
+    if (this.kind !== "global") return null;
+    try {
+      const res = await fetch(`${API}/spire?player=${encodeURIComponent(this.me ?? "")}`);
+      if (!res.ok) return null;
+      const b = await res.json() as Partial<SpireNow>;
+      if (typeof b.week !== "number" || typeof b.floors !== "number") return null;
+      return { week: b.week, floors: num(b.floors), builders: num(b.builders), mine: num(b.mine) };
+    } catch {
+      return null;
     }
   }
 

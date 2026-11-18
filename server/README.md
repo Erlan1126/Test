@@ -77,3 +77,17 @@ Tests for all of this are in `tests/rankings.test.ts` and `tests/worker.test.js`
 
 Add `?testpay` to the game's address. Crystal packs are then added instantly and the shop
 says clearly that it's test mode and nothing is charged.
+
+## Community Spire (new, not deployed yet)
+
+The weekly Community Spire adds each checked ranked tower's perfect drops (up to 60 per
+tower) to one shared tower for the week. The game asks `GET /spire` for the week's total;
+until the server has it, the game simply doesn't show the Spire.
+
+To turn it on, when you decide to release it:
+
+1. Run the new part of `schema.sql` on the database (the `spire` table). Running the whole
+   file again is safe: every table uses `CREATE TABLE IF NOT EXISTS`.
+2. Deploy the worker again, the same way as in Part 1.
+
+Nothing else changes for players who haven't updated.

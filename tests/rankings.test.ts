@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import worker from "../server/worker.js";
 import { seeded } from "../src/core/rng";
-import { RunRecorder, simFor, type RunRecord } from "../src/logic/replay";
+import { replayRun, RunRecorder, simFor, type RunRecord } from "../src/logic/replay";
 import { dailySeed, dayNumber } from "../src/logic/rules";
 import { weekIndex } from "../src/data/events";
 
@@ -62,6 +62,28 @@ describe("online rankings", () => {
     ] });
     expect(res.status).toBe(200);
     expect((await call("/diag", { items: "nope" })).status).toBe(200);
+  });
+
+  it("the Community Spire adds each checked tower's perfect drops for the week", async () => {
+    const get = async (player = "") => {
+      const res = await worker.fetch(new Request(`https://api.example/spire?player=${player}`), env as never);
+      return await res.json() as { week: number; floors: number; builders: number; mine: number };
+    };
+    expect(await get(P1)).toMatchObject({ floors: 0, builders: 0, mine: 0, week: weekIndex() });
+    const t1 = await register(P1), t2 = await register(P2);
+    const a = play("daily", 3);
+    expect((await call("/runs", { player: P1, token: t1, record: a.rec })).status).toBe(200);
+    const b = play("daily", 4);
+    expect((await call("/runs", { player: P2, token: t2, record: b.rec })).status).toBe(200);
+    const pa = (replayRun(a.rec) as { summary: { perfects: number } }).summary.perfects, pb = (replayRun(b.rec) as { summary: { perfects: number } }).summary.perfects;
+    expect(pa).toBeGreaterThan(0);
+    const now = await get(P1);
+    expect(now.builders).toBe(2);
+    expect(now.mine).toBe(Math.min(60, pa));
+    expect(now.floors).toBe(Math.min(60, pa) + Math.min(60, pb));
+    // A forged tower adds nothing.
+    expect((await call("/runs", { player: P1, token: "nope", record: a.rec })).status).toBe(403);
+    expect((await get(P1)).floors).toBe(now.floors);
   });
 
   it("registers each player id once", async () => {

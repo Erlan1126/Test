@@ -37,6 +37,8 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
+import { bestRun, dropGrid, type Drop } from "./logic/dailycard";
+import type { SpireNow } from "./logic/spire";
 import { orderFor, orderProgress, recordHq, ORDER_MULT, type Order, type OrderRun } from "./logic/orders";
 import { orderText, orderUnit } from "./ui/orders";
 import type { StarterTower } from "./logic/cafe";
@@ -987,6 +989,7 @@ export class App implements DailyHost {
     this.contractRun = mode === "classic" && this.contractNext && contractOpen(this.save.cafe);
     this.contractNext = false;
     this.wideCount = 0;
+    this.drops = [];
     this.orderDone = false;
     { const bi = this.hq ? BUSINESSES.findIndex(b => b.id === this.hq) : -1; this.hqOrder = bi >= 0 ? orderFor(bi, readyStage(this.save, this.hq!)) : null; }
     this.updateContractChip();
@@ -1330,6 +1333,7 @@ export class App implements DailyHost {
 
   private landed(out: Extract<DropOutcome, { type: "land" }>): void {
     const fx = this.renderer.fx, f = out.floor, s = this.sound, vib = this.save.settings.vibrate;
+    this.drops.push(out.perfect ? "P" : isWide(f, this.sim.stack[0]) ? "W" : "T");
     if ((this.contractRun || this.hqOrder) && isWide(f, this.sim.stack[0])) {
       this.wideCount++;
       if (this.contractRun && this.wideCount === CONTRACT_WIDE) { s.unlock(); vibrate(vib, [15, 30, 15]); }
@@ -1747,6 +1751,8 @@ export class App implements DailyHost {
   private contractNext = false;
   private contractRun = false;
   private wideCount = 0;
+  /** How each floor of this tower landed (the Daily result card). */
+  private drops: Drop[] = [];
   /** The HQ tower's building order, and whether it's filled yet. */
   private hqOrder: Order | null = null;
   private orderDone = false;
@@ -1777,6 +1783,9 @@ export class App implements DailyHost {
     }
     return this.cafeCache.val;
   }
+
+  /** This week's Community Spire (only from the worldwide server). */
+  fetchSpire(): Promise<SpireNow | null> { return this.online.spire(); }
 
   /** The contract chip while building: wide floors so far. */
   private updateContractChip(): void {
@@ -2278,7 +2287,14 @@ export class App implements DailyHost {
   private shareText(): string {
     const sim = this.sim;
     const ms = sim.lastLandmark >= 0 ? t(", taller than {name}", { name: t(MILESTONES[sim.lastLandmark].name) }) : "";
-    if (this.mode === "daily") return t("Skyrise Daily #{day}: {n} people in a {m} m tower{landmark}. Can you beat it today?", { day: this.runDay, n: fmt(sim.score), m: sim.meters, landmark: ms });
+    // The Daily: a grid of colored squares (how each floor landed), not the tower itself,
+    // so it spoils nothing for friends who haven't played today's yet.
+    if (this.mode === "daily") return [
+      t("Skyrise Daily #{day} · {m} m", { day: this.runDay, m: sim.meters }),
+      ...dropGrid(this.drops),
+      t("🔥 Best streak {s} · 🏢 {n} people", { s: bestRun(this.drops), n: fmt(sim.score) }),
+      t("🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?"),
+    ].join("\n");
     return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
   }
 
@@ -2426,11 +2442,12 @@ export class App implements DailyHost {
       }
     }
     const text = this.shareText();
-    const full = url ? `${text} ${url}` : text;
-    if (await nativeShare(full, this.shareBlob)) return;
+    const full = url ? `${text}${this.mode === "daily" ? "\n" : " "}${url}` : text;
+    const pic = this.mode === "daily" ? null : this.shareBlob;
+    if (await nativeShare(full, pic)) return;
     try {
-      if (this.shareBlob && navigator.canShare) {
-        const file = new File([this.shareBlob], "skyrise.png", { type: "image/png" });
+      if (pic && navigator.canShare) {
+        const file = new File([pic], "skyrise.png", { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], text: full });
           return;

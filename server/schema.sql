@@ -125,3 +125,12 @@ CREATE TABLE IF NOT EXISTS cities (
   at INTEGER NOT NULL,
   data TEXT NOT NULL
 );
+
+-- The Community Spire: each player's perfect floors (from checked ranked towers) per week;
+-- the week's shared tower is their sum.
+CREATE TABLE IF NOT EXISTS spire (
+  week INTEGER NOT NULL,
+  player TEXT NOT NULL,
+  floors INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (week, player)
+);

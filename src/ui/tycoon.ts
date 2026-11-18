@@ -3,6 +3,7 @@
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
 import { t, tn } from "../i18n";
 import { orderFor, ORDER_MULT } from "../logic/orders";
+import { claimSpire, spireReady, SPIRE_GOALS, type SpireNow } from "../logic/spire";
 import { orderText } from "./orders";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
@@ -45,6 +46,8 @@ export interface TycoonHost {
   townDest: "" | "tower" | "terrace" | "cafe";
   /** Starts a café-contract tower. */
   playContract(): void;
+  /** This week's Community Spire (asks the server; null when it can't be reached). */
+  fetchSpire(): Promise<SpireNow | null>;
 }
 
 /** A gold coin with a star, for counters. */
@@ -499,7 +502,7 @@ export class TycoonUI {
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     // Red dots mean "something to collect right now", never "you could buy something".
     dot("build", false);
-    dot("goals", lit("missions-btn") || lit("pass-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", (!!this.spire && spireReady(s.spire, this.spire) > 0) || lit("missions-btn") || lit("pass-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn"));
   }
 
@@ -672,6 +675,29 @@ export class TycoonUI {
   private openGoals(): void {
     this.renderGoalsSheet();
     openModal($("tcy-goalsheet"));
+    // The Community Spire arrives a moment later (it's asked from the server).
+    void this.host.fetchSpire().then(sp => {
+      this.spire = sp;
+      if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet();
+    });
+  }
+  /** This week's Community Spire, as last heard from the server. */
+  spire: SpireNow | null = null;
+
+  /** The Community Spire card: everyone's perfect floors this week, one shared tower. */
+  private spireHtml(): string {
+    const sp = this.spire;
+    if (!sp) return "";
+    const top = SPIRE_GOALS[SPIRE_GOALS.length - 1].floors, pct = Math.min(100, (sp.floors / top) * 100);
+    const ready = spireReady(this.save.spire, sp), next = SPIRE_GOALS.find(g => sp.floors < g.floors);
+    const ticks = SPIRE_GOALS.map(g => `<i class="spire-tick${sp.floors >= g.floors ? " on" : ""}" style="bottom:${(g.floors / top) * 100}%"><b>+${g.stars} ★</b></i>`).join("");
+    const action = ready
+      ? `<button type="button" class="card-main spire-claim" data-goal="spire">${esc(t("Collect +{n} ★", { n: SPIRE_GOALS.slice(this.save.spire.week === sp.week ? this.save.spire.claimed : 0).slice(0, ready).reduce((a, g) => a + g.stars, 0) }))}</button>`
+      : `<small class="spire-hint">${esc(sp.mine ? t("You added {n} floors this week. Every height reached pays everyone who built.", { n: fmt(sp.mine) }) : t("Build a Classic or Daily tower: your perfect drops add floors, and every height reached pays everyone who built."))}</small>`;
+    return `<h3 class="sheet-sub">${esc(t("Community Spire"))}</h3>
+      <div class="spire-card"><div class="spire-art" aria-hidden="true"><i class="spire-fill" style="height:${pct}%"></i>${ticks}</div>
+      <div class="spire-txt"><b>${esc(t("{n} perfect floors this week", { n: fmt(sp.floors) }))}</b>
+      <small>${esc(t("{n} builders", { n: fmt(sp.builders) }))}${next ? ` · ${esc(t("next reward at {n}", { n: fmt(next.floors) }))}` : ` · ${esc(t("all rewards reached!"))}`}</small>${action}</div></div>`;
   }
 
   private renderGoalsSheet(): void {
@@ -681,6 +707,7 @@ export class TycoonUI {
     }
     dealGoals(s);
     parts.push(`<h3 class="sheet-sub">${esc(t("Today's company goals"))}</h3>${this.goalsHtml()}`);
+    parts.push(this.spireHtml());
     if (!$("missions-btn").hidden && s.missions.slots.length) {
       const rows = s.missions.slots.map(m => {
         const done = !!m.d || m.p >= m.n;
@@ -695,6 +722,19 @@ export class TycoonUI {
   private onGoalsTap(e: Event): void {
     const el = (e.target as Element).closest<HTMLElement>("[data-goal]");
     if (!el) return;
+    if (el.dataset.goal === "spire") {
+      const s = this.save, stars = this.spire ? claimSpire(s.spire, this.spire) : 0;
+      if (stars) {
+        s.stars += stars; s.starsEarned += stars;
+        this.host.persist(); this.host.sound.unlock();
+        burst(el, 20);
+        toast(t("🗼 Community Spire: +{n} ★", { n: stars }));
+        track("spire_claimed", { stars }, false);
+        this.renderGoalsSheet();
+        this.host.refresh();
+      }
+      return;
+    }
     closeModal($("tcy-goalsheet"));
     if (el.dataset.goal === "story") $("mayor-strip").click();
     else $("missions-btn").click();

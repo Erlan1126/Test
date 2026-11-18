@@ -13,6 +13,7 @@ import { SHAPES } from "../data/shapes";
 import { SKYLINE_SIZE, type SkylineTower } from "./skyline";
 import { newCafe, normalizeCafe, type CafeState } from "./cafe";
 import { newOrders, normalizeOrders, type OrdersState } from "./orders";
+import { newSpire, normalizeSpire, type SpireSave } from "./spire";
 import { ALL_POSTCARDS, migratePostcard } from "./postcards";
 import type { BoostId } from "../data/shop";
 import { ISLAND_THEMES, OLD_DISTRICT_PEOPLE, OLD_UPGRADE_HEIGHTS } from "../data/islands";
@@ -120,6 +121,8 @@ export interface SaveData {
   cafe: CafeState;
   /** Building orders and the HQ towers the player built (logic/orders.ts). */
   orders: OrdersState;
+  /** The Community Spire rewards collected this week (logic/spire.ts). */
+  spire: SpireSave;
   /** The last week whose tournament prize was collected (or checked with no prize). */
   tourney: number;
   /** Your best Classic tower's pace, to race as a ghost (see logic/ghost.ts), and its score. */
@@ -210,6 +213,7 @@ export function defaultSave(): SaveData {
     lastTower: null,
     cafe: newCafe(),
     orders: newOrders(),
+    spire: newSpire(),
     history: [],
     settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto" },
     tutorialDone: false,
@@ -336,6 +340,7 @@ export function normalize(raw: unknown): SaveData {
     lastTower: lastTower(r.lastTower),
     cafe: normalizeCafe(r.cafe, { floors: typeof obj(r.tycoon).floors === "number" ? Number(obj(r.tycoon).floors) : int(obj(r.profile).floors, 0), towers: int(obj(r.profile).towers, 0) }),
     orders: normalizeOrders(r.orders, BUSINESSES.map(b => b.id)),
+    spire: normalizeSpire(r.spire),
     tourney: typeof r.tourney === "number" && Number.isFinite(r.tourney) ? Math.floor(r.tourney) : -1,
     history,
     settings: {

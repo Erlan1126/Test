@@ -32,6 +32,7 @@ import { RULES } from "../src/logic/sim";
 import { dailySeed, dayNumber } from "../src/logic/rules";
 import { weekIndex } from "../src/data/events";
 import { MAX_BOOSTS } from "../src/data/shop";
+import { spireAdd } from "../src/logic/spire";
 
 // Must match CRYSTAL_PACKS in src/data/premium.ts.
 const PRODUCTS = ["crystals_200", "crystals_650", "crystals_1250", "crystals_2600", "crystals_8000", "crystals_14000"];
@@ -51,7 +52,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/city"].includes(url.pathname)
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/city", "/spire"].includes(url.pathname)
       || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
@@ -386,8 +387,11 @@ async function rankings(request, url, env, now) {
       "WHERE excluded.score > scores.score";
     const boards = [["week", record.week], ["all", 0]];
     if (record.mode === "daily") boards.unshift(["daily", record.day]);
+    // The Community Spire: this checked tower's perfect drops join the week's shared tower.
+    const spire = spireAdd(out.summary.perfects);
     await db.batch([
       db.prepare("UPDATE players SET name = ?, level = ?, last_run = ? WHERE id = ?").bind(name, level, now, player),
+      ...(spire > 0 ? [db.prepare("INSERT INTO spire (week, player, floors) VALUES (?, ?, ?) ON CONFLICT (week, player) DO UPDATE SET floors = floors + excluded.floors").bind(week, player, spire)] : []),
       ...claimed.map(b => db.prepare("INSERT OR IGNORE INTO boost_uses (player, boost, run, at) VALUES (?, ?, ?, ?)").bind(player, b, runKey, now)),
       ...boards.map(([b, period]) => db.prepare(up).bind(b, period, player, score, meters, now)),
     ]);
@@ -400,6 +404,14 @@ async function rankings(request, url, env, now) {
     const ranks = {};
     for (const [b, period] of boards) ranks[b] = await rankOf(db, b, period, player);
     return json({ score, meters, ranks });
+  }
+
+  // The Community Spire: this week's shared tower, how many built it, and your share.
+  if (url.pathname === "/spire" && request.method === "GET") {
+    const week = weekIndex(now), player = url.searchParams.get("player") ?? "";
+    const all = await db.prepare("SELECT COALESCE(SUM(floors), 0) AS floors, COUNT(*) AS builders FROM spire WHERE week = ?").bind(week).first();
+    const mine = PLAYER.test(player) ? await db.prepare("SELECT floors FROM spire WHERE week = ? AND player = ?").bind(week, player).first() : null;
+    return json({ week, floors: Number(all?.floors ?? 0), builders: Number(all?.builders ?? 0), mine: Number(mine?.floors ?? 0) });
   }
 
   // A rival to race: the player just above you on the board (or the lowest-ranked score
