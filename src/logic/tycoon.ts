@@ -305,8 +305,33 @@ export function progressOf(s: SaveData, id: string, now = Date.now()): number {
 export const offlineHours = (s: SaveData, now = Date.now()): number =>
   (vipActive(s, now) ? OFFLINE_HOURS_VIP : OFFLINE_HOURS) + s.tycoon.vault * VAULT_HOURS + perkOf(s, "away").reduce((h, a) => h + a.n, 0);
 
+/** Times when something that changes a business's pay starts or stops (a grand opening,
+ *  a boom, VIP, a review, a rush hour, a new festival week), between two moments. */
+function payBreaks(s: SaveData, b: Business, from: number, to: number): number[] {
+  const t = s.tycoon, out: number[] = [];
+  const rushStart = t.rush.id === b.id ? t.rush.until - rushSeconds(s) * 1000 : NaN;
+  for (const x of [t.opening, t.boom, s.vip.until, s.vip.gift, t.reviews[b.id] ?? 0, rushStart, t.rush.id === b.id ? t.rush.until : NaN]) {
+    if (x > from && x < to) out.push(x);
+  }
+  // Festival weeks change on a fixed day (see festivalBiz).
+  const day = 864e5;
+  for (let w = Math.ceil((from / day + 3) / 7); (w * 7 - 3) * day < to; w++) { const x = (w * 7 - 3) * day; if (x > from) out.push(x); }
+  return out.sort((x, y) => x - y);
+}
+
+/** What one cycle of `b` finishing at `at` pays: the boosts on at that moment, and a rush
+ *  hour only if the cycle finished inside it. */
+function payAt(s: SaveData, b: Business, at: number): number {
+  const t = s.tycoon, inRush = t.rush.id === b.id && at <= t.rush.until && at > t.rush.until - rushSeconds(s) * 1000;
+  return basePay(s, b, at) * (inRush ? RUSH_MULT : 1);
+}
+
 /** Brings the economy up to date and returns the coins earned since last time. Managed
- *  businesses keep earning while the game is closed, up to the offline limit. */
+ *  businesses keep earning while the game is closed, up to the offline limit.
+ *
+ *  Every finished cycle is paid as it was when it finished, so a long stretch settled at
+ *  once (coming back to the game) pays the same as the same stretch played second by
+ *  second, even when a boost started or ran out in the middle of it. */
 export function tick(s: SaveData, now = Date.now()): number {
   const t = s.tycoon;
   const capMs = offlineHours(s, now) * 3600e3;
@@ -317,21 +342,33 @@ export function tick(s: SaveData, now = Date.now()): number {
     const c = cycleOf(b, lv) * 1000;
     if (now < start) { t.runs[b.id] = now; continue; } // the clock went back
     if (t.managers.includes(b.id)) {
-      const elapsed = now - start, counted = Math.min(elapsed, capMs);
+      const elapsed = now - start, counted = Math.min(elapsed, capMs), end = start + counted;
       const k = Math.floor(counted / c);
-      // A rush hour triples only the cycles that finished during it, never a whole
-      // stretch away.
-      const base = basePay(s, b, now);
-      let rushK = 0;
-      if (k > 0 && t.rush.id === b.id) {
-        const from = Math.max(t.rush.until - rushSeconds(s) * 1000, now - counted), to = Math.min(now, t.rush.until);
-        if (to > from) rushK = Math.min(k, Math.max(1, Math.floor((to - from) / c)));
+      if (k > 0) {
+        // Cycles finish at start + c, start + 2c, ...; between two breaks they all pay the same.
+        let done = 0, rushed = 0;
+        for (const to of [...payBreaks(s, b, start, end), end]) {
+          const n = Math.floor((to - start) / c) - done;
+          if (n <= 0) continue;
+          const at = start + (done + 1) * c, pay = payAt(s, b, at);
+          total += n * pay;
+          if (pay > basePay(s, b, at)) rushed += n;
+          done += n;
+        }
+        // A rush hour that came and went between two cycles still pays one rushed cycle.
+        if (!rushed && t.rush.id === b.id) {
+          const rs = t.rush.until - rushSeconds(s) * 1000;
+          if (t.rush.until > start && rs < end) {
+            const at = Math.min(end, t.rush.until);
+            total += basePay(s, b, at) * (RUSH_MULT - 1);
+          }
+        }
       }
-      if (k > 0) total += k * base + rushK * base * (RUSH_MULT - 1);
       // Keep the part-done cycle; time past the cap is simply lost.
       t.runs[b.id] = now - (elapsed % c);
     } else if (now - start >= c) {
-      total += payOf(s, b, now);
+      // A cycle started by a tap pays as it was when it finished.
+      total += payAt(s, b, start + c);
       t.runs[b.id] = 0;
     }
   }
