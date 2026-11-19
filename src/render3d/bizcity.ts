@@ -54,6 +54,44 @@ export interface BizLive {
  *  first business at the far end, the next ones fanning out, a plaza at the entrance. The
  *  oldest (tallest) buildings stand at the back, so they never hide the newer ones. */
 const C = 6.5;
+
+/** A flat slab with rounded corners, w by d, h thick, lying on y = 0..h (centered). */
+function roundSlab(w: number, d: number, r: number, h: number): THREE.BufferGeometry {
+  const x = w / 2, z = d / 2, rr = Math.min(r, x, z);
+  const sh = new THREE.Shape();
+  sh.moveTo(-x + rr, -z);
+  sh.lineTo(x - rr, -z); sh.absarc(x - rr, -z + rr, rr, -Math.PI / 2, 0, false);
+  sh.lineTo(x, z - rr); sh.absarc(x - rr, z - rr, rr, 0, Math.PI / 2, false);
+  sh.lineTo(-x + rr, z); sh.absarc(-x + rr, z - rr, rr, Math.PI / 2, Math.PI, false);
+  sh.lineTo(-x, -z + rr); sh.absarc(-x + rr, -z + rr, rr, Math.PI, Math.PI * 1.5, false);
+  return new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 6 }).rotateX(Math.PI / 2).translate(0, h, 0);
+}
+
+/** A curving path (a flat ribbon) through points, w wide, at height y. */
+function ribbon(pts: [number, number][], w: number, y: number): THREE.BufferGeometry {
+  const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, y, z)));
+  const n = 28, pos: number[] = [], idx: number[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, p = curve.getPoint(t), tan = curve.getTangent(t);
+    const nx = -tan.z, nz = tan.x, l = Math.hypot(nx, nz) || 1;
+    pos.push(p.x + (nx / l) * w / 2, y, p.z + (nz / l) * w / 2, p.x - (nx / l) * w / 2, y, p.z - (nz / l) * w / 2);
+    if (i < n) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  // (Facing up whichever way the points wind.)
+  const nrm = g.getAttribute("normal") as THREE.BufferAttribute;
+  for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+  return g;
+}
+
+/** A gentle S through a square of half-size h (a park path). */
+const sPath = (h: number, flip = false): [number, number][] => {
+  const f = flip ? -1 : 1;
+  return [[-h * f, -h], [-h * 0.2 * f, -h * 0.45], [h * 0.25 * f, h * 0.05], [-h * 0.05 * f, h * 0.55], [h * 0.6 * f, h]];
+};
 const CELLS: [number, number][] = [[0, 0], [1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2], [3, 2], [2, 3], [3, 3]];
 const PARKS: [number, number][] = [[4, 3], [3, 4]];
 const PLAZA: [number, number] = [4, 4];
@@ -264,8 +302,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   for (const cell of ALL) {
     const { x, z } = cellXZ(cell);
     add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
-    add(new THREE.BoxGeometry(C - 1.6, 0.18, C - 1.6).translate(x, 0.09, z), curb);
-    add(new THREE.BoxGeometry(C - 1.75, 0.2, C - 1.75).translate(x, 0.1, z), walk);
+    // (Rounded corners: the streets curve round each block like a real town's.)
+    add(roundSlab(C - 1.6, C - 1.6, 1.15, 0.18).translate(x, 0, z), curb);
+    add(roundSlab(C - 1.75, C - 1.75, 1.05, 0.2).translate(x, 0, z), walk);
     for (const [dx, dz, along] of [[q, 0, "z"], [0, q, "x"]] as const) {
       for (let k = -1; k <= 1; k++) add(along === "z" ? new THREE.BoxGeometry(0.08, 0.02, 0.6).translate(x + dx, 0.06, z + k * 1.3) : new THREE.BoxGeometry(0.6, 0.02, 0.08).translate(x + k * 1.3, 0.06, z + dz), lane);
       // Zebra crossings near both ends of this street.
@@ -295,9 +334,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // The two parks by the entrance: lawns, a path, a pond, benches.
   for (const [n, cell] of PARKS.entries()) {
     const { x, z } = cellXZ(cell);
-    add(new THREE.BoxGeometry(C - 2.2, 0.06, C - 2.2).translate(x, 0.23, z), grass);
-    add(new THREE.BoxGeometry(0.7, 0.07, C - 2.2).translate(x, 0.24, z), pave);
-    add(new THREE.BoxGeometry(C - 2.2, 0.07, 0.7).translate(x, 0.24, z), pave);
+    add(roundSlab(C - 2.2, C - 2.2, 0.8, 0.06).translate(x, 0.2, z), grass);
+    // A winding path and a loop instead of a straight cross.
+    add(ribbon(sPath((C - 2.4) / 2, n === 1).map(([a, b]): [number, number] => [x + a, z + b]), 0.6, 0.275), pave);
+    add(new THREE.RingGeometry(0.9, 1.25, 32).rotateX(-Math.PI / 2).translate(x + (n ? 0.5 : -0.5), 0.272, z + 0.6), pave);
     add(new THREE.CylinderGeometry(0.75, 0.75, 0.06, 20).translate(x + (n ? -1.15 : 1.15), 0.25, z - 1.15), water);
     add(new THREE.TorusGeometry(0.78, 0.06, 6, 20).rotateX(Math.PI / 2).translate(x + (n ? -1.15 : 1.15), 0.28, z - 1.15), stone);
     for (const [a, b] of [[-1.3, 1.2], [1.3, 1.3], [n ? 1.3 : -1.3, -1.2]]) tree(x + a, z + b, 0.95);
@@ -950,7 +990,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let plotTop = 1.2;
   {
     const { x, z } = cellXZ(PLOT);
-    add(new THREE.BoxGeometry(C - 2.2, 0.06, C - 2.2).translate(x, 0.23, z), grass);
+    add(roundSlab(C - 2.2, C - 2.2, 0.8, 0.06).translate(x, 0.2, z), grass);
     const tx = x + TOWER_AT.x, tz = z + TOWER_AT.z;
     add(new THREE.BoxGeometry(2.6, 0.08, 2.6).translate(tx, 0.25, tz), pave);
     const sc = cafe.starter;
@@ -996,7 +1036,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // Locked: a little park. For lease: a cleared plot with a sale sign.
       const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lotG.add(new THREE.Mesh(geo, m));
       if (lot.state === "lease") {
-        K(new THREE.BoxGeometry(4.2, 0.06, 4.2).translate(0, 0.03, 0), grass2);
+        K(roundSlab(4.2, 4.2, 0.7, 0.06), grass2);
         K(new THREE.BoxGeometry(3.2, 0.07, 3.2).translate(0, 0.04, -0.2), earth);
         for (const [sx, sz] of [[-1.6, -1.8], [1.6, -1.8], [-1.6, 1.4], [1.6, 1.4]]) K(new THREE.BoxGeometry(0.06, 0.5, 0.06).translate(sx, 0.25, sz), wood);
         for (const [sx, sz, w, d] of [[0, -1.8, 3.2, 0.03], [0, 1.4, 3.2, 0.03], [-1.6, -0.2, 0.03, 3.2], [1.6, -0.2, 0.03, 3.2]] as const) K(new THREE.BoxGeometry(w, 0.05, d).translate(sx, 0.42, sz), mats.c("#ff8a3b"));
@@ -1008,9 +1048,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         tops[i] = 1.9;
       } else {
         // A little park until the business comes: lawn, a winding path, trees, a bench.
-        K(new THREE.BoxGeometry(4.2, 0.06, 4.2).translate(0, 0.03, 0), i % 2 ? grass : grass2);
-        K(new THREE.BoxGeometry(0.6, 0.07, 2.4).rotateY(0.5).translate(-0.3, 0.04, 0.9), pave);
-        K(new THREE.BoxGeometry(0.6, 0.07, 2.2).rotateY(-0.6).translate(0.4, 0.04, -0.9), pave);
+        K(roundSlab(4.2, 4.2, 0.7, 0.06), i % 2 ? grass : grass2);
+        K(ribbon(sPath(1.9, i % 2 === 1), 0.55, 0.075), pave);
         for (const [tx, tz, ts] of [[-1.3, -1.2, 1], [1.3, 0.8, 0.9], [-1.4, 1.5, 0.75], [1.4, -1.5, 0.8]]) {
           K(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk);
           K(new THREE.IcosahedronGeometry(0.5 * ts, 0).translate(tx, 0.95 * ts, tz), leaf);
@@ -1024,8 +1063,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       return;
     }
     // The lot: a paved forecourt with a strip of lawn round the back.
-    lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.05, 4.3).translate(0, 0.025, 0), grass));
-    lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.06, 2.6).translate(0, 0.03, 0.85), pave));
+    lotG.add(new THREE.Mesh(roundSlab(4.3, 4.3, 0.7, 0.05), grass));
+    lotG.add(new THREE.Mesh(roundSlab(4.3, 2.6, 0.6, 0.06).translate(0, 0, 0.85), pave));
     const hqT = cafe.hq?.[lot.id];
     // Once the café terrace is there (or its preview), the Coffee Cart's building, at any
     // stage, keeps clear of it: it moves back (and slims if it must) so its front stops
