@@ -500,16 +500,17 @@ function renderTitle() {
   $("playSub").textContent = "Hold to swing, let go to fly";
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
-  $("dailyRunBtn").textContent = daily ? `Daily · ${daily.toLocaleString()}` : "Daily run";
-  $("hardBtn").textContent = rs.hardOn ? "Hard · ×2" : "Hard"; $("hardBtn").classList.toggle("on", !!rs.hardOn);
+  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("dailyRunBtn").textContent = ds ? `Daily ${"★".repeat(ds.stars || 1)}` : "Daily"; }
+  $("hardBtn").textContent = rs.best ? `Endless · ${rs.best.toLocaleString()}` : "Endless";
   const we = weekEvent(), sn = streakNow();
   $("titleMeta").textContent = `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · ` + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
   $("playLabel").textContent = "Play";
-  if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()} in their cave`; }
-  // The first visit of the day opens the gift.
-  if (!calState().claimed && !save.run.todayShown) { save.run.todayShown = today(); setTimeout(() => { if (screen === "title") openToday(); }, 600); }
-  else if (save.run.todayShown !== today() && !calState().claimed) { save.run.todayShown = today(); setTimeout(() => { if (screen === "title") openToday(); }, 600); }
+  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = `Stage ${n}`; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : n === 1 ? "Hold to swing, let go to fly" : "Tap to play"; }
+  if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
+  else if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()}`; }
+  // The daily gift waits on the Today tab (its dot); nothing pops up over Play.
+
   startTitleRun();
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
@@ -704,10 +705,11 @@ function playNow(opts = {}) {
   $("titleScreen").classList.add("launch");
   setTimeout(() => startRun(opts), 230);
 }
-tap("playBtn", () => playNow(challengeFrom ? { challenge: challengeFrom } : {}));
-tap("dailyRunBtn", () => playNow({ daily: true }));
+tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => startStage(stageRace.n, { race: stageRace }), 200); return; } if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(stageNext()), 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
+tap("stagesBtn", () => openSheet("stages"));
+tap("dailyRunBtn", () => { if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); } else playNow({ daily: true }); });
 // Hard mode: one touch and the run is over, but every point counts double.
-tap("hardBtn", () => { runSave().hardOn = !save.run.hardOn; persist(); renderTitle(); });
+tap("hardBtn", () => playNow({}));
 tap("todayBtn", openToday);
 tap("todayClose", () => { $("todayPanel").hidden = true; });
 tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift · <b>+${n}</b> lights`, true); } renderToday2(); if (screen === "title") { const keep = $("todayPanel").hidden; renderTitle(); $("todayPanel").hidden = keep; } });

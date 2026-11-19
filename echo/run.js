@@ -51,7 +51,10 @@ function startRun(opts = {}) {
     next: 260, note: 0, biome: 0, banner: 1.5, flash: 0, t: 0, mult: r.mult, paused: false, nohit: true,
   };
   // The 3D runner when the phone can draw it (runner.js); the classic flight otherwise.
-  if (!(save.set && save.set.classic) && typeof runner3D === "function" && runner3D()) runnerStart(run);
+  // A stage: a fixed course (same seed every time), a ghost to race.
+  if (opts.stage != null && typeof stageInfo === "function") { const si = stageInfo(opts.stage); Object.assign(run, { stage: opts.stage, stageInfo: si, rng: seeded(si.seed), seed: si.seed, ghostTrace: opts.ghost || null, ghostLabel: opts.ghostLabel || "", raceTime: opts.raceTime || 0 }); }
+  const can3 = typeof swingSmooth === "function" && swingSmooth() || (typeof runner3D === "function" && runner3D());
+  if (!(save.set && save.set.classic) && typeof runnerStart === "function" && can3) runnerStart(run);
   if (opts.attract) { run.hearts = 1e9; return run; }
   if (!r.tutDone && !daily) run.tut = 1;
   if (run.hard) run.hearts = 1;
@@ -64,7 +67,7 @@ function startRun(opts = {}) {
   mood = MOODS[0];
   musicStart(4242, 2);
   show("run");
-  $("runOver").hidden = true; $("runPause").hidden = true;
+  $("runOver").hidden = true; $("runPause").hidden = true; if ($("stageCard")) $("stageCard").hidden = true;
   runHud();
   requestAnimationFrame(runLoop);
 }
@@ -118,6 +121,7 @@ function runSing() {
 function runHit() {
   run.hearts--; run.inv = 1.6; run.flash = 1; run.nohit = false; run.hitAt = runMetres(); run.shake = 1;
   if (run.mode3) sfx.crash(); else sfx.caught(); buzz([30, 40, 30]);
+  if (run.hearts <= 0 && run.stageInfo) { stageFail(); return; }
   if (run.hearts <= 0) { if (!run.hard && run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
 function runMission(kind, value) {
@@ -195,14 +199,14 @@ function runMissions(el) {
 }
 function runHud() {
   if (run.attract) return;
-  $("runScore").textContent = runScore().toLocaleString();
+  if (run.stageInfo) { $("runScore").textContent = (run.stageT || 0).toFixed(1); } else $("runScore").textContent = runScore().toLocaleString();
   $("runLights").textContent = `✦ ${run.lights}`;
   const maxH = Math.max(run.hearts, (run.hard ? 1 : 3 + runUpg("heart")) + (perk(11) ? 1 : 0));
   $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join("");
   const ab = $("abilityBtn"), as = playingAs();
   if (ab.hidden === as >= 0) ab.hidden = as < 0;
   if (as >= 0) { $("abilityName").textContent = run.abilityCd > 0 ? Math.ceil(run.abilityCd) : run.mode3 ? "Shield" : RUN_POWERS[FRIEND_ABILITY[as]].name; ab.classList.toggle("cool", run.abilityCd > 0); }
-  $("runMult").textContent = `×${run.mult}`;
+  $("runMult").textContent = run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100))}%` : `×${run.mult}`;
   $("runPower").textContent = run.power ? `${((run.mode3 && RUNNER_POWERS[run.power.kind]) || RUN_POWERS[run.power.kind]).name} ${Math.ceil(run.power.t)}` : "";
 }
 
@@ -623,7 +627,7 @@ function runDraw(ctx, W, H) {
   const zoom = 1 - Math.min(0.1, (R.speed - 200) / 2000), S = W / 400 * zoom;
   const LY = H / S * (0.7 + Math.min(0.05, (R.speed - 200) / 4000));
   const shake = R.shake > 0 ? R.shake * 6 : 0, camX = R.camX || 0;
-  const m = R.dist / RUN.M, b = Math.floor(m / RUN.BIOME_M), f = Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
+  const m = R.dist / RUN.M, b = R.stageInfo ? Math.floor((R.stageInfo.daily ? dayNumber() : R.stageInfo.n - 1) / 2) % 8 : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const wb = R.mode3 ? 7 - (b % 8) : b, wb2 = R.mode3 ? 7 - ((b + 1) % 8) : b + 1;
   const w1 = runWorld(wb), w2 = runWorld(wb2), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
@@ -1023,6 +1027,8 @@ function runLoop(now) {
   const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
   if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
+  // The best moment of the run, kept as a picture to share (2D view only: it has everything on one canvas).
+  if (run && run.wantShot) { run.wantShot = false; if (typeof swingSmooth === "function" && swingSmooth()) { const t0 = performance.now(); try { run.moment = c.toDataURL("image/jpeg", 0.72); } catch (e) {} run.shotAt = run.t; } }
   requestAnimationFrame(runLoop);
 }
 

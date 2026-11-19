@@ -711,6 +711,14 @@
   #shopList .sw { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; vertical-align: -2px; border: 1px solid rgba(255,255,255,0.3); }
   /* Live background blur is costly over an animated 3D view on phones: panels are solid glass instead. */
   *, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .st-stars { font-size: 44px; letter-spacing: 6px; color: #ffd98a; text-align: center; margin: 6px 0 10px; text-shadow: 0 0 22px rgba(255, 210, 90, 0.45); }
+  .st-stars.lost { color: rgba(255,255,255,0.25); text-shadow: none; }
+  #shopList li.stgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 6px 0 12px; background: none; border: 0; }
+  #shopList .st { aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--edge); background: rgba(255,255,255,0.05); color: var(--txt); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; padding: 0; }
+  #shopList .st b { font-size: 17px; font-weight: 800; }
+  #shopList .st i { font-style: normal; font-size: 10px; color: #ffd98a; letter-spacing: 1px; }
+  #shopList .st.next { border-color: rgba(139,233,255,0.7); box-shadow: 0 0 16px rgba(139,233,255,0.25); }
+  #shopList .st.lock { opacity: 0.35; }
   .wordmark b { font-weight: 900; color: var(--acc); margin-left: 0.35em; }
   .tabbar { position: fixed; left: 12px; right: 12px; bottom: calc(10px + var(--bottom)); height: 64px; border-radius: 22px; display: none; z-index: 20; padding: 0 6px; }
   body.tabs .tabbar { display: flex; }
@@ -831,7 +839,7 @@
     <div class="home-best"><span>Best</span><b id="homeBest">0</b></div>
     <button class="play2" id="playBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg><span><b id="playLabel">Play</b><small id="playSub"></small></span></button>
     <p class="home-meta" id="titleMeta"></p>
-    <div class="seg"><button id="dailyRunBtn">Daily run</button><button id="hardBtn">Hard</button></div>
+    <div class="seg"><button id="stagesBtn">Stages</button><button id="hardBtn">Endless</button><button id="dailyRunBtn">Daily</button></div>
   </div>
   <div hidden aria-hidden="true">
     <button id="shareBtn"></button><span id="starCount"></span><button id="weekLink"></button><button id="homeBtn"></button><i id="homeDot"></i><button id="awardsBtn"></button><p id="tapSing"></p>
@@ -898,6 +906,14 @@
   <button class="ability" id="abilityBtn" hidden aria-label="Ability"><span id="abilityName"></span></button>
   <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="info">Hold anywhere to grab a light · let go to fly</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
   <div class="card2 mid" id="runContinue" hidden><h2>Keep going?</h2><div class="ring" id="runContinueTime">5</div><p class="info">Spend lights to carry on</p><div class="row2"><button class="ghost" id="runContinueNo">Rest</button><button class="primary" id="runContinueGo"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg> <span id="runContinueCost">25</span></button></div></div>
+  <div class="card2 bottom" id="stageCard" hidden>
+    <div class="ro-head"><span id="stTitle">Stage 1</span><span class="badge" id="stBadge"></span></div>
+    <div class="st-stars" id="stStars">★★★</div>
+    <div class="ro-stats"><div><b id="stTime">0</b><span>seconds</span></div><div><b id="stLights">0/0</b><span>lights</span></div><div><b id="stPerf">0</b><span>perfects</span></div></div>
+    <p class="ro-daily" id="stNote"></p>
+    <div class="row2"><button class="ghost" id="stStages">Stages</button><button class="primary" id="stNext">Next stage</button><button class="ghost icon-only" id="stShare" aria-label="Share and race a friend"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>
+    <button class="link2" id="stRetry">Retry</button>
+  </div>
   <div class="card2 bottom" id="runOver" hidden>
     <div class="ro-head"><span id="runOverTitle">Run over</span><span class="badge" id="runOverBest"></span></div>
     <div class="ro-score" id="runOverScore">0</div>
@@ -1112,6 +1128,7 @@
 <script src="echo/run.js"></script>
 <script src="echo/swing.js"></script>
 <script src="echo/swing2d.js"></script>
+<script src="echo/stages.js"></script>
 <script src="echo/progress.js"></script>
 <script src="echo/ui.js"></script>
 </body>

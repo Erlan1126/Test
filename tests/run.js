@@ -512,6 +512,38 @@ const SIM = `
     await page.close();
   }
 
+  // ---------------------------------------------------------------- Stages
+  section("Lumen Rush: stages");
+  {
+    const { page, errors } = await openGame(browser);
+    const r = await page.evaluate(() => {
+      const out = {}; save.set = {}; save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; save.stages = null;
+      const play = n => { startStage(n); const R = run; for (let q = 0; q < 60 * 90 && !R.cleared && !R.failed; q++) { R.inv = 1; runnerAuto(); runUpdate(1 / 60); } return R; };
+      out.playStartsStageOne = typeof stageNext === "function" && stageNext() === 1;
+      const a = play(1);
+      out.aStageHasAFinishAndYouCanReachIt = a.cleared === true && a.stageT > 5 && a.stageT < 80 && a.stageLen > 200;
+      out.clearingGivesStarsAndUnlocksTheNext = a.stageStars >= 1 && stageSave().unlocked === 2 && stageStars(1) >= 1;
+      out.yourBestRunIsKeptAsAGhost = !!stageSave().ghosts[1] && ghostDecode(stageSave().ghosts[1].g).length > 50;
+      startStage(1); const x1 = run.anchors.slice(0, 6).map(q => q.x | 0).join(); startStage(1); const x2 = run.anchors.slice(0, 6).map(q => q.x | 0).join();
+      out.aStageIsTheSameCourseEveryTime = x1 === x2;
+      out.theGhostRacesYouOnTheSameStage = !!run.ghostTrace && run.ghostLabel === "BEST";
+      const tr = a.trace, back = ghostDecode(ghostEncode(tr)), last = back[back.length - 1], orig = tr[tr.length - 1];
+      out.ghostsSurviveTheTripThroughALink = back.length === tr.length && Math.abs(last[0] - orig[0]) < 1.5 && Math.abs(last[1] - orig[1]) < 1.5 && stageLink(1, 30, tr).length < 2000;
+      // Running out of light: a retry card, no continue.
+      startStage(1); run.inv = 0; run.hearts = 1; runHit();
+      out.runningOutOfLightOffersARetry = run.failed === true;
+      startStage(1); out.lockedStagesStayLocked = (startStage(9), run.stage === 1);
+      const d = play(0);
+      out.theDailyStageWorks = d.cleared && !!save.dailyStage && save.dailyStage.day === dayNumber();
+      openSheet("stages"); out.theStageMapShowsSixtyStages = document.querySelectorAll("#shopList .st").length === 60 && document.querySelectorAll("#shopList .st.lock").length === 58;
+      document.getElementById("sheet").hidden = true; run = null;
+      return out;
+    });
+    for (const [k, v] of Object.entries(r)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    check("no page errors", errors.length === 0, errors[0]);
+    await page.close();
+  }
+
   // ---------------------------------------------------------------- Screens
   section("Screens");
   {

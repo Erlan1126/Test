@@ -39,7 +39,7 @@ const RUNNER_THEMES = [
   { name: "Neon Arcade", fac: [3, 3, 0, 2], anchor: "ring", neon: 0.85, ad: 0.6 },
   { name: "Park Avenue", fac: [5, 1, 4, 2], anchor: "balloon", neon: 0.15, ad: 0.15, park: true },
 ];
-const runnerTheme = m => RUNNER_THEMES[Math.floor(Math.max(0, m) / RUN.BIOME_M) % RUNNER_THEMES.length];
+const runnerTheme = m => typeof run !== "undefined" && run && run.stageInfo ? RUNNER_THEMES[run.stageInfo.theme] : RUNNER_THEMES[Math.floor(Math.max(0, m) / RUN.BIOME_M) % RUNNER_THEMES.length];
 // The daily letter hunt: find L-U-M-E-N in the sky in one day.
 const HUNT = "LUMEN";
 function huntState() { const d = dayNumber(); if (!save.hunt || save.hunt.day !== d) save.hunt = { day: d, got: "" }; return save.hunt; }
@@ -65,7 +65,7 @@ const SWING_STORY = [
   ["The Hush hates music and neon most.", "Make the arcade loud again."],
   ["The park's old trees still hold the light.", "Dawn is close. Don't let the Heart catch you."],
 ];
-const SWING = { G: 22, REACH: 28, MAXV: 44 };
+const SWING = { G: 22, REACH: 28, MAXV: 38 };
 
 function runnerStart(R) {
   Object.assign(R, {
@@ -77,6 +77,7 @@ function runnerStart(R) {
   if (runnerPerk("Tide")) R.hearts++;
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
   // The run starts mid-swing from a first anchor overhead.
+  if (R.stageInfo) Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
   const a0 = { x: 2, y: 40, kind: "lamp", id: 0 }; R.anchors.push(a0); R.lastA = a0;
   swingGen(R, 220);
   R.teth = a0; R.L = Math.hypot(R.px - a0.x, R.py - a0.y); R.hold = true;
@@ -87,24 +88,31 @@ function runnerStart(R) {
 function swingGen(R, toX) {
   const r = runR;
   while (R.genX < toX) {
-    const m = Math.max(0, R.genX), th = runnerTheme(m), hard = Math.min(1, m / 3000);
+    const m = Math.max(0, R.genX), th = runnerTheme(m), hard = R.stageInfo ? R.stageInfo.hard : Math.min(1, m / 3000);
     // Anchors: a chain ahead, always reachable from the one before.
-    while (R.lastA.x < R.genX + 70) {
+    while (R.lastA.x < R.genX + 70 && !(R.stageLen && R.lastA.x > R.stageLen + 40)) {
       const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * 3, ath = runnerTheme(ax);
       const a = { x: ax, y: Math.max(27, Math.min(46, p.y + (r() - 0.5) * 12)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
       // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
       const roll = r();
       const wk = weekEvent().id, goldK = wk === "frost" ? 3 : 1;
-      a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + (ax > 400 ? 0.11 : 0) ? "crumble" : roll < 0.18 + (ax > 700 ? 0.11 : 0) ? "drift" : roll < 0.37 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
+      const dK = R.stageLen ? hard : null;
+      a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.2 : ax > 400) ? 0.11 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.4 : ax > 700) ? 0.11 : 0) ? "drift" : roll < 0.37 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
       if (a.type === "drift") a.bx = ax;
       R.anchors.push(a); R.lastA = a;
       // Lights along the arc you'd swing between them.
-      if (r() < 0.8 && ax > 10) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 13 * Math.sin(Math.PI * t) - 1, line: a.id }); } }
+      if (r() < (R.stageLen ? 0.9 : 0.8) && ax > 10 && !(R.stageLen && ax > R.stageLen)) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 13 * Math.sin(Math.PI * t) - 1, line: a.id }); if (R.stageLen) R.motesTotal++; } }
+      // The sky route (stages): a daring pair of high anchors with a trail of bonus lights.
+      if (R.stageLen && ax > 60 && ax < R.stageLen - 30 && Math.floor(ax / 85) !== Math.floor(p.x / 85)) {
+        const h1 = { x: ax + 3, y: 53 + r() * 3, kind: "lamp", id: R.anchors.length + 5000, ph: r() * 6, type: "gold" }; R.anchors.push(h1);
+        for (let q = 0; q < 6; q++) { R.motes.push({ x: ax - 6 + q * 2.6, y: 48 + Math.sin(q / 5 * Math.PI) * 3, line: -2 }); R.motesTotal++; }
+      }
       // Power-ups and the letter hunt, on the arc's low point.
-      if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
+      if (R.stageLen && ax > R.stageLen) continue;
+      if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS).filter(k => !(R.stageLen && k === "comet")); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
       else if (!R.attract && !R.tut && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
       // Drones patrol between some anchors later on.
-      if (ax > 500 && r() < 0.1 + hard * 0.2) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
+      if ((R.stageLen ? hard > 0.15 && ax > 80 : ax > 500) && r() < 0.1 + hard * 0.2) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
     }
     // One building (or a tree in the park), never so tall that it blocks the anchors.
     const gap = (th.water ? 6 : 3) + r() * (th.water ? 10 : 7) + (r() < 0.12 ? 8 : 0), w = 9 + r() * 10, x0 = R.genX + gap, x1 = x0 + w;
@@ -116,7 +124,7 @@ function swingGen(R, toX) {
     if (tree) b.x1 = Math.min(b.x1, x1);
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
-    if (prev && x0 > 400 && r() < 0.12 + hard * 0.18 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });
+    if (prev && (R.stageLen ? hard > 0.25 && x0 > 60 && x0 < R.stageLen : x0 > 400) && r() < 0.12 + hard * 0.18 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });
     R.blds.push(b); R.genX = b.x1;
   }
 }
@@ -209,7 +217,7 @@ function runnerSwipe() {}
 
 function swingHit(R, why) {
   if (R.inv > 0 || R.attract) { if (R.attract) R.inv = 1; return; }
-  R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5);
+  R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5); R.hitsTaken = (R.hitsTaken || 0) + 1;
   if (R.power && R.power.kind === "shield") { R.power = null; R.inv = 1; R.flash = -0.6; runMsg("Shield!", "", 1.2); sfx.gate(); return; }
   if (why) runMsg(why, "", 1.4);
   runHit();
@@ -280,6 +288,12 @@ function runnerUpdate(dt) {
   R.spinV *= R.teth || R.roof ? 0.8 : 0.995; R.spin += R.spinV * dt;
   R.phase += dt * Math.max(4, R.vx) * 0.8;
   R.v = Math.hypot(R.vx, R.vy); R.speed = R.v * RUN.M;
+  // Stages: the clock, your path (for ghosts), and the finish gate.
+  if (R.stageLen) {
+    if (!R.cleared) { R.stageT += dt; R.traceT += dt; while (R.traceT >= 0.1) { R.traceT -= 0.1; R.trace.push([R.px, R.py]); } }
+    if (!R.cleared && R.px >= R.stageLen) stageClear(R);
+    if (!R.cleared && !R.attract && R.pChain >= 3 && (!R.shotAt || R.t - R.shotAt > 4)) R.wantShot = true;
+  }
   R.dist = Math.max(R.dist, Math.max(0, R.px) * RUN.M);
   R.x = 200; R.tilt = 0;
   const m = runnerM();
@@ -290,7 +304,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  R.darkX += Math.min(13, 3.5 + Math.max(0, m - 150) * 0.003) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  R.darkX += (R.stageLen ? 3 + R.stageInfo.hard * 6 : Math.min(13, 3.5 + Math.max(0, m - 150) * 0.003)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
@@ -303,7 +317,7 @@ function runnerUpdate(dt) {
     const d = Math.hypot(c.x - R.px, c.y - R.py - 0.9);
     if ((mag || R.od > 0) && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
     if (d < 1.5 || comet && d < 3) {
-      c.got = true; c.t = 0; R.lights += (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1); swingFlow(R, 0.022);
+      c.got = true; c.t = 0; if (R.stageLen) R.motesGot++; R.lights += (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1); swingFlow(R, 0.022);
       R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
       if (runnerPerk("Nova") && R.combo % 10 === 0) { R.lights += 5; runBonus("+5 ✦", 0, R.dist + 2, R.x); }
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }
@@ -357,12 +371,12 @@ function runnerUpdate(dt) {
   if (R.daily) R.rec[Math.floor(Math.max(0, R.px))] = Math.round(R.py);
   if (!R.attract) runMission("nohit", Math.floor(m - (R.hitAt || 0)));
   const bb = Math.floor(m / RUN.BIOME_M);
-  if (bb !== R.biome) {
+  if (bb !== R.biome && !R.stageLen) {
     R.biome = bb; R.banner = 3;
     if (!R.attract) { runMission("biome", bb + 1); const st = SWING_STORY[bb % SWING_STORY.length]; runMsg(st[0], st[1], 3.6); }
   }
   // The Heart of the Dark: near the end of every district it comes for you. Grab its three shards.
-  if (!R.attract && !R.tut && !R.ev && m % RUN.BIOME_M > RUN.BIOME_M - 110 && !(R.hearted || (R.hearted = {}))[bb] && m > 200) {
+  if (!R.stageLen && !R.attract && !R.tut && !R.ev && m % RUN.BIOME_M > RUN.BIOME_M - 110 && !(R.hearted || (R.hearted = {}))[bb] && m > 200) {
     R.hearted[bb] = true; R.ev = { kind: "heart", t: 22, hits: 0 };
     // Three shards ahead, always: on swing arcs where there are anchors, at a reachable height otherwise.
     const ahead = R.anchors.filter(a => a.x > R.px + 8).slice(0, 7);
@@ -370,7 +384,7 @@ function runnerUpdate(dt) {
     runMsg("The Heart of the Dark!", "Grab its 3 shards to break it", 2.6, true); sfx.power(); buzz([30, 40, 30]);
   }
   if (!R.attract) runMission("dist", Math.floor(m));
-  if (m >= R.nextMile) { R.nextMile += 500; R.fireworks.push({ t: 0, seed: Math.random() }); if (!R.attract) { runMsg(`${Math.floor(m)} m!`, "The city glows for you", 1.8, true); sfx.unlock(); } }
+  if (!R.stageLen && m >= R.nextMile) { R.nextMile += 500; R.fireworks.push({ t: 0, seed: Math.random() }); if (!R.attract) { runMsg(`${Math.floor(m)} m!`, "The city glows for you", 1.8, true); sfx.unlock(); } }
   for (const f of R.fireworks) f.t += dt; R.fireworks = R.fireworks.filter(f => f.t < 3);
   if (!R.attract) { music.intensity = Math.min(1, (R.v - 10) / 22); music.layers = R.combo >= 12 ? 3 : 2; }
   if (!R.attract) swingFlowHud(R);
@@ -666,6 +680,7 @@ function makeSwing3D() {
   const tetherGlow = new T.Mesh(new T.CylinderGeometry(0.22, 0.22, 1, 8), new T.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.35, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false })); scene.add(tetherGlow);
   // The ghost of today's best daily run.
   const ghost = glow(0x9fe8ff, 2.2, 0.5); scene.add(ghost);
+  const finish3 = new T.Group(); { const pole = new T.Mesh(new T.CylinderGeometry(0.15, 0.15, 90, 8), basic(0xffffff)); pole.position.y = 45; finish3.add(pole); const beam = new T.Mesh(new T.CylinderGeometry(2.2, 2.2, 90, 16, 1, true), new T.MeshBasicMaterial({ color: 0xffd25a, transparent: true, opacity: 0.35, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, toneMapped: false })); beam.position.y = 45; finish3.add(beam); finish3.visible = false; scene.add(finish3); }
   // The darkness: a towering wall of shadow with a violet edge.
   const darkTex = tex(128, 256, (g2) => { const gr = g2.createLinearGradient(0, 0, 128, 0); gr.addColorStop(0, "rgba(4,2,10,1)"); gr.addColorStop(0.75, "rgba(10,4,24,0.92)"); gr.addColorStop(1, "rgba(40,10,70,0)"); g2.fillStyle = gr; g2.fillRect(0, 0, 128, 256); });
   const darkWall = new T.Mesh(new T.PlaneGeometry(90, 140), new T.MeshBasicMaterial({ map: darkTex, transparent: true, depthWrite: false, fog: false })); darkWall.position.z = 6; scene.add(darkWall);
@@ -841,7 +856,8 @@ function makeSwing3D() {
     tether.visible = tetherGlow.visible = !!R.teth;
     if (R.teth) { const bc = (RUNNER_BOARDS[runnerLook().board] || RUNNER_BOARDS[0]).c, tc = bc === "prism" ? new T.Color().setHSL((t * 0.4) % 1, 0.9, 0.65) : new T.Color(bc); const hy = R.py + 1.7; placeBetween(tether, R.px, hy, R.teth.x, R.teth.y); placeBetween(tetherGlow, R.px, hy, R.teth.x, R.teth.y); tether.material.color.copy(tc); tetherGlow.material.color.copy(tc); tetherGlow.material.opacity = 0.3 + Math.sin(t * 20) * 0.08; }
     // The ghost.
-    const gy = R.ghost && !R.attract ? R.ghost[Math.floor(Math.max(0, R.px)) + 6] : null; ghost.visible = gy != null; if (gy != null) ghost.position.set(R.px + 6, gy + 1, -0.3);
+    const gp3 = R.ghostTrace ? stageGhostAt(R.ghostTrace, R.stageT || 0) : null, gy = gp3 ? null : R.ghost && !R.attract ? R.ghost[Math.floor(Math.max(0, R.px)) + 6] : null; ghost.visible = gy != null || !!gp3; if (gp3) ghost.position.set(gp3[0], gp3[1] + 1.1, -0.3); else if (gy != null) ghost.position.set(R.px + 6, gy + 1, -0.3);
+    finish3.visible = !!R.stageLen; if (R.stageLen) { finish3.position.set(R.stageLen, 0, 0); finish3.children[1].material.opacity = 0.35 + Math.sin(t * 4) * 0.1; }
     if (R.teth) { const hy = R.py + 1.7; for (let q = 0; q < 4; q++) { const f2 = (t * 1.8 + q / 4) % 1, pu = get("pulse", makers.pulse); pu.position.set(R.px + (R.teth.x - R.px) * f2, hy + (R.teth.y - hy) * f2, 0.1); pu.material.opacity = 0.9 * Math.sin(f2 * Math.PI); pu.material.color.copy(tether.material.color); } }
     for (const bu of R.bursts) { const ring2 = get("burst", makers.burst), q2 = bu.t / 0.8; ring2.position.set(bu.x, bu.y, 0.3); ring2.scale.setScalar((bu.big ? 1 : 0.5) + q2 * (bu.big ? 5 : 2.5)); ring2.material.opacity = 0.9 * (1 - q2); ring2.material.color.set(bu.c ?? runnerGlow()); }
     // The Heart of the Dark: a great dark core with a violet eye, riding the darkness.
