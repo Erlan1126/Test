@@ -75,13 +75,13 @@ const SW2D = (() => {
     const R = run, t = R.t, night = P.night, day = 1 - night, dayImg = night < 0.45;
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
     const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (30 + Math.min(12, Math.max(0, spd - 10) * 0.45)) * punch;
-    sCur += (sTarget - sCur) * (punch > 1.01 ? 0.25 : 0.08); const s = sCur;
-    const aim = R.teth || swingFindAnchor(R), halfW = W / 2 / s, halfH = H / 2 / s;
+    sCur += (sTarget - sCur) * (punch > 1.01 ? 0.12 : 0.04); const s = sCur;
+    const aim = R.teth || R.aim, halfW = W / 2 / s, halfH = H / 2 / s;
     let tx = R.px + 5 + Math.max(0, R.vx) * 0.12, ty = R.py + 4;
-    if (aim) { tx = tx * 0.6 + (aim.x + 2) * 0.4; ty = ty * 0.55 + (aim.y - 2) * 0.45; }
+    if (aim) { tx = tx * 0.8 + (aim.x + 2) * 0.2; ty = ty * 0.75 + (aim.y - 2) * 0.25; }
     tx = Math.max(R.px + halfW * 0.15, Math.min(R.px + halfW * 0.55, tx)); ty = Math.max(9, Math.min(60, Math.max(R.py - halfH * 0.35, Math.min(R.py + halfH * 0.45, ty))));
     if (!cam || Math.abs(cam.x - tx) > 80) cam = { x: tx, y: ty };
-    cam.x += (tx - cam.x) * 0.1; cam.y += (ty - cam.y) * 0.07;
+    cam.x += (tx - cam.x) * 0.06; cam.y += (ty - cam.y) * 0.04;
     cam.x = Math.max(R.px + halfW * 0.05, Math.min(R.px + halfW * 0.7, cam.x)); cam.y = Math.max(R.py - halfH * 0.55, Math.min(R.py + halfH * 0.6, cam.y));
     const sh = R.shake > 0 ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (R.kick || 0) * 8;
     const X = x => ox + (x - cam.x) * s, Y = y => oy - (y - cam.y) * s;
@@ -154,7 +154,7 @@ const SW2D = (() => {
       else { const x = X(z.x), y = Y((z.y ?? z.y0) + 0.9); if (x < -30 || x > W + 30) continue; ctx.fillStyle = "#1f2430"; ctx.beginPath(); ctx.ellipse(x, y, 0.75 * s, 0.35 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#9aa2b0"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 1.1 * s, y - 0.4 * s); ctx.lineTo(x + 1.1 * s, y - 0.4 * s); ctx.stroke(); ctx.drawImage(glow([255, 43, 74]), x - 0.8 * s, y - 0.8 * s, 1.6 * s, 1.6 * s); ctx.fillStyle = "#ff2b4a"; ctx.beginPath(); ctx.arc(x, y, 0.15 * s, 0, Math.PI * 2); ctx.fill(); }
     }
     // ---------- Anchors ----------
-    const best = !R.teth ? aim : null;
+    const best = !R.teth && R.aimOk ? R.aim : null;
     for (const a of R.anchors) {
       const x = X(a.x), y = Y(a.y + (a.broken ? -(a.fallY = (a.fallY || 0) + 0.3) : 0)); if (x < -40 || x > W + 40) continue;
       const col = a.type === "gold" ? [255, 210, 90] : a.type === "crumble" ? [255, 122, 61] : a.type === "drift" ? [127, 240, 255] : a.type === "spring" ? [141, 255, 106] : glowRGB, hot = a === best || a === R.teth;
@@ -169,6 +169,20 @@ const SW2D = (() => {
       if (a.type === "crumble" && a === R.teth) { ctx.strokeStyle = "#3a1408"; ctx.lineWidth = 2; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(q * 2.1) * 0.4 * s, y + Math.sin(q * 2.1) * 0.4 * s); ctx.stroke(); } }
       if (a.type === "spring") { ctx.strokeStyle = "#8dff6a"; ctx.lineWidth = 2; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.ellipse(x, y + (0.7 + q * 0.3) * s, 0.35 * s, 0.1 * s, 0, 0, Math.PI * 2); ctx.stroke(); } }
       ctx.globalAlpha = 1;
+    }
+    // ---------- The aim line: exactly the anchor a press will grab ----------
+    if (R.aim && !R.attract) {
+      const a = R.aim, ax = X(a.x), ay = Y(a.y), fx = X(R.px), fy = Y(R.py + 1.2);
+      if (!R.teth) {
+        ctx.save(); ctx.lineCap = "round";
+        if (R.aimOk) { ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = Math.max(1.5, 0.12 * s); ctx.setLineDash([0.5 * s, 0.45 * s]); ctx.lineDashOffset = -t * 2.2 * s; }
+        else { ctx.strokeStyle = "rgba(170,180,200,0.3)"; ctx.lineWidth = Math.max(1, 0.08 * s); ctx.setLineDash([0.2 * s, 0.6 * s]); }
+        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ax, ay); ctx.stroke(); ctx.restore();
+      }
+      // The target's ring: bright and pulsing when a press will grab it, a thin grey ring when it's out of reach.
+      ctx.strokeStyle = R.teth ? "rgba(255,255,255,0.35)" : R.aimOk ? "#ffffff" : "rgba(170,180,200,0.55)"; ctx.lineWidth = R.aimOk && !R.teth ? 3 : 1.5;
+      ctx.beginPath(); ctx.arc(ax, ay, (R.aimOk && !R.teth ? 1.7 + 0.15 * Math.sin(t * 9) : 1.45) * s, 0, Math.PI * 2); ctx.stroke();
+      if (R.fizzle > 0) { ctx.globalAlpha = Math.min(1, R.fizzle * 3); ctx.strokeStyle = "#ff5a6e"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ax, ay, (2.4 - R.fizzle) * s, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "#ff8a9a"; ctx.textAlign = "center"; ctx.font = `800 ${Math.round(0.9 * s)}px Inter, system-ui, sans-serif`; ctx.fillText(R.aimWhy === "below" ? "Below you" : "Too far", ax, ay - 2.3 * s); ctx.globalAlpha = 1; }
     }
     // ---------- Lights, shards, power-ups, letters ----------
     ctx.globalCompositeOperation = "lighter";
@@ -186,8 +200,8 @@ const SW2D = (() => {
     ctx.textBaseline = "alphabetic";
     // ---------- The trajectory: where you'd fly if you let go now (gold when it's a Perfect) ----------
     if (R.teth && !R.attract) {
-      const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, sp2 = Math.hypot(R.vx, R.vy), pw = perfectWindow(R), perfect = R.vx + 1.5 > 4 && ang > pw[0] && ang < pw[1] && sp2 > pw[2];
-      let px = R.px, py = R.py + 1, vx = (R.vx + 1.5) * (perfect ? 1.1 : 1), vy = R.vy * (perfect ? 1.1 : 1);
+      const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, sp2 = Math.hypot(R.vx, R.vy), pw = perfectWindow(R), perfect = R.vx > 2.5 && ang > pw[0] && ang < pw[1] && sp2 > pw[2];
+      let px = R.px, py = R.py + 1, vx = R.vx * (perfect ? 1.1 : 1), vy = R.vy * (perfect ? 1.1 : 1);
       ctx.fillStyle = perfect ? "#ffd25a" : "rgba(255,255,255,0.75)";
       for (let q = 1; q <= 14; q++) { for (let k2 = 0; k2 < 4; k2++) { vy -= SWING.G * 0.02; px += vx * 0.02; py += vy * 0.02; } if (py < 0) break; ctx.globalAlpha = (1 - q / 15) * 0.8; ctx.beginPath(); ctx.arc(X(px), Y(py), Math.max(1.5, 0.13 * s * (1 - q / 20)), 0, Math.PI * 2); ctx.fill(); }
       ctx.globalAlpha = 1;

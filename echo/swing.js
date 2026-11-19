@@ -66,7 +66,7 @@ const SWING_STORY = [
   ["The park's old trees still hold the light.", "Dawn is close. Don't let the Heart catch you."],
 ];
 const perfectWindow = R => { const h = R && R.stageInfo ? R.stageInfo.hard : 0; return [5 + h * 9, 75 - h * 12, 10 + h * 4]; };
-const SWING = { G: 22, REACH: 28, MAXV: 38 };
+const SWING = { G: 22, REACH: 24, MAXV: 38, PULL: 4.5, LMIN: 6 };
 
 function runnerStart(R) {
   Object.assign(R, {
@@ -142,22 +142,28 @@ function swingGen(R, toX) {
 const swingBldAt = (R, x) => R.blds.find(b => x >= b.x0 && x <= b.x1);
 
 // ---------- Holding and letting go ----------
-function swingFindAnchor(R) {
-  const reach = SWING.REACH * (runnerPerk("Ember") ? 1.25 : 1) * (R.stageInfo ? 1 - R.stageInfo.hard * 0.2 : 1);
-  let best = null, bs = -1e9;
+// ---------- Aiming: one target at a time, shown on screen, and holding grabs exactly that ----------
+// The target is always the nearest anchor ahead of you (not the one you just let go of).
+// It can be grabbed when it is above you and within reach; otherwise it shows dim.
+function swingReach(R) { return SWING.REACH * (runnerPerk("Ember") ? 1.25 : 1) * (R.stageInfo ? 1 - R.stageInfo.hard * 0.15 : 1); }
+function swingAim(R) {
+  // The nearest anchor ahead that you can reach; if none can be reached, the nearest one ahead (shown dim).
+  const reach = swingReach(R); let best = null, near = null;
   for (const a of R.anchors) {
-    if (a.x < R.px - 3 || a.x > R.px + reach) continue;
+    if (a.broken || a === R.teth || a === R.lastLet || a.x < R.px - 1) continue;
+    if (!near || a.x < near.x) near = a;
     const d = Math.hypot(a.x - R.px, a.y - R.py);
-    if (d > reach || d < 3 || a.y < R.py + 1 || a.broken) continue;
-    const s = (a.x - R.px) - Math.abs(d - 13) * 0.6;
-    if (s > bs) { bs = s; best = a; }
+    if (d <= reach && d >= 1.5 && a.y > R.py + 1 && (!best || a.x < best.x)) best = a;
   }
+  R.aim = best || near; R.aimOk = !!best;
+  R.aimWhy = best || !near ? "" : near.y <= R.py + 1 ? "below" : "far";
   return best;
 }
+function swingFindAnchor(R) { swingAim(R); return R.aimOk ? R.aim : null; }
 function swingAttach(R) {
   const a = swingFindAnchor(R);
-  if (!a) { R.fizzle = 0.25; return false; }
-  R.teth = a; R.L = Math.hypot(R.px - a.x, R.py - a.y); R.Lt = Math.max(7, Math.min(11.5, R.L)); R.roof = null; R.spinV = 0; R.tethT = 0; R.dashes = 1;
+  if (!a) return false;
+  R.teth = a; R.L = Math.max(4, Math.hypot(R.px - a.x, R.py - a.y)); R.roof = null; R.spinV = 0; R.tethT = 0; R.dashes = 1; R.grabBuf = 0; R.lastLet = null;
   R.bursts.push({ x: a.x, y: a.y, t: 0, c: a.type === "gold" ? 0xffd25a : null });
   if (a.type === "gold" && !a.paid) { a.paid = true; R.lights += 5; swingFlow(R, 0.15); if (!R.attract) { runBonus("Gold! +5 ✦", 0, R.dist + 2, R.x); sfx.unlock(); } }
   if (!R.attract) { sfx.jump(); buzz(8); }
@@ -167,24 +173,24 @@ function swingAttach(R) {
 function swingHold(down) {
   const R = run;
   if (!R || !R.mode3 || R.over || R.paused) return;
-  if (down) { R.hold = true; if (!R.teth) swingAttach(R); return; }
-  R.hold = false;
+  // Press: grab the target now; if it's not quite in reach, keep trying for a moment, then fizzle.
+  if (down) { R.hold = true; if (!R.teth && !swingAttach(R)) R.grabBuf = 0.25; return; }
+  R.hold = false; R.grabBuf = 0;
   if (!R.teth) return;
-  const was = R.teth; R.teth = null;
+  const was = R.teth; R.teth = null; R.lastLet = was;
   // A spring anchor launches you on release.
   if (was.type === "spring") { R.vy = Math.max(R.vy, 0) + 9; R.vx += 3; if (!R.attract) { runBonus("Boing!", 0, R.dist + 2, R.x); sfx.jump(); } }
   // A Perfect: let go moving forward and up, fast.
   const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, spd = Math.hypot(R.vx, R.vy);
-  R.vx += 1.5;
   const [pwLo, pwHi, pwV] = perfectWindow(R);
-  if (R.vx > 4 && ang > pwLo && ang < pwHi && spd > pwV) {
+  if (R.vx > 2.5 && ang > pwLo && ang < pwHi && spd > pwV) {
     const k = runnerPerk("Volt") ? 1.2 : 1.1; R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9;
     R.perfT = 0.45; R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
     R.pChain = (R.pChain || 0) + 1;
     if (!R.attract) { runBonus(R.pChain > 1 ? `Perfect ×${R.pChain}! +${1 + R.pChain} ✦` : "Perfect! +2 ✦", 0, R.dist + 2, R.x); R.lights += 1 + R.pChain; sfx.perfect(R.pChain); runMission("trail", R.perfects); }
-  } else if (R.vx > 3 && ang > pwLo - 12 && ang < pwHi + 12 && spd > pwV - 3) {
+  } else if (R.vx > 1.5 && ang > pwLo - 12 && ang < pwHi + 12 && spd > pwV - 3) {
     R.vx *= 1.04; R.vy *= 1.04; R.spinV = 6; R.pChain = 0; R.lights += 1; swingFlow(R, 0.06);
     if (!R.attract) { runBonus("Good +1 ✦", 0, R.dist + 2, R.x); sfx.clear(); }
   } else { R.spinV = 4; R.pChain = 0; }
@@ -194,7 +200,7 @@ function swingHold(down) {
 function runnerTutStep() {
   const R = run;
   R.tut++; R.slow = 1; R.tutText = "";
-  if (R.tut > 2) { R.tut = 0; const s = runSave(); s.tutDone = true; persist(); runMsg("You've got it!", "Swing on, and light up the city", 2.4, true); }
+  if (R.tut > 2) { R.tut = 0; const s = runSave(); s.tutDone = true; persist(); runMsg("You've got it!", "The ringed light is always the one you'll grab", 2.6, true); }
 }
 // The Flow bar lives in the page (not the canvas), touched only when it changes.
 const flowEls = {};
@@ -251,7 +257,10 @@ function runnerUpdate(dt) {
   for (const p of R.pops || []) p.t += dt; R.pops = (R.pops || []).filter(p => p.t < 1.2);
   if (R.power) { R.power.t -= dt; if (R.power.t <= 0) R.power = null; }
   if (!R.attract) { const k = !!(keys && (keys[" "] || keys.arrowup)); if (k !== !!R.kHold) { R.kHold = k; swingHold(k); } const kd = !!(keys && keys.arrowright); if (kd && !R.kDash) swingDash(); R.kDash = kd; }
-  if (R.hold && !R.teth && !R.roof) swingAttach(R);
+  swingAim(R);
+  // Holding grabs the highlighted anchor the moment it comes into reach. A press that finds it
+  // still out of reach a moment later shows why ("Too far" / "Below you").
+  if (R.hold && !R.teth) { if (swingAttach(R)) R.grabBuf = 0; else if (R.grabBuf > 0 && (R.grabBuf -= dt) <= 0) { R.grabBuf = 0; R.fizzle = 0.35; } }
   // Anchors that move, and anchors that crumble under you.
   for (const a of R.anchors) if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2;
   if (R.teth) { R.tethT += dt; if (R.teth.type === "crumble" && R.tethT > 1.9) { const a = R.teth; a.broken = true; R.teth = null; R.hold = false; R.bursts.push({ x: a.x, y: a.y, t: 0, c: 0xff6a3d, big: true }); if (!R.attract) { runMsg("It crumbled!", "Let go of orange anchors quickly", 1.4); sfx.bump(); } } }
@@ -267,11 +276,14 @@ function runnerUpdate(dt) {
     if (comet) { R.teth = null; R.vx += (32 - R.vx) * Math.min(1, h * 3); R.vy = (34 - R.py) * 2; R.px += R.vx * h; R.py += R.vy * h; continue; }
     R.vy -= SWING.G * h;
     if (R.teth) {
-      const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1, tx = -dy / d, ty = dx / d, along = R.vx * tx + R.vy * ty;
-      // A little push along the swing keeps it lively; a gentle reel-in.
-      // A push along the swing; below the anchor and slow, a push forward so you never stall.
-      if (dy < 0) { const sg = along >= 0 ? 1 : -1, slowK = (Math.hypot(R.vx, R.vy) < 10 ? 1.6 : 1) * (R.stageInfo ? 1 - R.stageInfo.hard * 0.6 : 1); R.vx += tx * sg * 10 * slowK * h; R.vy += ty * sg * 10 * slowK * h; if (along < 0 && dx > -2 && Math.hypot(R.vx, R.vy) < 6) { R.vx += tx * 14 * h; R.vy += ty * 14 * h; } }
-      R.L += ((R.Lt || R.L) - R.L) * Math.min(1, h * 3.5);
+      const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1;
+      // Holding pulls you in. A shorter rope spins faster (angular momentum is kept), so reeling in
+      // at the bottom of a swing is how you gain speed. No other forces: just gravity and the rope.
+      if (R.hold && R.tethT > 0.12 && R.L > SWING.LMIN) {
+        const L2 = Math.max(SWING.LMIN, R.L - SWING.PULL * h), k = R.L / L2;
+        if (d > L2) { const rv = R.vx * dx / d + R.vy * dy / d; R.vx = (R.vx - rv * dx / d) * k + rv * dx / d; R.vy = (R.vy - rv * dy / d) * k + rv * dy / d; }
+        R.L = L2;
+      }
     } else R.vx *= 1 - 0.03 * h;
     for (const w of R.winds) if (R.px > w.x0 && R.px < w.x1) { R.vx += w.f * h; break; }
     R.px += R.vx * h; R.py += R.vy * h;
@@ -379,8 +391,8 @@ function runnerUpdate(dt) {
     }
   }
   // The first run teaches by doing: let go, then hold.
-  if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.3; R.tutText = "Let go to fly!"; } else if (a) R.tutText = "Hold on…"; }
-  else if (R.tut === 2) { R.tutText = "Hold to grab the next light"; R.slow = R.vy < 0 ? 0.35 : 1; }
+  if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.3; R.tutText = "Let go to fly!"; } else if (a) R.tutText = "Keep holding: you reel in and speed up"; }
+  else if (R.tut === 2) { R.tutText = "Hold to grab the ringed light"; R.slow = R.vy < 0 ? 0.35 : 1; }
   else { R.slow = R.slowT > 0 ? (R.perfT > 0.3 ? 0.35 : 0.5) : 1; }
   R.slowT = Math.max(0, R.slowT - dt * 2);
   // Events: a light shower, a surge of darkness.
@@ -420,9 +432,11 @@ function runnerUpdate(dt) {
 // The title screen swings by itself.
 function runnerAuto() {
   const R = run;
-  if (R.teth) { if ((R.px > R.teth.x + 1 && R.vy > 0.5 && R.vx > 5) || (R.teth.type === "crumble" && R.tethT > 1.6)) swingHold(false); }
-  else if (R.roof) { const b = R.roof; if (R.px > b.x1 - 4) swingHold(true); }
-  else if ((R.vy < -2 || R.py < 16) && !R.hold) swingHold(true);
+  if (R.teth) {
+    // Let go swinging forward and up (the Perfect window), or quickly off a crumbling anchor.
+    const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, [lo, hi] = perfectWindow(R);
+    if ((R.px > R.teth.x && R.vx > 4 && ang > lo + 4 && ang < hi - 10) || (R.px > R.teth.x + 2 && R.vy > 0 && R.vy > R.vx * 1.4) || (R.teth.type === "crumble" && R.tethT > 1.6) || (R.tethT > 0.8 && Math.hypot(R.vx, R.vy) < 5)) swingHold(false);
+  } else if (!R.hold && R.aimOk && (R.vy < 1 || R.roof || R.py < 16)) swingHold(true);
 }
 
 // ---------- Drawing: the skyline in 3D ----------

@@ -442,6 +442,16 @@ const SIM = `
       out.lettingGoAtTheRightMomentIsPerfect = R.perfects === p0 + 1 && Math.hypot(R.vx, R.vy) > v0 && !R.teth;
       step(20); out.youFlyOnAfterLettingGo = R.vx > 5 && !R.teth;
       swingHold(true); out.holdingGrabsTheNextAnchorAhead = !!R.teth && R.teth.x > R.px - 3;
+      // Aiming: the ringed anchor is exactly the one a press grabs; holding reels you in and speeds you up.
+      { swingHold(false); const tgt = { x: R.px + 8, y: R.py + 9, kind: "lamp", id: 9100 }, other = { x: R.px + 12, y: R.py + 14, kind: "lamp", id: 9101 }; const keepA = R.anchors; R.anchors = [tgt, other]; R.roof = null; swingAim(R);
+        out.theAimIsTheNearestAnchorAhead = R.aim === tgt && R.aimOk;
+        swingHold(true); out.aPressGrabsExactlyTheAimedAnchor = R.teth === tgt;
+        R.vx = 10; R.vy = -6; const L0 = R.L; let w0 = 0; { const dx = R.px - tgt.x, dy = R.py - tgt.y; w0 = Math.abs(R.vx * -dy + R.vy * dx) / (dx * dx + dy * dy); }
+        step(20); const dx = R.px - tgt.x, dy = R.py - tgt.y, w1 = Math.abs(R.vx * -dy + R.vy * dx) / (dx * dx + dy * dy);
+        out.holdingReelsYouIn = R.teth === tgt && R.L < L0 - 0.5;
+        out.reelingInSpinsYouFaster = w1 > w0;
+        swingHold(false); R.anchors = keepA; }
+      { const far = { x: R.px + 60, y: R.py + 10, kind: "lamp", id: 9102 }; const keep = R.anchors; R.anchors = [far]; R.teth = null; swingHold(true); out.aFarAnchorIsNotGrabbed = !R.teth && R.aim === far && !R.aimOk; swingHold(false); R.anchors = keep; }
       // Lights and relit buildings.
       const l0 = R.lights; R.motes.push({ x: R.px, y: R.py + 0.9, line: 0 }); step(1);
       out.lightsAreCollected = R.lights > l0;
