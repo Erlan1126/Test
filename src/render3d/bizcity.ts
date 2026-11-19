@@ -437,7 +437,6 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   shallowM.userData.dynamic = true;
   fx.water(seaM, true); fx.water(shallowM, true); fx.ground(sandM, 0.5); fx.ground(wetSandM, 0.4);
   let beachLive = (_t: number, _night: number) => {};
-  let raysLive = (_t: number, _k: number) => {};
   let beachSpot: { x: number; z: number } | null = null;
   if (sandPoly.length >= 3 && seaPoly.length >= 3) {
     slab(sandPoly, 0.08, 0.06, sandM);
@@ -652,30 +651,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     string.userData.dynamic = true;
     string.frustumCulled = false;
     g.add(string);
-    // Soft rays of sunlight slanting down over the beach and the sea (by day, in clear weather).
-    const rayTex = (() => {
-      const c = document.createElement("canvas"); c.width = 32; c.height = 128;
-      const x = c.getContext("2d")!;
-      const gr = x.createLinearGradient(0, 0, 0, 128);
-      gr.addColorStop(0, "rgba(255,248,220,0)"); gr.addColorStop(0.35, "rgba(255,248,220,0.55)"); gr.addColorStop(1, "rgba(255,248,220,0)");
-      x.fillStyle = gr; x.fillRect(0, 0, 32, 128);
-      const side = x.createLinearGradient(0, 0, 32, 0);
-      side.addColorStop(0, "rgba(0,0,0,1)"); side.addColorStop(0.5, "rgba(0,0,0,0)"); side.addColorStop(1, "rgba(0,0,0,1)");
-      x.globalCompositeOperation = "destination-out"; x.fillStyle = side; x.fillRect(0, 0, 32, 128);
-      const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx;
-    })();
-    const rays = [0, 1, 2, 3, 4].map(k => {
-      const m = own(new THREE.MeshBasicMaterial({ map: rayTex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
-      // Thin shafts out over the water, leaning away from the sun.
-      const rz = zShore - 1.8 - (k % 3) * 0.8, [ra, rb] = seaXs(rz);
-      const r = new THREE.Mesh(new THREE.PlaneGeometry(0.28 + (k % 2) * 0.22, 4.2), m);
-      r.position.set(ra + (rb - ra) * (0.15 + k * 0.17), 2.0, rz);
-      r.rotation.set(0, Math.PI / 4, 0.35);
-      r.userData.dynamic = true;
-      g.add(r);
-      return { r, m, k };
-    });
-    raysLive = (t: number, k: number) => { for (const q of rays) q.m.opacity = k * (0.1 + 0.07 * Math.sin(t * 0.35 + q.k * 1.9)); };
+    // (Sun rays are drawn by the renderer's final pass, from the sun's corner of the screen.)
     beachSpot = { x: x0 + span * 0.5, z: zs };
     const kiteAt = new THREE.Vector3();
     const seaLife = (t: number) => {
@@ -1129,7 +1105,6 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       lampAt.forEach((v, k) => lampW[k].copy(v).applyMatrix4(g.matrixWorld));
       fx.lamps(lampW);
       fx.shore(tmpV.set(0, 0, zShore).applyMatrix4(g.matrixWorld).z);
-      raysLive(t, (1 - (look.night ?? 0)) * (1 - (look.wet ?? 0)) * (1 - (look.dusk ?? 0) * 0.4));
       flockLive(t);
       for (const it of islets) { it.o.position.y = it.y + Math.sin(t * 0.5 + it.k * 2) * 0.12; it.o.rotation.y = Math.sin(t * 0.2 + it.k) * 0.08; }
       winMat.emissiveIntensity = 0.05 + night * 0.9;

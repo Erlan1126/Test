@@ -1505,4 +1505,5 @@ export const DE: Record<string, string> = {
   "Your golden statue in the plaza fountain": "Deine goldene Statue im Brunnen auf dem Platz",
   "See it": "Ansehen",
   "{name} added to Skyhaven!": "{name} ist jetzt in Skyhaven!",
+  "Ahh, a seat at last ☕": "Ahh, endlich ein Sitzplatz ☕",
 };

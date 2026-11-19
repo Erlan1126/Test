@@ -331,6 +331,7 @@ export class TycoonUI {
     this.stage("toSeat", at);
     this.later(at - Date.now() + (this.story.reduced ? 300 : 3600), () => {
       this.stage("seat");
+      if (!c.seated) this.say(t("Ahh, a seat at last ☕"), 4500);
       if (!c.seated) { c.seated = true; this.host.persist(); track("neighbor_seated"); }
     });
   }
@@ -339,8 +340,9 @@ export class TycoonUI {
   private projectOpened(): void {
     const c = this.save.cafe, id = c.done[c.done.length - 1];
     if (!id) return;
-    this.story = { ...this.story, opened: { id, at: Date.now() + 900 } };
-    this.frameUntil = Date.now() + 7500;
+    // The camera glides over first (about 2 s), then the delivery or the family arrives.
+    this.story = { ...this.story, opened: { id, at: Date.now() + 1800 } };
+    this.frameUntil = Date.now() + 11000;
     this.render();
   }
 
@@ -419,11 +421,13 @@ export class TycoonUI {
     this.host.persist();
     this.host.sound.unlock();
     this.selected = "";
-    this.frameUntil = Date.now() + 6000;
+    // The close-up holds until they've sat down and had a moment there (about 5 s to walk).
+    this.frameUntil = Date.now() + 10000;
     if (c.moved && c.starter) this.takeSeat(Date.now() + 700);
     else this.stage("seat");
     this.later(900, () => { this.pulse = { id: "coffee", at: Date.now() }; });
-    this.later(5000, () => toast(t("☕ The café terrace is open!")));
+    // (The message waits until the camera lets go, so nothing covers the moment.)
+    this.later(10200, () => toast(t("☕ The café terrace is open!")));
     this.render();
   }
 
@@ -633,7 +637,11 @@ export class TycoonUI {
       return `<button type="button" class="tag bub proj offer" data-tag="proj-${id}" data-i="${i}" data-h="-1" aria-label="${esc(t(name))}"><span class="tag-ico">${iconSvg(ico)}</span></button>`;
     };
     const blockTags = s.cafe.terrace === 2 ? projTag("flowers", -2, "flower", "Flower market") + projTag("play", -3, "slide", "Playground") : "";
-    this.put($("tcy-labels"), starterTag + blockTags + BUSINESSES.map((b, i) => {
+    // (During a story close-up only the Coffee Cart keeps its bubble: nothing covers the
+    // neighbor and their moment.)
+    const closeUp = live.frame;
+    this.put($("tcy-labels"), starterTag + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+      if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
       if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;

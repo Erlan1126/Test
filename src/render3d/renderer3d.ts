@@ -261,9 +261,9 @@ export class Renderer3D {
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.grade = new ShaderPass({
-      uniforms: { tDiffuse: { value: null }, uVib: { value: 0.14 }, uVig: { value: 0.22 }, uT: { value: 0 }, uWarm: { value: 0 }, uShim: { value: new THREE.Vector4() }, uAspect: { value: 0.5 } },
+      uniforms: { tDiffuse: { value: null }, uVib: { value: 0.14 }, uVig: { value: 0.22 }, uT: { value: 0 }, uWarm: { value: 0 }, uShim: { value: new THREE.Vector4() }, uAspect: { value: 0.5 }, uRays: { value: 0 } },
       vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVib; uniform float uVig; uniform float uT; uniform float uWarm; uniform vec4 uShim; uniform float uAspect; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVib; uniform float uVig; uniform float uT; uniform float uWarm; uniform vec4 uShim; uniform float uAspect; uniform float uRays; varying vec2 vUv;
         void main() {
           vec2 uv = vUv;
           // Heat shimmer: the air over the hot sand wobbles a little.
@@ -280,6 +280,13 @@ export class Renderer3D {
           // A gentle vignette, so the eye goes to the middle of the screen.
           vec2 d = vUv - 0.5;
           c.rgb *= 1.0 - uVig * smoothstep(0.35, 0.85, length(d * vec2(1.0, 0.8)) * 1.25);
+          // Soft rays of sunlight fanning down from the sun's corner (top right), slowly shifting.
+          if (uRays > 0.0) {
+            vec2 sv = (uv - vec2(1.05, 1.08)) * vec2(uAspect, 1.0);
+            float ang = atan(sv.y, sv.x), fall = smoothstep(1.25, 0.0, length(sv));
+            float bands = 0.55 + 0.45 * sin(ang * 26.0 + uT * 0.25) * sin(ang * 11.0 - uT * 0.17);
+            c.rgb += vec3(1.0, 0.95, 0.8) * fall * fall * bands * uRays;
+          }
           // Sunset: a warm golden light over everything.
           c.rgb = mix(c.rgb, c.rgb * vec3(1.12, 0.96, 0.8) + vec3(0.04, 0.015, 0.0), uWarm);
           gl_FragColor = c;
@@ -892,6 +899,7 @@ export class Renderer3D {
     const u = this.grade.uniforms, k = this.bizK;
     u.uT.value = this.env.time;
     u.uWarm.value = this.townDusk * k * 0.5;
+    u.uRays.value = k * (1 - this.env.nf) * (this.weather.kind === "clear" ? 1 : 0) * (0.09 + this.townDusk * 0.05);
     const bs = this.biz?.beach(), clear = this.weather.kind === "clear" ? 1 : 0;
     const heat = k * (1 - this.env.nf) * (1 - this.townDusk) * clear * (this.calm ? 0 : 1);
     if (!bs || heat < 0.01) { u.uShim.value.w = 0; return; }

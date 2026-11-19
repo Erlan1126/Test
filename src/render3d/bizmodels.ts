@@ -406,14 +406,16 @@ export function buildTerrace(g: G, state: 1 | 2, lights: boolean, m: ModelMats):
     return;
   }
   // Open: an awning on posts across the front, three tables with umbrellas and customers.
-  for (const x of [-1.95, 1.95]) K.box(g, dark, 0.07, 1.25, 0.07, x, 0, z0 + 0.6);
-  K.awning(g, 4.0, 0, 1.3, z0 + 0.05, red, "#ffffff", 0.6);
+  // (The awning covers the two tables on the right; the first table, the neighbor's, stays
+  // open to the sky so the camera sees them sit down.)
+  for (const x of [-0.6, 1.95]) K.box(g, dark, 0.07, 1.25, 0.07, x, 0, z0 + 0.6);
+  K.awning(g, 2.65, 0.67, 1.3, z0 + 0.05, red, "#ffffff", 0.6);
   // Three tables. The first one's seats are the two chairs that stood folded by the cart
   // (they're placed, and unfold, with the people: see block.ts); customers sit on the rest.
   [-1.35, 0, 1.35].forEach((x, i) => {
     if (i === 0) { K.cyl(g, m.c("#ffffff"), 0.28, 0.28, 0.05, x, 0.42, z0 + 0.15, 12); K.cyl(g, m.c("#4a4f7a"), 0.03, 0.05, 0.42, x, 0, z0 + 0.15, 6); }
     else K.table(g, x, z0 + 0.15, "#ffffff");
-    if (i !== 1) K.umbrella(g, x, z0 + 0.15, i ? "#ff4f8b" : red, 1.15, 0.45);
+    if (i === 2) K.umbrella(g, x, z0 + 0.15, "#ff4f8b", 1.15, 0.45);
   });
   if (lights) {
     // The contract's reward: string lights, flower boxes and a gold star over the café.
