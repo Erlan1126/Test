@@ -1776,10 +1776,13 @@ export class App implements DailyHost {
   /** Set when the results card's main button sent the player to the town. */
   townDest: "" | "tower" | "terrace" | "cafe" | "project" = "";
 
+  townBoosts(el: HTMLElement, after: () => void): void { this.tycoon.fillBoosts(el, after); }
+  showDecor(id: string): void { this.tycoon.showDecor(id); }
+
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -1792,6 +1795,7 @@ export class App implements DailyHost {
           done: [...c.done],
           offered: projectsOpen(c),
           ghostTerrace: c.terrace === 0 && c.asked,
+          decor: [...this.save.decor],
           hq: Object.fromEntries(Object.entries(hqs).map(([id, tw]) => [id, look(tw)])),
         },
       };

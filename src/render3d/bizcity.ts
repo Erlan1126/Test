@@ -115,6 +115,8 @@ export interface BizCafe {
   done?: string[];
   offered?: boolean;
   ghostTerrace?: boolean;
+  /** Island decorations the player bought (data/decor.ts). */
+  decor?: string[];
 }
 /** A tower the player built, as the town draws it. */
 export type BizTower = NonNullable<BizCafe["starter"]>;
@@ -385,6 +387,18 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const jet = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 14).translate(pz.x, 2.0, pz.z), own(new THREE.MeshStandardMaterial({ color: 0xcff0ff, transparent: true, opacity: 0.65, roughness: 0.1 })));
   jet.userData.dynamic = true;
   g.add(jet);
+  const decor = new Set(cafe.decor ?? []);
+  // The golden founder statue (a decoration): on top of the fountain, arm raised.
+  if (decor.has("statue")) {
+    const gold = mats.gold, sx = pz.x, sz = pz.z, y0 = 1.51;
+    add(new THREE.CylinderGeometry(0.28, 0.32, 0.22, 12).translate(sx, y0 + 0.11, sz), stone);
+    add(new THREE.CapsuleGeometry(0.13, 0.36, 4, 10).translate(sx, y0 + 0.52, sz), gold);
+    add(new THREE.SphereGeometry(0.12, 12, 10).translate(sx, y0 + 0.9, sz), gold);
+    add(new THREE.CapsuleGeometry(0.04, 0.32, 3, 6).rotateZ(-0.5).translate(sx + 0.2, y0 + 0.86, sz), gold);
+    add(new THREE.CapsuleGeometry(0.04, 0.28, 3, 6).rotateZ(0.3).translate(sx - 0.17, y0 + 0.48, sz), gold);
+    add(new THREE.BoxGeometry(0.16, 0.05, 0.1).translate(sx + 0.36, y0 + 1.06, sz), gold);
+    jet.visible = false;
+  }
   for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; planter(pz.x + Math.cos(a) * 2.0, pz.z + Math.sin(a) * 2.0, flowersOn[k % 4]); }
   // Street lamps on the block corners (their light falls on the ground at night).
   const lampAt: THREE.Vector3[] = [];
@@ -678,7 +692,129 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const pos = string.geometry.getAttribute("position") as THREE.BufferAttribute;
       pos.setXYZ(0, kx, 0.4, kz); pos.setXYZ(1, kp.x, kp.y - 0.15, kp.z); pos.needsUpdate = true;
     };
+    // ---- Decorations bought with Sky Crystals ----
+    let decorLive = (_t: number, _night: number) => {};
+    {
+      const parts: ((t: number, night: number) => void)[] = [];
+      const white = mats.c("#ffffff", 0.35), navy = mats.c("#1f2a5a", 0.4), wood2 = mats.c("#b07a4a", 0.7);
+      const glow = own(std("#fff2b0", { emissive: 0xffd27a, emissiveIntensity: 0.2 }));
+      glow.userData.dynamic = true;
+      parts.push((_t, night) => { glow.emissiveIntensity = 0.2 + night * 2.2; });
+      if (decor.has("yacht")) {
+        const y = new THREE.Group();
+        const hs = new THREE.Shape([new THREE.Vector2(-1.1, 0), new THREE.Vector2(0.9, 0), new THREE.Vector2(1.35, 0.16), new THREE.Vector2(0.9, 0.3), new THREE.Vector2(-1.1, 0.3)]);
+        y.add(new THREE.Mesh(new THREE.ExtrudeGeometry(hs, { depth: 0.6, bevelEnabled: false }).translate(0, 0, -0.3), white));
+        y.add(new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.04, 0.62).translate(0.05, 0.07, 0), navy));
+        y.add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.24, 0.48).translate(-0.15, 0.42, 0), white));
+        y.add(new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.07, 0.5).translate(-0.15, 0.42, 0), navy));
+        y.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, 0.38).translate(-0.3, 0.63, 0), white));
+        y.add(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.4).translate(-0.3, 0.64, 0), glow));
+        y.add(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 5).translate(-0.4, 0.95, 0), metal));
+        for (let k = 0; k < 5; k++) y.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4).translate(-0.85 + k * 0.4, 0.33, 0.31), glow));
+        const yz = zShore - 3.0, [ya, yb] = seaXs(yz);
+        y.position.set(ya + (yb - ya) * 0.55, 0.03, yz);
+        y.rotation.y = 0.35;
+        y.scale.setScalar(0.85);
+        y.userData.dynamic = true;
+        g.add(y);
+        parts.push(t => { y.position.y = 0.03 + Math.sin(t * 0.9) * 0.03; y.rotation.z = Math.sin(t * 0.7) * 0.025; });
+      }
+      if (decor.has("wheel")) {
+        // On the sand at the far end of the beach.
+        const w = new THREE.Group(), R = 1.05, hub = new THREE.Group();
+        const rimM = mats.c("#ff5f8b", 0.4), legM = mats.c("#e8e4f4", 0.5);
+        for (const side of [-0.18, 0.18]) {
+          for (const lean of [-0.42, 0.42]) w.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.45, 0.06).rotateZ(lean).translate(lean * -0.75, 0.68, side), legM));
+          hub.add(new THREE.Mesh(new THREE.TorusGeometry(R, 0.035, 6, 32).translate(0, 0, side), rimM));
+        }
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          hub.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, R, 0.03).translate(0, R / 2, 0).rotateZ(a), legM));
+          hub.add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4).translate(Math.sin(-a) * R, Math.cos(a) * R, 0.2), glow));
+        }
+        hub.position.y = 1.38;
+        w.add(hub);
+        const gondolas = Array.from({ length: 8 }, (_, k) => {
+          const gm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 0.22), mats.c(["#ffd23a", "#4f8bff", "#5ee0a0", "#ff8a5c"][k % 4], 0.5));
+          w.add(gm);
+          return { gm, a: (k / 8) * Math.PI * 2 };
+        });
+        w.position.set(x1 - span * 0.12, 0.08, zs + 0.2);
+        w.rotation.y = Math.PI / 2.4;
+        w.userData.dynamic = true;
+        g.add(w);
+        parts.push((t, night) => {
+          const r = t * 0.25;
+          hub.rotation.z = r;
+          for (const q of gondolas) q.gm.position.set(Math.sin(-(q.a + r)) * R, 1.38 + Math.cos(q.a + r) * R - 0.12, 0);
+          rimM.emissive.setRGB(0.6, 0.1, 0.3).multiplyScalar(night * 0.8);
+        });
+      }
+      if (decor.has("balloon")) {
+        const b = new THREE.Group();
+        const cols = ["#ff5f6d", "#ffd23a", "#4f8bff", "#ffffff", "#5ee0a0", "#ff8a5c"];
+        for (let k = 0; k < 6; k++) b.add(new THREE.Mesh(new THREE.SphereGeometry(0.62, 4, 12, (k / 6) * Math.PI * 2, Math.PI / 3).scale(1, 1.18, 1), mats.c(cols[k], 0.6)));
+        b.add(new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 12, 1, true).rotateX(Math.PI).translate(0, -0.78, 0), mats.c("#ff5f6d", 0.6)));
+        b.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 0.2).translate(0, -1.18, 0), wood2));
+        b.add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 4).translate(0.08, -1.0, 0.08), metal));
+        b.add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 4).translate(-0.08, -1.0, -0.08), metal));
+        b.userData.dynamic = true;
+        g.add(b);
+        const cx2 = (fl.x0 + fl.x1) / 2, cz2 = (fl.z0 + fl.z1) / 2;
+        parts.push(t => { const a = t * 0.03; b.position.set(cx2 + Math.cos(a) * 3.5, 5.6 + Math.sin(t * 0.3) * 0.3, cz2 + Math.sin(a) * 5); b.rotation.y = t * 0.1; });
+      }
+      if (decor.has("seaplane")) {
+        const pl = new THREE.Group(), prop = new THREE.Group();
+        pl.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.6, 4, 8).rotateZ(Math.PI / 2), white));
+        pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.02, 1.2).translate(0.05, 0.08, 0), mats.c("#ff5f6d", 0.5)));
+        pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 0.4).translate(-0.38, 0.06, 0), mats.c("#ff5f6d", 0.5)));
+        pl.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.02).translate(-0.4, 0.13, 0), mats.c("#ff5f6d", 0.5)));
+        for (const z of [-0.25, 0.25]) pl.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.45, 3, 6).rotateZ(Math.PI / 2).translate(0.05, -0.2, z), white));
+        prop.add(new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.3, 0.04), navy));
+        prop.position.x = 0.42;
+        pl.add(prop);
+        pl.userData.dynamic = true;
+        g.add(pl);
+        const cx2 = (fl.x0 + fl.x1) / 2, cz2 = (fl.z0 + fl.z1) / 2, rx = (fl.x1 - fl.x0) / 2, rz = (fl.z1 - fl.z0) / 2;
+        parts.push(t => {
+          const a = t * 0.12;
+          pl.position.set(cx2 + Math.cos(a) * rx, 3.6 + Math.sin(t * 0.5) * 0.2, cz2 + Math.sin(a) * rz);
+          pl.rotation.set(0.25, -a - Math.PI / 2 + Math.PI, 0);
+          pl.rotation.y = Math.atan2(-Math.sin(a) * rx, Math.cos(a) * rz) - Math.PI / 2;
+          prop.rotation.x = t * 40;
+        });
+      }
+      if (decor.has("fireworks")) {
+        // Bursts over the sea after dark.
+        const N = 48, bursts = [0, 1, 2].map(k => {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+          const m = own(new THREE.PointsMaterial({ color: ["#ff5f8b", "#ffd23a", "#7fd8ff"][k], size: 0.12, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+          const pts = new THREE.Points(geo, m);
+          pts.frustumCulled = false;
+          pts.userData.dynamic = true;
+          g.add(pts);
+          const dirs = Array.from({ length: N }, (_, i) => { const u = (i + 0.5) / N, th = Math.acos(1 - 2 * u), ph = i * 2.39996; return new THREE.Vector3(Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph)); });
+          return { pts, m, geo, dirs, k };
+        });
+        const fz = zShore - 3.5, [fa, fb] = seaXs(fz);
+        parts.push((t, night) => {
+          for (const q of bursts) {
+            const per = 3.2, ph = ((t + q.k * 1.1) % per) / per, lap = Math.floor((t + q.k * 1.1) / per);
+            q.pts.visible = night > 0.5 && ph < 0.75;
+            if (!q.pts.visible) continue;
+            const cx3 = fa + (fb - fa) * (0.25 + ((lap * 37 + q.k * 13) % 50) / 100), cy = 4 + (lap % 3) * 0.6, r = 1.4 * Math.sqrt(ph / 0.75);
+            const pos = q.geo.getAttribute("position") as THREE.BufferAttribute;
+            q.dirs.forEach((d, i) => pos.setXYZ(i, cx3 + d.x * r, cy + d.y * r - ph * ph * 1.2, fz + d.z * r));
+            pos.needsUpdate = true;
+            q.m.opacity = 1 - ph / 0.75;
+          }
+        });
+      }
+      decorLive = (t, night) => { for (const f of parts) f(t, night); };
+    }
     beachLive = (t, night) => {
+      decorLive(t, night);
       seaLife(t);
       boat.position.y = 0.02 + Math.sin(t * 1.4) * 0.06;
       boat.rotation.z = Math.sin(t * 1.1) * 0.08;

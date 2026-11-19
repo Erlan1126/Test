@@ -1,5 +1,6 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
+import { decorMult } from "./decor";
 import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { cafeMult } from "./cafe";
@@ -103,7 +104,7 @@ export function festivalBiz(now = Date.now()): string {
 export function bizMult(s: SaveData, b: Business, now = Date.now(), live = true): number {
   const ups = UPGRADES.filter(u => u.biz === b.id && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
   const adv = perkOf(s, "biz").filter(a => a.biz?.includes(b.id)).reduce((m, a) => m * a.n, 1);
-  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1) * (b.id === "coffee" ? cafeMult(s.cafe) : 1) * orderMult(s.orders, b.id)
+  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1) * (b.id === "coffee" ? cafeMult(s.cafe) : 1) * decorMult(s) * orderMult(s.orders, b.id)
     * (live && (s.tycoon.reviews[b.id] ?? 0) > now ? 2 : 1);
 }
 

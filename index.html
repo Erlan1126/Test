@@ -292,13 +292,24 @@
         <div><h2 id="shop-title">Shop</h2><p id="shop-balance"></p></div>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
-      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="towers">Towers</button><button type="button" role="tab" data-tab="shapes">Shapes</button><button type="button" role="tab" data-tab="islands">Islands</button><button type="button" role="tab" data-tab="crystals">Crystals</button><button type="button" role="tab" data-tab="boosts">Deals</button></div>
+      <div class="seg tabs" role="tablist" aria-label="Shop" data-tabs><button type="button" role="tab" data-tab="town">Town</button><button type="button" role="tab" data-tab="crystals">Crystals</button><button type="button" role="tab" data-tab="towers">Towers</button><button type="button" role="tab" data-tab="boosts">Deals</button></div>
     </div>
-    <p class="sheet-note" id="skins-count" data-panel="towers"></p>
-    <div class="skin-grid" id="skin-grid" data-panel="towers"></div>
-    <p class="sheet-note" data-panel="shapes">Every shape plays the same. Pick the one you like.</p>
-    <div class="skin-grid" id="shape-grid" data-panel="shapes"></div>
-    <div class="skin-grid" id="theme-grid" data-panel="islands"></div>
+    <div data-panel="town">
+      <div class="town-hero"><span class="town-hero-ico" id="town-hero-ico"></span><div><b>Make Skyhaven yours</b><small id="town-hero-text"></small></div></div>
+      <h3 class="sheet-sub">Island decorations</h3>
+      <div class="decor-grid" id="decor-list"></div>
+      <h3 class="sheet-sub">Business boosts</h3>
+      <div class="ty-boosts" id="shop-boosts"></div>
+    </div>
+    <div data-panel="towers">
+      <p class="sheet-note" id="skins-count"></p>
+      <div class="skin-grid" id="skin-grid"></div>
+      <h3 class="sheet-sub">Shapes</h3>
+      <p class="sheet-note">Every shape plays the same. Pick the one you like.</p>
+      <div class="skin-grid" id="shape-grid"></div>
+      <h3 class="sheet-sub">Islands</h3>
+      <div class="skin-grid" id="theme-grid"></div>
+    </div>
     <div data-panel="boosts">
       <h3 class="sheet-sub">Today's deals</h3>
       <p class="sheet-note" id="deals-note"></p>

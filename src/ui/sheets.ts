@@ -1,4 +1,6 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
+import { DECOR, DECOR_BONUS } from "../data/decor";
+import { buyDecor } from "../logic/decor";
 import { formatRecoveryCode } from "../online";
 import { fmt } from "../core/util";
 import { getLang, t, tn, type LangSetting } from "../i18n";
@@ -58,6 +60,10 @@ export interface Host {
   /** Buys a crystal pack with real money. */
   buyPack(pack: CrystalPack): Promise<void>;
   buyVip(): Promise<void>;
+  /** Fills the business boosts (cash booster, vault, time warps) into the shop. */
+  townBoosts(el: HTMLElement, after: () => void): void;
+  /** A decoration was bought: show it in the town. */
+  showDecor(id: string): void;
   openStarter(): void;
   /** Spends crystals on a premium item. */
   buyItem(product: Product): void;
@@ -264,7 +270,8 @@ export class Sheets {
 
   // ---------- Star shop ----------
 
-  openShop(tab: "towers" | "shapes" | "islands" | "crystals" | "boosts" = "towers"): void {
+  /** The shop opens on the town (decorations and business boosts) unless asked otherwise. */
+  openShop(tab: "town" | "towers" | "crystals" | "boosts" = "town"): void {
     this.click();
     this.seen("shop");
     this.seen("skins");
@@ -419,8 +426,36 @@ export class Sheets {
     }
   }
 
+  /** The Town tab: decorations for the island (crystals) and the business boosts. */
+  private renderTown(): void {
+    const save = this.save;
+    $("town-hero-ico").innerHTML = iconSvg("island");
+    $("town-hero-text").textContent = t("Every decoration shows up in your town and brings more visitors: +{pct}% to every business.", { pct: Math.round(DECOR_BONUS * 100) });
+    const list = $("decor-list");
+    list.innerHTML = "";
+    for (const d of DECOR) {
+      const own = save.decor.includes(d.id), short = save.crystals < d.crystals;
+      const card = document.createElement("div");
+      card.className = "decor-card" + (own ? " own" : "");
+      card.innerHTML = `<span class="decor-ico">${iconSvg(d.icon)}</span><b>${esc(t(d.name))}</b><small>${esc(t(d.text))}</small>`
+        + `<button type="button" class="buy${own ? " owned" : ""}"${own ? "" : ` aria-label="${esc(t("Buy {name} for {n} Sky Crystals", { name: t(d.name), n: d.crystals }))}"`}>${own ? `✓ ${esc(t("See it"))}` : `💎 ${d.crystals}`}</button>`;
+      const btn = card.querySelector<HTMLButtonElement>(".buy")!;
+      btn.addEventListener("click", () => {
+        if (own) { closeModal($("shop")); this.host.showDecor(d.id); return; }
+        if (short) { this.nope(btn, t("You need {n} more Sky Crystals", { n: d.crystals - save.crystals })); showTab($("shop"), "crystals"); return; }
+        if (buyDecor(save, d.id) !== "ok") return;
+        this.bought(t("{name} added to Skyhaven!", { name: t(d.name) }));
+        closeModal($("shop"));
+        this.host.showDecor(d.id);
+      });
+      list.appendChild(card);
+    }
+    this.host.townBoosts($("shop-boosts"), () => this.renderShop());
+  }
+
   private renderShop(): void {
     const save = this.save;
+    this.renderTown();
     this.renderCrystals();
     this.renderDeals();
     $("shop-balance").textContent = t("You have {stars} ★ · {crystals} 💎", { stars: save.stars, crystals: fmt(save.crystals) });

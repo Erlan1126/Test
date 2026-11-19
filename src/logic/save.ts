@@ -1,5 +1,6 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
+import { normalizeDecor } from "./decor";
 import { OLD_FEATURE_TOWERS } from "./features";
 import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
 import { ADVISORS, BUSINESSES, UPGRADES, VAULT_COST } from "../data/tycoon";
@@ -70,6 +71,8 @@ export interface SaveData {
   /** The building shape (see data/shapes.ts) and the shapes bought in the shop. */
   shape: string;
   ownedShapes: string[];
+  /** Island decorations bought with Sky Crystals (see data/decor.ts). */
+  decor: string[];
   /** Your tallest towers, standing on their district's island. */
   skyline: SkylineTower[];
   /** People living in your sky city (every tower's people, for good). */
@@ -186,6 +189,7 @@ export function defaultSave(): SaveData {
     ownedSkins: [],
     shape: "square",
     ownedShapes: [],
+    decor: [],
     skyline: [],
     population: 0,
     postcards: [],
@@ -306,6 +310,7 @@ export function normalize(raw: unknown): SaveData {
     ownedSkins: strList(r.ownedSkins, skinIds),
     shape: shapeIds.includes(r.shape as string) ? (r.shape as string) : d.shape,
     ownedShapes: strList(r.ownedShapes, shapeIds),
+    decor: normalizeDecor(r.decor),
     skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE * 8).map(x => obj(x))
       .map(x => ({ f: int(x.f, 0, 0, 9999), s: skinIds.includes(x.s as string) ? (x.s as string) : "glass", h: shapeIds.includes(x.h as string) ? (x.h as string) : "square", d: themeIds.includes(x.d as string) ? (x.d as string) : "meadow" }))
       .filter(x => x.f > 0),

@@ -1607,6 +1607,22 @@ export class TycoonUI {
   }
 
   private renderBoosts(): void {
+    this.put($("ty-boosts"), this.boostsHtml());
+  }
+
+  /** After buying a decoration in the shop: back to the town to see it. */
+  showDecor(_id: string): void {
+    if (!this.inCity && this.host.onMenu()) this.open();
+    this.render();
+  }
+
+  /** The business boosts, also shown in the shop's Town tab. */
+  fillBoosts(el: HTMLElement, after: () => void): void {
+    el.innerHTML = this.boostsHtml();
+    el.onclick = e => { this.onBoostClick(e); after(); };
+  }
+
+  private boostsHtml(): string {
     const s = this.save, ty = s.tycoon, rate = perSecond(s, Date.now(), false);
     const card = (act: string, icon: string, title: string, text: string, price: string, disabled: boolean) =>
       `<div class="ty-boost"><span class="ty-bico">${iconSvg(icon)}</span><span><b>${esc(title)}</b><small>${esc(text)}</small></span><button type="button" class="buy" data-boost="${act}"${disabled ? " disabled" : ""}>${price}</button></div>`;
@@ -1614,7 +1630,7 @@ export class TycoonUI {
     const warp = (act: string, icon: string, h: 1 | 8, title: string) => card(act, icon, title,
       rate <= 0 ? t("Hire a manager first") : left <= 0 ? t("No more speed-ups today. Come back tomorrow!") : t("Get {n} right now", { n: coins(rate * h * 3600) }),
       `💎 ${warpPrice(h)}`, rate <= 0 || left <= 0);
-    this.put($("ty-boosts"),
+    return (
       card("boost", "bolt", t("Cash booster ×2"), ty.boost ? t("Active forever. Every dollar counts twice") : t("Double all the cash you earn, forever"), ty.boost ? esc(t("✓ Owned")) : `💎 ${fmt(COIN_BOOST_CRYSTALS)}`, ty.boost)
       + (vaultCost(s) !== undefined ? card("vault", "lock", t("Bigger vault"), t("Managers earn {n} more hours while you're away (now {h}h)", { n: VAULT_HOURS, h: offlineHours(s) }), `${COIN_SVG}${esc(coins(vaultCost(s)!))}`, s.tycoon.coins < vaultCost(s)!) : "")
       + warp("warp1", "clock", 1, t("Time warp: 1 hour"))
