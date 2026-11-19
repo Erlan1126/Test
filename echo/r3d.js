@@ -9,6 +9,8 @@
 const R3D = (() => {
   const T = window.THREE;
   if (!T) return null;
+  // Phones play the 2D swing: don't hold a WebGL context for the old story view.
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return null;
   const view = document.createElement("canvas");
   view.id = "game3d";
   let renderer;

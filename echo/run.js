@@ -1012,17 +1012,26 @@ function runDraw(ctx, W, H) {
   // The world's name as you enter it; mission messages.
   if (R.banner > 0 && !R.attract) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
-    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? runnerTheme(0).name.toUpperCase() : R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
   }
 
 }
 
+// Frame pacing: an FPS counter (Settings) and, in the 2D view, a resolution that adapts to the phone.
+const pace = { ema: 0.016, t: 0, frames: 0, fpsT: 0, d2: 1.5 };
+function paceTick(dt) {
+  if (!(dt > 0 && dt < 0.25)) return;
+  pace.ema += (dt - pace.ema) * 0.06; pace.t += dt; pace.frames++; pace.fpsT += dt;
+  if (pace.fpsT >= 0.5) { if (save.settings && save.settings.fps) { const el = $("fpsMeter"); el.hidden = false; el.textContent = `${Math.round(pace.frames / pace.fpsT)} fps · ${pace.d2.toFixed(2)}x`; } pace.frames = 0; pace.fpsT = 0; }
+  if (pace.t > 1.2) { pace.t = 0; if (pace.ema > 0.0205 && pace.d2 > 1) pace.d2 = Math.max(1, pace.d2 - 0.25); else if (pace.ema < 0.0148 && pace.d2 < 1.5) pace.d2 = Math.min(1.5, pace.d2 + 0.25); }
+}
+const canvasD = () => Math.min(run && run.mode3 && typeof swingSmooth === "function" && swingSmooth() ? pace.d2 : run && run.mode3 ? 1.5 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1);
 function runLoop(now) {
   if (!run || screen !== "run") return;
-  const c = $("runCanvas"), d = Math.min(run.mode3 ? 1.5 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c = $("runCanvas"), d = canvasD(), W = c.clientWidth, H = c.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
-  const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now;
+  const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   if (!run.paused) runUpdate(dt * (run.slow || 1));
   const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
@@ -1083,7 +1092,8 @@ function startTitleRun() {
 function titleLoop(now) {
   titleRaf = 0;
   if (screen !== "title" || !titleRun) return;
-  const c = $("titleCanvas"), d = Math.min(modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c = $("titleCanvas"), d = Math.min(typeof swingSmooth === "function" && swingSmooth() ? pace.d2 : modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   if (W && c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const keep = run; run = titleRun;
   const dt = Math.min(0.05, (now - (titleRun.last || now)) / 1000); titleRun.last = now;

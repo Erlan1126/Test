@@ -65,6 +65,7 @@ const SWING_STORY = [
   ["The Hush hates music and neon most.", "Make the arcade loud again."],
   ["The park's old trees still hold the light.", "Dawn is close. Don't let the Heart catch you."],
 ];
+const perfectWindow = R => { const h = R && R.stageInfo ? R.stageInfo.hard : 0; return [5 + h * 9, 75 - h * 12, 10 + h * 4]; };
 const SWING = { G: 22, REACH: 28, MAXV: 38 };
 
 function runnerStart(R) {
@@ -77,7 +78,13 @@ function runnerStart(R) {
   if (runnerPerk("Tide")) R.hearts++;
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
   // The run starts mid-swing from a first anchor overhead.
-  if (R.stageInfo) Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
+  if (R.stageInfo) {
+    Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
+    const nw = !R.attract && typeof STAGE_NEW !== "undefined" && STAGE_NEW[R.stageInfo.n];
+    R.banner = 1.6;
+    if (nw && !R.tut) runMsg(nw[0], nw[1], 3, true);
+    if (R.stageInfo.boss) { R.ev = { kind: "heart", t: 1e9, hits: 0 }; R.hearted = { all: true }; for (const f of [0.3, 0.6, 0.85]) R.ups.push({ x: R.stageInfo.len * f, y: 26 + runR() * 6, kind: "shard" }); }
+  }
   const a0 = { x: 2, y: 40, kind: "lamp", id: 0 }; R.anchors.push(a0); R.lastA = a0;
   swingGen(R, 220);
   R.teth = a0; R.L = Math.hypot(R.px - a0.x, R.py - a0.y); R.hold = true;
@@ -91,13 +98,13 @@ function swingGen(R, toX) {
     const m = Math.max(0, R.genX), th = runnerTheme(m), hard = R.stageInfo ? R.stageInfo.hard : Math.min(1, m / 3000);
     // Anchors: a chain ahead, always reachable from the one before.
     while (R.lastA.x < R.genX + 70 && !(R.stageLen && R.lastA.x > R.stageLen + 40)) {
-      const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * 3, ath = runnerTheme(ax);
+      const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3), ath = runnerTheme(ax);
       const a = { x: ax, y: Math.max(27, Math.min(46, p.y + (r() - 0.5) * 12)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
       // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
       const roll = r();
       const wk = weekEvent().id, goldK = wk === "frost" ? 3 : 1;
       const dK = R.stageLen ? hard : null;
-      a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.2 : ax > 400) ? 0.11 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.4 : ax > 700) ? 0.11 : 0) ? "drift" : roll < 0.37 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
+      a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.37 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
       if (a.type === "drift") a.bx = ax;
       R.anchors.push(a); R.lastA = a;
       // Lights along the arc you'd swing between them.
@@ -112,7 +119,7 @@ function swingGen(R, toX) {
       if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS).filter(k => !(R.stageLen && k === "comet")); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
       else if (!R.attract && !R.tut && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
       // Drones patrol between some anchors later on.
-      if ((R.stageLen ? hard > 0.15 && ax > 80 : ax > 500) && r() < 0.1 + hard * 0.2) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
+      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < 0.12 + hard * 0.26) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
     }
     // One building (or a tree in the park), never so tall that it blocks the anchors.
     const gap = (th.water ? 6 : 3) + r() * (th.water ? 10 : 7) + (r() < 0.12 ? 8 : 0), w = 9 + r() * 10, x0 = R.genX + gap, x1 = x0 + w;
@@ -124,7 +131,7 @@ function swingGen(R, toX) {
     if (tree) b.x1 = Math.min(b.x1, x1);
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
-    if (prev && (R.stageLen ? hard > 0.25 && x0 > 60 && x0 < R.stageLen : x0 > 400) && r() < 0.12 + hard * 0.18 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });
+    if (prev && (R.stageLen ? hard > 0.04 && x0 > 50 && x0 < R.stageLen : x0 > 250) && r() < 0.14 + hard * 0.22 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });
     R.blds.push(b); R.genX = b.x1;
   }
 }
@@ -132,7 +139,7 @@ const swingBldAt = (R, x) => R.blds.find(b => x >= b.x0 && x <= b.x1);
 
 // ---------- Holding and letting go ----------
 function swingFindAnchor(R) {
-  const reach = SWING.REACH * (runnerPerk("Ember") ? 1.25 : 1);
+  const reach = SWING.REACH * (runnerPerk("Ember") ? 1.25 : 1) * (R.stageInfo ? 1 - R.stageInfo.hard * 0.2 : 1);
   let best = null, bs = -1e9;
   for (const a of R.anchors) {
     if (a.x < R.px - 3 || a.x > R.px + reach) continue;
@@ -165,7 +172,8 @@ function swingHold(down) {
   // A Perfect: let go moving forward and up, fast.
   const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, spd = Math.hypot(R.vx, R.vy);
   R.vx += 1.5;
-  if (R.vx > 4 && ang > 5 && ang < 75 && spd > 10) {
+  const [pwLo, pwHi, pwV] = perfectWindow(R);
+  if (R.vx > 4 && ang > pwLo && ang < pwHi && spd > pwV) {
     const k = runnerPerk("Volt") ? 1.2 : 1.1; R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9;
     R.perfT = 0.45; R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
@@ -254,7 +262,7 @@ function runnerUpdate(dt) {
       const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1, tx = -dy / d, ty = dx / d, along = R.vx * tx + R.vy * ty;
       // A little push along the swing keeps it lively; a gentle reel-in.
       // A push along the swing; below the anchor and slow, a push forward so you never stall.
-      if (dy < 0) { const sg = along >= 0 ? 1 : -1, slowK = Math.hypot(R.vx, R.vy) < 10 ? 1.6 : 1; R.vx += tx * sg * 10 * slowK * h; R.vy += ty * sg * 10 * slowK * h; if (along < 0 && dx > -2 && Math.hypot(R.vx, R.vy) < 6) { R.vx += tx * 14 * h; R.vy += ty * 14 * h; } }
+      if (dy < 0) { const sg = along >= 0 ? 1 : -1, slowK = (Math.hypot(R.vx, R.vy) < 10 ? 1.6 : 1) * (R.stageInfo ? 1 - R.stageInfo.hard * 0.6 : 1); R.vx += tx * sg * 10 * slowK * h; R.vy += ty * sg * 10 * slowK * h; if (along < 0 && dx > -2 && Math.hypot(R.vx, R.vy) < 6) { R.vx += tx * 14 * h; R.vy += ty * 14 * h; } }
       R.L += ((R.Lt || R.L) - R.L) * Math.min(1, h * 3.5);
     } else R.vx *= 1 - 0.03 * h;
     R.px += R.vx * h; R.py += R.vy * h;
@@ -281,7 +289,7 @@ function runnerUpdate(dt) {
     // The street.
     if (R.py < 0.4) {
       R.py = 0.4; R.vy = 19; R.vx = Math.max(R.vx, 10); R.teth = null; R.flow = Math.max(0, R.flow - 0.3);
-      if (R.streetT > 0) swingHit(R, "Keep off the street!"); else if (!R.attract) { runMsg("Bounce!", "Grab a light before you land again", 1.2); sfx.land(); }
+      if (R.streetT > 0 || (R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5))) swingHit(R, "Keep off the street!"); else if (!R.attract) { runMsg("Bounce!", "Grab a light before you land again", 1.2); sfx.land(); }
       R.streetT = 4;
     }
   }
@@ -304,7 +312,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  R.darkX += (R.stageLen ? 3 + R.stageInfo.hard * 6 : Math.min(13, 3.5 + Math.max(0, m - 150) * 0.003)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  R.darkX += (R.stageLen ? (4.5 + R.stageInfo.hard * 8) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.35 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.

@@ -719,6 +719,9 @@
   #shopList .st i { font-style: normal; font-size: 10px; color: #ffd98a; letter-spacing: 1px; }
   #shopList .st.next { border-color: rgba(139,233,255,0.7); box-shadow: 0 0 16px rgba(139,233,255,0.25); }
   #shopList .st.lock { opacity: 0.35; }
+  #shopList .st.boss { border-color: rgba(176,140,255,0.6); background: rgba(138,61,255,0.12); }
+  #shopList .st.boss b { font-size: 14px; }
+  #fpsMeter { position: fixed; left: 8px; bottom: calc(8px + var(--bottom)); z-index: 60; font: 700 11px/1 ui-monospace, Menlo, monospace; color: #7fffb0; background: rgba(0,0,0,0.55); padding: 4px 6px; border-radius: 6px; pointer-events: none; }
   .wordmark b { font-weight: 900; color: var(--acc); margin-left: 0.35em; }
   .tabbar { position: fixed; left: 12px; right: 12px; bottom: calc(10px + var(--bottom)); height: 64px; border-radius: 22px; display: none; z-index: 20; padding: 0 6px; }
   body.tabs .tabbar { display: flex; }
@@ -823,6 +826,7 @@
 <button id="pebbleBtn" aria-label="Throw a pebble" hidden><i></i><b>3</b></button>
 <div id="levelCard" aria-live="polite"><div class="lc-num" id="lcNum"></div><div class="lc-name" id="lcName"></div></div>
 <div id="toasts" aria-live="polite"></div>
+<div id="fpsMeter" hidden></div>
 
 <div class="screen on" id="titleScreen">
   <canvas id="titleCanvas" aria-hidden="true"></canvas>
@@ -1081,6 +1085,7 @@
       </section>
       <section class="set-group"><h3>Look &amp; comfort</h3>
       <div class="set"><label>3D view<small>The caves in 3D. Turn off for the classic flat view</small></label><button class="toggle" id="setView3d" aria-label="3D view"></button></div>
+      <div class="set"><label>Show FPS<small>A small frame-rate counter while you play</small></label><button class="toggle" id="setFps" aria-label="Show FPS"></button></div>
       <div class="set"><label>Smooth mode<small>Fast 2D drawing at a steady 60 fps. Best on phones</small></label><button class="toggle" id="setSmooth" aria-label="Smooth mode"></button></div>
       <div class="set"><label>Full graphics<small>Real-time shadows and full sharpness. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
       <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>

@@ -644,6 +644,7 @@ function renderSettings() {
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
   $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
+  $("setFps").setAttribute("aria-pressed", String(!!st.fps));
   $("setSmooth").setAttribute("aria-pressed", String(typeof swingSmooth === "function" ? swingSmooth() : true));
   $("setView3d").setAttribute("aria-pressed", String(st.view3d !== false));
   $("setView3d").disabled = !R3D;
@@ -807,6 +808,7 @@ $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
 tap("setView3d", () => { save.settings.view3d = save.settings.view3d === false; persist(); renderSettings(); });
+tap("setFps", () => { save.settings.fps = !save.settings.fps; persist(); renderSettings(); $("fpsMeter").hidden = !save.settings.fps; });
 tap("setSmooth", () => { save.settings.smooth = !(typeof swingSmooth === "function" && swingSmooth()); persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
 tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
 tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });

@@ -13,6 +13,7 @@ const swingSmooth = () => {
 
 const SW2D = (() => {
   const mk = (w, h, paint) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); paint(c.getContext("2d"), c.width, c.height); return c; };
+  const cssCache = new Map(); const css = a => { const k = a[0] * 65536 + a[1] * 256 + a[2]; let v = cssCache.get(k); if (!v) { v = `rgb(${a[0]},${a[1]},${a[2]})`; cssCache.set(k, v); } return v; };
   const hex = c => "#" + (c >>> 0).toString(16).padStart(6, "0");
   const rgbOf = c => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
   // Soft round glows, one per colour.
@@ -85,11 +86,11 @@ const SW2D = (() => {
     const sh = R.shake > 0 ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (R.kick || 0) * 8;
     const X = x => ox + (x - cam.x) * s, Y = y => oy - (y - cam.y) * s;
     // ---------- Sky (baked into the far skyline strip below) ----------
-    const sk = P.sky.map(c => `rgb(${c.map(v => Math.round(v)).join(",")})`);
+    let sk = null; const skyCss = () => sk || (sk = P.sky.map(c => `rgb(${c.map(v => Math.round(v)).join(",")})`));
     // ---------- Skyline layers, hazier with distance; they wake as you pass ----------
     // Each layer is pre-drawn into a wide strip (with its haze) and only re-drawn when the view
     // moves past it, the zoom changes, the time of day changes or buildings light up.
-    const hazeCol = sk[2], palKey = P.sky.map(c => c.map(v => v >> 3).join(".")).join("|") + "|" + Math.round(night * 8) + (P.blackout ? "b" : "");
+    let palKey = Math.round(night * 8) + (P.blackout ? 100 : 0); for (const c of P.sky) palKey = palKey * 977 + ((c[0] >> 3) * 1089 + (c[1] >> 3) * 33 + (c[2] >> 3));
     const splitX = ox + (R.px - cam.x) * s;     // left of the figure: lit; right: still dark
     LAYERS.forEach((L, li) => {
       const camL = cam.x * L.par, sL = s * (0.45 + li * 0.18);
@@ -103,12 +104,12 @@ const SW2D = (() => {
           const x = (lit ? S.cl : S.c).getContext("2d"); x.clearRect(0, 0, sw, shh);
           const base = shh - H * (0.12 - li * 0.04), start = Math.floor(x0 / L.sp) - 1, end = Math.ceil((x0 + sw / sL) / L.sp) + 1;
           for (let i = start; i <= end; i++) { const im = bgFor(li, i, lit && !P.blackout), w = im.wM * sL, h = im.hM * sL, sx = (i * L.sp - x0) * sL; x.drawImage(im, sx, base - h, w, h); x.fillStyle = "#0d1018"; x.fillRect(sx, base - 1, w, shh); }
-          x.globalCompositeOperation = "source-atop"; x.globalAlpha = L.haze * (0.6 + day * 0.4); x.fillStyle = hazeCol; x.fillRect(0, 0, sw, shh); x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
+          x.globalCompositeOperation = "source-atop"; x.globalAlpha = L.haze * (0.6 + day * 0.4); x.fillStyle = skyCss()[2]; x.fillRect(0, 0, sw, shh); x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
           if (li === 0) {
             // The sky and its stars go behind the far skyline: one solid image, no blending each frame.
             x.globalCompositeOperation = "destination-over";
             if (night > 0.35) { x.fillStyle = "#fff"; const rs = seeded(li * 17 + 5); for (let q = 0; q < 140; q++) { x.globalAlpha = (night - 0.35) * (0.4 + rs() * 0.6); x.fillRect(rs() * sw, rs() * shh * 0.55, 1 + rs(), 1 + rs()); } x.globalAlpha = 1; }
-            const gs = x.createLinearGradient(0, shh - H * 1.15, 0, shh); gs.addColorStop(0, sk[0]); gs.addColorStop(0.55, sk[1]); gs.addColorStop(1, sk[2]); x.fillStyle = sk[0]; x.fillRect(0, 0, sw, shh); x.fillStyle = gs; x.fillRect(0, shh - H * 1.15, sw, H * 1.15);
+            const gs = x.createLinearGradient(0, shh - H * 1.15, 0, shh); const k3 = skyCss(); gs.addColorStop(0, k3[0]); gs.addColorStop(0.55, k3[1]); gs.addColorStop(1, k3[2]); x.fillStyle = k3[0]; x.fillRect(0, 0, sw, shh); x.fillStyle = gs; x.fillRect(0, shh - H * 1.15, sw, H * 1.15);
             x.globalCompositeOperation = "source-over";
           }
         }
@@ -163,7 +164,8 @@ const SW2D = (() => {
       if (a.kind === "balloon" && !below) { ctx.fillStyle = ["#ff5a6e", "#ffbe3c", "#5ac8ff", "#aa78ff"][a.id % 4]; ctx.beginPath(); ctx.ellipse(x, y - 2.8 * s, 1.3 * s, 1.6 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 1.2 * s); ctx.lineTo(x, y); ctx.stroke(); }
       ctx.globalCompositeOperation = "lighter"; const gsz = (hot ? 3.4 : 2.4) * s; ctx.drawImage(glow(col), x - gsz / 2, y - gsz / 2, gsz, gsz); ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 0.38 * s, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = `rgba(${col.join(",")},${hot ? 0.95 : 0.45})`; ctx.lineWidth = hot ? 2.5 : 1.5; ctx.beginPath(); ctx.arc(x, y, (hot ? 1 + 0.12 * Math.sin(t * 8) : 0.85) * s, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = css(col); ctx.globalAlpha = (a.broken ? 0.5 : 1) * (hot ? 0.95 : 0.45); ctx.lineWidth = hot ? 2.5 : 1.5; ctx.beginPath(); ctx.arc(x, y, (hot ? 1 + 0.12 * Math.sin(t * 8) : 0.85) * s, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = a.broken ? 0.5 : 1;
       if (a.type === "crumble" && a === R.teth) { ctx.strokeStyle = "#3a1408"; ctx.lineWidth = 2; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(q * 2.1) * 0.4 * s, y + Math.sin(q * 2.1) * 0.4 * s); ctx.stroke(); } }
       if (a.type === "spring") { ctx.strokeStyle = "#8dff6a"; ctx.lineWidth = 2; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.ellipse(x, y + (0.7 + q * 0.3) * s, 0.35 * s, 0.1 * s, 0, 0, Math.PI * 2); ctx.stroke(); } }
       ctx.globalAlpha = 1;
@@ -177,14 +179,14 @@ const SW2D = (() => {
       const x = X(u.x), y = Y(u.y + Math.sin(t * 3) * 0.2); if (x < -40 || x > W + 40) continue;
       const col = u.kind === "shard" ? [176, 140, 255] : u.kind === "letter" ? [255, 210, 90] : RUNNER_POWERS[u.kind].rgb.split(",").map(Number);
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(col), x - 2.2 * s, y - 2.2 * s, 4.4 * s, 4.4 * s); ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = `rgb(${col.join(",")})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 0.9 * s, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = css(col); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 0.9 * s, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `800 ${Math.round(0.95 * s)}px Inter, system-ui, sans-serif`;
       ctx.fillText(u.kind === "letter" ? u.ch : u.kind === "shard" ? "◆" : { magnet: "✧", shield: "◯", comet: "☄" }[u.kind] || "✦", x, y + 1);
     }
     ctx.textBaseline = "alphabetic";
     // ---------- The trajectory: where you'd fly if you let go now (gold when it's a Perfect) ----------
     if (R.teth && !R.attract) {
-      const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, sp2 = Math.hypot(R.vx, R.vy), perfect = R.vx + 1.5 > 4 && ang > 5 && ang < 75 && sp2 > 10;
+      const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, sp2 = Math.hypot(R.vx, R.vy), pw = perfectWindow(R), perfect = R.vx + 1.5 > 4 && ang > pw[0] && ang < pw[1] && sp2 > pw[2];
       let px = R.px, py = R.py + 1, vx = (R.vx + 1.5) * (perfect ? 1.1 : 1), vy = R.vy * (perfect ? 1.1 : 1);
       ctx.fillStyle = perfect ? "#ffd25a" : "rgba(255,255,255,0.75)";
       for (let q = 1; q <= 14; q++) { for (let k2 = 0; k2 < 4; k2++) { vy -= SWING.G * 0.02; px += vx * 0.02; py += vy * 0.02; } if (py < 0) break; ctx.globalAlpha = (1 - q / 15) * 0.8; ctx.beginPath(); ctx.arc(X(px), Y(py), Math.max(1.5, 0.13 * s * (1 - q / 20)), 0, Math.PI * 2); ctx.fill(); }
@@ -209,10 +211,10 @@ const SW2D = (() => {
     for (let q = 0; q < Math.min(N, hist.length) - 1; q++) {
       const a = hist[q], b = hist[q + 1], k = q / N, w = scf.w * s * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)), yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k * s;
       const col = scCol || (() => { const h = (t * 100 + q * 10) % 360; return [Math.round(128 + 127 * Math.cos(h * Math.PI / 180)), Math.round(128 + 127 * Math.cos((h - 120) * Math.PI / 180)), Math.round(128 + 127 * Math.cos((h + 120) * Math.PI / 180))]; })();
-      ctx.fillStyle = `rgba(${col.join(",")},${(1 - k) * 0.85})`;
+      ctx.fillStyle = css(col); ctx.globalAlpha = (1 - k) * 0.85;
       ctx.beginPath(); ctx.moveTo(X(a[0]), Y(a[1]) + yo - w / 2); ctx.lineTo(X(b[0]), Y(b[1]) + yo - w / 2); ctx.lineTo(X(b[0]), Y(b[1]) + yo + w / 2); ctx.lineTo(X(a[0]), Y(a[1]) + yo + w / 2); ctx.fill();
     }
-    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     // ---------- The being of light ----------
     const blink = R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
     if (!blink) {
