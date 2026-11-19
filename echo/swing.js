@@ -73,7 +73,7 @@ function runnerStart(R) {
     mode3: true, px: -6, py: 30, vx: 13, vy: 0, hold: false, teth: null, L: 0, anchors: [], blds: [], motes: [], haz: [], ups: [],
     genX: -60, lastA: null, darkX: -50, lit: 0, perfects: 0, roof: null, spin: 0, spinV: 0, fizzle: 0, fireworks: [], nextMile: 500,
     ev: null, nextEv: 380, rec: [], letterOut: false, phase: 0, kick: 0, slowT: 0, nearT: 0, v: 13, nextEvent: 1e9,
-    flow: 0, od: 0, dashes: 1, tethT: 0, perfT: 0, dashT: 0, bursts: [], restored: 0,
+    flow: 0, od: 0, dashes: 1, tethT: 0, perfT: 0, dashT: 0, bursts: [], restored: 0, boosts: [], winds: [], ringT: 0,
   });
   if (runnerPerk("Tide")) R.hearts++;
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
@@ -107,6 +107,10 @@ function swingGen(R, toX) {
       a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.37 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
       if (a.type === "drift") a.bx = ax;
       R.anchors.push(a); R.lastA = a;
+      // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
+      if (ax > 50 && r() < (R.stageLen ? 0.22 : 0.16) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
+      // Wind stages: gusts that push you sideways.
+      if (R.stageInfo && R.stageInfo.wind && ax > 60 && ax < R.stageLen && r() < 0.3) { const dir = r() < 0.5 ? -1 : 1; R.winds.push({ x0: p.x, x1: ax, f: dir * (5 + R.stageInfo.hard * 6) }); }
       // Lights along the arc you'd swing between them.
       if (r() < (R.stageLen ? 0.9 : 0.8) && ax > 10 && !(R.stageLen && ax > R.stageLen)) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 13 * Math.sin(Math.PI * t) - 1, line: a.id }); if (R.stageLen) R.motesTotal++; } }
       // The sky route (stages): a daring pair of high anchors with a trail of bonus lights.
@@ -180,6 +184,9 @@ function swingHold(down) {
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
     R.pChain = (R.pChain || 0) + 1;
     if (!R.attract) { runBonus(R.pChain > 1 ? `Perfect ×${R.pChain}! +${1 + R.pChain} ✦` : "Perfect! +2 ✦", 0, R.dist + 2, R.x); R.lights += 1 + R.pChain; sfx.perfect(R.pChain); runMission("trail", R.perfects); }
+  } else if (R.vx > 3 && ang > pwLo - 12 && ang < pwHi + 12 && spd > pwV - 3) {
+    R.vx *= 1.04; R.vy *= 1.04; R.spinV = 6; R.pChain = 0; R.lights += 1; swingFlow(R, 0.06);
+    if (!R.attract) { runBonus("Good +1 ✦", 0, R.dist + 2, R.x); sfx.clear(); }
   } else { R.spinV = 4; R.pChain = 0; }
   if (!R.attract) sfx.whoosh(Math.hypot(R.vx, R.vy));
   if (R.tut === 1) runnerTutStep();
@@ -265,6 +272,7 @@ function runnerUpdate(dt) {
       if (dy < 0) { const sg = along >= 0 ? 1 : -1, slowK = (Math.hypot(R.vx, R.vy) < 10 ? 1.6 : 1) * (R.stageInfo ? 1 - R.stageInfo.hard * 0.6 : 1); R.vx += tx * sg * 10 * slowK * h; R.vy += ty * sg * 10 * slowK * h; if (along < 0 && dx > -2 && Math.hypot(R.vx, R.vy) < 6) { R.vx += tx * 14 * h; R.vy += ty * 14 * h; } }
       R.L += ((R.Lt || R.L) - R.L) * Math.min(1, h * 3.5);
     } else R.vx *= 1 - 0.03 * h;
+    for (const w of R.winds) if (R.px > w.x0 && R.px < w.x1) { R.vx += w.f * h; break; }
     R.px += R.vx * h; R.py += R.vy * h;
     if (R.teth) {
       const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1;
@@ -351,6 +359,15 @@ function runnerUpdate(dt) {
     R.power = { kind: u.kind, t: RUNNER_POWERS[u.kind].dur * (1 + runUpg("song") * 0.2) }; R.happy = 1;
     if (!R.attract) { sfx.power(); runMsg(RUNNER_POWERS[u.kind].name + "!", { magnet: "Lights fly to you", shield: "One hit is on us", comet: "Blaze across the sky" }[u.kind], 1.6, true); }
   }
+  // Boost rings.
+  for (const b of R.boosts) if (!b.got && Math.hypot(b.x - R.px, b.y - R.py - 0.9) < b.r + 0.4) {
+    b.got = true; b.t = 0; R.vx = Math.min(SWING.MAXV, R.vx + 6); R.vy += 2; R.lights += 3; swingFlow(R, 0.12); R.ringT = 0.35;
+    R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
+    R.bursts.push({ x: b.x, y: b.y, t: 0, c: 0x7ff0ff, big: true });
+    if (!R.attract) { runBonus("Ring! +3 ✦", 0, R.dist + 2, R.x); sfx.perfect(2); buzz(10); }
+  }
+  for (const b of R.boosts) if (b.got) b.t += dt;
+  R.boosts = R.boosts.filter(b => b.x > R.px - 60 && (!b.got || b.t < 0.6)); R.winds = R.winds.filter(w => w.x1 > R.px - 60); R.ringT = Math.max(0, R.ringT - dt);
   // Hazards: live wires and drones.
   for (const z of R.haz) {
     if (z.kind === "wire") { if (R.px > z.x0 && R.px < z.x1 && R.py < z.y + 0.4 && R.py + 1.7 > z.y && !comet) { z.hit = true; swingHit(R, "Zap!"); } }
@@ -721,6 +738,7 @@ function makeSwing3D() {
     shock: () => new T.Mesh(new T.TorusGeometry(1, 0.07, 6, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false })),
     burst: () => new T.Mesh(new T.TorusGeometry(1, 0.06, 6, 48), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false })),
     pulse: () => glow(0xffffff, 0.9, 0.9),
+    boostRing: () => { const g = new T.Group(); const m = new T.Mesh(new T.TorusGeometry(1, 0.1, 8, 40), new T.MeshBasicMaterial({ color: 0xbff6ff, transparent: true, toneMapped: false })); m.scale.set(0.45, 1, 1); g.add(m); g.add(glow(0x7ff0ff, 4, 0.5)); return g; },
   };
   const letterMaker = ch => () => { const g = new T.Group(); const t2 = letterTex[ch] || (letterTex[ch] = tex(128, 128, (c) => { c.fillStyle = "#ffffff"; c.font = "900 104px Inter, system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.shadowColor = "#ffd25a"; c.shadowBlur = 16; c.fillText(ch, 64, 70); })); g.add(new T.Mesh(new T.PlaneGeometry(1.8, 1.8), new T.MeshBasicMaterial({ map: t2, color: 0xffe08a, transparent: true, toneMapped: false, depthWrite: false }))); g.add(new T.Mesh(new T.TorusGeometry(1.15, 0.06, 10, 40), basic(0xffd25a))); g.add(glow(0xffd25a, 4, 0.5)); return g; };
 
@@ -867,6 +885,7 @@ function makeSwing3D() {
     const gp3 = R.ghostTrace ? stageGhostAt(R.ghostTrace, R.stageT || 0) : null, gy = gp3 ? null : R.ghost && !R.attract ? R.ghost[Math.floor(Math.max(0, R.px)) + 6] : null; ghost.visible = gy != null || !!gp3; if (gp3) ghost.position.set(gp3[0], gp3[1] + 1.1, -0.3); else if (gy != null) ghost.position.set(R.px + 6, gy + 1, -0.3);
     finish3.visible = !!R.stageLen; if (R.stageLen) { finish3.position.set(R.stageLen, 0, 0); finish3.children[1].material.opacity = 0.35 + Math.sin(t * 4) * 0.1; }
     if (R.teth) { const hy = R.py + 1.7; for (let q = 0; q < 4; q++) { const f2 = (t * 1.8 + q / 4) % 1, pu = get("pulse", makers.pulse); pu.position.set(R.px + (R.teth.x - R.px) * f2, hy + (R.teth.y - hy) * f2, 0.1); pu.material.opacity = 0.9 * Math.sin(f2 * Math.PI); pu.material.color.copy(tether.material.color); } }
+    for (const b of R.boosts) { if (Math.abs(b.x - cam.x) > 50) continue; const g = get("boostRing", makers.boostRing), k = b.got ? 1 - b.t / 0.6 : 1; g.position.set(b.x, b.y, 0.2); g.scale.setScalar(b.r * (b.got ? 1 + b.t * 2 : 1)); g.children[0].material.opacity = k; g.children[1].material.opacity = 0.5 * k; }
     for (const bu of R.bursts) { const ring2 = get("burst", makers.burst), q2 = bu.t / 0.8; ring2.position.set(bu.x, bu.y, 0.3); ring2.scale.setScalar((bu.big ? 1 : 0.5) + q2 * (bu.big ? 5 : 2.5)); ring2.material.opacity = 0.9 * (1 - q2); ring2.material.color.set(bu.c ?? runnerGlow()); }
     // The Heart of the Dark: a great dark core with a violet eye, riding the darkness.
     heartCore.visible = !!(R.ev && R.ev.kind === "heart");

@@ -192,6 +192,20 @@ const SW2D = (() => {
       for (let q = 1; q <= 14; q++) { for (let k2 = 0; k2 < 4; k2++) { vy -= SWING.G * 0.02; px += vx * 0.02; py += vy * 0.02; } if (py < 0) break; ctx.globalAlpha = (1 - q / 15) * 0.8; ctx.beginPath(); ctx.arc(X(px), Y(py), Math.max(1.5, 0.13 * s * (1 - q / 20)), 0, Math.PI * 2); ctx.fill(); }
       ctx.globalAlpha = 1;
     }
+    // ---------- Boost rings and wind ----------
+    for (const b of R.boosts) {
+      const x = X(b.x), y = Y(b.y); if (x < -60 || x > W + 60) continue;
+      const k = b.got ? 1 - b.t / 0.6 : 1, rr = b.r * s * (b.got ? 1 + b.t * 2 : 1 + Math.sin(t * 5 + b.x) * 0.04);
+      ctx.globalAlpha = k; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow([127, 240, 255]), x - rr * 1.4, y - rr * 1.4, rr * 2.8, rr * 2.8); ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "#bff6ff"; ctx.lineWidth = Math.max(2, 0.2 * s); ctx.beginPath(); ctx.ellipse(x, y, rr * 0.45, rr, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "#7ff0ff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, rr * 0.3, rr * 0.82, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    for (const w of R.winds) {
+      const a = X(w.x0), b2 = X(w.x1); if (b2 < 0 || a > W) continue;
+      ctx.strokeStyle = "rgba(220,235,255,0.22)"; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let q = 0; q < 16; q++) { const r2 = seeded(q * 13 + Math.floor(w.x0)), yy = r2() * H, sp = w.f > 0 ? 1 : -1, len = 26 + r2() * 30, xx = a + (((r2() * (b2 - a) + t * 260 * sp) % (b2 - a)) + (b2 - a)) % (b2 - a); ctx.moveTo(xx, yy); ctx.lineTo(xx + len * sp, yy); }
+      ctx.stroke();
+    }
     // ---------- Bursts ----------
     for (const bu of R.bursts) { const q = bu.t / 0.8, col = bu.c != null ? rgbOf(bu.c) : glowRGB; ctx.strokeStyle = `rgba(${col.join(",")},${0.9 * (1 - q)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(bu.x), Y(bu.y), ((bu.big ? 1 : 0.5) + q * (bu.big ? 5 : 2.5)) * s, 0, Math.PI * 2); ctx.stroke(); }
     for (const b of R.blds) if (b.litT >= 0 && b.litT < 0.8 && !b.tree) { const q = b.litT / 0.8; ctx.strokeStyle = `rgba(${glowRGB.join(",")},${0.7 * (1 - q)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc((X(b.x0) + X(b.x1)) / 2, Y(b.h * 0.6), (1 + q * (b.x1 - b.x0) * 0.9) * s, 0, Math.PI * 2); ctx.stroke(); }
@@ -215,6 +229,8 @@ const SW2D = (() => {
       ctx.beginPath(); ctx.moveTo(X(a[0]), Y(a[1]) + yo - w / 2); ctx.lineTo(X(b[0]), Y(b[1]) + yo - w / 2); ctx.lineTo(X(b[0]), Y(b[1]) + yo + w / 2); ctx.lineTo(X(a[0]), Y(a[1]) + yo + w / 2); ctx.fill();
     }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    // Afterimages on a dash, a Perfect or a ring.
+    if (R.dashT > 0 || R.perfT > 0.2 || R.ringT > 0) { ctx.globalCompositeOperation = "lighter"; for (let q = 3; q < 13 && q < hist.length; q += 3) { const e = hist[q]; ctx.globalAlpha = 0.35 * (1 - q / 13); const z = 2.4 * s; ctx.drawImage(glow(glowRGB), X(e[0]) - z / 2, Y(e[1] - 0.6) - z / 2, z, z); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
     // ---------- The being of light ----------
     const blink = R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
     if (!blink) {

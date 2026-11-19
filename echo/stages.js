@@ -9,7 +9,7 @@ const STAGES_N = 60;
 function stageInfo(n) {
   const daily = n === 0, k = daily ? 8 + (dayNumber() % 12) : n;
   const len = Math.min(980, 520 + k * 16), hard = Math.min(1, (k - 1) / 18);
-  return { n, daily, len, hard, boss: !daily && n % 10 === 0, par: len / (25 + hard * 5), theme: (k - 1) % 5, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
+  return { n, daily, len, hard, boss: !daily && n % 10 === 0, wind: !daily && n >= 7 && n % 3 === 1, par: len / (25 + hard * 5), theme: (k - 1) % 5, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
 }
 function stageSave() {
   const S = save.stages || (save.stages = {});
@@ -73,6 +73,7 @@ function stageClear(R) {
     S.unlocked = Math.max(S.unlocked, Math.min(STAGES_N, n + 1));
   }
   R.newBest = newBest;
+  starRewards();
   save.glow = (save.glow || 0) + R.lights + stars * 10;
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
   if (typeof seasonGain === "function") seasonGain(Math.round(stars * 15 + R.lights / 2));
@@ -130,7 +131,8 @@ function stagesHtml() {
   const S = stageSave(), d = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null;
   let h = `<li class="sec">Daily stage</li><li class="${d ? "won" : ""}"><span><b>Today's stage</b><small>${d ? `${starText(d.stars || 0)} · ${d.time.toFixed(1)} s · race your ghost` : "The same course for everyone today"}</small></span><button data-stage="0">${d ? "Again" : "Play"}</button></li>`;
   const stars = Object.values(S.best).reduce((a, b) => a + (b.stars || 0), 0);
-  h += `<li class="sec">Stages · ${stars}/${STAGES_N * 3} ★</li><li class="stgrid">`;
+  const nr = nextStarReward();
+  h += `<li class="sec">Stages · ${stars}/${STAGES_N * 3} ★${nr ? ` · next reward at ${nr[0]}★: ${rewardName(nr)}` : ""}</li><li class="stgrid">`;
   for (let n = 1; n <= STAGES_N; n++) { const b = S.best[n], locked = n > S.unlocked; h += `<button class="st ${locked ? "lock" : b ? "done" : "next"}${n % 10 === 0 ? " boss" : ""}" data-stage="${n}" ${locked ? "disabled" : ""}><b>${n % 10 === 0 ? "☠" + n : n}</b><i>${locked ? "🔒" : b ? starText(b.stars) : "·"}</i></button>`; }
   return h + "</li>";
 }
@@ -145,4 +147,15 @@ document.getElementById("stStages").addEventListener("click", () => { $("stageCa
 document.getElementById("stShare").addEventListener("click", stageShare);
 
 // What's new on a stage: a short line the first time something appears.
-const STAGE_NEW = { 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };
+const STAGE_NEW = { 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };
+
+// Star rewards: stars from stages unlock looks for free.
+const STAR_REWARDS = [[6, "s", 1], [12, "t", 2], [20, "b", 1], [30, "c", 1], [42, "s", 2], [55, "t", 6], [70, "b", 2], [85, "c", 2], [100, "s", 3], [120, "t", 7], [140, "b", 4], [160, "c", 3], [180, "s", 5]];
+const rewardName = ([, k, i]) => ({ c: RUNNER_CHARS, t: RUNNER_TOPS, s: RUNNER_SHOES, b: RUNNER_BOARDS }[k][i].name) + ({ c: " (form)", t: " glow", s: " scarf", b: " tether" }[k]);
+const stageTotalStars = () => Object.values(stageSave().best).reduce((a, b) => a + (b.stars || 0), 0);
+function starRewards() {
+  const L = runnerLook(), have = stageTotalStars();
+  for (const rw of STAR_REWARDS) if (have >= rw[0] && !L.own[rw[1] + rw[2]]) { L.own[rw[1] + rw[2]] = 1; if (!run || !run.attract) runMsg(`Unlocked: ${rewardName(rw)}`, `${rw[0]} stars · wear it in the Locker`, 2.6, true); }
+  persist();
+}
+const nextStarReward = () => STAR_REWARDS.find(rw => !runnerLook().own[rw[1] + rw[2]]);
