@@ -66,7 +66,7 @@ const SWING_STORY = [
   ["The park's old trees still hold the light.", "Dawn is close. Don't let the Heart catch you."],
 ];
 const perfectWindow = R => { const h = R && R.stageInfo ? R.stageInfo.hard : 0; return [5 + h * 9, 75 - h * 12, 10 + h * 4]; };
-const SWING = { G: 22, REACH: 24, MAXV: 38, PULL: 4.5, LMIN: 6 };
+const SWING = { G: 22, REACH: 24, MAXV: 34, CRUISE: 28, PULL: 4.5, LMIN: 6 };
 
 function runnerStart(R) {
   Object.assign(R, {
@@ -99,12 +99,12 @@ function swingGen(R, toX) {
     // Anchors: a chain ahead, always reachable from the one before.
     while (R.lastA.x < R.genX + 70 && !(R.stageLen && R.lastA.x > R.stageLen + 40)) {
       const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3), ath = runnerTheme(ax);
-      const a = { x: ax, y: Math.max(27, Math.min(46, p.y + (r() - 0.5) * 12)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
+      const a = { x: ax, y: Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
       // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
       const roll = r();
       const wk = weekEvent().id, goldK = wk === "frost" ? 3 : 1;
       const dK = R.stageLen ? hard : null;
-      a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.37 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
+      a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.27 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
       if (a.type === "drift") a.bx = ax;
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
@@ -184,8 +184,9 @@ function swingHold(down) {
   const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, spd = Math.hypot(R.vx, R.vy);
   const [pwLo, pwHi, pwV] = perfectWindow(R);
   if (R.vx > 2.5 && ang > pwLo && ang < pwHi && spd > pwV) {
-    const k = runnerPerk("Volt") ? 1.2 : 1.1; R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9;
-    R.perfT = 0.45; R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
+    // The boost tapers off at high speed, so a Perfect chain feels fast without getting out of hand.
+    const k0 = runnerPerk("Volt") ? 1.2 : 1.1, k = 1 + (k0 - 1) * Math.max(0, Math.min(1, (SWING.CRUISE - spd) / 8)); R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9;
+    R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
     R.pChain = (R.pChain || 0) + 1;
@@ -301,7 +302,7 @@ function runnerUpdate(dt) {
         R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0;
       } else if (ox < b.x0) {
         // Wall run: up the wall and over the top.
-        R.px = b.x0 - 0.35; R.vx = 2.5; R.vy = Math.max(R.vy, 14); R.teth = null; R.shake = 0.25; R.wallT = 0.4;
+        R.px = b.x0 - 0.35; R.vx = Math.max(3, R.vx * 0.3); R.vy = Math.max(R.vy, 13); R.teth = null; R.shake = 0.25; R.wallT = 0.4;
         if (!R.attract && !R.wallMsg) { R.wallMsg = true; runMsg("Wall run!", "", 0.9); }
       }
       else { R.py = b.h; R.vy = Math.max(R.vy, 0); R.roof = b; }
@@ -393,7 +394,7 @@ function runnerUpdate(dt) {
   // The first run teaches by doing: let go, then hold.
   if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.3; R.tutText = "Let go to fly!"; } else if (a) R.tutText = "Keep holding: you reel in and speed up"; }
   else if (R.tut === 2) { R.tutText = "Hold to grab the ringed light"; R.slow = R.vy < 0 ? 0.35 : 1; }
-  else { R.slow = R.slowT > 0 ? (R.perfT > 0.3 ? 0.35 : 0.5) : 1; }
+  else { R.slow = R.slowT > 0 ? 0.55 : 1; }
   R.slowT = Math.max(0, R.slowT - dt * 2);
   // Events: a light shower, a surge of darkness.
   if (!R.attract && !R.tut) {

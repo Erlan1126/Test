@@ -75,14 +75,18 @@ const SW2D = (() => {
     const R = run, t = R.t, night = P.night, day = 1 - night, dayImg = night < 0.45;
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
     const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (30 + Math.min(12, Math.max(0, spd - 10) * 0.45)) * punch;
-    sCur += (sTarget - sCur) * (punch > 1.01 ? 0.12 : 0.04); const s = sCur;
+    // Smoothing by time, not by frame, so it feels the same at 30 or 60 frames per second.
+    const fdt = Math.min(0.1, Math.max(0, t - (draw.lt ?? t))); draw.lt = t; const ease = k => 1 - Math.exp(-k * fdt);
+    sCur += (sTarget - sCur) * ease(punch > 1.01 ? 7 : 2.5); const s = sCur;
     const aim = R.teth || R.aim, halfW = W / 2 / s, halfH = H / 2 / s;
-    let tx = R.px + 5 + Math.max(0, R.vx) * 0.12, ty = R.py + 4;
-    if (aim) { tx = tx * 0.8 + (aim.x + 2) * 0.2; ty = ty * 0.75 + (aim.y - 2) * 0.25; }
-    tx = Math.max(R.px + halfW * 0.15, Math.min(R.px + halfW * 0.55, tx)); ty = Math.max(9, Math.min(60, Math.max(R.py - halfH * 0.35, Math.min(R.py + halfH * 0.45, ty))));
+    // The figure sits a steady third from the left, a little ahead with speed; up and down follows
+    // you, leaning gently toward the anchor you're heading for.
+    let tx = R.px + halfW * 0.3 + Math.max(0, Math.min(25, R.vx)) * 0.08, ty = R.py + 3;
+    if (aim) ty = ty * 0.8 + (aim.y - 3) * 0.2;
+    ty = Math.max(9, Math.min(60, ty));
     if (!cam || Math.abs(cam.x - tx) > 80) cam = { x: tx, y: ty };
-    cam.x += (tx - cam.x) * 0.06; cam.y += (ty - cam.y) * 0.04;
-    cam.x = Math.max(R.px + halfW * 0.05, Math.min(R.px + halfW * 0.7, cam.x)); cam.y = Math.max(R.py - halfH * 0.55, Math.min(R.py + halfH * 0.6, cam.y));
+    cam.x += (tx - cam.x) * ease(4); cam.y += (ty - cam.y) * ease(2.6);
+    cam.x = Math.max(R.px + halfW * 0.1, Math.min(R.px + halfW * 0.6, cam.x)); cam.y = Math.max(R.py - halfH * 0.5, Math.min(R.py + halfH * 0.55, cam.y));
     const sh = R.shake > 0 ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (R.kick || 0) * 8;
     const X = x => ox + (x - cam.x) * s, Y = y => oy - (y - cam.y) * s;
     // ---------- Sky (baked into the far skyline strip below) ----------

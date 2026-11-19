@@ -353,7 +353,10 @@ function runDash() {
   for (let k = 0; k < 14; k++) run.parts.push({ x: run.x + (Math.random() - 0.5) * 16, at: run.dist - 10, vx: (Math.random() - 0.5) * 50, va: -80 - Math.random() * 120, life: 0.5 });
 }
 function runBonus(text, lights, at = run.dist + 30, x = run.x) {
-  run.lights += lights; run.pops.push({ text, x, at, t: 0 });
+  run.lights += lights;
+  // One message at a time: a new one replaces the last instead of stacking on top of it.
+  if (run.mode3) run.pops = run.pops.filter(p => p.t > 0.9);
+  run.pops.push({ text, x, at, t: 0 });
 }
 function runPower(kind) {
   run.power = { kind, t: RUN_POWERS[kind].dur };
@@ -995,13 +998,13 @@ function runDraw(ctx, W, H) {
   // Speed: streaks rushing out from the middle when the runner is flying.
   if (R.mode3 && R.od > 0 && (R.v || 0) > 16 && !R.over && !R.attract) {
     const k = Math.min(1, ((R.v || 0) - 16) / 12) * (R.power && R.power.kind === "jet" ? 1.4 : 1), cx = W / 2, cy = H * 0.42;
-    ctx.strokeStyle = `rgba(255,255,255,${0.16 * k})`; ctx.lineWidth = 1.5;
-    for (let q = 0; q < 26; q++) { const r = seeded(q * 31 + Math.floor(R.t * 12)), a = r() * Math.PI * 2, d0 = W * (0.35 + r() * 0.3), d1 = d0 + W * (0.1 + k * 0.25); ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d0 * 1.4); ctx.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1 * 1.4); ctx.stroke(); }
+    ctx.strokeStyle = `rgba(255,255,255,${0.09 * k})`; ctx.lineWidth = 1.5;
+    for (let q = 0; q < 12; q++) { const r = seeded(q * 31 + Math.floor(R.t * 5)), a = r() * Math.PI * 2, d0 = W * (0.35 + r() * 0.3), d1 = d0 + W * (0.1 + k * 0.25); ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d0 * 1.4); ctx.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1 * 1.4); ctx.stroke(); }
   }
   // The swing: an arrow to the next anchor when it's off screen, and the darkness creeping in.
   if (R.mode3 && !R.attract && !R.over) {
     // A Perfect: a white flash and a ring around the figure.
-    if (R.perfT > 0) { const k = 1 - R.perfT / 0.45, q = proj ? proj(R.x, R.dist) : [W / 2, H / 2]; ctx.fillStyle = `rgba(255,255,255,${0.18 * (1 - k)})`; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1] + W * 0.05, W * (0.05 + k * 0.3), 0, Math.PI * 2); ctx.stroke(); }
+    if (R.perfT > 0) { const k = 1 - R.perfT / 0.45, q = proj ? proj(R.x, R.dist) : [W / 2, H / 2]; if (!R.pChain || R.pChain === 1 || R.pChain % 5 === 0) { ctx.fillStyle = `rgba(255,255,255,${0.12 * (1 - k)})`; ctx.fillRect(0, 0, W, H); } ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1] + W * 0.05, W * (0.05 + k * 0.3), 0, Math.PI * 2); ctx.stroke(); }
     if (R.od > 0) { const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); g.addColorStop(0, "rgba(255,190,60,0)"); g.addColorStop(1, `rgba(255,190,60,${0.18 + 0.06 * Math.sin(R.t * 8)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     if (R.scrDark != null && R.scrDark > -W * 0.6) { const k = Math.max(0, Math.min(1, (R.scrDark + W * 0.6) / (W * 0.8))), g = ctx.createLinearGradient(0, 0, W * (0.15 + 0.35 * k), 0); g.addColorStop(0, `rgba(10,3,24,${0.85 * k})`); g.addColorStop(1, "rgba(10,3,24,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     const a = R.scrAim;
