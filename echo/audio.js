@@ -185,6 +185,8 @@ const sfx = {
   power() { [0, 4, 7, 12, 16].forEach((d, i) => note(523 * Math.pow(2, d / 12), { at: i * 0.05, dur: 0.3, vol: 0.06, type: "square", lowpass: 3000, echo: 0.3 })); },
   close() { noise({ filter: "bandpass", freq: 600, glide: 2400, q: 1.2, dur: 0.3, attack: 0.02, vol: 0.12 }); },
   clear() { note(784, { dur: 0.12, vol: 0.05, type: "triangle", echo: 0.2 }); note(1175, { at: 0.06, dur: 0.16, vol: 0.05, type: "triangle", echo: 0.2 }); },
+  whoosh(v = 15) { noise({ filter: "bandpass", freq: 300 + v * 20, glide: 900 + v * 60, q: 0.9, dur: 0.28, attack: 0.02, vol: 0.05 + Math.min(0.08, v * 0.003) }); },
+  perfect(n = 1) { const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.06, type: "triangle", echo: 0.35 })); },
   flip() { [0, 7, 12].forEach((d, i) => note(659 * Math.pow(2, d / 12), { at: i * 0.06, dur: 0.18, vol: 0.06, type: "square", lowpass: 3200, echo: 0.3 })); },
   ping(n) {
     const f = pitch(n % 7, 1);

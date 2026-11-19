@@ -141,7 +141,7 @@ function swingAttach(R) {
   R.teth = a; R.L = Math.hypot(R.px - a.x, R.py - a.y); R.Lt = Math.max(7, Math.min(11.5, R.L)); R.roof = null; R.spinV = 0; R.tethT = 0; R.dashes = 1;
   R.bursts.push({ x: a.x, y: a.y, t: 0, c: a.type === "gold" ? 0xffd25a : null });
   if (a.type === "gold" && !a.paid) { a.paid = true; R.lights += 5; swingFlow(R, 0.15); if (!R.attract) { runBonus("Gold! +5 ✦", 0, R.dist + 2, R.x); sfx.unlock(); } }
-  if (!R.attract) sfx.jump();
+  if (!R.attract) { sfx.jump(); buzz(8); }
   if (R.tut === 2) runnerTutStep();
   return true;
 }
@@ -162,8 +162,10 @@ function swingHold(down) {
     R.perfT = 0.45; R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
-    if (!R.attract) { runBonus("Perfect! +2 ✦", 2, R.dist + 2, R.x); sfx.flip(); runMission("trail", R.perfects); }
-  } else R.spinV = 4;
+    R.pChain = (R.pChain || 0) + 1;
+    if (!R.attract) { runBonus(R.pChain > 1 ? `Perfect ×${R.pChain}! +${1 + R.pChain} ✦` : "Perfect! +2 ✦", 0, R.dist + 2, R.x); R.lights += 1 + R.pChain; sfx.perfect(R.pChain); runMission("trail", R.perfects); }
+  } else { R.spinV = 4; R.pChain = 0; }
+  if (!R.attract) sfx.whoosh(Math.hypot(R.vx, R.vy));
   if (R.tut === 1) runnerTutStep();
 }
 function runnerTutStep() {
@@ -292,6 +294,7 @@ function runnerUpdate(dt) {
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
+  for (const b of R.blds) if (b.litT >= 0) b.litT += dt;
   for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.attract) { runMission("free", R.lit); progressEvent("free"); if (!b.tree) sfx.clear(); } }
   // Lights.
   const mag = R.power && R.power.kind === "magnet";
@@ -764,7 +767,7 @@ function makeSwing3D() {
     const glowC = tmpGlow.set(runnerGlow()), towerC = C(P.tower, tmpTower), towerLight = tmpTowerL.copy(towerC).lerp(WHITE, 0.55 + day * 0.2);
     for (const b of R.blds) {
       const g = bldMesh(b); g.userData.swingOld = true; g.visible = true;
-      const k = b.litT < 0 ? 0 : Math.min(1, (b.litT += dt) / 0.9), u = g.userData;
+      const k = b.litT < 0 ? 0 : Math.min(1, b.litT / 0.9), u = g.userData;
       if (b.tree) { u.leaf.emissiveIntensity = k * 0.35 * night; u.lights.forEach(s2 => (s2.material.opacity = k * (0.4 + night * 0.6))); continue; }
       // Windows flick on in steps, with a little flicker while they wake.
       const ks = k >= 1 ? 1 : Math.floor(k * 6) / 6 * (0.75 + 0.25 * Math.random());

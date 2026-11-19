@@ -500,6 +500,10 @@ const SIM = `
       document.querySelector('#shopList button[data-lk="c:0"]').click(); out.ownedThingsCanBeWornAgainForFree = runnerLook().char === 0 && save.glow === 400;
       openSheet("ranks"); out.ranksListYourRuns = document.querySelectorAll("#shopList li").length > 5;
       document.getElementById("sheet").hidden = true;
+      // Smooth mode draws the whole swing in 2D (no WebGL).
+      save.settings.smooth = true; save.run.tutDone = 1; startRun(); { const c = document.getElementById("runCanvas"), cx = c.getContext("2d"); for (let q = 0; q < 30; q++) { run.inv = 1; runnerAuto(); runUpdate(1 / 60); runDraw(cx, c.clientWidth || 390, c.clientHeight || 844); } }
+      out.smoothModeDrawsTheSwingIn2D = swingSmooth() && run.scrAim !== undefined && !document.getElementById("runner3d")?.isConnected;
+      save.settings.smooth = false; run = null;
       showTitle(); out.theTitleSwingsByItself = !!titleRun && titleRun.mode3 === true;
       return out;
     });
