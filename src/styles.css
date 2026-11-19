@@ -3500,3 +3500,13 @@ body.simple-results #over .reward.new { display: none !important; }
 /* A new player's card: the home button alone is a small round one, centered. */
 body.simple-results #over-actions .home-btn { grid-column: 1 / -1; justify-self: center; width: 64px; }
 @media (max-width: 380px) { #over-actions .btn { font-size: 14px; } #over-actions #share { font-size: 13px; padding: 0 8px; } }
+
+/* The café block: the arrival's Skip button and the neighbor's speech bubble. */
+.block-skip { position: absolute; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 196px); z-index: 6; padding: 8px 16px; border: 0; border-radius: 999px; font: 800 14px var(--ui); color: #2a1f5c; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(42, 31, 110, 0.18); cursor: pointer; }
+.block-skip[hidden] { display: none; }
+.block-say { position: fixed; z-index: 35; transform: translate(-50%, -100%); max-width: 210px; padding: 8px 12px; border-radius: 16px; font: 800 14px/1.25 var(--ui); color: #2a1f3e; background: #fff; box-shadow: 0 6px 16px rgba(42, 31, 110, 0.22); pointer-events: none; text-align: center; animation: say-in 0.35s cubic-bezier(.3, 1.5, .5, 1); }
+.block-say::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -7px; border: 7px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.block-say[hidden] { display: none; }
+@keyframes say-in { from { transform: translate(-50%, -80%) scale(0.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .block-say { animation: none; } }
+body.tabs-open .block-say, body.tabs-open .block-skip { display: none !important; }

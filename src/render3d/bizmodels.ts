@@ -139,7 +139,8 @@ export function buildModel(g: G, id: string, s: number, c1: string, c2: string, 
   };
   switch (id) {
     case "coffee":
-      if (s === 0) { cart(); K.umbrella(g, 0, 0.3, c2, 1.9, 0.9); crown(0.95, 0.6, -0.3, 0.3); for (const x of [-0.9, 0.9]) K.box(g, m.c("#ffffff"), 0.25, 0.4, 0.25, x, 0, 1.2); }
+      // (No stools in front: customers queue there, and two folded chairs lean on the cart.)
+      if (s === 0) { cart(); K.umbrella(g, 0, 0.3, c2, 1.9, 0.9); crown(0.95, 0.6, -0.3, 0.3); }
       else if (s === 1) {
         K.box(g, cream, 3, 2.2, 2.4, 0, 0, -0.5); K.box(g, trim, 3.1, 0.2, 2.5, 0, 2.2, -0.5);
         K.front(g, 3, 0, 0.71); K.awning(g, 3, 0, 1.45, 0.72, c2);
@@ -407,15 +408,12 @@ export function buildTerrace(g: G, state: 1 | 2, lights: boolean, m: ModelMats):
   // Open: an awning on posts across the front, three tables with umbrellas and customers.
   for (const x of [-1.95, 1.95]) K.box(g, dark, 0.07, 1.25, 0.07, x, 0, z0 + 0.6);
   K.awning(g, 4.0, 0, 1.3, z0 + 0.05, red, "#ffffff", 0.6);
-  const shirts = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff"];
+  // Three tables. The first one's seats are the two chairs that stood folded by the cart
+  // (they're placed, and unfold, with the people: see block.ts); customers sit on the rest.
   [-1.35, 0, 1.35].forEach((x, i) => {
-    K.table(g, x, z0 + 0.15, "#ffffff");
+    if (i === 0) { K.cyl(g, m.c("#ffffff"), 0.28, 0.28, 0.05, x, 0.42, z0 + 0.15, 12); K.cyl(g, m.c("#4a4f7a"), 0.03, 0.05, 0.42, x, 0, z0 + 0.15, 6); }
+    else K.table(g, x, z0 + 0.15, "#ffffff");
     if (i !== 1) K.umbrella(g, x, z0 + 0.15, i ? "#ff4f8b" : red, 1.15, 0.45);
-    // A customer on one side of each table, a cup in front of them.
-    const sx = x + (i % 2 ? 0.42 : -0.42);
-    K.box(g, m.c(shirts[i], 0.6), 0.2, 0.26, 0.16, sx, 0.4, z0 + 0.15);
-    K.sph(g, m.c("#f2c39a", 0.6), 0.1, sx, 0.75, z0 + 0.15);
-    K.cyl(g, m.c("#ffffff", 0.4), 0.05, 0.04, 0.09, x + (i % 2 ? 0.12 : -0.12), 0.47, z0 + 0.15, 8);
   });
   if (lights) {
     // The contract's reward: string lights, flower boxes and a gold star over the café.

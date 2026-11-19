@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cafeRun, claimTerrace, CONTRACT_WIDE, isWide, normalizeCafe, TERRACE_FLOORS, towerShape, type CafeRun } from "../src/logic/cafe";
+import { cafeMult, cafeRun, claimTerrace, FLOWER_WIDE, isWide, normalizeCafe, PLAY_FLOORS, projectsOpen, seatingNeed, TERRACE_FLOORS, TERRACE_MULT, PROJECT_MULT, towerShape, type CafeRun } from "../src/logic/cafe";
 import { defaultSave, normalize } from "../src/logic/save";
 import { officeFloors, towerBonus, basePay } from "../src/logic/tycoon";
 import { BUSINESSES } from "../src/data/tycoon";
@@ -41,7 +41,7 @@ describe("the first two towers grow the café", () => {
     const back = normalize(JSON.parse(JSON.stringify(s)));
     expect(back.cafe.starter).toEqual(s.cafe.starter);
     expect(back.cafe.terrace).toBe(2);
-    expect(back.cafe.contract).toBe(1); // the café contract is offered next
+    expect(projectsOpen(back.cafe)).toBe(true); // the block's next project is offered
     expect(officeFloors(back)).toBe(18);
     expect(claimTerrace(back.cafe)).toBe(false);
   });
@@ -57,7 +57,7 @@ describe("the first two towers grow the café", () => {
   it("a zero-floor miss changes nothing", () => {
     const s = defaultSave();
     const r = finish(s, run(0));
-    expect(r).toEqual({ starter: false, added: 0, terraceReady: false, contractDone: false });
+    expect(r).toEqual({ starter: false, added: 0, terraceReady: false, projectDone: "", contractDone: false });
     expect(s.cafe.starter).toBeNull();
     expect(s.cafe.floors).toBe(0);
     expect(officeFloors(s)).toBe(10);
@@ -109,19 +109,67 @@ describe("the first two towers grow the café", () => {
   });
 });
 
-describe("the café contract", () => {
-  it("counts wide floors and is done once at the goal", () => {
+describe("the café block", () => {
+  it("the seating request counts down the floors still needed, from the real save", () => {
+    const s = defaultSave();
+    expect(seatingNeed(s.cafe)).toBe(TERRACE_FLOORS);
+    finish(s, run(3));
+    expect(seatingNeed(s.cafe)).toBe(3); // "Build 3 more floors for café seating"
+    finish(s, run(2));
+    expect(seatingNeed(s.cafe)).toBe(1);
+    finish(s, run(5));
+    expect(seatingNeed(s.cafe)).toBe(0);
+    expect(s.cafe.terrace).toBe(1);
+  });
+
+  it("the neighbor's story is saved step by step and never replays", () => {
+    const s = defaultSave();
+    finish(s, run(3));
+    expect(s.cafe).toMatchObject({ moved: false, asked: false, seated: false });
+    s.cafe.moved = true; s.cafe.asked = true;
+    const back = normalize(JSON.parse(JSON.stringify(s)));
+    expect(back.cafe).toMatchObject({ moved: true, asked: true, seated: false });
+    // A save from before the neighbor: their story counts as told (nothing replays).
+    const old = normalize({ v: 2, profile: { towers: 5 }, cafe: { starter: null, framed: true, floors: 9, terrace: 2, contract: 0, wideBest: 0 } });
+    expect(old.cafe).toMatchObject({ moved: true, asked: true, seated: true });
+  });
+
+  it("tower three: two projects; only the chosen one counts, each opens once", () => {
+    const s = defaultSave();
+    finish(s, run(7));
+    expect(projectsOpen(s.cafe)).toBe(false);
+    claimTerrace(s.cafe);
+    expect(projectsOpen(s.cafe)).toBe(true);
+    // The playground counts floors; wide floors don't help it.
+    expect(finish(s, run(PLAY_FLOORS - 1, { project: "play", wide: 9 })).projectDone).toBe("");
+    expect(s.cafe.playBest).toBe(PLAY_FLOORS - 1);
+    expect(s.cafe.wideBest).toBe(0);
+    // The flower market counts wide floors.
+    expect(finish(s, run(12, { project: "flowers", wide: FLOWER_WIDE - 1 })).projectDone).toBe("");
+    expect(finish(s, run(6, { project: "flowers", wide: FLOWER_WIDE })).projectDone).toBe("flowers");
+    expect(finish(s, run(6, { project: "flowers", wide: 9 })).projectDone).toBe(""); // once
+    // An ordinary tower doesn't count toward either.
+    expect(finish(s, run(20)).projectDone).toBe("");
+    expect(projectsOpen(s.cafe)).toBe(true); // the playground is still there for later
+    expect(finish(s, run(PLAY_FLOORS, { project: "play" })).projectDone).toBe("play");
+    expect(projectsOpen(s.cafe)).toBe(false);
+    expect(cafeMult(s.cafe)).toBeCloseTo(TERRACE_MULT * PROJECT_MULT * PROJECT_MULT);
+    const back = normalize(JSON.parse(JSON.stringify(s)));
+    expect(back.cafe.done).toEqual(["flowers", "play"]);
+  });
+
+  it("older saves: a café contract still open becomes the choice; a finished one keeps its bonus", () => {
+    const open = normalize({ v: 2, profile: { towers: 5 }, cafe: { framed: true, floors: 9, terrace: 2, contract: 1, wideBest: 3 } });
+    expect(open.cafe.contract).toBe(0);
+    expect(projectsOpen(open.cafe)).toBe(true);
+    expect(open.cafe.wideBest).toBe(3);
+    const done = normalize({ v: 2, profile: { towers: 5 }, cafe: { framed: true, floors: 9, terrace: 2, contract: 2, wideBest: 5 } });
+    expect(cafeMult(done.cafe)).toBeCloseTo(TERRACE_MULT * TERRACE_MULT);
+  });
+
+  it("wide floors keep 80% of the first floor", () => {
     const base = { x0: -2, x1: 2, z0: -2, z1: 2 };
     expect(isWide({ x0: -1.6, x1: 1.6, z0: -1.6, z1: 1.6 }, base)).toBe(true);
     expect(isWide({ x0: -1.5, x1: 1.5, z0: -2, z1: 2 }, base)).toBe(false);
-    const s = defaultSave();
-    finish(s, run(7));
-    claimTerrace(s.cafe);
-    expect(s.cafe.contract).toBe(1);
-    expect(finish(s, run(8, { contract: true, wide: CONTRACT_WIDE - 1 })).contractDone).toBe(false);
-    expect(s.cafe.wideBest).toBe(CONTRACT_WIDE - 1);
-    expect(finish(s, run(8, { contract: true, wide: CONTRACT_WIDE })).contractDone).toBe(true);
-    expect(s.cafe.contract).toBe(2);
-    expect(finish(s, run(8, { contract: true, wide: 9 })).contractDone).toBe(false); // only once
   });
 });

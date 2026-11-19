@@ -6,6 +6,7 @@
 // at night the windows, signs and an empire's searchlight come on.
 import * as THREE from "three";
 import { mergeStatic } from "./world";
+import { buildBlock, type BizBlock } from "./block";
 import { buildModel, buildTerrace, type ModelMats } from "./bizmodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
@@ -40,6 +41,8 @@ export interface BizLive {
   golden?: string;
   /** The first visit's close look at the starter tower and the Coffee Cart. */
   frame?: boolean;
+  /** The café block's story (block.ts), timed by the town UI. */
+  block?: BizBlock;
   vip: string;
   critic: string;
   power: string;
@@ -59,7 +62,11 @@ const ALL = [...CELLS, ...PARKS, PLAZA, PLOT];
 /** The back of the island: a beach and a stretch of sea (no streets). */
 const BEACH: [number, number][] = [[-1, -1], [0, -1], [-1, -2]];
 /** The starter tower's spot (local to the district), for the camera and its bubble. */
-export function plotPos(): { x: number; z: number } { return cellXZ(PLOT); }
+export function plotPos(): { x: number; z: number } { const c = cellXZ(PLOT); return { x: c.x + TOWER_AT.x, z: c.z + TOWER_AT.z }; }
+/** The starter tower's spot in its plot (the back corner: the front is for the neighborhood),
+ *  and how far its front door is from the plot's center. */
+const TOWER_AT = { x: -0.55, z: -0.55 }, TOWER_S = 1.15;
+const doorZ = TOWER_AT.z + TOWER_S * 1.02 + 0.02;
 const OFF = 2 * C;
 const cellXZ = ([gx, gz]: [number, number]) => ({ x: gx * C - OFF, z: gz * C - OFF });
 const U = new THREE.Vector3(Math.SQRT1_2, 0, Math.SQRT1_2);
@@ -102,6 +109,11 @@ export interface BizCafe {
   contract: 0 | 1 | 2;
   /** Each business's HQ tower, as the player built it (logic/orders.ts). */
   hq?: Record<string, BizTower>;
+  /** Neighborhood projects done, whether they're on offer, and whether the terrace
+   *  should show as a preview (once the neighbor has asked to sit somewhere). */
+  done?: string[];
+  offered?: boolean;
+  ghostTerrace?: boolean;
 }
 /** A tower the player built, as the town draws it. */
 export type BizTower = NonNullable<BizCafe["starter"]>;
@@ -109,8 +121,13 @@ export type BizTower = NonNullable<BizCafe["starter"]>;
 export interface BizCity {
   group: THREE.Group;
   update(t: number, night: number, live: BizLive, lots: BizLot[]): void;
-  /** How tall lot i's building stands (for its bubble). */
+  /** How tall lot i's building stands (for its bubble). -1 is the starter tower, -2 the
+   *  flower market's spot, -3 the playground's. */
   top(i: number): number;
+  /** The neighbor in the yellow jacket, when they're out (for their speech bubble). */
+  resident(): THREE.Vector3 | null;
+  /** The flower market's and the playground's spots. */
+  spot(id: "flowers" | "play"): { x: number; z: number };
 }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
@@ -543,19 +560,23 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   {
     const { x, z } = cellXZ(PLOT);
     add(new THREE.BoxGeometry(C - 2.2, 0.06, C - 2.2).translate(x, 0.23, z), grass);
-    add(new THREE.BoxGeometry(2.9, 0.08, 2.9).translate(x, 0.25, z), pave);
+    const tx = x + TOWER_AT.x, tz = z + TOWER_AT.z;
+    add(new THREE.BoxGeometry(2.6, 0.08, 2.6).translate(tx, 0.25, tz), pave);
     const sc = cafe.starter;
     if (sc) {
-      const n = sc.b.length, S = 1.15;
-      const y = playerTower(g, sc, x, z, S, Math.min(0.55, 11 / Math.max(1, n)), 0.3);
+      const n = sc.b.length, S = TOWER_S;
+      const y = playerTower(g, sc, tx, tz, S, Math.min(0.55, 11 / Math.max(1, n)), 0.3);
       plotTop = y;
-      // A flag on the roof and a plaque and flowers at its foot.
+      // A flag on the roof, a front door with a path to the street, a plaque and flowers.
       const top = sc.b[n - 1];
-      add(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6).translate(x + top[0] * S, y + 0.45, z + top[1] * S), metal);
-      add(new THREE.BoxGeometry(0.5, 0.3, 0.03).translate(x + top[0] * S + 0.25, y + 0.72, z + top[1] * S), mats.sign("#ff4f8b"));
-      add(new THREE.BoxGeometry(0.9, 0.5, 0.1).translate(x + 1.1, 0.55, z + 1.55), mats.c("#c8a070", 0.6));
-      add(new THREE.BoxGeometry(0.7, 0.32, 0.12).translate(x + 1.1, 0.58, z + 1.56), mats.gold);
-      for (let k = 0; k < 5; k++) add(new THREE.SphereGeometry(0.1, 6, 4).translate(x - 1.3 + k * 0.28, 0.36, z + 1.55), mats.c(flowersOn[k % 4], 0.8));
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6).translate(tx + top[0] * S, y + 0.45, tz + top[1] * S), metal);
+      add(new THREE.BoxGeometry(0.5, 0.3, 0.03).translate(tx + top[0] * S + 0.25, y + 0.72, tz + top[1] * S), mats.sign("#ff4f8b"));
+      add(new THREE.BoxGeometry(0.42, 0.5, 0.05).translate(tx, 0.6, tz + doorZ - TOWER_AT.z - 0.01), mats.c("#5a3a2a", 0.6));
+      add(new THREE.BoxGeometry(0.5, 0.06, 0.12).translate(tx, 0.88, tz + doorZ - TOWER_AT.z + 0.02), mats.c("#ffc21a", 0.5));
+      add(new THREE.BoxGeometry(0.5, 0.07, 2.4 - doorZ).translate(tx, 0.26, z + (doorZ + 2.4) / 2), pave);
+      add(new THREE.BoxGeometry(0.55, 0.42, 0.08).translate(tx + 0.65, 0.5, z + 1.2), mats.c("#c8a070", 0.6));
+      add(new THREE.BoxGeometry(0.45, 0.26, 0.1).translate(tx + 0.65, 0.53, z + 1.21), mats.gold);
+      for (let k = 0; k < 4; k++) add(new THREE.SphereGeometry(0.09, 6, 4).translate(tx + 0.4 + k * 0.2, 0.34, z + 1.5), mats.c(flowersOn[k % 4], 0.8));
     } else {
       // No first tower yet: a little garden waiting for one.
       tree(x - 0.9, z - 0.8, 0.9); tree(x + 0.9, z + 0.7, 0.8);
@@ -628,8 +649,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       lotG.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 6).translate(0, roof + 0.4, -1.25), metal));
       lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.03).translate(0.24, roof + 0.66, -1.25), mats.sign(lot.c2)));
     } else buildModel(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
-    // The Coffee Cart's café terrace (see logic/cafe.ts).
+    // The Coffee Cart's café terrace (see logic/cafe.ts); before it's ready, once the
+    // neighbor has asked to sit somewhere, a see-through preview of it on the lot.
     if (lot.id === "coffee" && cafe.terrace > 0) buildTerrace(lotG, cafe.terrace as 1 | 2, cafe.contract === 2, mats);
+    else if (lot.id === "coffee" && cafe.ghostTerrace) {
+      const ghostG = new THREE.Group();
+      buildTerrace(ghostG, 2, false, mats);
+      const gm = own(new THREE.MeshStandardMaterial({ color: 0xffe7c2, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.6 }));
+      ghostG.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = gm; });
+      lotG.add(ghostG);
+    }
     lotG.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(lotG);
     tops[i] = Math.max(1.4, box.max.y - 0.2);
@@ -693,6 +722,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   const walkers = Array.from({ length: 22 }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: k / 22, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
   const crowd = Array.from({ length: 10 }, (_, k) => { const p = makePerson(shirts[(k + 3) % shirts.length]); p.visible = false; life.add(p); return p; });
+  // The café block: the neighbor, the cart's customers, the projects (block.ts).
+  const ci = lots.findIndex(l => l.id === "coffee");
+  const block = buildBlock({
+    parent: life, makePerson, mat: (c, r, m) => mats.c(c, r, m), own,
+    coffee: ci >= 0 && ci < CELLS.length && lots[ci].state === "open" ? lotPos(ci) : null,
+    plot: cellXZ(PLOT), tower: { x: TOWER_AT.x, z: TOWER_AT.z, door: doorZ + 0.1 }, hasStarter: !!cafe.starter,
+    terrace: cafe.terrace, done: cafe.done ?? [], offered: !!cafe.offered,
+  });
+  let coffeeSale = 0;
   const makeCar = (c: string, van: boolean) => {
     const v = new THREE.Group();
     v.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, van ? 0.5 : 0.32, van ? 0.95 : 0.85).translate(0, van ? 0.38 : 0.28, 0), mats.c(c, 0.4, 0.3)));
@@ -748,7 +786,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let last = 0;
   return {
     group: g,
-    top: i => (i < 0 ? plotTop : tops[i] ?? 2),
+    top: i => (i === -1 ? plotTop : i < -1 ? 1.4 : tops[i] ?? 2),
+    resident: () => block.resident(),
+    spot: id => block.spot(id),
     update(t, night, live) {
       const dt = Math.min(0.1, last ? t - last : 0.016);
       last = t;
@@ -764,6 +804,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
       beachLive(t, night);
+      if (live.pulse === "coffee") coffeeSale = Math.max(coffeeSale, live.pulseAt ?? 0);
+      block.update(Date.now(), dt, t, live.block, coffeeSale);
       const cd = cafe.terrace === 2 ? doors.get("coffee") : undefined;
       saleCoin.visible = !!cd;
       if (cd) {

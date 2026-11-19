@@ -794,7 +794,7 @@ export class Renderer3D {
       this.bizCafeIn = f.bizCafe;
       this.bizStyleKey = styleKey;
       const cafe = f.bizCafe ?? null;
-      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
+      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
@@ -838,7 +838,7 @@ export class Renderer3D {
   /** Where a lot's building shows on screen: its base and its top (page px). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
-    const { x, z } = i < 0 ? plotPos() : lotPos(i), r = this.gl.domElement.getBoundingClientRect();
+    const { x, z } = i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : lotPos(i), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     const at = (y: number): [number, number] => {
@@ -846,6 +846,15 @@ export class Renderer3D {
       return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
     };
     return { base: at(0), top: at(height) };
+  }
+
+  /** Where the café block's neighbor stands on screen (their head), or null. */
+  bizResident(): [number, number] | null {
+    const p = this.biz && this.bizK >= 0.5 ? this.biz.resident() : null;
+    if (!p) return null;
+    const r = this.gl.domElement.getBoundingClientRect();
+    const v = new THREE.Vector3(BIZ_SLOT.x + p.x, BIZ_SLOT.y + p.y + 0.85, BIZ_SLOT.z + p.z).project(this.cam);
+    return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
   }
 
   // ---------- The tower ----------

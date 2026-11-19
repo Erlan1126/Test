@@ -414,6 +414,8 @@ export class Sound {
 
   // ---------- Effects ----------
   click(): void { this.tone(1100, 0.04, "triangle", 0.06); this.tone(1650, 0.03, "sine", 0.03, 0.005); }
+  /** A cup set down on the counter, and a small bell: the first coffee sold. Quiet. */
+  counter(): void { this.tone(420, 0.06, "triangle", 0.05); this.tone(300, 0.05, "sine", 0.04, 0.01); this.bell(1568, 0.5, 0.035, 0.06); }
   /** A soft swish for sheets sliding up. */
   whoosh(): void { this.noise(0.22, 0.05, 500, "bandpass", 1.2, 0, 0.04, 2400); }
   land(): void { this.thud(0.8); }
