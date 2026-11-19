@@ -242,7 +242,7 @@ export class TycoonUI {
         if (this.story.stage === "arrive") this.afterArrival = note;
         else setTimeout(note, 1600);
       } else this.later(4000, () => { if (this.save.tycoon.tips > 0) { this.frameUntil = 0; this.render(); } });
-    } else if (!this.save.seenFeatures.includes("ty-city")) setTimeout(() => this.welcomeNote(), 1200);
+    } else if (!this.save.seenFeatures.includes("ty-city") && this.story.stage !== "arrive") setTimeout(() => this.welcomeNote(), 1200);
     // The first sale comes first: until then the terrace waits in the next-step card.
     if (dest === "terrace" && this.save.tycoon.tips > 0) this.later(900, () => this.openTerrace());
     if (dest === "cafe") this.glance("coffee");
@@ -294,6 +294,9 @@ export class TycoonUI {
     const next = this.afterArrival;
     this.afterArrival = null;
     if (next) this.later(400, next);
+    // (A replayed arrival, e.g. after the game was closed during it: Pip's welcome if it
+    // wasn't seen, then the walk to the cart, as on the first visit.)
+    else if (this.save.tycoon.tips === 0) this.later(1200, () => this.welcomeNote(() => this.walkToCart()));
   }
   skipArrival(): void {
     if (this.story.stage !== "arrive") return;
