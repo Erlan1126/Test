@@ -86,7 +86,7 @@ export function multiplier(s: SaveData, now = Date.now(), live = true): number {
 /** A grand opening for a brand-new company: its first minutes earn five times as much, so
  *  a new player opens a second business, hires a manager and grows a building in their
  *  first session. It happens once, ever. Returns true when it starts now. */
-export const OPENING_MULT = 5, OPENING_MINUTES = 20;
+export const OPENING_MULT = 2, OPENING_MINUTES = 20;
 export function startOpening(s: SaveData, now = Date.now()): boolean {
   if (s.tycoon.opening !== 0 || s.tycoon.lifetime > 2000 || s.tycoon.eras > 0) return false;
   s.tycoon.opening = now + OPENING_MINUTES * 60e3;
@@ -262,8 +262,8 @@ export function affordable(b: Business, level: number, coinsHave: number): numbe
 /** Office floors: every floor the player has ever built is an office (plus the ten of the
  *  first office building), and each business level fills one. More floors come from
  *  building towers, so the tower game is how the company grows. */
-export const FREE_FLOORS = 10;
-export const officeFloors = (s: SaveData): number => FREE_FLOORS + Math.max(0, s.tycoon.floors);
+export const FREE_FLOORS = 25;
+export const officeFloors = (s: SaveData): number => FREE_FLOORS + 2 * Math.max(0, s.tycoon.floors);
 export const usedFloors = (s: SaveData): number => Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
 export const freeFloors = (s: SaveData): number => Math.max(0, officeFloors(s) - usedFloors(s));
 

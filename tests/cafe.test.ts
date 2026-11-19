@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cafeMult, cafeRun, claimTerrace, FLOWER_WIDE, isWide, normalizeCafe, PLAY_FLOORS, projectsOpen, seatingNeed, TERRACE_FLOORS, TERRACE_MULT, PROJECT_MULT, towerShape, type CafeRun } from "../src/logic/cafe";
 import { defaultSave, normalize } from "../src/logic/save";
-import { officeFloors, towerBonus, basePay } from "../src/logic/tycoon";
+import { FREE_FLOORS, officeFloors, towerBonus, basePay } from "../src/logic/tycoon";
 import { BUSINESSES } from "../src/data/tycoon";
 
 /** A tower of `n` floors, each a little narrower (like real overhangs breaking off). */
@@ -20,9 +20,9 @@ function finish(s: ReturnType<typeof defaultSave>, r: CafeRun) {
 }
 
 describe("the first two towers grow the café", () => {
-  it("acceptance: 3 floors, miss, then 5 floors: starter stands, capacity 18, terrace opens once, all saved", () => {
+  it("acceptance: 3 floors, miss, then 5 floors: starter stands, 8 floors become 16 offices, terrace opens once, all saved", () => {
     const s = defaultSave();
-    expect(officeFloors(s)).toBe(10);
+    expect(officeFloors(s)).toBe(FREE_FLOORS);
     const a = finish(s, run(3));
     expect(a.starter).toBe(true);
     expect(s.cafe.starter?.f).toBe(3);
@@ -32,7 +32,7 @@ describe("the first two towers grow the café", () => {
     const b = finish(s, run(5));
     expect(b.starter).toBe(false); // the starter is the first tower, never replaced
     expect(s.cafe.starter?.f).toBe(3);
-    expect(officeFloors(s)).toBe(18);
+    expect(officeFloors(s)).toBe(FREE_FLOORS + 2 * 8);
     expect(b.terraceReady).toBe(true);
     expect(s.cafe.terrace).toBe(1);
     expect(claimTerrace(s.cafe)).toBe(true);
@@ -42,7 +42,7 @@ describe("the first two towers grow the café", () => {
     expect(back.cafe.starter).toEqual(s.cafe.starter);
     expect(back.cafe.terrace).toBe(2);
     expect(projectsOpen(back.cafe)).toBe(true); // the block's next project is offered
-    expect(officeFloors(back)).toBe(18);
+    expect(officeFloors(back)).toBe(FREE_FLOORS + 2 * 8);
     expect(claimTerrace(back.cafe)).toBe(false);
   });
 
@@ -60,7 +60,7 @@ describe("the first two towers grow the café", () => {
     expect(r).toEqual({ starter: false, added: 0, terraceReady: false, projectDone: "", contractDone: false });
     expect(s.cafe.starter).toBeNull();
     expect(s.cafe.floors).toBe(0);
-    expect(officeFloors(s)).toBe(10);
+    expect(officeFloors(s)).toBe(FREE_FLOORS);
   });
 
   it("a strong first run earns the starter and the terrace at once", () => {

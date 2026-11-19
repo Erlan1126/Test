@@ -23,20 +23,20 @@ export interface Business {
 }
 
 export const BUSINESSES: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 12, growth: 1.17, income: 1, cycle: 6, manager: 75 },
-  { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 150, growth: 1.13, income: 0.133, cycle: 6, manager: 10000 },
-  { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 3000, growth: 1.13, income: 1, cycle: 15, manager: 150000 },
-  { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 50000, growth: 1.13, income: 8.33, cycle: 40, manager: 3e6 },
-  { id: "cinema", name: "Sky Cinema", icon: "film", color: ["#b48cff", "#6a3cff"], cost: 2e5, growth: 1.12, income: 100, cycle: 120, manager: 1e7 },
-  { id: "hotel", name: "Cloud Hotel", icon: "building", color: ["#7fd3ff", "#3a8dff"], cost: 3e6, growth: 1.11, income: 1000, cycle: 300, manager: 2e8 },
-  { id: "mall", name: "Sky Mall", icon: "gift", color: ["#5ee0a0", "#19a87a"], cost: 4e7, growth: 1.1, income: 11700, cycle: 900, manager: 3e9 },
-  { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 6e8, growth: 1.09, income: 133000, cycle: 1800, manager: 5e10 },
-  { id: "casino", name: "Starlight Stage", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1e10, growth: 1.08, income: 1.67e+06, cycle: 3600, manager: 1e12 },
-  { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 2e11, growth: 1.07, income: 3.33e+07, cycle: 7200, manager: 2e13 },
+  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 60 },
+  { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 100, growth: 1.13, income: 12, cycle: 6, manager: 1200 },
+  { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 1200, growth: 1.12, income: 110, cycle: 12, manager: 15000 },
+  { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 14000, growth: 1.11, income: 1000, cycle: 24, manager: 180000 },
+  { id: "cinema", name: "Sky Cinema", icon: "film", color: ["#b48cff", "#6a3cff"], cost: 170000, growth: 1.1, income: 9000, cycle: 48, manager: 9e5 },
+  { id: "hotel", name: "Cloud Hotel", icon: "building", color: ["#7fd3ff", "#3a8dff"], cost: 4e6, growth: 1.11, income: 80000, cycle: 96, manager: 1.6e7 },
+  { id: "mall", name: "Sky Mall", icon: "gift", color: ["#5ee0a0", "#19a87a"], cost: 1.2e8, growth: 1.11, income: 700000, cycle: 192, manager: 5e8 },
+  { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 4e9, growth: 1.1, income: 6e6, cycle: 384, manager: 1.6e10 },
+  { id: "casino", name: "Starlight Stage", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1.5e11, growth: 1.1, income: 5.2e7, cycle: 768, manager: 6e11 },
+  { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 6e12, growth: 1.09, income: 4.5e8, cycle: 1536, manager: 2.4e13 },
 ];
 
 /** Level milestones: reaching each one makes a business run twice as fast. */
-export const MILESTONES_AT = [25, 100, 200, 400, 600, 800, 1000];
+export const MILESTONES_AT = [10, 25, 50, 100, 150, 200, 300, 400, 500, 600, 800, 1000];
 /** Every Sky Gem adds this much to all earnings. */
 export const GEM_BONUS = 0.02;
 /** Offline earnings stop piling up after this long (longer with VIP). */

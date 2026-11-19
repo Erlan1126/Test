@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
 import { BUSINESSES, coins, ERA_SCALE } from "../src/data/tycoon";
-import { doubleAway, doublePrice, speedupsLeft } from "../src/logic/tycoon";
+import { doubleAway, doublePrice, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
 import { affordable, buyLevels, freeFloors, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
 
 const T0 = 1_800_000_000_000;
@@ -35,21 +35,23 @@ describe("Skyhaven Tycoon", () => {
   it("needs an empty office floor for every level: towers add floors", () => {
     const s = defaultSave();
     s.tycoon.coins = 1e12;
-    expect(freeFloors(s)).toBe(9); // ten floors, one used by the coffee cart
-    expect(buyLevels(s, "coffee", 10)).toBe(9); // buys what fits
+    expect(freeFloors(s)).toBe(FREE_FLOORS - 1); // the free floors, one used by the coffee cart
+    expect(buyLevels(s, "coffee", FREE_FLOORS + 5)).toBe(FREE_FLOORS - 1); // buys what fits
     expect(buyLevels(s, "coffee", "max")).toBe(0);
     expect(freeFloors(s)).toBe(0);
-    towerBonus(s, 20); // a 20-floor tower
+    towerBonus(s, 20); // a 20-floor tower: two office floors each
+    expect(freeFloors(s)).toBe(40);
     expect(buyLevels(s, "coffee", 10)).toBe(10);
   });
 
   it("doubles speed at milestones", () => {
     const b = BUSINESSES[0];
-    expect(cycleOf(b, 24)).toBe(b.cycle);
-    expect(cycleOf(b, 25)).toBe(b.cycle / 2);
-    expect(cycleOf(b, 99)).toBe(b.cycle / 2);
-    expect(cycleOf(b, 100)).toBe(b.cycle / 4); // speed-ups come with each new stage
-    expect(cycleOf(b, 400)).toBe(b.cycle / 16);
+    expect(cycleOf(b, 9)).toBe(b.cycle);
+    expect(cycleOf(b, 10)).toBe(b.cycle / 2); // an early first one
+    expect(cycleOf(b, 24)).toBe(b.cycle / 2);
+    expect(cycleOf(b, 25)).toBe(b.cycle / 4);
+    expect(cycleOf(b, 50)).toBe(b.cycle / 8);
+    expect(cycleOf(b, 100)).toBe(b.cycle / 16); // speed-ups come with each new stage too
   });
 
   it("keeps earning with a manager while away, up to the offline limit", () => {

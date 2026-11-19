@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { defaultSave } from "../src/logic/save";
 import { BUSINESSES } from "../src/data/tycoon";
 import { RUSH_SECONDS } from "../src/data/tycoon";
-import { buyLevels, hireManager, startOpening, tick, OPENING_MINUTES } from "../src/logic/tycoon";
+import { buyLevels, cycleOf, hireManager, startOpening, tick, OPENING_MINUTES } from "../src/logic/tycoon";
 
 const T0 = 1_800_000_000_000;
 
@@ -58,7 +58,7 @@ it("a rush hour still only boosts the cycles that finished during it", () => {
   expect(settled / live).toBeGreaterThan(0.99);
   expect(settled / live).toBeLessThan(1.01);
   // No more than the rush window's worth of extra cycles.
-  expect(settled - plain).toBeLessThanOrEqual((RUSH_SECONDS / 3 + 1) * 25 * 2 + 1e-6); // 3 s cycles at level 25
+  expect(settled - plain).toBeLessThanOrEqual((120 / cycleOf(BUSINESSES[0], 24) + 1) * 25 * 2 + 1e-6); // the 2-minute rush window's cycles at level 24
 });
 
 it("the vault cap still stops earnings after the offline limit", () => {
@@ -74,8 +74,9 @@ it("the vault cap still stops earnings after the offline limit", () => {
 
 it("a part-done cycle carries over instead of being lost or paid early", () => {
   const s = company();
-  tick(s, T0 + 6000 + 2500); // one 6 s cycle done, 2.5 s into the next
-  expect(s.tycoon.runs.coffee).toBe(T0 + 6000);
+  const c = cycleOf(BUSINESSES[0], 24) * 1000;
+  tick(s, T0 + c + c * 0.4); // one cycle done, part of the next
+  expect(s.tycoon.runs.coffee).toBe(T0 + c);
 });
 
 it("a rush hour pays its rushed cycles once in live play (no extra one when it ends)", () => {
