@@ -179,7 +179,7 @@ function swingHold(down) {
   if (down) { R.hold = true; if (!R.teth && !swingAttach(R)) R.grabBuf = 0.25; return; }
   R.hold = false; R.grabBuf = 0;
   if (!R.teth) return;
-  const was = R.teth; R.teth = null; R.lastLet = was;
+  const was = R.teth; R.teth = null; R.lastLet = was; R.snap = { x: was.x, y: was.y, t: 0 };
   // A spring anchor launches you on release.
   if (was.type === "spring") { R.vy = Math.max(R.vy, 0) + 9; R.vx += 3; if (!R.attract) { runBonus("Boing!", 0, R.dist + 2, R.x); sfx.jump(); } }
   // A Perfect: let go moving forward and up, fast.
@@ -270,6 +270,7 @@ function runnerUpdate(dt) {
   // Flow fades slowly; Overdrive runs down.
   if (R.od > 0) { R.od -= dt; R.darkX = Math.min(R.darkX, R.px - 35); if (R.od <= 0) { R.od = 0; R.flow = 0; } } else R.flow = Math.max(0, R.flow - dt * 0.045);
   R.perfT = Math.max(0, R.perfT - dt); R.dashT = Math.max(0, R.dashT - dt); if (R.teth) R.streetT = 0; R.streetT = Math.max(0, (R.streetT || 0) - dt);
+  if (R.snap) { R.snap.t += dt; if (R.snap.t > 0.2) R.snap = null; }
   for (const b of R.bursts) b.t += dt; R.bursts = R.bursts.filter(b => b.t < 0.8);
   const comet = R.power && R.power.kind === "comet";
   // Physics in small steps: gravity, the tether (a pendulum), rooftops, walls and the street.
@@ -285,7 +286,8 @@ function runnerUpdate(dt) {
       if (R.hold && R.tethT > 0.12 && R.L > SWING.LMIN) {
         const L2 = Math.max(SWING.LMIN, R.L - SWING.PULL * h), k = R.L / L2;
         if (d > L2) { const rv = R.vx * dx / d + R.vy * dy / d; R.vx = (R.vx - rv * dx / d) * k + rv * dx / d; R.vy = (R.vy - rv * dy / d) * k + rv * dy / d; }
-        R.L = L2;
+        R.reelAcc = (R.reelAcc || 0) + (R.L - L2); R.L = L2;
+        if (R.reelAcc > 1.4) { R.reelAcc = 0; if (!R.attract) { sfx.reel(Math.max(0, Math.min(1, 1 - (R.L - SWING.LMIN) / 14))); buzz(3); } }
       }
     } else R.vx *= 1 - 0.03 * h;
     for (const w of R.winds) if (R.px > w.x0 && R.px < w.x1) { R.vx += w.f * h; break; }

@@ -232,11 +232,15 @@ const SW2D = (() => {
     // ---------- The tether ----------
     const hx = X(R.px), hy = Y(R.py + 2.1);
     if (R.teth) {
-      const bc = (RUNNER_BOARDS[runnerLook().board] || RUNNER_BOARDS[0]).c, tc = bc === "prism" ? `hsl(${(t * 140) % 360},90%,65%)` : hex(bc), ax = X(R.teth.x), ay = Y(R.teth.y);
-      ctx.strokeStyle = tc; ctx.globalAlpha = 0.3; ctx.lineWidth = 0.45 * s; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ax, ay); ctx.stroke();
+      // The rope shoots out to the anchor (a quick 80 ms), glows brighter and pulses inward while you reel in.
+      const bc = (RUNNER_BOARDS[runnerLook().board] || RUNNER_BOARDS[0]).c, tc = bc === "prism" ? `hsl(${(t * 140) % 360},90%,65%)` : hex(bc), fo = Math.min(1, (R.tethT || 0) / 0.08), ax = hx + (X(R.teth.x) - hx) * fo, ay = hy + (Y(R.teth.y) - hy) * fo;
+      const reeling = R.hold && R.tethT > 0.12 && R.L > SWING.LMIN + 0.05;
+      ctx.strokeStyle = tc; ctx.globalAlpha = reeling ? 0.55 : 0.3; ctx.lineWidth = (reeling ? 0.7 : 0.45) * s; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ax, ay); ctx.stroke();
       ctx.globalAlpha = 1; ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(2, 0.12 * s); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ax, ay); ctx.stroke();
-      ctx.globalCompositeOperation = "lighter"; for (let q = 0; q < 4; q++) { const f = (t * 1.8 + q / 4) % 1; ctx.globalAlpha = Math.sin(f * Math.PI); ctx.drawImage(glow(rgbOf(bc === "prism" ? 0xffffff : bc)), hx + (ax - hx) * f - 0.5 * s, hy + (ay - hy) * f - 0.5 * s, s, s); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      ctx.globalCompositeOperation = "lighter"; for (let q = 0; q < 4; q++) { const f = reeling ? 1 - (t * 3.2 + q / 4) % 1 : (t * 1.8 + q / 4) % 1; ctx.globalAlpha = Math.sin(f * Math.PI); ctx.drawImage(glow(rgbOf(bc === "prism" ? 0xffffff : bc)), hx + (ax - hx) * f - 0.5 * s, hy + (ay - hy) * f - 0.5 * s, s, s); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     }
+    // A rope you let go of whips back to your hand.
+    if (R.snap && !R.teth) { const k = R.snap.t / 0.14; if (k < 1) { const ax = X(R.snap.x), ay = Y(R.snap.y), ex = ax + (hx - ax) * k, ey = ay + (hy - ay) * k; ctx.globalAlpha = 1 - k; ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(1.5, 0.1 * s); ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.globalAlpha = 1; } }
     // ---------- The scarf: a ribbon of light from the shoulders ----------
     const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N = Math.min(40, scf.len);
     { const e = hist.length >= 48 ? hist.pop() : [0, 0]; e[0] = R.px; e[1] = R.py + 1.75; hist.unshift(e); }
