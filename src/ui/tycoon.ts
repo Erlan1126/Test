@@ -385,7 +385,9 @@ export class TycoonUI {
     if (el.hidden) return;
     const at = this.inCity && Date.now() < this.sayUntil ? this.host.bizResident() : null;
     if (!at) { el.hidden = true; return; }
-    el.style.left = `${Math.round(at[0])}px`;
+    // (Kept on screen, even while the camera is still gliding over.)
+    const half = Math.min(105, el.offsetWidth / 2 || 105);
+    el.style.left = `${Math.round(Math.max(half + 8, Math.min(window.innerWidth - half - 8, at[0])))}px`;
     el.style.top = `${Math.round(at[1])}px`;
   }
 
