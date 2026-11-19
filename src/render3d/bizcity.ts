@@ -7,7 +7,7 @@
 import * as THREE from "three";
 import { mergeStatic } from "./world";
 import { buildBlock, type BizBlock } from "./block";
-import { townFx } from "./shaders";
+import { townFx, type TownLook } from "./shaders";
 import { buildModel, buildTerrace, type ModelMats } from "./bizmodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
@@ -122,6 +122,10 @@ export type BizTower = NonNullable<BizCafe["starter"]>;
 export interface BizCity {
   group: THREE.Group;
   update(t: number, night: number, live: BizLive, lots: BizLot[]): void;
+  /** The light and weather the town's shaders follow (sky colors, sunset, rain). */
+  look(l: Partial<TownLook>): void;
+  /** The middle of the beach (for the heat shimmer), or null. */
+  beach(): { x: number; z: number } | null;
   /** How tall lot i's building stands (for its bubble). -1 is the starter tower, -2 the
    *  flower market's spot, -3 the playground's. */
   top(i: number): number;
@@ -144,6 +148,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const fx = townFx(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const leaf = own(std(st.leaf, { roughness: 0.9, flatShading: true }));
   fx.sway(leaf, 0.5, 0.05);
+  fx.glass(winMat);
   const trunk = own(std(st.trunk));
   const mats: ModelMats = {
     c(c, rough = 0.7, metal = 0) {
@@ -174,7 +179,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const lane = own(new THREE.MeshBasicMaterial({ color: 0xffe27a }));
   const zebra = own(new THREE.MeshBasicMaterial({ color: 0xf4f2fa }));
   const water = own(std("#5fc2ff", { roughness: 0.1, metalness: 0.2, emissive: 0x2a6fbf, emissiveIntensity: 0.25 }));
-  fx.ground(verge); fx.ground(grass); fx.ground(grass2); fx.ground(earth, 0.6); fx.water(water, 0.7);
+  fx.ground(verge); fx.ground(grass); fx.ground(grass2); fx.ground(earth, 0.6); fx.water(water);
+  fx.street(road); fx.street(walk); fx.street(pave); fx.street(curb);
   const stone = own(std("#d9d2e6", { roughness: 0.6 }));
   const wood = own(std("#b07a4a", { roughness: 0.8 }));
   const metal = own(std("#4a4f7a", { metalness: 0.4, roughness: 0.5 }));
@@ -380,7 +386,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   jet.userData.dynamic = true;
   g.add(jet);
   for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; planter(pz.x + Math.cos(a) * 2.0, pz.z + Math.sin(a) * 2.0, flowersOn[k % 4]); }
-  // Street lamps on the block corners.
+  // Street lamps on the block corners (their light falls on the ground at night).
+  const lampAt: THREE.Vector3[] = [];
   const pole = metal;
   const lampMat = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 0.2 }));
   lampMat.userData.dynamic = true;
@@ -389,6 +396,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (const [a, b] of [[e, e], [-e, -e]]) {
       add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a, 0.9, z + b), pole);
       add(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a, 1.65, z + b), lampMat);
+      lampAt.push(new THREE.Vector3(x + a, 1.65, z + b));
     }
   }  // ---- The beach and the sea, along the back of the island ----
   // Sand just behind the back streets, then shallow turquoise water and the sea out to the
@@ -413,8 +421,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   seaM.userData.dynamic = true;
   const shallowM = own(std("#7fe0e6", { roughness: 0.1, metalness: 0.1, emissive: 0x1a6a7a, emissiveIntensity: 0.1 }));
   shallowM.userData.dynamic = true;
-  fx.water(seaM); fx.water(shallowM, 0.6); fx.ground(sandM, 0.5); fx.ground(wetSandM, 0.4);
+  fx.water(seaM, true); fx.water(shallowM, true); fx.ground(sandM, 0.5); fx.ground(wetSandM, 0.4);
   let beachLive = (_t: number, _night: number) => {};
+  let raysLive = (_t: number, _k: number) => {};
+  let beachSpot: { x: number; z: number } | null = null;
   if (sandPoly.length >= 3 && seaPoly.length >= 3) {
     slab(sandPoly, 0.08, 0.06, sandM);
     slab(clipZ(sandPoly, zShore + 0.35, true), 0.02, 0.065, wetSandM);
@@ -422,7 +432,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     slab(clipZ(seaPoly, zShore - 0.9, false), 0.02, 0.045, shallowM);
     // Deeper water further out, and glints of light on the waves.
     const deepM = own(std("#1a7fd0", { roughness: 0.06, metalness: 0.2, emissive: 0x062a5a, emissiveIntensity: 0.15 }));
-    fx.water(deepM, 0.8);
+    fx.water(deepM, true);
     slab(clipZ(grow(seaPoly, -0.6), zShore - 3.2, true), 0.02, 0.042, deepM);
     const glintM = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
     glintM.userData.dynamic = true;
@@ -439,6 +449,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         glints.add(new THREE.Mesh(new THREE.BoxGeometry(0.32 + Math.abs(Math.sin(k)) * 0.3, 0.01, 0.04).translate(jx, 0.07, jz), glintM));
       }
     }
+    // (The water shader makes its own glitter now.)
+    glints.visible = false;
     g.add(glints);
     const xs = sandPoly.map(p => p[0]), x0 = Math.min(...xs) + 0.9, x1 = Math.max(...xs) - 0.9;
     const seaXs = (z: number) => { const c = clipZ(clipZ(seaPoly, z + 0.05, true), z - 0.05, false).map(p => p[0]); return c.length ? [Math.min(...c), Math.max(...c)] : [x0, x1]; };
@@ -625,6 +637,31 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     string.userData.dynamic = true;
     string.frustumCulled = false;
     g.add(string);
+    // Soft rays of sunlight slanting down over the beach and the sea (by day, in clear weather).
+    const rayTex = (() => {
+      const c = document.createElement("canvas"); c.width = 32; c.height = 128;
+      const x = c.getContext("2d")!;
+      const gr = x.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, "rgba(255,248,220,0)"); gr.addColorStop(0.35, "rgba(255,248,220,0.55)"); gr.addColorStop(1, "rgba(255,248,220,0)");
+      x.fillStyle = gr; x.fillRect(0, 0, 32, 128);
+      const side = x.createLinearGradient(0, 0, 32, 0);
+      side.addColorStop(0, "rgba(0,0,0,1)"); side.addColorStop(0.5, "rgba(0,0,0,0)"); side.addColorStop(1, "rgba(0,0,0,1)");
+      x.globalCompositeOperation = "destination-out"; x.fillStyle = side; x.fillRect(0, 0, 32, 128);
+      const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx;
+    })();
+    const rays = [0, 1, 2, 3, 4].map(k => {
+      const m = own(new THREE.MeshBasicMaterial({ map: rayTex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+      // Thin shafts out over the water, leaning away from the sun.
+      const rz = zShore - 1.8 - (k % 3) * 0.8, [ra, rb] = seaXs(rz);
+      const r = new THREE.Mesh(new THREE.PlaneGeometry(0.28 + (k % 2) * 0.22, 4.2), m);
+      r.position.set(ra + (rb - ra) * (0.15 + k * 0.17), 2.0, rz);
+      r.rotation.set(0, Math.PI / 4, 0.35);
+      r.userData.dynamic = true;
+      g.add(r);
+      return { r, m, k };
+    });
+    raysLive = (t: number, k: number) => { for (const q of rays) q.m.opacity = k * (0.1 + 0.07 * Math.sin(t * 0.35 + q.k * 1.9)); };
+    beachSpot = { x: x0 + span * 0.5, z: zs };
     const seaLife = (t: number) => {
       for (const q of gulls) {
         const a = t * q.sp + q.k * 2.1;
@@ -685,6 +722,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const playerTower = (parent: THREE.Object3D, sc: BizTower, x: number, z: number, S: number, fh: number, y0: number): number => {
     const put = (geo: THREE.BufferGeometry, m: THREE.Material) => parent.add(new THREE.Mesh(geo, m));
     const glassM = own(std(sc.glass, { roughness: 0.15, metalness: 0.3, emissive: new THREE.Color(sc.lit), emissiveIntensity: 0.05 }));
+    fx.glass(glassM);
     glassM.userData.dynamic = true;
     towerGlass.push(glassM);
     const slabM = mats.c(sc.slab, 0.6);
@@ -934,15 +972,26 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   const tmp = new THREE.Vector3(), dir = new THREE.Vector3();
   let last = 0;
+  let look: Partial<TownLook> = {};
+  const tmpV = new THREE.Vector3();
+  const lampW = lampAt.map(() => new THREE.Vector3());
   return {
     group: g,
     top: i => (i === -1 ? plotTop : i < -1 ? 1.4 : tops[i] ?? 2),
     resident: () => block.resident(),
     spot: id => block.spot(id),
+    look(l) { fx.look(l); look = { ...look, ...l }; },
+    beach: () => beachSpot,
     update(t, night, live) {
       const dt = Math.min(0.1, last ? t - last : 0.016);
       last = t;
       fx.time.value = t;
+      // Lamps and the shoreline in world space (the town moves as the camera changes islands).
+      g.updateWorldMatrix(true, false);
+      lampAt.forEach((v, k) => lampW[k].copy(v).applyMatrix4(g.matrixWorld));
+      fx.lamps(lampW);
+      fx.shore(tmpV.set(0, 0, zShore).applyMatrix4(g.matrixWorld).z);
+      raysLive(t, (1 - (look.night ?? 0)) * (1 - (look.wet ?? 0)) * (1 - (look.dusk ?? 0) * 0.4));
       flockLive(t);
       for (const it of islets) { it.o.position.y = it.y + Math.sin(t * 0.5 + it.k * 2) * 0.12; it.o.rotation.y = Math.sin(t * 0.2 + it.k) * 0.08; }
       winMat.emissiveIntensity = 0.05 + night * 0.9;

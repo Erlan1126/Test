@@ -261,11 +261,18 @@ export class Renderer3D {
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.grade = new ShaderPass({
-      uniforms: { tDiffuse: { value: null }, uVib: { value: 0.14 }, uVig: { value: 0.22 } },
+      uniforms: { tDiffuse: { value: null }, uVib: { value: 0.14 }, uVig: { value: 0.22 }, uT: { value: 0 }, uWarm: { value: 0 }, uShim: { value: new THREE.Vector4() }, uAspect: { value: 0.5 } },
       vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVib; uniform float uVig; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVib; uniform float uVig; uniform float uT; uniform float uWarm; uniform vec4 uShim; uniform float uAspect; varying vec2 vUv;
         void main() {
-          vec4 c = texture2D(tDiffuse, vUv);
+          vec2 uv = vUv;
+          // Heat shimmer: the air over the hot sand wobbles a little.
+          if (uShim.w > 0.0) {
+            vec2 d = (uv - uShim.xy) * vec2(uAspect, 1.0);
+            float m = smoothstep(uShim.z, 0.0, length(d)) * uShim.w;
+            uv += vec2(sin(uv.y * 140.0 + uT * 7.0), cos(uv.x * 110.0 + uT * 5.5)) * 0.0011 * m;
+          }
+          vec4 c = texture2D(tDiffuse, uv);
           // Vibrance: dull colors get a little richer, already-bright ones stay as they are.
           float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
           float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
@@ -273,6 +280,8 @@ export class Renderer3D {
           // A gentle vignette, so the eye goes to the middle of the screen.
           vec2 d = vUv - 0.5;
           c.rgb *= 1.0 - uVig * smoothstep(0.35, 0.85, length(d * vec2(1.0, 0.8)) * 1.25);
+          // Sunset: a warm golden light over everything.
+          c.rgb = mix(c.rgb, c.rgb * vec3(1.12, 0.96, 0.8) + vec3(0.04, 0.015, 0.0), uWarm);
           gl_FragColor = c;
         }`,
     });
@@ -697,7 +706,7 @@ export class Renderer3D {
 
   private updateLights(n: number): void {
     // Over the business district night is softer, so the town stays bright and readable.
-    const nf = this.env.nf * (1 - 0.55 * this.bizK), sunset = clamp((n - 18) / 30, 0, 1) * (1 - nf);
+    const nf = this.env.nf * (1 - 0.55 * this.bizK), sunset = Math.max(clamp((n - 18) / 30, 0, 1) * (1 - nf), this.townDusk * this.bizK * 0.8);
     this.sun.color.setRGB(1, 0.97, 0.9).lerp(this.tmpC.setRGB(1, 0.62, 0.38), sunset).lerp(this.tmpC.setRGB(0.55, 0.65, 1), nf);
     this.sun.intensity = lerp(2.4, 0.95, nf);   // moonlight, not darkness
     const top = this.env.skyTop;
@@ -853,7 +862,38 @@ export class Renderer3D {
     this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;
     this.bizLook.zoom += (this.bizLook.tzoom - this.bizLook.zoom) * e;
     this.biz.group.visible = this.bizK > 0.01;
-    if (this.biz.group.visible) this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
+    if (this.biz.group.visible) {
+      // The town's shaders follow the real sky: its colors, sunset, night and rain.
+      const nf = this.env.nf, wet = this.fxU.uWet.value;
+      this.townDusk = clamp((clockSky() - 8) / 20, 0, 1) * (1 - nf);
+      this.biz.look({
+        night: nf, dusk: this.townDusk, wet,
+        skyTop: this.tmpC.copy(toColor(this.env.skyTop)).convertSRGBToLinear(),
+        skyBot: this.tmpC2.copy(toColor(this.env.skyBot)).convertSRGBToLinear(),
+        sun: this.tmpV.copy(this.sun.position).sub(this.sun.target.position),
+      });
+      this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
+    }
+    this.updateGrade();
+  }
+
+  /** The final color pass: warmer at sunset in the town, and a heat shimmer over the beach
+   *  on a clear sunny day. */
+  private townDusk = 0;
+  private readonly tmpC2 = new THREE.Color();
+  private readonly tmpV = new THREE.Vector3();
+  private readonly tmpV2 = new THREE.Vector3();
+  private updateGrade(): void {
+    const u = this.grade.uniforms, k = this.bizK;
+    u.uT.value = this.env.time;
+    u.uWarm.value = this.townDusk * k * 0.5;
+    const bs = this.biz?.beach(), clear = this.weather.kind === "clear" ? 1 : 0;
+    const heat = k * (1 - this.env.nf) * (1 - this.townDusk) * clear * (this.calm ? 0 : 1);
+    if (!bs || heat < 0.01) { u.uShim.value.w = 0; return; }
+    const v = this.tmpV.set(BIZ_SLOT.x + bs.x, BIZ_SLOT.y + 0.4, BIZ_SLOT.z + bs.z).project(this.cam);
+    const r = this.tmpV2.set(BIZ_SLOT.x + bs.x + 3, BIZ_SLOT.y + 0.4, BIZ_SLOT.z + bs.z).project(this.cam);
+    u.uShim.value.set((v.x + 1) / 2, (v.y + 1) / 2, Math.max(0.05, Math.abs(r.x - v.x) / 2), heat);
+    u.uAspect.value = this.view.W / Math.max(1, this.view.H);
   }
 
   /** Where a lot's building shows on screen: its base and its top (page px). */
