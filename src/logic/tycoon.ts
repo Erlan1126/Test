@@ -542,6 +542,17 @@ export function goldenArrives(s: SaveData, now = Date.now()): boolean {
   return true;
 }
 /** What a golden customer tips (and pays it). */
+/** A happy customer's little tip (tapping their reaction bubble in the town): a few seconds
+ *  of earnings, never less than a tenth of the cheapest next level. */
+export function reactionTip(s: SaveData, now = Date.now()): number {
+  const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
+  if (!owned.length) return 0;
+  const cheapest = Math.min(...owned.map(x => costOf(x, levelOf(s, x.id), 1)));
+  const n = Math.max(perSecond(s, now, false) * 5, cheapest * 0.1, 1) * tipMult(s);
+  earn(s, n);
+  return n;
+}
+
 export function goldenTip(s: SaveData, now = Date.now()): number {
   const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
   if (!owned.length) return 0;

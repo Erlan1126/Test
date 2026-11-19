@@ -15,7 +15,7 @@ import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
   payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
-  bizMult, workerBonus,
+  bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
 import type { Sound } from "../sound";
@@ -303,6 +303,37 @@ export class TycoonUI {
   private afterArrival: (() => void) | null = null;
   private saleSounded = false;
   private coffeeSold = 0;
+  private reactAt = Date.now() + 8000;
+
+  /** Now and then a happy customer's reaction pops up over a business: tap it for a tip. */
+  private reactions(now: number): void {
+    if (!this.inCity || now < this.reactAt || document.body.classList.contains("tabs-open") || openModalEl() || this.frameUntil > now) return;
+    this.reactAt = now + 6000 + Math.random() * 7000;
+    const tags = [...$("tcy-labels").querySelectorAll<HTMLElement>(".tag[data-i]:not(.lease):not(.proj)")].filter(tg => tg.style.visibility !== "hidden" && Number(tg.dataset.i) >= 0);
+    if (!tags.length) return;
+    const tag = tags[Math.floor(Math.random() * tags.length)], r = tag.getBoundingClientRect();
+    if (r.top < 90 || r.bottom > window.innerHeight - 200) return;
+    let layer = document.getElementById("tcy-react");
+    if (!layer) { layer = document.createElement("div"); layer.id = "tcy-react"; layer.className = "tcy-react"; $("tycity").appendChild(layer); }
+    const faces = ["❤️", "😋", "⭐", "😍", "👍", "🎉", "😄"];
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "react-bub";
+    b.textContent = faces[Math.floor(Math.random() * faces.length)];
+    b.setAttribute("aria-label", t("A happy customer: tap for a tip"));
+    b.style.left = `${Math.round(r.left + r.width / 2 + (Math.random() - 0.5) * 30)}px`;
+    b.style.top = `${Math.round(r.top - 6)}px`;
+    b.addEventListener("click", e => {
+      e.stopPropagation();
+      const n = reactionTip(this.save, Date.now());
+      if (n > 0) { this.host.sound.coins(); popCoin(layer!, coins(n)); this.host.persist(); }
+      const pop = layer!.lastElementChild as HTMLElement | null;
+      if (pop && pop !== b) { pop.style.left = b.style.left; pop.style.top = b.style.top; }
+      b.remove();
+    }, { once: true });
+    layer.appendChild(b);
+    setTimeout(() => b.remove(), 4200);
+  }
   private earnAt = 0;
   private stage(stage: BizBlock["stage"], at = Date.now()): void { this.story = { ...this.story, stage, at }; }
   private later(ms: number, fn: () => void): void { this.storyTimers.push(window.setTimeout(() => { if (this.inCity) fn(); }, ms)); }
@@ -566,6 +597,7 @@ export class TycoonUI {
     $("ty-coins").textContent = coins(this.shownCoins);
     $("tcy-coins").textContent = coins(this.shownCoins);
     if (!$("earnings").hidden && now - this.earnAt > 900) { this.earnAt = now; this.renderEarnings(); }
+    this.reactions(now);
     for (const b of BUSINESSES) {
       if (levelOf(s, b.id) === 0) continue;
       const id = b.id, p = progressOf(s, id, now);

@@ -3747,3 +3747,15 @@ body.tabs-open #tycoon .ty-panel { padding-bottom: 24px; }
 #over .over-title, #over h2 { padding-right: 40px; }
 /* Game hint and home tagline wrap evenly. */
 .hint, #hint, .tagline, .home-tag { text-wrap: balance; }
+
+/* Happy customers' reactions over the businesses: tap for a tip. */
+.tcy-react { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.tcy-react .react-bub { position: absolute; pointer-events: auto; transform: translate(-50%, -100%); width: 44px; height: 44px; border: 0; border-radius: 50%; padding: 0;
+  font-size: 22px; line-height: 44px; background: #fff; box-shadow: 0 6px 14px rgba(40, 20, 100, 0.3); cursor: pointer;
+  animation: react-in 0.35s cubic-bezier(.3, 1.6, .5, 1), react-float 4.2s ease-out forwards; }
+.tcy-react .react-bub::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.tcy-react .coin-pop { position: absolute; transform: translate(-50%, -120%); }
+@keyframes react-in { from { transform: translate(-50%, -100%) scale(0.2); } to { transform: translate(-50%, -100%) scale(1); } }
+@keyframes react-float { 0%, 70% { opacity: 1; margin-top: 0; } 100% { opacity: 0; margin-top: -40px; } }
+@media (prefers-reduced-motion: reduce) { .tcy-react .react-bub { animation: none; } }
+body.tabs-open .tcy-react { display: none; }

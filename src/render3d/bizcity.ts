@@ -1177,6 +1177,73 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   const walkers = Array.from({ length: 22 }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: k / 22, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
   const crowd = Array.from({ length: 10 }, (_, k) => { const p = makePerson(shirts[(k + 3) % shirts.length]); p.visible = false; life.add(p); return p; });
+  // Shoppers at every open business (the café has its own, in block.ts): they walk in from the
+  // sidewalk, spend a moment inside, and come out with a bag in the shop's colors. Bigger
+  // businesses get more of them.
+  const shopLots = lots.map((l, i) => ({ l, i })).filter(({ l, i }) => l.state === "open" && l.id !== "coffee" && i < CELLS.length);
+  const yAxis = new THREE.Vector3(0, 1, 0);
+  const lotPoint = (i: number, lx: number, lz: number, out: THREE.Vector3) => {
+    const { x, z, a } = lotPos(i);
+    return out.set(lx, 0, lz).applyAxisAngle(yAxis, a).add(tmpP.set(x, 0.2, z));
+  };
+  const tmpP = new THREE.Vector3();
+  type Shopper = { p: THREE.Group; bag: THREE.Mesh; lot: number; st: 0 | 1 | 2 | 3; t: number; dur: number; from: THREE.Vector3; to: THREE.Vector3 };
+  const bagGeo = new THREE.BoxGeometry(0.12, 0.14, 0.06).translate(0.14, 0.24, 0);
+  const shoppers: Shopper[] = Array.from({ length: Math.min(18, shopLots.length * 4) }, (_, k) => {
+    const p = makePerson(shirts[(k + 5) % shirts.length]);
+    const bag = new THREE.Mesh(bagGeo, mats.c("#ffffff"));
+    bag.visible = false;
+    p.add(bag);
+    p.visible = false;
+    life.add(p);
+    return { p, bag, lot: -1, st: 0, t: -k * 0.9, dur: 1, from: new THREE.Vector3(), to: new THREE.Vector3() };
+  });
+  /** Picks a business for a shopper: busier (bigger) businesses more often. */
+  const pickLot = (): { l: BizLot; i: number } | null => {
+    if (!shopLots.length) return null;
+    const w = shopLots.map(({ l }) => 1 + l.s * 1.5), sum = w.reduce((a, b) => a + b, 0);
+    let r = Math.random() * sum;
+    for (let k = 0; k < shopLots.length; k++) { r -= w[k]; if (r <= 0) return shopLots[k]; }
+    return shopLots[0];
+  };
+  const shopperLive = (dt: number) => {
+    for (const sh of shoppers) {
+      sh.t += dt;
+      if (sh.st === 0) {
+        // Waiting to start: pick a shop, walk in from the sidewalk.
+        if (sh.t < 0) continue;
+        const pick = pickLot();
+        if (!pick) continue;
+        sh.lot = pick.i;
+        const side = Math.random() < 0.5 ? -1 : 1;
+        lotPoint(pick.i, side * (1.2 + Math.random() * 0.8), 2.55, sh.from);
+        lotPoint(pick.i, (Math.random() - 0.5) * 0.6, 1.15, sh.to);
+        (sh.bag.material as THREE.MeshStandardMaterial) = mats.c(pick.l.c2, 0.6);
+        sh.bag.visible = false;
+        sh.st = 1; sh.t = 0; sh.dur = sh.from.distanceTo(sh.to) / 0.9;
+        sh.p.visible = true;
+      }
+      const k = Math.min(1, sh.t / sh.dur);
+      if (sh.st === 1 || sh.st === 3) {
+        sh.p.position.lerpVectors(sh.from, sh.to, k);
+        sh.p.position.y += Math.abs(Math.sin(sh.t * 9)) * 0.04;
+        sh.p.rotation.y = Math.atan2(sh.to.x - sh.from.x, sh.to.z - sh.from.z);
+        // Fade in at the start of the trip in, out at the end of the trip away.
+        const sc = sh.st === 1 ? Math.min(1, k * 5) : Math.min(1, (1 - k) * 5);
+        sh.p.scale.setScalar(Math.max(0.05, sc));
+        if (k >= 1) {
+          if (sh.st === 1) { sh.st = 2; sh.t = 0; sh.dur = 1.2 + Math.random() * 2.5; sh.p.visible = false; }
+          else { sh.st = 0; sh.t = -(0.5 + Math.random() * 3); sh.p.visible = false; }
+        }
+      } else if (sh.st === 2 && k >= 1) {
+        // Out again, with a bag, off along the sidewalk.
+        sh.from.copy(sh.to);
+        lotPoint(sh.lot, (Math.random() < 0.5 ? -1 : 1) * (2.0 + Math.random() * 0.8), 2.6, sh.to);
+        sh.st = 3; sh.t = 0; sh.dur = sh.from.distanceTo(sh.to) / 0.9;
+        sh.bag.visible = true; sh.p.visible = true;
+      }
+    }
+  };
   // The café block: the neighbor, the cart's customers, the projects (block.ts).
   const ci = lots.findIndex(l => l.id === "coffee");
   const block = buildBlock({
@@ -1307,6 +1374,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         if (k >= 0 && k < 1) { const b = Math.sin(k * Math.PI) * (1 - k); lg.scale.set(1 - b * 0.06, 1 + b * 0.14, 1 - b * 0.06); }
         else lg.scale.set(1, 1, 1);
       }
+      shopperLive(dt);
       // People stroll round the town; cars drive the outer street.
       for (const w of walkers) {
         w.u = (w.u + w.v * dt + 1) % 1;
