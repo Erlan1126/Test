@@ -14,6 +14,119 @@ A one-tap skyscraper building game made for phones. Your tower starts on a small
 
 Sound effects are generated in the browser (there's a mute button). Fonts load from Google Fonts, with system fonts as a fallback when offline.
 
+## Echo 2.0: the look and the flow
+
+Sleek, dark and minimal: one modern typeface (Inter), deep dark tones, frosted glass, crisp white type and quiet colour accents, with a real icon set instead of emoji.
+
+- **Home** is the live run behind a small ECHO wordmark, your lights and level, Looks and Settings at the top; your best score big in the middle; **Play** (or tap anywhere) starts the run seamlessly: the menu fades away and Lumi carries on in the same cave. Daily run and Hard sit under it.
+- **One tab bar**: Home, City, Shop (upgrades), Friends, Today. Lists open as **sheets** that slide up from the bottom; tap outside to close.
+- **Today** holds the daily gift, the daily missions, the **season** (a free 30-tier reward track that starts again every month; every run's experience moves it on and each tier pays lights at once, with bigger rewards at tiers 10, 20 and 30), the run missions and the awards.
+- **In a run**: a big score at the top, your lights and multiplier under it, dots for Lumi's lights, messages as small pills, a quiet world label, and the combo as a ring filling around Lumi with the count above it. The cave is darker, with crisp edges and less haze.
+- **When a run ends**: one card slides up with the score counting, best, metres, lights and best combo, the level bar, today's progress, and Play again in the middle (Home and Share on either side).
+- **Friends' abilities**: playing as a friend gives an ability button (a four-second Magnet, Comet, Lantern or Choir), ready again after 25 s.
+
+## Lumen Rush
+
+**The city has blacked out. You are a being of light, swinging across the skyline on a tether of light.**
+
+- **Aim you can see:** the anchor you'll grab always wears a bright ring with a dashed line from you to it (the nearest reachable anchor ahead). **Hold anywhere** to grab exactly that one; if it's out of reach the ring is grey and a press says why ("Too far" / "Below you"). Keep holding and you **reel in**: the rope shortens and, like a skater pulling in their arms, you spin faster. **Let go** to fling yourself. Let go moving forward and up, fast, for a **Perfect** (a boost, +2 lights, a spin). The first run teaches both with slow motion.
+- Every building you pass **lights back up** (a sweep of light climbs its facade, its roof edge glows, its street lamp comes on) and the skyline behind wakes with it. A **wave of darkness** follows you from behind; if it catches you it costs a heart.
+- You can **land on rooftops** and run along them. The **street**, building **walls**, **live wires** between rooftops and patrolling **drones** cost a heart. Gold lights hang along the arcs between anchors.
+- The night brightens toward dawn as you go. Districts have their own buildings and anchors: Downtown (hover-lamps and roof masts), Market Street (lanterns strung between rooftops), Waterfront (the harbour below, balloons), Neon Arcade (neon hoops, signs and screens everywhere) and Park Avenue (giant trees lit with fairy lights, balloons).
+- Power-ups: **Magnet**, **Shield**, **Comet** (blaze straight across the sky). Events: **Light shower** and **The dark surges**. Fireworks every 500 m.
+- **Locker:** forms of light with perks (Aurora; Ember: longer reach; Tide: extra heart; Volt: stronger Perfects; Nova: combo lights), glow colours, scarves (ribbon, long silk, comet tail, twin, ember, prism) and tether colours. **Ranks:** records, top ten runs, today's daily best and a ghost of your best daily run. **Letter hunt:** find L-U-M-E-N in the sky in one day.
+- **Honest physics:** just gravity and the rope (no hidden pushes); the rope starts at your real distance and reeling in is the only way to gain speed on a swing; the camera follows calmly; a wide Perfect window; hitting a wall turns into a **wall run** up and over; the first street touch is a free bounce (a second one soon after costs a heart); the darkness starts slow and ramps up after 150 m.
+- **Story and the Heart of the Dark:** a short line of story as each district begins (who put the city out, and why it's coming back). Near the end of every district the **Heart of the Dark** rides the darkness after you: grab its three violet shards to break it (+60 lights, fireworks).
+- **Weekly events:** Golden Week (double lights), Gold Rush Week (gold anchors everywhere), Dark Week (faster dark, ×1.5 score), Overdrive Week (Flow fills twice as fast), Spring Week (spring anchors everywhere).
+- **Stages** (echo/stages.js): Play starts your next stage straight away. 60 short courses (about 15–50 s, longer and harder as you go) with a glowing finish gate, 1–3 stars (★ finish · ★★ catch half the lights · ★★★ catch 80% without a hit), an instant retry and a stage map. Every stage is the same course every time, so you can learn it; a high **sky route** of gold anchors and bonus lights rewards daring play.
+- **Ghosts and challenges:** your best run on each stage races you as a see-through ghost; **Share** sends a picture of your best moment (a Perfect chain or the finish) and a link that lets a friend race your ghost on the same stage (Play turns into “Race your friend”).
+- **Difficulty that climbs:** wires from stage 2, drones and crumbling anchors from 3, drifting anchors from 4, the street costs a heart from 5; the grab reach shortens, the Perfect window narrows and the darkness speeds up as you go; ★★★ also needs a par time. Every 10th stage is a **boss stage** (the Heart of the Dark from the start, 3 shards to break it). New elements get a one-line intro the first time.
+- **Performance on phones:** no WebGL at all in Smooth mode (the old story view isn't created on phones), a 2D resolution that adapts to the phone's frame rate (1.5× down to 1×), fewer per-frame allocations, and **Settings → Show FPS** to see the real frame rate.
+- **Boost rings** on the flight paths (through one: speed, +3 lights, Flow); **graded releases** (a near-miss release is a "Good": +1 light and a small push); **wind stages** from stage 7 (gusts push you sideways, shown as streaks); afterimages on dashes, Perfects and rings.
+- **Feel and polish:** the last heart shatters the figure into sparks with a moment of slow motion; a quick camera punch on rings and Perfects; boss stages and Overdrive play the full, intense soundtrack; the first lesson shows a ring that fills while you hold. Smooth mode draws on an opaque canvas (cheaper for Safari to composite).
+- **Star rewards:** stars from stages unlock looks for free (6★ Long silk scarf, 12★ Mint glow, 20★ Gold tether, 30★ Ember…); the stage map shows the next reward.
+- **Daily stage:** one course for everyone each day, with your ghost and the streak. **Endless** is still there as its own mode. Nothing pops up over Play at launch.
+- **Smooth mode** (echo/swing2d.js; default on phones, Settings → Smooth mode): the whole swing drawn in fast 2D, no WebGL. Buildings, glows and smoke are pre-drawn images; the sky and far skyline are one pre-drawn strip (dark and lit versions, lit left of the figure), so a frame is mostly cheap image copies at a steady 60 fps. A larger, clearer figure of light.
+- **Feel:** a trajectory preview while you swing shows where you'd fly if you let go now (gold when it's a Perfect); chained Perfects pay more and chime higher (Perfect ×3! +4); a whoosh on release that matches your speed; a haptic tick on every grab.
+- **Performance (phones):** no live background blur behind panels (solid glass instead), no edge smoothing on high-density screens, lower resolution caps (1.5×, 1× on light graphics) with faster adaptive resolution, smaller glows and nothing drawn when invisible (clouds at night, rays, aurora, the dark when off screen), plain materials, the old game's canvas loop sleeps, the run pauses itself when you leave the app and stops redrawing while paused. Also: no reflection maps, no per-frame scene scans, billboards repaint 5×/s only when on screen, fireworks update only while lit, fewer draw calls, and **adaptive resolution** (drops when frames are slow, rises when there's room).
+- **Flow and Overdrive:** Perfects, lights and gold anchors fill the Flow bar (it fades slowly, a hit halves it). Full Flow sets off **Overdrive** for 6 s: double lights, lights fly to you, a golden glow, and the dark falls back.
+- **Air dash:** swipe forward in mid-air (or press →) for a burst of speed; one charge, back when you grab an anchor.
+- **Special anchors:** **gold** (+5 lights and Flow), **crumbling** (orange; breaks if you hang on more than about a second), **drifting** (slides side to side) and **spring** (green; launches you upward on release).
+- **Restore the city:** every relit building counts toward the whole city across all runs (shown on the home screen); every 150 pays 50 lights. **Light capsules** (for 600 m or 10 Perfects in a run) open in the Locker into lights or a random look.
+- **Visuals:** windows flick on in steps with a burst ring, LED strips and blinking roof beacons; energy pulses run along the tether; a flash, ring and slow motion on every Perfect; shooting stars and an aurora at night, sun rays at dawn; drifting tendrils and violet lightning at the edge of the dark.
+- Generated electronic soundtrack that builds with your speed; **Settings → Full graphics** off for slower phones. Code: echo/swing.js (logic and the Three.js view) on top of the run shell in echo/run.js.
+## The city (new look)
+
+Echo no longer happens in a dark cave. Lumi climbs between glass skyscrapers, and the time of day changes as you go up: **Morning Plaza** and **Glass Heights** in bright daylight, **Golden Hour**, **Pink Dusk**, then neon night on **Neon Avenue**, **Rain Lights** and **Midnight Gold**, and finally the **Starline**, above the rooftops under the stars and an aurora. Towers have rows of windows that light up after dark, neon strips and signs; a skyline and clouds drift behind.
+
+Hazards have city versions: drones instead of rocks, laser gates, steam vents, falling glass panes, gusts of wind, balloons to ride, swinging cable cars and rooftop searchlights. The run is drawn in **real 3D** (echo/run3d.js, Three.js): glass towers with lit windows, neon strips and signs, a skyline and clouds, glossy toy-like hazards and bloom at night. The game logic is unchanged; phones without WebGL fall back to the flat 2D city. You play as **Bip**, a little robot with a screen face and a jet. The enemies are **glitches**, flickering knots of broken pixels: tap to send out a **pulse** that fixes them (it used to be a song). The chase event is now a glitch wave, and the dark event is a power cut. The boss at the start of each new district is a **Blackout**, a living thundercloud: sing when its eyes turn gold to clear it.
+
+## Play: the endless run
+
+Echo's main mode is now a calm, beautiful endless run (`echo/run.js`), in the spirit of Alto's Adventure with Subway Surfers' "one more run" hook. **Play** on the title starts it (after the opening film, the first time).
+
+- **Glide home.** Lumi glides up an endless winding cave toward the surface. Slide a finger anywhere to steer (arrow keys on a keyboard); the cave slowly speeds up and narrows.
+- **Lights make music.** Trails of golden lights play the old lullaby, a note for each light you gather.
+- **Sing shadows back into light.** Hushlings drift in the cave. Tap to sing: every shadow the song's ring reaches turns back into light (three bonus lights each). If one touches you first, Lumi's light dims; after three touches the run rests. Rocks just bump you aside; a ✦ gives a light back.
+- **New worlds.** Every 350 m the cave becomes the next world (Moonlit Grotto, Mossy Hollow, Amethyst Deep…), its colours blending in, with its name as you arrive.
+- **Score and missions.** Score is distance plus lights, times your multiplier. Three missions at a time (gather 40 lights in one run, reach 400 m, sing 6 shadows free, reach 300 m untouched, gather whole light trails, reach world 2); each one done raises the multiplier (up to ×10) and is replaced by a harder one. Your best score shows under Play.
+- **Upgrades and the city.** The lights you gather are glow: spend it after a run on a Magnet (lights drift to you), a Bigger song (reaches further, recharges faster) and a Brighter heart (an extra light to start with). Every fifteen lights gathered in runs also light a window in the Singer's city.
+
+**Playing well.** Gathering lights without missing one builds a combo: every ten in a row makes each light worth one more, and the melody climbs; leaving one behind breaks it. Skimming close past a rock or a shadow without touching it gives a "Close!" bonus and a burst of speed. Freeing three shadows with one song is a Chorus (+10). Swipe up (or ↑ / W) to dash: a burst of speed straight through rocks, but it's loud, so shadows nearby turn your way.
+
+**Every world plays differently.** Mossy Hollow has currents that push you sideways; Amethyst Deep, crystal gates that open and close; Ember Caverns, lava bursting from the walls; Frost Tunnels, icicles that fall toward you (a ring on your line shows where); Coral Depths, bubbles to ride for a burst of speed; Golden Mines, lanterns swinging across the passage; Starlight Abyss, a Lurker's eye sweeping a beam you must not stay in.
+
+**Big moments**, one every few hundred metres: **darkness falls** (only Lumi's light and your songs show the cave), a **rush** (a fast current packed with lights), or **the Hunter** (a vast shadow rises behind you for sixteen seconds; slowing down or bumping lets it close in, dashing gets you away).
+
+**Power-ups:** Comet (unstoppable and fast, smashing rocks and shadows), Magnet (lights fly to you), Lantern (double lights, and no darkness), Choir (Lumi sings by itself).
+
+**Lost friends.** Once a run, past 300 m, a lost little light may be floating somewhere, calling for help. Reach it and it moves into the Singer's city (twelve to find); tap them there to hear what they say.
+
+**Daily run.** The same cave for everyone today (seeded by the date), with today's best shown on the title.
+
+**Learning, levels and second chances.** The first run teaches by doing: slide to steer; at the first shadow time slows until you tap to sing; then swipe up to dash. When Lumi's light runs out you can **keep going** once or twice, spending lights (25, then 50) within five seconds. Every run earns experience (a tenth of the score) toward **Lumi's level**, and levels unlock **trail colours** for Lumi's comet tail (Aurora, Ember, Rose, Gold, Violet, Rainbow); tap the trail on the results to wear another. The score counts up at the end, a new best glows, and the music fills in as a combo grows and turns tense while the Hunter is close. Messages show one at a time in the middle of the screen; the first 60 m have no shadows and the world hazards start at 150 m.
+
+**A real challenge.** The cave speeds up much faster now (to about twice the starting speed) and narrows further; spawns come closer together; deeper in, shadows hunt harder and hazards come with company. At the start of every new world a **Warden** blocks the way: a vast shadow that throws fans of shadow bolts; every few seconds it stops to listen, its eyes turning gold, and swoops close: sing then, three to five times, to calm it (+50 ✦). Songs also break bolts; after 35 s it lets you pass. Past 200 m the cave sometimes **forks** around a great rock: one side is safe, the other is lined with lights and shadows. **Hard mode** (on the title): one light of your own, no continues, double score.
+
+**Every day.** A seven-day **gift calendar** (20 to 200 lights; miss a day and it starts again), **three daily missions** that are the same for everyone (+30 each, +50 for all three), a **streak** of days played (each day adds 5% to the lights you bring home, up to 50%), and a **weekly event** (Golden Week: lights count double; Frost Week: icicles everywhere; Shadow Week: more shadows, ×1.5 score; Rush Week: every big moment is a rush). The Today button shows it all, and opens by itself on the first visit of the day.
+
+**The long game** (in the city): **Rebuild** the Singer's city with lights, place by place (street lamps, the bakery, the fountain, the old houses, the glow garden, the stone bridge, the music hall, the Singer's tower), each one lighting up in the picture. **Friends** you've found can be played as, each with a gift (Nim starts with a Magnet, Bo rides bubbles twice as far, Soot can't be hurt by lava, Vela sees through the dark, Dot is small, Hollis brings an extra light…). Fourteen **awards** pay lights.
+
+**Friends.** After a run, **Share · challenge a friend** makes a score card and a link; whoever opens it plays the very same cave (the same seed) and sees the score to beat.
+
+**The menu** is a live run: behind the name, Lumi glides up the cave by itself, following the light trails and singing at shadows; tap to make it sing. Play, the Daily run, the City, Looks (now unlocked by lights gathered in runs) and Settings. The story films and handmade caves are no longer in the menus.
+
+**How it looks and moves.** Steering is springy, with momentum: Lumi leans into its turns, stretches as it speeds, its antenna swaying the other way, and leaves a smooth tapering comet tail; its eyes squint happily as it gathers a light. The camera drifts a little after Lumi, pulls back as the run speeds up, and shakes when you're hit or bump a rock. The walls are layered dark rock with broken edges and fainter ledges behind them, their edges glowing in the world's colour and brighter where Lumi's light falls; crystals and glow-worms grow on them. Behind, three layers of hanging and rising spires drift at different speeds, with fog bands and light shafts from far above, and dark rock rushes past close to the eye. Each world has its own air: motes, pollen, sparkles, rising embers, snow, bubbles, gold dust, stars. Lights are little turning stars joined by golden threads, streaking into Lumi when gathered; shadows are drifting knots of smoke with eyes that watch you and drift your way; songs roll out as a bright ring with echoes and sparkles, and freed shadows burst into gold with a "+3 ✦".
+
+
+
+## The story is told as short films
+
+The story is no longer pages of text. It's told in short animated films (`echo/movie.js`), each scene painted and moving, with a single line of text under it, music and sound, tap for the next scene or Skip:
+
+- **The opening** (before cave 1, about a minute): a city made of light beneath the world; the great Singer singing its little lights to sleep; its littlest light, Lumi; the flood that swept Lumi away; the Singer searching until its voice broke and its light went out; its tears becoming Hushlings; Lumi waking alone in the dark, singing its first echo; and the goal: find the lost lights, find your way home.
+- **Act two** (before cave 11): the city glowing again, the Hushlings still lost, a Lurker's eye opening, and bringing every last light home.
+- **The end of each act**: Lumi singing the Singer back to itself; then the lost lights rising home, the whole city lit, and Lumi with the Singer.
+
+The opening can be watched again from the city (Story).
+
+In the caves, Lumi leaves a trail of light and looks where it swims, hunting Hushlings trail dark smoke, and each cave opens and closes with a circle of light.
+
+## The Singer's city (the hub)
+
+Play now goes home first, to the Singer's ruined city in the dark (`echo/city.js`). Every light you bring out of a cave comes home and lights a street lamp or a window, one by one, with a chime, the next time you return; the most you've ever found in each cave counts. Each cleared cave sends a neighbour home: twenty little lights with names (Pip, Moss, Tilly, Bram…, the Singer, Little Hush) who bob along the street; tap one to hear what it says. Clearing act one lights the Singer's tower; clearing act two opens the sky above the city. "Into the dark" goes to the next cave; Map and Title are there too.
+
+**Songs** (in the city): glow earned in the caves upgrades what Lumi has learned. Dash recharges faster (three steps), the pebble pouch holds more (two), Hum shows further (two), the Shield takes an extra touch (one).
+
+## Lumi's songs and the lights that follow
+
+- **Dash** (from cave 4; the ➶ button, or Q): a burst of speed the way Lumi is swimming. It makes a little noise (heard about 3.5 tiles away).
+- **Hum** (from cave 8): while sneaking, a tap is a hum instead of a song. It shows only the walls close by, and only a Hushling within a tile and a half hears it.
+- **Shield** (from cave 11, and in the daily cave): the first touch in a cave breaks the shield (a ring around Lumi) instead of costing light.
+- **Lights follow you home.** A light you find swims along behind Lumi. Each one makes Lumi's light bigger, which helps you see and helps Lurkers see you. When something catches you, the last one takes fright and flies back to where you found it.
+- **The art:** rock in silhouette, nearly black, its edges catching a glow in each world's colour wherever light has found it, inside a haze tinted the same way.
+- **A bigger cave:** The Deep Maze (cave 9) is now 17 tiles wide with three ways up: the quick middle lane is guarded twice, the left is watched by a Lurker, the right has a Hushling in an alcove.
+
 ## Echo, back to its core
 
 Echo has been cut back to its core: **twenty handmade caves in two acts** (`CORE_LEVELS` in `echo/levels.js`), each built around one idea, played with a few simple rules.

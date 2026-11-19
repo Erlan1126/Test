@@ -21,7 +21,8 @@ function loadLevel(i, demo = false) {
     glow: new Float32Array(n),
     seen: new Uint8Array(n),
     mem: new Float32Array(n),   // how well Lumi still remembers each tile; fades in a few seconds
-    stones: [], pebbles: [], track: [], trackT: 0, memory: null, pebblesLeft: CORE && (i >= PEBBLE_FROM || i < 0) ? 3 : 0, aiming: false, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
+    stones: [], pebbles: [], track: [], trackT: 0, memory: null, pebblesLeft: CORE && (i >= PEBBLE_FROM || i < 0) ? 3 + upg("pebble") : 0, aiming: false,
+    followers: [], dashT: 0, dashCd: 0, shields: CORE && (i >= SHIELD_FROM || i < 0) ? 1 + upg("shield") : 0, noisy: 0, noiseT: 0, heard: 0, hearRings: [], slowmo: 0, sneaking: false, caughtFlash: 0,
     lights: [], crystals: [], critters: [], moths: [], gloom: [], runes: [], gate: null, baby: null,
     goal: def.goal || "explore", dark: !!def.dark && !save.settings.glow, songLimit: def.songs || 0,
   // Nothing shows until Lumi's light or a song reaches it, unless Guiding glow is on.
@@ -230,9 +231,10 @@ function ping(long = false) {
   if (!L.demo) L.pings++;
   // Dark caves need more songs, so each costs less there; a long song costs more.
   if (L.useEnergy && !L.demo && !CORE) L.energy = Math.max(0.5, L.energy - (L.dark ? 1.2 : 2) * (long ? 1.6 : 1));
-  const range = long ? LONG_RANGE : WAVE_RANGE;
+  const hum = CORE && !long && L.sneaking && (levelIndex >= HUM_FROM || levelIndex < 0) && !L.demo;
+  const range = hum ? HUM_RANGE + upg("hum") * 0.8 : long ? LONG_RANGE : WAVE_RANGE;
   L.waves.push({ dist: soundMap(L.lumi.x, L.lumi.y, range + 1), r: 0, prev: -1, range, speed: long ? LONG_SPEED : WAVE_SPEED, echoed: new Set(), long });
-  L.lumi.sing = long ? 0.9 : 0.45;
+  L.lumi.sing = long ? 0.9 : hum ? 0.12 : 0.45;
   // Hushlings hear a song the moment it's sung, through rock, and come at once.
   // Relight the city: a song close to a dark street lamp sets it burning again.
   for (const lp of L.lamps) {
@@ -257,6 +259,7 @@ function ping(long = false) {
   }
   // In the last cave a long song, close by, sings a lost Hushling home (even one that's coming for you).
   if (CORE && long && L.def.healAll) for (const g of L.gloom) if (!g.lurker && !g.saving && g.gone <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 2.4) { g.saving = 0.001; g.hunt = 0; }
+  if (hum) { hear(L.lumi.x, L.lumi.y, 1.5); L.hummed = true; sfx.hum(); buzz(4); updateHud(); return; }
   if (CORE) hear(L.lumi.x, L.lumi.y, long ? 8 : 4.5);
   else if (!L.demo) for (const g of L.gloom) {
     if (g.final || g.gone > 0 || g.calm > 0 || Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) > (g.big ? 7 : hushEar()) * (long ? 1.25 : 1)) continue;
@@ -278,7 +281,15 @@ function ping(long = false) {
 const gloomSpeed = g => (g.big ? 1.6 : 1.9 + depthOf(levelIndex) * 0.9) * (g.variant === "sleepy" ? 0.75 : g.variant === "tiny" ? 1.12 : 1);
 const SNEAK = 0.5;
 // How far Lumi's light reaches for a Lurker's eye.
-const lumiLightR = () => (L.sneaking ? 1.6 : 3.2) + L.lumi.sing * 3;
+const lumiLightR = () => (L.sneaking ? 1.6 : 3.2) + L.lumi.sing * 3 + (L.followers ? L.followers.length * 0.45 : 0);
+// Caught: the last light following Lumi takes fright and flies back to where it was found.
+function loseFollower() {
+  const f = L.followers.pop();
+  if (!f) return;
+  f.o.got = false; L.got--; updateHud();
+  for (let k = 0; k < 10; k++) { const a = Math.random() * 6.28; spark(f.x, f.y, Math.cos(a), Math.sin(a), 0.6, "gold", 0.08); }
+  setHint("A light took fright and flew back", 2);
+}
 function hear(x, y, r, fromLumi = true) {
   if (L.demo || save.settings.relaxed) return;
   if (fromLumi && r >= 4) L.hearRings.push({ x, y, r, t: 0 });
@@ -483,6 +494,7 @@ window.addEventListener("keydown", e => {
     if (e.key === "Escape" || e.key.toLowerCase() === "p") pause();
     if (e.key.toLowerCase() === "f" && !e.repeat) flare();
     if (e.key.toLowerCase() === "e" && !e.repeat) throwPebble();
+    if (e.key.toLowerCase() === "q" && !e.repeat) dash();
   } else if (screen === "pause" && (e.key === "Escape" || e.key.toLowerCase() === "p")) resume();
 });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
@@ -552,6 +564,31 @@ function flareButton() {
   b.style.setProperty("--cd", String(v / 24));
   b.classList.toggle("ready", v === 0);
 }
+// ---------- Songs Lumi learns: Dash, Hum and Shield ----------
+// Dash (from cave 4): a short burst of speed the way Lumi is swimming; it makes a little noise.
+// Hum (from cave 8): a tap-song while sneaking is a hum, showing just the walls close by and too
+// quiet for Hushlings more than a tile and a half away. Shield (from cave 11): the first touch
+// in a cave (more with upgrades) costs no light.
+const DASH_FROM = 3, HUM_FROM = 7, SHIELD_FROM = 10, DASH_CD = 4, HUM_RANGE = 3;
+const canDash = () => CORE && L && !L.demo && (levelIndex >= DASH_FROM || levelIndex < 0);
+let dashShown = null;
+function dashButton() {
+  const b = document.getElementById("dashBtn"), on = canDash();
+  if (b.hidden === on) b.hidden = !on;
+  const cool = L.dashCd > 0;
+  if (cool !== dashShown) { dashShown = cool; b.classList.toggle("cool", cool); }
+}
+document.getElementById("dashBtn").addEventListener("pointerdown", e => { e.stopPropagation(); audio(); dash(); });
+function dash() {
+  if (!canDash() || L.ending || L.failing || screen !== "play" || L.dashCd > 0) return;
+  const lumi = L.lumi, sp = Math.hypot(lumi.vx, lumi.vy), a = sp > 0.4 ? Math.atan2(lumi.vy, lumi.vx) : lumi.look ?? -Math.PI / 2;
+  L.dashT = 0.26; L.dashCd = DASH_CD - upg("dash") * 0.8;
+  lumi.vx = Math.cos(a) * SWIM_MAX * 2.6; lumi.vy = Math.sin(a) * SWIM_MAX * 2.6; lumi.squash = 0.6;
+  hear(lumi.x, lumi.y, 3.5); L.noisy = 0.6;
+  sfx.dash(); buzz(12);
+  for (let k = 0; k < 14; k++) spark(lumi.x, lumi.y, -Math.cos(a) * (1 + Math.random() * 2) + (Math.random() - 0.5), -Math.sin(a) * (1 + Math.random() * 2) + (Math.random() - 0.5), 0.5, "skin", 0.08);
+}
+
 // ---------- Pebbles ----------
 // From cave 6, Lumi carries three pebbles. Throw one and it flies the way Lumi is facing until
 // it hits rock (up to about five tiles) and clatters: every Hushling within earshot goes to look.
@@ -634,7 +671,8 @@ function update(dt) {
   L.time += dt;
   L.flare = Math.max(0, (L.flare || 0) - dt * 1.8);
   if (L.flareCd > 0) L.flareCd = Math.max(0, L.flareCd - dt);
-  if (!L.demo && screen === "play") { flareButton(); pebbleButton(); }
+  if (!L.demo && screen === "play") { flareButton(); pebbleButton(); dashButton(); }
+  L.dashT = Math.max(0, L.dashT - dt); L.dashCd = Math.max(0, L.dashCd - dt);
   for (const pb of L.pebbles) { pb.t += dt; if (!pb.landed && pb.t >= pb.dur) { pb.landed = true; landPebble(pb); } }
   L.pebbles = L.pebbles.filter(pb => pb.t < pb.dur + 0.05);
   moveCamera(dt);
@@ -715,7 +753,7 @@ function update(dt) {
   // A Frostwisp's touch leaves Lumi half frozen for a moment.
   if (L.slow > 0) { wx *= 0.45; wy *= 0.45; }
   // Lumi eases toward the wanted speed: quick to start, quick to stop.
-  const grip = 1 - Math.exp(-(steering ? SWIM_GRIP : SWIM_GRIP * 0.75) * dt);
+  const grip = L.dashT > 0 ? 0 : 1 - Math.exp(-(steering ? SWIM_GRIP : SWIM_GRIP * 0.75) * dt);
   lumi.vx += (wx - lumi.vx) * grip;
   lumi.vy += (wy - lumi.vy) * grip;
 
@@ -723,7 +761,7 @@ function update(dt) {
   const ti = idx(Math.floor(lumi.x), Math.floor(lumi.y));
   const f = L.flow[ti];
   if (f) { lumi.vx += f[0] * CURRENT_ACC * dt; lumi.vy += f[1] * CURRENT_ACC * dt; }
-  const sp = Math.hypot(lumi.vx, lumi.vy), maxSp = SWIM_MAX * (f ? 1.4 : 1.15);
+  const sp = Math.hypot(lumi.vx, lumi.vy), maxSp = SWIM_MAX * (f ? 1.4 : 1.15) * (L.dashT > 0 ? 2.7 : 1);
   if (sp > maxSp) { lumi.vx *= maxSp / sp; lumi.vy *= maxSp / sp; }
   if (sp > 0.25) lumi.look = Math.atan2(lumi.vy, lumi.vx);
 
@@ -810,6 +848,7 @@ function update(dt) {
     if (o.got || L.demo || Math.hypot(o.x - lumi.x, o.y - lumi.y) > 0.5) continue;
     o.got = true;
     L.got++;
+    if (CORE) L.followers.push({ o, x: o.x, y: o.y });
     questEvent("lights");
     L.happy = 1.5;
     if (L.useEnergy) L.energy = Math.min(100, L.energy + 35);
@@ -922,7 +961,8 @@ function update(dt) {
         const nx = (lumi.x - g.x) / (gap || 1), ny = (lumi.y - g.y) / (gap || 1);
         lumi.vx = nx * 5; lumi.vy = ny * 5; lumi.squash = 1;
         if (L.useEnergy) L.energy = Math.max(0, L.energy - (CORE ? 34 : 14));
-        L.hits++; L.invuln = 1.5;
+        if (CORE && L.shields > 0) { L.shields--; L.energy = Math.min(100, L.energy + 34); sfx.shield(); } else { L.hits++; loseFollower(); }
+        L.invuln = 1.5;
         g.gone = 2.5; g.delay = 0;  // it sinks into the dark, then rises again where it began
         sfx.hurt(); buzz(60);
       }
@@ -987,8 +1027,14 @@ function update(dt) {
       lumi.vx = nx * 4; lumi.vy = ny * 4;
       lumi.squash = 1;
       if (L.useEnergy) L.energy = Math.max(0, L.energy - (CORE ? 34 : g.big ? 15 : 8));
+      if (CORE && L.shields > 0) {
+        L.shields--; L.invuln = 1.6; g.gone = g.big ? 10 : 8; g.hunt = 0; g.calm = 6; sfx.shield(); buzz([20, 20]);
+        for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2; spark(lumi.x, lumi.y, Math.cos(a) * 3, Math.sin(a) * 3, 0.5, "cyan", 0.1); }
+        if (L.useEnergy) L.energy = Math.min(100, L.energy + (g.big ? 15 : 34));
+        continue;
+      }
       L.hits++;
-      if (CORE) { L.slowmo = 0.6; L.caughtFlash = 1; L.shake = Math.max(L.shake || 0, 0.5); sfx.caught(); }
+      if (CORE) { L.slowmo = 0.6; L.caughtFlash = 1; L.shake = Math.max(L.shake || 0, 0.5); sfx.caught(); loseFollower(); }
       g.gone = g.big ? 10 : 8;
       g.hunt = 0;
       g.calm = g.big ? 8 : 6;
@@ -1047,6 +1093,9 @@ function update(dt) {
   }
   // Recording this run, to race next time as a ghost.
   if (ctl && CORE && levelIndex >= 0 && (L.trackT -= dt) <= 0) { L.trackT = 0.1; L.track.push(Math.round(lumi.x * 20), Math.round(lumi.y * 20)); }
+  // Lights following Lumi home, each one trailing the one in front.
+  let lead = lumi;
+  for (const f of L.followers) { const dx = lead.x - f.x, dy = lead.y - f.y, d = Math.hypot(dx, dy); if (d > 0.42) { const m = (d - 0.42) / d; f.x += dx * m * Math.min(1, dt * 9); f.y += dy * m * Math.min(1, dt * 9); } lead = f; }
   // Falling stones and the shaking they cause.
   L.shake = Math.max(0, (L.shake || 0) - dt * 1.2);
   for (const r of L.rocks) {

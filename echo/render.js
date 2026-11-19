@@ -100,7 +100,7 @@ const SKINS = [
 const RAINBOW = [[255, 120, 160], [255, 200, 110], [150, 255, 160], [110, 220, 255], [170, 140, 255], [255, 140, 230]];
 const skinGlows = SKINS.map(k => (k.c ? makeGlow(...k.c) : null));
 const rainbowGlows = RAINBOW.map(c => makeGlow(...c));
-const skinUnlocked = k => (SKINS[k].streak ? (save.daily.best || 0) >= SKINS[k].streak : totalStars() >= SKINS[k].need);
+const skinUnlocked = k => (SKINS[k].streak ? (save.daily.best || 0) >= SKINS[k].streak : CORE ? ((save.run || {}).lights || 0) >= SKINS[k].need * 8 : totalStars() >= SKINS[k].need);
 function lumiLook() {
   const k = SKINS[save.skin] && skinUnlocked(save.skin) ? save.skin : 0, sk = SKINS[k];
   if (sk.c) return { glow: skinGlows[k], body: sk.body };

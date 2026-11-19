@@ -4,7 +4,7 @@
 // ---------- UI ----------
 const screens = {
   title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  challenges: $("challengeScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
+  challenges: $("challengeScreen"), city: $("cityScreen"), movie: $("movieScreen"), run: $("runScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
 };
 let backTo = "title";
 function applyLayoutPrefs() {
@@ -13,6 +13,13 @@ function applyLayoutPrefs() {
 }
 function show(name) {
   screen = name;
+  // The tab bar sits under Home and the City; sheets close when the screen changes.
+  document.body.classList.toggle("tabs", name === "title" || name === "city");
+  for (const [id, scr] of [["tabHome", "title"], ["levelsBtn", "city"]]) { const b = $(id); if (b) b.classList.toggle("on", name === scr); }
+  for (const id of ["todayPanel", "sheet"]) { const el = $(id); if (el) el.hidden = true; }
+  if (name === "title") { const t = $("titleScreen"); if (t) t.classList.remove("launch"); }
+  if (name !== "play") { const d = $("dashBtn"); if (d) d.hidden = true; }
+  if (name !== "city") { const sp = $("shopPanel"); if (sp) sp.hidden = true; }
   $("singBtn").hidden = name !== "play" || controlMode() === "stick";
   if (name !== "play") $("flareBtn").hidden = true;
   document.body.classList.toggle("sing-on", !$("singBtn").hidden);
@@ -133,6 +140,12 @@ const CARDS = {
     art: `<g transform="translate(112 58)">${LUMI_SVG}</g><path d="M90 50h-14M92 60h-20M90 70h-14" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/><g transform="translate(46 60) scale(1.5)"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".6"/><ellipse cx="-6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/><ellipse cx="6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/></g>` },
   chimes: { title: "Chimes", text: "Every cave from now on hides chime stones. The marks at the top show the order: ring them by swimming into them, one after another, and the sealed portal opens.",
     art: `<g transform="translate(40 58)">${LUMI_SVG}</g><g font-size="16" text-anchor="middle"><text x="84" y="40" fill="#7ee8ff">●</text><text x="106" y="40" fill="#c9a8ff">◆</text><text x="128" y="40" fill="#ffd36e">▲</text></g><g transform="translate(84 76)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#7ee8ff"/></g><g transform="translate(118 80)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#c9a8ff" opacity=".6"/></g><path d="M54 62q14-10 26 6" stroke="#8ea3c8" stroke-dasharray="2 4" fill="none"/>` },
+  dash: { title: "Dash", text: "Lumi has learned to dash. Tap the ➶ button for a quick burst of speed the way you're swimming. It makes a little noise, so save it for escapes. It recharges in a few seconds.",
+    art: `<g transform="translate(96 60)">${LUMI_SVG}</g><g stroke="#bfe8ff" stroke-width="2" stroke-linecap="round" opacity=".8"><path d="M30 52h36M22 62h40M30 72h36"/></g>` },
+  hum: { title: "Hum", text: "Lumi has learned to hum. While sneaking (a short push), a tap is a hum instead of a song: it shows only the walls close by, but it's so quiet that only a Hushling right next to you hears it.",
+    art: `<g transform="translate(80 60)">${LUMI_SVG}</g><circle cx="80" cy="60" r="26" fill="none" stroke="#bfe8ff" stroke-width="1.5" stroke-dasharray="3 4" opacity=".7"/><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/></g>` },
+  shield: { title: "Shield", text: "Lumi carries a shield of light now. The first time anything catches you in a cave, the shield breaks instead of your light. You can see it as a ring around Lumi.",
+    art: `<g transform="translate(80 60)">${LUMI_SVG}</g><circle cx="80" cy="60" r="24" fill="none" stroke="#9fe8ff" stroke-width="3" opacity=".8"/>` },
   pebbles: { title: "Pebbles", text: "From now on Lumi carries three pebbles. Tap the pebble button, then tap where it should land. It clatters where it lands, and every Hushling that hears it goes to look. Use them to clear the way.",
     art: `<g transform="translate(32 70)">${LUMI_SVG}</g><path d="M44 58Q80 8 116 62" fill="none" stroke="#bfe8ff" stroke-width="1.6" stroke-dasharray="3 4" opacity=".8"/><circle cx="118" cy="66" r="4" fill="#dff2ff"/><g stroke="#bfe8ff" stroke-width="1.4" opacity=".8"><path d="M108 58l-5-4M128 58l5-4M118 54v-6"/></g><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/><text x="0" y="-8" font-size="12" text-anchor="middle" fill="#d2beff" font-weight="700">?</text></g>` },
   flare: { title: "Flare", text: "Tap the ✦ button to burst your light. Creatures close by are dazzled, and Hushlings shrink back and stop chasing. It needs a few seconds to recharge.",
@@ -186,7 +199,7 @@ const CREATURE_CARDS = new Set(Object.values(CREATURES));
 
 function cardFor(i) {
   const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [i >= PEBBLE_FROM && "pebbles", i >= 8 && "long"];
+  const wants = [i >= DASH_FROM && "dash", i >= PEBBLE_FROM && "pebbles", i >= HUM_FROM && "hum", i >= SHIELD_FROM && "shield", i >= 8 && "long"];
   return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
 }
 
@@ -231,6 +244,8 @@ function startLevel(i, skip = false) {
   if (!skipStory && i >= 0 && i % PER_WORLD === 0 && !save.story[w]) {
     save.story[w] = 1;
     persist();
+    // In the core, each act opens with a short film.
+    if (CORE && w < 2) { playMovie(w === 0 ? "intro" : "act2", () => startLevel(i, { story: true })); return; }
     const ch = worldChapter(w);
     const pages = ch ? ch.pages : [{ text: "The caves twist and change, but Lumi keeps singing. " + STORY[w % STORY.length], lumi: 1, notes: 1 }];
     playStory(pages, { num: `World ${w + 1} · ${worldName(w)}`, name: ch ? ch.name : worldName(w), world: w, last: w === 0 ? "Begin" : "Continue",
@@ -361,6 +376,8 @@ function finish() {
     }
   }
   earnGlow(L.got + stars);
+  // The lights you brought out of this cave go home to the city.
+  if (levelIndex >= 0) { save.got = save.got || {}; save.got[levelIndex] = Math.max(save.got[levelIndex] || 0, L.got); }
   // Keep the best run as a ghost to race: more stars wins, then a faster time.
   L.newGhost = false;
   if (CORE && levelIndex >= 0 && L.track.length) {
@@ -474,11 +491,27 @@ function nextUnplayed() {
 // ---------- Title, looks, awards, settings ----------
 function renderTitle() {
   // The daily cave comes back once the story is finished.
-  document.body.classList.toggle("core-done", !CORE || (save.stars[TOTAL - 1] || 0) > 0);
+  document.body.classList.toggle("core-done", !CORE);
   const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
   $("starCount").textContent = t;
-  $("playLabel").textContent = started ? "Continue" : "Play";
-  $("playSub").textContent = `Level ${next + 1} · ${getLevel(next).name}`;
+  $("playLabel").textContent = "Play";
+  const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
+  $("homeBest").textContent = best.toLocaleString();
+  $("playSub").textContent = "Hold to swing, let go to fly";
+  $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
+  $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
+  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("dailyRunBtn").textContent = ds ? `Daily ${"★".repeat(ds.stars || 1)}` : "Daily"; }
+  $("hardBtn").textContent = rs.best ? `Endless · ${rs.best.toLocaleString()}` : "Endless";
+  const we = weekEvent(), sn = streakNow();
+  $("titleMeta").textContent = `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · ` + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
+  $("todayDot").hidden = calState().claimed;
+  $("playLabel").textContent = "Play";
+  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = `Stage ${n}`; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : n === 1 ? "Hold to swing, let go to fly" : "Tap to play"; }
+  if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
+  else if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()}`; }
+  // The daily gift waits on the Today tab (its dot); nothing pops up over Play.
+
+  startTitleRun();
   $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
   renderToday();
@@ -507,10 +540,10 @@ function renderLooks() {
       ball.style.setProperty("--glow", "rgba(255,255,255,0.6)");
     }
     b.appendChild(ball);
-    b.appendChild(document.createTextNode(open ? k.name : k.streak ? `🔥 ${k.streak}` : `★ ${k.need}`));
-    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : k.streak ? `${k.name}, needs a ${k.streak} day daily streak` : `${k.name}, needs ${k.need} stars`);
+    b.appendChild(document.createTextNode(open ? k.name : k.streak ? `🔥 ${k.streak}` : CORE ? `✦ ${k.need * 8}` : `★ ${k.need}`));
+    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : k.streak ? `${k.name}, needs a ${k.streak} day daily streak` : (CORE ? `${k.name}, needs ${k.need * 8} lights gathered in runs` : `${k.name}, needs ${k.need} stars`));
     b.addEventListener("click", () => {
-      if (!open) { toast(k.streak ? `Play the daily cave <b>${k.streak} days in a row</b> to unlock ${k.name}` : `Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`); return; }
+      if (!open) { toast(k.streak ? `Play the daily cave <b>${k.streak} days in a row</b> to unlock ${k.name}` : (CORE ? `Gather <b>${k.need * 8 - ((save.run || {}).lights || 0)}</b> more lights in runs to unlock ${k.name}` : `Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`)); return; }
       save.skin = i;
       persist();
       sfx.moth();
@@ -611,6 +644,8 @@ function renderSettings() {
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
   $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
+  $("setFps").setAttribute("aria-pressed", String(!!st.fps));
+  $("setSmooth").setAttribute("aria-pressed", String(typeof swingSmooth === "function" ? swingSmooth() : true));
   $("setView3d").setAttribute("aria-pressed", String(st.view3d !== false));
   $("setView3d").disabled = !R3D;
   $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
@@ -637,7 +672,7 @@ async function shareMap() {
     const blob = await new Promise(res => c.toBlob(res, "image/png"));
     const file = new File([blob], "echo-cave-map.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "Echo", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
+      await navigator.share({ files: [file], title: "Lumen Rush", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
       return;
     }
     toast("Press and hold the map to save or share it");
@@ -650,9 +685,9 @@ async function shareMap() {
 async function shareGame() {
   const url = "https://erlan1126.github.io/Test/echo.html";
   const t = totalStars();
-  const text = t ? `I've collected ${t} stars in Echo, a game about finding your way through dark caves with sound. Can you beat me?` : "Echo: find your way through dark caves using only sound.";
+  const text = "Lumen Rush: race through a living city, dodge trams and grab the lights. Can you beat my best?";
   try {
-    if (navigator.share) { await navigator.share({ title: "Echo", text, url }); return; }
+    if (navigator.share) { await navigator.share({ title: "Lumen Rush", text, url }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
   try {
     await navigator.clipboard.writeText(`${text} ${url}`);
@@ -663,8 +698,48 @@ async function shareGame() {
 }
 
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
-tap("playBtn", () => startLevel(nextUnplayed()));
-tap("levelsBtn", openMap);
+// Play goes home to the city first; from there, into the next cave.
+// Play starts an endless run (after the opening film, the first time); Story is the city and its caves.
+// Play starts a run; Daily run is the same cave for everyone today.
+function playNow(opts = {}) {
+  if (screen !== "title") return startRun(opts);
+  $("titleScreen").classList.add("launch");
+  setTimeout(() => startRun(opts), 230);
+}
+tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageRace.n, { race: stageRace }); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageNext()); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
+tap("stagesBtn", () => openSheet("stages"));
+tap("dailyRunBtn", () => { if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); } else playNow({ daily: true }); });
+// Hard mode: one touch and the run is over, but every point counts double.
+tap("hardBtn", () => playNow({}));
+tap("todayBtn", openToday);
+tap("todayClose", () => { $("todayPanel").hidden = true; });
+tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift · <b>+${n}</b> lights`, true); } renderToday2(); if (screen === "title") { const keep = $("todayPanel").hidden; renderTitle(); $("todayPanel").hidden = keep; } });
+function openToday() { renderToday2(); $("sheet").hidden = true; $("todayPanel").hidden = false; }
+function renderToday2() {
+  const st = calState(), we = weekEvent();
+  $("weekEv").textContent = `${we.name} · ${we.text}`;
+  $("calStreak").textContent = streakNow() ? `${streakNow()}-day streak · +${Math.round(streakBonus() * 100)}% lights` : "Play a run to start a streak";
+  $("calGrid").innerHTML = CAL.map((n, i) => `<div class="${i + 1 < st.day || (i + 1 === st.day && st.claimed) ? "past" : i + 1 === st.day ? "now" : ""}">Day ${i + 1}<b>${n}</b></div>`).join("");
+  $("calClaim").disabled = st.claimed; $("calClaim").textContent = st.claimed ? "Come back tomorrow" : `Claim +${CAL[st.day - 1]} ✦`;
+  const dm = dailyMissions();
+  const se = seasonState(), tier = seasonTier(se.xp);
+  $("seasonInfo").textContent = `Tier ${tier.n} of ${SEASON_TIERS} · ${seasonDaysLeft()} days left`;
+  $("seasonBar").style.width = `${Math.round(tier.into / SEASON_XP * 100)}%`;
+  $("seasonNext").textContent = tier.n >= SEASON_TIERS ? "Season complete. A new one starts next month." : `Next: +${seasonReward(tier.n + 1)} lights at tier ${tier.n + 1}`;
+  const rr = runSave();
+  $("multInfo").textContent = `Score ×${rr.mult}`;
+  $("todayRunMissions").innerHTML = rr.missions.map(m => `<li><span>${RUN.missions[m.k].text(m.goal)}</span><em>+1×</em></li>`).join("");
+  $("dmList").innerHTML = dm.list.map(m => { const d = DM_POOL[m.i], k = Math.min(1, m.prog / d.goal); return `<li class="${m.done ? "done" : ""}"><span style="flex:1">${d.text(d.goal)}<span class="dm-bar"><i style="width:${Math.round(k * 100)}%"></i></span></span><span>+${DM_REWARD} ✦</span></li>`; }).join("");
+}
+tap("cityGo", () => startRun());
+tap("cityBack", showTitle);
+
+for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"], ["tabShop", "upgrades"], ["tabFriends", "ranks"], ["todayAwards", "awards"]])
+  tap(id, () => openSheet(kind));
+tap("tabHome", () => showTitle());
+// Tapping the dimmed backdrop closes a sheet.
+for (const id of ["sheet", "todayPanel"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
+tap("levelsBtn", () => (CORE ? openSheet("locker") : openMap()));
 // A soft tick when a switch or option changes, so settings feel alive.
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
 tap("weekLink", () => { renderChallenges(); show("challenges"); });
@@ -713,16 +788,18 @@ tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
 tap("nextBtn", () => {
   if (save.act2Due) {
     save.act2Due = 0; save.act2Done = 1; persist();
-    playStory(CORE_ENDING2, { num: "The End", name: "Home", world: 1, last: "Continue", done: () => showTitle() });
+    playMovie("end2", () => showCity(true));
     return;
   }
   // Clearing the Starlight Abyss for the first time plays the ending first.
   if (save.endingDue) {
     save.endingDue = 0; save.ended = 1; if (flickCanReturn()) save.flick = 1; persist();
+    if (CORE) { playMovie("end1", () => showCity(true)); return; }
     playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => (levelIndex + 1 < TOTAL ? startLevel(levelIndex + 1) : showTitle()) });
     return;
   }
   if (isChallenge(levelIndex)) showTitle();
+  else if (CORE) showCity(true);
   else if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
   else openMap();
 });
@@ -731,7 +808,9 @@ $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
 tap("setView3d", () => { save.settings.view3d = save.settings.view3d === false; persist(); renderSettings(); });
-tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); });
+tap("setFps", () => { save.settings.fps = !save.settings.fps; persist(); renderSettings(); $("fpsMeter").hidden = !save.settings.fps; });
+tap("setSmooth", () => { save.settings.smooth = !(typeof swingSmooth === "function" && swingSmooth()); persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
+tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
 tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
 tap("setRelaxed", () => { save.settings.relaxed = !save.settings.relaxed; persist(); renderSettings(); toast(save.settings.relaxed ? "Relaxed mode on. It starts with your next cave" : "Relaxed mode off"); });
 [...$("setControls").children].forEach(b => b.addEventListener("click", () => { save.settings.controls = b.dataset.v; persist(); renderSettings(); }));
@@ -759,7 +838,7 @@ tap("restoreCode", () => {
     const data = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6)))));
     if (!data || !Array.isArray(data.stars)) throw new Error("no stars");
     for (const k of ["settings", "stats", "daily"]) Object.assign(save[k], data[k] || {});
-    for (const k of SAVE_KEYS) if (data[k] != null) save[k] = data[k];
+    for (const k in data) if (!["settings", "stats", "daily"].includes(k) && data[k] != null) save[k] = data[k];
     persist();
     STICK_R = STICK_SIZES[save.settings.stick] || 46;
     muted = !!save.muted;
