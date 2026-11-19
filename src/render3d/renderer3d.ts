@@ -857,6 +857,8 @@ export class Renderer3D {
       this.bizLook.tx = (sv + tc) * Math.SQRT1_2;
       this.bizLook.tz = (sv - tc) * Math.SQRT1_2;
     }
+    // (Testing: aim the town camera anywhere.)
+    if (this.debugLook) { this.bizLook.tx = this.debugLook.x; this.bizLook.tz = this.debugLook.z; this.bizLook.tzoom = this.debugLook.zoom; }
     const e = this.bizK < 0.02 ? 1 : Math.min(1, dt * 2);
     this.bizLook.x += (this.bizLook.tx - this.bizLook.x) * e;
     this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;
@@ -880,6 +882,9 @@ export class Renderer3D {
   /** The final color pass: warmer at sunset in the town, and a heat shimmer over the beach
    *  on a clear sunny day. */
   private townDusk = 0;
+  /** Testing only: where the town camera looks (null: the game decides). */
+  debugLook: { x: number; z: number; zoom: number } | null = null;
+  debugBounds(): ReturnType<typeof townBounds> { return townBounds(); }
   private readonly tmpC2 = new THREE.Color();
   private readonly tmpV = new THREE.Vector3();
   private readonly tmpV2 = new THREE.Vector3();
