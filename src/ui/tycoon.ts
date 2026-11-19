@@ -610,12 +610,12 @@ export class TycoonUI {
     // The player's first tower has its own bubble (a caption during the first look at it).
     const starterTag = s.cafe.starter ? `<button type="button" class="tag bub starter${live.frame ? " sel" : ""}" data-tag="starter" data-i="-1" data-h="-1"><span class="tag-ico">🏢</span>${live.frame ? `<b>${esc(t("Your first tower!"))}</b>` : ""}</button>` : "";
     // The block's project spots: a dashed preview while on offer (tap to choose), an icon once open.
+    // (Once a project is open, the scene itself shows it: no bubble.)
     const projTag = (id: ProjectId, i: number, ico: string, name: string) => {
-      const done = s.cafe.done.includes(id);
-      if (!done && !projectsOpen(s.cafe)) return "";
-      return `<button type="button" class="tag bub proj${done ? "" : " offer"}" data-tag="proj-${id}" data-i="${i}" data-h="-1"><span class="tag-ico">${ico}</span>${done ? "" : `<b>${esc(t(name))}</b>`}</button>`;
+      if (s.cafe.done.includes(id) || !projectsOpen(s.cafe)) return "";
+      return `<button type="button" class="tag bub proj offer" data-tag="proj-${id}" data-i="${i}" data-h="-1" aria-label="${esc(t(name))}"><span class="tag-ico">${iconSvg(ico)}</span></button>`;
     };
-    const blockTags = s.cafe.terrace === 2 ? projTag("flowers", -2, "🌷", "Flower market") + projTag("play", -3, "🛝", "Playground") : "";
+    const blockTags = s.cafe.terrace === 2 ? projTag("flowers", -2, "flower", "Flower market") + projTag("play", -3, "slide", "Playground") : "";
     this.put($("tcy-labels"), starterTag + blockTags + BUSINESSES.map((b, i) => {
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
