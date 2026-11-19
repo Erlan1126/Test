@@ -1237,7 +1237,7 @@ export const PT: Record<string, string> = {
   "Welcome aboard!": "Bem-vindo a bordo!",
   "{names} earn ×{n}": "{names} rendem ×{n}",
   "{name} HQ": "Sede de {name}",
-  "{name} earns ×{n}": "{name} rende ×{n}",
+  "{name} earns ×{n}": "{name} ganha ×{n}",
   "{name} is ready to grow! Build its new HQ": "{name} está pronto para crescer! Construa a nova sede",
   "{n} of {total} collected": "{n} de {total} coletados",
   "🏗️ Construction boom! Skyhaven Inc. earns ×2 for {n} minutes": "🏗️ Boom de construção! A Skyhaven Inc. rende ×2 por {n} minutos",

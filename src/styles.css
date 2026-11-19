@@ -3701,3 +3701,49 @@ body.tabs-open #tycoon .room-sign, body.tabs-open #tycoon .room-sign b { max-wid
 #earnings .em-card small { font-size: 12px; color: #6a5f98; font-weight: 600; }
 #earnings .em-card em { font: 400 14px var(--display); font-style: normal; color: #7c4dff; white-space: nowrap; }
 #earnings .em-card .eb-cico { width: 36px; height: 36px; border-radius: 12px; background: #fff; }
+
+/* ════════ Visual audit fixes ════════ */
+/* 1. Cash prices: the bill icon is button-sized text, not a giant picture. */
+.decor-card .buy svg { width: 18px !important; height: 18px !important; vertical-align: -3px; margin-right: 4px; flex: none; }
+.decor-card .buy { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+/* 2. The level-up pop-up covers the results completely, and its parts line up. */
+.levelup { background: radial-gradient(circle at 50% 40%, rgba(60, 30, 120, 0.97), rgba(8, 10, 30, 0.99)) !important; }
+.levelup .lu-next { max-width: 360px; margin-left: auto; margin-right: auto; background: rgba(255, 255, 255, 0.1); }
+.levelup .lu-title { color: #ffe08a !important; }
+.levelup :is(.lu-unlock small) { font-family: var(--ui) !important; font-weight: 700; }
+/* 4. The earnings panel's hero never shows above the sheet's rounded top. */
+#earnings > .sheet { overflow-x: hidden; clip-path: inset(0 round 26px); }
+#earnings .sheet-top { position: sticky; top: 0; z-index: 4; background: #f5f3fb !important; }
+/* 5. Trophy names wrap between words. */
+.modal .trophy b { overflow-wrap: normal !important; word-break: normal !important; hyphens: auto; font-size: 12px; }
+/* 6. Tab rows fit the screen (no cut-off labels). */
+body.tabs-open .tab-page .tabs button, .modal .seg.tabs button { font-size: 11px; padding-left: 4px; padding-right: 4px; letter-spacing: 0.02em; min-width: 0; flex: 1 1 auto; white-space: nowrap; }
+/* 7. Crystal packs: the ribbon sits above the gems, and the bonus line fits. */
+.pack-card { padding-top: 22px !important; overflow: visible; }
+.pack-card .first-x2 { top: -8px !important; left: 50% !important; transform: translateX(-50%); white-space: nowrap; }
+.pack-card small { white-space: normal; line-height: 1.2; }
+.pack-card .buy { padding: 6px 4px !important; font-size: 12px !important; }
+/* 8. Sky Pass: a tighter road, clearer locked rewards. */
+#pass .pass-cell { min-height: 76px !important; padding: 8px 6px !important; }
+#pass .pass-row.big .pass-cell { min-height: 96px !important; }
+#pass .pass-cell .pass-ico { font-size: 28px !important; }
+#pass .pass-cell.locked { opacity: 1 !important; filter: none !important; }
+#pass .pass-cell.locked .pass-what { color: #6a5f98 !important; }
+#pass .pass-cell.ready::after { content: "CLAIM" !important; }
+/* 9. Company cards: names and labels readable on light colors; the manager clear of the bar. */
+body.tabs-open #tycoon .room-sign b, body.tabs-open #tycoon .room-next small { text-shadow: 0 1px 0 rgba(40, 20, 80, 0.35), 0 2px 6px rgba(40, 20, 80, 0.45) !important; }
+body.tabs-open #tycoon .room-path i:not(.done):not(.now) { background: rgba(40, 20, 80, 0.25); }
+body.tabs-open #tycoon .room-mgr { right: 140px; bottom: 26px; }
+body.tabs-open #tycoon .room-next { width: 48%; }
+body.tabs-open #tycoon .ty-biz.locked .ty-buy:disabled, #tcy-card .ty-buy:disabled { background: #e9e4f7 !important; color: #6a5f98 !important; }
+/* 10. Boosts: the footer clears the tab bar; the New Era button fits its text. */
+body.tabs-open #tycoon .ty-panel { padding-bottom: 24px; }
+#tycoon .era-go { width: auto !important; min-width: 0 !important; white-space: nowrap; padding-left: 12px !important; padding-right: 12px !important; }
+/* 11. The top cards are solid: bubbles never show through. */
+.tcy-wallet, .tcy-gems { background-color: rgba(255, 255, 255, 0.97) !important; }
+/* 12. The building card's progress line shows only when it means something. */
+.card-prog:has(i[style*="width: 0"]), .card-prog:empty { display: none !important; }
+/* 13. Results: the title clears the eye button. */
+#over .over-title, #over h2 { padding-right: 40px; }
+/* Game hint and home tagline wrap evenly. */
+.hint, #hint, .tagline, .home-tag { text-wrap: balance; }

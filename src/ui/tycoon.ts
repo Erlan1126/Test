@@ -1825,7 +1825,7 @@ export class TycoonUI {
 
   private renderEra(): void {
     const s = this.save, g = eraGems(s);
-    this.put($("ty-era-card"), `<span class="ty-gem">${iconSvg("gem")}</span>
+    this.put($("ty-era-card"), `<span class="ty-gem">${iconSvg("sparkle")}</span>
       <span><b>${esc(t("{n} Sky Gems", { n: fmt(s.tycoon.gems) }))}</b><small>${esc(t("Each gem adds 2% to all earnings, for good. Start a New Era to collect the gems your cash has earned."))}</small></span>
       <button type="button" class="buy era-go"${g > 0 ? "" : " disabled"}>${g > 0 ? esc(this.eraArmed ? t("Tap again to reset businesses") : t("New Era: +{n}", { n: fmt(g) })) : esc(t("Keep earning"))}</button>`);
   }
@@ -1989,7 +1989,10 @@ function popCoin(box: Element, text: string): void {
 /** What an advisor does, in a line. */
 function perkText(a: Advisor): string {
   switch (a.perk) {
-    case "biz": return t("{names} earn ×{n}", { names: (a.biz ?? []).map(id => t(BUSINESSES.find(b => b.id === id)!.name)).join(" & "), n: a.n });
+    case "biz": {
+      const names = (a.biz ?? []).map(id => t(BUSINESSES.find(b => b.id === id)!.name));
+      return names.length === 1 ? t("{name} earns ×{n}", { name: names[0], n: a.n }) : t("{names} earn ×{n}", { names: names.join(" & "), n: a.n });
+    }
     case "all": return t("Every business earns ×{n}", { n: a.n });
     case "vip": return t("VIPs come {n}× as often", { n: a.n });
     case "tips": return t("VIP tips ×{n}", { n: a.n });
