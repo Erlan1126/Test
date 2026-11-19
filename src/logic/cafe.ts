@@ -93,7 +93,8 @@ export function normalizeCafe(raw: unknown, before: { floors: number; towers: nu
     contract,
     wideBest: n(o.wideBest, 999),
     playBest: n(o.playBest, 999),
-    done: Array.isArray(o.done) ? PROJECTS.filter(p => (o.done as unknown[]).includes(p)) : [],
+    // (An old café contract that was finished is the flower market, done: its bonus is paid once.)
+    done: PROJECTS.filter(p => (Array.isArray(o.done) && (o.done as unknown[]).includes(p)) || (p === "flowers" && contract === 2)),
     moved: old ? framed : o.moved === true,
     asked: old ? framed : o.asked === true,
     seated: old ? terrace === 2 : o.seated === true,
@@ -184,4 +185,4 @@ export const contractOpen = projectsOpen;
 
 /** What the café block adds to the Coffee Cart's earnings. */
 export const cafeMult = (c: CafeState): number =>
-  (c.terrace === 2 ? TERRACE_MULT : 1) * (c.contract === 2 ? TERRACE_MULT : 1) * Math.pow(PROJECT_MULT, c.done.length);
+  (c.terrace === 2 ? TERRACE_MULT : 1) * (c.contract === 2 ? TERRACE_MULT : 1) * Math.pow(PROJECT_MULT, c.done.filter(p => !(p === "flowers" && c.contract === 2)).length);

@@ -646,7 +646,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     kite.add(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4, 0.005).translate(0, -0.35, 0), own(std("#ffd23a"))));
     kite.userData.dynamic = true;
     g.add(kite);
-    const kx = x0 + span * 0.2, kz = zs;
+    // (Flown from the middle of the beach, out over the water: the string crosses nothing.)
+    const kx = x0 + span * 0.46, kz = zs - 0.3;
     const string = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), own(new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })));
     string.userData.dynamic = true;
     string.frustumCulled = false;
@@ -676,6 +677,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     });
     raysLive = (t: number, k: number) => { for (const q of rays) q.m.opacity = k * (0.1 + 0.07 * Math.sin(t * 0.35 + q.k * 1.9)); };
     beachSpot = { x: x0 + span * 0.5, z: zs };
+    const kiteAt = new THREE.Vector3();
     const seaLife = (t: number) => {
       for (const q of gulls) {
         const a = t * q.sp + q.k * 2.1;
@@ -686,7 +688,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         const flap = Math.sin(t * 0.5 + q.k * 1.7) > 0.3 ? Math.sin(t * 11 + q.k) * 0.5 : 0.08;
         q.l.rotation.z = flap; q.r.rotation.z = -flap;
       }
-      const kp = new THREE.Vector3(kx + 0.6 + Math.sin(t * 0.6) * 0.25, 2.4 + Math.sin(t * 0.9) * 0.2, kz - 1.2);
+      const kp = kiteAt.set(kx + 0.6 + Math.sin(t * 0.6) * 0.25, 2.4 + Math.sin(t * 0.9) * 0.2, kz - 1.2);
       kite.position.copy(kp);
       kite.rotation.z = Math.sin(t * 1.3) * 0.25;
       const pos = string.geometry.getAttribute("position") as THREE.BufferAttribute;
@@ -761,7 +763,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         b.userData.dynamic = true;
         g.add(b);
         const cx2 = (fl.x0 + fl.x1) / 2, cz2 = (fl.z0 + fl.z1) / 2;
-        parts.push(t => { const a = t * 0.03; b.position.set(cx2 + Math.cos(a) * 3.5, 5.6 + Math.sin(t * 0.3) * 0.3, cz2 + Math.sin(a) * 5); b.rotation.y = t * 0.1; });
+        parts.push(t => { const a = t * 0.03; b.position.set(cx2 + Math.cos(a) * 4, 8.2 + Math.sin(t * 0.3) * 0.3, cz2 + Math.sin(a) * 5.5); b.rotation.y = t * 0.1; });
       }
       if (decor.has("seaplane")) {
         const pl = new THREE.Group(), prop = new THREE.Group();
@@ -1108,7 +1110,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   const tmp = new THREE.Vector3(), dir = new THREE.Vector3();
   let last = 0;
-  let look: Partial<TownLook> = {};
+  const look: Partial<TownLook> = {};
   const tmpV = new THREE.Vector3();
   const lampW = lampAt.map(() => new THREE.Vector3());
   return {
@@ -1116,7 +1118,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     top: i => (i === -1 ? plotTop : i < -1 ? 1.4 : tops[i] ?? 2),
     resident: () => block.resident(),
     spot: id => block.spot(id),
-    look(l) { fx.look(l); look = { ...look, ...l }; },
+    look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,
     update(t, night, live) {
       const dt = Math.min(0.1, last ? t - last : 0.016);
@@ -1142,7 +1144,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
       beachLive(t, night);
-      if (live.pulse === "coffee") coffeeSale = Math.max(coffeeSale, live.pulseAt ?? 0);
+      coffeeSale = Math.max(coffeeSale, live.block?.sold ?? 0);
       block.update(Date.now(), dt, t, live.block, coffeeSale);
       const cd = cafe.terrace === 2 ? doors.get("coffee") : undefined;
       saleCoin.visible = !!cd;

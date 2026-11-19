@@ -434,7 +434,7 @@ export class Sheets {
     const list = $("decor-list");
     list.innerHTML = "";
     for (const d of DECOR) {
-      const own = save.decor.includes(d.id), short = save.crystals < d.crystals;
+      const own = save.decor.includes(d.id);
       const card = document.createElement("div");
       card.className = "decor-card" + (own ? " own" : "");
       card.innerHTML = `<span class="decor-ico">${iconSvg(d.icon)}</span><b>${esc(t(d.name))}</b><small>${esc(t(d.text))}</small>`
@@ -442,7 +442,7 @@ export class Sheets {
       const btn = card.querySelector<HTMLButtonElement>(".buy")!;
       btn.addEventListener("click", () => {
         if (own) { closeModal($("shop")); this.host.showDecor(d.id); return; }
-        if (short) { this.nope(btn, t("You need {n} more Sky Crystals", { n: d.crystals - save.crystals })); showTab($("shop"), "crystals"); return; }
+        if (save.crystals < d.crystals) { this.nope(btn, t("You need {n} more Sky Crystals", { n: d.crystals - save.crystals })); showTab($("shop"), "crystals"); return; }
         if (buyDecor(save, d.id) !== "ok") return;
         this.bought(t("{name} added to Skyhaven!", { name: t(d.name) }));
         closeModal($("shop"));

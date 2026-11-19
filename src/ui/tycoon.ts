@@ -234,17 +234,17 @@ export class TycoonUI {
       // The close-up (the tower, the street and the cart together) holds through the
       // neighbor's arrival and Mayor Pip's note, and until the neighbor reaches the cart; a
       // revisit just looks for a moment.
-      this.frameUntil = Date.now() + (intro ? 180000 : 4000);
+      this.frameUntil = Math.max(this.frameUntil, Date.now() + (intro ? 180000 : 4000));
       this.render();
       if (intro) {
         // Pip speaks once the neighbor is in (or the arrival was skipped).
         const note = () => this.welcomeNote(() => this.walkToCart());
         if (this.story.stage === "arrive") this.afterArrival = note;
         else setTimeout(note, 1600);
-      } else setTimeout(() => { this.frameUntil = 0; this.render(); }, 4000);
+      } else this.later(4000, () => { if (this.save.tycoon.tips > 0) { this.frameUntil = 0; this.render(); } });
     } else if (!this.save.seenFeatures.includes("ty-city")) setTimeout(() => this.welcomeNote(), 1200);
     // The first sale comes first: until then the terrace waits in the next-step card.
-    if (dest === "terrace" && this.save.tycoon.tips > 0) setTimeout(() => this.openTerrace(), 900);
+    if (dest === "terrace" && this.save.tycoon.tips > 0) this.later(900, () => this.openTerrace());
     if (dest === "cafe") this.glance("coffee");
     if (dest === "project") this.projectOpened();
   }
@@ -255,6 +255,7 @@ export class TycoonUI {
   private storyTimers: number[] = [];
   private afterArrival: (() => void) | null = null;
   private saleSounded = false;
+  private coffeeSold = 0;
   private stage(stage: BizBlock["stage"], at = Date.now()): void { this.story = { ...this.story, stage, at }; }
   private later(ms: number, fn: () => void): void { this.storyTimers.push(window.setTimeout(() => { if (this.inCity) fn(); }, ms)); }
   private clearStory(): void { this.storyTimers.forEach(clearTimeout); this.storyTimers = []; this.afterArrival = null; $("block-skip").hidden = true; this.say(""); }
@@ -313,6 +314,7 @@ export class TycoonUI {
   /** After their first coffee: they look at the folded chairs and ask to sit somewhere. */
   private askToSit(): void {
     const c = this.save.cafe;
+    if (c.terrace === 2) return;
     this.say(t("Could we sit somewhere?"), 6000);
     // The close-up lets go once they've asked (the next step card says what to build).
     this.frameUntil = Math.min(this.frameUntil || Infinity, Date.now() + 6000);
@@ -344,7 +346,17 @@ export class TycoonUI {
   private firstSale(due: number): void {
     const st = this.story.stage;
     // Tapped before the neighbor reached the cart: they're at the counter now.
-    if (st === "arrive" || st === "home" || st === "toCart") { this.storyTimers.forEach(clearTimeout); this.storyTimers = []; $("block-skip").hidden = true; if (!this.save.cafe.moved) { this.save.cafe.moved = true; } this.stage("queue"); }
+    if (st === "arrive" || st === "home" || st === "toCart") {
+      const note = this.afterArrival;
+      this.storyTimers.forEach(clearTimeout); this.storyTimers = [];
+      this.afterArrival = null;
+      $("block-skip").hidden = true;
+      const c = this.save.cafe;
+      if (!c.moved) { c.moved = true; this.host.persist(); track("neighbor_moved_in"); }
+      this.stage("queue");
+      // Pip's welcome still comes, once the sale and the request have played.
+      if (note) this.later(due - Date.now() + 8000, () => this.welcomeNote());
+    }
     this.story = { ...this.story, saleAt: due };
     this.saleSounded = false;
     if (!this.save.cafe.starter || !this.save.cafe.moved) { this.story = { ...this.story, crowd: true }; return; }
@@ -475,7 +487,7 @@ export class TycoonUI {
       critic: this.critic.until > now ? this.critic.id : "",
       power: this.power.until > now ? this.power.id : "",
       // Customers come once the cart has made its first sale (a saved fact, any visit).
-      block: this.inCity ? { ...this.story, crowd: this.story.crowd || (s.tycoon.tips >= 1 && !this.story.saleAt) } : { stage: "none", at: 0, saleAt: 0, crowd: false, reduced: false },
+      block: this.inCity ? { ...this.story, crowd: this.story.crowd || (s.tycoon.tips >= 1 && !this.story.saleAt), sold: this.coffeeSold } : { stage: "none", at: 0, saleAt: 0, crowd: false, reduced: false },
     };
   }
 
@@ -504,6 +516,8 @@ export class TycoonUI {
       if ((p < was - 0.05 || (was > 0.6 && !running)) && now - (this.lastPop.get(id) ?? 0) > 450) {
         this.lastPop.set(id, now);
         const amount = coins(payOf(s, b, now) * Math.max(1, Math.round(450 / (cycleOf(b, levelOf(s, id)) * 1000))));
+        // (A customer at the Coffee Cart gets their cup when a sale really completes.)
+        if (id === "coffee") this.coffeeSold = now;
         // The first sale: a quiet counter sound with the cup and the coins.
         if (id === "coffee" && this.story.saleAt && !this.saleSounded && now >= this.story.saleAt - 150) { this.saleSounded = true; this.host.sound.counter(); }
         if (sheet) {
@@ -675,7 +689,7 @@ export class TycoonUI {
           // Not over the first sale and the neighbor's request: it waits until their bubble is gone.
           const msg = t("New: {name} unlocked!", { name: t(names[k]) });
           const wait = this.story.saleAt ? Math.max(0, this.story.saleAt + 8200 - Date.now()) : 0;
-          if (wait) this.later(wait, () => { replayPop(btn); toast(msg); });
+          if (wait) window.setTimeout(() => { replayPop(btn); toast(msg); }, wait);
           else { replayPop(btn); toast(msg); }
         }
       }
@@ -690,7 +704,7 @@ export class TycoonUI {
   private guideHand(): void {
     let hand = document.getElementById("guide-hand");
     const s = this.save, tw = s.profile.towers, tips = s.tycoon.tips;
-    const busy = !this.inCity || !$("mayor").hidden || !$("welcome").hidden || !!openModalEl() || !!document.querySelector("#evolve:not([hidden])") || this.frameUntil > Date.now();
+    const busy = !this.inCity || !$("mayor").hidden || !$("welcome").hidden || !!openModalEl() || !!document.querySelector("#evolve:not([hidden])") || (this.frameUntil > Date.now() && tips > 0);
     let target: Element | null = null;
     const onTheirWay = ["arrive", "home", "toCart"].includes(this.story.stage);
     if (!busy && !onTheirWay && (tips < 3 || tw < 3)) {

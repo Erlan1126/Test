@@ -868,12 +868,12 @@ export class Renderer3D {
       // The town's shaders follow the real sky: its colors, sunset, night and rain.
       const nf = this.env.nf, wet = this.fxU.uWet.value;
       this.townDusk = clamp((clockSky() - 8) / 20, 0, 1) * (1 - nf);
-      this.biz.look({
-        night: nf, dusk: this.townDusk, wet,
-        skyTop: this.tmpC.copy(toColor(this.env.skyTop)).convertSRGBToLinear(),
-        skyBot: this.tmpC2.copy(toColor(this.env.skyBot)).convertSRGBToLinear(),
-        sun: this.tmpV.copy(this.sun.position).sub(this.sun.target.position),
-      });
+      const L = this.townLook, st = this.env.skyTop, sb = this.env.skyBot;
+      L.night = nf; L.dusk = this.townDusk; L.wet = wet;
+      L.skyTop.setRGB(st[0] / 255, st[1] / 255, st[2] / 255).convertSRGBToLinear();
+      L.skyBot.setRGB(sb[0] / 255, sb[1] / 255, sb[2] / 255).convertSRGBToLinear();
+      L.sun.copy(this.sun.position).sub(this.sun.target.position);
+      this.biz.look(L);
       this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
     }
     this.updateGrade();
@@ -882,10 +882,10 @@ export class Renderer3D {
   /** The final color pass: warmer at sunset in the town, and a heat shimmer over the beach
    *  on a clear sunny day. */
   private townDusk = 0;
+  private readonly townLook = { night: 0, dusk: 0, wet: 0, skyTop: new THREE.Color(), skyBot: new THREE.Color(), sun: new THREE.Vector3() };
   /** Testing only: where the town camera looks (null: the game decides). */
   debugLook: { x: number; z: number; zoom: number } | null = null;
   debugBounds(): ReturnType<typeof townBounds> { return townBounds(); }
-  private readonly tmpC2 = new THREE.Color();
   private readonly tmpV = new THREE.Vector3();
   private readonly tmpV2 = new THREE.Vector3();
   private updateGrade(): void {

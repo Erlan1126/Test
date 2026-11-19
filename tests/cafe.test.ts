@@ -173,3 +173,12 @@ describe("the café block", () => {
     expect(isWide({ x0: -1.5, x1: 1.5, z0: -2, z1: 2 }, base)).toBe(false);
   });
 });
+
+describe("old café contract", () => {
+  it("counts as the flower market, with its bonus paid once", () => {
+    const c = normalizeCafe({ starter: null, framed: true, floors: 20, terrace: 2, contract: 2 }, { floors: 20, towers: 5 });
+    expect(c.done).toContain("flowers");
+    expect(cafeMult(c)).toBeCloseTo(TERRACE_MULT * TERRACE_MULT);
+    expect(projectsOpen(c)).toBe(true); // the playground is still on offer
+  });
+});

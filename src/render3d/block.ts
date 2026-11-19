@@ -18,6 +18,8 @@ export interface BizBlock {
   saleAt: number;
   /** Customers come to the cart (after the first sale). */
   crowd: boolean;
+  /** When the Coffee Cart last completed a sale (a customer at the counter gets their cup). */
+  sold?: number;
   /** A project that just opened: a delivery or a family arriving. */
   opened?: { id: "flowers" | "play"; at: number };
   /** Reduced motion: every walk jumps to its end. */
@@ -225,6 +227,7 @@ export function buildBlock(S: BlockSetup): Block {
   placeChairs(S.terrace === 2 ? 1 : 0);
 
   let resPos: THREE.Vector3 | null = null;
+  const resAt = new THREE.Vector3();
   const put = (p: THREE.Object3D, x: number, z: number, h: number, t: number, walking: boolean, y = 0.2) => {
     p.position.set(x, y + (walking ? Math.abs(Math.sin(t * 9 + x)) * 0.04 : 0), z);
     p.rotation.y = h;
@@ -295,7 +298,7 @@ export function buildBlock(S: BlockSetup): Block {
           put(res, x, z, h, t, walking, y);
           res.scale.y = res.scale.x * (sit ? 0.82 : 1);
           resRing.visible = !sit;
-          resPos = new THREE.Vector3(x, y, z);
+          resPos = resAt.set(x, y, z);
         }
       }
       if (stage !== "toSeat") placeChairs(S.terrace === 2 ? 1 : 0);
