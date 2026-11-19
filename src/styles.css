@@ -3510,3 +3510,7 @@ body.simple-results #over-actions .home-btn { grid-column: 1 / -1; justify-self:
 @keyframes say-in { from { transform: translate(-50%, -80%) scale(0.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .block-say { animation: none; } }
 body.tabs-open .block-say, body.tabs-open .block-skip { display: none !important; }
+
+/* The block's project spots: a dashed preview while on offer. */
+.tag.proj.offer { background: rgba(255, 255, 255, 0.82); color: #4a3a7a; border: 2px dashed #8a6cff; }
+.tag.proj.offer b { font-size: 12px; }

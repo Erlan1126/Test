@@ -7,6 +7,7 @@
 import * as THREE from "three";
 import { mergeStatic } from "./world";
 import { buildBlock, type BizBlock } from "./block";
+import { townFx } from "./shaders";
 import { buildModel, buildTerrace, type ModelMats } from "./bizmodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
@@ -139,7 +140,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   winMat.userData.dynamic = true;
   const bulb = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 0.6 }));
   bulb.userData.dynamic = true;
+  // Ripples on the water, patchy lawns with cloud shadows, leaves in the breeze.
+  const fx = townFx(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const leaf = own(std(st.leaf, { roughness: 0.9, flatShading: true }));
+  fx.sway(leaf, 0.5, 0.05);
   const trunk = own(std(st.trunk));
   const mats: ModelMats = {
     c(c, rough = 0.7, metal = 0) {
@@ -170,6 +174,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const lane = own(new THREE.MeshBasicMaterial({ color: 0xffe27a }));
   const zebra = own(new THREE.MeshBasicMaterial({ color: 0xf4f2fa }));
   const water = own(std("#5fc2ff", { roughness: 0.1, metalness: 0.2, emissive: 0x2a6fbf, emissiveIntensity: 0.25 }));
+  fx.ground(verge); fx.ground(grass); fx.ground(grass2); fx.ground(earth, 0.6); fx.water(water, 0.7);
   const stone = own(std("#d9d2e6", { roughness: 0.6 }));
   const wood = own(std("#b07a4a", { roughness: 0.8 }));
   const metal = own(std("#4a4f7a", { metalness: 0.4, roughness: 0.5 }));
@@ -194,6 +199,29 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const a = (k / 14) * Math.PI * 2, r = 0.35 + (k % 3) * 0.12, h = 2 + (k * 37 % 5);
     const p = shrink(r)[Math.floor((k / 14) * hull.length) % hull.length];
     add(new THREE.ConeGeometry(0.9 + (k % 2) * 0.5, h, 5).rotateX(Math.PI).translate(p[0] + Math.cos(a), -3 - h / 2 - (k % 4), p[1] + Math.sin(a)), k % 2 ? rock : rockDark);
+  }
+  // Little islands floating beside the big one: a grassy top, a tree or two, rock hanging below.
+  const islets: { o: THREE.Group; y: number; k: number }[] = [];
+  {
+    const xs = hull.map(q => q[0]), zs0 = hull.map(q => q[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs0), maxZ = Math.max(...zs0);
+    const spots: [number, number, number, number][] = [[minX - 2.6, cz - (maxZ - minZ) * 0.15, 1.1, -1.2], [maxX + 2.4, cz + (maxZ - minZ) * 0.2, 0.85, -2.0], [minX - 1.4, minZ - 1.6, 0.6, -2.6]];
+    spots.forEach(([x, z, r, y], k) => {
+      const o = new THREE.Group();
+      const top = new THREE.CylinderGeometry(r, r * 0.92, 0.18, 9).translate(0, -0.09, 0);
+      o.add(new THREE.Mesh(top, verge));
+      o.add(new THREE.Mesh(new THREE.ConeGeometry(r * 0.9, r * 2.2, 7).rotateX(Math.PI).translate(0, -0.18 - r * 1.1, 0), k % 2 ? rock : rockDark));
+      const tr = (tx: number, tz: number, ts: number) => {
+        o.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05 * ts, 0.07 * ts, 0.5 * ts, 6).translate(tx, 0.25 * ts, tz), trunk));
+        o.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.32 * ts, 0).translate(tx, 0.62 * ts, tz), leaf));
+      };
+      tr(-r * 0.25, 0.1, 1); if (r > 0.8) tr(r * 0.35, -0.2, 0.75);
+      o.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 4).scale(1, 0.6, 1).translate(r * 0.2, 0.04, r * 0.35), rockDark));
+      o.position.set(x, y, z);
+      o.userData.dynamic = true;
+      g.add(o);
+      islets.push({ o, y, k });
+    });
   }
   // Streets: asphalt, a curb round every block, a sidewalk, lane dashes and crosswalks.
   const q = C / 2;
@@ -357,6 +385,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   seaM.userData.dynamic = true;
   const shallowM = own(std("#7fe0e6", { roughness: 0.1, metalness: 0.1, emissive: 0x1a6a7a, emissiveIntensity: 0.1 }));
   shallowM.userData.dynamic = true;
+  fx.water(seaM); fx.water(shallowM, 0.6); fx.ground(sandM, 0.5); fx.ground(wetSandM, 0.4);
   let beachLive = (_t: number, _night: number) => {};
   if (sandPoly.length >= 3 && seaPoly.length >= 3) {
     slab(sandPoly, 0.08, 0.06, sandM);
@@ -365,6 +394,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     slab(clipZ(seaPoly, zShore - 0.9, false), 0.02, 0.045, shallowM);
     // Deeper water further out, and glints of light on the waves.
     const deepM = own(std("#1a7fd0", { roughness: 0.06, metalness: 0.2, emissive: 0x062a5a, emissiveIntensity: 0.15 }));
+    fx.water(deepM, 0.8);
     slab(clipZ(grow(seaPoly, -0.6), zShore - 3.2, true), 0.02, 0.042, deepM);
     const glintM = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
     glintM.userData.dynamic = true;
@@ -387,6 +417,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const zs = (beachZ + zShore) / 2;
     // Palms: a leaning, ringed trunk, drooping fronds and coconuts.
     const palmLeaf = own(std("#3fae5a", { roughness: 0.9, flatShading: true }));
+    fx.sway(palmLeaf, 0.9, 0.06);
     const palm = (x: number, z: number, h: number, lean: number) => {
       const top = new THREE.Vector3(x + lean, 0.1 + h, z);
       for (let k = 0; k < 4; k++) {
@@ -509,7 +540,53 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     lhLamp.userData.dynamic = true;
     add(new THREE.CylinderGeometry(0.22, 0.22, 0.32, 10).translate(lx, 3.42, lz), lhLamp);
     add(new THREE.ConeGeometry(0.32, 0.35, 10).translate(lx, 3.75, lz), mats.c("#ff4f4f", 0.5));
+    // Seagulls circling over the water, wings flapping now and then, and a kite on the beach.
+    const gullM = own(new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    const gullTip = own(new THREE.MeshLambertMaterial({ color: 0x3a3f5a }));
+    const scx = seaPoly.reduce((a, q) => a + q[0], 0) / seaPoly.length, scz = seaPoly.reduce((a, q) => a + q[1], 0) / seaPoly.length;
+    const gulls = [0, 1, 2].map(k => {
+      const bird = new THREE.Group();
+      bird.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.18), gullM));
+      const wing = (side: number) => {
+        const w = new THREE.Group();
+        w.add(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.09).translate(side * 0.13, 0, 0), gullM));
+        w.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 0.08).translate(side * 0.27, 0, 0), gullTip));
+        bird.add(w);
+        return w;
+      };
+      const l = wing(-1), r = wing(1);
+      bird.userData.dynamic = true;
+      g.add(bird);
+      return { bird, l, r, k, rad: 1.6 + k * 0.7, h: 2.2 + k * 0.45, sp: 0.32 - k * 0.05 };
+    });
+    const kite = new THREE.Group();
+    kite.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.01).rotateZ(Math.PI / 4), own(std("#ff4f8b", { roughness: 0.6, side: THREE.DoubleSide }))));
+    kite.add(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4, 0.005).translate(0, -0.35, 0), own(std("#ffd23a"))));
+    kite.userData.dynamic = true;
+    g.add(kite);
+    const kx = x0 + span * 0.2, kz = zs;
+    const string = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), own(new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })));
+    string.userData.dynamic = true;
+    string.frustumCulled = false;
+    g.add(string);
+    const seaLife = (t: number) => {
+      for (const q of gulls) {
+        const a = t * q.sp + q.k * 2.1;
+        q.bird.position.set(scx + Math.cos(a) * q.rad, q.h + Math.sin(t * 0.7 + q.k) * 0.15, scz + Math.sin(a) * q.rad * 0.6);
+        q.bird.rotation.y = -a + Math.PI;
+        q.bird.rotation.z = 0.25;
+        // Flap for a moment, then glide.
+        const flap = Math.sin(t * 0.5 + q.k * 1.7) > 0.3 ? Math.sin(t * 11 + q.k) * 0.5 : 0.08;
+        q.l.rotation.z = flap; q.r.rotation.z = -flap;
+      }
+      const kp = new THREE.Vector3(kx + 0.6 + Math.sin(t * 0.6) * 0.25, 2.4 + Math.sin(t * 0.9) * 0.2, kz - 1.2);
+      kite.position.copy(kp);
+      kite.rotation.z = Math.sin(t * 1.3) * 0.25;
+      const pos = string.geometry.getAttribute("position") as THREE.BufferAttribute;
+      pos.setXYZ(0, kx, 0.4, kz); pos.setXYZ(1, kp.x, kp.y - 0.15, kp.z); pos.needsUpdate = true;
+    };
     beachLive = (t, night) => {
+      seaLife(t);
       boat.position.y = 0.02 + Math.sin(t * 1.4) * 0.04;
       boat.rotation.z = Math.sin(t * 1.1) * 0.05;
       boat2.position.y = 0.02 + Math.sin(t * 1.2 + 1) * 0.05;
@@ -792,6 +869,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     update(t, night, live) {
       const dt = Math.min(0.1, last ? t - last : 0.016);
       last = t;
+      fx.time.value = t;
+      for (const it of islets) { it.o.position.y = it.y + Math.sin(t * 0.5 + it.k * 2) * 0.12; it.o.rotation.y = Math.sin(t * 0.2 + it.k) * 0.08; }
       winMat.emissiveIntensity = 0.05 + night * 0.9;
       for (const m of towerGlass) m.emissiveIntensity = 0.05 + night * 0.9;
       lampMat.emissiveIntensity = 0.2 + night * 2.2;

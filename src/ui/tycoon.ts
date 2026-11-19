@@ -609,7 +609,14 @@ export class TycoonUI {
     this.put($("tcy-events"), gold + ($("ty-events").querySelector(".boom")?.outerHTML ?? ""));
     // The player's first tower has its own bubble (a caption during the first look at it).
     const starterTag = s.cafe.starter ? `<button type="button" class="tag bub starter${live.frame ? " sel" : ""}" data-tag="starter" data-i="-1" data-h="-1"><span class="tag-ico">🏢</span>${live.frame ? `<b>${esc(t("Your first tower!"))}</b>` : ""}</button>` : "";
-    this.put($("tcy-labels"), starterTag + BUSINESSES.map((b, i) => {
+    // The block's project spots: a dashed preview while on offer (tap to choose), an icon once open.
+    const projTag = (id: ProjectId, i: number, ico: string, name: string) => {
+      const done = s.cafe.done.includes(id);
+      if (!done && !projectsOpen(s.cafe)) return "";
+      return `<button type="button" class="tag bub proj${done ? "" : " offer"}" data-tag="proj-${id}" data-i="${i}" data-h="-1"><span class="tag-ico">${ico}</span>${done ? "" : `<b>${esc(t(name))}</b>`}</button>`;
+    };
+    const blockTags = s.cafe.terrace === 2 ? projTag("flowers", -2, "🌷", "Flower market") + projTag("play", -3, "🛝", "Playground") : "";
+    this.put($("tcy-labels"), starterTag + blockTags + BUSINESSES.map((b, i) => {
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
       if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
@@ -665,8 +672,11 @@ export class TycoonUI {
         s.seenFeatures.push(key);
         this.host.persist();
         if (this.barReady) {
-          replayPop(btn);
-          toast(t("New: {name} unlocked!", { name: t(names[k]) }));
+          // Not over the first sale and the neighbor's request: it waits until their bubble is gone.
+          const msg = t("New: {name} unlocked!", { name: t(names[k]) });
+          const wait = this.story.saleAt ? Math.max(0, this.story.saleAt + 8200 - Date.now()) : 0;
+          if (wait) this.later(wait, () => { replayPop(btn); toast(msg); });
+          else { replayPop(btn); toast(msg); }
         }
       }
     }
@@ -734,6 +744,12 @@ export class TycoonUI {
     if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-next")) return;
     const act = target.closest<HTMLElement>("[data-act]"), tag = target.closest<HTMLElement>(".tag");
     let id = tag?.dataset.tag ?? "";
+    if (id.startsWith("proj-")) {
+      const pid = id.slice(5) as ProjectId;
+      if (this.save.cafe.done.includes(pid)) toast(pid === "flowers" ? t("🌷 The flower market opens in your block!") : t("🛝 The playground opens in your block!"));
+      else this.openBuild();
+      return;
+    }
     if (id === "starter") {
       const st = this.save.cafe.starter;
       if (st) toast(tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));

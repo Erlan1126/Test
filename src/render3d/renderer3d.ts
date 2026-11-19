@@ -9,6 +9,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { clamp, lerp, mixRgb, rand, rgb, type RGB } from "../core/util";
 import { BLOCK_SIZE, ISLAND, MILESTONES, UI_FONT } from "../data/constants";
 import type { Look } from "../data/skins";
@@ -124,6 +125,8 @@ export class Renderer3D {
   private skyExtra = "";
   private readonly composer: EffectComposer;
   private readonly bloom: UnrealBloomPass;
+  /** The last touch: livelier colors and a soft vignette (off in low quality). */
+  private readonly grade: ShaderPass;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };
   private readonly paint: Paint;
   // Scratch objects reused every frame (making new ones each frame makes the phone pause
@@ -257,6 +260,23 @@ export class Renderer3D {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.45, 0.92);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    this.grade = new ShaderPass({
+      uniforms: { tDiffuse: { value: null }, uVib: { value: 0.14 }, uVig: { value: 0.22 } },
+      vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVib; uniform float uVig; varying vec2 vUv;
+        void main() {
+          vec4 c = texture2D(tDiffuse, vUv);
+          // Vibrance: dull colors get a little richer, already-bright ones stay as they are.
+          float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+          float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+          c.rgb = mix(vec3(l), c.rgb, 1.0 + uVib * (1.0 - (mx - mn)));
+          // A gentle vignette, so the eye goes to the middle of the screen.
+          vec2 d = vUv - 0.5;
+          c.rgb *= 1.0 - uVig * smoothstep(0.35, 0.85, length(d * vec2(1.0, 0.8)) * 1.25);
+          gl_FragColor = c;
+        }`,
+    });
+    this.composer.addPass(this.grade);
 
     this.skyCanvas.width = 64; this.skyCanvas.height = 256;
     this.skyTex = new THREE.CanvasTexture(this.skyCanvas);
@@ -331,6 +351,7 @@ export class Renderer3D {
     // Bloom at a quarter of the pixels: it's blurry anyway, and much cheaper.
     this.bloom.resolution.set(Math.round(v.W * this.dpr / 2), Math.round(v.H * this.dpr / 2));
     this.gl.shadowMap.enabled = !low;
+    this.grade.enabled = !low;
     this.sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
     this.sun.shadow.map?.dispose();
     this.sun.shadow.map = null;

@@ -1486,4 +1486,5 @@ export const FR: Record<string, string> = {
   "🌷 The flower market opens in your block!": "🌷 Le marché aux fleurs ouvre dans ton quartier !",
   "🛝 Playground · one tower, as tall as you can": "🛝 Aire de jeux · une tour, aussi haute que possible",
   "🛝 The playground opens in your block!": "🛝 L'aire de jeux ouvre dans ton quartier !",
+  "Flower market": "Marché aux fleurs",
 };
