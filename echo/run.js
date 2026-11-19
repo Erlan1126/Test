@@ -69,7 +69,8 @@ function startRun(opts = {}) {
   show("run");
   $("runOver").hidden = true; $("runPause").hidden = true; if ($("stageCard")) $("stageCard").hidden = true;
   runHud();
-  requestAnimationFrame(runLoop);
+  // One render loop only: a retry or a second tap must not start another.
+  if (!runLoop.on) { runLoop.on = true; requestAnimationFrame(runLoop); }
 }
 const runMetres = () => Math.floor(run.dist / RUN.M);
 const runScore = () => Math.floor((run.dist / RUN.M * run.mult + run.lights * 2 * run.mult) * (run.hard ? 2 : 1) * (weekEvent().id === "shadow" ? 1.5 : 1));
@@ -207,7 +208,7 @@ function runHud() {
   const ab = $("abilityBtn"), as = playingAs();
   if (ab.hidden === as >= 0) ab.hidden = as < 0;
   if (as >= 0) { $("abilityName").textContent = run.abilityCd > 0 ? Math.ceil(run.abilityCd) : run.mode3 ? "Shield" : RUN_POWERS[FRIEND_ABILITY[as]].name; ab.classList.toggle("cool", run.abilityCd > 0); }
-  $("runMult").textContent = run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100))}%` : `×${run.mult}`;
+  $("runMult").textContent = run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`;
   $("runPower").textContent = run.power ? `${((run.mode3 && RUNNER_POWERS[run.power.kind]) || RUN_POWERS[run.power.kind]).name} ${Math.ceil(run.power.t)}` : "";
 }
 
@@ -329,7 +330,7 @@ function runOfferContinue() {
 }
 function runDecline() { clearInterval(continueTimer); $("runContinue").hidden = true; if (run) { run.paused = false; run.last = 0; runEnd(); } }
 function runContinue() {
-  if (run) { run.shatter = null; run.slow = 1; }
+  if (run) { run.shatter = null; run.slow = 1; run.hold = false; run.grabBuf = 0; }
   clearInterval(continueTimer);
   let cost = continueCost();
   const fromRun = Math.min(run.lights, cost); run.lights -= fromRun; cost -= fromRun; save.glow = Math.max(0, (save.glow || 0) - cost);
@@ -1046,7 +1047,7 @@ function smoothCanvas(c, on) {
 }
 const canvasD = () => Math.min(run && run.mode3 && typeof swingSmooth === "function" && swingSmooth() ? pace.d2 : run && run.mode3 ? 1.5 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1);
 function runLoop(now) {
-  if (!run || screen !== "run") return;
+  if (!run || screen !== "run") { runLoop.on = false; return; }
   const c0 = $("runCanvas"), smoothNow = !!(run.mode3 && typeof swingSmooth === "function" && swingSmooth()), c = smoothCanvas(c0, smoothNow), d = canvasD(), W = c0.clientWidth, H = c0.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
@@ -1062,8 +1063,8 @@ function runLoop(now) {
 // ---------- Input: slide to steer, tap to sing ----------
 {
   const c = document.getElementById("runCanvas");
-  let p = null;
-  c.addEventListener("pointerdown", e => { audio(); if (run && run.mode3) swingHold(true); p = { x: e.clientX, y: e.clientY, sx: e.clientX, t: performance.now(), moved: false, tx: run ? run.tx : 0 }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
+  let p = null; const downs = new Set();
+  c.addEventListener("pointerdown", e => { audio(); downs.add(e.pointerId); if (run && run.mode3) swingHold(true); p = { x: e.clientX, y: e.clientY, sx: e.clientX, t: performance.now(), moved: false, tx: run ? run.tx : 0 }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
   c.addEventListener("pointermove", e => {
     if (!p || !run) return;
     if (run.mode3) { if (!p.dashed && e.clientX - p.sx > 45 && Math.abs(e.clientY - p.y) < 70) { p.dashed = true; p.moved = true; swingDash(); } return; }
@@ -1071,13 +1072,16 @@ function runLoop(now) {
     if (!p.dashed && p.y - e.clientY > 45 && performance.now() - p.t < 300) { p.dashed = true; p.moved = true; runDash(); }
     run.tx = p.tx + (e.clientX - p.sx) / (c.clientWidth / 400) * 1.25;
   });
-  const end = () => { if (run && run.mode3) swingHold(false); if (p && !p.moved && performance.now() - p.t < 350 && run && !run.mode3) runSing(); p = null; };
+  const end = e => { downs.delete(e.pointerId); if (downs.size) return; if (run && run.mode3) swingHold(false); if (p && !p.moved && performance.now() - p.t < 350 && run && !run.mode3) runSing(); p = null; };
   c.addEventListener("pointerup", end);
-  c.addEventListener("pointercancel", () => { if (run && run.mode3) swingHold(false); p = null; });
+  c.addEventListener("pointercancel", e => { downs.delete(e.pointerId); if (downs.size) return; if (run && run.mode3) swingHold(false); p = null; });
+  // Leaving the page or pausing forgets any finger that was down.
+  window.addEventListener("blur", () => { downs.clear(); if (run && run.mode3) swingHold(false); p = null; });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { downs.clear(); if (run && run.mode3) swingHold(false); p = null; } });
   window.addEventListener("keydown", e => { if (screen !== "run") return; if (e.key === " ") { e.preventDefault(); if (run && run.mode3) runnerSwipe("up"); else runSing(); } if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") { e.preventDefault(); runDash(); } });
 }
 document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; $("runPause").hidden = false; musicStop(); });
-document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
+document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
 document.getElementById("runShare").addEventListener("click", () => { if (run) shareRun(runScore(), runMetres(), run.comboBest, run.seed); });

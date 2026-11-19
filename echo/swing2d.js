@@ -73,6 +73,8 @@ const SW2D = (() => {
 
   function draw(ctx, W, H, P) {
     const R = run, t = R.t, night = P.night, day = 1 - night, dayImg = night < 0.45;
+    // A new run: forget the last run's scarf trail and camera.
+    if (draw.lastR !== R) { hist.length = 0; cam = null; draw.lastR = R; draw.lt = null; }
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
     const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (30 + Math.min(12, Math.max(0, spd - 10) * 0.45)) * punch;
     // Smoothing by time, not by frame, so it feels the same at 30 or 60 frames per second.

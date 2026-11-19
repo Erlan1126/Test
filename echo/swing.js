@@ -172,7 +172,9 @@ function swingAttach(R) {
 }
 function swingHold(down) {
   const R = run;
-  if (!R || !R.mode3 || R.over || R.paused) return;
+  if (!R || !R.mode3) return;
+  if (!down && (R.over || R.paused)) { R.hold = false; R.grabBuf = 0; R.kHold = false; return; }
+  if (R.over || R.paused) return;
   // Press: grab the target now; if it's not quite in reach, keep trying for a moment, then fizzle.
   if (down) { R.hold = true; if (!R.teth && !swingAttach(R)) R.grabBuf = 0.25; return; }
   R.hold = false; R.grabBuf = 0;
@@ -238,7 +240,7 @@ function swingDash() {
 function runnerSwipe() {}
 
 function swingHit(R, why) {
-  if (R.inv > 0 || R.attract) { if (R.attract) R.inv = 1; return; }
+  if (R.inv > 0 || R.attract || R.cleared || R.over) { if (R.attract) R.inv = 1; return; }
   R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5); R.hitsTaken = (R.hitsTaken || 0) + 1;
   if (R.power && R.power.kind === "shield") { R.power = null; R.inv = 1; R.flash = -0.6; runMsg("Shield!", "", 1.2); sfx.gate(); return; }
   if (why) runMsg(why, "", 1.4);
@@ -321,7 +323,7 @@ function runnerUpdate(dt) {
   // Stages: the clock, your path (for ghosts), and the finish gate.
   if (R.stageLen) {
     if (!R.cleared) { R.stageT += dt; R.traceT += dt; while (R.traceT >= 0.1) { R.traceT -= 0.1; R.trace.push([R.px, R.py]); } }
-    if (!R.cleared && R.px >= R.stageLen) stageClear(R);
+    if (!R.cleared && !R.over && R.px >= R.stageLen) stageClear(R);
     if (!R.cleared && !R.attract && R.pChain >= 3 && (!R.shotAt || R.t - R.shotAt > 4)) R.wantShot = true;
   }
   R.dist = Math.max(R.dist, Math.max(0, R.px) * RUN.M);

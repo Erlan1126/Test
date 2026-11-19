@@ -17,7 +17,8 @@ try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY));
   if (s && Array.isArray(s.stars)) {
     for (const k of ["settings", "stats", "daily"]) save[k] = Object.assign(save[k], s[k] || {});
-    for (const k of SAVE_KEYS) if (s[k] != null) save[k] = s[k];
+    // Keep everything that was saved (the swing game's stages, looks, city... as well as the old keys).
+    for (const k in s) if (!["settings", "stats", "daily"].includes(k) && s[k] != null) save[k] = s[k];
   }
 } catch (e) {}
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }

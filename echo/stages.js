@@ -49,7 +49,7 @@ const stageLink = (n, time, trace) => `${location.origin}${location.pathname}?st
 // ---------- Playing a stage ----------
 function startStage(n, opts = {}) {
   const S = stageSave(), info = stageInfo(n);
-  if (!info.daily && n > S.unlocked) return;
+  if (!info.daily && n > S.unlocked && !opts.race) return;
   const own = !info.daily && S.ghosts[n] ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
   $("stageCard").hidden = true;
@@ -84,7 +84,7 @@ function stageClear(R) {
   setTimeout(() => showStageCard(true), 1300);
 }
 function stageFail() {
-  const R = run; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
+  const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   setTimeout(() => showStageCard(false), 900);
 }
 function showStageCard(won) {

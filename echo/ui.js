@@ -706,7 +706,7 @@ function playNow(opts = {}) {
   $("titleScreen").classList.add("launch");
   setTimeout(() => startRun(opts), 230);
 }
-tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => startStage(stageRace.n, { race: stageRace }), 200); return; } if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(stageNext()), 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
+tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageRace.n, { race: stageRace }); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageNext()); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
 tap("stagesBtn", () => openSheet("stages"));
 tap("dailyRunBtn", () => { if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); } else playNow({ daily: true }); });
 // Hard mode: one touch and the run is over, but every point counts double.
@@ -838,7 +838,7 @@ tap("restoreCode", () => {
     const data = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6)))));
     if (!data || !Array.isArray(data.stars)) throw new Error("no stars");
     for (const k of ["settings", "stats", "daily"]) Object.assign(save[k], data[k] || {});
-    for (const k of SAVE_KEYS) if (data[k] != null) save[k] = data[k];
+    for (const k in data) if (!["settings", "stats", "daily"].includes(k) && data[k] != null) save[k] = data[k];
     persist();
     STICK_R = STICK_SIZES[save.settings.stick] || 46;
     muted = !!save.muted;
