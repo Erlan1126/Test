@@ -547,7 +547,8 @@ const SIM = `
       { const R = run; const a = { x: R.px + 5, y: R.py + 8, kind: "lamp", id: 7777 }; R.teth = a; const [lo, hi, v] = perfectWindow(R); const ang = (hi + 8) * Math.PI / 180, sp = v + 2; R.vx = Math.cos(ang) * sp; R.vy = Math.sin(ang) * sp; const l1 = R.lights, p1 = R.perfects; swingHold(false); out.aNearMissReleaseIsStillGood = R.lights === l1 + 1 && R.perfects === p1; }
       save.look = null; stageSave().best = {}; for (let n = 1; n <= 6; n++) stageSave().best[n] = { stars: 1, time: 30 }; starRewards(); out.starsUnlockLooks = runnerLook().own.s1 === 1;
       startStage(7); out.windStagesHaveGusts = run.stageInfo.wind && run.winds.length > 0; { const R = run, w = R.winds[0]; R.teth = null; R.roof = null; R.blds.length = 0; R.px = (w.x0 + w.x1) / 2; R.py = 30; R.vx = 10; R.vy = 0; R.inv = 1; for (let q = 0; q < 30; q++) runUpdate(1 / 60); out.windPushesYou = Math.sign(R.vx - 10 + (w.f < 0 ? 0 : 0)) === Math.sign(w.f) || Math.abs(R.vx - 10) > 1; }
-      openSheet("stages"); out.theStageMapShowsSixtyStages = document.querySelectorAll("#shopList .st").length === 60 && document.querySelectorAll("#shopList .st.boss").length === 6;
+      startStage(3); run.inv = 0; run.hearts = 1; runHit(); out.theLastHeartShattersTheFigure = Array.isArray(run.shatter) && run.shatter.length > 10;
+            openSheet("stages"); out.theStageMapShowsSixtyStages = document.querySelectorAll("#shopList .st").length === 60 && document.querySelectorAll("#shopList .st.boss").length === 6;
       document.getElementById("sheet").hidden = true; run = null;
       return out;
     });

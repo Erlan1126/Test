@@ -74,8 +74,8 @@ const SW2D = (() => {
   function draw(ctx, W, H, P) {
     const R = run, t = R.t, night = P.night, day = 1 - night, dayImg = night < 0.45;
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
-    const spd = R.v || 10, sTarget = H / (30 + Math.min(12, Math.max(0, spd - 10) * 0.45));
-    sCur += (sTarget - sCur) * 0.08; const s = sCur;
+    const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (30 + Math.min(12, Math.max(0, spd - 10) * 0.45)) * punch;
+    sCur += (sTarget - sCur) * (punch > 1.01 ? 0.25 : 0.08); const s = sCur;
     const aim = R.teth || swingFindAnchor(R), halfW = W / 2 / s, halfH = H / 2 / s;
     let tx = R.px + 5 + Math.max(0, R.vx) * 0.12, ty = R.py + 4;
     if (aim) { tx = tx * 0.6 + (aim.x + 2) * 0.4; ty = ty * 0.55 + (aim.y - 2) * 0.45; }
@@ -233,7 +233,8 @@ const SW2D = (() => {
     if (R.dashT > 0 || R.perfT > 0.2 || R.ringT > 0) { ctx.globalCompositeOperation = "lighter"; for (let q = 3; q < 13 && q < hist.length; q += 3) { const e = hist[q]; ctx.globalAlpha = 0.35 * (1 - q / 13); const z = 2.4 * s; ctx.drawImage(glow(glowRGB), X(e[0]) - z / 2, Y(e[1] - 0.6) - z / 2, z, z); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
     // ---------- The being of light ----------
     const blink = R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
-    if (!blink) {
+    if (R.shatter) { ctx.globalCompositeOperation = "lighter"; for (const q of R.shatter) { const z = 0.9 * s; ctx.drawImage(glow(glowRGB), X(q.x) - z / 2, Y(q.y) - z / 2, z, z); } ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff"; for (const q of R.shatter) ctx.fillRect(X(q.x) - 1.5, Y(q.y) - 1.5, 3, 3); }
+    if (!blink && !R.shatter) {
       const auraC = R.od > 0 ? [255, 194, 61] : R.power ? RUNNER_POWERS[R.power.kind].rgb.split(",").map(Number) : glowRGB, asz = (R.od > 0 ? 6 : R.dashT > 0 ? 5.5 : 4.5) * s;
       ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55 + night * 0.3; ctx.drawImage(glow(auraC), hx - asz / 2, Y(R.py + 1.2) - asz / 2, asz, asz); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
       const ch = RUNNER_CHARS[runnerLook().char] || RUNNER_CHARS[0], core = hex(ch.look.core), u = 1.55 * s, p = R.phase, sn = Math.sin(p);

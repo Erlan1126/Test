@@ -121,6 +121,7 @@ function runSing() {
 function runHit() {
   run.hearts--; run.inv = 1.6; run.flash = 1; run.nohit = false; run.hitAt = runMetres(); run.shake = 1;
   if (run.mode3) sfx.crash(); else sfx.caught(); buzz([30, 40, 30]);
+  if (run.hearts <= 0 && run.mode3) { run.shatter = Array.from({ length: 28 }, (_, q) => { const a = q / 28 * Math.PI * 2 + Math.random() * 0.2, v = 6 + Math.random() * 10; return { x: run.px, y: run.py + 1, vx: Math.cos(a) * v + (run.vx || 0) * 0.3, vy: Math.sin(a) * v + 4 }; }); run.slow = 0.35; }
   if (run.hearts <= 0 && run.stageInfo) { stageFail(); return; }
   if (run.hearts <= 0) { if (!run.hard && run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
@@ -328,6 +329,7 @@ function runOfferContinue() {
 }
 function runDecline() { clearInterval(continueTimer); $("runContinue").hidden = true; if (run) { run.paused = false; run.last = 0; runEnd(); } }
 function runContinue() {
+  if (run) { run.shatter = null; run.slow = 1; }
   clearInterval(continueTimer);
   let cost = continueCost();
   const fromRun = Math.min(run.lights, cost); run.lights -= fromRun; cost -= fromRun; save.glow = Math.max(0, (save.glow || 0) - cost);
@@ -983,6 +985,12 @@ function runDraw(ctx, W, H) {
     ctx.globalAlpha = 1;
   }
   // The first run teaches by doing.
+  if (R.tutText && R.mode3) {
+    const cx = W / 2, cy = H * 0.78, rr = W * 0.07, held = R.hold || !!R.teth, pulse = 1 + 0.12 * Math.sin(R.t * 6);
+    ctx.strokeStyle = "rgba(191,244,255,0.9)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, rr * pulse, 0, Math.PI * 2); ctx.stroke();
+    if (held) { ctx.fillStyle = "rgba(191,244,255,0.35)"; ctx.beginPath(); ctx.arc(cx, cy, rr * pulse, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#eaf6ff"; ctx.beginPath(); ctx.arc(cx, cy, rr * 0.28, 0, Math.PI * 2); ctx.fill();
+  }
   if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // Speed: streaks rushing out from the middle when the runner is flying.
   if (R.mode3 && R.od > 0 && (R.v || 0) > 16 && !R.over && !R.attract) {
@@ -1026,14 +1034,21 @@ function paceTick(dt) {
   if (pace.fpsT >= 0.5) { if (save.settings && save.settings.fps) { const el = $("fpsMeter"); el.hidden = false; el.textContent = `${Math.round(pace.frames / pace.fpsT)} fps · ${pace.d2.toFixed(2)}x`; } pace.frames = 0; pace.fpsT = 0; }
   if (pace.t > 1.2) { pace.t = 0; if (pace.ema > 0.0205 && pace.d2 > 1) pace.d2 = Math.max(1, pace.d2 - 0.25); else if (pace.ema < 0.0148 && pace.d2 < 1.5) pace.d2 = Math.min(1.5, pace.d2 + 0.25); }
 }
+function smoothCanvas(c, on) {
+  let sc = c.smoothTwin;
+  if (!sc && on) { sc = document.createElement("canvas"); sc.className = "smoothc"; c.parentNode.insertBefore(sc, c); c.smoothTwin = sc; sc.ctx = sc.getContext("2d", { alpha: false }); }
+  if (sc) sc.style.display = on ? "" : "none";
+  c.style.opacity = on ? "0" : "";
+  return on ? sc : c;
+}
 const canvasD = () => Math.min(run && run.mode3 && typeof swingSmooth === "function" && swingSmooth() ? pace.d2 : run && run.mode3 ? 1.5 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1);
 function runLoop(now) {
   if (!run || screen !== "run") return;
-  const c = $("runCanvas"), d = canvasD(), W = c.clientWidth, H = c.clientHeight;
+  const c0 = $("runCanvas"), smoothNow = !!(run.mode3 && typeof swingSmooth === "function" && swingSmooth()), c = smoothCanvas(c0, smoothNow), d = canvasD(), W = c0.clientWidth, H = c0.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   if (!run.paused) runUpdate(dt * (run.slow || 1));
-  const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
   if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
   // The best moment of the run, kept as a picture to share (2D view only: it has everything on one canvas).
@@ -1092,7 +1107,7 @@ function startTitleRun() {
 function titleLoop(now) {
   titleRaf = 0;
   if (screen !== "title" || !titleRun) return;
-  const c = $("titleCanvas"), d = Math.min(typeof swingSmooth === "function" && swingSmooth() ? pace.d2 : modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c.clientWidth, H = c.clientHeight;
+  const c0 = $("titleCanvas"), sm = typeof swingSmooth === "function" && swingSmooth() && titleRun.mode3, c = smoothCanvas(c0, sm), d = Math.min(sm ? pace.d2 : modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c0.clientWidth, H = c0.clientHeight;
   paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   if (W && c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const keep = run; run = titleRun;
@@ -1107,7 +1122,7 @@ function titleLoop(now) {
   }
   runUpdate(dt);
   if (titleRun.dist > 60000) { titleRun = null; run = keep; startTitleRun(); return; }
-  const ctx = c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+  const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   if (W) runDraw(ctx, W, H);
   run = keep;
   titleRaf = requestAnimationFrame(titleLoop);

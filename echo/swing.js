@@ -242,7 +242,8 @@ function swingHit(R, why) {
 function runnerUpdate(dt) {
   const R = run;
   R.t += dt;
-  if (R.over) { R.over += dt; R.crashT = (R.crashT || 0) + dt; R.vy -= SWING.G * dt; R.py = Math.max(0.3, R.py + R.vy * dt); R.px += R.vx * dt; R.vx *= 0.97; return; }
+  if (R.shatter) for (const q of R.shatter) { q.vy -= 14 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.98; }
+  if (R.over) { R.over += dt; R.crashT = (R.crashT || 0) + dt; if (R.crashT > 0.6) R.slow = 1; R.vy -= SWING.G * dt; R.py = Math.max(0.3, R.py + R.vy * dt); R.px += R.vx * dt; R.vx *= 0.97; return; }
   R.inv = Math.max(0, R.inv - dt); R.flash = Math.max(0, R.flash - dt * 2); R.banner = Math.max(0, R.banner - dt);
   R.shake = Math.max(0, (R.shake || 0) - dt * 2.5); R.happy = Math.max(0, (R.happy || 0) - dt); R.fizzle = Math.max(0, R.fizzle - dt); R.kick = Math.max(0, R.kick - dt * 2);
   if (R.comboT > 0) R.comboT -= dt; else R.combo = 0;
@@ -411,7 +412,7 @@ function runnerUpdate(dt) {
   if (!R.attract) runMission("dist", Math.floor(m));
   if (!R.stageLen && m >= R.nextMile) { R.nextMile += 500; R.fireworks.push({ t: 0, seed: Math.random() }); if (!R.attract) { runMsg(`${Math.floor(m)} m!`, "The city glows for you", 1.8, true); sfx.unlock(); } }
   for (const f of R.fireworks) f.t += dt; R.fireworks = R.fireworks.filter(f => f.t < 3);
-  if (!R.attract) { music.intensity = Math.min(1, (R.v - 10) / 22); music.layers = R.combo >= 12 ? 3 : 2; }
+  if (!R.attract) { const boss = R.stageInfo && R.stageInfo.boss || (R.ev && R.ev.kind === "heart"); music.intensity = boss ? 1 : Math.min(1, (R.v - 10) / 22); music.layers = R.combo >= 12 || R.od > 0 || boss ? 3 : 2; }
   if (!R.attract) swingFlowHud(R);
   if (!R.attract && Math.floor(R.t * 4) !== Math.floor((R.t - dt) * 4)) runHud();
 }
