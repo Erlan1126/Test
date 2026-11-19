@@ -938,18 +938,41 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.05, 4.3).translate(0, 0.025, 0), grass));
     lotG.add(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.06, 2.6).translate(0, 0.03, 0.85), pave));
     const hqT = cafe.hq?.[lot.id];
+    // Once the café terrace is there (or its preview), the Coffee Cart's building, at any
+    // stage, keeps clear of it: it moves back (and slims if it must) so its front stops
+    // behind the terrace. Nothing stands over the neighbor's table.
+    const keepClear = lot.id === "coffee" && (cafe.terrace > 0 || !!cafe.ghostTerrace);
+    const fitBehind = (body: THREE.Group, back: number) => {
+      const FRONT = 1.32;
+      body.updateMatrixWorld(true);
+      const bb = new THREE.Box3().setFromObject(body);
+      if (bb.isEmpty() || bb.max.z <= FRONT) return;
+      const depth = bb.max.z - bb.min.z, room = FRONT - back;
+      const k = depth > room ? room / depth : 1;
+      // Scale about the box's back edge, then slide so the front lands on FRONT.
+      body.scale.z *= k;
+      body.updateMatrixWorld(true);
+      const b2 = new THREE.Box3().setFromObject(body);
+      body.position.z += FRONT - b2.max.z;
+    };
     if (hqT) {
       // The HQ the player built stands at the back of the lot; the business's own storefront
       // (smaller) stays at the front, so every lot keeps its look.
       const shop = new THREE.Group();
       shop.scale.setScalar(0.62);
       shop.position.set(0, 0, 1.05);
-      lotG.add(shop);
       buildModel(shop, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+      if (keepClear) fitBehind(shop, -0.3);
+      lotG.add(shop);
       const n = hqT.b.length, roof = playerTower(lotG, hqT, 0, -1.25, 0.82, Math.min(0.34, 9 / Math.max(1, n)), 0.05);
       // A banner in the business's colors on the roof: this tower is its HQ.
       lotG.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 6).translate(0, roof + 0.4, -1.25), metal));
       lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.03).translate(0.24, roof + 0.66, -1.25), mats.sign(lot.c2)));
+    } else if (keepClear) {
+      const body = new THREE.Group();
+      buildModel(body, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+      fitBehind(body, -2.1);
+      lotG.add(body);
     } else buildModel(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
     // The Coffee Cart's café terrace (see logic/cafe.ts); before it's ready, once the
     // neighbor has asked to sit somewhere, a see-through preview of it on the lot.
