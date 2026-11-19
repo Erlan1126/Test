@@ -223,6 +223,34 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       islets.push({ o, y, k });
     });
   }
+  // A flock of small birds in a V, crossing the whole island now and then.
+  const flockM = own(new THREE.MeshLambertMaterial({ color: 0x3a3550 }));
+  const flock = new THREE.Group();
+  const flockW: THREE.Mesh[][] = [];
+  for (let k = 0; k < 7; k++) {
+    const b = new THREE.Group(), side = k === 0 ? 0 : (k % 2 ? 1 : -1), row = Math.ceil(k / 2);
+    const lw = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.01, 0.06).translate(-0.1, 0, 0), flockM);
+    const rw = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.01, 0.06).translate(0.1, 0, 0), flockM);
+    b.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.14), flockM), lw, rw);
+    b.position.set(side * row * 0.35, Math.sin(k) * 0.08, -row * 0.32);
+    flock.add(b);
+    flockW.push([lw, rw]);
+  }
+  flock.userData.dynamic = true;
+  flock.visible = false;
+  g.add(flock);
+  const fl = (() => { const xs = hull.map(q => q[0]), zz = hull.map(q => q[1]); return { x0: Math.min(...xs) - 4, x1: Math.max(...xs) + 4, z0: Math.min(...zz) - 4, z1: Math.max(...zz) + 4 }; })();
+  const flockLive = (t: number) => {
+    const per = 38, k = (t % per) / 22; // 22 s across, then 16 s of open sky
+    flock.visible = k < 1;
+    if (!flock.visible) return;
+    const lap = Math.floor(t / per), dir = lap % 2 ? 1 : -1;
+    const ax = dir > 0 ? fl.x0 : fl.x1, bx = dir > 0 ? fl.x1 : fl.x0;
+    const az = fl.z1 - (lap % 3) * 2, bz = fl.z0 + (lap % 3) * 1.5;
+    flock.position.set(ax + (bx - ax) * k, 4.2 + Math.sin(t * 0.4) * 0.3, az + (bz - az) * k);
+    flock.rotation.y = Math.atan2(bx - ax, bz - az);
+    flockW.forEach(([l, r], i) => { const f = Math.sin(t * 9 + i * 0.7) * 0.45; l.rotation.z = -f; r.rotation.z = f; });
+  };
   // Streets: asphalt, a curb round every block, a sidewalk, lane dashes and crosswalks.
   const q = C / 2;
   for (const cell of ALL) {
@@ -523,7 +551,35 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     boat2.rotation.y = -0.4;
     boat2.userData.dynamic = true;
     g.add(boat2);
+    // More boats: a speedboat crossing with a white wake, a sailboat tacking slowly out at sea,
+    // and a little rowboat by the islet.
+    const motor = new THREE.Group();
+    motor.add(new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.14, 0.3).translate(0, 0.07, 0), mats.c("#ffffff", 0.4)));
+    motor.add(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 4).rotateZ(-Math.PI / 2).rotateX(Math.PI / 4).scale(1, 0.47, 1).translate(0.52, 0.07, 0), mats.c("#ffffff", 0.4)));
+    motor.add(new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.04, 0.31).translate(0, 0.03, 0), mats.c("#2f6fff", 0.5)));
+    motor.add(new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.12, 0.24).translate(-0.05, 0.2, 0), mats.c("#ffd23a", 0.5)));
+    motor.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.22).translate(0.1, 0.22, 0), mats.c("#9fd8ff", 0.1, 0.3)));
+    const wakeM = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
+    const wake = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.34).rotateX(-Math.PI / 2).translate(-1.05, 0.01, 0), wakeM);
+    motor.add(wake);
+    motor.userData.dynamic = true;
+    g.add(motor);
+    const mz = zShore - 2.2, [mx0, mx1] = seaXs(mz);
+    const sail3 = boat.clone();
+    sail3.scale.setScalar(0.7);
+    sail3.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && (m.material as THREE.MeshStandardMaterial).side === THREE.DoubleSide) m.material = own(new THREE.MeshStandardMaterial({ color: 0xffb3c8, side: THREE.DoubleSide, roughness: 0.6 })); });
+    sail3.userData.dynamic = true;
+    g.add(sail3);
+    const sz3 = zShore - 4.2, [sx3a, sx3b] = seaXs(sz3);
+    const row = new THREE.Group();
+    row.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.18).translate(0, 0.04, 0), mats.c("#c8783a", 0.8)));
+    row.add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.03, 0.2).translate(0, 0.09, 0), mats.c("#8a4a22", 0.8)));
+    const rower = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.08, 3, 6).translate(0, 0.18, 0), mats.c("#ff6b5a", 0.7));
+    row.add(rower);
+    row.userData.dynamic = true;
+    g.add(row);
     const islet = { x: ox0 + (ox1 - ox0) * 0.72, z: zShore - 4.6 };
+    row.position.set(islet.x - 1.6, 0.03, islet.z + 0.6);
     {
       const { x: ix, z: iz } = islet;
       add(new THREE.DodecahedronGeometry(1.2, 0).scale(1.3, 0.35, 1).translate(ix, 0.05, iz), rock);
@@ -544,7 +600,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const gullM = own(new THREE.MeshLambertMaterial({ color: 0xffffff }));
     const gullTip = own(new THREE.MeshLambertMaterial({ color: 0x3a3f5a }));
     const scx = seaPoly.reduce((a, q) => a + q[0], 0) / seaPoly.length, scz = seaPoly.reduce((a, q) => a + q[1], 0) / seaPoly.length;
-    const gulls = [0, 1, 2].map(k => {
+    const gulls = [0, 1, 2, 3, 4, 5].map(k => {
       const bird = new THREE.Group();
       bird.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.18), gullM));
       const wing = (side: number) => {
@@ -557,7 +613,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const l = wing(-1), r = wing(1);
       bird.userData.dynamic = true;
       g.add(bird);
-      return { bird, l, r, k, rad: 1.6 + k * 0.7, h: 2.2 + k * 0.45, sp: 0.32 - k * 0.05 };
+      return { bird, l, r, k, rad: 1.4 + (k % 3) * 0.8, h: 2.0 + k * 0.32, sp: (0.34 - (k % 3) * 0.06) * (k > 2 ? -1 : 1) };
     });
     const kite = new THREE.Group();
     kite.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.01).rotateZ(Math.PI / 4), own(std("#ff4f8b", { roughness: 0.6, side: THREE.DoubleSide }))));
@@ -573,7 +629,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (const q of gulls) {
         const a = t * q.sp + q.k * 2.1;
         q.bird.position.set(scx + Math.cos(a) * q.rad, q.h + Math.sin(t * 0.7 + q.k) * 0.15, scz + Math.sin(a) * q.rad * 0.6);
-        q.bird.rotation.y = -a + Math.PI;
+        q.bird.rotation.y = q.sp > 0 ? -a + Math.PI : -a;
         q.bird.rotation.z = 0.25;
         // Flap for a moment, then glide.
         const flap = Math.sin(t * 0.5 + q.k * 1.7) > 0.3 ? Math.sin(t * 11 + q.k) * 0.5 : 0.08;
@@ -587,15 +643,32 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     };
     beachLive = (t, night) => {
       seaLife(t);
-      boat.position.y = 0.02 + Math.sin(t * 1.4) * 0.04;
-      boat.rotation.z = Math.sin(t * 1.1) * 0.05;
-      boat2.position.y = 0.02 + Math.sin(t * 1.2 + 1) * 0.05;
-      boat2.rotation.z = Math.sin(t * 0.9 + 1) * 0.06;
+      boat.position.y = 0.02 + Math.sin(t * 1.4) * 0.06;
+      boat.rotation.z = Math.sin(t * 1.1) * 0.08;
+      boat.rotation.x = Math.sin(t * 0.8) * 0.03;
+      boat2.position.y = 0.02 + Math.sin(t * 1.2 + 1) * 0.07;
+      boat2.rotation.z = Math.sin(t * 0.9 + 1) * 0.09;
+      {
+        // The speedboat runs back and forth, turning at each end; its wake flickers.
+        const span2 = Math.max(0.5, mx1 - mx0 - 1.2), ph = (t * 0.09) % 2, fwd = ph < 1;
+        const k = fwd ? ph : 2 - ph, e = k * k * (3 - 2 * k);
+        motor.position.set(mx0 + 0.6 + span2 * e, 0.03 + Math.sin(t * 6) * 0.015, mz + Math.sin(t * 0.5) * 0.3);
+        motor.rotation.y = fwd ? 0 : Math.PI;
+        motor.rotation.z = Math.sin(t * 5) * 0.03;
+        wakeM.opacity = (0.35 + Math.sin(t * 9) * 0.1) * Math.min(1, Math.sin(k * Math.PI) * 3);
+        // The sailboat drifts slowly across, leaning in the wind.
+        const sp = (t * 0.025) % 2, sf = sp < 1, sk = sf ? sp : 2 - sp;
+        sail3.position.set(sx3a + 0.8 + Math.max(0, sx3b - sx3a - 1.6) * sk, 0.02 + Math.sin(t * 1.1 + 2) * 0.05, sz3);
+        sail3.rotation.set(0, sf ? Math.PI / 2 - 0.2 : -Math.PI / 2 + 0.2, 0.12 + Math.sin(t * 0.8) * 0.05);
+        row.position.y = 0.03 + Math.sin(t * 1.6) * 0.03;
+        row.rotation.y = Math.sin(t * 0.3) * 0.4;
+        rower.rotation.z = Math.sin(t * 2.4) * 0.2;
+      }
       buoys.forEach((b, k) => { b.position.y = 0.1 + Math.sin(t * 1.7 + k) * 0.05; });
       for (const f of foams) {
-        const ph = (t * 0.35 + f.k / 3) % 1;
-        f.m.position.z = f.z + ph * 0.5;
-        (f.m.material as THREE.MeshBasicMaterial).opacity = Math.sin(ph * Math.PI) * 0.6;
+        const ph = (t * 0.45 + f.k / 3) % 1;
+        f.m.position.z = f.z + ph * 0.7;
+        (f.m.material as THREE.MeshBasicMaterial).opacity = Math.sin(ph * Math.PI) * 0.85;
       }
       seaM.emissiveIntensity = 0.15 + Math.sin(t * 0.8) * 0.04 + night * 0.1;
       glintM.opacity = 0.2 + Math.abs(Math.sin(t * 0.9)) * 0.3;
@@ -870,6 +943,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const dt = Math.min(0.1, last ? t - last : 0.016);
       last = t;
       fx.time.value = t;
+      flockLive(t);
       for (const it of islets) { it.o.position.y = it.y + Math.sin(t * 0.5 + it.k * 2) * 0.12; it.o.rotation.y = Math.sin(t * 0.2 + it.k) * 0.08; }
       winMat.emissiveIntensity = 0.05 + night * 0.9;
       for (const m of towerGlass) m.emissiveIntensity = 0.05 + night * 0.9;

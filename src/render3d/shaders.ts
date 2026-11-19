@@ -66,16 +66,19 @@ export function townFx(calm: boolean): TownFx {
           .replace("void main() {", `uniform float uFxT; uniform float uFxK; uniform float uFxM;\n${NOISE}\nvoid main() {`)
           .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
   {
-    // Two layers of ripples moving across each other, a lighter crest where they meet,
-    // and tiny sparkles that come and go.
+    // Swells rolling in (long bands), two layers of ripples on top, white caps where they
+    // meet, darker troughs between, and sparkles where the sun catches a crest.
     float tt = uFxT * uFxM;
     vec2 p = vFxW.xz;
-    float a = fxNoise(p * 1.6 + vec2(tt * 0.35, tt * 0.12));
-    float b = fxNoise(p * 2.3 - vec2(tt * 0.18, tt * 0.31));
-    float crest = smoothstep(0.62, 0.9, (a + b) * 0.5);
-    float spark = step(0.985, fxHash(floor(p * 9.0) + floor(tt * 2.0))) * smoothstep(0.55, 0.8, a);
-    totalEmissiveRadiance += (vec3(0.55, 0.8, 1.0) * crest * 0.32 + vec3(1.0) * spark * 0.9) * uFxK;
-    diffuseColor.rgb *= 0.92 + (a - 0.5) * 0.16;
+    float swell = sin(p.y * 2.2 + p.x * 0.6 + tt * 1.6) * 0.5 + 0.5;
+    float a = fxNoise(p * 1.7 + vec2(tt * 0.5, tt * 0.18));
+    float b = fxNoise(p * 2.6 - vec2(tt * 0.26, tt * 0.44));
+    float h = (a + b) * 0.5 * 0.7 + swell * 0.3;
+    float crest = smoothstep(0.55, 0.82, h);
+    float cap = smoothstep(0.72, 0.86, h) * (0.6 + 0.4 * fxNoise(p * 7.0 + tt));
+    float spark = step(0.975, fxHash(floor(p * 9.0) + floor(tt * 2.5))) * smoothstep(0.5, 0.75, h);
+    totalEmissiveRadiance += (vec3(0.5, 0.78, 1.0) * crest * 0.42 + vec3(0.95, 0.98, 1.0) * cap * 0.55 + vec3(1.0) * spark) * uFxK;
+    diffuseColor.rgb *= mix(0.78, 1.08, h);
   }`);
       });
     },
