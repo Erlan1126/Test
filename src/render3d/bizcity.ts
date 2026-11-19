@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { mergeStatic } from "./world";
 import { buildBlock, type BizBlock } from "./block";
 import { townFx, type TownLook } from "./shaders";
-import { buildModel, buildTerrace, type ModelMats } from "./bizmodels";
+import { buildModel, buildStreetFront, buildTerrace, type ModelMats } from "./bizmodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -1102,6 +1102,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       fitBehind(body, -2.1);
       lotG.add(body);
     } else buildModel(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+    // The street front (planters, a sign, bikes); the café keeps its front for the terrace.
+    if (lot.id !== "coffee") buildStreetFront(lotG, lot.c, lot.c2, lot.s, mats);
     // The Coffee Cart's café terrace (see logic/cafe.ts); before it's ready, once the
     // neighbor has asked to sit somewhere, a see-through preview of it on the lot.
     if (lot.id === "coffee" && cafe.terrace > 0) buildTerrace(lotG, cafe.terrace as 1 | 2, cafe.contract === 2, mats);

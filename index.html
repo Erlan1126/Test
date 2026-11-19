@@ -179,8 +179,12 @@
   <div class="sheet">
     <div class="sheet-top"><div class="sheet-head"><div><h2 id="earn-title">Your earnings</h2><p id="earn-sub"></p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <div class="earn-hero"><small>Every second</small><b id="earn-ps"></b><div class="earn-row"><span><small>Minute</small><b id="earn-pm"></b></span><span><small>Hour</small><b id="earn-ph"></b></span><span><small>Day</small><b id="earn-pd"></b></span></div></div>
+    <div class="earn-share" id="earn-share" aria-hidden="true"></div>
+    <div class="earn-tiles" id="earn-tiles"></div>
     <h3 class="sheet-sub">By business</h3>
     <div class="earn-list" id="earn-list"></div>
+    <h3 class="sheet-sub">Earn more</h3>
+    <div class="earn-more" id="earn-more"></div>
     <h3 class="sheet-sub">Your bonuses</h3>
     <div class="earn-bonus" id="earn-bonus"></div>
     <h3 class="sheet-sub">While you're away</h3>
@@ -409,9 +413,8 @@
     </div>
     <div class="pass-premium" id="pass-premium"></div>
     <button type="button" class="btn btn-primary wide" id="pass-claim-all" hidden>Claim all rewards</button>
-    <div class="pass-lanes" aria-hidden="true"><span class="lane-prem">✦ Premium</span></div>
+    <div class="pass-road-head" aria-hidden="true"><span>Free</span><span></span><span class="lane-prem">✦ Premium</span></div>
     <div class="pass-tiers" id="pass-tiers"></div>
-    <div class="pass-lanes free" aria-hidden="true">Free</div>
     <p class="sheet-note">Earn pass XP from every tower (more for taller ones), +40 for each mission and +100 for the daily chest. A new season starts on the 1st of every month; rewards you haven't claimed by then are lost.</p>
   </div>
 </div>

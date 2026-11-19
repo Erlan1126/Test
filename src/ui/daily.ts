@@ -195,8 +195,9 @@ export class DailySheets {
     this.renderPass();
     openModal($("pass"));
     // Show the next tier to earn rather than tier 1.
-    const list = $("pass-tiers"), next = list.querySelector<HTMLElement>(".pass-row.next, .pass-row.here");
-    if (next) list.scrollLeft = Math.max(0, next.offsetLeft - list.clientWidth / 2 + next.offsetWidth / 2);
+    // Open at the next reward to earn (the road runs down the page).
+    const next = $("pass-tiers").querySelector<HTMLElement>(".pass-row.next, .pass-row.here");
+    requestAnimationFrame(() => next?.scrollIntoView({ block: "center" }));
   }
 
   /** Redraws the pass if it's open. */
@@ -248,11 +249,10 @@ export class DailySheets {
     all.textContent = t("Claim all rewards ({n})", { n: waiting });
 
     const list = $("pass-tiers");
-    const keep = list.scrollLeft;
     list.innerHTML = "";
     for (let tr = 1; tr <= PASS_TIERS; tr++) {
       const col = document.createElement("div");
-      col.className = `pass-row${tr <= tier ? " reached" : ""}${tr === tier + 1 ? " next" : ""}${tr === tier ? " here" : ""}`;
+      col.className = `pass-row${tr <= tier ? " reached" : ""}${tr === tier + 1 ? " next" : ""}${tr === tier ? " here" : ""}${tr % 5 === 0 ? " big" : ""}`;
       col.style.setProperty("--i", String(tr));
       const cell = (track: Track): HTMLButtonElement => {
         const r = track === "free" ? freeReward(season, tr) : premiumReward(season, tr);
@@ -278,11 +278,11 @@ export class DailySheets {
       const node = document.createElement("span");
       node.className = "pass-num";
       node.textContent = String(tr);
+      if (tr === tier + 1 && tier < PASS_TIERS) { const here = document.createElement("em"); here.className = "pass-here"; here.textContent = t("Next"); node.appendChild(here); }
       col.appendChild(node);
       col.appendChild(cell("free"));
       list.appendChild(col);
     }
-    list.scrollLeft = keep;
   }
 
   // ---------- Missions, chest and league ----------

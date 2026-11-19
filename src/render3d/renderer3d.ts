@@ -283,7 +283,7 @@ export class Renderer3D {
           // Soft rays of sunlight fanning down from the sun's corner (top right), slowly shifting.
           if (uRays > 0.0) {
             vec2 sv = (uv - vec2(1.05, 1.08)) * vec2(uAspect, 1.0);
-            float ang = atan(sv.y, sv.x), fall = smoothstep(1.25, 0.0, length(sv));
+            float ang = atan(sv.y, sv.x), fall = smoothstep(0.85, 0.0, length(sv));
             float bands = 0.55 + 0.45 * sin(ang * 26.0 + uT * 0.25) * sin(ang * 11.0 - uT * 0.17);
             c.rgb += vec3(1.0, 0.95, 0.8) * fall * fall * bands * uRays;
           }
@@ -899,7 +899,7 @@ export class Renderer3D {
     const u = this.grade.uniforms, k = this.bizK;
     u.uT.value = this.env.time;
     u.uWarm.value = this.townDusk * k * 0.5;
-    u.uRays.value = k * (1 - this.env.nf) * (this.weather.kind === "clear" ? 1 : 0) * (0.09 + this.townDusk * 0.05);
+    u.uRays.value = k * (1 - this.env.nf) * (this.weather.kind === "clear" ? 1 : 0) * (0.05 + this.townDusk * 0.03);
     const bs = this.biz?.beach(), clear = this.weather.kind === "clear" ? 1 : 0;
     const heat = k * (1 - this.env.nf) * (1 - this.townDusk) * clear * (this.calm ? 0 : 1);
     if (!bs || heat < 0.01) { u.uShim.value.w = 0; return; }

@@ -3644,3 +3644,60 @@ body.tabs-open #tycoon .room-scene {
     linear-gradient(180deg, color-mix(in srgb, var(--b1) 55%, #fff) 0%, var(--b1) 58%, transparent 58%),
     linear-gradient(180deg, color-mix(in srgb, var(--b2) 60%, #6a5aa0) 0%, color-mix(in srgb, var(--b2) 55%, #4a3a7e) 100%) !important; }
 body.tabs-open #tycoon .room-sign, body.tabs-open #tycoon .room-sign b { max-width: none !important; overflow: visible !important; text-overflow: clip !important; }
+
+/* ════════ Sky Pass: a reward road ════════ */
+/* Free rewards on the left, premium on the right, the tiers on a glowing line down the
+   middle that fills up to where you are; every fifth tier is a big milestone. */
+#pass .pass-road-head { position: sticky; top: -4px; z-index: 3; display: grid; grid-template-columns: 1fr 58px 1fr; margin: 8px -14px 0; padding: 10px 14px 8px;
+  background: linear-gradient(180deg, #f5f3fb 75%, rgba(245, 243, 251, 0)); font: 400 12px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #7a70a8; text-align: center; }
+#pass .pass-road-head .lane-prem { color: #a35cff; }
+#pass .pass-tiers { display: flex !important; flex-direction: column !important; gap: 0 !important; overflow: visible !important; padding: 4px 0 10px !important; margin: 0 !important; }
+#pass .pass-row { position: relative; display: grid !important; grid-template-columns: 1fr 58px 1fr !important; align-items: center; gap: 0 !important; min-width: 0 !important; width: auto !important; padding: 6px 0 !important; }
+#pass .pass-row .pass-cell.free { order: 0; }
+#pass .pass-row .pass-num { order: 1; }
+#pass .pass-row .pass-cell.prem { order: 2; }
+/* The line down the middle. */
+#pass .pass-row::before { content: ""; position: absolute !important; left: 50% !important; top: 0 !important; bottom: 0 !important; width: 8px !important; height: auto !important; margin-left: -4px; right: auto !important;
+  border-radius: 0; background: #e3ddf3 !important; z-index: 0; }
+#pass .pass-row.reached::before { background: linear-gradient(180deg, #ffb13b, #ff6fa0) !important; box-shadow: 0 0 10px rgba(255, 140, 80, 0.5); }
+#pass .pass-row.next::before { background: linear-gradient(180deg, #ff6fa0 0%, #e3ddf3 55%) !important; }
+#pass .pass-row:first-child::before { top: 50% !important; }
+#pass .pass-row:last-child::before { bottom: 50% !important; }
+#pass .pass-num { position: relative; z-index: 1; justify-self: center; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 400 15px var(--display);
+  background: #fff; color: #7a70a8; box-shadow: 0 0 0 3px #e3ddf3; }
+#pass .pass-row.big .pass-num { width: 50px; height: 50px; font-size: 18px; box-shadow: 0 0 0 4px #e3ddf3, 0 4px 12px rgba(42, 31, 110, 0.15); }
+#pass .pass-row.reached .pass-num { background: linear-gradient(160deg, #ffd23f, #ff8a3d) !important; color: #fff !important; box-shadow: 0 0 0 3px #fff, 0 4px 12px rgba(255, 120, 60, 0.45) !important; }
+#pass .pass-row.next .pass-num { background: #fff !important; color: #ff4f8b !important; box-shadow: 0 0 0 4px #ff6fa0, 0 0 0 9px rgba(255, 111, 160, 0.2) !important; }
+#pass .pass-here { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); padding: 1px 7px; border-radius: 8px; background: #ff4f8b; color: #fff; font: 400 9px var(--display); letter-spacing: 0.06em; text-transform: uppercase; font-style: normal; white-space: nowrap; }
+/* The reward cards. */
+#pass .pass-cell { position: relative; z-index: 1; margin: 0 4px; min-height: 92px; width: auto !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 6px !important; border-radius: 18px !important; background: #fff !important; border: 0 !important; box-shadow: 0 4px 0 rgba(42, 31, 110, 0.08), 0 8px 18px rgba(42, 31, 110, 0.08) !important; }
+#pass .pass-cell.prem { background: linear-gradient(165deg, #fff4d6, #ffe0f0) !important; box-shadow: 0 4px 0 rgba(201, 138, 16, 0.25), 0 8px 18px rgba(255, 177, 59, 0.18) !important; }
+#pass .pass-row.big .pass-cell { min-height: 112px; }
+#pass .pass-row.big .pass-cell .pass-ico { font-size: 42px; }
+#pass .pass-cell.ready { box-shadow: 0 0 0 3px #ffd23f, 0 6px 18px rgba(255, 177, 59, 0.5) !important; }
+#pass .pass-cell.ready::after { content: "TAP!"; position: absolute; top: -9px; right: 8px; padding: 1px 6px; border-radius: 8px; background: #ff4f8b; color: #fff; font: 400 9px var(--display); }
+#pass .pass-cell.done { opacity: 0.55; }
+#pass .pass-cell.locked { opacity: 0.85 !important; filter: saturate(0.75); }
+#pass .pass-cell i.pass-lock, #pass .pass-cell i.pass-done { position: absolute; top: 6px; right: 6px; margin: 0; }
+#pass .pass-cell i.pass-lock { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(42, 31, 110, 0.7); }
+#pass .pass-cell i.pass-lock svg { width: 13px; height: 13px; color: #fff; }
+#pass .pass-cell i.pass-done { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #2fbf7f; color: #fff; font-size: 13px; }
+/* Earnings panel, richer: a share bar, two stat tiles, hire buttons, ways to earn more. */
+#earnings .earn-share { display: flex; height: 14px; margin: 12px 2px 4px; border-radius: 7px; overflow: hidden; background: #ebe7f6; box-shadow: inset 0 2px 3px rgba(42, 31, 110, 0.12); }
+#earnings .earn-share i { display: block; min-width: 3px; border-right: 2px solid #fff; }
+#earnings .earn-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 2px; }
+#earnings .earn-tiles span { padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: 0 4px 0 rgba(42, 31, 110, 0.07); }
+#earnings .earn-tiles small { display: block; font: 700 10px var(--ui); text-transform: uppercase; letter-spacing: 0.05em; color: #7a70a8; }
+#earnings .earn-tiles b { font: 400 16px var(--display); color: #2a1f5c; }
+#earnings .earn-biz { box-shadow: 0 4px 0 rgba(42, 31, 110, 0.07) !important; }
+#earnings .eb-hire { min-width: 0; padding: 6px 10px !important; font-size: 12px !important; line-height: 1.1; }
+#earnings .eb-hire small { display: block; font-size: 9px; opacity: 0.9; }
+#earnings .earn-more { display: grid; gap: 8px; }
+#earnings .em-card { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 16px; text-align: left; cursor: pointer;
+  background: linear-gradient(135deg, #f3eeff, #ffffff); box-shadow: 0 4px 0 rgba(124, 77, 255, 0.18); color: #2a1f5c; font: inherit; }
+#earnings .em-card.gold { background: linear-gradient(135deg, #fff4cc, #ffe2f0); box-shadow: 0 4px 0 rgba(201, 138, 16, 0.3); }
+#earnings .em-card b { display: block; font: 400 14px var(--display); }
+#earnings .em-card small { font-size: 12px; color: #6a5f98; font-weight: 600; }
+#earnings .em-card em { font: 400 14px var(--display); font-style: normal; color: #7c4dff; white-space: nowrap; }
+#earnings .em-card .eb-cico { width: 36px; height: 36px; border-radius: 12px; background: #fff; }

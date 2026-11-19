@@ -130,9 +130,41 @@ export class TycoonUI {
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
     $("tcy-events").addEventListener("click", e => { if ((e.target as Element).closest("[data-golden]")) { e.stopPropagation(); this.catchGolden(); } });
     $("tcy-next").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.nextAct?.(); });
+    // Hold a Buy button to keep buying (faster the longer you hold), as in the big idle games.
+    let holdT = 0, holdN = 0;
+    const stopHold = () => { clearTimeout(holdT); holdT = 0; holdN = 0; };
+    document.addEventListener("pointerdown", e => {
+      const btn = (e.target as Element).closest<HTMLButtonElement>('.ty-buy, #tcy-card [data-act="buy"], #tcy-card .buy');
+      if (!btn || btn.disabled) return;
+      stopHold();
+      const step = () => {
+        if (!btn.isConnected || btn.disabled) { stopHold(); return; }
+        btn.click();
+        holdN++;
+        holdT = window.setTimeout(step, Math.max(60, 180 - holdN * 12));
+      };
+      holdT = window.setTimeout(step, 420);
+    });
+    for (const ev of ["pointerup", "pointercancel", "pointerleave", "blur"]) document.addEventListener(ev, stopHold, true);
     // Tapping your money opens what you earn, exactly.
     $("tcy-top").querySelector(".tcy-wallet")?.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
     wireModal($("earnings"));
+    $("earnings").addEventListener("click", e => {
+      const el = e.target as Element, hire = el.closest<HTMLElement>("[data-hire-mgr]"), more = el.closest<HTMLElement>("[data-more]");
+      if (hire) {
+        if (hireManager(this.save, hire.dataset.hireMgr!, Date.now())) { this.host.sound.purchase(); confetti(); toast(t("Manager hired! They sell even while you're away")); this.done(); this.renderEarnings(); }
+        return;
+      }
+      if (!more) return;
+      const k = more.dataset.more;
+      if (k === "decor") { closeModal($("earnings")); $("shop-btn").click(); return; }
+      // The cash booster and the time warp work just as in Boosts.
+      const fake = document.createElement("button");
+      fake.dataset.boost = k === "boost" ? "boost" : "warp1";
+      const wrap = document.createElement("div"); wrap.appendChild(fake);
+      this.onBoostClick({ target: fake } as unknown as Event);
+      this.renderEarnings();
+    });
     $("tcy-gems").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); if (this.currentTab() !== "shop") this.openTab("shop"); });
     $("tcy-bar").querySelectorAll<HTMLButtonElement>("button").forEach(b => b.addEventListener("click", e => {
       e.stopPropagation();
@@ -1701,11 +1733,22 @@ export class TycoonUI {
       return { b, v, auto, lv };
     }).sort((a, z) => z.v - a.v);
     const top = Math.max(1e-9, ...rows.map(r => r.v));
+    // One bar in the businesses' colors: who earns what.
+    this.put($("earn-share"), ps > 0 ? rows.filter(r => r.v > 0).map(r => `<i style="flex:${(r.v / ps).toFixed(4)};background:linear-gradient(180deg,${r.b.color[0]},${r.b.color[1]})"></i>`).join("") : "");
+    const best = rows[0];
+    this.put($("earn-tiles"), `<span><small>${esc(t("Earned so far"))}</small><b>${esc(coins(ty.lifetime))}</b></span>`
+      + (best && best.v > 0 ? `<span><small>${esc(t("Top business"))}</small><b>${esc(t(stageName(best.b.id, stageNow(s, best.b.id))))}</b></span>` : `<span><small>${esc(t("Managers"))}</small><b>${ty.managers.length}</b></span>`));
     this.put($("earn-list"), rows.map(r => `<div class="earn-biz" style="--b1:${r.b.color[0]};--b2:${r.b.color[1]}">
       <span class="eb-ico">${iconSvg(r.b.icon)}</span>
       <span class="eb-main"><b>${esc(t(stageName(r.b.id, stageNow(s, r.b.id))))}</b><i class="eb-bar"><i style="width:${Math.max(3, (r.v / top) * 100).toFixed(1)}%"></i></i></span>
-      <span class="eb-val">${r.auto ? `<b>${esc(coins(r.v))}</b><small>${esc(t("a second"))}${ps > 0 ? ` · ${Math.round((r.v / ps) * 100)}%` : ""}</small>` : `<b class="eb-need">${esc(t("No manager"))}</b><small>${esc(t("Sells when you tap"))}</small>`}</span>
+      <span class="eb-val">${r.auto ? `<b>${esc(coins(r.v))}</b><small>${esc(t("a second"))}${ps > 0 ? ` · ${Math.round((r.v / ps) * 100)}%` : ""}</small>` : `<button type="button" class="buy eb-hire" data-hire-mgr="${r.b.id}"${ty.coins < r.b.manager ? " disabled" : ""}><small>${esc(t("Hire manager"))}</small>${esc(coins(r.b.manager))}</button>`}</span>
     </div>`).join("") || `<p class="sheet-note">${esc(t("Open your first business to start earning."))}</p>`);
+    // Ways to earn more (one tap each).
+    const more: string[] = [];
+    if (!ty.boost) more.push(`<button type="button" class="em-card gold" data-more="boost"><span class="eb-cico">${iconSvg("bolt")}</span><span><b>${esc(t("Cash booster ×2"))}</b><small>${esc(t("Double every dollar, forever"))}</small></span><em>💎 ${fmt(COIN_BOOST_CRYSTALS)}</em></button>`);
+    if (ps > 0) more.push(`<button type="button" class="em-card" data-more="warp"><span class="eb-cico">${iconSvg("clock")}</span><span><b>${esc(t("Time warp: 1 hour"))}</b><small>${esc(t("Get {n} right now", { n: coins(ps * 3600) }))}</small></span><em>💎 ${warpPrice(1)}</em></button>`);
+    more.push(`<button type="button" class="em-card" data-more="decor"><span class="eb-cico">${iconSvg("island")}</span><span><b>${esc(t("Island decorations"))}</b><small>${esc(t("Each one: +{pct}% to every business", { pct: 3 }))}</small></span><em>›</em></button>`);
+    this.put($("earn-more"), more.join(""));
     // The bonuses at work (only the ones you have).
     const bon: [string, string, string][] = [];
     const pct = (m: number) => `+${Math.round((m - 1) * 100)}%`;

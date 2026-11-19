@@ -1548,4 +1548,12 @@ export const ES: Record<string, string> = {
   "Sky tram": "Teleférico",
   "A cable car gliding out to a little floating island": "Un teleférico que va hasta una pequeña isla flotante",
   "×2 speed": "×2 velocidad",
+  "Next": "Siguiente",
+  "Earned so far": "Ganado hasta ahora",
+  "Top business": "Mejor negocio",
+  "Managers": "Gerentes",
+  "Earn more": "Gana más",
+  "Double every dollar, forever": "Duplica cada dólar, para siempre",
+  "Each one: +{pct}% to every business": "Cada una: +{pct}% a cada negocio",
+  "Manager hired! They sell even while you're away": "¡Gerente contratado! Vende incluso cuando no estás",
 };

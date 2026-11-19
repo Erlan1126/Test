@@ -429,3 +429,30 @@ export function buildTerrace(g: G, state: 1 | 2, lights: boolean, m: ModelMats):
     K.board(g, "#ffc93c", 0.9, 0.3, 0, 1.36, z0 + 0.66);
   }
 }
+
+/** The street front of a business's lot, so it looks lived in: flower planters at the front
+ *  corners, an A-frame sign in its colors on the sidewalk, a bike rack, little bollards; a
+ *  bigger business adds a lantern either side of the door. */
+export function buildStreetFront(g: G, c1: string, c2: string, stage: number, m: ModelMats): void {
+  const K = kit(m);
+  const stone = m.c("#d9d2e6", 0.6), metal = m.c("#4a4f7a", 0.5, 0.4);
+  for (const x of [-1.85, 1.85]) {
+    K.box(g, stone, 0.42, 0.24, 0.42, x, 0, 1.85);
+    K.bush(g, x, 1.85, 0.9);
+    K.sph(g, m.c(x < 0 ? "#ff6fa0" : "#ffe27a", 0.8), 0.07, x - 0.1, 0.42, 1.95);
+    K.sph(g, m.c("#b48cff", 0.8), 0.06, x + 0.1, 0.44, 1.9);
+  }
+  // The A-frame sign (two leaning boards in the business's colors).
+  const sign = m.sign(c2);
+  K.box(g, sign, 0.34, 0.42, 0.03, -1.2, 0.02, 2.0).rotation.x = 0.22;
+  K.box(g, m.c(c1, 0.6), 0.34, 0.42, 0.03, -1.2, 0.02, 1.86).rotation.x = -0.22;
+  // A bike rack with one bike, and bollards along the curb.
+  K.box(g, metal, 0.6, 0.04, 0.04, 1.15, 0.28, 2.0);
+  for (const x of [0.88, 1.42]) K.box(g, metal, 0.04, 0.3, 0.04, x, 0, 2.0);
+  const bike = m.c(c2, 0.5);
+  K.torus(g, m.c("#2a2f4a", 0.6), 0.11, 0.02, 0.98, 0.13, 2.08);
+  K.torus(g, m.c("#2a2f4a", 0.6), 0.11, 0.02, 1.3, 0.13, 2.08);
+  K.box(g, bike, 0.34, 0.03, 0.03, 1.14, 0.22, 2.08);
+  for (const x of [-0.6, 0, 0.6]) K.cyl(g, stone, 0.05, 0.06, 0.26, x, 0, 2.08, 8);
+  if (stage >= 2) for (const x of [-0.75, 0.75]) { K.cyl(g, metal, 0.025, 0.03, 0.9, x, 0, 1.55, 6); K.sph(g, m.bulb, 0.08, x, 0.95, 1.55); }
+}
