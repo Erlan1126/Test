@@ -157,8 +157,8 @@
 
 <div id="tycity" hidden aria-label="Skyhaven Inc. business district">
   <div class="tcy-labels" id="tcy-labels"></div>
-  <div class="tcy-top">
-    <div class="tcy-wallet"><small id="tcy-era">Skyhaven Inc.</small><div class="tcy-coins"><span class="tc-coin" aria-hidden="true"></span><b id="tcy-coins">0</b></div><em id="tcy-rate"></em></div>
+  <div class="tcy-top" id="tcy-top">
+    <div class="tcy-wallet" role="button" tabindex="0" aria-label="Your earnings"><small id="tcy-era">Skyhaven Inc.</small><div class="tcy-coins"><span class="tc-coin" aria-hidden="true"></span><b id="tcy-coins">0</b></div><em id="tcy-rate"></em></div>
     <button type="button" class="tcy-gems" id="tcy-gems" aria-label="Sky Crystals and shop"><span>💎</span><b id="tcy-gems-n">0</b></button>
   </div>
   <div class="tcy-events" id="tcy-events"></div>
@@ -173,6 +173,19 @@
     <button type="button" data-open="goals"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Goals</span><i class="dot" hidden></i></button>
     <button type="button" data-open="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2.1"/><path d="M4.5 20.5c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg><span>Me</span><i class="dot" hidden></i></button>
   </nav>
+</div>
+
+<div id="earnings" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="earn-title">
+  <div class="sheet">
+    <div class="sheet-top"><div class="sheet-head"><div><h2 id="earn-title">Your earnings</h2><p id="earn-sub"></p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <div class="earn-hero"><small>Every second</small><b id="earn-ps"></b><div class="earn-row"><span><small>Minute</small><b id="earn-pm"></b></span><span><small>Hour</small><b id="earn-ph"></b></span><span><small>Day</small><b id="earn-pd"></b></span></div></div>
+    <h3 class="sheet-sub">By business</h3>
+    <div class="earn-list" id="earn-list"></div>
+    <h3 class="sheet-sub">Your bonuses</h3>
+    <div class="earn-bonus" id="earn-bonus"></div>
+    <h3 class="sheet-sub">While you're away</h3>
+    <div class="earn-away" id="earn-away"></div>
+  </div>
 </div>
 
 <div id="tcy-buildsheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="tcy-build-title">
@@ -298,6 +311,9 @@
       <div class="town-hero"><span class="town-hero-ico" id="town-hero-ico"></span><div><b>Make Skyhaven yours</b><small id="town-hero-text"></small></div></div>
       <h3 class="sheet-sub">Island decorations</h3>
       <div class="decor-grid" id="decor-list"></div>
+      <h3 class="sheet-sub">Island upgrades</h3>
+      <p class="sheet-note">Bought with your company's cash.</p>
+      <div class="decor-grid" id="upg-list"></div>
       <h3 class="sheet-sub">Business boosts</h3>
       <div class="ty-boosts" id="shop-boosts"></div>
     </div>

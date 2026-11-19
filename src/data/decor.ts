@@ -5,8 +5,10 @@ export interface Decor {
   id: string;
   name: string;
   text: string;
-  /** Price in Sky Crystals. */
-  crystals: number;
+  /** Price in Sky Crystals (premium decorations)... */
+  crystals?: number;
+  /** ...or in cash (island upgrades anyone can grow into). */
+  cash?: number;
   /** A drawn icon (see ui/icons). */
   icon: string;
 }
@@ -21,6 +23,15 @@ export const DECOR: Decor[] = [
   { id: "wheel", name: "Ferris wheel", text: "A big wheel turning on the beach, glowing after dark", crystals: 120, icon: "wheel" },
   { id: "fireworks", name: "Nightly fireworks", text: "A fireworks show over the sea every night", crystals: 90, icon: "party" },
   { id: "statue", name: "Golden founder statue", text: "Your golden statue in the plaza fountain", crystals: 150, icon: "statue" },
+  { id: "beachclub", name: "Beach club", text: "A cabana bar with loungers and lanterns on the sand", crystals: 70, icon: "sun" },
+  { id: "marina", name: "Marina", text: "A second pier with little boats bobbing at their moorings", crystals: 110, icon: "boat" },
+  { id: "garden", name: "Glass garden", text: "A greenhouse dome full of plants, glowing at night", crystals: 140, icon: "leaf" },
+  { id: "skytram", name: "Sky tram", text: "A cable car gliding out to a little floating island", crystals: 200, icon: "airship" },
 ];
 
-export const decorById = (id: string): Decor | undefined => DECOR.find(d => d.id === id);
+/** The one island upgrade bought with the company's cash (most are Sky Crystals). */
+export const UPGRADES_CASH: Decor[] = [
+  { id: "foodtrucks", name: "Food trucks", text: "Three food trucks round the plaza, with a line at lunch", cash: 25e3, icon: "dish" },
+];
+
+export const decorById = (id: string): Decor | undefined => DECOR.find(d => d.id === id) ?? UPGRADES_CASH.find(d => d.id === id);

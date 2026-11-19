@@ -1,16 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { DECOR, DECOR_BONUS } from "../src/data/decor";
+import { DECOR, DECOR_BONUS, UPGRADES_CASH } from "../src/data/decor";
 import { buyDecor, decorMult, normalizeDecor } from "../src/logic/decor";
 import { defaultSave, normalize } from "../src/logic/save";
+
+describe("island upgrades (cash)", () => {
+  it("cost the company's cash, once each, and count like decorations", () => {
+    const s = defaultSave();
+    const u = UPGRADES_CASH[0];
+    s.tycoon.coins = u.cash! - 1;
+    expect(buyDecor(s, u.id)).toBe("short");
+    s.tycoon.coins = u.cash! + 10;
+    const gems = s.crystals;
+    expect(buyDecor(s, u.id)).toBe("ok");
+    expect(s.tycoon.coins).toBe(10);
+    expect(s.crystals).toBe(gems);
+    expect(buyDecor(s, u.id)).toBe("owned");
+    expect(decorMult(s)).toBeCloseTo(1 + DECOR_BONUS);
+    expect(normalizeDecor([u.id])).toEqual([u.id]);
+  });
+});
 
 describe("island decorations", () => {
   it("costs crystals, once each", () => {
     const s = defaultSave();
-    const d = DECOR[0];
-    s.crystals = d.crystals - 1;
+    const d = DECOR[0], price = d.crystals!;
+    s.crystals = price - 1;
     expect(buyDecor(s, d.id)).toBe("short");
     expect(s.decor).toEqual([]);
-    s.crystals = d.crystals + 5;
+    s.crystals = price + 5;
     expect(buyDecor(s, d.id)).toBe("ok");
     expect(s.crystals).toBe(5);
     expect(buyDecor(s, d.id)).toBe("owned");

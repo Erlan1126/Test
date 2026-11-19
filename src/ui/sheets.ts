@@ -1,5 +1,7 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
-import { DECOR, DECOR_BONUS } from "../data/decor";
+import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
+import { coins } from "../data/tycoon";
+import { COIN_SVG } from "./tycoon";
 import { buyDecor } from "../logic/decor";
 import { formatRecoveryCode } from "../online";
 import { fmt } from "../core/util";
@@ -278,6 +280,9 @@ export class Sheets {
     this.renderShop();
     showTab($("shop"), tab);
     openModal($("shop"));
+    // (Always from the top, so the first card is in view.)
+    const sh = $("shop").querySelector<HTMLElement>(".sheet");
+    if (sh) sh.scrollTop = 0;
   }
 
   /** Sky Crystal packs (real money) and premium items (bought with crystals). */
@@ -431,25 +436,32 @@ export class Sheets {
     const save = this.save;
     $("town-hero-ico").innerHTML = iconSvg("island");
     $("town-hero-text").textContent = t("Every decoration shows up in your town and brings more visitors: +{pct}% to every business.", { pct: Math.round(DECOR_BONUS * 100) });
-    const list = $("decor-list");
-    list.innerHTML = "";
-    for (const d of DECOR) {
-      const own = save.decor.includes(d.id);
-      const card = document.createElement("div");
-      card.className = "decor-card" + (own ? " own" : "");
-      card.innerHTML = `<span class="decor-ico">${iconSvg(d.icon)}</span><b>${esc(t(d.name))}</b><small>${esc(t(d.text))}</small>`
-        + `<button type="button" class="buy${own ? " owned" : ""}"${own ? "" : ` aria-label="${esc(t("Buy {name} for {n} Sky Crystals", { name: t(d.name), n: d.crystals }))}"`}>${own ? `✓ ${esc(t("See it"))}` : `💎 ${d.crystals}`}</button>`;
-      const btn = card.querySelector<HTMLButtonElement>(".buy")!;
+    const card = (d: Decor, list: HTMLElement) => {
+      const own = save.decor.includes(d.id), cash = d.cash !== undefined;
+      const price = cash ? `${COIN_SVG}${esc(coins(d.cash!))}` : `💎 ${d.crystals}`;
+      const el = document.createElement("div");
+      el.className = "decor-card" + (own ? " own" : "") + (cash ? " cash" : "");
+      el.innerHTML = `<span class="decor-ico">${iconSvg(d.icon)}</span><b>${esc(t(d.name))}</b><small>${esc(t(d.text))}</small>`
+        + `<button type="button" class="buy${own ? " owned" : ""}">${own ? `✓ ${esc(t("See it"))}` : price}</button>`;
+      const btn = el.querySelector<HTMLButtonElement>(".buy")!;
       btn.addEventListener("click", () => {
         if (own) { closeModal($("shop")); this.host.showDecor(d.id); return; }
-        if (save.crystals < d.crystals) { this.nope(btn, t("You need {n} more Sky Crystals", { n: d.crystals - save.crystals })); showTab($("shop"), "crystals"); return; }
+        if (cash ? save.tycoon.coins < d.cash! : save.crystals < (d.crystals ?? Infinity)) {
+          if (cash) this.nope(btn, t("You need {n} more cash. Your businesses are earning it!", { n: coins(d.cash! - save.tycoon.coins) }));
+          else { this.nope(btn, t("You need {n} more Sky Crystals", { n: (d.crystals ?? 0) - save.crystals })); showTab($("shop"), "crystals"); }
+          return;
+        }
         if (buyDecor(save, d.id) !== "ok") return;
         this.bought(t("{name} added to Skyhaven!", { name: t(d.name) }));
         closeModal($("shop"));
         this.host.showDecor(d.id);
       });
-      list.appendChild(card);
-    }
+      list.appendChild(el);
+    };
+    const ul = $("upg-list"), dl = $("decor-list");
+    ul.innerHTML = ""; dl.innerHTML = "";
+    for (const d of UPGRADES_CASH) card(d, ul);
+    for (const d of DECOR) card(d, dl);
     this.host.townBoosts($("shop-boosts"), () => this.renderShop());
   }
 
