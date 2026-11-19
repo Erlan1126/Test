@@ -845,7 +845,7 @@ export class Renderer3D {
     // The first visit: a close look at the player's first tower and the Coffee Cart together.
     const framing = !!f.bizLive?.frame;
     if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
-    this.bizFraming = framing;
+    this.bizFraming = framing || !!this.debugLook;
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }

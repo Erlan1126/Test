@@ -3532,3 +3532,7 @@ body.tabs-open .block-say, body.tabs-open .block-skip { display: none !important
 .modal .decor-card .buy.owned { background: linear-gradient(180deg, #6ff0b0, #2fbf7f); color: #fff; box-shadow: 0 4px 0 #1f8a5a; }
 .town-hero b { font-family: var(--display); }
 #shop-boosts .ty-speedups { margin: 6px 2px 0; }
+
+/* Building bubbles pass under the top card, the Next step card and the tab bar. */
+.tcy-labels { z-index: 1; }
+.tcy-top, .tcy-next, .tcy-bar, .tcy-events, .tcy-card { z-index: 6; }
