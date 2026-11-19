@@ -61,8 +61,17 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
     cam.position.set(mid.x + 10, mid.y + 7.5, mid.z + 10);
     cam.lookAt(mid);
     gl.render(scene, cam);
-    const url = gl.domElement.toDataURL("image/png");
-    scene.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); });
+    const lost = gl.getContext().isContextLost();
+    const data = lost ? "" : gl.domElement.toDataURL("image/png");
+    const mtl = new Set<THREE.Material>();
+    scene.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { m.geometry.dispose(); (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => mtl.add(x)); } });
+    mtl.forEach(m => m.dispose());
+    // A lost context draws nothing: don't keep a blank picture, try again next time.
+    if (!data) return "";
+    // A short blob: URL instead of a long data: URL keeps the cards' HTML small.
+    const bin = atob(data.slice(data.indexOf(",") + 1)), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
     cache.set(key, url);
     return url;
   } catch {

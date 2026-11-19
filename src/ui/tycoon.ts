@@ -1,6 +1,8 @@
 // The Tycoon screens: the business list (tap to run, buy levels, hire managers), boosts,
 // the New Era, the live card on the home screen and the "while you were away" welcome.
 import { decorMult } from "../logic/decor";
+import { DECOR_BONUS } from "../data/decor";
+import { RANK_BONUS, RANKS } from "../data/ranks";
 import { cafeMult } from "../logic/cafe";
 import { vipActive } from "../logic/vip";
 import { GEM_BONUS } from "../data/tycoon";
@@ -13,8 +15,8 @@ import { orderText } from "./orders";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
-  affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
+  affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -131,14 +133,19 @@ export class TycoonUI {
     $("tcy-events").addEventListener("click", e => { if ((e.target as Element).closest("[data-golden]")) { e.stopPropagation(); this.catchGolden(); } });
     $("tcy-next").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.nextAct?.(); });
     // Hold a Buy button to keep buying (faster the longer you hold), as in the big idle games.
-    let holdT = 0, holdN = 0;
+    let holdT = 0, holdN = 0, held: HTMLElement | null = null;
     const stopHold = () => { clearTimeout(holdT); holdT = 0; holdN = 0; };
+    // After a hold, the release's own click must not buy one more.
+    document.addEventListener("click", e => { if (held && e.isTrusted && held.contains(e.target as Node)) { e.stopPropagation(); e.preventDefault(); } held = null; }, true);
+    document.addEventListener("contextmenu", e => { if ((e.target as Element).closest?.(".ty-buy")) e.preventDefault(); });
     document.addEventListener("pointerdown", e => {
-      const btn = (e.target as Element).closest<HTMLButtonElement>('.ty-buy, #tcy-card [data-act="buy"], #tcy-card .buy');
+      held = null;
+      const btn = (e.target as Element).closest<HTMLButtonElement>(".ty-buy:not(.need-floors)");
       if (!btn || btn.disabled) return;
       stopHold();
       const step = () => {
         if (!btn.isConnected || btn.disabled) { stopHold(); return; }
+        held = btn;
         btn.click();
         holdN++;
         holdT = window.setTimeout(step, Math.max(60, 180 - holdN * 12));
@@ -147,7 +154,9 @@ export class TycoonUI {
     });
     for (const ev of ["pointerup", "pointercancel", "pointerleave", "blur"]) document.addEventListener(ev, stopHold, true);
     // Tapping your money opens what you earn, exactly.
-    $("tcy-top").querySelector(".tcy-wallet")?.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
+    const wallet = $("tcy-top").querySelector<HTMLElement>(".tcy-wallet")!;
+    wallet.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
+    wallet.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.host.sound.click(); this.openEarnings(); } });
     wireModal($("earnings"));
     $("earnings").addEventListener("click", e => {
       const el = e.target as Element, hire = el.closest<HTMLElement>("[data-hire-mgr]"), more = el.closest<HTMLElement>("[data-more]");
@@ -161,7 +170,6 @@ export class TycoonUI {
       // The cash booster and the time warp work just as in Boosts.
       const fake = document.createElement("button");
       fake.dataset.boost = k === "boost" ? "boost" : "warp1";
-      const wrap = document.createElement("div"); wrap.appendChild(fake);
       this.onBoostClick({ target: fake } as unknown as Event);
       this.renderEarnings();
     });
@@ -897,7 +905,7 @@ export class TycoonUI {
     const room = Math.max(1, freeFloors(s)), noRoom = freeFloors(s) < 1;
     const n = Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
     const price = costOf(b, lv, n), canBuy = price <= ty.coins && !noRoom;
-    const ns = owned ? nextStage(lv) : undefined;
+    const ns = owned ? STAGE_AT[st + 1] : undefined;
     const goal = !owned ? t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) })
       : grow ? t("Ready to grow! HQ order: {order} for ×{m} earnings", { order: orderText(orderFor(i, grow)), m: ORDER_MULT })
       : ns ? t("Grows into {name} at {n} floors", { name: t(stageName(b.id, st + 1)), n: ns }) : t("Fully grown!");
@@ -1349,7 +1357,7 @@ export class TycoonUI {
         <span class="room-lamp l1"></span><span class="room-lamp l2"></span>
         ${stage >= 1 ? `<span class="room-awning"></span>` : ""}${stage >= 2 ? `<span class="room-light"></span>` : ""}${stage >= 4 ? `<span class="room-chand"></span><span class="room-sparkle"></span>` : ""}
         <span class="room-sign">${iconSvg(b.icon)}<b>${esc(name)}</b></span>
-        ${thumbFor(b, stage) ? `<img class="room-thumb${owned ? "" : " ghost"}" alt="" src="${thumbFor(b, stage)}">` : ""}
+        ${((u: string) => u ? `<img class="room-thumb${owned ? "" : " ghost"}" alt="" src="${u}">` : "")(thumbFor(b, stage))}
         ${owned ? `<span class="room-medal"><b></b><small>${esc(t("floors"))}</small></span><span class="room-next"><small></small><i><i></i></i></span>` : ""}
         ${managed ? `<span class="room-mgr" aria-label="${esc(t("Manager"))}">${PERSON_BOSS}</span>` : ""}
         ${owned ? `<span class="room-path" aria-label="${esc(t(STAGE_LABEL[stage]))}">${STAGE_AT.map((_, k) => `<i class="${k < stage ? "done" : k === stage ? "now" : ""}"></i>`).join("")}</span>` : ""}
@@ -1388,7 +1396,7 @@ export class TycoonUI {
       const b = BUSINESSES.find(x => x.id === row.dataset.biz)!, lv = levelOf(s, b.id), owned = lv > 0;
       const room = Math.max(1, freeFloors(s));
       const n = Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
-      const price = costOf(b, lv, n), next = nextMilestone(lv), ns = owned ? nextStage(lv) : undefined;
+      const price = costOf(b, lv, n), next = nextMilestone(lv), ns = owned ? STAGE_AT[stageNow(s, b.id) + 1] : undefined;
       // On the Company page the banner says it all in one line: floors, and what's next.
       const cards = document.body.classList.contains("city-home");
       const nextLine = !owned ? "" : ns && ns <= (next ?? Infinity) ? t("Next: {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
@@ -1576,6 +1584,7 @@ export class TycoonUI {
         }
         if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(flyFrom as HTMLElement); }
         else if (crossed) { toast(t("{name} now runs twice as fast!", { name })); fireworks(2, () => this.host.sound.firework()); }
+        this.checkRank();
         this.host.persist();
         this.render();
         return;
@@ -1778,8 +1787,8 @@ export class TycoonUI {
     // Ways to earn more (one tap each).
     const more: string[] = [];
     if (!ty.boost) more.push(`<button type="button" class="em-card gold" data-more="boost"><span class="eb-cico">${iconSvg("bolt")}</span><span><b>${esc(t("Cash booster ×2"))}</b><small>${esc(t("Double every dollar, forever"))}</small></span><em>💎 ${fmt(COIN_BOOST_CRYSTALS)}</em></button>`);
-    if (ps > 0) more.push(`<button type="button" class="em-card" data-more="warp"><span class="eb-cico">${iconSvg("clock")}</span><span><b>${esc(t("Time warp: 1 hour"))}</b><small>${esc(t("Get {n} right now", { n: coins(ps * 3600) }))}</small></span><em>💎 ${warpPrice(1)}</em></button>`);
-    more.push(`<button type="button" class="em-card" data-more="decor"><span class="eb-cico">${iconSvg("island")}</span><span><b>${esc(t("Island decorations"))}</b><small>${esc(t("Each one: +{pct}% to every business", { pct: 3 }))}</small></span><em>›</em></button>`);
+    if (ps > 0 && speedupsLeft(s) > 0) more.push(`<button type="button" class="em-card" data-more="warp"><span class="eb-cico">${iconSvg("clock")}</span><span><b>${esc(t("Time warp: 1 hour"))}</b><small>${esc(t("Get {n} right now", { n: coins(ps * 3600) }))}</small></span><em>💎 ${warpPrice(1)}</em></button>`);
+    more.push(`<button type="button" class="em-card" data-more="decor"><span class="eb-cico">${iconSvg("island")}</span><span><b>${esc(t("Island decorations"))}</b><small>${esc(t("Each one: +{pct}% to every business", { pct: Math.round(DECOR_BONUS * 100) }))}</small></span><em>›</em></button>`);
     this.put($("earn-more"), more.join(""));
     // The bonuses at work (only the ones you have).
     const bon: [string, string, string][] = [];
@@ -1787,6 +1796,8 @@ export class TycoonUI {
     if (ty.boost) bon.push(["bolt", t("Cash booster"), "×2"]);
     if (ty.opening > now) bon.push(["party", t("Grand opening"), `×${OPENING_MULT}`]);
     if (vipActive(s, now)) bon.push(["crown", t("VIP"), "×1.25"]);
+    const rk = townRank(s);
+    if (rk > 0) bon.push([RANKS[rk].icon, t("Town rank: {name}", { name: t(RANKS[rk].name) }), pct(1 + rk * RANK_BONUS)]);
     if (ty.gems > 0) bon.push(["gem", t("Investors"), pct(1 + ty.gems * GEM_BONUS)]);
     if (workerBonus(s) > 1.001) bon.push(["city", t("Your sky city's workers"), pct(workerBonus(s))]);
     if (s.decor.length) bon.push(["island", t("Island decorations"), pct(decorMult(s))]);
@@ -1795,6 +1806,14 @@ export class TycoonUI {
     if (ups) bon.push(["star", t("Upgrades bought"), String(ups)]);
     if (ty.advisors.length) bon.push(["medal", t("Advisors on your team"), String(ty.advisors.length)]);
     bon.push(["rocket", t("All businesses together"), `×${fmtMult(multiplier(s, now))}`]);
+    // The town's rank, and what the next one brings.
+    {
+      const used = usedFloors(s), nx = RANKS[rk + 1], from = RANKS[rk].at;
+      const k = nx ? Math.min(1, (used - from) / (nx.at - from)) : 1;
+      this.put($("earn-rank"), `<span class="er-ico">${iconSvg(RANKS[rk].icon)}</span><div class="er-main"><small>${esc(t("Town rank"))} · ${rk + 1}/${RANKS.length}</small><b>${esc(t(RANKS[rk].name))}</b>`
+        + (nx ? `<i class="er-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i><em>${esc(t("Next: {name} at {n} business levels ({have} now)", { name: t(nx.name), n: fmt(nx.at), have: fmt(used) }))}</em><em class="er-unlock">${esc(t(nx.unlock))} · ${esc(t("+{pct}% to every business", { pct: Math.round(RANK_BONUS * 100) }))}</em>`
+          : `<em>${esc(t("The highest rank. Skyhaven is the capital of the sky!"))}</em>`) + `</div>`);
+    }
     this.put($("earn-bonus"), bon.map(([ico, name, v]) => `<div class="eb-chip"><span class="eb-cico">${iconSvg(ico)}</span><span>${esc(name)}</span><b>${esc(v)}</b></div>`).join(""));
     const h = offlineHours(s);
     this.put($("earn-away"), `<div class="eb-away"><span class="eb-cico">${iconSvg("lock")}</span><span>${esc(ps > 0
@@ -1875,9 +1894,29 @@ export class TycoonUI {
     this.done();
   }
 
+  /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
+  private checkRank(): void {
+    const s = this.save, rk = townRank(s), key = `rank-${rk}`;
+    if (rk < 1 || s.seenFeatures.includes(key)) return;
+    for (let i = 1; i <= rk; i++) if (!s.seenFeatures.includes(`rank-${i}`)) s.seenFeatures.push(`rank-${i}`);
+    const r = RANKS[rk];
+    this.host.persist();
+    toast(t("Skyhaven is now a {name}!", { name: t(r.name) }));
+    fireworks(4, () => this.host.sound.firework());
+    const note = () => {
+      if (openModalEl() || !$("mayor").hidden || !$("welcome").hidden) { window.setTimeout(note, 1500); return; }
+      mayorNote(t("Skyhaven is now a {name}!", { name: t(r.name) }),
+        t("{unlock}. And every business earns {pct}% more for good. Go take a look!", { unlock: t(r.unlock), pct: Math.round(RANK_BONUS * 100) })
+        + (RANKS[rk + 1] ? " " + t("Next rank: {name} at {n} business levels.", { name: t(RANKS[rk + 1].name), n: fmt(RANKS[rk + 1].at) }) : ""),
+        t("Let's see!"));
+    };
+    window.setTimeout(note, 2500);
+  }
+
   private short(price: number): void {
     toast(t("You need {n} more Sky Crystals", { n: fmt(price - this.save.crystals) }));
     closeModal($("tycoon"));
+    if (!$("earnings").hidden) closeModal($("earnings"));
     this.host.openCrystalShop();
   }
 

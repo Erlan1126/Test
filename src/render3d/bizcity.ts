@@ -155,6 +155,8 @@ export interface BizCafe {
   ghostTerrace?: boolean;
   /** Island decorations the player bought (data/decor.ts). */
   decor?: string[];
+  /** The town's rank (data/ranks.ts): each one adds something new to the town. */
+  rank?: number;
 }
 /** A tower the player built, as the town draws it. */
 export type BizTower = NonNullable<BizCafe["starter"]>;
@@ -1262,6 +1264,122 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return v;
   };
   const cars = [["#ffffff", true], ["#ffc93c", false], ["#4f8bff", true], ["#ff4f8b", false], ["#5ee0a0", false]].map(([c, van], k) => ({ v: makeCar(c as string, van as boolean), u: k / 5, sp: 0.018 + (k % 3) * 0.004 }));
+  // ---- Town ranks (data/ranks.ts): as the company grows, the town itself changes for good ----
+  const rank = cafe.rank ?? 0;
+  const outward = (u: number, out: THREE.Vector3, d: THREE.Vector3) => {
+    carPath.at(u, out, d);
+    const nx = d.z, nz = -d.x, sgn = (out.x - cx) * nx + (out.z - cz) * nz > 0 ? 1 : -1;
+    return { nx: nx * sgn, nz: nz * sgn };
+  };
+  if (rank >= 1) {
+    // Village: a street market round the plaza, striped stalls with fruit and flowers.
+    const stripes = [["#ff5f6d", "#ffffff"], ["#2f9bff", "#ffffff"], ["#5ec26a", "#fff4c2"], ["#ffb13b", "#ffffff"]];
+    [1.25, 3.55, 4.35, 0.95 + Math.PI].slice(0, 4).forEach((a, k) => {
+      const sx = pz.x + Math.cos(a) * 2.55, sz = pz.z + Math.sin(a) * 2.55, rot = -a + Math.PI / 2;
+      const sg = new THREE.Group();
+      sg.add(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.26, 0.28).translate(0, 0.13, 0), mats.c("#b07a4a", 0.8)));
+      for (let j = 0; j < 4; j++) sg.add(new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 5).translate(-0.21 + j * 0.14, 0.3, 0.02), mats.c(["#ff4f4f", "#ffd23a", "#7ad35a", "#ff8ac0"][(j + k) % 4], 0.6)));
+      for (const x of [-0.29, 0.29]) for (const z of [-0.12, 0.12]) sg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.62, 4).translate(x, 0.31, z), metal));
+      for (let j = 0; j < 6; j++) sg.add(new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.42).rotateX(0.32).translate(-0.275 + j * 0.11, 0.64, 0.03), mats.c(stripes[k][j % 2], 0.6)));
+      sg.position.set(sx, 0.2, sz);
+      sg.rotation.y = rot;
+      sg.scale.setScalar(1.3);
+      sg.updateMatrixWorld(true);
+      sg.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) add(m.geometry.clone().applyMatrix4(m.matrixWorld), m.material as THREE.Material); });
+    });
+    // Bunting over the plaza.
+    const flags = new THREE.InstancedMesh(new THREE.ConeGeometry(0.06, 0.13, 3).rotateX(Math.PI), own(new THREE.MeshStandardMaterial({ roughness: 0.7 })), 24);
+    flags.userData.dynamic = true;
+    const fc = ["#ff5f6d", "#ffd23a", "#2f9bff", "#5ee0a0", "#ff8ac0"], fm = new THREE.Matrix4(), fcol = new THREE.Color();
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2, sag = 0.12 * Math.abs(Math.sin((k % 6) / 6 * Math.PI));
+      fm.makeTranslation(pz.x + Math.cos(a) * 2.2, 1.55 - sag, pz.z + Math.sin(a) * 2.2);
+      flags.setMatrixAt(k, fm); flags.setColorAt(k, fcol.set(fc[k % fc.length]));
+    }
+    g.add(flags);
+  }
+  if (rank >= 2) {
+    // Town: a little two-car tram running round the outer street.
+    const tram = new THREE.Group();
+    for (const z of [-0.5, 0.5]) {
+      tram.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.92).translate(0, 0.36, z), mats.c("#ffcf3a", 0.45)));
+      tram.add(new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.16, 0.86).translate(0, 0.46, z), winMat));
+      tram.add(new THREE.Mesh(new THREE.BoxGeometry(0.51, 0.06, 0.93).translate(0, 0.19, z), mats.c("#e2453c", 0.5)));
+      tram.add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.04, 0.86).translate(0, 0.59, z), mats.c("#f4efe6", 0.5)));
+    }
+    tram.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.03).rotateX(-0.5).translate(0, 0.76, 0.1), metal));
+    life.add(tram);
+    const tp = new THREE.Vector3(), td = new THREE.Vector3();
+    townTicks.push(t => {
+      carPath.at((t * 0.011 + 0.62) % 1, tp, td);
+      tram.position.set(tp.x, 0.04, tp.z);
+      tram.rotation.y = Math.atan2(td.x, td.z);
+    });
+  }
+  if (rank >= 3) {
+    // City: glowing billboards just outside the street, brighter after dark.
+    const ads = ["#ff4f8b", "#2f9bff", "#ffb13b", "#5ee0a0"], bp = new THREE.Vector3(), bd = new THREE.Vector3();
+    const glows: THREE.MeshStandardMaterial[] = [];
+    [0.08, 0.33, 0.58, 0.83].forEach((u, k) => {
+      const { nx, nz } = outward(u, bp, bd);
+      const x = bp.x + nx * 0.85, z = bp.z + nz * 0.85, ry = Math.atan2(-nx, -nz);
+      const m = own(std(ads[k], { emissive: new THREE.Color(ads[k]), emissiveIntensity: 0.4, roughness: 0.4 }));
+      m.userData.dynamic = true; glows.push(m);
+      const bg = new THREE.Group();
+      for (const px of [-0.4, 0.4]) bg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.3, 6).translate(px, 0.65, 0), metal));
+      bg.add(new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.6, 0.06).translate(0, 1.45, 0), mats.c("#2a2f4a", 0.5)));
+      for (const side of [0.035, -0.035]) bg.add(new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.5, 0.02).translate(0, 1.45, side), m));
+      bg.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.02).translate(-0.25, 1.52, 0.05), mats.c("#ffffff", 0.4)));
+      bg.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8).translate(0.32, 1.45, 0.05), mats.c("#fff2b0", 0.3)));
+      bg.position.set(x, 0.2, z); bg.rotation.y = ry;
+      bg.userData.dynamic = true;
+      g.add(bg);
+    });
+    townTicks.push((t, night) => glows.forEach((m, k) => { m.emissiveIntensity = 0.35 + night * 1.6 + Math.max(0, Math.sin(t * 2.2 + k * 1.7)) * 0.25; }));
+  }
+  if (rank >= 4) {
+    // Big City: airships drifting in wide circles over the island.
+    const ships = [0, 1].map(k => {
+      const a = new THREE.Group();
+      a.add(new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 10).scale(2.1, 0.75, 0.75), mats.c(k ? "#ffffff" : "#ffd6e4", 0.5)));
+      a.add(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16, 1, true).rotateZ(Math.PI / 2).translate(0.15, 0, 0), mats.c(k ? "#2f6fff" : "#ff5f8b", 0.5)));
+      a.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.2).translate(0, -0.47, 0), mats.c("#3a3f5a", 0.5)));
+      for (const r of [0, Math.PI / 2]) a.add(new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.03).rotateX(r).translate(-1.0, 0, 0), mats.c(k ? "#2f6fff" : "#ff5f8b", 0.5)));
+      a.userData.dynamic = true;
+      g.add(a);
+      return a;
+    });
+    townTicks.push(t => ships.forEach((a, k) => {
+      const ang = t * (k ? -0.035 : 0.045) + k * 2.6, r = 6.5 + k * 2.5;
+      a.position.set(cx + Math.cos(ang) * r, 6.2 + k * 1.4 + Math.sin(t * 0.4 + k) * 0.25, cz + Math.sin(ang) * r);
+      a.rotation.y = -ang + (k ? Math.PI / 2 : -Math.PI / 2);
+    }));
+  }
+  if (rank >= 5) {
+    // Metropolis: slim glass towers rise on the floating islands.
+    const tones = ["#bfe6ff", "#d9ccff", "#ffd9c2"];
+    islets.forEach((it, k) => {
+      const n = k === 0 ? 3 : 2;
+      for (let j = 0; j < n; j++) {
+        const h = 1.2 + ((j + k) % 3) * 0.55, w = 0.26 + (j % 2) * 0.06, x = (j - (n - 1) / 2) * 0.42, z = k === 0 ? 0.35 : 0;
+        it.o.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, w).translate(x, h / 2, z), mats.c(tones[(j + k) % 3], 0.15, 0.4)));
+        it.o.add(new THREE.Mesh(new THREE.BoxGeometry(w + 0.03, 0.05, w + 0.03).translate(x, h * 0.5, z), mats.c("#ffffff", 0.5)));
+        it.o.add(new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, 0.12, w * 0.6).translate(x, h + 0.06, z), mats.c("#e9e4f5", 0.5)));
+      }
+    });
+  }
+  if (rank >= 6 && islets[0]) {
+    // Sky Capital: the golden Skyhaven Tower on the big floating island, a beacon on top.
+    const o = islets[0].o, gw = own(std("#fff2b0", { emissive: 0xffd27a, emissiveIntensity: 0.6 }));
+    gw.userData.dynamic = true;
+    o.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.3, 8).translate(0, 0.15, -0.3), stone));
+    o.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.36, 3.2, 8).translate(0, 1.9, -0.3), mats.gold));
+    for (const y of [1.0, 1.9, 2.8]) o.add(new THREE.Mesh(new THREE.CylinderGeometry(0.3 - y * 0.03, 0.3 - y * 0.03, 0.07, 8).translate(0, y, -0.3), mats.c("#ffffff", 0.4)));
+    o.add(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.9, 8).translate(0, 3.95, -0.3), mats.gold));
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8).translate(0, 4.45, -0.3), gw);
+    o.add(beacon);
+    townTicks.push((t, night) => { gw.emissiveIntensity = 0.6 + night * 2 + Math.sin(t * 3) * 0.3; });
+  }
   const limo = new THREE.Group();
   limo.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.38, 1.6).translate(0, 0.3, 0), own(std("#1c1640", { metalness: 0.6, roughness: 0.25 }))));
   limo.add(new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.25, 1.1).translate(0, 0.6, -0.05), winMat));

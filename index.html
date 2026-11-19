@@ -158,7 +158,7 @@
 <div id="tycity" hidden aria-label="Skyhaven Inc. business district">
   <div class="tcy-labels" id="tcy-labels"></div>
   <div class="tcy-top" id="tcy-top">
-    <div class="tcy-wallet" role="button" tabindex="0" aria-label="Your earnings"><small id="tcy-era">Skyhaven Inc.</small><div class="tcy-coins"><span class="tc-coin" aria-hidden="true"></span><b id="tcy-coins">0</b></div><em id="tcy-rate"></em></div>
+    <div class="tcy-wallet" role="button" tabindex="0" aria-describedby="tcy-coins tcy-rate"><small id="tcy-era">Skyhaven Inc.</small><div class="tcy-coins"><span class="tc-coin" aria-hidden="true"></span><b id="tcy-coins">0</b></div><em id="tcy-rate"></em></div>
     <button type="button" class="tcy-gems" id="tcy-gems" aria-label="Sky Crystals and shop"><span>💎</span><b id="tcy-gems-n">0</b></button>
   </div>
   <div class="tcy-events" id="tcy-events"></div>
@@ -179,6 +179,7 @@
   <div class="sheet">
     <div class="sheet-top"><div class="sheet-head"><div><h2 id="earn-title">Your earnings</h2><p id="earn-sub"></p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <div class="earn-hero"><small>Every second</small><b id="earn-ps"></b><div class="earn-row"><span><small>Minute</small><b id="earn-pm"></b></span><span><small>Hour</small><b id="earn-ph"></b></span><span><small>Day</small><b id="earn-pd"></b></span></div></div>
+    <div class="earn-rank" id="earn-rank"></div>
     <div class="earn-share" id="earn-share" aria-hidden="true"></div>
     <div class="earn-tiles" id="earn-tiles"></div>
     <h3 class="sheet-sub">By business</h3>
@@ -196,7 +197,7 @@
   <div class="sheet tcy-sheet">
     <button type="button" class="close-btn" aria-label="Close">×</button>
     <h2 id="tcy-build-title">Build a tower</h2>
-    <p class="sheet-note tcy-sheet-intro">Every floor you build becomes office space for your company. A perfect streak of 10 starts a construction boom!</p>
+    <p class="sheet-note tcy-sheet-intro">Every floor you build adds two office floors for your company. A perfect streak of 10 starts a construction boom!</p>
     <div class="tcy-modes" id="tcy-modes"></div>
   </div>
 </div>
@@ -545,7 +546,7 @@
       <div class="ty-stats"><span id="ty-rate"></span><span id="ty-mult"></span></div>
       <div class="ty-events" id="ty-events"></div>
       <div class="ty-office">
-        <div class="ty-floors"><small>Office floors</small><b id="ty-floors">0 of 10 used</b><i class="ty-fbar"><i id="ty-fbar"></i></i></div>
+        <div class="ty-floors"><small>Office floors</small><b id="ty-floors">0 of 25 used</b><i class="ty-fbar"><i id="ty-fbar"></i></i></div>
         <button type="button" class="ty-build-btn" id="ty-build"><span>Build</span><small>more floors</small></button>
       </div>
     </div>

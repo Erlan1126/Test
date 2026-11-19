@@ -1,5 +1,6 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
+import { RANK_BONUS, RANKS } from "../data/ranks";
 import { decorMult } from "./decor";
 import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
 import type { SaveData } from "./save";
@@ -79,11 +80,11 @@ const perkOf = (s: SaveData, perk: Advisor["perk"]): Advisor[] => ADVISORS.filte
 export function multiplier(s: SaveData, now = Date.now(), live = true): number {
   const ups = UPGRADES.filter(u => u.biz === "all" && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
   const adv = perkOf(s, "all").reduce((m, a) => m * a.n, 1);
-  return workerBonus(s) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1) * ups * adv
+  return workerBonus(s) * (1 + townRank(s) * RANK_BONUS) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1) * ups * adv
     * (live && s.tycoon.boom > now ? BOOM_MULT : 1) * (live && s.tycoon.opening > now ? OPENING_MULT : 1);
 }
 
-/** A grand opening for a brand-new company: its first minutes earn five times as much, so
+/** A grand opening for a brand-new company: its first minutes earn twice as much, so
  *  a new player opens a second business, hires a manager and grows a building in their
  *  first session. It happens once, ever. Returns true when it starts now. */
 export const OPENING_MULT = 2, OPENING_MINUTES = 20;
@@ -259,12 +260,15 @@ export function affordable(b: Business, level: number, coinsHave: number): numbe
   return k;
 }
 
-/** Office floors: every floor the player has ever built is an office (plus the ten of the
+/** Office floors: every floor the player has ever built gives two offices (plus the 25 of the
  *  first office building), and each business level fills one. More floors come from
  *  building towers, so the tower game is how the company grows. */
 export const FREE_FLOORS = 25;
 export const officeFloors = (s: SaveData): number => FREE_FLOORS + 2 * Math.max(0, s.tycoon.floors);
 export const usedFloors = (s: SaveData): number => Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
+
+/** The town's rank (0 = Hamlet), from all its business levels together. */
+export const townRank = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return r; };
 export const freeFloors = (s: SaveData): number => Math.max(0, officeFloors(s) - usedFloors(s));
 
 /** A business is offered once the one before it has been bought. */

@@ -444,6 +444,7 @@ export class Sheets {
       el.innerHTML = `<span class="decor-ico">${iconSvg(d.icon)}</span><b>${esc(t(d.name))}</b><small>${esc(t(d.text))}</small>`
         + `<button type="button" class="buy${own ? " owned" : ""}">${own ? `✓ ${esc(t("See it"))}` : price}</button>`;
       const btn = el.querySelector<HTMLButtonElement>(".buy")!;
+      btn.setAttribute("aria-label", own ? t("{name}, owned", { name: t(d.name) }) : cash ? t("Buy {name} for {n}", { name: t(d.name), n: coins(d.cash!) }) : t("Buy {name} for {n} Sky Crystals", { name: t(d.name), n: d.crystals ?? 0 }));
       btn.addEventListener("click", () => {
         if (own) { closeModal($("shop")); this.host.showDecor(d.id); return; }
         if (cash ? save.tycoon.coins < d.cash! : save.crystals < (d.crystals ?? Infinity)) {
