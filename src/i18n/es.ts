@@ -1556,4 +1556,5 @@ export const ES: Record<string, string> = {
   "Double every dollar, forever": "Duplica cada dólar, para siempre",
   "Each one: +{pct}% to every business": "Cada una: +{pct}% a cada negocio",
   "Manager hired! They sell even while you're away": "¡Gerente contratado! Vende incluso cuando no estás",
+  "Live · updates every second": "En vivo · se actualiza cada segundo",
 };

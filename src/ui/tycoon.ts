@@ -1723,7 +1723,7 @@ export class TycoonUI {
 
   private renderEarnings(): void {
     const s = this.save, ty = s.tycoon, now = Date.now(), ps = perSecond(s, now);
-    $("earn-sub").textContent = t("Earned so far: {n}", { n: coins(ty.lifetime) });
+    $("earn-sub").textContent = t("Live · updates every second");
     $("earn-ps").textContent = coins(ps);
     $("earn-pm").textContent = coins(ps * 60);
     $("earn-ph").textContent = coins(ps * 3600);
