@@ -3598,3 +3598,49 @@ body.tabs-open .modal.tab-page .sheet-top { top: -4px !important; box-shadow: 0 
 /* Cards across the menus sit on a soft ledge, like the business cards. */
 body.tabs-open .tab-page :is(.decor-card, .shop-item, .ty-boost, .premium-card, .pack-card, .deal) { box-shadow: 0 5px 0 rgba(42, 31, 110, 0.09), 0 10px 20px rgba(42, 31, 110, 0.08) !important; }
 .decor-card.cash .decor-ico { background: linear-gradient(140deg, rgba(94, 224, 160, 0.3), rgba(255, 210, 63, 0.25)); }
+
+/* ════════ Company cards v3: a little scene ════════ */
+/* Sky in the business's colors, a band of ground the building stands on, the floors badge,
+   a bar toward what's next, and the manager at the door. */
+body.tabs-open #tycoon .room-scene { height: 150px !important;
+  background:
+    radial-gradient(60px 22px at 22% 30%, rgba(255, 255, 255, 0.45), transparent 70%),
+    radial-gradient(80px 26px at 60% 18%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b1) 55%, #fff) 0%, var(--b1) 58%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b2) 70%, #3a2a6e) 0%, color-mix(in srgb, var(--b2) 55%, #2a1f5c) 100%) !important; }
+body.tabs-open #tycoon .room-scene::before { right: 18px; top: 26px; width: 120px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); filter: blur(2px); }
+body.tabs-open #tycoon .room-scene::after { content: ""; position: absolute; left: 0; right: 0; top: 58%; height: 3px; background: rgba(255, 255, 255, 0.35); }
+body.tabs-open #tycoon .room-thumb { right: 4px; bottom: 22px; width: 170px; z-index: 1; }
+body.tabs-open #tycoon .room-sign { top: 12px !important; }
+body.tabs-open #tycoon .room-sign b { font-size: 16px !important; }
+body.tabs-open #tycoon .room-level { display: none !important; }
+body.tabs-open #tycoon .room-stars { display: none !important; }
+body.tabs-open #tycoon .room-medal { position: absolute; left: 12px; top: 60px; z-index: 2; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fffbe6, #ffd23a 70%); box-shadow: 0 3px 0 #c98a10, 0 6px 12px rgba(0, 0, 0, 0.2); border: 2px solid #fff; color: #5a3a00; line-height: 1; }
+body.tabs-open #tycoon .room-medal b { font: 400 16px var(--display); margin-top: 8px; }
+body.tabs-open #tycoon .room-medal small { font: 800 8px var(--ui); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+body.tabs-open #tycoon .room-path { left: 70px !important; top: 66px !important; }
+body.tabs-open #tycoon .room-next { position: absolute; left: 70px; top: 80px; width: calc(100% - 250px); min-width: 96px; z-index: 2; }
+body.tabs-open #tycoon .room-next small { display: block; font: 800 10.5px var(--ui); color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.tabs-open #tycoon .room-next > i { display: block; height: 7px; margin-top: 3px; border-radius: 4px; background: rgba(0, 0, 0, 0.22); overflow: hidden; }
+body.tabs-open #tycoon .room-next > i > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #fff3b0, #ffd23a); box-shadow: 0 0 6px rgba(255, 210, 63, 0.8); }
+body.tabs-open #tycoon .room-mgr { position: absolute; right: 150px; bottom: 22px; z-index: 2; width: 26px; height: 40px; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
+body.tabs-open #tycoon .room-mgr svg { width: 100%; height: 100%; }
+body.tabs-open #tycoon .room-scene .ty-prog { height: 22px !important; background: rgba(20, 10, 60, 0.35) !important; }
+body.tabs-open #tycoon .room-scene .ty-prog span { color: #fff !important; line-height: 22px !important; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important; }
+body.tabs-open #tycoon .room-scene .ty-prog i { background: linear-gradient(90deg, #ffe680, #ffb13b) !important; opacity: 0.9; }
+body.tabs-open #tycoon .ty-buy small em { font-style: normal; display: block; color: #fff3b0; font-size: 10px; }
+body.tabs-open #tycoon .ty-buy:disabled small em { color: #1f9a55; }
+body.tabs-open #tycoon .room-sign b { max-width: calc(100vw - 150px) !important; position: relative; z-index: 3; }
+body.tabs-open #tycoon .room-sign { z-index: 3; }
+body.tabs-open #tycoon .room-next { width: 54%; }
+body.tabs-open #tycoon .room-next small { white-space: normal; line-height: 1.2; }
+body.tabs-open #tycoon .room-thumb { width: 150px; right: 0; }
+body.tabs-open #tycoon .room-mgr { right: 132px; }
+body.tabs-open #tycoon .room-scene {
+  background:
+    radial-gradient(60px 22px at 22% 30%, rgba(255, 255, 255, 0.45), transparent 70%),
+    radial-gradient(80px 26px at 60% 18%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b1) 55%, #fff) 0%, var(--b1) 58%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b2) 60%, #6a5aa0) 0%, color-mix(in srgb, var(--b2) 55%, #4a3a7e) 100%) !important; }
+body.tabs-open #tycoon .room-sign, body.tabs-open #tycoon .room-sign b { max-width: none !important; overflow: visible !important; text-overflow: clip !important; }

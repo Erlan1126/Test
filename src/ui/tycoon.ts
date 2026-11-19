@@ -17,6 +17,7 @@ import {
   payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, nextStage, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
   bizMult, workerBonus,
 } from "../logic/tycoon";
+import { MILESTONES_AT } from "../data/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
@@ -1285,6 +1286,8 @@ export class TycoonUI {
         ${stage >= 1 ? `<span class="room-awning"></span>` : ""}${stage >= 2 ? `<span class="room-light"></span>` : ""}${stage >= 4 ? `<span class="room-chand"></span><span class="room-sparkle"></span>` : ""}
         <span class="room-sign">${iconSvg(b.icon)}<b>${esc(name)}</b></span>
         ${thumbFor(b, stage) ? `<img class="room-thumb${owned ? "" : " ghost"}" alt="" src="${thumbFor(b, stage)}">` : ""}
+        ${owned ? `<span class="room-medal"><b></b><small>${esc(t("floors"))}</small></span><span class="room-next"><small></small><i><i></i></i></span>` : ""}
+        ${managed ? `<span class="room-mgr" aria-label="${esc(t("Manager"))}">${PERSON_BOSS}</span>` : ""}
         ${owned ? `<span class="room-path" aria-label="${esc(t(STAGE_LABEL[stage]))}">${STAGE_AT.map((_, k) => `<i class="${k < stage ? "done" : k === stage ? "now" : ""}"></i>`).join("")}</span>` : ""}
         ${owned && !grow ? `<span class="room-stars" aria-label="${esc(t(STAGE_LABEL[stage]))}">${"★".repeat(stage + 1)}</span>` : ""}
         ${grow ? `<span class="hq-tag">${esc(t("Ready to grow!"))}</span>` : ""}
@@ -1334,6 +1337,15 @@ export class TycoonUI {
         : t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }));
       set(row.querySelector(".power-cut small"), t("Tap {n} times to fix", { n: this.power.taps }));
       if (owned) {
+        // The floors badge, and a bar toward what's next (the next stage or speed boost).
+        set(row.querySelector(".room-medal b"), fmt(lv));
+        const stageNext = ns && ns <= (next ?? Infinity), target = stageNext ? ns! : next;
+        const prevAt = Math.max(0, ...[...STAGE_AT, ...MILESTONES_AT].filter(x => x <= lv));
+        set(row.querySelector(".room-next small"), target
+          ? `${stageNext ? t(stageName(b.id, stageNow(s, b.id) + 1)) : t("×2 speed")} · ${fmt(lv)} / ${fmt(target)}`
+          : t("Top speed!"));
+        const nb = row.querySelector<HTMLElement>(".room-next i i");
+        if (nb) nb.style.width = `${target ? Math.max(4, Math.min(100, ((lv - prevAt) / Math.max(1, target - prevAt)) * 100)).toFixed(1) : 100}%`;
         // What it makes a second (managers sell non-stop; without one, a sale when you tap),
         // how long a sale takes, and all its bonuses together.
         const cyc = cycleOf(b, lv), pay = payOf(s, b, now), auto = ty.managers.includes(b.id);
@@ -1346,7 +1358,13 @@ export class TycoonUI {
       const buy = row.querySelector<HTMLButtonElement>(".ty-buy")!;
       if (buy.classList.contains("need-floors")) set(buy, `<small>${esc(t("No empty floors"))}</small>${esc(t("Build"))}`, true);
       else {
-        set(buy, `<small>${esc(owned ? t("Buy ×{n}", { n: fmt(n) }) : t("Open"))}</small>${COIN_SVG}${esc(coins(price))}`, true);
+        // What buying adds: per second with a manager, else per sale.
+        let gain = "";
+        if (owned && cards) {
+          const pay = payOf(s, b, now), after = (pay / lv) * (lv + n);
+          gain = ty.managers.includes(b.id) ? `+${coins(after / cycleOf(b, lv + n) - pay / cycleOf(b, lv))}/s` : `+${coins(after - pay)} ${t("a sale")}`;
+        }
+        set(buy, `<small>${esc(owned ? t("Buy ×{n}", { n: fmt(n) }) : t("Open"))}${gain ? ` <em>${esc(gain)}</em>` : ""}</small>${COIN_SVG}${esc(coins(price))}`, true);
         buy.disabled = !(price <= ty.coins && (this.amount !== "max" || affordable(b, lv, ty.coins) > 0)) || !unlockedBusiness(s, BUSINESSES.indexOf(b));
       }
     }

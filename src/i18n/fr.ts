@@ -1546,4 +1546,5 @@ export const FR: Record<string, string> = {
   "A greenhouse dome full of plants, glowing at night": "Un dôme de serre plein de plantes, illuminé la nuit",
   "Sky tram": "Téléphérique",
   "A cable car gliding out to a little floating island": "Une cabine qui glisse jusqu'à une petite île flottante",
+  "×2 speed": "×2 vitesse",
 };

@@ -1547,4 +1547,5 @@ export const ES: Record<string, string> = {
   "A greenhouse dome full of plants, glowing at night": "Una cúpula invernadero llena de plantas que brilla de noche",
   "Sky tram": "Teleférico",
   "A cable car gliding out to a little floating island": "Un teleférico que va hasta una pequeña isla flotante",
+  "×2 speed": "×2 velocidad",
 };
