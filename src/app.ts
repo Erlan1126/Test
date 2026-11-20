@@ -2147,7 +2147,14 @@ export class App implements DailyHost {
     // A new player's very first tower is a big moment.
     const first = save.profile.towers === 1 && !c && mode !== "zen";
     if (first) { eyebrow.textContent = t("Your first tower!"); eyebrow.classList.add("best"); }
-    if (o.levelUp && !this.peek && !this.levelShown) { this.levelShown = true; setTimeout(() => { if (this.state === "over") this.showLevelUp(o.levelUp!); }, 700); }
+    // Builder levels stay in the background (the town is the goal): a short line on the results
+    // card, never a full-screen pop-up. The big level-up moment is kept for the late levels.
+    if (o.levelUp && !this.peek && !this.levelShown) {
+      this.levelShown = true;
+      const lu = o.levelUp;
+      if (lu.to >= 20) setTimeout(() => { if (this.state === "over") this.showLevelUp(lu); }, 700);
+      else setTimeout(() => toast(t("Builder level {n}! +{s} ★", { n: lu.to, s: lu.stars }) + (lu.crystals ? ` +${lu.crystals} 💎` : "")), 900);
+    }
     // A new best is a happy moment: a good time to ask for a store rating.
     if (o.newBest && mode === "classic" && !this.peek) setTimeout(() => askForReview(save.profile.towers), 1800);
     const people = $("over-people");
@@ -2674,6 +2681,7 @@ export class App implements DailyHost {
   canCity(): boolean { return this.renderer instanceof Renderer3D && !this.visiting; }
   setBizFocus(on: boolean): void { this.bizFocus = on; }
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
+  visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }

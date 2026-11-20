@@ -1616,4 +1616,12 @@ export const DE: Record<string, string> = {
   "Grow {n} businesses with a new HQ": "Lass {n} Geschäfte mit neuer Zentrale wachsen",
   "Finish both block projects": "Schließe beide Block-Projekte ab",
   "Open all {n} businesses": "Eröffne alle {n} Geschäfte",
+  "Builder level {n}! +{s} ★": "Baumeister-Stufe {n}! +{s} ★",
+  "{n} business levels until {rank}: {unlock}": "Noch {n} Geschäftsstufen bis {rank}: {unlock}",
+  "Build a tower: more offices, more business levels, closer to {rank}": "Baue einen Turm: mehr Büros, mehr Stufen, näher an {rank}",
+  "Ready to grow into {name}": "Bereit, zu {name} zu wachsen",
+  "Ready: build the {name} HQ!": "Bereit: Baue die Zentrale von {name}!",
+  "Lv {n} {name}": "St. {n} {name}",
+  "Just {n} business level until {rank}!": "Nur noch {n} Geschäftsstufe bis {rank}!",
+  "Just {n} business levels until {rank}!": "Nur noch {n} Geschäftsstufen bis {rank}!",
 };

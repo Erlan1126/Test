@@ -60,6 +60,7 @@ export interface TycoonHost {
   playProject(p: ProjectId): void;
   /** Where the café block's neighbor stands on screen, or null. */
   bizResident(): [number, number] | null;
+  visitLandmark(rank: number, ms: number): boolean;
   /** This week's Community Spire (asks the server; null when it can't be reached). */
   fetchSpire(): Promise<SpireNow | null>;
 }
@@ -699,25 +700,35 @@ export class TycoonUI {
       const st = readyStage(s, grow.id);
       return { text: t("Build the {name} HQ", { name: t(stageName(grow.id, st)) }), sub: this.hqSub(grow.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(grow.id); } };
     }
+    // From here on every step says what it brings the town: the next rank and what it adds.
+    const rk = townRank(s), nx = RANKS[rk + 1], left = nx ? Math.max(1, nx.at - usedFloors(s)) : 0;
+    const toward = nx ? t("{n} business levels until {rank}: {unlock}", { n: fmt(left), rank: t(nx.name), unlock: t(nx.unlock) }) : "";
+    const cheapest = () => BUSINESSES.filter(b => levelOf(s, b.id) > 0).sort((a, b) => costOf(a, levelOf(s, a.id), 1) - costOf(b, levelOf(s, b.id), 1))[0];
+    // Close to the next rank: that's the step.
+    if (nx && left <= 10 && freeFloors(s) >= 1) {
+      const c = cheapest();
+      return { text: tn(left, "Just {n} business level until {rank}!", "Just {n} business levels until {rank}!", { n: fmt(left), rank: t(nx.name) }), sub: t(nx.unlock), pct: 1 - left / Math.max(1, nx.at - RANKS[rk].at), tone: "gift", act: select(c.id) };
+    }
     // The next business to open.
     const ni = BUSINESSES.findIndex((b, i) => levelOf(s, b.id) === 0 && unlockedBusiness(s, i));
     if (ni >= 0) {
       const b = BUSINESSES[ni], price = costOf(b, 0, 1);
-      if (ty.coins >= price) return { text: t("Open the {name}!", { name: t(b.name) }), sub: t("A new business for your company"), tone: "go", act: select(b.id) };
+      if (ty.coins >= price) return { text: t("Open the {name}!", { name: t(b.name) }), sub: toward || t("A new business for your company"), tone: "go", act: select(b.id) };
     }
     // A manager to hire, an upgrade to buy.
     const mgr = BUSINESSES.find(b => levelOf(s, b.id) > 0 && !ty.managers.includes(b.id) && ty.coins >= b.manager);
     if (mgr) return { text: t("Hire a manager for {name}", { name: nameOf(mgr.id) }), sub: t("It keeps earning while you're away"), tone: "go", act: select(mgr.id) };
+    if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: nx ? t("Build a tower: more offices, more business levels, closer to {rank}", { rank: t(nx.name) }) : t("Build a tower to add office floors"), tone: "grow", act: () => this.openBuild() };
     const up = upgradesOnOffer(s).find(u => u.cost <= ty.coins);
     if (up) return { text: t("Buy the {name} upgrade", { name: t(up.name) }), sub: up.biz === "all" ? t("Every business earns ×{n}", { n: up.mult }) : t("{name} earns ×{n}", { name: nameOf(up.biz), n: up.mult }), tone: "go", act: () => this.openSheet("upgrades") };
     if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: t("Build a tower to add office floors"), tone: "grow", act: () => this.openBuild() };
     // Saving up: what for, and how far along.
     if (ni >= 0) {
       const b = BUSINESSES[ni], price = costOf(b, 0, 1);
-      return { text: t("Save {n} to open the {name}", { n: coins(price), name: t(b.name) }), sub: t("Keep growing your businesses"), pct: Math.min(1, ty.coins / price), tone: "save", act: select(b.id) };
+      return { text: t("Save {n} to open the {name}", { n: coins(price), name: t(b.name) }), sub: toward || t("Keep growing your businesses"), pct: Math.min(1, ty.coins / price), tone: "save", act: select(b.id) };
     }
-    const cheap = BUSINESSES.filter(b => levelOf(s, b.id) > 0).sort((a, b) => costOf(a, levelOf(s, a.id), 1) - costOf(b, levelOf(s, b.id), 1))[0];
-    return { text: t("Grow {name}", { name: nameOf(cheap.id) }), sub: t("Buy levels to earn more"), pct: Math.min(1, ty.coins / costOf(cheap, levelOf(s, cheap.id), 1)), tone: "save", act: select(cheap.id) };
+    const cheap = cheapest();
+    return { text: t("Grow {name}", { name: nameOf(cheap.id) }), sub: toward || t("Buy levels to earn more"), pct: Math.min(1, ty.coins / costOf(cheap, levelOf(s, cheap.id), 1)), tone: "save", act: select(cheap.id) };
   }
 
   /** The tags over every lot, the next step, the card and the bar (rebuilt only when they change). */
@@ -1054,8 +1065,11 @@ export class TycoonUI {
     }
     dealGoals(s);
     parts.push(`<h3 class="sheet-sub">${esc(t("Today's company goals"))}</h3>${this.goalsHtml()}`);
-    parts.push(this.spireHtml());
-    if (!$("missions-btn").hidden && s.missions.slots.length) {
+    // The side activities wait until the story is well under way, so a new player's goals are
+    // the town's: the chapter (the next rank) and today's company goals.
+    const later = s.chapters.done >= 2;
+    if (later) parts.push(this.spireHtml());
+    if (later && !$("missions-btn").hidden && s.missions.slots.length) {
       const rows = s.missions.slots.map(m => {
         const done = !!m.d || m.p >= m.n;
         return `<div class="ty-goal${done ? " done" : ""}"><span class="ty-goal-check">${done ? "✓" : "★"}</span><span><b>${esc(missionText(m))}</b>
@@ -1412,25 +1426,27 @@ export class TycoonUI {
       const price = costOf(b, lv, n), next = nextMilestone(lv), ns = owned ? STAGE_AT[stageNow(s, b.id) + 1] : undefined;
       // On the Company page the banner says it all in one line: floors, and what's next.
       const cards = document.body.classList.contains("city-home");
-      const nextLine = !owned ? "" : ns && ns <= (next ?? Infinity) ? t("Next: {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
+      const nextLine = !owned ? "" : ns && lv >= ns ? t("Ready to grow into {name}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)) }) : ns && ns <= (next ?? Infinity) ? t("Next: {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
         : next ? t("×2 speed at {n}", { n: next }) : t("Top speed!");
       set(row.querySelector(".room-level"), tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }) + (cards && nextLine ? ` · ${nextLine}` : ""));
       set(row.querySelector(".ty-prog span"), owned ? t("{n} a sale", { n: coins(payOf(s, b, now)) }) : t("Earns {n} a sale", { n: coins(b.income * multiplier(s, now)) }));
       set(row.querySelector(".room-info"), owned
-        ? (ns && ns <= (next ?? Infinity) ? t("Grows into {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
+        ? (ns && lv >= ns ? t("Ready to grow into {name}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)) }) : ns && ns <= (next ?? Infinity) ? t("Grows into {name} at {n}", { name: t(stageName(b.id, stageNow(s, b.id) + 1)), n: ns })
           : next ? t("{n} floors: twice as fast", { n: next }) : t("Top speed!")) + " · " + fmtSec(cycleOf(b, lv))
         : t("Open it to earn {n} a cycle", { n: coins(b.income * multiplier(s, now)) }));
       set(row.querySelector(".power-cut small"), t("Tap {n} times to fix", { n: this.power.taps }));
       if (owned) {
         // The floors badge, and a bar toward what's next (the next stage or speed boost).
         set(row.querySelector(".room-medal b"), fmt(lv));
-        const stageNext = ns && ns <= (next ?? Infinity), target = stageNext ? ns! : next;
+        // Past the next stage's floors but its HQ isn't built yet: ready to grow.
+        const hqReady = !!ns && lv >= ns;
+        const stageNext = ns && (hqReady || ns <= (next ?? Infinity)), target = stageNext ? ns! : next;
         const prevAt = Math.max(0, ...[...STAGE_AT, ...MILESTONES_AT].filter(x => x <= lv));
-        set(row.querySelector(".room-next small"), target
-          ? `${stageNext ? t(stageName(b.id, stageNow(s, b.id) + 1)) : t("×2 speed")} · ${fmt(lv)} / ${fmt(target)}`
+        set(row.querySelector(".room-next small"), hqReady ? t("Ready: build the {name} HQ!", { name: t(stageName(b.id, stageNow(s, b.id) + 1)) })
+          : target ? `${stageNext ? t(stageName(b.id, stageNow(s, b.id) + 1)) : t("×2 speed")} · ${fmt(lv)} / ${fmt(target)}`
           : t("Top speed!"));
         const nb = row.querySelector<HTMLElement>(".room-next i i");
-        if (nb) nb.style.width = `${target ? Math.max(4, Math.min(100, ((lv - prevAt) / Math.max(1, target - prevAt)) * 100)).toFixed(1) : 100}%`;
+        if (nb) nb.style.width = `${hqReady ? 100 : target ? Math.max(4, Math.min(100, ((lv - prevAt) / Math.max(1, target - prevAt)) * 100)).toFixed(1) : 100}%`;
         // What it makes a second (managers sell non-stop; without one, a sale when you tap),
         // how long a sale takes, and all its bonuses together.
         const cyc = cycleOf(b, lv), pay = payOf(s, b, now), auto = ty.managers.includes(b.id);
@@ -1919,8 +1935,8 @@ export class TycoonUI {
     if (el.dataset.v === v) return;
     el.dataset.v = v;
     el.innerHTML = `<span class="tg-ico">${iconSvg(nx ? nx.icon : "crown")}</span><span class="tg-main"><small>${esc(t("Goal: grow Skyhaven to the Sky Capital"))}</small>`
-      + (nx ? `<b>${esc(t(RANKS[rk].name))} → ${esc(t(nx.name))} <em>${fmt(used)}/${fmt(nx.at)}</em></b><i class="tg-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i>`
-        : `<b>${esc(t("Sky Capital reached!"))}</b>`) + `</span>`;
+      + (nx ? `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))}</b><i class="tg-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i><em class="tg-next">${esc(t(nx.name))} ${fmt(used)}/${fmt(nx.at)}</em>`
+        : `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))} · ${esc(t("Sky Capital reached!"))}</b>`) + `</span>`;
     el.setAttribute("aria-label", nx ? t("Next rank: {name} at {n} business levels ({have} now)", { name: t(nx.name), n: fmt(nx.at), have: fmt(used) }) : t("Sky Capital reached!"));
   }
 
@@ -1935,6 +1951,7 @@ export class TycoonUI {
 
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
   private momentDone = false;
+  private visitDone = false;
   private checkRank(): void {
     const s = this.save, rk = townRank(s), key = `rank-${rk}`;
     if (rk > (s.tycoon.rankBest ?? 0)) s.tycoon.rankBest = rk;
@@ -1957,6 +1974,13 @@ export class TycoonUI {
         window.setTimeout(note, 6800);
         return;
       }
+      // Then the camera flies to what the rank built (the market, the tram stop, the
+      // billboards...) and Pip tells you about it.
+      if (!this.visitDone && this.inCity) {
+        this.visitDone = true;
+        if (this.host.visitLandmark(rk, 4200)) { window.setTimeout(note, 4400); return; }
+      }
+      this.visitDone = false;
       this.momentDone = false;
       mayorNote(t("Skyhaven is now a {name}!", { name: t(r.name) }),
         t("{unlock}. And every business earns {pct}% more for good. Go take a look!", { unlock: t(r.unlock), pct: Math.round(RANK_BONUS * 100) })

@@ -545,9 +545,11 @@ export class Renderer3D {
   /** Points the 3D camera so world points land exactly where View.project puts them. */
   private placeCamera(shake: number): void {
     const v = this.view, k = this.bizK * this.bizK * (3 - 2 * this.bizK);
-    // Over the district the whole width of the island always fits the screen (phones are
-    // narrow); the camera then only slides up and down the town.
-    const tb = townBounds(), fitS = (v.W * 0.94) / (tb.tMax - tb.tMin);
+    // Over the district the island fills the screen's width (a little past its edges, which are
+    // only trees and shore, so the town reads bigger on a phone); the camera then only slides up
+    // and down the town.
+    // (A young town, only a block or two, comes closer still: there's little else to see.)
+    const tb = townBounds(), fitS = ((v.W * 0.94) / (tb.tMax - tb.tMin)) * (this.bizLook.zoom >= 1.3 ? 1.4 : 1.16);
     const bizS = this.bizFraming ? ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom : Math.min(ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom, fitS);
     const S = lerp(ISO_SCALE * v.s * v.zoom, bizS, k);
     // Over the business district, the camera looks at its plaza instead of the tower.
@@ -852,12 +854,15 @@ export class Renderer3D {
     // The first visit: a close look at the player's first tower and the Coffee Cart together.
     const framing = !!f.bizLive?.frame;
     if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
-    this.bizFraming = framing || !!this.debugLook;
+    // A rank's new landmark: the camera visits it for a moment.
+    const lm = this.bizVisit && performance.now() < this.bizVisit.until ? this.biz.landmark(this.bizVisit.rank) : null;
+    if (lm) { this.bizLook.tx = lm.x + 1.2; this.bizLook.tz = lm.z + 1.2; this.bizLook.tzoom = 1.6; }
+    this.bizFraming = framing || !!this.debugLook || !!lm;
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
     // Only up and down: across, the island stays centred; along, it never slides off.
-    if (!framing) {
+    if (!framing && !lm) {
       const tb = townBounds(), tc = (tb.tMin + tb.tMax) / 2;
       let sv = (this.bizLook.tx + this.bizLook.tz) * Math.SQRT1_2;
       sv = Math.min(tb.sMax - 6, Math.max(tb.sMin + 6, sv));
@@ -892,6 +897,13 @@ export class Renderer3D {
   private readonly townLook = { night: 0, dusk: 0, wet: 0, skyTop: new THREE.Color(), skyBot: new THREE.Color(), sun: new THREE.Vector3() };
   /** Testing only: where the town camera looks (null: the game decides). */
   debugLook: { x: number; z: number; zoom: number } | null = null;
+  /** The camera's visit to a town rank's landmark (see bizcity landmark()). */
+  private bizVisit: { rank: number; until: number } | null = null;
+  visitLandmark(rank: number, ms: number): boolean {
+    if (!this.biz || !this.biz.landmark(rank)) return false;
+    this.bizVisit = { rank, until: performance.now() + ms };
+    return true;
+  }
   debugBounds(): ReturnType<typeof townBounds> { return townBounds(); }
   private readonly tmpV = new THREE.Vector3();
   private readonly tmpV2 = new THREE.Vector3();

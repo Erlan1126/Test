@@ -134,7 +134,7 @@ export function streetFocus(lots: BizLot[]): { x: number; z: number; zoom: numbe
   const a = lotPos(0), b = lotPos(last), d = CELLS[last][0] + CELLS[last][1];
   const k = 0.5;
   const o = d >= 5 ? -0.5 : 1.5;
-  return { x: a.x + (b.x - a.x) * k + o, z: a.z + (b.z - a.z) * k + o, zoom: d <= 1 ? 1.35 : d <= 2 ? 1.2 : d <= 4 ? 1.0 : 0.88 };
+  return { x: a.x + (b.x - a.x) * k + o, z: a.z + (b.z - a.z) * k + o, zoom: d <= 1 ? 1.5 : d <= 2 ? 1.35 : d <= 4 ? 1.2 : 1.12 };
 }
 
 const col = (c: string) => new THREE.Color(c);
@@ -173,6 +173,8 @@ export interface BizCity {
   top(i: number): number;
   /** The neighbor in the yellow jacket, when they're out (for their speech bubble). */
   resident(): THREE.Vector3 | null;
+  /** Where a town rank's landmark is (the camera visits it when the rank is reached). */
+  landmark(rank: number): { x: number; z: number } | null;
   /** The flower market's and the playground's spots. */
   spot(id: "flowers" | "play"): { x: number; z: number };
 }
@@ -1297,6 +1299,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const cars = [["#ffffff", true], ["#ffc93c", false], ["#4f8bff", true], ["#ff4f8b", false], ["#5ee0a0", false]].map(([c, van], k) => ({ v: makeCar(c as string, van as boolean), u: k / 5, sp: 0.018 + (k % 3) * 0.004 }));
   // ---- Town ranks (data/ranks.ts): as the company grows, the town itself changes for good ----
   const rank = cafe.rank ?? 0;
+  const landmarks: Record<number, () => { x: number; z: number }> = {};
   const outward = (u: number, out: THREE.Vector3, d: THREE.Vector3) => {
     carPath.at(u, out, d);
     const nx = d.z, nz = -d.x, sgn = (out.x - cx) * nx + (out.z - cz) * nz > 0 ? 1 : -1;
@@ -1318,6 +1321,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       sg.updateMatrixWorld(true);
       sg.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) add(m.geometry.clone().applyMatrix4(m.matrixWorld), m.material as THREE.Material); });
     });
+    landmarks[1] = () => ({ x: pz.x, z: pz.z });
     // Bunting over the plaza.
     const flags = new THREE.InstancedMesh(new THREE.ConeGeometry(0.06, 0.13, 3).rotateX(Math.PI), own(new THREE.MeshStandardMaterial({ roughness: 0.7 })), 24);
     flags.userData.dynamic = true;
@@ -1361,6 +1365,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const off = [0, 1].map(k => { const w = makePerson(shirts[(k * 5 + 2) % shirts.length]); w.scale.setScalar(1.3); w.visible = false; life.add(w); return w; });
       return { u, x, z, nx, nz, wait, off };
     });
+    landmarks[2] = () => ({ x: stops[0].x, z: stops[0].z });
     const tramAt = (t: number): { u: number; at: number } => {
       // at = which stop it's waiting at (-1 while moving)
       const L = ((t % LOOP) + LOOP) % LOOP;
@@ -1413,6 +1418,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       bg.userData.dynamic = true;
       g.add(bg);
     });
+    { const { nx, nz } = outward(0.08, bp, bd); const lx = bp.x + nx * 0.85, lz = bp.z + nz * 0.85; landmarks[3] = () => ({ x: lx, z: lz }); }
     townTicks.push((t, night) => glows.forEach((m, k) => { m.emissiveIntensity = 0.35 + night * 1.6 + Math.max(0, Math.sin(t * 2.2 + k * 1.7)) * 0.25; }));
   }
   if (rank >= 4) {
@@ -1427,6 +1433,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       g.add(a);
       return a;
     });
+    landmarks[4] = () => ({ x: ships[0].position.x, z: ships[0].position.z });
     townTicks.push(t => ships.forEach((a, k) => {
       const ang = t * (k ? -0.035 : 0.045) + k * 2.6, r = 6.5 + k * 2.5;
       a.position.set(cx + Math.cos(ang) * r, 6.2 + k * 1.4 + Math.sin(t * 0.4 + k) * 0.25, cz + Math.sin(ang) * r);
@@ -1436,6 +1443,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   if (rank >= 5) {
     // Metropolis: slim glass towers rise on the floating islands.
     const tones = ["#bfe6ff", "#d9ccff", "#ffd9c2"];
+    { const it = islets[1] ?? islets[0]; if (it) landmarks[5] = () => ({ x: it.o.position.x, z: it.o.position.z }); }
     islets.forEach((it, k) => {
       const n = k === 0 ? 3 : 2;
       for (let j = 0; j < n; j++) {
@@ -1449,6 +1457,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   if (rank >= 6 && islets[0]) {
     // Sky Capital: the golden Skyhaven Tower on the big floating island, a beacon on top.
     const o = islets[0].o, gw = own(std("#fff2b0", { emissive: 0xffd27a, emissiveIntensity: 0.6 }));
+    landmarks[6] = () => ({ x: o.position.x, z: o.position.z });
     gw.userData.dynamic = true;
     o.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.3, 8).translate(0, 0.15, -0.3), stone));
     o.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.36, 3.2, 8).translate(0, 1.9, -0.3), mats.gold));
@@ -1509,6 +1518,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     group: g,
     top: i => (i === -1 ? plotTop : i < -1 ? 1.4 : tops[i] ?? 2),
     resident: () => block.resident(),
+    landmark: r => (landmarks[r] ? landmarks[r]() : null),
     spot: id => block.spot(id),
     look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,
