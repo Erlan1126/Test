@@ -569,6 +569,20 @@ const SIM = `
     });
     for (const [k, v] of Object.entries(r)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     check("no page errors", errors.length === 0, errors[0]);
+    // The people: every stage has someone waiting; clearing it brings them light.
+    {
+      const pr = await page.evaluate(async () => {
+        const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]);
+        stageSave().unlocked = 60; startStage(4); const R = run; R.inv = 9; R.px = R.stageLen + 0.5; runUpdate(1 / 60);
+        await new Promise(r => setTimeout(r, 1500));
+        o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
+        o.homesLitCountsClearedStages = homesLit() >= 1;
+        run = null; showTitle(); o.homeShowsHomesRelit = /\/60$/.test($("homeBest").textContent);
+        o.dailyHasANamedNeighbour = stagePerson(0)[0] && stagePerson(0)[0] !== "A stranger";
+        return o;
+      });
+      for (const [k, v] of Object.entries(pr)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    }
     // Progress survives a reload (the swing game's saves used to be dropped by the loader).
     await page.evaluate(() => { stageSave().unlocked = 7; save.city = { lit: 12 }; persist(); });
     await page.reload(); await page.waitForTimeout(800);

@@ -287,6 +287,8 @@ function runSpawnExtra(at) {
 
 function runMsg(text, sub = "", dur = 2, gold = false) {
   if (run.attract) return;
+  // After the finish, only the celebration speaks.
+  if (run.cleared && !gold) return;
   if (run.msgs.length > 2) run.msgs.splice(1, 1);
   run.msgs.push({ text, sub, t: dur, dur, gold });
 }
@@ -1024,8 +1026,10 @@ function runDraw(ctx, W, H) {
   // The world's name as you enter it; mission messages.
   if (R.banner > 0 && !R.attract) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? runnerTheme(0).name.toUpperCase() : R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
-    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (typeof stageChapter === "function" && !R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08);
+    if (R.stageInfo && typeof stagePerson === "function") { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); }
+    ctx.globalAlpha = 1;
   }
 
 }

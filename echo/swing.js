@@ -81,7 +81,7 @@ function runnerStart(R) {
   if (R.stageInfo) {
     Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
     const nw = !R.attract && typeof STAGE_NEW !== "undefined" && STAGE_NEW[R.stageInfo.n];
-    R.banner = 1.6;
+    R.banner = 2.6;
     if (nw && !R.tut) runMsg(nw[0], nw[1], 3, true);
     if (R.stageInfo.boss) { R.ev = { kind: "heart", t: 1e9, hits: 0 }; R.hearted = { all: true }; for (const f of [0.3, 0.6, 0.85]) R.ups.push({ x: R.stageInfo.len * f, y: 26 + runR() * 6, kind: "shard" }); }
   }

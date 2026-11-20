@@ -85,10 +85,12 @@ const SW2D = (() => {
     // you, leaning gently toward the anchor you're heading for.
     let tx = R.px + halfW * 0.3 + Math.max(0, Math.min(25, R.vx)) * 0.08, ty = R.py + 3;
     if (aim) ty = ty * 0.8 + (aim.y - 3) * 0.2;
-    ty = Math.max(9, Math.min(60, ty));
+    // Arrived: the camera drifts over to their window.
+    if (R.cleared && R.stageLen) { const k = Math.min(1, (t - (R.clearAt ?? t)) * 0.9); tx = tx + (R.stageLen + 9 - tx) * k; ty = ty + (11 - halfH * 0.38 - ty) * k; }
+    if (!R.cleared) ty = Math.max(9, Math.min(60, ty));
     if (!cam || Math.abs(cam.x - tx) > 80) cam = { x: tx, y: ty };
     cam.x += (tx - cam.x) * ease(4); cam.y += (ty - cam.y) * ease(2.6);
-    cam.x = Math.max(R.px + halfW * 0.1, Math.min(R.px + halfW * 0.6, cam.x)); cam.y = Math.max(R.py - halfH * 0.5, Math.min(R.py + halfH * 0.55, cam.y));
+    if (!R.cleared) { cam.x = Math.max(R.px + halfW * 0.1, Math.min(R.px + halfW * 0.6, cam.x)); cam.y = Math.max(R.py - halfH * 0.5, Math.min(R.py + halfH * 0.55, cam.y)); }
     const sh = R.shake > 0 ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (R.kick || 0) * 8;
     const X = x => ox + (x - cam.x) * s, Y = y => oy - (y - cam.y) * s;
     // ---------- Sky (baked into the far skyline strip below) ----------
@@ -279,7 +281,23 @@ const SW2D = (() => {
       if (R.power && R.power.kind === "shield") { ctx.strokeStyle = "rgba(90,210,255,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 1.5 * u, 0, Math.PI * 2); ctx.stroke(); }
     }
     // The finish gate: a pillar of gold light.
-    if (R.stageLen) { const fx = X(R.stageLen); if (fx > -60 && fx < W + 60) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.35 + Math.sin(t * 4) * 0.1; ctx.drawImage(glow([255, 210, 90]), fx - 2.5 * s, -H * 0.2, 5 * s, H * 1.4); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff"; ctx.fillRect(fx - 1.5, 0, 3, H); ctx.font = `800 ${Math.round(0.9 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd98a"; ctx.fillText("FINISH", fx, Y(R.py + 8)); } }
+    if (R.stageLen) { const fx = X(R.stageLen); if (fx > -60 && fx < W + 60) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.35 + Math.sin(t * 4) * 0.1; ctx.drawImage(glow([255, 210, 90]), fx - 2.5 * s, -H * 0.2, 5 * s, H * 1.4); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff"; ctx.fillRect(fx - 1.5, 0, 3, H); ctx.font = `800 ${Math.round(0.9 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd98a"; ctx.fillText("FINISH", fx, Y(R.py + 8)); }
+      // Their home, just past the finish: a dark window with someone waiting, which lights up warm when you arrive.
+      const hx0 = X(R.stageLen + 3), hx1 = X(R.stageLen + 15);
+      if (hx1 > -20 && hx0 < W + 20) {
+        const lit = R.cleared ? Math.min(1, (t - (R.clearAt ?? t)) * 2 + 0.25) : 0, top = Y(17), base = Y(0);
+        ctx.fillStyle = "#151925"; ctx.fillRect(hx0, top, hx1 - hx0, base - top); ctx.fillStyle = "#1e2433"; ctx.fillRect(hx0 - 0.4 * s, top - 0.5 * s, hx1 - hx0 + 0.8 * s, 0.5 * s);
+        const wx0 = X(R.stageLen + 6.5), wx1 = X(R.stageLen + 11.5), wy0 = Y(13.5), wy1 = Y(9);
+        if (lit > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = lit; ctx.drawImage(glow([255, 200, 120]), wx0 - 4 * s, wy0 - 4 * s, wx1 - wx0 + 8 * s, wy1 - wy0 + 8 * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+        ctx.fillStyle = lit > 0 ? `rgba(255,${190 + 30 * lit},${110 + 40 * lit},${0.35 + 0.65 * lit})` : "#0a0c12"; ctx.fillRect(wx0, wy0, wx1 - wx0, wy1 - wy0);
+        ctx.strokeStyle = "#2a3040"; ctx.lineWidth = Math.max(1.5, 0.15 * s); ctx.strokeRect(wx0, wy0, wx1 - wx0, wy1 - wy0); ctx.beginPath(); ctx.moveTo((wx0 + wx1) / 2, wy0); ctx.lineTo((wx0 + wx1) / 2, wy1); ctx.stroke();
+        // The person at the window (waving once the light is back).
+        const px2 = X(R.stageLen + 8.2), py2 = wy1; ctx.fillStyle = lit > 0 ? "#3a2a1c" : "rgba(120,130,160,0.35)";
+        ctx.beginPath(); ctx.arc(px2, py2 - 2.6 * s, 0.55 * s, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(px2 - 0.6 * s, py2 - 2 * s, 1.2 * s, 2 * s);
+        if (lit > 0) { const wv = Math.sin(t * 9) * 0.5; ctx.strokeStyle = "#3a2a1c"; ctx.lineWidth = 0.28 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px2 + 0.5 * s, py2 - 1.8 * s); ctx.lineTo(px2 + (1.2 + wv * 0.3) * s, py2 - (3 + wv) * s); ctx.stroke(); }
+        if (typeof stagePerson === "function") { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
+      }
+    }
     // A ghost: your best run (or a friend's) on this stage, see-through.
     const gp = R.ghostTrace && !R.attract ? stageGhostAt(R.ghostTrace, R.stageT || 0) : null;
     if (gp) { const gx = X(gp[0]), gyy = Y(gp[1] + 1.1); ctx.globalAlpha = 0.5; ctx.drawImage(glow([159, 232, 255]), gx - 1.6 * s, gyy - 1.6 * s, 3.2 * s, 3.2 * s); ctx.strokeStyle = "rgba(200,240,255,0.8)"; ctx.lineWidth = 0.18 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(gx, gyy - 0.9 * s); ctx.lineTo(gx, gyy + 0.6 * s); ctx.stroke(); ctx.beginPath(); ctx.arc(gx, gyy - 1.25 * s, 0.3 * s, 0, Math.PI * 2); ctx.fillStyle = "rgba(220,245,255,0.85)"; ctx.fill(); ctx.font = `700 ${Math.round(0.6 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillText(R.ghostLabel || "GHOST", gx, gyy - 2 * s); ctx.globalAlpha = 1; }
