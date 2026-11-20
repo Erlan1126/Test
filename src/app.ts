@@ -1,4 +1,5 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import { RANKS } from "./data/ranks";
 import type { SkylineTower } from "./logic/skyline";
 import { ISLAND_THEMES, type IslandTheme } from "./data/islands";
 import { claimTournament, prizeText } from "./logic/tournament";
@@ -1260,7 +1261,12 @@ export class App implements DailyHost {
       else if (cafeR.terraceReady) this.cafeLine = t("+{n} floors · Café terrace ready to open!", { n: run.floors });
       else if (wasProject === "flowers") this.cafeLine = t("Flower market: {n} of {total} wide floors", { n: Math.min(this.wideCount, FLOWER_WIDE), total: FLOWER_WIDE });
       else if (wasProject === "play") this.cafeLine = t("Playground: {n} of {total} floors", { n: Math.min(run.floors, PLAY_FLOORS), total: PLAY_FLOORS });
-      else this.cafeLine = t("+{n} office floors for Skyhaven Inc.", { n: run.floors });
+      else {
+        // What the tower did for the town, and how far the next rank is.
+        const rk = townRank(this.save), nx = RANKS[rk + 1], used = Object.values(this.save.tycoon.levels).reduce((x, y) => x + y, 0);
+        this.cafeLine = nx ? t("+{n} office floors · {left} business levels until {rank}", { n: run.floors * 2, left: fmt(Math.max(1, nx.at - used)), rank: t(nx.name) })
+          : t("+{n} office floors for Skyhaven Inc.", { n: run.floors * 2 });
+      }
     }
     // Tall towers stand in their district for good (the starter stands in Skyhaven instead).
     if (!cafeR.starter && (this.mode === "classic" || this.mode === "daily") && addToSkyline(this.save, { f: run.floors, s: this.builtSkin || this.save.skin, h: this.builtShape || "square", d: district.id })) {

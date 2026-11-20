@@ -1578,4 +1578,13 @@ export const FR: Record<string, string> = {
   "Every floor you build adds two office floors for your company. A perfect streak of 10 starts a construction boom!": "Chaque étage construit ajoute deux étages de bureaux à ton entreprise. Une série parfaite de 10 lance un boom de construction !",
   "{first} skin at tier 1, {last} at tier 30, and {n} 💎 back along the way.": "Skin {first} au palier 1, {last} au palier 30, et {n} 💎 récupérés en route.",
   "Town decorations, crystals, skins": "Décorations, cristaux, skins",
+  "+{n} office floors · {left} business levels until {rank}": "+{n} étages de bureaux · encore {left} niveaux d'entreprise avant {rank}",
+  "Goal: grow Skyhaven to the Sky Capital": "Objectif : faire de Skyhaven la Capitale du ciel",
+  "Sky Capital reached!": "Capitale du ciel atteinte !",
+  "Next rank: {name} at {n} business levels ({have} now)": "Rang suivant : {name} à {n} niveaux d'entreprise ({have} maintenant)",
+  "Our plan for Skyhaven": "Notre plan pour Skyhaven",
+  "Every tower brings new neighbors, every business you grow brings the town to life, and step by step Skyhaven becomes the capital of the sky.": "Chaque tour amène de nouveaux voisins, chaque entreprise que tu développes anime la ville, et pas à pas Skyhaven devient la capitale du ciel.",
+  "Let's grow!": "On grandit !",
+  "Skyhaven is a {rank}. {left} more business levels and it becomes a {next}: {unlock}.": "Skyhaven est : {rank}. Encore {left} niveaux d'entreprise et ce sera : {next}. {unlock}.",
+  "Skyhaven is the capital of the sky. Keep it growing!": "Skyhaven est la capitale du ciel. Continue à la faire grandir !",
 };

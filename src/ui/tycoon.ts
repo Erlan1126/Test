@@ -30,7 +30,7 @@ import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { MAYOR_SVG, mayorNote, mayorSvg } from "./mayor";
+import { MAYOR_SVG, mayorList, mayorNote, mayorSvg } from "./mayor";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -158,6 +158,7 @@ export class TycoonUI {
     wallet.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
     wallet.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.host.sound.click(); this.openEarnings(); } });
     wireModal($("earnings"));
+    $("tcy-goal").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.showPlan(); });
     $("earnings").addEventListener("click", e => {
       const el = e.target as Element, hire = el.closest<HTMLElement>("[data-hire-mgr]"), more = el.closest<HTMLElement>("[data-more]");
       if (hire) {
@@ -714,6 +715,7 @@ export class TycoonUI {
   private renderCity(now: number): void {
     const s = this.save, ty = s.tycoon;
     $("tcy-era").textContent = t("Skyhaven Inc.");
+    this.renderGoal();
     { const ps = perSecond(s, now); $("tcy-rate").textContent = ps > 0 ? t("{n} a second", { n: coins(ps) }) : t("Tap a business to sell"); }
     $("tcy-gems-n").textContent = fmt(s.crystals);
     if (this.shownCoins < 0) $("tcy-coins").textContent = coins(ty.coins);
@@ -1896,6 +1898,32 @@ export class TycoonUI {
     this.done();
   }
 
+  /** The game's purpose, always on screen: grow Skyhaven to the Sky Capital, and what the
+   *  next rank brings to the town. */
+  private renderGoal(): void {
+    const s = this.save, el = $("tcy-goal"), rk = townRank(s), nx = RANKS[rk + 1];
+    el.hidden = !this.inCity || this.story.stage === "arrive" || (!s.cafe.starter && usedFloors(s) < 2);
+    if (el.hidden) return;
+    const used = usedFloors(s), from = RANKS[rk].at;
+    const k = nx ? Math.max(0, Math.min(1, (used - from) / (nx.at - from))) : 1;
+    const v = `${rk}|${used}`;
+    if (el.dataset.v === v) return;
+    el.dataset.v = v;
+    el.innerHTML = `<span class="tg-ico">${iconSvg(nx ? nx.icon : "crown")}</span><span class="tg-main"><small>${esc(t("Goal: grow Skyhaven to the Sky Capital"))}</small>`
+      + (nx ? `<b>${esc(t(RANKS[rk].name))} → ${esc(t(nx.name))} <em>${fmt(used)}/${fmt(nx.at)}</em></b><i class="tg-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i>`
+        : `<b>${esc(t("Sky Capital reached!"))}</b>`) + `</span>`;
+    el.setAttribute("aria-label", nx ? t("Next rank: {name} at {n} business levels ({have} now)", { name: t(nx.name), n: fmt(nx.at), have: fmt(used) }) : t("Sky Capital reached!"));
+  }
+
+  /** The whole journey, in Mayor Pip's words: what each rank adds to the town. */
+  private showPlan(): void {
+    const s = this.save, rk = townRank(s), used = usedFloors(s);
+    mayorList(t("Our plan for Skyhaven"),
+      t("Every tower brings new neighbors, every business you grow brings the town to life, and step by step Skyhaven becomes the capital of the sky."),
+      RANKS.slice(1).map((r, i) => ({ done: i + 1 <= rk, text: `${t(r.name)}: ${t(r.unlock)}`, note: i + 1 <= rk ? "" : `${fmt(Math.min(used, r.at))} / ${fmt(r.at)}` })),
+      t("Let's grow!"));
+  }
+
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
   private checkRank(): void {
     const s = this.save, rk = townRank(s), key = `rank-${rk}`;
@@ -1955,6 +1983,12 @@ export class TycoonUI {
     $("welcome-face").innerHTML = mayorSvg("happy");
     $("welcome-amount").textContent = coins(earned);
     $("welcome-text").textContent = t("Your managers kept Skyhaven busy for {time}.", { time: fmtAway(awayMs) });
+    {
+      // The town first: where Skyhaven stands, and what it's growing toward.
+      const rk = townRank(this.save), nx = RANKS[rk + 1], used = usedFloors(this.save);
+      $("welcome-town").textContent = nx ? t("Skyhaven is a {rank}. {left} more business levels and it becomes a {next}: {unlock}.", { rank: t(RANKS[rk].name), left: fmt(Math.max(1, nx.at - used)), next: t(nx.name), unlock: t(nx.unlock) })
+        : t("Skyhaven is the capital of the sky. Keep it growing!");
+    }
     const cap = offlineHours(this.save), h = Math.min(cap, awayMs / 3600e3);
     $("welcome-vault-bar").style.width = `${(h / cap) * 100}%`;
     $("welcome-vault").classList.toggle("full", h >= cap);

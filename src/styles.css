@@ -3774,3 +3774,22 @@ body.tabs-open .tcy-react { display: none; }
 #earnings .er-bar > i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ffb13b, #ff5f8b); }
 #earnings .er-main em { font-style: normal; font-size: 12px; color: #5a4a6a; }
 #earnings .er-main em.er-unlock { color: #8a5a20; font-weight: 700; }
+
+/* The game's goal, always on screen in the town */
+.tcy-goal { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 84px); left: 12px; right: 12px; z-index: 6; display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; border: 0; border-radius: 16px; cursor: pointer; text-align: left; color: #2a1f5c;
+  background: linear-gradient(135deg, rgba(255, 246, 216, 0.94), rgba(255, 226, 239, 0.94)); box-shadow: 0 6px 16px rgba(40, 20, 100, 0.18); border: 2px solid #ffd27a; }
+.tcy-goal[hidden] { display: none; }
+.tcy-goal .tg-ico { flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(150deg, #ffc93c, #ff8a3c); }
+.tcy-goal .tg-ico svg { width: 20px; height: 20px; }
+.tcy-goal .tg-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tcy-goal small { font: 400 9px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: #b0742a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tcy-goal b { font: 400 14px var(--display); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tcy-goal b em { font-style: normal; font-size: 12px; color: #8a5a20; margin-left: 4px; }
+.tcy-goal .tg-bar { display: block; height: 6px; border-radius: 4px; background: rgba(176, 116, 42, 0.2); overflow: hidden; }
+.tcy-goal .tg-bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb13b, #ff5f8b); }
+#tycity:has(.tcy-goal:not([hidden])) .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 140px); }
+#tycity:has(.tcy-goal:not([hidden])) .tcy-coach { top: calc(env(safe-area-inset-top, 0px) + 172px); }
+body.tabs-open #tycity .tcy-goal { visibility: hidden; }
+.welcome-town { margin: 6px 0 0; padding: 8px 10px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #8a5a20; background: linear-gradient(135deg, #fff6d8, #ffe2ef); }
+.welcome-town:empty { display: none; }

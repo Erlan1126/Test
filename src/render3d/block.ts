@@ -195,6 +195,28 @@ export function buildBlock(S: BlockSetup): Block {
   if (!flowersOpen) ghost(stall, true);
   if (!playOpen) ghost(slide, true);
 
+  // ---- The neighbor's next chapter: once the flower market opens, they go for flowers now
+  // and then and bring them back to their table, where a vase stays for good ----
+  const vase = new THREE.Group();
+  {
+    const vp = C(-1.35, 1.65);
+    vase.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.12, 10).translate(0, 0.06, 0), S.mat("#7fc8ff", 0.2, 0.1)));
+    for (const [c, dx, dz] of [["#ff6fa0", -0.03, 0], ["#ffd23f", 0.03, 0.01], ["#b48cff", 0, -0.03]] as const) {
+      vase.add(new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.1, 4).translate(dx, 0.15, dz), S.mat("#3fae5a", 0.8)));
+      vase.add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4).translate(dx, 0.21, dz), S.mat(c, 0.6)));
+    }
+    vase.position.set(vp[0], 0.2 + 0.47, vp[1]);
+    vase.visible = false;
+    g.add(vase);
+  }
+  const resFlowers = bouquet();
+  resFlowers.visible = false;
+  res.add(resFlowers);
+  const ERRAND: V2[] = [[FIRST_SEAT.x, CHAIRS_AT[1] + 0.35], C(-0.5, 1.25), C(-2.35, 1.25), [cz.x - 2.35, crossZ], [STALL_FRONT[0], crossZ], STALL_FRONT];
+  const ERRAND_BACK: V2[] = [...ERRAND].reverse().concat([[FIRST_SEAT.x, FIRST_SEAT.z]]);
+  const errandWalk = pathLen(ERRAND) / SPEED, ERRAND_SIT = 22, ERRAND_PICK = 2.2;
+  const errandLoop = ERRAND_SIT + errandWalk * 2 + ERRAND_PICK + 1;
+
   // Shoppers (flower market) and a family (playground).
   const shoppers = ["#3ac0c0", "#e8457a"].map(c => { const p = person(c, 1.4); const bq = bouquet(); bq.visible = false; p.add(bq); p.visible = false; return { p, bq, k: 0 }; });
   const parent1 = person("#5ee0a0", 1.4), parent2 = person("#4f8bff", 1.4), child = person("#ff8a5c", 1.0);
@@ -242,8 +264,11 @@ export function buildBlock(S: BlockSetup): Block {
       res.visible = false;
       truck.visible = box.visible = false;
       resCup.visible = false;
+      resFlowers.visible = false;
+      vase.visible = flowersOpen && S.terrace === 2;
       ringM.opacity = 0.35 + Math.sin(t * 4) * 0.15;
       const neighborSits = stage === "seat";
+      const op = B?.opened, opSince = op ? (now - op.at) / 1000 : 99;
 
       // -- The neighbor's story --
       if (S.coffee && S.hasStarter && stage !== "none") {
@@ -281,6 +306,16 @@ export function buildBlock(S: BlockSetup): Block {
           x = a.x; z = a.z; walking = !a.done && since > 0.5;
           h = since < 0.5 ? faceC + Math.PI : a.done ? Math.atan2(FOLD[0][0] - x, FOLD[0][1] - z) + Math.sin(t * 0.8) * 0.15 : a.h;
           resCup.visible = true;
+        } else if (stage === "seat" && flowersOpen && S.terrace === 2 && !(op?.id === "flowers" && opSince < 8)) {
+          // Their day now: sit with a coffee, then walk over to the flower market, pick up a
+          // bouquet and carry it back to the table.
+          res.scale.setScalar(RS);
+          placeChairs(1);
+          const L = (t + 9) % errandLoop;
+          if (L < ERRAND_SIT) { [x, z] = [FIRST_SEAT.x, FIRST_SEAT.z]; h = FIRST_SEAT.face; sit = true; y = 0.36; resCup.visible = true; }
+          else if (L < ERRAND_SIT + errandWalk) { const a = along(ERRAND, (L - ERRAND_SIT) * SPEED); x = a.x; z = a.z; h = a.h; walking = true; }
+          else if (L < ERRAND_SIT + errandWalk + ERRAND_PICK) { [x, z] = STALL_FRONT; h = Math.atan2(STALL[0] - STALL_FRONT[0], STALL[1] - STALL_FRONT[1]); resFlowers.visible = L > ERRAND_SIT + errandWalk + ERRAND_PICK * 0.6; }
+          else { const a = along(ERRAND_BACK, (L - ERRAND_SIT - errandWalk - ERRAND_PICK) * SPEED); x = a.x; z = a.z; h = a.done ? FIRST_SEAT.face : a.h; walking = !a.done; resFlowers.visible = !a.done; if (a.done) { sit = true; y = 0.36; resCup.visible = true; } }
         } else if (stage === "toSeat" || stage === "seat") {
           res.scale.setScalar(RS);
           resCup.visible = true;
@@ -364,7 +399,6 @@ export function buildBlock(S: BlockSetup): Block {
       }
 
       // -- The flower market: a delivery when it opens, then shoppers leaving with flowers --
-      const op = B?.opened, opSince = op ? (now - op.at) / 1000 : 99;
       if (flowersOpen) {
         if (op?.id === "flowers" && opSince < 7) {
           if (opSince < 2.4) placeTruck(opSince / 2.4, false);

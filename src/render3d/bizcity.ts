@@ -1340,11 +1340,58 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     }
     tram.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.03).rotateX(-0.5).translate(0, 0.76, 0.1), metal));
     life.add(tram);
+    // Two stops with shelters: the tram slows in, waits while people get on and off, and
+    // goes on. People wait at the stop again until it comes back round.
+    const STOPS = [0.12, 0.62], DWELL = 5, HALF = 0.5 / 0.011, LOOP = 2 * (HALF + DWELL);
     const tp = new THREE.Vector3(), td = new THREE.Vector3();
+    const stops = STOPS.map(u => {
+      const { nx, nz } = outward(u, tp, td), x = tp.x - nx * 0.75, z = tp.z - nz * 0.75, ry = Math.atan2(nx, nz);
+      const sg = new THREE.Group();
+      sg.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.4).translate(0, 0.72, 0), mats.c("#2f6fff", 0.4)));
+      sg.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.03).translate(0, 0.42, -0.18), mats.c("#bfe6ff", 0.1, 0.3)));
+      for (const px of [-0.42, 0.42]) sg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.72, 5).translate(px, 0.36, -0.16), metal));
+      sg.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.14).translate(0, 0.2, -0.1), mats.c("#a0683a", 0.8)));
+      sg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4).translate(0.58, 0.45, 0.1), metal));
+      sg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 12).rotateX(Math.PI / 2).translate(0.58, 0.9, 0.1), mats.c("#ffcf3a", 0.4)));
+      sg.position.set(x, 0.2, z); sg.rotation.y = ry;
+      sg.userData.dynamic = true;
+      g.add(sg);
+      // Who's waiting, and who gets off.
+      const wait = [0, 1, 2].map(k => { const w = makePerson(shirts[(k * 3 + (u > 0.5 ? 1 : 0)) % shirts.length]); w.scale.setScalar(1.3); w.position.set(x + Math.cos(ry) * (k - 1) * 0.25, 0.2, z - Math.sin(ry) * (k - 1) * 0.25); w.rotation.y = ry + Math.PI; life.add(w); return w; });
+      const off = [0, 1].map(k => { const w = makePerson(shirts[(k * 5 + 2) % shirts.length]); w.scale.setScalar(1.3); w.visible = false; life.add(w); return w; });
+      return { u, x, z, nx, nz, wait, off };
+    });
+    const tramAt = (t: number): { u: number; at: number } => {
+      // at = which stop it's waiting at (-1 while moving)
+      const L = ((t % LOOP) + LOOP) % LOOP;
+      for (let k = 0; k < 2; k++) {
+        const s0 = k * (HALF + DWELL);
+        if (L < s0 + DWELL) return { u: STOPS[k], at: k };
+        if (L < s0 + DWELL + HALF) { const f = (L - s0 - DWELL) / HALF, e = f * f * (3 - 2 * f); return { u: (STOPS[k] + e * 0.5) % 1, at: -1 }; }
+      }
+      return { u: STOPS[0], at: 0 };
+    };
     townTicks.push(t => {
-      carPath.at((t * 0.011 + 0.62) % 1, tp, td);
+      const { u, at } = tramAt(t), L = ((t % LOOP) + LOOP) % LOOP;
+      carPath.at(u, tp, td);
       tram.position.set(tp.x, 0.04, tp.z);
       tram.rotation.y = Math.atan2(td.x, td.z);
+      stops.forEach((st, k) => {
+        const since = at === k ? L - k * (HALF + DWELL) : -1;
+        // Waiting people board one by one; after it leaves the stop fills up again slowly.
+        const sinceLeft = ((L - (k * (HALF + DWELL) + DWELL)) % LOOP + LOOP) % LOOP;
+        st.wait.forEach((w, j) => { w.visible = since >= 0 ? since < 1 + j * 0.9 : sinceLeft > 8 + j * 9; w.position.y = 0.2 + (w.visible && since < 0 ? 0 : 0); });
+        // Two passengers get off and walk away from the stop into town.
+        st.off.forEach((w, j) => {
+          const k2 = since >= 0 ? since - 0.6 - j * 0.7 : -1;
+          w.visible = k2 > 0 && k2 < 3.6;
+          if (!w.visible) return;
+          const dx = -st.nx, dz = -st.nz, side = j ? 0.35 : -0.35;
+          w.position.set(st.x + dx * k2 * 0.45 + st.nz * side, 0.2 + Math.abs(Math.sin(t * 9 + j)) * 0.04, st.z + dz * k2 * 0.45 - st.nx * side);
+          w.rotation.y = Math.atan2(dx, dz);
+          w.scale.setScalar(1.3 * Math.min(1, (3.6 - k2) * 2));
+        });
+      });
     });
   }
   if (rank >= 3) {
