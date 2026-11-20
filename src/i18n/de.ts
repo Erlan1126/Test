@@ -1576,4 +1576,6 @@ export const DE: Record<string, string> = {
   "A skyline rises on the floating islands": "Auf den schwebenden Inseln wächst eine Skyline",
   "The golden Skyhaven Tower stands over everything": "Der goldene Skyhaven-Turm überragt alles",
   "Every floor you build adds two office floors for your company. A perfect streak of 10 starts a construction boom!": "Jedes gebaute Stockwerk bringt deiner Firma zwei Bürostockwerke. Eine perfekte Serie von 10 startet einen Bauboom!",
+  "{first} skin at tier 1, {last} at tier 30, and {n} 💎 back along the way.": "Skin {first} auf Stufe 1, {last} auf Stufe 30 und {n} 💎 zurück unterwegs.",
+  "Town decorations, crystals, skins": "Deko, Kristalle, Skins",
 };

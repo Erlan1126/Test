@@ -23,6 +23,8 @@ export interface TycoonState {
   /** The last time the economy was brought up to date (ms). */
   last: number;
   eras: number;
+  /** The highest town rank ever reached: a rank is for good, even after a New Era. */
+  rankBest?: number;
   /** Floors built in towers that count as offices (not Zen, which never ends). */
   floors: number;
   /** Rush hour: a business earning extra until a time. */
@@ -64,7 +66,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 } });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 } });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -268,7 +270,7 @@ export const officeFloors = (s: SaveData): number => FREE_FLOORS + 2 * Math.max(
 export const usedFloors = (s: SaveData): number => Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
 
 /** The town's rank (0 = Hamlet), from all its business levels together. */
-export const townRank = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return r; };
+export const townRank = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return Math.max(r, Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)); };
 export const freeFloors = (s: SaveData): number => Math.max(0, officeFloors(s) - usedFloors(s));
 
 /** A business is offered once the one before it has been bought. */
@@ -370,9 +372,13 @@ export function tick(s: SaveData, now = Date.now()): number {
         for (const to of [...payBreaks(s, b, start, end), end]) {
           const n = Math.floor((to - start) / c) - done;
           if (n <= 0) continue;
-          const at = start + (done + 1) * c, pay = payAt(s, b, at);
-          total += n * pay;
-          if (pay > basePay(s, b, at)) rushed += n;
+          // Cycles strictly inside the stretch all pay the same; the first and last may land
+          // exactly on a break, so they're priced on their own (as the live tick would).
+          const first = start + (done + 1) * c, last = start + (done + n) * c;
+          const each = (at: number, k: number) => { const pay = payAt(s, b, at); total += k * pay; if (pay > basePay(s, b, at)) rushed += k; };
+          each(first, 1);
+          if (n > 2) each(first + c, n - 2);
+          if (n > 1) each(last, 1);
           done += n;
         }
         // A rush hour that came and went between two cycles still pays one rushed cycle.
@@ -419,6 +425,7 @@ export function newEra(s: SaveData, now = Date.now()): number {
   const g = eraGems(s);
   if (g <= 0) return 0;
   const t = s.tycoon;
+  t.rankBest = townRank(s); // the town keeps its rank (and what it built) through the new era
   t.gems += g;
   t.coins = 0;
   t.levels = { coffee: 1 };
@@ -448,13 +455,16 @@ function useSpeedup(s: SaveData, now: number): void {
 
 export const warpPrice = (hours: 1 | 8): number => (hours === 1 ? WARP_1H_CRYSTALS : WARP_8H_CRYSTALS);
 
+/** What a time warp pays: the managers' base rate (no short boosts) for that many hours.
+ *  Every screen quotes this, so the quote is always what the player gets. */
+export const warpGain = (s: SaveData, hours: 1 | 8, now = Date.now()): number => perSecond(s, now, false) * hours * 3600;
+
 export function timeWarp(s: SaveData, hours: 1 | 8, now = Date.now()): number {
   const price = warpPrice(hours);
-  const rate = perSecond(s, now, false);
-  if (s.crystals < price || rate <= 0 || speedupsLeft(s, now) <= 0) return 0;
+  const n = warpGain(s, hours, now);
+  if (s.crystals < price || n <= 0 || speedupsLeft(s, now) <= 0) return 0;
   s.crystals -= price;
   useSpeedup(s, now);
-  const n = rate * hours * 3600;
   earn(s, n);
   return n;
 }

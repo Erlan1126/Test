@@ -96,3 +96,15 @@ it("a rush hour pays its rushed cycles once in live play (no extra one when it e
     expect(live.tycoon.coins).toBeCloseTo(settled.tycoon.coins, 6);
   }
 });
+
+it("a cycle finishing exactly when the opening ends pays the same played or settled", () => {
+  const run = (live: boolean) => {
+    const s = company();
+    const c = cycleOf(BUSINESSES[0], 25) * 1000;
+    s.tycoon.runs.coffee = T0;
+    s.tycoon.opening = T0 + 2 * c; // ends exactly as the second cycle finishes
+    if (live) { tick(s, T0 + c); tick(s, T0 + 2 * c); tick(s, T0 + 4 * c); } else tick(s, T0 + 4 * c);
+    return s.tycoon.coins;
+  };
+  expect(run(false)).toBeCloseTo(run(true), 6);
+});

@@ -1189,16 +1189,44 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return out.set(lx, 0, lz).applyAxisAngle(yAxis, a).add(tmpP.set(x, 0.2, z));
   };
   const tmpP = new THREE.Vector3();
-  type Shopper = { p: THREE.Group; bag: THREE.Mesh; lot: number; st: 0 | 1 | 2 | 3; t: number; dur: number; from: THREE.Vector3; to: THREE.Vector3 };
+  type Shopper = { p: THREE.Group; bag: THREE.Mesh; items: Map<string, THREE.Object3D>; item: THREE.Object3D | null; lot: number; st: 0 | 1 | 2 | 3; t: number; dur: number; from: THREE.Vector3; to: THREE.Vector3 };
   const bagGeo = new THREE.BoxGeometry(0.12, 0.14, 0.06).translate(0.14, 0.24, 0);
+  // What each shop's customers carry out, so every business reads differently: a bouquet,
+  // a baguette, a pizza box, popcorn, a suitcase. Anything else leaves with a shopping bag.
+  const itemGeo = {
+    stem: new THREE.ConeGeometry(0.035, 0.16, 6).rotateX(Math.PI).translate(0.14, 0.26, 0.02),
+    bloom: [0, 1, 2].map(k => new THREE.SphereGeometry(0.035, 6, 5).translate(0.14 + (k - 1) * 0.03, 0.36 + (k % 2) * 0.02, 0.02)),
+    loaf: new THREE.CapsuleGeometry(0.025, 0.24, 3, 6).rotateZ(0.5).translate(0.13, 0.3, 0.02),
+    sleeve: new THREE.CylinderGeometry(0.032, 0.032, 0.1, 6).rotateZ(0.5).translate(0.11, 0.26, 0.02),
+    box: new THREE.BoxGeometry(0.22, 0.04, 0.22).translate(0, 0.42, 0.12),
+    tub: new THREE.CylinderGeometry(0.05, 0.035, 0.11, 8).translate(0.14, 0.29, 0.03),
+    pop: new THREE.SphereGeometry(0.05, 7, 5).scale(1, 0.55, 1).translate(0.14, 0.35, 0.03),
+    case: new THREE.BoxGeometry(0.1, 0.17, 0.2).translate(0.17, 0.1, -0.05),
+    handle: new THREE.BoxGeometry(0.015, 0.12, 0.015).translate(0.17, 0.24, -0.12),
+  };
+  const makeItems = (): Map<string, THREE.Object3D> => {
+    const m = new Map<string, THREE.Object3D>(), grp = (id: string, parts: [THREE.BufferGeometry, THREE.Material][]) => {
+      const g2 = new THREE.Group();
+      for (const [geo, mat] of parts) g2.add(new THREE.Mesh(geo, mat));
+      g2.visible = false; m.set(id, g2);
+    };
+    grp("flowers", [[itemGeo.stem, mats.c("#3fae5a", 0.8)], ...itemGeo.bloom.map((b, k) => [b, mats.c(["#ff5f8b", "#ffd23a", "#b48cff"][k], 0.6)] as [THREE.BufferGeometry, THREE.Material])]);
+    grp("bakery", [[itemGeo.loaf, mats.c("#d99a4e", 0.8)], [itemGeo.sleeve, mats.c("#f4efe6", 0.7)]]);
+    grp("pizza", [[itemGeo.box, mats.c("#f4efe6", 0.7)], [new THREE.BoxGeometry(0.1, 0.005, 0.1).translate(0, 0.443, 0.12), mats.c("#e2453c", 0.6)]]);
+    grp("cinema", [[itemGeo.tub, mats.c("#e2453c", 0.6)], [itemGeo.pop, mats.c("#fff2b0", 0.8)]]);
+    grp("hotel", [[itemGeo.case, mats.c("#4f6bff", 0.5)], [itemGeo.handle, mats.c("#2a2f4a", 0.5)]]);
+    return m;
+  };
   const shoppers: Shopper[] = Array.from({ length: Math.min(18, shopLots.length * 4) }, (_, k) => {
     const p = makePerson(shirts[(k + 5) % shirts.length]);
     const bag = new THREE.Mesh(bagGeo, mats.c("#ffffff"));
     bag.visible = false;
     p.add(bag);
+    const items = makeItems();
+    items.forEach(o => p.add(o));
     p.visible = false;
     life.add(p);
-    return { p, bag, lot: -1, st: 0, t: -k * 0.9, dur: 1, from: new THREE.Vector3(), to: new THREE.Vector3() };
+    return { p, bag, items, item: null, lot: -1, st: 0, t: -k * 0.9, dur: 1, from: new THREE.Vector3(), to: new THREE.Vector3() };
   });
   /** Picks a business for a shopper: busier (bigger) businesses more often. */
   const pickLot = (): { l: BizLot; i: number } | null => {
@@ -1221,6 +1249,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         lotPoint(pick.i, side * (1.2 + Math.random() * 0.8), 2.55, sh.from);
         lotPoint(pick.i, (Math.random() - 0.5) * 0.6, 1.15, sh.to);
         (sh.bag.material as THREE.MeshStandardMaterial) = mats.c(pick.l.c2, 0.6);
+        if (sh.item) sh.item.visible = false;
+        sh.item = sh.items.get(pick.l.id) ?? sh.bag;
         sh.bag.visible = false;
         sh.st = 1; sh.t = 0; sh.dur = sh.from.distanceTo(sh.to) / 0.9;
         sh.p.visible = true;
@@ -1242,7 +1272,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         sh.from.copy(sh.to);
         lotPoint(sh.lot, (Math.random() < 0.5 ? -1 : 1) * (2.0 + Math.random() * 0.8), 2.6, sh.to);
         sh.st = 3; sh.t = 0; sh.dur = sh.from.distanceTo(sh.to) / 0.9;
-        sh.bag.visible = true; sh.p.visible = true;
+        if (sh.item) sh.item.visible = true;
+        sh.p.visible = true;
       }
     }
   };

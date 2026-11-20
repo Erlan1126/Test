@@ -16,7 +16,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, vipTip,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -161,7 +161,8 @@ export class TycoonUI {
     $("earnings").addEventListener("click", e => {
       const el = e.target as Element, hire = el.closest<HTMLElement>("[data-hire-mgr]"), more = el.closest<HTMLElement>("[data-more]");
       if (hire) {
-        if (hireManager(this.save, hire.dataset.hireMgr!, Date.now())) { this.host.sound.purchase(); confetti(); toast(t("Manager hired! They sell even while you're away")); this.done(); this.renderEarnings(); }
+        tick(this.save);
+        if (hireManager(this.save, hire.dataset.hireMgr!, Date.now())) { if (this.save.tycoon.tips < 3) this.save.tycoon.tips = 3; this.host.sound.purchase(); confetti(); toast(t("Manager hired! They sell even while you're away")); this.done(); this.renderEarnings(); }
         return;
       }
       if (!more) return;
@@ -903,7 +904,7 @@ export class TycoonUI {
     const b = BUSINESSES[i], lv = levelOf(s, b.id), owned = lv > 0;
     const st = owned ? stageNow(s, b.id) : 0, grow = owned ? readyStage(s, b.id) : 0, managed = ty.managers.includes(b.id);
     const room = Math.max(1, freeFloors(s)), noRoom = freeFloors(s) < 1;
-    const n = Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
+    const n = !owned ? 1 : Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
     const price = costOf(b, lv, n), canBuy = price <= ty.coins && !noRoom;
     const ns = owned ? STAGE_AT[st + 1] : undefined;
     const goal = !owned ? t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) })
@@ -912,7 +913,7 @@ export class TycoonUI {
     const amountLabel = this.amount === "max" ? "MAX" : `×${this.amount}`;
     const main = grow
       ? `<button type="button" class="card-main grow" data-card="hq"><b>${esc(t("Build the HQ"))}</b><small>${esc(t("{n} floors", { n: hqFloors(grow) }))}</small></button>`
-      : noRoom ? `<button type="button" class="card-main floors" data-card="buy"><b>${esc(t("Build more floors"))}</b><small>${esc(t("Your offices are full"))}</small></button>`
+      : noRoom ? `<button type="button" class="card-main floors" data-card="build"><b>${esc(t("Build more floors"))}</b><small>${esc(t("Your offices are full"))}</small></button>`
       : `<button type="button" class="card-main" data-card="buy"${canBuy ? "" : " disabled"}><b>${esc(owned ? t("Buy {n}", { n: amountLabel }) : t("Open it"))}</b><small>${COIN_SVG}${esc(coins(price))}</small></button>`;
     this.put(card, `<div class="card-head" style="--b1:${b.color[0]};--b2:${b.color[1]}">
         <span class="card-ico">${iconSvg(b.icon)}</span>
@@ -948,6 +949,7 @@ export class TycoonUI {
       return;
     }
     if (what === "look") { this.openSheet("company", id); return; }
+    if (what === "build") { this.host.sound.click(); toast(t("Every office floor is full. Build a tower to add more!")); this.selected = ""; this.leave(); this.host.buildFloors(); return; }
     const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`) ?? card;
     this.doAct(what === "buy" && freeFloors(this.save) < 1 ? "buy" : what, id, el, e, card.querySelector(".card-pops")!, tag);
     this.render();
@@ -1089,7 +1091,7 @@ export class TycoonUI {
       ],
       me: [
         { id: "profile", name: "Profile", open: () => $("level-btn").click() },
-        { id: "ranks", name: "Ranks", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
+        { id: "ranks", name: "Leaderboard", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
         { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !$("city-btn").hidden },
         { id: "settings", name: "Settings", open: () => $("settings-btn").click() },
       ],
@@ -1161,9 +1163,9 @@ export class TycoonUI {
     const owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0).length;
     $("tcy-more").innerHTML = me + `<div class="more-grid">
       ${tile("company", "🏢", t("My company"), t("{n} of {total} businesses", { n: owned, total: BUSINESSES.length }), "violet")}
-      ${tile("shop-btn", "🛍️", t("Shop"), t("Skins, islands, gems"), "pink", shown("shop-btn"))}
+      ${tile("shop-btn", "🛍️", t("Shop"), t("Town decorations, crystals, skins"), "pink", shown("shop-btn"))}
       ${tile("pass-btn", "🎟️", t("Sky Pass"), dotOf("pass-btn") ? t("Rewards to claim!") : t("This month's rewards"), "orange", shown("pass-btn"))}
-      ${tile("ranks-btn", "🏆", t("Ranks"), t("Beat the best builders"), "gold", shown("ranks-btn"))}
+      ${tile("ranks-btn", "🏆", t("Leaderboard"), t("Beat the best builders"), "gold", shown("ranks-btn"))}
       ${tile("city-btn", "🏙️", t("Sky City"), t("{n} people", { n: fmt(s.population) }), "blue", shown("city-btn"))}
     </div>`;
     openModal($("tcy-moresheet"));
@@ -1395,7 +1397,7 @@ export class TycoonUI {
     for (const row of $("ty-list").querySelectorAll<HTMLElement>(".ty-biz")) {
       const b = BUSINESSES.find(x => x.id === row.dataset.biz)!, lv = levelOf(s, b.id), owned = lv > 0;
       const room = Math.max(1, freeFloors(s));
-      const n = Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
+      const n = !owned ? 1 : Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
       const price = costOf(b, lv, n), next = nextMilestone(lv), ns = owned ? STAGE_AT[stageNow(s, b.id) + 1] : undefined;
       // On the Company page the banner says it all in one line: floors, and what's next.
       const cards = document.body.classList.contains("city-home");
@@ -1567,7 +1569,7 @@ export class TycoonUI {
         if (el.classList.contains("need-floors")) { toast(t("Every office floor is full. Build a tower to add more!")); this.leave(); this.host.buildFloors(); return; }
         tick(s);
         const lv = levelOf(s, b.id), owned = lv > 0, wasReady = !!readyStage(s, b.id);
-        const got = buyLevels(s, b.id, this.amount);
+        const got = buyLevels(s, b.id, owned ? this.amount : 1);
         if (!got) { this.host.sound.click(); return; }
         this.goal("buy", got);
         this.pulse = { id: b.id, at: Date.now() };
@@ -1781,13 +1783,13 @@ export class TycoonUI {
       + (best && best.v > 0 ? `<span><small>${esc(t("Top business"))}</small><b>${esc(t(stageName(best.b.id, stageNow(s, best.b.id))))}</b></span>` : `<span><small>${esc(t("Managers"))}</small><b>${ty.managers.length}</b></span>`));
     this.put($("earn-list"), rows.map(r => `<div class="earn-biz" style="--b1:${r.b.color[0]};--b2:${r.b.color[1]}">
       <span class="eb-ico">${iconSvg(r.b.icon)}</span>
-      <span class="eb-main"><b>${esc(t(stageName(r.b.id, stageNow(s, r.b.id))))}</b><i class="eb-bar"><i style="width:${Math.max(3, (r.v / top) * 100).toFixed(1)}%"></i></i></span>
+      <span class="eb-main"><b>${esc(t(stageName(r.b.id, stageNow(s, r.b.id))))}</b><i class="eb-bar"><i style="width:${(r.v > 0 ? Math.max(3, (r.v / top) * 100) : 0).toFixed(1)}%"></i></i></span>
       <span class="eb-val">${r.auto ? `<b>${esc(coins(r.v))}</b><small>${esc(t("a second"))}${ps > 0 ? ` · ${Math.round((r.v / ps) * 100)}%` : ""}</small>` : `<button type="button" class="buy eb-hire" data-hire-mgr="${r.b.id}"${ty.coins < r.b.manager ? " disabled" : ""}><small>${esc(t("Hire manager"))}</small>${esc(coins(r.b.manager))}</button>`}</span>
     </div>`).join("") || `<p class="sheet-note">${esc(t("Open your first business to start earning."))}</p>`);
     // Ways to earn more (one tap each).
     const more: string[] = [];
     if (!ty.boost) more.push(`<button type="button" class="em-card gold" data-more="boost"><span class="eb-cico">${iconSvg("bolt")}</span><span><b>${esc(t("Cash booster ×2"))}</b><small>${esc(t("Double every dollar, forever"))}</small></span><em>💎 ${fmt(COIN_BOOST_CRYSTALS)}</em></button>`);
-    if (ps > 0 && speedupsLeft(s) > 0) more.push(`<button type="button" class="em-card" data-more="warp"><span class="eb-cico">${iconSvg("clock")}</span><span><b>${esc(t("Time warp: 1 hour"))}</b><small>${esc(t("Get {n} right now", { n: coins(ps * 3600) }))}</small></span><em>💎 ${warpPrice(1)}</em></button>`);
+    if (warpGain(s, 1, now) > 0 && speedupsLeft(s) > 0) more.push(`<button type="button" class="em-card" data-more="warp"><span class="eb-cico">${iconSvg("clock")}</span><span><b>${esc(t("Time warp: 1 hour"))}</b><small>${esc(t("Get {n} right now", { n: coins(warpGain(s, 1, now)) }))}</small></span><em>💎 ${warpPrice(1)}</em></button>`);
     more.push(`<button type="button" class="em-card" data-more="decor"><span class="eb-cico">${iconSvg("island")}</span><span><b>${esc(t("Island decorations"))}</b><small>${esc(t("Each one: +{pct}% to every business", { pct: Math.round(DECOR_BONUS * 100) }))}</small></span><em>›</em></button>`);
     this.put($("earn-more"), more.join(""));
     // The bonuses at work (only the ones you have).
@@ -1809,7 +1811,7 @@ export class TycoonUI {
     // The town's rank, and what the next one brings.
     {
       const used = usedFloors(s), nx = RANKS[rk + 1], from = RANKS[rk].at;
-      const k = nx ? Math.min(1, (used - from) / (nx.at - from)) : 1;
+      const k = nx ? Math.max(0, Math.min(1, (used - from) / (nx.at - from))) : 1;
       this.put($("earn-rank"), `<span class="er-ico">${iconSvg(RANKS[rk].icon)}</span><div class="er-main"><small>${esc(t("Town rank"))} · ${rk + 1}/${RANKS.length}</small><b>${esc(t(RANKS[rk].name))}</b>`
         + (nx ? `<i class="er-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i><em>${esc(t("Next: {name} at {n} business levels ({have} now)", { name: t(nx.name), n: fmt(nx.at), have: fmt(used) }))}</em><em class="er-unlock">${esc(t(nx.unlock))} · ${esc(t("+{pct}% to every business", { pct: Math.round(RANK_BONUS * 100) }))}</em>`
           : `<em>${esc(t("The highest rank. Skyhaven is the capital of the sky!"))}</em>`) + `</div>`);
@@ -1839,7 +1841,7 @@ export class TycoonUI {
       `<div class="ty-boost"><span class="ty-bico">${iconSvg(icon)}</span><span><b>${esc(title)}</b><small>${esc(text)}</small></span><button type="button" class="buy" data-boost="${act}"${disabled ? " disabled" : ""}>${price}</button></div>`;
     const left = speedupsLeft(s);
     const warp = (act: string, icon: string, h: 1 | 8, title: string) => card(act, icon, title,
-      rate <= 0 ? t("Hire a manager first") : left <= 0 ? t("No more speed-ups today. Come back tomorrow!") : t("Get {n} right now", { n: coins(rate * h * 3600) }),
+      rate <= 0 ? t("Hire a manager first") : left <= 0 ? t("No more speed-ups today. Come back tomorrow!") : t("Get {n} right now", { n: coins(warpGain(s, h)) }),
       `💎 ${warpPrice(h)}`, rate <= 0 || left <= 0);
     return (
       card("boost", "bolt", t("Cash booster ×2"), ty.boost ? t("Active forever. Every dollar counts twice") : t("Double all the cash you earn, forever"), ty.boost ? esc(t("✓ Owned")) : `💎 ${fmt(COIN_BOOST_CRYSTALS)}`, ty.boost)
@@ -1897,6 +1899,7 @@ export class TycoonUI {
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
   private checkRank(): void {
     const s = this.save, rk = townRank(s), key = `rank-${rk}`;
+    if (rk > (s.tycoon.rankBest ?? 0)) s.tycoon.rankBest = rk;
     if (rk < 1 || s.seenFeatures.includes(key)) return;
     for (let i = 1; i <= rk; i++) if (!s.seenFeatures.includes(`rank-${i}`)) s.seenFeatures.push(`rank-${i}`);
     const r = RANKS[rk];

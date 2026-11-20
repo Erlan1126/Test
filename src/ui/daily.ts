@@ -196,7 +196,9 @@ export class DailySheets {
     openModal($("pass"));
     // Show the next tier to earn rather than tier 1.
     // Open at the next reward to earn (the road runs down the page).
-    const next = $("pass-tiers").querySelector<HTMLElement>(".pass-row.next, .pass-row.here");
+    // A reward waiting to be claimed first, else the next tier to earn.
+    const list = $("pass-tiers");
+    const next = list.querySelector<HTMLElement>(".pass-cell.ready")?.closest<HTMLElement>(".pass-row") ?? list.querySelector<HTMLElement>(".pass-row.next") ?? list.querySelector<HTMLElement>(".pass-row.here");
     requestAnimationFrame(() => next?.scrollIntoView({ block: "center" }));
   }
 
@@ -224,7 +226,7 @@ export class DailySheets {
       prem.classList.add("on");
     } else {
       prem.classList.remove("on");
-      prem.innerHTML = `<canvas class="pass-prem-skin" aria-hidden="true"></canvas><div><b>${esc(t("✦ Unlock the premium track"))}</b><small>${esc(t("{first} skin now, {last} at tier 30, and {n} 💎 back along the way.", { first: t(skinById(theme.skins.first).name), last: t(last.name), n: fmt(seasonCrystals(season)) }))}</small>
+      prem.innerHTML = `<canvas class="pass-prem-skin" aria-hidden="true"></canvas><div><b>${esc(t("✦ Unlock the premium track"))}</b><small>${esc(t("{first} skin at tier 1, {last} at tier 30, and {n} 💎 back along the way.", { first: t(skinById(theme.skins.first).name), last: t(last.name), n: fmt(seasonCrystals(season)) }))}</small>
         <button type="button" class="buy shine" id="pass-buy">💎 ${PASS_PRICE}</button></div>`;
       drawSkinPreview(prem.querySelector("canvas")!, last);
       prem.querySelector("#pass-buy")!.addEventListener("click", () => {

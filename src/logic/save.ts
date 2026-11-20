@@ -568,6 +568,9 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     fresh.fresh = true;
     fresh.floors = Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore));
     fresh.boost = o.boost === true;
+    // Advisors can be bought with crystals: never take them away.
+    fresh.advisors = Array.isArray(o.advisors) ? [...new Set(o.advisors.filter((x): x is string => typeof x === "string" && ADVISORS.some(a => a.id === x)))] : [];
+    fresh.picks = Math.min(ADVISORS.length, Math.floor(big(o.picks)));
     return fresh;
   }
   const runs: Record<string, number> = {};
@@ -578,6 +581,7 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     coins: big(o.coins), lifetime: Math.max(big(o.lifetime), big(o.coins)), levels,
     managers: Array.isArray(o.managers) ? [...new Set(o.managers.filter((x): x is string => typeof x === "string" && ids.includes(x)))] : [],
     runs, gems: Math.floor(big(o.gems)), boost: o.boost === true, last: big(o.last), eras: Math.floor(big(o.eras)),
+    rankBest: Math.min(10, Math.floor(big(o.rankBest))),
     // Saves from before office floors start with every floor they had built.
     floors: Math.floor(typeof o.floors === "number" ? big(o.floors) : big(floorsBefore)),
     speedups: { day: typeof (o.speedups as { day?: unknown })?.day === "string" ? String((o.speedups as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.speedups as { n?: unknown })?.n)) },
