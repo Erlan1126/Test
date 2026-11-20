@@ -165,7 +165,7 @@ describe("island upgrades", () => {
   });
 });
 
-import { CHAPTERS, claimChapter } from "../src/data/chapters";
+import { CHAPTERS, claimChapter, migrateChapters } from "../src/data/chapters";
 import { FEATURE_LEVEL } from "../src/logic/features";
 import { defaultSave as freshSave } from "../src/logic/save";
 describe("Mayor Pip's chapters", () => {
@@ -179,10 +179,25 @@ describe("Mayor Pip's chapters", () => {
   it("pays a chapter once, only when every goal is met", () => {
     const s = freshSave();
     expect(claimChapter(s)).toBeNull();
-    s.profile.towers = 3; s.bestMeters = 40; s.profile.level = 2;
+    s.profile.towers = 3; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 50 };
     const stars = s.stars;
     expect(claimChapter(s)).toEqual(CHAPTERS[0].reward);
     expect(s.stars).toBe(stars + CHAPTERS[0].reward.stars);
     expect(claimChapter(s)).toBeNull();
+  });
+  it("follow the town ranks: each chapter ends at the next rank", async () => {
+    const { RANKS } = await import("../src/data/ranks");
+    expect(CHAPTERS.length).toBe(RANKS.length - 1);
+    CHAPTERS.forEach((c, i) => expect(c.goals.at(-1)!.need).toBe(RANKS[i + 1].at));
+  });
+  it("moves old story progress over without paying again", () => {
+    const s = freshSave();
+    s.chapters = { done: 3, seen: 3 };
+    s.profile.towers = 3; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 60 };
+    const stars = s.stars;
+    expect(migrateChapters(s)).toBe(true);
+    expect(s.chapters.done).toBe(1);
+    expect(s.stars).toBe(stars);
+    expect(migrateChapters(s)).toBe(false);
   });
 });

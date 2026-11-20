@@ -212,9 +212,11 @@ export function buildBlock(S: BlockSetup): Block {
   const resFlowers = bouquet();
   resFlowers.visible = false;
   res.add(resFlowers);
-  const ERRAND: V2[] = [[FIRST_SEAT.x, CHAIRS_AT[1] + 0.35], C(-0.5, 1.25), C(-2.35, 1.25), [cz.x - 2.35, crossZ], [STALL_FRONT[0], crossZ], STALL_FRONT];
+  // To the flower market, or (if the block chose the playground) to watch the kids play.
+  const ERR_TO: V2 = flowersOpen ? STALL_FRONT : [PLAY[0] + 0.9, PLAY[1] + 0.35];
+  const ERRAND: V2[] = [[FIRST_SEAT.x, CHAIRS_AT[1] + 0.35], C(-0.5, 1.25), C(-2.35, 1.25), [cz.x - 2.35, crossZ], [ERR_TO[0], crossZ], ERR_TO];
   const ERRAND_BACK: V2[] = [...ERRAND].reverse().concat([[FIRST_SEAT.x, FIRST_SEAT.z]]);
-  const errandWalk = pathLen(ERRAND) / SPEED, ERRAND_SIT = 22, ERRAND_PICK = 2.2;
+  const errandWalk = pathLen(ERRAND) / SPEED, ERRAND_SIT = 22, ERRAND_PICK = flowersOpen ? 2.2 : 6;
   const errandLoop = ERRAND_SIT + errandWalk * 2 + ERRAND_PICK + 1;
 
   // Shoppers (flower market) and a family (playground).
@@ -306,7 +308,7 @@ export function buildBlock(S: BlockSetup): Block {
           x = a.x; z = a.z; walking = !a.done && since > 0.5;
           h = since < 0.5 ? faceC + Math.PI : a.done ? Math.atan2(FOLD[0][0] - x, FOLD[0][1] - z) + Math.sin(t * 0.8) * 0.15 : a.h;
           resCup.visible = true;
-        } else if (stage === "seat" && flowersOpen && S.terrace === 2 && !(op?.id === "flowers" && opSince < 8)) {
+        } else if (stage === "seat" && (flowersOpen || playOpen) && S.terrace === 2 && !(op && opSince < 8)) {
           // Their day now: sit with a coffee, then walk over to the flower market, pick up a
           // bouquet and carry it back to the table.
           res.scale.setScalar(RS);
@@ -314,8 +316,8 @@ export function buildBlock(S: BlockSetup): Block {
           const L = (t + 9) % errandLoop;
           if (L < ERRAND_SIT) { [x, z] = [FIRST_SEAT.x, FIRST_SEAT.z]; h = FIRST_SEAT.face; sit = true; y = 0.36; resCup.visible = true; }
           else if (L < ERRAND_SIT + errandWalk) { const a = along(ERRAND, (L - ERRAND_SIT) * SPEED); x = a.x; z = a.z; h = a.h; walking = true; }
-          else if (L < ERRAND_SIT + errandWalk + ERRAND_PICK) { [x, z] = STALL_FRONT; h = Math.atan2(STALL[0] - STALL_FRONT[0], STALL[1] - STALL_FRONT[1]); resFlowers.visible = L > ERRAND_SIT + errandWalk + ERRAND_PICK * 0.6; }
-          else { const a = along(ERRAND_BACK, (L - ERRAND_SIT - errandWalk - ERRAND_PICK) * SPEED); x = a.x; z = a.z; h = a.done ? FIRST_SEAT.face : a.h; walking = !a.done; resFlowers.visible = !a.done; if (a.done) { sit = true; y = 0.36; resCup.visible = true; } }
+          else if (L < ERRAND_SIT + errandWalk + ERRAND_PICK) { [x, z] = ERR_TO; h = flowersOpen ? Math.atan2(STALL[0] - ERR_TO[0], STALL[1] - ERR_TO[1]) : Math.atan2(PLAY[0] - ERR_TO[0], PLAY[1] - ERR_TO[1]); resFlowers.visible = flowersOpen && L > ERRAND_SIT + errandWalk + ERRAND_PICK * 0.6; }
+          else { const a = along(ERRAND_BACK, (L - ERRAND_SIT - errandWalk - ERRAND_PICK) * SPEED); x = a.x; z = a.z; h = a.done ? FIRST_SEAT.face : a.h; walking = !a.done; resFlowers.visible = flowersOpen && !a.done; if (a.done) { sit = true; y = 0.36; resCup.visible = true; } }
         } else if (stage === "toSeat" || stage === "seat") {
           res.scale.setScalar(RS);
           resCup.visible = true;

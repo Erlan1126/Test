@@ -69,6 +69,15 @@ export interface TycoonHost {
 export const COIN_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="7" width="21" height="13" rx="2.5" fill="#1f8a4c" transform="rotate(-8 12 13.5)"/><rect x="1.5" y="5" width="21" height="13" rx="2.5" fill="url(#cg)" stroke="#167a42" stroke-width="1.1"/><rect x="4" y="7.5" width="16" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.9"/><circle cx="12" cy="11.5" r="3.3" fill="#e9ffe9"/><text x="12" y="13.7" text-anchor="middle" font-size="6" font-weight="900" font-family="Arial,sans-serif" fill="#167a42">$</text></svg>`;
 
 /** The building's picture at a stage (3D, the same model as in the town). */
+/** What the first neighbor says when the town reaches each rank (Village first). */
+const NEIGHBOR_LINES = [
+  "A market on our street! Fresh flowers for my table every day 🌷",
+  "A tram! Now I can visit my sister across the island 🚋",
+  "Look at those lights! Our little street is famous now ✨",
+  "Airships! I waved at one this morning and it waved back 🎈",
+  "Towers on the floating islands... I remember when this was a meadow.",
+  "The capital of the sky. And it all started with your first tower. Thank you! 💛",
+];
 const thumbFor = (b: (typeof BUSINESSES)[number], stage: number): string => bizThumb(b.id, stage, b.color[0], b.color[1]);
 /** A multiplier, short: 1.2, 3, 12.5, 1.2K. */
 const fmtMult = (m: number): string => (m >= 1000 ? fmt(m) : m >= 10 ? String(Math.round(m * 10) / 10) : String(Math.round(m * 100) / 100));
@@ -1925,6 +1934,7 @@ export class TycoonUI {
   }
 
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
+  private momentDone = false;
   private checkRank(): void {
     const s = this.save, rk = townRank(s), key = `rank-${rk}`;
     if (rk > (s.tycoon.rankBest ?? 0)) s.tycoon.rankBest = rk;
@@ -1935,7 +1945,19 @@ export class TycoonUI {
     toast(t("Skyhaven is now a {name}!", { name: t(r.name) }));
     fireworks(4, () => this.host.sound.firework());
     const note = () => {
-      if (openModalEl() || !$("mayor").hidden || !$("welcome").hidden) { window.setTimeout(note, 1500); return; }
+      if (openModalEl() || !$("mayor").hidden || !$("welcome").hidden || document.body.classList.contains("tabs-open")) { window.setTimeout(note, 1500); return; }
+      // The neighbor's moment first: the camera visits their block and they react to what
+      // the new rank brought. Pip's note follows.
+      const c = this.save.cafe;
+      if (!this.momentDone && this.inCity && c.starter && c.moved && c.terrace === 2) {
+        this.momentDone = true;
+        this.frameUntil = Date.now() + 6500;
+        this.render();
+        this.later(900, () => this.say(t(NEIGHBOR_LINES[rk - 1] ?? NEIGHBOR_LINES[0]), 5200));
+        window.setTimeout(note, 6800);
+        return;
+      }
+      this.momentDone = false;
       mayorNote(t("Skyhaven is now a {name}!", { name: t(r.name) }),
         t("{unlock}. And every business earns {pct}% more for good. Go take a look!", { unlock: t(r.unlock), pct: Math.round(RANK_BONUS * 100) })
         + (RANKS[rk + 1] ? " " + t("Next rank: {name} at {n} business levels.", { name: t(RANKS[rk + 1].name), n: fmt(RANKS[rk + 1].at) }) : ""),

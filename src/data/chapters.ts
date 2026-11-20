@@ -2,7 +2,8 @@
 // from things the player does anyway (towers, height, people, city buildings...); finishing
 // all three pays a reward and opens the next chapter. It gives the game a beginning, a
 // middle and an end: from an empty meadow to the capital of the sky.
-import { districtTowers } from "../logic/skyline";
+import { usedFloors } from "../logic/tycoon";
+import { RANKS } from "./ranks";
 import type { SaveData } from "../logic/save";
 
 export interface ChapterGoal {
@@ -24,88 +25,95 @@ export interface Chapter {
 
 const towers = (s: SaveData) => s.profile.towers;
 const best = (s: SaveData) => s.bestMeters;
-const people = (s: SaveData) => s.population;
-const builds = (s: SaveData) => s.city.length;
-const level = (s: SaveData) => s.profile.level;
-const inDistrict = (d: string) => (s: SaveData) => districtTowers(s, d).length;
 const managers = (s: SaveData) => s.tycoon.managers.length;
-const earned = (s: SaveData) => s.tycoon.lifetime;
 const businesses = (s: SaveData) => Object.keys(s.tycoon.levels).length;
-const eras = (s: SaveData) => s.tycoon.eras;
+const terrace = (s: SaveData) => (s.cafe.terrace === 2 ? 1 : 0);
+const projects = (s: SaveData) => s.cafe.done.length;
+const grown = (s: SaveData) => Object.values(s.tycoon.evolved).filter(v => v >= 1).length;
+/** All business levels together (as for the town's rank; a rank reached is kept for good). */
+const levels = (s: SaveData) => Math.max(usedFloors(s), RANKS[Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)].at);
 
+// One chapter per town rank: Pip's story and the goal bar in the town tell the same story.
+// The last goal of each chapter is the rank itself.
 export const CHAPTERS: Chapter[] = [
   {
-    title: "A city in the sky",
-    intro: "Welcome to Skyhaven! It's just a meadow for now, but with your towers it'll be the greatest city in the sky. Let's begin!",
-    outro: "Look at that skyline! People are already moving in. You're a natural.",
+    title: "The Village",
+    intro: "Welcome to Skyhaven! Your first neighbor needs a place to sit and a busier street. Grow the businesses and our hamlet becomes a village, with a street market!",
+    outro: "We're a village! Hear that? Stalls, shoppers, music in the plaza. And it all started with one coffee.",
     goals: [
       { text: "Build {n} towers", need: 3, have: towers },
-      { text: "Build a tower {n} m tall", need: 30, have: best },
-      { text: "Reach builder level {n}", need: 2, have: level },
+      { text: "Open the café terrace", need: 1, have: terrace },
+      { text: "Reach {n} business levels", need: 50, have: levels },
     ],
     reward: { stars: 10, crystals: 20 },
   },
   {
-    title: "Growing up",
-    intro: "Skyhaven is growing! More people means more rent, and more rent means more buildings.",
-    outro: "{city} has a real heartbeat now. Time to look beyond the meadow...",
+    title: "The Town",
+    intro: "A village needs a heart. Give the block its next project, put managers to work, and Skyhaven becomes a town: with its own little tram!",
+    outro: "Ding ding! The tram is running. Your neighbor already has a favorite seat by the window.",
     goals: [
-      { text: "Reach {n} people", need: 5000, have: people },
-      { text: "Reach builder level {n}", need: 5, have: level },
-      { text: "Build {n} city building", need: 1, have: builds },
-      { text: "Hire {n} manager in Skyhaven Inc.", need: 1, have: managers },
+      { text: "Finish a block project", need: 1, have: projects },
+      { text: "Hire {n} managers", need: 3, have: managers },
+      { text: "Reach {n} business levels", need: 150, have: levels },
     ],
     reward: { stars: 15, crystals: 30 },
   },
   {
-    title: "The Snowy Peaks",
-    intro: "Over the clouds there's an island covered in snow. Grow the city to open it, then build there!",
-    outro: "Your towers sparkle in the snow. The whole sky is talking about Skyhaven!",
+    title: "The City",
+    intro: "Shops are growing into stores. Build their headquarters, and Skyhaven turns into a real city, bright lights on every corner.",
+    outro: "Look at those billboards glow! People come from the other islands just to see our streets.",
     goals: [
-      { text: "Reach {n} people", need: 15000, have: people },
-      { text: "Build {n} towers in Snowy Peaks", need: 3, have: inDistrict("snow") },
-      { text: "Build {n} city buildings", need: 3, have: builds },
-      { text: "Earn {n} in Skyhaven Inc.", need: 1e6, have: earned },
+      { text: "Grow {n} businesses with a new HQ", need: 2, have: grown },
+      { text: "Build a tower {n} m tall", need: 60, have: best },
+      { text: "Reach {n} business levels", need: 300, have: levels },
     ],
     reward: { stars: 20, crystals: 40 },
   },
   {
-    title: "The Desert Oasis",
-    intro: "Next stop: a warm oasis of palm trees and sand. It needs a skyline only you can build.",
-    outro: "An oasis of glass and gold. I could watch the sunset from your towers all day.",
+    title: "The Big City",
+    intro: "The whole sky is noticing us. Open more businesses and finish the block, and the airships will start coming to Skyhaven.",
+    outro: "Airships over Skyhaven! Visitors from every island. We're a big city now.",
     goals: [
-      { text: "Reach {n} people", need: 60000, have: people },
-      { text: "Build {n} towers in Desert Oasis", need: 3, have: inDistrict("desert") },
-      { text: "Build a tower {n} m tall", need: 200, have: best },
-      { text: "Open {n} businesses", need: 5, have: businesses },
+      { text: "Open {n} businesses", need: 6, have: businesses },
+      { text: "Finish both block projects", need: 2, have: projects },
+      { text: "Reach {n} business levels", need: 500, have: levels },
     ],
     reward: { stars: 30, crystals: 60 },
   },
   {
-    title: "Cherry Blossom",
-    intro: "The cherry trees are in bloom on the next island. Let's give it towers worth the view.",
-    outro: "Pink petals and perfect towers. Skyhaven has never looked so lovely.",
+    title: "The Metropolis",
+    intro: "There's no more room on the island, so we'll build on the floating islands next door. Grow, and a skyline rises over the clouds!",
+    outro: "A skyline on the floating islands! I remember when all of this was a meadow.",
     goals: [
-      { text: "Reach {n} people", need: 180000, have: people },
-      { text: "Build {n} towers in Cherry Blossom", need: 3, have: inDistrict("blossom") },
-      { text: "Build {n} city buildings", need: 8, have: builds },
-      { text: "Earn {n} in Skyhaven Inc.", need: 5e7, have: earned },
+      { text: "Open {n} businesses", need: 8, have: businesses },
+      { text: "Build a tower {n} m tall", need: 150, have: best },
+      { text: "Reach {n} business levels", need: 800, have: levels },
     ],
     reward: { stars: 40, crystals: 80 },
   },
   {
     title: "Capital of the sky",
-    intro: "One last dream: make Skyhaven the capital of the sky. Half a million people, and a tower to match!",
+    intro: "One last dream: make Skyhaven the capital of the sky, and raise the golden Skyhaven Tower for everyone who lives here.",
     outro: "You did it! Skyhaven is the capital of the sky, and you built every floor of it. Thank you, builder!",
     goals: [
-      { text: "Reach {n} people", need: 500000, have: people },
-      { text: "Build a tower {n} m tall", need: 500, have: best },
-      { text: "Reach builder level {n}", need: 20, have: level },
-      { text: "Start {n} New Era", need: 1, have: eras },
+      { text: "Open all {n} businesses", need: 10, have: businesses },
+      { text: "Build a tower {n} m tall", need: 300, have: best },
+      { text: "Reach {n} business levels", need: 1200, have: levels },
     ],
     reward: { stars: 60, crystals: 150 },
   },
 ];
+
+/** Saves from the old chapters (islands and people) move to these: the chapters whose goals
+ *  are already met count as done, without paying their reward again. */
+export const CHAPTERS_V = 2;
+export function migrateChapters(s: SaveData): boolean {
+  if (s.chapters.v === CHAPTERS_V) return false;
+  let done = 0;
+  while (done < CHAPTERS.length && s.chapters.done > 0 && CHAPTERS[done].goals.every(g => g.have(s) >= g.need)) done++;
+  s.chapters = { done, seen: done - 1, v: CHAPTERS_V };
+  return true;
+}
 
 /** The chapter the player is on (CHAPTERS.length once the story is finished). */
 export const chapterIndex = (s: SaveData): number => Math.min(s.chapters.done, CHAPTERS.length);

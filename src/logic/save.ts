@@ -95,7 +95,7 @@ export interface SaveData {
   friendCode: string;
   friends: string[];
   /** The story (see chapters.ts): chapters finished, and the last chapter Mayor Pip introduced. */
-  chapters: { done: number; seen: number };
+  chapters: { done: number; seen: number; v?: number };
   boosts: Record<BoostId, number>;
   missions: { slots: Mission[]; done: number; seen: number; day: string; chest: string };
   profile: {
@@ -198,7 +198,7 @@ export function defaultSave(): SaveData {
     holiday: { key: "", towers: 0 },
     vip: { until: 0, claimed: 0, gift: 0 },
     packsFirst: [],
-    chapters: { done: 0, seen: -1 },
+    chapters: { done: 0, seen: -1, v: 2 },
     friendCode: "",
     friends: [],
     tycoon: newTycoon(),
@@ -322,7 +322,7 @@ export function normalize(raw: unknown): SaveData {
     holiday: { key: str(obj(r.holiday).key, "").slice(0, 40), towers: int(obj(r.holiday).towers, 0, 0, 9999) },
     vip: { until: num(obj(r.vip).until, 0, 0, 1e15), claimed: int(obj(r.vip).claimed, 0), gift: num(obj(r.vip).gift, 0, 0, 1e15) },
     packsFirst: strList(r.packsFirst),
-    chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99) },
+    chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99), v: int(obj(r.chapters).v, 0, 0, 99) },
     tycoon: normalizeTycoon(r.tycoon, Number(obj(r.profile).floors) || 0),
     friendCode: /^[A-Z2-9]{6}$/.test(String(r.friendCode ?? "")) ? String(r.friendCode) : "",
     friends: strList(r.friends).filter(c => /^[A-Z2-9]{6}$/.test(c)).slice(0, 30),

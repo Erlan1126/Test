@@ -1,4 +1,5 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import { migrateChapters } from "./data/chapters";
 import { RANKS } from "./data/ranks";
 import type { SkylineTower } from "./logic/skyline";
 import { ISLAND_THEMES, type IslandTheme } from "./data/islands";
@@ -259,6 +260,7 @@ export class App implements DailyHost {
   constructor(logoSvg: string) {
     if (this.phone) document.documentElement.classList.add("phone");
     this.save = loadSave(this.storage);
+    migrateChapters(this.save);
     setLang(resolveLang(this.save.settings.lang));
     translateDom();
     refreshMissions(this.save);
@@ -670,6 +672,7 @@ export class App implements DailyHost {
 
   replaceSave(save: SaveData): void {
     this.save = save;
+    migrateChapters(this.save);
     this.online.adopt(save.playerId, save.blocked);
     refreshMissions(this.save);
     if (!isSkinUnlocked(this.save, skinById(this.save.skin))) this.save.skin = "glass";
