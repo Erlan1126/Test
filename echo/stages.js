@@ -168,21 +168,33 @@ async function stageShare() {
   } catch (e) {}
 }
 // ---------- The stage map ----------
+// ---------- The city map: six districts, ten homes each; a window lights up for everyone you reach ----------
+let mapPick = null;
 function stagesHtml() {
-  const S = stageSave(), d = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null;
-  let h = `<li class="sec">Daily stage</li><li class="${d ? "won" : ""}"><span><b>Today's stage</b><small>${d ? `${starText(d.stars || 0)} · ${d.time.toFixed(1)} s · race your ghost` : "The same course for everyone today"}</small></span><button data-stage="0">${d ? "Again" : "Play"}</button></li>`;
-  const stars = Object.values(S.best).reduce((a, b) => a + (b.stars || 0), 0);
-  const nr = nextStarReward();
-  h += `<li class="sec">Stages · ${stars}/${STAGES_N * 3} ★${nr ? ` · next reward at ${nr[0]}★: ${rewardName(nr)}` : ""}</li><li class="stgrid">`;
-  for (let n = 1; n <= STAGES_N; n++) { const b = S.best[n], locked = n > S.unlocked; h += `<button class="st ${locked ? "lock" : b ? "done" : "next"}${n % 10 === 0 ? " boss" : ""}" data-stage="${n}" ${locked ? "disabled" : ""}><b>${n % 10 === 0 ? "☠" + n : n}</b><i>${locked ? "🔒" : b ? starText(b.stars) : "·"}</i></button>`; }
-  h += "</li>";
-  // The people you've reached: a journal of the city coming back.
-  const met = []; for (let n = 1; n <= STAGES_N; n++) if (S.best[n] && S.best[n].stars) met.push(n);
-  h += `<li class="sec">The people · ${met.length}/${STAGES_N} homes relit</li>`;
-  if (!met.length) h += `<li><span><b>No one yet</b><small>At the end of every stage, someone is waiting in the dark</small></span></li>`;
-  for (const n of met.slice(-12).reverse()) { const [who, line] = stagePerson(n); h += `<li class="won"><span><b>${who}</b><small>${stageChapter(n)} · “${line}”</small></span></li>`; }
+  const S = stageSave(), d = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null, lit = homesLit();
+  const stars = Object.values(S.best).reduce((a, b) => a + (b.stars || 0), 0), nr = nextStarReward(), nx = stageNext();
+  if (mapPick == null || mapPick > S.unlocked) mapPick = nx;
+  let h = `<li class="dawn"><div><b>${lit}/${STAGES_N}</b> homes relit<span>${lit >= STAGES_N ? "Dawn has come back to the city" : `${STAGES_N - lit} still waiting in the dark`}</span></div><div class="dawn-bar"><i style="width:${(lit / STAGES_N * 100).toFixed(1)}%"></i></div><small>${stars}/${STAGES_N * 3} ★${nr ? ` · next reward at ${nr[0]}★: ${rewardName(nr)}` : ""}</small></li>`;
+  // Who lives in the building you picked.
+  { const n = mapPick, b = S.best[n], [who, line] = stagePerson(n), done = b && b.stars;
+    h += `<li class="map-pick ${done ? "won" : ""}"><span><small>${stageChapter(n)} · Stage ${n}${n % 10 === 0 ? " · Boss" : ""}${done ? ` · ${starText(b.stars)} · ${b.time.toFixed(1)} s` : ""}</small><b>${done ? who : stageWaiting(n)}</b><small>${done ? `“${line}”` : "Their window is still dark"}</small></span><button data-stage="${n}">${done ? (b.stars < 3 ? "For 3★" : "Again") : "Go"}</button></li>`; }
+  for (let c = 0; c < STAGE_CHAPTERS.length; c++) {
+    let got = 0; for (let n = c * 10 + 1; n <= c * 10 + 10; n++) if (S.best[n] && S.best[n].stars) got++;
+    const open = c * 10 + 1 <= S.unlocked;
+    h += `<li class="district ${got === 10 ? "full" : ""} ${open ? "" : "shut"}"><div class="dist-head"><b>${STAGE_CHAPTERS[c]}</b><span>${open ? `${got}/10 lit` : "Locked"}</span></div><div class="skyline">`;
+    for (let n = c * 10 + 1; n <= c * 10 + 10; n++) {
+      const b = S.best[n], locked = n > S.unlocked, r = seeded(n * 131)(), ht = n % 10 === 0 ? 100 : 46 + Math.round(r * 40);
+      h += `<button class="bld${b && b.stars ? " lit" : ""}${locked ? " lock" : ""}${n === nx && !locked ? " next" : ""}${n === mapPick ? " sel" : ""}${n % 10 === 0 ? " boss" : ""}" style="height:${ht}%" data-pick="${n}" ${locked ? "disabled" : ""} aria-label="Stage ${n}"><i></i><i></i><small>${n}</small></button>`;
+    }
+    h += `</div></li>`;
+  }
+  h += `<li class="sec">Daily neighbour</li><li class="${d ? "won" : ""}"><span><b>${stageWaiting(0).replace(" waiting", d ? " got their light" : " waiting today")}</b><small>${d ? `${starText(d.stars || 0)} · ${d.time.toFixed(1)} s · race your ghost` : "The same stage for everyone today"}</small></span><button data-stage="0">${d ? "Again" : "Play"}</button></li>`;
   return h;
 }
+document.getElementById("shopList").addEventListener("click", e => {
+  const pb = e.target.closest("button[data-pick]"); if (!pb) return;
+  mapPick = Number(pb.dataset.pick); $("shopList").innerHTML = stagesHtml();
+});
 document.getElementById("shopList").addEventListener("click", e => {
   const b = e.target.closest("button[data-stage]"); if (!b) return;
   $("sheet").hidden = true; const n = Number(b.dataset.stage);

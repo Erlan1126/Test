@@ -563,7 +563,8 @@ const SIM = `
       startStage(1); startStage(1); out.retryingKeepsOneRenderLoop = runLoop.on === true;
       startStage(1); { const R = run; swingHold(true); R.paused = true; swingHold(false); R.paused = false; out.aReleaseWhilePausedCounts = R.hold === false; }
       startStage(3); run.inv = 0; run.hearts = 1; runHit(); out.theLastHeartShattersTheFigure = Array.isArray(run.shatter) && run.shatter.length > 10;
-            openSheet("stages"); out.theStageMapShowsSixtyStages = document.querySelectorAll("#shopList .st").length === 60 && document.querySelectorAll("#shopList .st.boss").length === 6;
+            openSheet("stages"); out.theCityMapShowsSixtyHomes = document.querySelectorAll("#shopList .bld").length === 60 && document.querySelectorAll("#shopList .bld.boss").length === 6 && document.querySelectorAll("#shopList .district").length === 6;
+            { const nb = document.querySelector("#shopList .bld:not([disabled])"); nb.click(); out.tappingAHomeShowsWhoLivesThere = document.querySelector("#shopList .map-pick").textContent.includes(stagePerson(Number(nb.dataset.pick))[0]); }
       document.getElementById("sheet").hidden = true; run = null;
       return out;
     });

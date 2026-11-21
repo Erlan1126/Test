@@ -218,7 +218,7 @@ function openSheet(kind) { cityPanel = kind; renderShop(); $("todayPanel").hidde
 function renderShop() {
   const glow = save.glow || 0;
   const head = { upgrades: ["Shop", `Upgrades for every run. You have ${glow.toLocaleString()} lights.`], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
-    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], stages: ["Stages", "Short courses with a finish gate. Earn up to 3 stars on each."], locker: ["Locker", `Forms of light, glows, scarves and tethers. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your best runs on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
+    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], stages: ["The city", "Every window is a home. Tap one to see who lives there."], locker: ["Locker", `Forms of light, glows, scarves and tethers. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your best runs on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
   $("shopTitle").textContent = head[0]; $("shopSub").textContent = head[1];
   if (cityPanel === "upgrades") $("shopList").innerHTML = runShopHtml();
   if (cityPanel === "build") $("shopList").innerHTML = CITY_BUILDS.map(b => `<li class="${built(b.id) ? "won" : ""}"><span><b>${b.name}</b><small>${b.text}</small></span>` + (built(b.id) ? "<em>Rebuilt</em>" : `<button data-build="${b.id}" ${glow >= b.cost ? "" : "disabled"}>✦ ${b.cost}</button>`) + "</li>").join("");

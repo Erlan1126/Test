@@ -718,6 +718,32 @@
   *, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
   .st-stars { font-size: 44px; letter-spacing: 6px; color: #ffd98a; text-align: center; margin: 6px 0 10px; text-shadow: 0 0 22px rgba(255, 210, 90, 0.45); }
   .st-stars.lost { color: rgba(255,255,255,0.25); text-shadow: none; }
+  #shopList li.dawn { flex-direction: column; align-items: stretch; gap: 8px; background: linear-gradient(135deg, rgba(255,190,90,0.10), rgba(139,233,255,0.06)); }
+  #shopList li.dawn > div:first-child { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+  #shopList li.dawn b { font-size: 26px; color: var(--gold); }
+  #shopList li.dawn span { color: var(--dim); font-size: 13px; margin-left: auto; }
+  #shopList li.dawn small { color: var(--dim); font-size: 12px; }
+  .dawn-bar { height: 8px; border-radius: 8px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .dawn-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff9d4d, #ffd98a); box-shadow: 0 0 12px rgba(255,190,90,0.6); }
+  #shopList li.map-pick b { font-size: 16px; }
+  #shopList li.district { flex-direction: column; align-items: stretch; gap: 8px; background: rgba(10,12,20,0.6); }
+  #shopList li.district.full { background: linear-gradient(180deg, rgba(255,170,80,0.16), rgba(10,12,20,0.6)); }
+  #shopList li.district.shut { opacity: 0.5; }
+  .dist-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .dist-head b { font-size: 15px; } .dist-head span { color: var(--dim); font-size: 12px; }
+  .skyline { display: flex; align-items: flex-end; gap: 4px; height: 96px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+  #shopList .bld { flex: 1; position: relative; min-width: 0; padding: 0; border: 1px solid rgba(255,255,255,0.07); border-bottom: 0; border-radius: 3px 3px 0 0 !important; background: #141927; box-shadow: none; color: var(--dim); font: inherit; }
+  #shopList .bld i { position: absolute; left: 28%; right: 28%; height: 9px; border-radius: 2px; background: #0a0c12; }
+  #shopList .bld i:first-child { top: 9px; } #shopList .bld i:nth-child(2) { top: 24px; opacity: 0.6; }
+  #shopList .bld small { position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 10px; }
+  #shopList .bld.lit { background: #1c2030; }
+  #shopList .bld.lit i { background: #ffd98a; box-shadow: 0 0 10px rgba(255,184,77,0.9); }
+  #shopList .bld.lit small { color: var(--gold); }
+  #shopList .bld.boss { border-color: rgba(176,140,255,0.4); }
+  #shopList .bld.lock { opacity: 0.35; }
+  #shopList .bld.next { border-color: rgba(139,233,255,0.8); animation: bldPulse 1.6s ease-in-out infinite; }
+  #shopList .bld.sel { border-color: #8be9ff; background: #1d2840; box-shadow: 0 0 0 1px #8be9ff inset, 0 0 16px rgba(139,233,255,0.35); }
+  @keyframes bldPulse { 50% { box-shadow: 0 0 14px rgba(139,233,255,0.5); } }
   #shopList li.stgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 6px 0 12px; background: none; border: 0; }
   #shopList .st { aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--edge); background: rgba(255,255,255,0.05); color: var(--txt); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; padding: 0; }
   #shopList .st b { font-size: 17px; font-weight: 800; }
@@ -849,7 +875,7 @@
     <div class="home-best"><span id="homeBestLabel">Homes relit</span><b id="homeBest">0</b></div>
     <button class="play2" id="playBtn"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg><span><b id="playLabel">Play</b><small id="playSub"></small></span></button>
     <p class="home-meta" id="titleMeta"></p>
-    <div class="seg"><button id="stagesBtn">Stages</button><button id="hardBtn">Endless</button><button id="dailyRunBtn">Daily</button></div>
+    <div class="seg"><button id="stagesBtn">City</button><button id="hardBtn">Endless</button><button id="dailyRunBtn">Daily</button></div>
   </div>
   <div hidden aria-hidden="true">
     <button id="shareBtn"></button><span id="starCount"></span><button id="weekLink"></button><button id="homeBtn"></button><i id="homeDot"></i><button id="awardsBtn"></button><p id="tapSing"></p>
@@ -922,7 +948,7 @@
     <p class="st-person" id="stPerson" hidden></p>
     <div class="ro-stats"><div><b id="stTime">0</b><span>seconds</span></div><div><b id="stLights">0/0</b><span>lights</span></div><div><b id="stPerf">0</b><span>perfects</span></div></div>
     <p class="ro-daily" id="stNote"></p>
-    <div class="row2"><button class="ghost" id="stStages">Stages</button><button class="primary" id="stNext">Next stage</button><button class="ghost icon-only" id="stShare" aria-label="Share and race a friend"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>
+    <div class="row2"><button class="ghost" id="stStages">City</button><button class="primary" id="stNext">Next stage</button><button class="ghost icon-only" id="stShare" aria-label="Share and race a friend"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>
     <button class="link2" id="stRetry">Retry</button>
   </div>
   <div class="card2 bottom" id="runOver" hidden>
