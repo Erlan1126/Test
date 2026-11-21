@@ -76,7 +76,7 @@ const SW2D = (() => {
     // A new run: forget the last run's scarf trail and camera.
     if (draw.lastR !== R) { hist.length = 0; cam = null; draw.lastR = R; draw.lt = null; }
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
-    const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (30 + Math.min(12, Math.max(0, spd - 10) * 0.45)) * punch;
+    const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (33 + Math.min(4, Math.max(0, spd - 18) * 0.25)) * punch;
     // Smoothing by time, not by frame, so it feels the same at 30 or 60 frames per second.
     const fdt = Math.min(0.1, Math.max(0, t - (draw.lt ?? t))); draw.lt = t; const ease = k => 1 - Math.exp(-k * fdt);
     sCur += (sTarget - sCur) * ease(punch > 1.01 ? 7 : 2.5); const s = sCur;
@@ -268,7 +268,8 @@ const SW2D = (() => {
       let rot = 0, armA = [-0.5, -0.3], armB = [0.5, -0.3], legA = [-0.25, -0.95], legB = [0.25, -0.95];
       if (R.teth) { const ang = Math.atan2(R.teth.y - R.py - 1.4, R.teth.x - R.px); rot = (ang - Math.PI / 2) * 0.6; armB = [0.1, 1.15]; armA = [-0.45, 0.1]; legA = [-0.35, -0.95]; legB = [0.05, -1]; }
       else if (R.roof) { armA = [-0.4 * sn - 0.1, -0.2]; armB = [0.4 * sn + 0.1, -0.2]; legA = [-0.45 * sn, -0.95 + Math.max(0, sn) * 0.2]; legB = [0.45 * sn, -0.95 + Math.max(0, -sn) * 0.2]; rot = -0.2; }
-      else { rot = -R.spin; const tk = Math.min(1, Math.abs(R.spinV) / 4); armA = [-0.55, 0.35 * (1 - tk)]; armB = [0.55, 0.35 * (1 - tk)]; legA = [-0.3, -0.95 + tk * 0.45]; legB = [0.3, -0.95 + tk * 0.45]; }
+      // In the air: lean into the flight; a Perfect is one clean front flip, not a tumble.
+      else { const fk = R.flipT > 0 ? 1 - R.flipT / 0.5 : 1, flip = R.flipT > 0 ? Math.PI * 2 * (fk * fk * (3 - 2 * fk)) : 0; rot = -0.55 * Math.max(-0.4, Math.min(1, R.vx / 24)) + 0.25 * Math.max(-1, Math.min(1, R.vy / 20)) - flip; const tk = R.flipT > 0 ? Math.sin(fk * Math.PI) : 0; armA = [-0.55, 0.35 * (1 - tk)]; armB = [0.55, 0.35 * (1 - tk)]; legA = [-0.3, -0.95 + tk * 0.45]; legB = [0.3, -0.95 + tk * 0.45]; }
       if (R.over) rot += t * 6;
       const cx = hx, cy = Y(R.py + 1.1), cr = Math.cos(rot), sr = Math.sin(rot), P2 = (dx, dy) => [cx + (dx * cr - dy * sr) * u, cy - (dx * sr + dy * cr) * u];
       const hip = P2(0, -0.15), chest = P2(0, 0.45), head = P2(0, 0.85), sh = P2(0, 0.38);

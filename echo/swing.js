@@ -66,7 +66,7 @@ const SWING_STORY = [
   ["The park's old trees still hold the light.", "Dawn is close. Don't let the Heart catch you."],
 ];
 const perfectWindow = R => { const h = R && R.stageInfo ? R.stageInfo.hard : 0; return [5 + h * 9, 75 - h * 12, 10 + h * 4]; };
-const SWING = { G: 22, REACH: 24, MAXV: 34, CRUISE: 28, PULL: 4.5, LMIN: 6 };
+const SWING = { G: 28, REACH: 24, MAXV: 36, CRUISE: 30, PULL: 6, LMIN: 5.5, ROPE: 13, YANK: 30 };
 
 function runnerStart(R) {
   Object.assign(R, {
@@ -112,7 +112,7 @@ function swingGen(R, toX) {
       // Wind stages: gusts that push you sideways.
       if (R.stageInfo && R.stageInfo.wind && ax > 60 && ax < R.stageLen && r() < 0.3) { const dir = r() < 0.5 ? -1 : 1; R.winds.push({ x0: p.x, x1: ax, f: dir * (5 + R.stageInfo.hard * 6) }); }
       // Lights along the arc you'd swing between them.
-      if (r() < (R.stageLen ? 0.9 : 0.8) && ax > 10 && !(R.stageLen && ax > R.stageLen)) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 13 * Math.sin(Math.PI * t) - 1, line: a.id }); if (R.stageLen) R.motesTotal++; } }
+      if (r() < (R.stageLen ? 0.9 : 0.8) && ax > 10 && !(R.stageLen && ax > R.stageLen)) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 10.5 * Math.sin(Math.PI * t) - 1, line: a.id }); if (R.stageLen) R.motesTotal++; } }
       // The sky route (stages): a daring pair of high anchors with a trail of bonus lights.
       if (R.stageLen && ax > 60 && ax < R.stageLen - 30 && Math.floor(ax / 85) !== Math.floor(p.x / 85)) {
         const h1 = { x: ax + 3, y: 53 + r() * 3, kind: "lamp", id: R.anchors.length + 5000, ph: r() * 6, type: "gold" }; R.anchors.push(h1);
@@ -181,13 +181,13 @@ function swingHold(down) {
   if (!R.teth) return;
   const was = R.teth; R.teth = null; R.lastLet = was; R.snap = { x: was.x, y: was.y, t: 0 };
   // A spring anchor launches you on release.
-  if (was.type === "spring") { R.vy = Math.max(R.vy, 0) + 9; R.vx += 3; if (!R.attract) { runBonus("Boing!", 0, R.dist + 2, R.x); sfx.jump(); } }
+  if (was.type === "spring") { R.vy = Math.max(R.vy, 0) + 10.5; R.vx += 3; if (!R.attract) { runBonus("Boing!", 0, R.dist + 2, R.x); sfx.jump(); } }
   // A Perfect: let go moving forward and up, fast.
   const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, spd = Math.hypot(R.vx, R.vy);
   const [pwLo, pwHi, pwV] = perfectWindow(R);
   if (R.vx > 2.5 && ang > pwLo && ang < pwHi && spd > pwV) {
     // The boost tapers off at high speed, so a Perfect chain feels fast without getting out of hand.
-    const k0 = runnerPerk("Volt") ? 1.2 : 1.1, k = 1 + (k0 - 1) * Math.max(0, Math.min(1, (SWING.CRUISE - spd) / 8)); R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9;
+    const k0 = runnerPerk("Volt") ? 1.2 : 1.1, k = 1 + (k0 - 1) * Math.max(0, Math.min(1, (SWING.CRUISE - spd) / 8)); R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9; R.flipT = 0.5;
     R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
@@ -283,7 +283,9 @@ function runnerUpdate(dt) {
       const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1;
       // Holding pulls you in. A shorter rope spins faster (angular momentum is kept), so reeling in
       // at the bottom of a swing is how you gain speed. No other forces: just gravity and the rope.
-      if (R.hold && R.tethT > 0.12 && R.L > SWING.LMIN) {
+      // A long rope pulls taut quickly to its working length (you see it reel you in).
+      if (R.L > SWING.ROPE) R.L = Math.max(SWING.ROPE, R.L - SWING.YANK * h);
+      else if (R.hold && R.tethT > 0.12 && R.L > SWING.LMIN) {
         const L2 = Math.max(SWING.LMIN, R.L - SWING.PULL * h), k = R.L / L2;
         if (d > L2) { const rv = R.vx * dx / d + R.vy * dy / d; R.vx = (R.vx - rv * dx / d) * k + rv * dx / d; R.vy = (R.vy - rv * dy / d) * k + rv * dy / d; }
         R.reelAcc = (R.reelAcc || 0) + (R.L - L2); R.L = L2;
@@ -306,7 +308,7 @@ function runnerUpdate(dt) {
         R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0;
       } else if (ox < b.x0) {
         // Wall run: up the wall and over the top.
-        R.px = b.x0 - 0.35; R.vx = Math.max(3, R.vx * 0.3); R.vy = Math.max(R.vy, 13); R.teth = null; R.shake = 0.25; R.wallT = 0.4;
+        R.px = b.x0 - 0.35; R.vx = Math.max(3, R.vx * 0.3); R.vy = Math.max(R.vy, 15); R.teth = null; R.shake = 0.25; R.wallT = 0.4;
         if (!R.attract && !R.wallMsg) { R.wallMsg = true; runMsg("Wall run!", "", 0.9); }
       }
       else { R.py = b.h; R.vy = Math.max(R.vy, 0); R.roof = b; }
@@ -314,12 +316,12 @@ function runnerUpdate(dt) {
     if (R.roof) { R.py = R.roof.h; R.vx = Math.max(R.vx * (1 - 0.15 * h), 9); }
     // The street.
     if (R.py < 0.4) {
-      R.py = 0.4; R.vy = 19; R.vx = Math.max(R.vx, 10); R.teth = null; R.flow = Math.max(0, R.flow - 0.3);
+      R.py = 0.4; R.vy = 21.5; R.vx = Math.max(R.vx, 10); R.teth = null; R.flow = Math.max(0, R.flow - 0.3);
       if (R.streetT > 0 || (R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5))) swingHit(R, "Keep off the street!"); else if (!R.attract) { runMsg("Bounce!", "Grab a light before you land again", 1.2); sfx.land(); }
       R.streetT = 4;
     }
   }
-  R.spinV *= R.teth || R.roof ? 0.8 : 0.995; R.spin += R.spinV * dt;
+  R.spinV *= R.teth || R.roof ? 0.8 : 0.995; R.spin += R.spinV * dt; R.flipT = Math.max(0, (R.flipT || 0) - dt);
   R.phase += dt * Math.max(4, R.vx) * 0.8;
   R.v = Math.hypot(R.vx, R.vy); R.speed = R.v * RUN.M;
   // Stages: the clock, your path (for ghosts), and the finish gate.
