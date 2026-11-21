@@ -15,7 +15,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 ## App information
 
-- **Subtitle** (30 max): `Stack floors. Touch the sky.`
+- **Subtitle** (30 max): `Grow a town above the clouds.`
 - **Category:** Games. Subcategories: **Casual** and **Puzzle**.
 - **Content rights:** "No, it does not contain, show, or access third-party content."
 - **Age rating:** answer **None / No** to every question (no violence, no gambling, no
@@ -43,49 +43,30 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 **Promotional text** (170 max, can change any time):
 
-> New: daily missions, a play streak and weekly leagues. How tall can you build?
+> One neighbor. One floating town. Stack towers, welcome residents and grow Skyhaven into the Capital of the Sky.
 
 **Description:**
 
-> Build the tallest skyscraper in the world, one tap at a time, and grow your own city in the sky.
+> Grow Skyhaven from one neighbor into the Capital of the Sky.
 >
-> A floor slides back and forth above your tower. Tap to drop it. Whatever hangs over the
-> edge breaks off, so every miss makes your tower narrower. Line it up perfectly and the
-> floor keeps its full width, and wider floors fit more people.
+> Every tower you stack brings new people home. Start with a tiny floating neighborhood, welcome familiar faces, grow local businesses, and watch your town become a sky-high capital.
 >
-> CLIMB PAST REAL LANDMARKS
-> Niagara Falls, the Statue of Liberty, the Great Pyramid, the Eiffel Tower, the Empire
-> State Building and the Burj Khalifa. The next one appears beside your tower as you climb.
+> STACK A TOWER, GROW A TOWN
+> Time your tap as each floor slides across the sky. Perfect drops keep your tower wide; overhanging edges fall away. The people you bring home help Skyhaven grow.
 >
-> SPECIAL FLOORS
-> Gold penthouses pay 5x on a perfect drop. Icy floors slide fast but hold more people.
-> Garden terraces slow down and widen your tower again.
+> MAKE SKYHAVEN YOUR OWN
+> Begin with a neighbor and a café. Build up your businesses, see your streets come alive, and unlock new landmarks as your town rises from Hamlet to Village, Town, City, Big City, Metropolis and finally Sky Capital.
 >
-> SOMETHING NEW EVERY DAY
-> A daily tower that's the same for everyone, three missions and a reward chest, a play
-> streak with freezes for days off, rent from your tower, and a weekly league from Bronze
-> to Legend. Turn on the daily reminder so you never lose your streak.
+> REACH FOR THE LANDMARKS
+> Climb past famous sights, from the Statue of Liberty and Eiffel Tower to the Burj Khalifa. Discover special floors, including golden penthouses, icy floors and garden terraces.
 >
-> BUILD A SKY CITY
-> Every tower's people move into your city for good. Grow your population to open new
-> districts, from Snowy Peaks to Cherry Blossom, each with its own look, and watch your best
-> towers stand around you.
+> COME BACK TO A LIVING SKY
+> Collect earnings, take on daily missions and a shared daily tower, and follow your progress through weekly leagues. Watch the sky change from morning to night with weather, lights and passing airships.
 >
-> YOUR OWN FLOATING ISLAND
-> Houses, a farm, a lake and a waterfall, and a city you build with stars: a café, a
-> windmill, a lighthouse, a rocket pad and more.
+> PLAY AT YOUR PACE
+> Chase a perfect stack in Classic, relax in Zen, or try landmark challenges. Personalize your towers and floating island with unlockable looks.
 >
-> A SKY THAT CHANGES AS YOU CLIMB
-> Day turns to sunset and night, with lit windows, fireflies, aurora, rain, snow and
-> lightning. Planes, airships and satellites pass by at their own heights.
->
-> PLAY YOUR WAY
-> Classic, Daily, a relaxing Zen mode with no way to fail, and six landmark challenges.
-> 43 tower skins, island themes, trophies and builder levels.
->
-> Free to play with no ads. Optional Sky Crystals buy skins, islands and shapes, the
-> Sky Pass premium track, and boosts for your Skyhaven Inc. businesses. You always see
-> exactly what you get before you buy; nothing bought with crystals is random.
+> Free to play, with no ads. Optional purchases offer Sky Crystals, cosmetics and business boosts. Crystal purchases show what you receive before you buy.
 
 **Keywords** (100 max, commas, no spaces):
 
@@ -96,6 +77,16 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 - **Support URL:** your itch.io page, or any page with your contact email.
 - **Marketing URL:** your itch.io page (optional).
 - **Copyright:** `2026 Erlan Studios`
+
+## Five screenshot captions (English)
+
+Use these in sequence on both stores when the screenshot artwork is next regenerated. These are copy specifications; the existing PNGs are not changed in this PR.
+
+1. **ONE NEIGHBOR. A WHOLE SKY TO GROW.** — Start a home in Skyhaven.
+2. **STACK TOWERS. WELCOME NEW PEOPLE.** — Every floor helps your town grow.
+3. **WATCH YOUR NEIGHBORHOOD COME ALIVE.** — Grow businesses and unlock landmarks.
+4. **FROM HAMLET TO SKY CAPITAL.** — Seven ranks. One town to call home.
+5. **YOUR CAPITAL ABOVE THE CLOUDS.** — Make the floating skyline your own.
 
 **Screenshots:** upload the seven files in `app-store-screenshots/` (1290 × 2796) to the
 **6.9" / 6.7" iPhone** slot, in order 1 to 6. Apple scales them for smaller iPhones.
