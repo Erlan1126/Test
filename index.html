@@ -161,6 +161,7 @@
     <div class="tcy-wallet" role="button" tabindex="0" aria-describedby="tcy-coins tcy-rate"><small id="tcy-era">Skyhaven Inc.</small><div class="tcy-coins"><span class="tc-coin" aria-hidden="true"></span><b id="tcy-coins">0</b></div><em id="tcy-rate"></em></div>
     <button type="button" class="tcy-gems" id="tcy-gems" aria-label="Sky Crystals and shop"><span>💎</span><b id="tcy-gems-n">0</b></button>
     <button type="button" class="tcy-goal" id="tcy-goal" hidden></button>
+    <button type="button" class="tcy-help" id="tcy-help" aria-label="How Skyhaven works">?</button>
   </div>
   <div class="tcy-events" id="tcy-events"></div>
   <button type="button" class="tcy-next" id="tcy-next"></button>
@@ -595,9 +596,16 @@
   </div>
 </div>
 
+<div id="scrapbook" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="scrap-title">
+  <div class="sheet">
+    <div class="sheet-top"><div class="sheet-head"><div><h2 id="scrap-title">Town scrapbook</h2><p id="scrap-sub">A postcard for every rank Skyhaven reaches</p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <div class="scrap-grid" id="scrap-grid"></div>
+  </div>
+</div>
+
 <div id="help" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
   <div class="sheet">
-    <div class="sheet-top"><div class="sheet-head"><div><h2 id="help-title">How to play</h2><p>Everything you need to build higher</p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <div class="sheet-top"><div class="sheet-head"><div><h2 id="help-title">How Skyhaven works</h2><p>Every word and number in the game, explained</p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <div class="help-list" id="help-list"></div>
   </div>
 </div>

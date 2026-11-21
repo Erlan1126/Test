@@ -75,6 +75,8 @@ export interface SaveData {
   decor: string[];
   /** The floating island next to the town (opens at Big City): what was built there. */
   annex: { pick: "" | "greenhouse" | "lookout" };
+  /** The town scrapbook: when each town rank was first reached (ms, by rank). */
+  scrapbook: Record<string, number>;
   /** Your tallest towers, standing on their district's island. */
   skyline: SkylineTower[];
   /** People living in your sky city (every tower's people, for good). */
@@ -193,6 +195,7 @@ export function defaultSave(): SaveData {
     ownedShapes: [],
     decor: [],
     annex: { pick: "" },
+    scrapbook: {},
     skyline: [],
     population: 0,
     postcards: [],
@@ -314,6 +317,7 @@ export function normalize(raw: unknown): SaveData {
     shape: shapeIds.includes(r.shape as string) ? (r.shape as string) : d.shape,
     ownedShapes: strList(r.ownedShapes, shapeIds),
     decor: normalizeDecor(r.decor),
+    scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
     annex: { pick: ((p: unknown) => (p === "greenhouse" || p === "lookout" ? p : ""))((r.annex as { pick?: unknown } | undefined)?.pick) },
     skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE * 8).map(x => obj(x))
       .map(x => ({ f: int(x.f, 0, 0, 9999), s: skinIds.includes(x.s as string) ? (x.s as string) : "glass", h: shapeIds.includes(x.h as string) ? (x.h as string) : "square", d: themeIds.includes(x.d as string) ? (x.d as string) : "meadow" }))

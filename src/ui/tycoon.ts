@@ -21,7 +21,7 @@ import {
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
 import type { Sound } from "../sound";
-import { $, closeModal, esc, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
+import { $, closeModal, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
 import { track } from "../stats";
@@ -33,6 +33,7 @@ import { missionText } from "../data/missions";
 import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg } from "./mayor";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
+import { PAGE_INTRO } from "../data/guide";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -63,6 +64,9 @@ export interface TycoonHost {
   /** Where the café block's neighbor stands on screen, or null. */
   bizResident(): [number, number] | null;
   visitLandmark(rank: number, ms: number): boolean;
+  bizPan(dx: number, dy: number): void;
+  bizZoom(f: number): void;
+  bizPanEnd(): void;
   /** This week's Community Spire (asks the server; null when it can't be reached). */
   fetchSpire(): Promise<SpireNow | null>;
 }
@@ -140,6 +144,7 @@ export class TycoonUI {
       this.showTab(b.dataset.tab!);
     }));
     $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.host.buildFloors(); });
+    this.wireTownCamera();
     $("tycity").addEventListener("click", e => this.onCityTap(e));
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
     $("tcy-events").addEventListener("click", e => { if ((e.target as Element).closest("[data-golden]")) { e.stopPropagation(); this.catchGolden(); } });
@@ -172,7 +177,9 @@ export class TycoonUI {
     wallet.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
     wallet.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.host.sound.click(); this.openEarnings(); } });
     wireModal($("earnings"));
+    wireModal($("scrapbook"));
     $("tcy-goal").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.showPlan(); });
+    $("tcy-help").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); $("help-btn").click(); });
     $("earnings").addEventListener("click", e => {
       const el = e.target as Element, hire = el.closest<HTMLElement>("[data-hire-mgr]"), more = el.closest<HTMLElement>("[data-more]");
       if (hire) {
@@ -747,7 +754,7 @@ export class TycoonUI {
     const s = this.save, ty = s.tycoon;
     $("tcy-era").textContent = t("Skyhaven Inc.");
     this.renderGoal();
-    { const ps = perSecond(s, now); $("tcy-rate").textContent = ps > 0 ? t("{n} a second", { n: coins(ps) }) : t("Tap a business to sell"); }
+    { const ps = perSecond(s, now); $("tcy-rate").textContent = ps > 0 ? t("+{n}/s", { n: coins(ps) }) : t("Tap a business to sell"); }
     $("tcy-gems-n").textContent = fmt(s.crystals);
     if (this.shownCoins < 0) $("tcy-coins").textContent = coins(ty.coins);
     const live = this.liveState();
@@ -889,6 +896,45 @@ export class TycoonUI {
   }
 
   /** A tap in the city: on a tag, or on a building (the nearest one under the finger). */
+  /** Look around the town like in the big city builders: drag with one finger to move,
+   *  pinch with two (or the mouse wheel) to zoom. A drag never counts as a tap. */
+  private dragMoved = 0;
+  private wireTownCamera(): void {
+    const el = $("tycity"), pts = new Map<number, { x: number; y: number }>();
+    let start: { x: number; y: number } | null = null, moved = false, pinch = 0;
+    const ui = (t: EventTarget | null) => !!(t as Element | null)?.closest?.(".tcy-top, .tcy-bar, .tcy-next, .tcy-card, .tcy-events, .block-skip, .tcy-coach, #block-say");
+    el.addEventListener("pointerdown", e => {
+      if (ui(e.target) || !this.inCity) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) { start = { x: e.clientX, y: e.clientY }; moved = false; }
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); moved = true; }
+    });
+    el.addEventListener("pointermove", e => {
+      const p = pts.get(e.pointerId);
+      if (!p) return;
+      if (pts.size >= 2) {
+        p.x = e.clientX; p.y = e.clientY;
+        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinch > 0 && d > 0) this.host.bizZoom(d / pinch);
+        pinch = d;
+        return;
+      }
+      if (!moved && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 9) return;
+      if (!moved) { moved = true; this.selected = ""; this.render(); }
+      this.host.bizPan(e.clientX - p.x, e.clientY - p.y);
+      p.x = e.clientX; p.y = e.clientY;
+    });
+    const end = (e: PointerEvent) => {
+      if (!pts.delete(e.pointerId)) return;
+      if (pts.size < 2) pinch = 0;
+      if (pts.size === 0) { this.host.bizPanEnd(); if (moved) this.dragMoved = Date.now(); }
+    };
+    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, e => end(e as PointerEvent));
+    el.addEventListener("wheel", e => { if (!this.inCity || ui(e.target)) return; e.preventDefault(); this.host.bizZoom(Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+    // The tap that ends a drag isn't a tap.
+    el.addEventListener("click", e => { if (Date.now() - this.dragMoved < 250) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+
   private onCityTap(e: MouseEvent): void {
     const target = e.target as Element;
     if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-next")) return;
@@ -1130,6 +1176,7 @@ export class TycoonUI {
       me: [
         { id: "profile", name: "Profile", open: () => $("level-btn").click() },
         { id: "ranks", name: "Leaders", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
+        { id: "scrapbook", name: "Scrapbook", open: () => this.openScrapbook() },
         { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !$("city-btn").hidden },
         { id: "settings", name: "Settings", open: () => $("settings-btn").click() },
       ],
@@ -1162,6 +1209,19 @@ export class TycoonUI {
       if (!open) return;
       this.lastPage[k] = open.id;
       const sheet = $(open.id).querySelector<HTMLElement>(".sheet")!;
+      // What this page is for, in one line, until the player says "Got it".
+      const introKey = `intro-${k}`;
+      let intro = sheet.querySelector<HTMLElement>(":scope > .page-intro");
+      if (PAGE_INTRO[k] && !this.save.seenFeatures.includes(introKey)) {
+        if (!intro) {
+          intro = document.createElement("div");
+          intro.className = "page-intro";
+          intro.innerHTML = `<span class="pi-ico">?</span><p>${esc(t(PAGE_INTRO[k]))}</p><button type="button">${esc(t("Got it"))}</button>`;
+          intro.querySelector("button")!.onclick = () => { this.save.seenFeatures.push(introKey); this.host.persist(); for (const p of pages) $(p.id).querySelector(".page-intro")?.remove(); };
+        }
+        const after = sheet.querySelector<HTMLElement>(":scope > .tab-seg") ?? sheet.querySelector<HTMLElement>(":scope > .sheet-top");
+        if (after) after.after(intro); else sheet.prepend(intro);
+      } else intro?.remove();
       let seg = sheet.querySelector<HTMLElement>(":scope > .tab-seg");
       if (pages.length < 2) { seg?.remove(); return; }
       if (!seg) { seg = document.createElement("div"); seg.className = "tab-seg"; sheet.prepend(seg); }
@@ -1962,6 +2022,26 @@ export class TycoonUI {
       t("Let's grow!"));
   }
 
+  /** The town scrapbook: one postcard per rank, with the day it was reached. */
+  openScrapbook(): void {
+    const s = this.save, rk = townRank(s), used = usedFloors(s);
+    if (!s.scrapbook[0]) s.scrapbook[0] = Date.now();
+    const day = (ms: number) => new Date(ms).toLocaleDateString(getLang(), { day: "numeric", month: "short", year: "numeric" });
+    const tints = ["#7fd36a", "#ff9ac8", "#ffd23a", "#4f8bff", "#b48cff", "#3ac0c0", "#ffb13b"];
+    $("scrap-sub").textContent = t("{n} of {total} postcards", { n: Math.min(RANKS.length, rk + 1), total: RANKS.length });
+    $("scrap-grid").innerHTML = RANKS.map((r, i) => {
+      const got = i <= rk, when = s.scrapbook[i];
+      const text = i === 0 ? t("Where it all began: your first neighbor moved in.") : t(r.unlock);
+      return `<div class="postcard${got ? "" : " locked"}" style="--pc:${tints[i % tints.length]}">
+        <div class="pc-art"><span class="pc-ico">${got ? iconSvg(r.icon) : LOCK_ICON}</span><b>${esc(t(r.name))}</b></div>
+        <p>${esc(got ? text : t("Reach {n} business levels to unlock", { n: fmt(r.at) }))}</p>
+        <em>${got ? esc(when ? t("Reached {date}", { date: day(when) }) : t("Reached")) : esc(`${fmt(Math.min(used, r.at))} / ${fmt(r.at)}`)}</em>
+      </div>`;
+    }).join("");
+    this.host.persist();
+    openModal($("scrapbook"));
+  }
+
   /** The floating island next to the town: Pip offers the two landmarks. */
   private openAnnex(): void {
     const s = this.save;
@@ -1996,6 +2076,8 @@ export class TycoonUI {
   private checkRank(): void {
     const s = this.save, rk = townRank(s), key = `rank-${rk}`;
     if (rk > (s.tycoon.rankBest ?? 0)) s.tycoon.rankBest = rk;
+    // The scrapbook keeps the day each rank was first reached.
+    for (let i = 0; i <= rk; i++) if (!s.scrapbook[i]) s.scrapbook[i] = Date.now();
     if (rk < 1 || s.seenFeatures.includes(key)) return;
     for (let i = 1; i <= rk; i++) if (!s.seenFeatures.includes(`rank-${i}`)) s.seenFeatures.push(`rank-${i}`);
     const r = RANKS[rk];

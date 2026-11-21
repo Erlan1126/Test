@@ -28,3 +28,12 @@ describe("the island next to the town", () => {
     expect(normalize({ ...JSON.parse(JSON.stringify(s)), annex: { pick: "castle" } }).annex.pick).toBe("");
   });
 });
+
+describe("the town scrapbook", () => {
+  it("keeps reached-rank dates through a save round trip and drops junk", () => {
+    const s = defaultSave();
+    s.scrapbook = { 0: 1700000000000, 2: 1700000500000 };
+    const back = normalize({ ...JSON.parse(JSON.stringify(s)), scrapbook: { 0: 1700000000000, 2: 1700000500000, x: 5, 3: "no" } });
+    expect(back.scrapbook).toEqual({ 0: 1700000000000, 2: 1700000500000 });
+  });
+});

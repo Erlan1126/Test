@@ -2526,7 +2526,9 @@ export class App implements DailyHost {
     // hiccup isn't enough), drop the costly extras one step at a time: a little sharpness
     // first, then smooth mode (no glow or shadows), then a little more sharpness.
     const st = this.save.settings;
-    if (this.state === "playing" && st.quality === "auto" && raw < 0.5 && this.sim.ticks > 240) {
+    // (The same watch runs in the town, the screen players spend the most time on.)
+    const watched = (this.state === "playing" && this.sim.ticks > 240) || (this.state === "menu" && this.tycoon.inCity && !document.body.classList.contains("tabs-open"));
+    if (watched && st.quality === "auto" && raw < 0.5) {
       this.perf.frames++;
       this.perf.time += raw;
       if (this.perf.time > 3) {
@@ -2682,13 +2684,25 @@ export class App implements DailyHost {
   canCity(): boolean { return this.renderer instanceof Renderer3D && !this.visiting; }
   setBizFocus(on: boolean): void { this.bizFocus = on; }
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
+  bizPan(dx: number, dy: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPan(dx, dy); }
+  bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }
+  bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
   visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }
 
+  /** While a full menu covers the town, it's drawn a few times a second instead of every
+   *  frame: nothing behind the sheet needs to be smooth, and the phone stays cool. */
+  private coveredWait = 0;
   private draw(dt: number): void {
     const save = this.save;
+    if (this.state === "menu" && document.body.classList.contains("tabs-open")) {
+      this.coveredWait += dt;
+      if (this.coveredWait < 0.25) return;
+      dt = this.coveredWait;
+    }
+    this.coveredWait = 0;
     this.renderer.draw(dt, {
       sim: this.sim,
       shot: this.state === "menu" ? "menu" : this.state === "over" && this.fallCam <= 0 ? "over" : "play",

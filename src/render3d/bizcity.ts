@@ -98,6 +98,16 @@ const PLAZA: [number, number] = [4, 4];
 /** The plot beside the Coffee Cart where the player's first tower stands. */
 const PLOT: [number, number] = [-1, 0];
 const ALL = [...CELLS, ...PARKS, PLAZA, PLOT];
+/** A soft round shadow (made once, shared by every town build). */
+let blobTexture: THREE.Texture | null = null;
+function softBlob(): THREE.Texture {
+  if (blobTexture) return blobTexture;
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d")!, gr = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.55, "rgba(0,0,0,0.55)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  return (blobTexture = new THREE.CanvasTexture(c));
+}
 /** How much the island next to the town grows once something is built on it. */
 const ANNEX_S = 2.0;
 /** Cottage walls and roofs on the island's outskirts. */
@@ -331,7 +341,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     }
   }
   // Trees in the island's style.
+  // Soft contact shadows: a blurred dark patch under trees and houses grounds them (one
+  // merged draw for all of them: much cheaper than real shadows on a phone).
+  const blobTex = softBlob();
+  const blobM = own(new THREE.MeshBasicMaterial({ map: blobTex, color: 0x1a2a3a, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  const blob = (x: number, z: number, r: number, y = 0.2) => add(new THREE.PlaneGeometry(r * 2, r * 2).rotateX(-Math.PI / 2).translate(x + r * 0.18, y + 0.012, z + r * 0.12), blobM);
   const tree = (x: number, z: number, s = 1, y = 0.2) => {
+    blob(x, z, 0.62 * s, y);
     add(new THREE.CylinderGeometry(0.06 * s, 0.1 * s, 0.6 * s, 6).translate(x, y + 0.3 * s, z), trunk);
     if (st.tree === "palm") for (let k = 0; k < 5; k++) add(new THREE.BoxGeometry(0.8 * s, 0.05, 0.2 * s).translate(0.35 * s, 0, 0).rotateZ(-0.35).rotateY((k / 5) * Math.PI * 2).translate(x, y + 0.65 * s, z), leaf);
     else add(st.tree === "pine" ? new THREE.ConeGeometry(0.5 * s, 1.3 * s, 7).translate(x, y + 0.6 * s + 0.65 * s, z) : new THREE.IcosahedronGeometry(0.5 * s, 0).translate(x, y + 0.6 * s + 0.4 * s, z), leaf);
@@ -419,6 +435,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         for (const wx of [-0.19, 0.19]) ch.add(new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.1, 0.02).translate(wx, 0.27, 0.265), winMat));
         ch.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.08).translate(0.16, 0.74, -0.08), mats.c("#b8583a", 0.8)));
         if (h < 0.06) for (let f = 0; f < 5; f++) ch.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.03).translate(-0.4 + f * 0.2, 0.06, 0.48), mats.c("#ffffff", 0.7)));
+        blob(jx, jz, 0.62, 0.13);
         ch.position.set(jx, 0.13, jz); ch.rotation.y = face;
         ch.updateMatrixWorld(true);
         ch.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) add(m.geometry.clone().applyMatrix4(m.matrixWorld), m.material as THREE.Material); });

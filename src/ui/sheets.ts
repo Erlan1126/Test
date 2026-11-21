@@ -1,4 +1,5 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
+import { GUIDE } from "../data/guide";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
 import { COIN_SVG } from "./tycoon";
@@ -596,19 +597,9 @@ export class Sheets {
 
   openHelp(): void {
     this.click();
-    const rows: [string, string, string][] = [
-      ["pointer", "Tap to drop", "Tap anywhere to drop the sliding floor. Whatever hangs over the edge breaks off, so the tower gets narrower."],
-      ["sparkle", "Perfect drops", "Line it up exactly for a perfect drop: no piece breaks off, it pays more, and after a few in a row the floor grows wider again."],
-      ["fire", "Fever", "Eight perfect drops in a row light Fever: the next six floors count double and are easier to land."],
-      ["star", "Gold penthouse", "Gold floors slide faster but a perfect drop pays five times as many people."],
-      ["ice", "Special floors", "Ice slides fast, garden terraces widen your tower, shrinking floors get smaller: tap them early, and magnets snap into place."],
-      ["bolt", "Power-ups", "Floors with a bubble carry a power-up: slower floors, a wider perfect zone, or steady floors in the wind. Land the floor to collect it."],
-      ["cloud", "Wind", "High up, gusts push the floors faster and slower. Watch the rhythm before you tap."],
-      ["city", "Your city", "Every tower's people move into Skyhaven. Build city buildings for rent, open new islands, and follow Mayor Pip's chapters."],
-      ["target", "Missions and the daily chest", "Three new missions every day. Finish all three to open the daily chest."],
-      ["trophy", "Rankings", "The Daily tower is the same for everyone, and the weekly tournament gives prizes to the best builders."],
-    ];
-    $("help-list").innerHTML = rows.map(([ico, title, text]) => `<div class="help-row"><span class="help-ico">${iconSvg(ico)}</span><span><b>${esc(t(title))}</b><small>${esc(t(text))}</small></span></div>`).join("");
+    // Everything in the game, by topic: the goal, money, crystals and gems, towers.
+    $("help-list").innerHTML = GUIDE.map(sec => `<h3 class="sheet-sub help-sec">${esc(t(sec.title))}</h3>`
+      + sec.rows.map(r => `<div class="help-row"><span class="help-ico">${iconSvg(r.icon)}</span><span><b>${esc(t(r.title))}</b><small>${esc(t(r.text))}</small></span></div>`).join("")).join("");
     closeModal($("settings"));
     openModal($("help"));
   }

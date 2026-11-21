@@ -734,7 +734,9 @@ export class Renderer3D {
       u.x += u.v * dt;
       if (u.x > 50) u.x = -60;
       s.position.set(u.x, u.y, u.z);
-      (s.material as THREE.SpriteMaterial).opacity = 0.85 * (1 - this.env.nf * 0.7);
+      // (Over the town they fade out: up close they'd be white smudges between the camera and the streets.)
+      (s.material as THREE.SpriteMaterial).opacity = 0.85 * (1 - this.env.nf * 0.7) * (1 - this.bizK);
+      s.visible = this.bizK < 0.98;
     }
   }
 
@@ -860,22 +862,36 @@ export class Renderer3D {
     // A rank's new landmark: the camera visits it for a moment.
     const lm = this.bizVisit && performance.now() < this.bizVisit.until ? this.biz.landmark(this.bizVisit.rank) : null;
     if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = 1.8; }
-    this.bizFraming = framing || !!this.debugLook || !!lm;
+    // (The player's own zoom isn't held to the fit-the-island limit either.)
+    this.bizFraming = framing || !!this.debugLook || !!lm || (this.camUser.on && !f.bizLive?.sel);
     this.bizFrameK += ((this.bizFraming ? 1 : 0) - this.bizFrameK) * Math.min(1, dt * 2);
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
-    // Only up and down: across, the island stays centred; along, it never slides off.
+    // The player's own view (drag to look around, pinch to zoom), unless the game is showing
+    // something (a close-up, a landmark, a tapped building). Along the town it never slides
+    // off; across, it can move only as far as the zoom leaves room.
+    const cu = this.camUser, mine = cu.on && !framing && !lm && si < 0;
+    if (mine) this.bizLook.tzoom = Math.min(2.6, Math.max(1.0, fo.zoom * cu.zoom));
     if (!framing && !lm) {
       const tb = townBounds(), tc = (tb.tMin + tb.tMax) / 2;
       let sv = (this.bizLook.tx + this.bizLook.tz) * Math.SQRT1_2;
-      sv = Math.min(tb.sMax - 6, Math.max(tb.sMin + 6, sv));
-      this.bizLook.tx = (sv + tc) * Math.SQRT1_2;
-      this.bizLook.tz = (sv - tc) * Math.SQRT1_2;
+      let tv = tc;
+      if (mine) {
+        const scale = ISO_SCALE * this.view.s * BIZ_ZOOM * this.bizLook.tzoom, fit = (this.view.W * 0.94) / (tb.tMax - tb.tMin);
+        const room = Math.max(0, ((tb.tMax - tb.tMin) / 2) * (1 - fit / scale) + 0.8);
+        cu.dt = Math.max(-room, Math.min(room, cu.dt));
+        const sv0 = sv;
+        sv = Math.min(tb.sMax - 3, Math.max(tb.sMin + 3, sv + cu.ds));
+        cu.ds = sv - sv0;
+        tv = tc + cu.dt;
+      } else sv = Math.min(tb.sMax - 6, Math.max(tb.sMin + 6, sv));
+      this.bizLook.tx = (sv + tv) * Math.SQRT1_2;
+      this.bizLook.tz = (sv - tv) * Math.SQRT1_2;
     }
     // (Testing: aim the town camera anywhere.)
     if (this.debugLook) { this.bizLook.tx = this.debugLook.x; this.bizLook.tz = this.debugLook.z; this.bizLook.tzoom = this.debugLook.zoom; }
-    const e = this.bizK < 0.02 ? 1 : Math.min(1, dt * 2);
+    const e = this.bizK < 0.02 ? 1 : mine && cu.drag ? Math.min(1, dt * 14) : Math.min(1, dt * 2);
     this.bizLook.x += (this.bizLook.tx - this.bizLook.x) * e;
     this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;
     this.bizLook.zoom += (this.bizLook.tzoom - this.bizLook.zoom) * e;
@@ -901,6 +917,27 @@ export class Renderer3D {
   private readonly townLook = { night: 0, dusk: 0, wet: 0, skyTop: new THREE.Color(), skyBot: new THREE.Color(), sun: new THREE.Vector3() };
   /** Testing only: where the town camera looks (null: the game decides). */
   debugLook: { x: number; z: number; zoom: number } | null = null;
+  /** The player's own look at the town: an offset along (s) and across (t) the island from
+   *  where the game would look, and a zoom on top of the game's. */
+  private camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1 };
+  /** Drags the town by screen pixels (the finger moves the town with it). */
+  bizPan(dxPx: number, dyPx: number): void {
+    const scale = ISO_SCALE * this.view.s * BIZ_ZOOM * this.bizLook.zoom;
+    if (!(scale > 0)) return;
+    const cu = this.camUser;
+    cu.on = true; cu.drag = true;
+    cu.dt -= dxPx / scale;
+    cu.ds -= dyPx / (scale * 0.62);
+  }
+  /** Zooms the town by a factor (pinch, mouse wheel). */
+  bizZoom(f: number): void {
+    const cu = this.camUser;
+    cu.on = true;
+    cu.zoom = Math.min(2.2, Math.max(0.75, cu.zoom * f));
+  }
+  bizPanEnd(): void { this.camUser.drag = false; }
+  /** Back to the game's own view of the town. */
+  bizCamReset(): void { this.camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1 }; }
   /** How far the close-up framing is on (0-1, eased), so leaving a close-up glides. */
   private bizFrameK = 0;
   /** The camera's visit to a town rank's landmark (see bizcity landmark()). */

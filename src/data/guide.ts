@@ -1,0 +1,56 @@
+// "How Skyhaven works": every word, number and button in the game, explained in one short
+// line (the ? on the top bar, and Settings > How to play). Plain words a new player gets.
+
+export interface GuideRow { icon: string; title: string; text: string }
+export interface GuideSection { title: string; rows: GuideRow[] }
+
+export const GUIDE: GuideSection[] = [
+  {
+    title: "Your goal",
+    rows: [
+      { icon: "crown", title: "Grow Skyhaven to the Sky Capital", text: "Start with one neighbor and a coffee cart. Grow your businesses and the town ranks up." },
+      { icon: "map", title: "Town level (Lv)", text: "The bar at the top. Every rank adds something new to the town and +10% to every business." },
+      { icon: "home", title: "Your neighbor", text: "The first person in your first tower. They react whenever the town grows." },
+      { icon: "island", title: "The island next door", text: "At Big City, a floating island rises. Build a greenhouse or a lookout there." },
+    ],
+  },
+  {
+    title: "Money",
+    rows: [
+      { icon: "bank", title: "Cash", text: "What your businesses earn. Tap it at the top to see exactly what each one makes." },
+      { icon: "city", title: "Businesses", text: "Coffee Cart, Bakery, Cinema and more. Tap one in town to sell, buy levels, or hire help." },
+      { icon: "star", title: "Business levels", text: "Each level makes a business earn more. All levels together raise your town level." },
+      { icon: "building", title: "Office floors", text: "Every business level needs one. Each tower floor you build adds two." },
+      { icon: "medal", title: "Managers", text: "A manager sells for you all the time, even while the game is closed." },
+      { icon: "tower", title: "HQ", text: "When a business has enough levels, build its new headquarters as a tower to grow it." },
+      { icon: "bolt", title: "Rush hour, VIPs and golden customers", text: "Short events in town. Tap them quickly for extra cash." },
+    ],
+  },
+  {
+    title: "Crystals and gems",
+    rows: [
+      { icon: "gem", title: "Sky Crystals (💎)", text: "The special currency for decorations, boosters and tower looks. Earn them from goals and the Sky Pass." },
+      { icon: "sparkle", title: "Sky Gems and New Era", text: "Later on, restart your businesses for Sky Gems. Each gem adds 2% to everything, for good." },
+      { icon: "gift", title: "Sky Pass", text: "A reward road: playing earns XP, and every tier gives a prize." },
+      { icon: "target", title: "Goals and Pip's chapters", text: "Daily goals give stars. Pip's chapter shows the steps to the next town rank." },
+    ],
+  },
+  {
+    title: "Building towers",
+    rows: [
+      { icon: "pointer", title: "Tap to drop", text: "Tap to drop the sliding floor. Whatever hangs over the edge breaks off." },
+      { icon: "sparkle", title: "Perfect drops", text: "Line it up exactly: nothing breaks off, it pays more, and the tower grows wider again." },
+      { icon: "fire", title: "Fever", text: "Eight perfect drops in a row: the next six floors count double." },
+      { icon: "ice", title: "Special floors", text: "Gold pays more, ice slides fast, gardens widen your tower. Bubbles carry power-ups." },
+      { icon: "city", title: "What a tower does", text: "Its people move into Skyhaven and its floors become offices for your businesses." },
+    ],
+  },
+];
+
+/** One line at the top of each menu page, the first times it's opened. */
+export const PAGE_INTRO: Record<string, string> = {
+  company: "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.",
+  shop: "Decorations show up in your town and make every business earn more. Crystals buy the special things.",
+  goals: "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.",
+  me: "Your builder profile, the leaderboard of the best towers, and settings.",
+};
