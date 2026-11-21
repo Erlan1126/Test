@@ -54,7 +54,7 @@ function kit(m: ModelMats) {
     },
     /** A block with windows on the front and both sides (floors about 1.1 apart). */
     tower: (g: G, mat: THREE.Material, w: number, h: number, d: number, x = 0, z = 0, y0 = 0, opts: { ground?: boolean; cols?: number; fh?: number } = {}) => {
-      K.box(g, mat, w, h, d, x, y0, z);
+      K.box(g, mat, w, h, d, x, y0, z).userData.decorated = true;
       const fh = opts.fh ?? 1.1, cols = opts.cols ?? Math.max(1, Math.round(w / 0.75)), sc = Math.max(1, Math.round(d / 0.75));
       // Detail that reads at a glance: a white frame round every window, a thin ledge at each
       // floor and a cornice along the top (all merged into the town's few meshes).
@@ -85,8 +85,20 @@ function kit(m: ModelMats) {
     },
     /** A shop front: big window and a door. */
     front: (g: G, w: number, x = 0, z = 0, y = 0) => {
-      K.box(g, m.win, w * 0.62, 0.95, 0.05, x - w * 0.12, y + 0.2, z);
-      K.box(g, m.c("#3a2f5a"), 0.42, 0.95, 0.06, x + w * 0.33, y, z);
+      // A shop window with a frame, a sill and glazing bars, a panelled door with a frame, a
+      // handle and a step, and a kick plate under the window.
+      const fr = m.c("#fbf8ff", 0.6), dk = m.c("#3a2f5a"), ww = w * 0.62, wx = x - w * 0.12, dx = x + w * 0.33;
+      K.box(g, m.win, ww, 0.95, 0.05, wx, y + 0.2, z);
+      K.box(g, fr, ww + 0.1, 0.06, 0.09, wx, y + 1.13, z + 0.01);
+      K.box(g, fr, ww + 0.14, 0.07, 0.14, wx, y + 0.15, z + 0.03);
+      K.box(g, m.c("#d9d2e6", 0.7), ww, 0.15, 0.06, wx, y, z + 0.005);
+      for (let k = 1; k < 3; k++) K.box(g, fr, 0.04, 0.95, 0.07, wx - ww / 2 + (k * ww) / 3, y + 0.2, z + 0.01);
+      for (const sx of [-1, 1]) K.box(g, fr, 0.05, 0.98, 0.08, wx + sx * (ww / 2 + 0.02), y + 0.17, z + 0.01);
+      K.box(g, fr, 0.52, 1.05, 0.05, dx, y, z - 0.005);
+      K.box(g, dk, 0.42, 0.95, 0.06, dx, y, z);
+      K.box(g, m.win, 0.26, 0.36, 0.065, dx, y + 0.48, z);
+      K.sph(g, m.gold, 0.03, dx + 0.14, y + 0.45, z + 0.05);
+      K.box(g, m.c("#d9d2e6", 0.7), 0.6, 0.05, 0.22, dx, y, z + 0.1);
     },
     /** A striped awning over a shop front. */
     awning: (g: G, w: number, x: number, y: number, z: number, c1: string | THREE.Color, c2: string | THREE.Color = "#ffffff", depth = 0.7) => {
@@ -406,6 +418,50 @@ export function buildModel(g: G, id: string, s: number, c1: string, c2: string, 
         for (const x of [-2.1, 1.3]) K.box(g, m.c("#c0c4dd", 0.4, 0.5), 0.4, 0.8, 0.6, x, 0.25, 0.2);
         K.cyl(g, m.c("#c0c4dd", 0.5), 0.8, 0.9, 0.2, 1.4, 0.25, -1.4, 16); K.rocket(g, 1.4, -1.4, 9.0, c2, 0.45);
       }
+  }
+  dress(g, m);
+}
+
+/** Every plain wall gets the details a real building has: framed windows with sills on the
+ *  upper floors (front and sides), and a darker stone base. A window only goes where nothing
+ *  else is (a sign, an awning, a door, a dome), so nothing ends up on top of anything. */
+function dress(g: G, m: ModelMats): void {
+  const K = kit(m), frame = m.c("#fbf8ff", 0.6);
+  g.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(g.matrixWorld).invert();
+  const boxes = g.children.map(ch => new THREE.Box3().setFromObject(ch).applyMatrix4(inv));
+  const bodies = g.children.filter((ch): ch is THREE.Mesh => {
+    const me = ch as THREE.Mesh, geo = me.geometry as THREE.BoxGeometry | undefined;
+    if (!me.isMesh || !geo || geo.type !== "BoxGeometry" || me.userData.decorated || me.rotation.y !== 0 || me.rotation.x !== 0 || me.rotation.z !== 0) return false;
+    const mat = me.material as THREE.MeshStandardMaterial, p = geo.parameters;
+    return mat !== m.win && mat !== m.gold && !mat.userData.dynamic && p.width >= 1.4 && p.height >= 1.6 && p.depth >= 1.0;
+  });
+  const free = (b: THREE.Box3, self: number) => boxes.every((o, i) => i === self || !o.intersectsBox(b));
+  const tmp = new THREE.Box3();
+  for (const body of bodies) {
+    const self = g.children.indexOf(body), p = (body.geometry as THREE.BoxGeometry).parameters, { x, y: y0, z } = body.position;
+    const w = p.width, h = p.height, d = p.depth;
+    const mat = body.material as THREE.MeshStandardMaterial;
+    // The stone base.
+    K.box(g, m.c(mat.color.clone().multiplyScalar(0.72), 0.85), w + 0.05, 0.26, d + 0.05, x, y0, z);
+    for (let y = y0 + 1.75; y + 0.55 <= y0 + h - 0.15; y += 1.05) {
+      const cols = Math.max(1, Math.round(w / 0.85)), sc = Math.max(1, Math.round(d / 0.85));
+      for (let k = 0; k < cols; k++) {
+        const wx = x - w / 2 + (k + 0.5) * (w / cols);
+        tmp.set(new THREE.Vector3(wx - 0.25, y - 0.1, z + d / 2 - 0.02), new THREE.Vector3(wx + 0.25, y + 0.6, z + d / 2 + 0.12));
+        if (!free(tmp, self)) continue;
+        K.box(g, m.win, 0.38, 0.5, 0.04, wx, y, z + d / 2 + 0.01);
+        K.box(g, frame, 0.48, 0.6, 0.025, wx, y - 0.05, z + d / 2 + 0.005);
+        K.box(g, frame, 0.54, 0.05, 0.09, wx, y - 0.07, z + d / 2 + 0.035);
+      }
+      for (const sd of [-1, 1]) for (let k = 0; k < sc; k++) {
+        const wz = z - d / 2 + (k + 0.5) * (d / sc);
+        tmp.set(new THREE.Vector3(x + sd * (w / 2) - 0.12, y - 0.1, wz - 0.25), new THREE.Vector3(x + sd * (w / 2) + 0.12, y + 0.6, wz + 0.25));
+        if (!free(tmp, self)) continue;
+        K.box(g, m.win, 0.04, 0.5, 0.38, x + sd * (w / 2 + 0.01), y, wz);
+        K.box(g, frame, 0.025, 0.6, 0.48, x + sd * (w / 2 + 0.005), y - 0.05, wz);
+      }
+    }
   }
 }
 
