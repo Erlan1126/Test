@@ -124,6 +124,13 @@ export function townFx(calm: boolean): TownFx {
     // darker when wet.
     float v = fxNoise(vFxW.xz * 0.9) * 0.6 + fxNoise(vFxW.xz * 3.1) * 0.4;
     diffuseColor.rgb *= 1.0 + (v - 0.5) * 0.16 * uFxK;
+    // Like a real meadow, a little cartoony: big sunny yellow-green patches and cooler
+    // blue-green ones, and a fine streaky texture like blades of grass.
+    float big = fxNoise(vFxW.xz * 0.16 + 3.7) * 0.65 + fxNoise(vFxW.xz * 0.45) * 0.35;
+    vec3 warmT = vec3(1.1, 1.07, 0.78), coolT = vec3(0.84, 0.97, 0.96);
+    diffuseColor.rgb *= mix(vec3(1.0), mix(coolT, warmT, smoothstep(0.28, 0.72, big)), 0.75 * uFxK);
+    float blades = fxNoise(vFxW.xz * vec2(14.0, 5.0)) * 0.6 + fxNoise(vFxW.xz * vec2(5.0, 16.0)) * 0.4;
+    diffuseColor.rgb *= 1.0 + (blades - 0.5) * 0.14 * uFxK;
     float c = fxNoise(vFxW.xz * 0.11 + vec2(uFxT * 0.018, uFxT * 0.007));
     diffuseColor.rgb *= 1.0 - smoothstep(0.55, 0.8, c) * 0.13 * uFxK * (1.0 - uFxNight);
     diffuseColor.rgb *= 1.0 - uFxWet * 0.15;`);
@@ -185,7 +192,7 @@ float fxWave(vec2 p, float t) {
     vec3 N = fxWorldN(normal);
     float depth = uFxSea > 0.5 ? clamp((uFxShore - vFxW.z) / 4.5, 0.0, 1.0) : 0.35;
     // Deep blue out at sea, clear turquoise over the sand near the beach.
-    vec3 shallow = vec3(0.10, 0.62, 0.66), deep = vec3(0.012, 0.13, 0.36);
+    vec3 shallow = vec3(0.13, 0.72, 0.70), deep = vec3(0.02, 0.19, 0.46);
     diffuseColor.rgb = mix(shallow, deep, pow(depth, 0.7));
     float fr = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
     vec3 R = reflect(-V, N);
@@ -198,6 +205,20 @@ float fxWave(vec2 p, float t) {
     totalEmissiveRadiance += vec3(0.08, 0.42, 0.36) * smoothstep(0.35, 0.9, fxH) * 0.22 * (1.0 - depth * 0.5) * day;
     float cap = smoothstep(0.95, 1.15, fxH) * (0.5 + 0.5 * fxNoise(vFxW.xz * 9.0 + uFxT * uFxM)) * uFxSea;
     totalEmissiveRadiance += vec3(0.9) * cap * 0.35 * day;
+    // Caustics: a bright wobbly net of light over the shallows (and in the ponds).
+    vec2 cp = vFxW.xz * 2.2;
+    float c1 = fxNoise(cp + vec2(tt * 0.4, 0.0)), c2 = fxNoise(cp * 1.3 - vec2(0.0, tt * 0.35));
+    float caus = pow(max(0.0, 1.0 - abs(c1 - c2) * 2.2), 6.0);
+    totalEmissiveRadiance += vec3(0.6, 0.95, 0.9) * caus * 0.2 * (1.0 - depth) * day;
+    if (uFxSea > 0.5) {
+      // Foam where the sea meets the sand: a soft white band that rolls in and out, and thin
+      // lines of foam following the waves in.
+      float d = uFxShore - vFxW.z;
+      float wob = (fxNoise(vFxW.xz * 1.3 + tt * 0.2) - 0.5) * 0.35;
+      float band = smoothstep(0.6 + wob, 0.05, d + sin(tt * 1.2) * 0.12);
+      float lines = smoothstep(0.82, 1.0, sin((d - tt * 0.35) * 7.0)) * smoothstep(1.8, 0.3, d) * (0.5 + 0.5 * fxNoise(vFxW.xz * 4.0));
+      totalEmissiveRadiance += vec3(1.0) * (band * 0.6 + lines * 0.3) * day;
+    }
     totalEmissiveRadiance += ${LAMP} * fxLamps(vFxW) * uFxNight * 0.5;`);
       }, { uFxSea: { value: sea ? 1 : 0 } });
     },

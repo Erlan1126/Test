@@ -1126,24 +1126,43 @@ export class TycoonUI {
       : grow ? t("Ready to grow! HQ order: {order} for ×{m} earnings", { order: orderText(orderFor(i, grow)), m: ORDER_MULT })
       : ns ? t("Grows into {name} at {n} floors", { name: t(stageName(b.id, st + 1)), n: ns }) : t("Fully grown!");
     const amountLabel = this.amount === "max" ? "MAX" : `×${this.amount}`;
+    const perLv0 = owned ? payOf(s, b, now) / lv : 0;
     const main = grow
       ? `<button type="button" class="card-main grow" data-card="hq"><b>${esc(t("Build the HQ"))}</b><small>${esc(t("{n} floors", { n: hqFloors(grow) }))}</small></button>`
       : noRoom ? `<button type="button" class="card-main floors" data-card="build"><b>${esc(t("Build more floors"))}</b><small>${esc(t("Your offices are full"))}</small></button>`
-      : `<button type="button" class="card-main" data-card="buy"${canBuy ? "" : " disabled"}><b>${esc(owned ? t("Buy {n}", { n: amountLabel }) : t("Open it"))}</b><small>${COIN_SVG}${esc(coins(price))}</small></button>`;
+      : `<button type="button" class="card-main" data-card="buy"${canBuy ? "" : " disabled"}><b>${esc(owned ? t("Buy {n}", { n: amountLabel }) : t("Open it"))}</b><small>${COIN_SVG}${esc(coins(price))}${owned ? ` · ${esc(t("+{n} a sale", { n: coins(perLv0 * n) }))}` : ""}</small></button>`;
+    // Everything about the business at a glance: what it earns, its level, how fast it sells,
+    // and what's next (a speed boost, a new building), each with how far along it is.
+    const pay = payOf(s, b, now), cyc = cycleOf(b, Math.max(1, lv));
+    const secs = (x: number) => (x >= 60 ? t("{n} min", { n: fmt(Math.round(x / 6) / 10) }) : t("{n} s", { n: x >= 10 ? Math.round(x) : Math.round(x * 10) / 10 }));
+    const nm = owned ? nextMilestone(lv) : undefined, prevM = owned ? [0, ...MILESTONES_AT].filter(m => m <= lv).pop() ?? 0 : 0;
+    const stars = `<span class="card-stars" aria-label="${esc(t("Stage {n} of 5", { n: st + 1 }))}">${[0, 1, 2, 3, 4].map(k => `<i class="${k <= st ? "on" : ""}"></i>`).join("")}</span>`;
+    const stat = (label: string, value: string, tone = "") => `<span class="card-stat ${tone}"><small>${esc(label)}</small><b>${esc(value)}</b></span>`;
+    const nextRow = (ico: string, text: string, k: number) => `<div class="card-next"><span class="cn-ico">${ico}</span><span class="cn-txt">${esc(text)}<i class="cn-bar"><i style="width:${Math.round(Math.max(0, Math.min(1, k)) * 100)}%"></i></i></span></div>`;
+    const nextRows = !owned ? "" : [
+      nm ? nextRow("⚡", t("Level {n}: it sells twice as fast", { n: fmt(nm) }), (lv - prevM) / Math.max(1, nm - prevM)) : "",
+      !grow && ns ? nextRow("🏗️", t("Level {n}: it grows into {name}", { n: fmt(ns), name: t(stageName(b.id, st + 1)) }), (lv - (STAGE_AT[st] ?? 0)) / Math.max(1, ns - (STAGE_AT[st] ?? 0))) : "",
+    ].join("");
     this.put(card, `<div class="card-head" style="--b1:${b.color[0]};--b2:${b.color[1]}">
         <span class="card-ico">${iconSvg(b.icon)}</span>
-        <span class="card-name"><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b><small>${owned ? `${"★".repeat(st + 1)} · ${esc(tn(lv, "{n} floor", "{n} floors", { n: fmt(lv) }))} · ${esc(t("{n} a sale", { n: coins(payOf(s, b, now)) }))}` : esc(t("For lease"))}</small></span>
+        <span class="card-name"><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b><small>${owned ? `${stars} ${esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 5", { n: st + 1 }) : t(b.name))}` : esc(t("For lease"))}</small></span>
         <button type="button" class="card-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
       </div>
-      ${owned ? `<i class="card-prog"><i></i></i>` : ""}
-      <p class="card-info">${esc(goal)}</p>
+      ${owned ? `<div class="card-stats">
+        ${managed ? stat(t("Earns"), t("{n}/s", { n: coins(pay / cyc) }), "money") : stat(t("Each sale"), coins(pay), "money")}
+        ${stat(t("Level"), fmt(lv))}
+        ${stat(t("Sells every"), secs(cyc))}
+      </div>
+      <i class="card-prog"><i></i></i>
+      ${nextRows}` : ""}
+      ${!owned || grow || !ns ? `<p class="card-info">${esc(goal)}</p>` : ""}
       <div class="card-acts">
         ${main}
         ${owned && !grow && !noRoom ? `<button type="button" class="card-amount" data-card="amount" aria-label="${esc(t("How many to buy"))}">${amountLabel}</button>` : ""}
       </div>
       <div class="card-row">
         ${owned && !managed ? `<button type="button" class="card-small run" data-card="run">${esc(t("Sell now"))}</button>
-          <button type="button" class="card-small" data-card="hire"${ty.coins < b.manager ? " disabled" : ""}>${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : owned ? `<span class="card-auto">${esc(t("A manager runs it"))}</span>` : ""}
+          <button type="button" class="card-small" data-card="hire"${ty.coins < b.manager ? " disabled" : ""}>${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : owned ? `<span class="card-auto">${esc(t("👔 A manager runs it, even while you're away"))}</span>` : ""}
         ${owned ? `<button type="button" class="card-small" data-card="look">${esc(t("All businesses"))}</button>` : ""}
       </div>
       <span class="tag-pops card-pops"></span>`);

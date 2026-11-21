@@ -52,6 +52,15 @@ export class Sound {
       // retries through ensure() if the browser wants a gesture first).
       if (document.hidden) void this.ac.suspend(); else void this.ac.resume().catch(() => {});
     });
+    // Music from the very start: the app's web view lets sound play without a tap, so start
+    // at once. In a browser that still wants a gesture first, the very first touch anywhere
+    // (not only certain buttons) starts it.
+    const wake = () => {
+      this.ensure();
+      if (this.ac?.state === "running") for (const ev of ["pointerdown", "touchend", "keydown", "click"]) document.removeEventListener(ev, wake, true);
+    };
+    for (const ev of ["pointerdown", "touchend", "keydown", "click"]) document.addEventListener(ev, wake, true);
+    setTimeout(() => this.ensure(), 0);
   }
 
   private get settings(): Settings { return this.getSettings(); }

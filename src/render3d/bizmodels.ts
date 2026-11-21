@@ -293,9 +293,9 @@ export function buildModel(g: G, id: string, s: number, c1: string, c2: string, 
         K.box(g, m.c("#ffffff"), 4.0, 0.4, 0.6, 0, 1.0, 1.3); K.bulbs(g, 4.0, 0, 1.42, 1.61); K.front(g, 3.2, 0, 1.01); crown(3.6, 1.2, 0, -0.5);
       } else if (s === 3) {
         K.box(g, m.c(dark(c2, 0.3)), 4.2, 3.6, 2.2, 0, 0, -1.0); K.cyl(g, m.c(c1), 2.0, 2.0, 3.6, 0, 0, 0.0, 24); K.cyl(g, m.win, 2.03, 2.03, 0.5, 0, 2.2, 0.0, 24);
-        K.bulbs(g, 3.6, 0, 3.5, 2.0); K.box(g, m.c("#e8334f"), 0.9, 0.02, 2.4, 0, 0, 2.0);
+        K.bulbs(g, 3.6, 0, 3.5, 2.0); K.box(g, m.c("#e8334f"), 0.9, 0.02, 1.3, 0, 0, 1.5);
         K.board(g, "#ffe27a", 0.5, 2.6, 0, 3.6, 0.8); K.cyl(g, m.gold, 0.3, 0.3, 0.1, 0, 6.3, 0.8);
-        for (const x of [-1.8, 1.8]) { K.cyl(g, m.c("#4a4f7a"), 0.2, 0.25, 0.4, x, 0, 1.9); }
+        for (const x of [-0.75, 0.75]) { K.cyl(g, m.c("#4a4f7a"), 0.12, 0.15, 0.4, x, 0, 2.15); }
         crown(3.8, 1.3, 0, -1.0);
       } else {
         for (const [x, z, l] of [[-1.2, -0.6, 2.8], [1.2, -0.2, 2.2]] as const) { K.box(g, m.c("#efe7d8"), 1.9, 1.6, l, x, 0, z); K.arch(g, m.c("#efe7d8"), 0.95, l, x, 1.6, z); }
@@ -458,23 +458,23 @@ export function buildTerrace(g: G, state: 1 | 2, lights: boolean, m: ModelMats):
 export function buildStreetFront(g: G, c1: string, c2: string, stage: number, m: ModelMats): void {
   const K = kit(m);
   const stone = m.c("#d9d2e6", 0.6), metal = m.c("#4a4f7a", 0.5, 0.4);
-  for (const x of [-1.85, 1.85]) {
-    K.box(g, stone, 0.42, 0.24, 0.42, x, 0, 1.85);
-    K.bush(g, x, 1.85, 0.9);
-    K.sph(g, m.c(x < 0 ? "#ff6fa0" : "#ffe27a", 0.8), 0.07, x - 0.1, 0.42, 1.95);
-    K.sph(g, m.c("#b48cff", 0.8), 0.06, x + 0.1, 0.44, 1.9);
+  // (Everything stays clear of the lot's rounded corners, where the corner plazas are.)
+  for (const x of [-1.45, 1.45]) {
+    K.box(g, stone, 0.42, 0.24, 0.42, x, 0, 1.72);
+    K.bush(g, x, 1.72, 0.9);
+    K.sph(g, m.c(x < 0 ? "#ff6fa0" : "#ffe27a", 0.8), 0.07, x - 0.1, 0.42, 1.82);
+    K.sph(g, m.c("#b48cff", 0.8), 0.06, x + 0.1, 0.44, 1.77);
   }
   // The A-frame sign (two leaning boards in the business's colors).
   const sign = m.sign(c2);
-  K.box(g, sign, 0.34, 0.42, 0.03, -1.2, 0.02, 2.0).rotation.x = 0.22;
-  K.box(g, m.c(c1, 0.6), 0.34, 0.42, 0.03, -1.2, 0.02, 1.86).rotation.x = -0.22;
-  // A bike rack with one bike, and bollards along the curb.
-  K.box(g, metal, 0.6, 0.04, 0.04, 1.15, 0.28, 2.0);
-  for (const x of [0.88, 1.42]) K.box(g, metal, 0.04, 0.3, 0.04, x, 0, 2.0);
+  K.box(g, sign, 0.34, 0.42, 0.03, -0.8, 0.02, 2.0).rotation.x = 0.22;
+  K.box(g, m.c(c1, 0.6), 0.34, 0.42, 0.03, -0.8, 0.02, 1.86).rotation.x = -0.22;
+  // A bike rack with one bike, and a bollard by the curb.
+  K.box(g, metal, 0.6, 0.04, 0.04, 0.75, 0.28, 2.0);
+  for (const x of [0.48, 1.02]) K.box(g, metal, 0.04, 0.3, 0.04, x, 0, 2.0);
   const bike = m.c(c2, 0.5);
-  K.torus(g, m.c("#2a2f4a", 0.6), 0.11, 0.02, 0.98, 0.13, 2.08);
-  K.torus(g, m.c("#2a2f4a", 0.6), 0.11, 0.02, 1.3, 0.13, 2.08);
-  K.box(g, bike, 0.34, 0.03, 0.03, 1.14, 0.22, 2.08);
-  for (const x of [-0.6, 0, 0.6]) K.cyl(g, stone, 0.05, 0.06, 0.26, x, 0, 2.08, 8);
+  K.torus(g, m.c("#2a2f4a", 0.6), 0.11, 0.02, 0.58, 0.13, 2.08);
+  K.torus(g, m.c("#2a2f4a", 0.6), 0.11, 0.02, 0.9, 0.13, 2.08);
+  K.box(g, bike, 0.34, 0.03, 0.03, 0.74, 0.22, 2.08);
   if (stage >= 2) for (const x of [-0.75, 0.75]) { K.cyl(g, metal, 0.025, 0.03, 0.9, x, 0, 1.55, 6); K.sph(g, m.bulb, 0.08, x, 0.95, 1.55); }
 }
