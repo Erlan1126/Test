@@ -16,7 +16,7 @@ export function loadMemories(): Memories {
     const out: Memories = {};
     for (const k of Object.keys(raw)) {
       const i = Number(k), m = raw[i];
-      if (Number.isInteger(i) && i >= 0 && i < RANKS.length && m && typeof m.img === "string" && m.img.startsWith("data:image/") && typeof m.at === "number") out[i] = m;
+      if (Number.isInteger(i) && i >= 0 && i < RANKS.length && m && typeof m.img === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(m.img) && typeof m.at === "number") out[i] = m;
     }
     return out;
   } catch { return {}; }

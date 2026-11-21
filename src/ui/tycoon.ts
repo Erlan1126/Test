@@ -140,12 +140,12 @@ export class TycoonUI {
     // "Why?": a greyed-out button can't be pressed, so a tap on it falls through to its row;
     // find which button was under the finger and say what it needs.
     document.addEventListener("click", e => {
-      const row = (e.target as Element | null)?.closest?.<HTMLElement>(".ty-biz");
+      const row = (e.target as Element | null)?.closest?.<HTMLElement>(".ty-biz, #tcy-card");
       if (!row) return;
-      for (const btn of row.querySelectorAll<HTMLButtonElement>("button[data-act]:disabled")) {
+      for (const btn of row.querySelectorAll<HTMLButtonElement>("button[data-act]:disabled, button[data-card]:disabled")) {
         const r = btn.getBoundingClientRect();
         if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-          const why = this.whyLocked(row.dataset.biz ?? "", btn.dataset.act ?? "");
+          const why = this.whyLocked(row.dataset.biz ?? this.selected, btn.dataset.act ?? btn.dataset.card ?? "");
           if (why) { this.host.sound.click(); toast(why); }
           return;
         }
@@ -322,7 +322,8 @@ export class TycoonUI {
     // camera has settled.
     window.setTimeout(() => {
       const s = this.save;
-      if (this.inCity && s.cafe.starter && !loadMemories()[0] && !openModalEl() && !document.body.classList.contains("tabs-open")) saveMemory(0, this.host.townPicture());
+      // (Players who update mid-game get today's town as the picture of the rank they're at.)
+      if (this.inCity && s.cafe.starter && !Object.keys(loadMemories()).length && !openModalEl() && !document.body.classList.contains("tabs-open")) saveMemory(townRank(s), this.host.townPicture());
     }, 5000);
     // A brand-new company opens with a bang: everything earns more for its first minutes.
     // (A brand-new company's grand opening starts with its first sale: see doAct.)
@@ -722,7 +723,9 @@ export class TycoonUI {
     const wait = (need: number) => ps > 0 ? t("about {time} at {rate}/s", { time: TycoonUI.wait(need / ps), rate: coins(ps) }) : t("sell to earn it");
     if (act === "buy") {
       if (!unlockedBusiness(s, i)) return t("Why? Open the {prev} first: businesses open one after another.", { prev: t(BUSINESSES[i - 1].name) });
-      const lv = levelOf(s, id), price = costOf(b, lv, this.amount === "max" ? 1 : this.amount);
+      const lv = levelOf(s, id), room = Math.max(1, freeFloors(s));
+      const n = lv === 0 ? 1 : Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
+      const price = costOf(b, lv, n);
       if (freeFloors(s) < 1) return t("Why? Every business level needs an office floor, and yours are full. Build a tower: each floor adds 2.");
       if (price > ty.coins) return t("Why? You need {n} more ({wait}).", { n: coins(price - ty.coins), wait: wait(price - ty.coins) });
     }
@@ -2153,7 +2156,11 @@ export class TycoonUI {
       </div>`;
     }).join("");
     this.host.persist();
-    $("scrap-share")?.addEventListener("click", async () => {
+    $("scrap-share")?.addEventListener("click", async e => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      window.setTimeout(() => { btn.disabled = false; }, 2500);
       this.host.sound.click();
       const now = this.host.townPicture();
       if (first === undefined || !now) { toast(t("Open the town first, then try again")); return; }
@@ -2213,6 +2220,8 @@ export class TycoonUI {
       const c = this.save.cafe;
       if (!this.momentDone && this.inCity && c.starter && c.moved && c.terrace === 2) {
         this.momentDone = true;
+        // (The daily note shouldn't repeat this line tomorrow.)
+        try { const v = JSON.parse(localStorage.getItem("skyrise.neighbor.v1") || "{}"); v.rank = rk; localStorage.setItem("skyrise.neighbor.v1", JSON.stringify(v)); } catch { /* private mode */ }
         if (this.story.stage === "none") this.stage("seat");
         this.frameUntil = Date.now() + 6500;
         this.render();
@@ -2226,7 +2235,7 @@ export class TycoonUI {
         this.visitDone = true;
         if (this.host.visitLandmark(rk, 4200)) {
           // Skyhaven remembers: a picture of the new landmark, half way through the visit.
-          window.setTimeout(() => { if (!openModalEl() && !document.body.classList.contains("tabs-open")) saveMemory(rk, this.host.townPicture()); }, 2300);
+          this.later(2300, () => { if (!openModalEl() && !document.body.classList.contains("tabs-open")) saveMemory(rk, this.host.townPicture()); });
           window.setTimeout(note, 4400);
           return;
         }
