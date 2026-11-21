@@ -783,7 +783,7 @@ export class TycoonUI {
     // First steps come before anything else: the first sale, then (if ready) the café
     // terrace, then a level, then a manager.
     const cart = BUSINESSES[0];
-    if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("First steps · {n} of 3", { n: 1 }), tone: "learn", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
+    if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("Every sale earns cash for your company"), tone: "learn", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
     // Right after the first sale: café seating for the neighbor (built with the next
     // tower), then opening it; the level and the manager come after.
     if (s.cafe.terrace === 0 && s.cafe.starter && s.cafe.moved) {
@@ -791,7 +791,7 @@ export class TycoonUI {
       return { text: tn(n, "Build {n} more floor for café seating", "Build {n} more floors for café seating", { n }), sub: t("Your neighbor would like to sit down"), pct: s.cafe.floors / (s.cafe.floors + n), tone: "grow", act: () => { this.leave(); this.host.play("classic"); } };
     }
     if (s.cafe.terrace === 1) return { text: t("☕ Your café terrace is ready!"), sub: t("Open it: the Coffee Cart earns more"), tone: "gift", act: () => this.openTerrace() };
-    if (ty.tips === 1) return { text: t("Buy a level for the Coffee Cart"), sub: t("First steps · {n} of 3", { n: 2 }), tone: "learn", act: select("coffee") };
+    if (ty.tips === 1) return { text: t("Buy a level for the Coffee Cart"), sub: t("Each level makes every sale bigger"), tone: "learn", act: select("coffee") };
     if (ty.tips === 2) return { text: t("Hire a manager for the Coffee Cart"), sub: t("Managers sell for you, even while you're away"), pct: Math.min(1, ty.coins / cart.manager), tone: "learn", act: select("coffee") };
     // A first-time objective stays in view until it's tried: the block's next project, then a
     // business's first HQ (both cost nothing but a tower).

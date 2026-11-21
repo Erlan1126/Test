@@ -1739,4 +1739,6 @@ export const PT: Record<string, string> = {
   "A greyed-out button?": "Um botão cinza?",
   "Tap it anyway: the game tells you why, and how long until you can.": "Toque mesmo assim: o jogo diz por quê e quanto falta.",
   "Top rank": "Categoria máxima",
+  "Every sale earns cash for your company": "Cada venda gera dinheiro para sua empresa",
+  "Each level makes every sale bigger": "Cada nível deixa cada venda maior",
 };
