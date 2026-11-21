@@ -175,6 +175,8 @@ export class TycoonUI {
     this.wireTownCamera();
     $("tycity").addEventListener("click", e => this.onCityTap(e));
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
+    wireModal($("land-buy"));
+    $("land-buy-btn").addEventListener("click", () => this.buyLandNow());
     $("tcy-events").addEventListener("click", e => { if ((e.target as Element).closest("[data-golden]")) { e.stopPropagation(); this.catchGolden(); } });
     $("tcy-next").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.nextAct?.(); });
     // Hold a Buy button to keep buying (faster the longer you hold), as in the big idle games.
@@ -1015,6 +1017,8 @@ export class TycoonUI {
         it.y = hit.y - 44;
       }
       placed.push({ x: it.x, y: it.y, w });
+      // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
+      if (it.tag.classList.contains("land-sale")) { const m = it.w / 2 + 8; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";
       if (it.tag.style.transform !== tr) it.tag.style.transform = tr;
@@ -2213,27 +2217,52 @@ export class TycoonUI {
     openModal($("scrapbook"));
   }
 
-  /** Land for sale next to the island: Pip offers it; buying joins it to the island for good. */
+  /** Land for sale next to the island: a card with what gets built there, what it brings,
+   *  the price and how close the company is to it. Buying joins it to the island for good. */
   private openLand(): void {
     const s = this.save, l = landOnSale(s);
     if (!l) return;
-    const price = landPrice(s, l), pct = Math.round(LAND_BONUS * 100), k = LAND.indexOf(l);
-    mayorChoice(t("Land for sale!"),
-      t("This piece of land next to our island is for sale. Buy it and it joins the island for good, every business earns {pct}% more, and we build something new there.", { pct }),
-      [{ label: `${l.icon} ${t(l.name)}`, sub: `${t(l.what)} · ${coins(price)}`, onPick: () => {
-        tick(s);
-        const r = buyLand(s, l.id);
-        if (r === "short") { toast(t("You need {n} more cash. Your businesses are earning it!", { n: coins(landPrice(s, l) - s.tycoon.coins) })); return; }
-        if (r !== "ok") return;
-        track("land_bought");
-        this.host.persist();
-        this.host.sound.unlock();
-        fireworks(2, () => this.host.sound.firework());
-        this.render();
-        window.setTimeout(() => this.host.visitLandmark(100 + k, 4000), 500);
-        window.setTimeout(() => toast(t("{icon} {name} is part of the island now! Every business earns +{pct}%", { icon: l.icon, name: t(l.name), pct })), 4600);
-      } }],
-      t("Later"));
+    const el = $("land-buy"), price = landPrice(s, l), pct = Math.round(LAND_BONUS * 100), k = LAND.indexOf(l);
+    const have = s.tycoon.coins, can = have >= price;
+    el.dataset.land = l.id;
+    $("land-hero").style.setProperty("--land", ["#5ec26a", "#3fa9e8", "#ff9a5c"][k] ?? "#5ec26a");
+    $("land-icon").textContent = l.icon;
+    $("land-title").textContent = t(l.name);
+    $("land-what").textContent = t(l.what);
+    $("land-perks").innerHTML = [
+      ["📈", t("Every business earns +{pct}%, for good", { pct })],
+      ["🏝️", t("The island grows: this land joins it")],
+      ["🔒", t("Stays yours, even after a New Era")],
+      ["🗺️", t("Piece {n} of {all}", { n: k + 1, all: LAND.length })],
+    ].map(([i2, tx]) => `<li><span>${i2}</span>${esc(tx)}</li>`).join("");
+    $("land-price").textContent = coins(price);
+    ($("land-bar") as HTMLElement).style.width = `${Math.round(Math.min(1, have / price) * 100)}%`;
+    $("land-have").textContent = can ? t("You can buy it now") : t("You have {a}: {b} to go", { a: coins(have), b: coins(price - have) });
+    const btn = $("land-buy-btn") as HTMLButtonElement;
+    btn.textContent = can ? t("Buy for {n}", { n: coins(price) }) : t("Not enough cash yet");
+    btn.classList.toggle("short", !can);
+    $("land-step").textContent = can ? "" : t("Your businesses are earning it. Come back soon!");
+    openModal(el, btn);
+  }
+
+  /** The buy button on the land card. */
+  private buyLandNow(): void {
+    const s = this.save, l = landOnSale(s), el = $("land-buy");
+    if (!l || el.dataset.land !== l.id) { closeModal(el); return; }
+    tick(s);
+    const r = buyLand(s, l.id);
+    if (r === "short") { this.host.sound.click(); toast(t("You need {n} more cash. Your businesses are earning it!", { n: coins(landPrice(s, l) - s.tycoon.coins) })); return; }
+    if (r !== "ok") { closeModal(el); return; }
+    const k = LAND.indexOf(l), pct = Math.round(LAND_BONUS * 100);
+    closeModal(el);
+    track("land_bought");
+    this.host.persist();
+    this.host.sound.unlock();
+    vibrate(s.settings.vibrate, [20, 40, 20]);
+    fireworks(2, () => this.host.sound.firework());
+    this.render();
+    window.setTimeout(() => this.host.visitLandmark(100 + k, 4500), 500);
+    window.setTimeout(() => toast(t("{icon} {name} is part of the island now! Every business earns +{pct}%", { icon: l.icon, name: t(l.name), pct })), 4800);
   }
 
   /** The floating island next to the town: Pip offers the two landmarks. */

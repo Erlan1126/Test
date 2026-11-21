@@ -482,7 +482,19 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
  *  so pieces of every color share one mesh as long as they're the same kind of surface
  *  (roughness, metalness, texture, glow). Pieces whose material animates (lit windows,
  *  lamps) merge only with others using that same material. Moving things stay separate. */
-export function mergeStatic(root: THREE.Object3D): void {
+/** Soft shading where walls meet the ground (cheap ambient occlusion): every wall gets a
+ *  little darker toward its foot, so buildings, trees and props sit on the ground instead of
+ *  floating on it. `base` is the ground's height in the merged root's own space. */
+function groundShade(m: THREE.Material, base: number): void {
+  m.onBeforeCompile = s => {
+    s.vertexShader = "varying float vGsY; varying float vGsV;\n" + s.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n  vGsY = position.y; vGsV = abs(normal.y);");
+    s.fragmentShader = "varying float vGsY; varying float vGsV;\n" + s.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+    if (vGsV < 0.5) diffuseColor.rgb *= mix(0.7, 1.0, smoothstep(${base.toFixed(3)}, ${(base + 0.65).toFixed(3)}, vGsY));`);
+  };
+  m.customProgramCacheKey = () => "gs" + base.toFixed(3);
+}
+
+export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
   root.updateMatrixWorld(true);
   const toLocal = root.matrixWorld.clone().invert(), rel = new THREE.Matrix4();
   const groups = new Map<string, { mat: THREE.MeshStandardMaterial; geos: THREE.BufferGeometry[]; cast: boolean; tint: boolean; rough: number; metal: number }>();
@@ -531,6 +543,7 @@ export function mergeStatic(root: THREE.Object3D): void {
       v.vertexColors = true;
       v.color.set(0xffffff);
       v.roughness = rough; v.metalness = metal;
+      if (groundAt !== undefined) groundShade(v, groundAt);
       use = v;
     }
     const mesh = new THREE.Mesh(merged, use);
