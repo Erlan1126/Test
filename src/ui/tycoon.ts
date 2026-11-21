@@ -910,7 +910,7 @@ export class TycoonUI {
         : live.rush === b.id ? `<span class="badge rush">×${RUSH_MULT}</span>` : "";
       // A round icon bubble whose ring fills as the building works; its name shows once tapped.
       return `<button type="button" class="tag bub${sel ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1" style="--b1:${b.color[0]};--b2:${b.color[1]}">
-        ${badge}<span class="tag-ico">${iconSvg(b.icon)}</span>${sel ? `<b>${esc(t(stageName(b.id, st)))}</b>` : ""}<span class="tag-pops"></span>
+        ${badge}<span class="tag-ico">${iconSvg(b.icon)}<i class="tag-lv">${esc(fmt(lv))}</i></span>${sel ? `<b>${esc(t(stageName(b.id, st)))}</b>` : ""}<span class="tag-pops"></span>
       </button>`;
     }).join(""));
     // The next step.
@@ -2231,7 +2231,7 @@ export class TycoonUI {
     $("land-what").textContent = t(l.what);
     $("land-perks").innerHTML = [
       ["📈", t("Every business earns +{pct}%, for good", { pct })],
-      ["🏝️", t("The island grows: this land joins it")],
+      ["🌉", t("A new island joins your town by a bridge")],
       ["🔒", t("Stays yours, even after a New Era")],
       ["🗺️", t("Piece {n} of {all}", { n: k + 1, all: LAND.length })],
     ].map(([i2, tx]) => `<li><span>${i2}</span>${esc(tx)}</li>`).join("");

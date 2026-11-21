@@ -1788,4 +1788,12 @@ export const FR: Record<string, string> = {
   "Your businesses are earning it. Come back soon!": "Tes commerces le gagnent. Reviens vite !",
   "Buy this land": "Acheter ce terrain",
   "Price": "Prix",
+  "Harbor District": "Quartier du Port",
+  "Garden Hills": "Collines Jardin",
+  "A whole new island: a marina with boats, a fish market, a lighthouse and seaside homes": "Une toute nouvelle île : une marina avec des bateaux, un marché aux poissons, un phare et des maisons en bord de mer",
+  "A whole new island: big family homes, parks, a lake and a Ferris wheel": "Une toute nouvelle île : de grandes maisons familiales, des parcs, un lac et une grande roue",
+  "A whole new island: tall towers round a fountain square": "Une toute nouvelle île : de hautes tours autour d'une place à fontaine",
+  "A new island joins your town by a bridge": "Une nouvelle île rejoint ta ville par un pont",
+  "Districts for sale": "Quartiers à vendre",
+  "A green \"For sale\" bubble floats over a new island beside your town. Buy it with cash: a bridge joins it to the town, a whole district is built there, and every business earns 15% more.": "Une bulle verte « À vendre » flotte au-dessus d'une nouvelle île à côté de ta ville. Achète-la : un pont la relie à la ville, tout un quartier y est construit, et chaque commerce gagne 15 % de plus.",
 };

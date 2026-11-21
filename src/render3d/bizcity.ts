@@ -101,7 +101,12 @@ const PARKS: [number, number][] = [[4, 3], [3, 4]];
 const PLAZA: [number, number] = [4, 4];
 /** The plot beside the Coffee Cart where the player's first tower stands. */
 const PLOT: [number, number] = [-1, 0];
-const ALL = [...CELLS, ...PARKS, PLAZA, PLOT];
+/** The neighborhoods round the business district: blocks of homes, flats and corner shops
+ *  (and a park or two), so the town is a real city with downtown in the middle. */
+const NEIGH: [number, number][] = [[2, 0], [0, 2], [3, 1], [1, 3], [4, 2], [2, 4], [5, 3], [3, 5], [5, 4], [4, 5], [3, 0], [0, 3], [-1, 1], [5, 2]];
+/** Which of those are little parks instead of homes. */
+const NEIGH_PARK = new Set(["3,0", "0,3", "5,4"]);
+const ALL = [...CELLS, ...PARKS, PLAZA, PLOT, ...NEIGH];
 /** A piece of a merged model, painted one color (vertex colors; no uv, so pieces merge). */
 function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
   const g2 = geo.index ? geo.toNonIndexed() : geo, n = g2.attributes.position.count, cc = new THREE.Color(c), arr = new Float32Array(n * 3);
@@ -150,7 +155,10 @@ const landSeen = new Set<string>();
 let landBuiltOnce = false;
 /** Land next to the island (data/land.ts): its middle and size, on sale (floating a little way
  *  off the edge) or bought (joined to the island, overlapping its edge). */
-const LAND_R = 4.2;
+const DIST_N = 4, DIST_H = (DIST_N / 2) * C + 3.2, DIST_GAP = 6;
+/** How far a district's (rounded-square) coast is from its middle in direction (dx, dz). */
+const distEdge = (dx: number, dz: number) => DIST_H / Math.pow(Math.pow(Math.abs(dx), 4) + Math.pow(Math.abs(dz), 4), 0.25);
+const LAND_R = DIST_H;
 const landCache = new Map<string, { x: number; z: number; r: number }>();
 export function landSpot(k: number, bought: boolean): { x: number; z: number; r: number } {
   const key = `${k}|${bought}`;
@@ -162,7 +170,9 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     let t = 0;
     while (t < 200 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
     const best: [number, number] = [cx + dx * t, cz + dz * t];
-    const out = bought ? LAND_R * 0.75 : LAND_R + 0.35;
+    // A whole district: its own island, a bridge's length off the coast.
+    void bought;
+    const out = distEdge(dx, dz) + DIST_GAP;
     v = { x: best[0] + dx * out, z: best[1] + dz * out, r: LAND_R };
     landCache.set(key, v);
   }
@@ -234,7 +244,7 @@ export interface BizCity {
   /** The neighbor in the yellow jacket, when they're out (for their speech bubble). */
   resident(): THREE.Vector3 | null;
   /** Where a town rank's landmark is (the camera visits it when the rank is reached). */
-  landmark(rank: number): { x: number; z: number } | null;
+  landmark(rank: number): { x: number; z: number; zoom?: number } | null;
   /** The flower market's and the playground's spots. */
   spot(id: "flowers" | "play"): { x: number; z: number };
   /** Where piece of land k stands now (for its "for sale" bubble), or null if it isn't shown. */
@@ -1348,7 +1358,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const HOUSE = ["#fff1e0", "#e9f3ff", "#ffe8ef", "#eefbe8", "#fff7d6", "#f1ebff"];
   const ROOF = ["#d9534a", "#5a6fd0", "#e07a9a", "#4f9a5a", "#b8683a", "#7a5ad0"];
   const BRICK = ["#c9775a", "#d89a6a", "#b5655a", "#e0b48a", "#9a7ad0", "#6a9ad0"];
-  const neighborhood = (G: THREE.Group, i: number): number => {
+  const neighborhood = (G: THREE.Group, i: number, tall = 0): number => {
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => G.add(new THREE.Mesh(geo, m));
     const r = (k: number) => ((i * 7 + k * 13) % 6);
     // Ground: a small front lawn and a paved yard.
@@ -1376,7 +1386,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       geo.scale(1, 0.55 * (d + 0.2) / Math.sqrt(3), (d + 0.2) / Math.sqrt(3));
       K(geo.translate(cx, y + 0.275 * (d + 0.2) / Math.sqrt(3), cz), mats.c(c, 0.75));
     };
-    const kind = i % 3;
+    const kind = tall < 0 ? 3 : tall ? 1 : i % 3;
     let top = 0;
     if (kind === 0) {
       // Three town houses in a row, each its own color, with a door and a little chimney.
@@ -1394,7 +1404,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (let k = 0; k < 13; k++) K(new THREE.BoxGeometry(0.05, 0.3, 0.04).translate(-1.85 + k * 0.31, 0.22, 1.0), mats.c("#ffffff", 0.6));
     } else if (kind === 1) {
       // A block of flats: brick, balconies on the front, a water tank on the roof.
-      const w = 3.1, d = 2.5, floors = 4 + (i % 2), fh = 0.55, cz = -0.35, h = floors * fh;
+      const w = 3.1, d = 2.5, floors = tall || 4 + (i % 2), fh = 0.55, cz = -0.35, h = floors * fh;
       K(new THREE.BoxGeometry(w, h, d).translate(0, h / 2 + 0.06, cz), mats.c(BRICK[r(1)], 0.85));
       windows(w, d, 0.06, floors, fh, 0, cz, 4);
       for (let f = 1; f < floors; f++) for (const bx of [-0.78, 0.78]) {
@@ -1407,6 +1417,22 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       K(new THREE.BoxGeometry(0.5, 0.3, 0.4).translate(-0.7, h + 0.33, cz + 0.2), mats.c("#c8cce0", 0.5, 0.4));
       K(new THREE.BoxGeometry(0.5, 0.62, 0.06).translate(0, 0.37, cz + d / 2 + 0.02), winMat);
       top = h + 1.0;
+    } else if (kind === 3) {
+      // A glass office tower: a curtain wall with a white band at every floor and slim fins,
+      // a lobby with a canopy, and a crown on the roof.
+      const floors = -tall, fh = 0.6, w = 2.8, d = 2.4, cz = -0.3, h = 0.8 + floors * fh;
+      K(new THREE.BoxGeometry(w + 0.2, 0.8, d + 0.2).translate(0, 0.46, cz), mats.c("#e9e4f5", 0.6));
+      K(new THREE.BoxGeometry(w - 0.6, 0.6, 0.05).translate(0, 0.42, cz + d / 2 + 0.11), winMat);
+      K(new THREE.BoxGeometry(1.6, 0.06, 0.6).translate(0, 0.86, cz + d / 2 + 0.35), mats.c(ROOF[r(5)], 0.5));
+      K(new THREE.BoxGeometry(w, floors * fh, d).translate(0, 0.86 + (floors * fh) / 2, cz), winMat);
+      for (let f = 0; f <= floors; f++) K(new THREE.BoxGeometry(w + 0.06, 0.07, d + 0.06).translate(0, 0.86 + f * fh, cz), mats.c("#f4f2fa", 0.5));
+      for (let fx2 = 0; fx2 < 5; fx2++) for (const sd of [-1, 1]) {
+        const ox = -w / 2 + (fx2 + 0.5) * (w / 5);
+        K(new THREE.BoxGeometry(0.05, floors * fh, 0.08).translate(ox, 0.86 + (floors * fh) / 2, cz + sd * (d / 2 + 0.02)), mats.c("#c8cce0", 0.4, 0.4));
+      }
+      K(new THREE.BoxGeometry(w * 0.6, 0.5, d * 0.6).translate(0, 0.86 + floors * fh + 0.25, cz), mats.c("#d6d2e6", 0.5));
+      K(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6).translate(0.3, 0.86 + floors * fh + 0.95, cz), metal);
+      top = h + 1.4;
     } else {
       // A corner shop with flats above: a glass shop front and a striped awning.
       const w = 3.0, d = 2.4, cz = -0.3, gh = 0.75, floors = 2 + (i % 2), fh = 0.55, h = gh + floors * fh;
@@ -1429,6 +1455,45 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     if (i % 2) { const car = carGeo(BODY[(i * 3) % BODY.length], false).clone().rotateY(Math.PI / 2).translate(-1.1, 0.085, 1.65); K(car, carM); }
     return top;
   };
+
+  // The neighborhood blocks round downtown: all of them in one group, merged into a few
+  // meshes (cheap however many there are).
+  {
+    const ng = new THREE.Group();
+    g.add(ng);
+    const inner = new Set(["2,0", "0,2", "3,1", "1,3", "4,2", "2,4"]);
+    NEIGH.forEach((cell, k) => {
+      const { x, z } = cellXZ(cell), lg = new THREE.Group();
+      lg.position.set(x, 0.2, z);
+      // Face the nearer street toward the middle of the screen, like the business lots.
+      lg.rotation.y = cell[0] < cell[1] ? Math.PI / 2 : 0;
+      ng.add(lg);
+      if (NEIGH_PARK.has(`${cell[0]},${cell[1]}`)) {
+        const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
+        P(roundSlab(4.2, 4.2, 1.2, 0.06), k % 2 ? grass : grass2);
+        P(ribbon(sPath(1.9, k % 2 === 1), 0.55, 0.075), pave);
+        P(new THREE.CylinderGeometry(0.7, 0.7, 0.05, 20).translate(0.9, 0.08, -0.9), water);
+        P(new THREE.TorusGeometry(0.72, 0.06, 6, 20).rotateX(Math.PI / 2).translate(0.9, 0.1, -0.9), stone);
+        for (const [tx, tz, ts] of [[-1.3, -1.2, 1], [1.3, 1.0, 0.9], [-1.4, 1.4, 0.8], [0.2, -1.6, 0.7]]) {
+          P(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk);
+          P(new THREE.IcosahedronGeometry(0.5 * ts, 0).translate(tx, 0.95 * ts, tz), leaf);
+        }
+        P(new THREE.BoxGeometry(0.7, 0.06, 0.22).translate(-0.4, 0.42, 0.4), wood);
+        P(new THREE.BoxGeometry(0.7, 0.2, 0.05).translate(-0.4, 0.55, 0.3), wood);
+        for (let f = 0; f < 6; f++) P(new THREE.SphereGeometry(0.08, 6, 4).translate(0.4 + f * 0.2, 0.12, 1.6), mats.c(flowersOn[(f + k) % 4], 0.8));
+      } else if (inner.has(`${cell[0]},${cell[1]}`)) {
+        // Next to downtown: mid-rise flats and glass offices (the skyline steps down outward).
+        if (k % 2) neighborhood(lg, 20 + k, 6 + (k % 4)); else neighborhood(lg, 20 + k, -(6 + (k % 5)));
+      } else neighborhood(lg, 20 + k);
+      // Street trees along the sidewalks, two per side.
+      for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (const o of [-1.1, 1.1]) {
+        const tx = x + sx * 2.33 + (sz ? o : 0), tz = z + sz * 2.33 + (sx ? o : 0);
+        ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 6).translate(tx, 0.45, tz), trunk));
+        ng.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0).translate(tx, 0.85, tz), leaf));
+      }
+    });
+    mergeStatic(ng, 0.2);
+  }
 
   lots.forEach((lot, i) => {
     if (i >= CELLS.length) return;
@@ -1853,7 +1918,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   // ---- Town ranks (data/ranks.ts): as the company grows, the town itself changes for good ----
   const rank = cafe.rank ?? 0;
-  const landmarks: Record<number, () => { x: number; z: number }> = {};
+  const landmarks: Record<number, () => { x: number; z: number; zoom?: number }> = {};
   const outward = (u: number, out: THREE.Vector3, d: THREE.Vector3) => {
     carPath.at(u, out, d);
     const nx = d.z, nz = -d.x, sgn = (out.x - cx) * nx + (out.z - cz) * nz > 0 ? 1 : -1;
@@ -2109,167 +2174,204 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   life.add(saleCoin);
   const rush = ring(0xff4f8b, 2.5, 2.9), critic = ring(0x9a6cff, 2.3, 2.55), sel = ring(0xffe27a, 2.6, 2.95), gold = ring(0xffc93c, 2.2, 2.7);
 
-  // ---- Land next to the island (data/land.ts) ----
-  // On sale: a grassy piece of ground floating just off the edge, with a sale sign and a fence.
-  // Bought: it joins the island for good, with what was built there.
+  // ---- Districts (data/land.ts): whole islands of their own, as big as the town's core ----
+  // On sale: the district's island floats beside the town, its streets laid out and its lots
+  // empty, a glowing outline and a ghost of the bridge. Bought: a bridge joins it to the town
+  // and the whole district is built: its own houses, shops and a landmark of its own.
   const landShown: ({ x: number; z: number } | null)[] = LAND.map(() => null);
   (cafe.land ?? []).forEach(({ id, bought, sale }) => {
     const k = LAND.findIndex(l => l.id === id);
     if (k < 0 || (!bought && !sale)) return;
-    const sp = landSpot(k, bought), R = sp.r;
+    const sp = landSpot(k, bought);
     landShown[k] = { x: sp.x, z: sp.z };
+    const [dx0, dz0] = LAND[k].dir, dl = Math.hypot(dx0, dz0), ux = dx0 / dl, uz = dz0 / dl;
     const G = new THREE.Group();
-    G.position.set(sp.x, bought ? -0.004 : -0.35, sp.z);
+    G.position.set(sp.x, bought ? 0 : -0.6, sp.z);
     g.add(G);
     const L = (geo: THREE.BufferGeometry, m: THREE.Material) => { const me = new THREE.Mesh(geo, m); G.add(me); return me; };
-    // An organic outline (the same every time).
-    const pts: [number, number][] = [];
-    for (let a = 0; a < 16; a++) { const an = (a / 16) * Math.PI * 2, rr = R * (0.9 + 0.1 * Math.sin(an * 3 + k * 2) * Math.cos(an * 2 + k)); pts.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+    // The island: a rounded, slightly uneven square, in the same layers as the town's cliffs.
+    const outlineD: [number, number][] = [];
+    for (let a = 0; a < 64; a++) {
+      const an = (a / 64) * Math.PI * 2, c2 = Math.cos(an), s2 = Math.sin(an);
+      const sq = DIST_H / Math.pow(Math.pow(Math.abs(c2), 4) + Math.pow(Math.abs(s2), 4), 0.25);
+      const rr = sq * (1 + 0.035 * Math.sin(an * 5 + k * 1.7) + 0.02 * Math.sin(an * 11 + k));
+      outlineD.push([c2 * rr, s2 * rr]);
+    }
     const layer = (scale: number, depth: number, top: number, m: THREE.Material) => {
-      const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x * scale, -z * scale)));
+      const sh = new THREE.Shape(outlineD.map(([x, z]) => new THREE.Vector2(x * scale, -z * scale)));
       L(new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, top - depth, 0), m);
     };
-    // (Bought land is part of the island itself now: its coast takes it in.)
-    if (!bought) {
-      layer(1, 0.12, 0, verge);
-      layer(0.97, 0.5, -0.12, earth);
-      layer(0.9, 1.0, -0.62, rock);
-      L(new THREE.ConeGeometry(R * 0.75, R * 1.4, 8).rotateX(Math.PI).translate(0, -1.62 - R * 0.7, 0), rockDark);
+    layer(1, 0.12, 0, verge);
+    layer(1.006, 0.06, -0.02, own(std(new THREE.Color(st.lawn).multiplyScalar(0.8), { roughness: 0.95 })));
+    layer(0.995, 0.12, -0.12, own(std("#5a3f2a", { roughness: 1 })));
+    layer(0.99, 0.5, -0.24, earth);
+    layer(0.95, 1.2, -0.74, rock);
+    layer(0.82, 2.0, -1.94, rockDark);
+    layer(0.6, 2.6, -3.94, rock);
+    L(new THREE.ConeGeometry(DIST_H * 0.45, DIST_H * 0.9, 9).rotateX(Math.PI).translate(0, -6.5 - DIST_H * 0.45, 0), rockDark);
+    // Its streets: a grid of blocks with the town's own cozy streets, corner plazas and
+    // cobbled crossings.
+    const cellC = (i: number, j: number) => ({ x: (i - (DIST_N - 1) / 2) * C, z: (j - (DIST_N - 1) / 2) * C });
+    const qd = C / 2;
+    for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
+      const { x, z } = cellC(i, j);
+      L(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0, z), road);
+      L(roundSlab(C - ROAD * 2, C - ROAD * 2, 0.75, 0.18).translate(x, 0, z), curb);
+      L(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 0.66, 0.2).translate(x, 0, z), walk);
+      for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        const pc = C / 2 - ROAD - 0.5;
+        L(new THREE.CylinderGeometry(0.42, 0.42, 0.03, 20).translate(x + sx * pc, 0.262, z + sz * pc), plazaM);
+        L(new THREE.TorusGeometry(0.4, 0.035, 4, 24).rotateX(Math.PI / 2).translate(x + sx * pc, 0.272, z + sz * pc), plazaRing);
+      }
+      // Lamps on two corners.
+      for (const [a2, b2] of [[1, 1], [-1, -1]]) {
+        const e = C / 2 - ROAD - 0.5;
+        L(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a2 * e, 0.9, z + b2 * e), metal);
+        L(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a2 * e, 1.65, z + b2 * e), lampMat);
+      }
+      // Cobbled crossings on the streets between blocks.
+      for (const [di, dj] of [[1, 0], [0, 1]]) {
+        if (i + di >= DIST_N || j + dj >= DIST_N) continue;
+        for (const end of [-1, 1]) {
+          const cross = qd - ROAD - 0.5;
+          const bg = new THREE.BoxGeometry(ROAD * 2 - 0.1, 0.02, 0.62);
+          L(di ? bg.translate(x + qd, 0.052, z + end * cross) : bg.rotateY(Math.PI / 2).translate(x + end * cross, 0.052, z + qd), groutM);
+        }
+      }
     }
-    const ty = bought ? 0 : 0.12, tr = (x: number, z: number, s2 = 1) => { L(new THREE.CylinderGeometry(0.06 * s2, 0.1 * s2, 0.6 * s2, 6).translate(x, 0.3 * s2 + ty, z), trunk); L(new THREE.IcosahedronGeometry(0.5 * s2, 0).translate(x, 1.0 * s2 + ty, z), leaf); };
-    // Where things go: the far half of the piece (away from the island).
-    const [ddx, ddz] = LAND[k].dir, dl = Math.hypot(ddx, ddz), ux = ddx / dl, uz = ddz / dl;
-    const fx0 = 0, fz0 = 0;
+    // A low railing round the edge.
+    for (let a = 0; a < outlineD.length; a += 2) {
+      const [px, pz] = outlineD[a], kk = 0.96;
+      L(new THREE.BoxGeometry(0.12, 0.42, 0.12).translate(px * kk, 0.21, pz * kk), stone);
+    }
+    // The bridge: from the town's coast to the district's, a wooden deck on stone piers with
+    // railings and lamps (a see-through ghost of it while the district is for sale).
+    const bridgeLen = DIST_GAP + 4;
+    const bridge = new THREE.Group();
+    const deckM = bought ? wood : own(new THREE.MeshBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.35, depthWrite: false }));
+    bridge.add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.16, bridgeLen).translate(0, 0.06, 0), deckM));
+    if (bought) {
+      for (const sx of [-1.15, 1.15]) {
+        bridge.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, bridgeLen).translate(sx, 0.62, 0), wood));
+        for (let b = 0; b <= 8; b++) bridge.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.55, 0.1).translate(sx, 0.38, -bridgeLen / 2 + (b * bridgeLen) / 8), wood));
+      }
+      for (const bz of [-bridgeLen / 4, bridgeLen / 4]) bridge.add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 4, 8).translate(0, -2, bz), rock));
+      for (const bz of [-bridgeLen / 2 + 0.5, bridgeLen / 2 - 0.5]) for (const sx of [-1.3, 1.3]) {
+        bridge.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(sx, 0.75, bz), metal));
+        bridge.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6).translate(sx, 1.5, bz), lampMat));
+      }
+    }
+    const bMid = distEdge(ux, uz) + DIST_GAP / 2;
+    bridge.position.set(-ux * bMid, bought ? 0 : 0.6, -uz * bMid);
+    bridge.rotation.y = Math.atan2(ux, uz);
+    G.add(bridge);
+    // What's built on each block: the district's own theme.
+    const blocks = new THREE.Group();
+    G.add(blocks);
+    const themeOf = (i: number, j: number): string => {
+      const key = `${i},${j}`;
+      if (id === "meadow") return key === "1,1" ? "marina" : key === "2,2" ? "market" : key === "0,0" ? "lighthouse" : key === "2,1" ? "park" : "home";
+      if (id === "lakeside") return key === "1,1" ? "lake" : key === "2,1" ? "wheel" : key === "1,2" || key === "2,2" ? "park" : "home";
+      return key === "1,1" ? "fountain" : key === "2,2" ? "park" : "tower";
+    };
+    for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
+      const { x, z } = cellC(i, j), lg = new THREE.Group(), n = 40 + k * 20 + i * DIST_N + j;
+      lg.position.set(x, 0.2, z);
+      lg.rotation.y = i < j ? Math.PI / 2 : 0;
+      blocks.add(lg);
+      const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
+      const th = themeOf(i, j);
+      if (!bought) {
+        // For sale: open grass with a tree or two, waiting to be built on.
+        P(roundSlab(4.2, 4.2, 1.2, 0.06), n % 2 ? grass : grass2);
+        if (n % 3 === 0) { P(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(-1, 0.3, 0.8), trunk); P(new THREE.IcosahedronGeometry(0.5, 0).translate(-1, 0.95, 0.8), leaf); }
+        continue;
+      }
+      if (th === "home") { neighborhood(lg, n); continue; }
+      if (th === "tower") { if (n % 2) neighborhood(lg, n, 6 + ((n * 7) % 5)); else neighborhood(lg, n, -(8 + ((n * 5) % 7))); continue; }
+      P(roundSlab(4.2, 4.2, 1.2, 0.06), n % 2 ? grass : grass2);
+      const tr2 = (tx: number, tz: number, ts = 1) => { P(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk); P(new THREE.IcosahedronGeometry(0.5 * ts, 0).translate(tx, 0.95 * ts, tz), leaf); };
+      if (th === "park") {
+        P(ribbon(sPath(1.9, n % 2 === 1), 0.55, 0.075), pave);
+        tr2(-1.3, -1.2); tr2(1.3, 1.0, 0.9); tr2(-1.4, 1.4, 0.8); tr2(1.2, -1.5, 0.7);
+        for (let f = 0; f < 6; f++) P(new THREE.SphereGeometry(0.08, 6, 4).translate(0.3 + f * 0.2, 0.12, 1.65), mats.c(flowersOn[(f + n) % 4], 0.8));
+      } else if (th === "marina" || th === "lake") {
+        // Water in a stone basin, a pier, boats.
+        P(roundSlab(3.8, 3.8, 1.2, 0.05).translate(0, 0.02, 0), water);
+        P(new THREE.TorusGeometry(1.95, 0.08, 4, 40).rotateX(Math.PI / 2).scale(1, 1, 1).translate(0, 0.1, 0), stone);
+        P(new THREE.BoxGeometry(0.45, 0.06, 1.8).translate(0, 0.12, 1.0), wood);
+        for (let b = 0; b < (th === "marina" ? 3 : 2); b++) {
+          const bx = -1.1 + b * 1.1, bz = -0.7 + (b % 2) * 0.4;
+          P(new THREE.BoxGeometry(0.32, 0.12, 0.7).translate(bx, 0.12, bz), mats.c(["#ffffff", "#ff8a5c", "#4f8bff"][b], 0.6));
+          if (th === "marina") { P(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4).translate(bx, 0.55, bz), metal); P(new THREE.ConeGeometry(0.22, 0.6, 3).translate(bx + 0.08, 0.6, bz), mats.c("#ffffff", 0.7)); }
+        }
+        if (th === "lake") tr2(1.6, 1.6, 0.8);
+      } else if (th === "market") {
+        // The fish market: striped stalls with the day's catch.
+        for (let b = 0; b < 3; b++) {
+          const bx = -1.2 + b * 1.2;
+          P(new THREE.BoxGeometry(0.8, 0.35, 0.5).translate(bx, 0.17, 0.6), mats.c("#b07a4a", 0.8));
+          for (let f = 0; f < 3; f++) P(new THREE.SphereGeometry(0.08, 6, 4).scale(1.6, 0.6, 0.8).translate(bx - 0.22 + f * 0.22, 0.4, 0.6), mats.c(["#a8c4d8", "#ff8a7a", "#c8d4e0"][f], 0.4, 0.3));
+          for (const px of [-0.38, 0.38]) P(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 4).translate(bx + px, 0.45, 0.4), metal);
+          for (let w2 = 0; w2 < 5; w2++) P(new THREE.BoxGeometry(0.17, 0.03, 0.6).rotateX(0.3).translate(bx - 0.34 + w2 * 0.17, 0.92, 0.5), mats.c(w2 % 2 ? "#ffffff" : "#2f9bff", 0.6));
+        }
+        for (let c3 = 0; c3 < 4; c3++) P(new THREE.BoxGeometry(0.3, 0.2, 0.3).translate(-1.4 + c3 * 0.4, 0.1, -0.8), mats.c("#c89a5a", 0.8));
+        tr2(1.5, -1.4, 0.7);
+      } else if (th === "lighthouse") {
+        for (let r = 0; r < 6; r++) P(new THREE.CylinderGeometry(0.5 - r * 0.04, 0.54 - r * 0.04, 0.6, 14).translate(0, 0.3 + r * 0.6, -0.3), mats.c(r % 2 ? "#ffffff" : "#e2453c", 0.6));
+        P(new THREE.CylinderGeometry(0.34, 0.34, 0.45, 12).translate(0, 3.85, -0.3), lampMat);
+        P(new THREE.ConeGeometry(0.42, 0.45, 12).translate(0, 4.3, -0.3), mats.c("#e2453c", 0.6));
+        P(new THREE.BoxGeometry(1.0, 0.6, 0.8).translate(1.1, 0.3, 0.6), mats.c("#fff4e0", 0.8));
+        P(new THREE.ConeGeometry(0.72, 0.4, 4).rotateY(Math.PI / 4).translate(1.1, 0.8, 0.6), mats.c("#3f6fd0", 0.7));
+      } else if (th === "wheel") {
+        const wheel = new THREE.Group();
+        wheel.position.set(0, 1.85, -0.3);
+        const rim2 = mats.c("#ffffff", 0.5, 0.2);
+        wheel.add(new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.05, 6, 36), rim2));
+        const cabs: THREE.Mesh[] = [];
+        for (let sp2 = 0; sp2 < 10; sp2++) {
+          const a = (sp2 / 10) * Math.PI * 2;
+          wheel.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.5, 0.04).translate(0, 0.75, 0).rotateZ(a), rim2));
+          const cab = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.24), mats.c(["#ff4f6d", "#ffd23a", "#4f8bff", "#5ee0a0"][sp2 % 4], 0.5));
+          cab.position.set(Math.cos(a) * 1.5, Math.sin(a) * 1.5, 0);
+          wheel.add(cab); cabs.push(cab);
+        }
+        const face = Math.PI / 4 - lg.rotation.y;
+        const holder = new THREE.Group(); holder.rotation.y = face; holder.add(wheel); lg.add(holder);
+        for (const sx of [-0.5, 0.5]) for (const sz of [-0.18, 0.18]) holder.add(new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.1, 0.07).rotateZ(sx * 0.5).translate(sx * 0.5, 0.95, sz - 0.3), metal));
+        holder.userData.dynamic = true; wheel.userData.dynamic = true;
+        townTicks.push(t => { wheel.rotation.z = t * 0.22; for (const c4 of cabs) c4.rotation.z = -t * 0.22; });
+      } else if (th === "fountain") {
+        P(new THREE.CylinderGeometry(1.6, 1.6, 0.05, 28).translate(0, 0.06, 0), pave);
+        P(new THREE.CylinderGeometry(1.0, 1.05, 0.3, 24).translate(0, 0.2, 0), stone);
+        P(new THREE.CylinderGeometry(0.92, 0.92, 0.05, 24).translate(0, 0.33, 0), water);
+        P(new THREE.CylinderGeometry(0.12, 0.16, 0.9, 10).translate(0, 0.6, 0), stone);
+        P(new THREE.SphereGeometry(0.22, 10, 6).translate(0, 1.1, 0), water);
+        for (const [tx, tz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) tr2(tx, tz, 0.7);
+      }
+    }
+    mergeStatic(blocks, 0.2);
     if (!bought) {
-      // For sale: a glowing dotted border, a real "for sale" signboard, a few trees, boulders
-      // round the rim and wild flowers: a piece of land that looks worth buying.
+      // For sale: a glowing outline round the island and a gentle bob.
       const glowM = own(new THREE.MeshBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.85 }));
       glowM.userData.dynamic = true;
-      for (let a = 0; a < 36; a++) { const an = (a / 36) * Math.PI * 2, rr = R * (0.9 + 0.1 * Math.sin(an * 3 + k * 2) * Math.cos(an * 2 + k)) - 0.22; L(new THREE.BoxGeometry(0.28, 0.05, 0.1).rotateY(-an + Math.PI / 2).translate(Math.cos(an) * rr, 0.15, Math.sin(an) * rr), glowM); }
-      townTicks.push(t => { glowM.opacity = 0.55 + Math.sin(t * 3 + k) * 0.35; });
-      // The sign: a painted board on two posts, facing the camera.
-      const sc2 = document.createElement("canvas"); sc2.width = 256; sc2.height = 128;
-      const cx2 = sc2.getContext("2d");
-      if (cx2) {
-        cx2.fillStyle = "#fffaf0"; cx2.fillRect(0, 0, 256, 128);
-        cx2.fillStyle = "#16a35a"; cx2.fillRect(0, 0, 256, 54);
-        cx2.fillStyle = "#ffffff"; cx2.font = "bold 40px Arial Black, sans-serif"; cx2.textAlign = "center"; cx2.fillText("FOR SALE", 128, 42);
-        cx2.fillStyle = "#2a1f5c"; cx2.font = "bold 30px Arial, sans-serif"; cx2.fillText(LAND[k].icon + " " + LAND[k].name, 128, 98, 236);
-      }
-      const signTex = new THREE.CanvasTexture(sc2); signTex.colorSpace = THREE.SRGBColorSpace;
-      const signM = own(new THREE.MeshBasicMaterial({ map: signTex }));
-      signM.userData.dynamic = true;
-      const sign = new THREE.Group();
-      for (const px of [-0.7, 0.7]) sign.add(new THREE.Mesh(new THREE.BoxGeometry(0.09, 1.5, 0.09).translate(px, 0.75, 0), wood));
-      sign.add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.86, 0.06).translate(0, 1.2, 0), wood));
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.78).translate(0, 1.2, 0.035), signM);
-      sign.add(face);
-      sign.position.set(0, 0.12, 0.3);
-      sign.rotation.y = Math.PI / 4;
-      G.add(sign);
-      tr(-1.7, -0.6, 0.85); tr(1.4, -1.6, 0.7); tr(-0.9, 1.9, 0.6);
-      for (let b2 = 0; b2 < 9; b2++) { const an = b2 * 0.7 + k; L(new THREE.DodecahedronGeometry(0.18 + (b2 % 3) * 0.07, 0).translate(Math.cos(an) * R * 0.8, 0.14, Math.sin(an) * R * 0.8), stone); }
-      for (let f = 0; f < 5; f++) for (let h2 = 0; h2 < 4; h2++) L(new THREE.SphereGeometry(0.06, 5, 4).translate(1.2 + Math.cos(f * 1.3) * 0.8 + Math.cos(h2 * 1.6) * 0.1, 0.17, 0.9 + Math.sin(f * 1.3) * 0.7 + Math.sin(h2 * 1.6) * 0.1), mats.c(flowersOn[(f + k) % 4], 0.8));
+      for (let a = 0; a < outlineD.length; a++) { const [px, pz] = outlineD[a], [qx, qz] = outlineD[(a + 1) % outlineD.length]; if (a % 2) continue; L(new THREE.BoxGeometry(0.16, 0.06, Math.hypot(qx - px, qz - pz) * 0.9).rotateY(Math.atan2(qx - px, qz - pz)).translate((px + qx) / 2 * 0.985, 0.16, (pz + qz) / 2 * 0.985), glowM); }
+      townTicks.push(t => { glowM.opacity = 0.55 + Math.sin(t * 3 + k) * 0.35; G.position.y = -0.6 + Math.sin(t * 0.4 + k * 2) * 0.05; });
       G.userData.dynamic = true;
-      townTicks.push(t => { G.position.y = -0.35 + Math.sin(t * 0.4 + k * 2) * 0.05; });
-      return;
-    }
-    const rot = Math.atan2(ux, uz);
-    // A paved path from the new land back toward the town, so it reads as part of it.
-    L(ribbon([[0, 0], [-ux * R * 0.5 + uz * 0.4, -uz * R * 0.5 - ux * 0.4], [-ux * R * 1.15, -uz * R * 1.15]], 0.55, 0.012), pave);
-    const site = new THREE.Group();
-    site.position.set(fx0, 0.0, fz0);
-    site.scale.setScalar(1.5);
-    site.rotation.y = rot;
-    G.add(site);
-    // Just bought: what's built there rises out of the ground with a little bounce, a beat
-    // after the camera arrives (once per purchase; later visits show it as it is).
-    if (!landSeen.has(id) && landSeen.size + (cafe.land ?? []).filter(l => l.bought).length > 0 && landBuiltOnce) {
+    } else if (!landSeen.has(id) && landBuiltOnce) {
+      // Just bought: the whole district rises out of its streets, a beat after the camera arrives.
       const t0 = performance.now() + 900;
-      site.scale.set(1.5, 0.001, 1.5);
-      G.userData.dynamic = true;
-      site.userData.dynamic = true;
+      blocks.scale.set(1, 0.001, 1);
+      blocks.userData.dynamic = true;
       townTicks.push(() => {
-        const k2 = Math.min(1, Math.max(0, (performance.now() - t0) / 1300));
-        if (k2 >= 1 && site.scale.y === 1.5) return;
-        const e = k2 < 1 ? 1 - Math.pow(1 - k2, 3) + Math.sin(k2 * Math.PI) * 0.12 : 1;
-        site.scale.y = Math.max(0.001, 1.5 * e);
+        const k2 = Math.min(1, Math.max(0, (performance.now() - t0) / 1600));
+        if (k2 >= 1 && blocks.scale.y === 1) return;
+        blocks.scale.y = k2 < 1 ? Math.max(0.001, 1 - Math.pow(1 - k2, 3) + Math.sin(k2 * Math.PI) * 0.1) : 1;
         g.userData.moving = k2 < 1;
       });
     }
     landSeen.add(id);
-    const S2 = (geo: THREE.BufferGeometry, m: THREE.Material) => { const me = new THREE.Mesh(geo, m); site.add(me); return me; };
-    if (id === "meadow") {
-      // A sports field: striped grass, white lines, two goals, stands and floodlights.
-      for (let st2 = 0; st2 < 6; st2++) S2(new THREE.BoxGeometry(0.5, 0.03, 2.2).translate(-1.25 + st2 * 0.5, 0.02, 0), st2 % 2 ? grass : grass2);
-      const line = mats.c("#ffffff", 0.6);
-      for (const zz of [-1.1, 1.1]) S2(new THREE.BoxGeometry(3.0, 0.04, 0.05).translate(0, 0.04, zz), line);
-      for (const xx of [-1.5, 0, 1.5]) S2(new THREE.BoxGeometry(0.05, 0.04, 2.2).translate(xx, 0.04, 0), line);
-      S2(new THREE.TorusGeometry(0.35, 0.025, 4, 24).rotateX(Math.PI / 2).translate(0, 0.045, 0), line);
-      for (const sx of [-1, 1]) {
-        S2(new THREE.BoxGeometry(0.05, 0.4, 0.05).translate(sx * 1.5, 0.22, -0.4), line);
-        S2(new THREE.BoxGeometry(0.05, 0.4, 0.05).translate(sx * 1.5, 0.22, 0.4), line);
-        S2(new THREE.BoxGeometry(0.05, 0.05, 0.85).translate(sx * 1.5, 0.42, 0), line);
-      }
-      for (let r2 = 0; r2 < 3; r2++) {
-        S2(new THREE.BoxGeometry(3.0, 0.16, 0.3).translate(0, 0.08 + r2 * 0.16, -1.5 - r2 * 0.3), stone);
-        for (let c2 = 0; c2 < 10; c2++) S2(new THREE.BoxGeometry(0.2, 0.08, 0.16).translate(-1.35 + c2 * 0.3, 0.2 + r2 * 0.16, -1.5 - r2 * 0.3), mats.c(["#ff4f6d", "#4f8bff", "#ffd23a"][(c2 + r2) % 3], 0.6));
-      }
-      for (const [lx, lz] of [[-1.8, -1.3], [1.8, -1.3], [-1.8, 1.3], [1.8, 1.3]]) {
-        S2(new THREE.CylinderGeometry(0.04, 0.05, 1.9, 6).translate(lx, 0.95, lz), metal);
-        S2(new THREE.BoxGeometry(0.4, 0.22, 0.08).translate(lx, 1.95, lz), bulb);
-      }
-      // A match on: two teams.
-      for (let pl = 0; pl < 8; pl++) { const pp = makePerson(pl % 2 ? "#ff4f6d" : "#4f8bff"); pp.position.set(-1.1 + (pl % 4) * 0.7, 0.03, -0.6 + Math.floor(pl / 4) * 1.1); pp.rotation.y = pl % 2 ? -Math.PI / 2 : Math.PI / 2; site.add(pp); }
-      const ball = S2(new THREE.SphereGeometry(0.06, 8, 6).translate(0, 0.08, 0), line);
-      ball.userData.dynamic = true;
-      townTicks.push(t => { ball.position.set(Math.sin(t * 0.9) * 1.1, Math.abs(Math.sin(t * 3)) * 0.12, Math.sin(t * 1.7) * 0.6); });
-      landmarks[100 + k] = () => ({ x: sp.x + fx0, z: sp.z + fz0 });
-    } else if (id === "lakeside") {
-      // A lake with a pier and a rowing boat, and a Ferris wheel that turns.
-      S2(new THREE.CylinderGeometry(1.25, 1.25, 0.05, 24).translate(-0.6, 0.03, 0.4), water);
-      S2(new THREE.TorusGeometry(1.27, 0.07, 6, 28).rotateX(Math.PI / 2).translate(-0.6, 0.05, 0.4), stone);
-      S2(new THREE.BoxGeometry(0.3, 0.06, 0.9).translate(-0.6, 0.1, -0.5), wood);
-      const boat = S2(new THREE.BoxGeometry(0.22, 0.08, 0.45).translate(0, 0.08, 0), mats.c("#ff8a5c", 0.6));
-      boat.userData.dynamic = true;
-      const wheel = new THREE.Group();
-      wheel.position.set(1.2, 1.35, -0.3);
-      const rim = mats.c("#ffffff", 0.5, 0.2);
-      wheel.add(new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.04, 6, 32), rim));
-      for (let sp2 = 0; sp2 < 8; sp2++) {
-        const a = (sp2 / 8) * Math.PI * 2;
-        wheel.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.05, 0.03).translate(0, 0.52, 0).rotateZ(a), rim));
-        const cab = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.18), mats.c(["#ff4f6d", "#ffd23a", "#4f8bff", "#5ee0a0"][sp2 % 4], 0.5));
-        cab.position.set(Math.cos(a) * 1.05, Math.sin(a) * 1.05, 0);
-        wheel.add(cab);
-      }
-      // (Its face turned to the camera, like the windmill's sails.)
-      wheel.rotation.y = Math.PI / 4 - rot;
-      site.add(wheel);
-      for (const sx of [-0.5, 0.5]) for (const sz of [-0.15, 0.15]) S2(new THREE.BoxGeometry(0.06, 1.5, 0.06).rotateZ(sx * 0.5).translate(sx * 0.36, 0.68, sz).rotateY(Math.PI / 4 - rot).translate(1.2, 0, -0.3), metal);
-      wheel.userData.dynamic = true;
-      townTicks.push(t => {
-        wheel.rotation.z = t * 0.25;
-        wheel.children.forEach(c2 => { if ((c2 as THREE.Mesh).geometry?.type === "BoxGeometry" && c2.position.lengthSq() > 0.5) c2.rotation.z = -t * 0.25; });
-        boat.position.set(-0.6 + Math.cos(t * 0.3) * 0.7, 0, 0.4 + Math.sin(t * 0.3) * 0.7);
-        boat.rotation.y = -t * 0.3;
-      });
-      tr(-1.7, -1.0, 0.8); tr(0.2, 1.6, 0.75);
-      landmarks[100 + k] = () => ({ x: sp.x + fx0, z: sp.z + fz0 });
-    } else {
-      // Hillside homes: a little lane with family houses either side.
-      S2(new THREE.BoxGeometry(0.7, 0.03, 3.6).translate(0, 0.02, 0), road);
-      for (let h2 = 0; h2 < 6; h2++) {
-        const sx = h2 % 2 ? 1 : -1, hz = -1.2 + Math.floor(h2 / 2) * 1.2, w = 0.8, d = 0.75, hh = 0.55 + (h2 % 3) * 0.1;
-        const [wall, roofC] = COTTAGE[h2 % COTTAGE.length];
-        S2(new THREE.BoxGeometry(w, hh, d).translate(sx * 0.95, hh / 2, hz), mats.c(wall, 0.8));
-        S2(new THREE.ConeGeometry(0.62, 0.42, 4).rotateY(Math.PI / 4).translate(sx * 0.95, hh + 0.21, hz), mats.c(roofC, 0.7));
-        S2(new THREE.BoxGeometry(0.16, 0.3, 0.04).translate(sx * 0.95 - sx * 0.41, 0.17, hz), mats.c("#7a4a2e", 0.7));
-        for (const wz of [-0.2, 0.2]) S2(new THREE.BoxGeometry(0.04, 0.16, 0.14).translate(sx * 0.95 - sx * 0.41, hh * 0.62, hz + wz), winMat);
-      }
-      for (const [tx, tz] of [[-1.7, 1.5], [1.7, -1.6], [1.8, 1.2]]) S2(new THREE.IcosahedronGeometry(0.4, 0).translate(tx, 0.75, tz), leaf), S2(new THREE.CylinderGeometry(0.05, 0.08, 0.5, 6).translate(tx, 0.25, tz), trunk);
-      landmarks[100 + k] = () => ({ x: sp.x + fx0, z: sp.z + fz0 });
-    }
+    landmarks[100 + k] = () => ({ x: sp.x, z: sp.z, zoom: 0.8 });
   });
 
   // (From now on, newly bought land animates in.)
@@ -2526,7 +2628,8 @@ let landPts: [number, number][] = [];
 function setLand(bought: number[]): void {
   landKey = bought.join(",");
   landPts = [];
-  for (const k of bought) { const sp = landSpot(k, true); for (let a = 0; a < 12; a++) { const an = (a / 12) * Math.PI * 2, rr = sp.r - ISLAND_PAD * 0.55; landPts.push([sp.x + Math.cos(an) * rr, sp.z + Math.sin(an) * rr]); } }
+  // (Districts are islands of their own now: the town's coast stays as it is.)
+  void bought;
 }
 /** The outline at `pad` from the town (the coast at ISLAND_PAD takes in bought land unless
  *  `base`). */

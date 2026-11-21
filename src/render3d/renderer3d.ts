@@ -877,7 +877,7 @@ export class Renderer3D {
     if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
     // A rank's new landmark: the camera visits it for a moment.
     const lm = this.bizVisit && performance.now() < this.bizVisit.until ? this.biz.landmark(this.bizVisit.rank) : null;
-    if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = 1.8; }
+    if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = lm.zoom ?? 1.8; }
     // (The player's own zoom isn't held to the fit-the-island limit either.)
     this.bizFraming = framing || !!this.debugLook || !!lm || (this.camUser.on && !f.bizLive?.sel);
     this.bizFrameK += ((this.bizFraming ? 1 : 0) - this.bizFrameK) * Math.min(1, dt * 2);
