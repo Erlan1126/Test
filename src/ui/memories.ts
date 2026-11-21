@@ -41,7 +41,8 @@ export async function thenNowCard(then: Memory, nowImg: string, fromRank: number
   const bg = g.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, "#5a3ae0"); bg.addColorStop(0.55, "#b04ad8"); bg.addColorStop(1, "#ff8a5c");
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  const [a, b] = await Promise.all([loadImg(then.img), loadImg(nowImg)]);
+  let a: HTMLImageElement, b: HTMLImageElement;
+  try { [a, b] = await Promise.all([loadImg(then.img), loadImg(nowImg)]); } catch { return null; }
   const font = (px: number) => `${px}px Bungee, "Arial Black", sans-serif`;
   g.textAlign = "center"; g.fillStyle = "#fff";
   g.font = font(64); g.fillText(t("It started with one neighbor"), W / 2, 130, W - 80);

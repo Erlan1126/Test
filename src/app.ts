@@ -48,6 +48,7 @@ import { cafeRun, claimTerrace, FLOWER_WIDE, isWide, PLAY_FLOORS, projectGoal, p
 import type { BizCafe } from "./render3d/bizcity";
 import { adsReady, showRewarded } from "./ads";
 import { gameCenterAvailable, gameCenterSignIn, gameCenterSync, showGameCenter } from "./gamecenter";
+import { versusCard } from "./ui/versus";
 import { challengeIdFrom, createChallenge, fetchChallenge, fetchTries, postTry, type Challenge as FriendChallenge } from "./challenge";
 
 /** This phone's own shared challenges, to hear when friends try them. */
@@ -2244,9 +2245,12 @@ export class App implements DailyHost {
     if (!versus.hidden) {
       const beat = sim.score > this.friendScore;
       versus.classList.toggle("won", beat);
-      versus.textContent = beat
+      const line = beat
         ? t("You beat your friend's {n} people!", { n: fmt(this.friendScore) })
         : t("Your friend's tower: {n} people. {more} more to win.", { n: fmt(this.friendScore), more: fmt(this.friendScore - sim.score + 1) });
+      // The friend challenge card: both towers side by side, sent back with a rematch link.
+      versus.innerHTML = `<span>${esc(line)}</span><button type="button" class="vs-send" id="vs-send">${esc(t("Send {name} our towers", { name: this.vs?.name || t("your friend") }))}</button>`;
+      $("vs-send").addEventListener("click", e => { e.stopPropagation(); this.sound.click(); void this.sendVersus(); });
     }
     const next = won ? nextChallenge(save) : undefined;
     const again = $("again"), nb = $("next-challenge");
@@ -2466,6 +2470,22 @@ export class App implements DailyHost {
     toast(best.beat
       ? t("🏆 {name} beat your tower with {n} people! Build a taller one?", { name: who, n: fmt(best.score) })
       : t("👻 {name} tried to beat your tower ({n} people). You're still ahead!", { name: who, n: fmt(best.score) }));
+  }
+
+  /** Sends a friend the side-by-side card of your tower and theirs, with a rematch link. */
+  private async sendVersus(): Promise<void> {
+    const sim = this.sim, vs = this.vs;
+    const blob = await versusCard(
+      { name: this.save.nickname || t("Me"), people: sim.score, floors: sim.level, meters: sim.meters },
+      { name: vs?.name || t("My friend"), people: this.friendScore, floors: vs?.floors || undefined, meters: vs?.meters || undefined });
+    if (!blob) { toast(t("Couldn't make this card. Try again in a moment.")); return; }
+    let url = "";
+    if (this.pace.length >= 3) {
+      const c = await createChallenge({ name: this.save.nickname, score: sim.score, meters: sim.meters, floors: sim.level, pace: this.pace.slice(0, MAX_GHOST) });
+      if (c) { url = c.url; const sent = loadSent(); sent.ids = [...sent.ids, c.id].slice(-20); if (!sent.since) sent.since = Date.now(); storeSent(sent); }
+    }
+    const text = sim.score > this.friendScore ? t("I beat your tower in Skyrise! Rematch?") : t("So close! Your tower still wins in Skyrise. Rematch?");
+    await this.sharePicture(blob, url ? `${text} ${url}` : text, "skyrise-versus.jpg", !url);
   }
 
   private async share(): Promise<void> {
@@ -2702,8 +2722,8 @@ export class App implements DailyHost {
     } catch { return null; }
   }
   /** Shares a picture (the native share sheet, the browser's, or a download). */
-  async sharePicture(blob: Blob, text: string, name = "skyrise-skyhaven.jpg"): Promise<void> {
-    const full = this.site ? `${text} ${this.site}` : text;
+  async sharePicture(blob: Blob, text: string, name = "skyrise-skyhaven.jpg", addSite = true): Promise<void> {
+    const full = this.site && addSite ? `${text} ${this.site}` : text;
     if (await nativeShare(full, blob, name)) return;
     try {
       const file = new File([blob], name, { type: blob.type });

@@ -4009,3 +4009,7 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tycity #tcy-top .tg-lv { font-family: var(--ui) !important; font-weight: 900 !important; }
 #tycity #tcy-top .tcy-goal { top: auto !important; left: auto !important; right: auto !important; }
 #tycity:has(.tcy-goal:not([hidden])) .tcy-events, #tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 82px) !important; }
+/* The friend challenge: the result line, then a button to send both towers back. */
+#over-versus:not([hidden]) { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#over-versus .vs-send { padding: 9px 16px; border: 0; border-radius: 999px; cursor: pointer; font: 400 13px var(--display); color: #fff; background: linear-gradient(135deg, #3a8fe8, #6a3cff); box-shadow: 0 3px 0 #2a2aa0, 0 8px 16px rgba(58, 60, 200, 0.3); }
+#over-versus .vs-send:active { transform: translateY(2px); box-shadow: 0 1px 0 #2a2aa0; }

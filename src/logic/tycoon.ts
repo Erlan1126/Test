@@ -320,7 +320,9 @@ export function progressOf(s: SaveData, id: string, now = Date.now()): number {
   const b = businessById(id), start = s.tycoon.runs[id];
   if (!b || !start) return 0;
   const c = cycleOf(b, levelOf(s, id)) * 1000;
-  return ((now - start) % c) / c;
+  // (A clock set back can put the start in the future: no negative bar.)
+  if (now <= start || !(c > 0)) return 0;
+  return Math.min(0.9999, ((now - start) % c) / c);
 }
 
 /** How many hours the managers keep earning while the game is closed. */

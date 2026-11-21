@@ -740,8 +740,8 @@ export class TycoonUI {
     let last: { day?: string } & Partial<typeof sig> = {};
     try { last = JSON.parse(localStorage.getItem("skyrise.neighbor.v1") || "{}"); } catch { /* first time */ }
     if (last.day === day) return;
-    try { localStorage.setItem("skyrise.neighbor.v1", JSON.stringify({ day, ...sig })); } catch { /* private mode */ }
-    if (!last.day) return; // the very first day has its own story
+    const mark = () => { try { localStorage.setItem("skyrise.neighbor.v1", JSON.stringify({ day, ...sig })); } catch { /* private mode */ } };
+    if (!last.day) { mark(); return; } // the very first day has its own story
     const line = sig.rank > (last.rank ?? rk) ? t(NEIGHBOR_LINES[rk - 1] ?? NEIGHBOR_LINES[0])
       : sig.annex > (last.annex ?? 0) ? t("Have you seen the island next door? I can see it from my table!")
       : sig.done > (last.done ?? 0) ? t("The new project on our block is wonderful. Everyone's talking about it!")
@@ -750,7 +750,12 @@ export class TycoonUI {
     if (this.story.stage === "none") this.stage("seat");
     this.frameUntil = Date.now() + 5200;
     this.render();
-    this.later(700, () => this.say(line, 4600));
+    // (Marked as seen only once it's actually said: leaving the town first keeps it for later.)
+    this.later(700, () => {
+      if (!this.inCity || openModalEl() || document.body.classList.contains("tabs-open")) return;
+      mark();
+      this.say(line, 4600);
+    });
   }
 
   /** A new player's first loop, as a checklist on the Next step card (until all five are done
@@ -2153,7 +2158,8 @@ export class TycoonUI {
       const now = this.host.townPicture();
       if (first === undefined || !now) { toast(t("Open the town first, then try again")); return; }
       const blob = await thenNowCard(mem[first], now, first, rk);
-      if (blob) void this.host.sharePicture(blob, t("Skyhaven: from {a} to {b}. It started with one neighbor.", { a: t(RANKS[first].name), b: t(RANKS[rk].name) }));
+      if (!blob) { toast(t("Couldn't make this card. Try again in a moment.")); return; }
+      void this.host.sharePicture(blob, t("Skyhaven: from {a} to {b}. It started with one neighbor.", { a: t(RANKS[first].name), b: t(RANKS[rk].name) }));
     });
     openModal($("scrapbook"));
   }
