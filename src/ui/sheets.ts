@@ -637,7 +637,8 @@ export class Sheets {
   private renderJourney(): void {
     const p = this.save.profile, last = Math.max(20, p.level + 8);
     const rows: string[] = [];
-    for (let l = 1; l <= last; l++) {
+    // (It starts just before where the player is: the profile card stays in view, no scrolling.)
+    for (let l = Math.max(1, p.level - 1); l <= last; l++) {
       const st = levelStep(l);
       const state = l < p.level ? "done" : l === p.level ? "here" : "ahead";
       const big = st.features.map(f => `<div class="lv-feature"><span class="lv-ico">${iconSvg(FEATURE_ICON[f])}</span><span><b>${esc(t(FEATURE_NAMES[f]))}</b><small>${esc(t(FEATURE_TEXT[f]))}</small></span></div>`).join("");

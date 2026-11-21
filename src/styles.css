@@ -3872,3 +3872,6 @@ body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
 #mayor-goals li.mayor-pick button:active { transform: translateY(2px); box-shadow: none; }
 #mayor-goals li.mayor-pick b { font: 400 15px var(--display); color: #3a2a5a; }
 #mayor-goals li.mayor-pick small { font-size: 12px; font-weight: 700; color: #8a5a20; }
+/* Profile sub-tabs: their own size, scrolling sideways, never squeezed together. */
+#profile .seg.tabs button { flex: 0 0 auto !important; min-width: auto !important; }
+#profile .seg.tabs button[aria-selected="true"] { color: #fff !important; }

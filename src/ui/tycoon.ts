@@ -146,18 +146,20 @@ export class TycoonUI {
     $("tcy-next").addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.nextAct?.(); });
     // Hold a Buy button to keep buying (faster the longer you hold), as in the big idle games.
     let holdT = 0, holdN = 0, held: HTMLElement | null = null;
-    const stopHold = () => { clearTimeout(holdT); holdT = 0; holdN = 0; };
+    const stopHold = () => { clearTimeout(holdT); holdT = 0; holdN = 0; if (this.holdingCard) { this.holdingCard = false; this.render(); } };
     // After a hold, the release's own click must not buy one more.
     document.addEventListener("click", e => { if (held && e.isTrusted && held.contains(e.target as Node)) { e.stopPropagation(); e.preventDefault(); } held = null; }, true);
     document.addEventListener("contextmenu", e => { if ((e.target as Element).closest?.(".ty-buy")) e.preventDefault(); });
     document.addEventListener("pointerdown", e => {
       held = null;
-      const btn = (e.target as Element).closest<HTMLButtonElement>(".ty-buy:not(.need-floors)");
+      const btn = (e.target as Element).closest<HTMLButtonElement>('.ty-buy:not(.need-floors), #tcy-card .card-main[data-card="buy"]');
       if (!btn || btn.disabled) return;
       stopHold();
       const step = () => {
         if (!btn.isConnected || btn.disabled) { stopHold(); return; }
         held = btn;
+        // (The town card stays put while it's held, so the same button keeps buying.)
+        if (btn.closest("#tcy-card")) this.holdingCard = true;
         btn.click();
         holdN++;
         holdT = window.setTimeout(step, Math.max(60, 180 - holdN * 12));
@@ -927,7 +929,9 @@ export class TycoonUI {
   }
 
   /** The card for the selected building: one big main button, a few small ones. */
+  private holdingCard = false;
   private renderCard(now: number): void {
+    if (this.holdingCard) return;
     const card = $("tcy-card"), s = this.save, ty = s.tycoon;
     const i = BUSINESSES.findIndex(b => b.id === this.selected);
     card.hidden = i < 0;
