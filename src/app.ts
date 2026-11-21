@@ -1,4 +1,6 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
+import { LAND } from "./data/land";
+import { landOnSale } from "./logic/land";
 import { migrateChapters } from "./data/chapters";
 import { ANNEX_RANK, RANKS } from "./data/ranks";
 import type { SkylineTower } from "./logic/skyline";
@@ -1797,7 +1799,7 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -1814,6 +1816,7 @@ export class App implements DailyHost {
           rank: townRank(this.save),
           annex: this.save.annex.pick || (townRank(this.save) >= ANNEX_RANK ? "ghost" : ""),
           hq: Object.fromEntries(Object.entries(hqs).map(([id, tw]) => [id, look(tw)])),
+          land: LAND.map(l => ({ id: l.id, bought: this.save.land.includes(l.id), sale: landOnSale(this.save)?.id === l.id })),
         },
       };
     }

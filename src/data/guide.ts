@@ -13,6 +13,7 @@ export const GUIDE: GuideSection[] = [
       { icon: "home", title: "Your neighbor", text: "The first person in your first tower. They react whenever the town grows." },
       { icon: "island", title: "The island next door", text: "At Big City, a floating island rises. Build a greenhouse or a lookout there." },
       { icon: "pointer", title: "Looking around", text: "Drag one finger to move around the town. Pinch with two fingers to zoom." },
+      { icon: "target", title: "Land for sale", text: "Green \"For sale\" bubbles float next to your island. Buy the land with cash: it joins the island for good, something new is built there, and every business earns 5% more." },
       { icon: "star", title: "Town scrapbook", text: "A real picture of your town at every new rank. Share Then → Now with a friend (Me > Scrapbook)." },
       { icon: "target", title: "A greyed-out button?", text: "Tap it anyway: the game tells you why, and how long until you can." },
     ],

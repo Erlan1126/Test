@@ -10,6 +10,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { buildBlock, type BizBlock } from "./block";
 import { townFx, type TownLook } from "./shaders";
 import { buildModel, buildStreetFront, buildTerrace, type ModelMats } from "./bizmodels";
+import { LAND, type LandId } from "../data/land";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -141,13 +142,36 @@ export function lotPos(i: number): { x: number; z: number; a: number } {
   const a = gx < gz || (gx === gz && gx % 2 === 1) ? Math.PI / 2 : 0;
   return { x, z, a };
 }
+/** Land next to the island (data/land.ts): its middle and size, on sale (floating a little way
+ *  off the edge) or bought (joined to the island, overlapping its edge). */
+const LAND_R = 4.2;
+const landCache = new Map<string, { x: number; z: number; r: number }>();
+export function landSpot(k: number, bought: boolean): { x: number; z: number; r: number } {
+  const key = `${k}|${bought}`;
+  let v = landCache.get(key);
+  if (!v) {
+    const hull = islandOutline(ISLAND_PAD, true), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
+    const [dx0, dz0] = LAND[k].dir, l = Math.hypot(dx0, dz0), dx = dx0 / l, dz = dz0 / l;
+    // Where a line out from the middle of the island in that direction meets the coast.
+    let t = 0;
+    while (t < 200 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
+    const best: [number, number] = [cx + dx * t, cz + dz * t];
+    const out = bought ? LAND_R * 0.75 : LAND_R + 1.0;
+    v = { x: best[0] + dx * out, z: best[1] + dz * out, r: LAND_R };
+    landCache.set(key, v);
+  }
+  return v;
+}
 /** How far the island reaches on screen: across (t, screen x) and into the screen (s), local
  *  units. `core`: just the town and its verge (what the camera frames), not the countryside. */
 const boundsCache = new Map<boolean, { tMin: number; tMax: number; sMin: number; sMax: number }>();
 export function townBounds(core = false): { tMin: number; tMax: number; sMin: number; sMax: number } {
   let b = boundsCache.get(core);
   if (!b) {
-    const pts = islandOutline(core ? 1.0 : ISLAND_PAD), ts = pts.map(([x, z]) => (x - z) * Math.SQRT1_2), ss = pts.map(([x, z]) => (x + z) * Math.SQRT1_2);
+    const pts = islandOutline(core ? 1.0 : ISLAND_PAD, true).slice();
+    // (Looking around reaches the land next to the island too.)
+    if (!core) LAND.forEach((_, k) => { const a = landSpot(k, false); pts.push([a.x - a.r, a.z - a.r], [a.x + a.r, a.z + a.r], [a.x - a.r, a.z + a.r], [a.x + a.r, a.z - a.r]); });
+    const ts = pts.map(([x, z]) => (x - z) * Math.SQRT1_2), ss = pts.map(([x, z]) => (x + z) * Math.SQRT1_2);
     b = { tMin: Math.min(...ts), tMax: Math.max(...ts), sMin: Math.min(...ss), sMax: Math.max(...ss) };
     boundsCache.set(core, b);
   }
@@ -185,6 +209,8 @@ export interface BizCafe {
   rank?: number;
   /** The floating island next to the town: "ghost" (waiting to be built), or what's built. */
   annex?: "" | "ghost" | "greenhouse" | "lookout";
+  /** Land next to the island (data/land.ts): bought (part of the island) or on sale now. */
+  land?: { id: LandId; bought: boolean; sale: boolean }[];
 }
 /** A tower the player built, as the town draws it. */
 export type BizTower = NonNullable<BizCafe["starter"]>;
@@ -205,9 +231,12 @@ export interface BizCity {
   landmark(rank: number): { x: number; z: number } | null;
   /** The flower market's and the playground's spots. */
   spot(id: "flowers" | "play"): { x: number; z: number };
+  /** Where piece of land k stands now (for its "for sale" bubble), or null if it isn't shown. */
+  landAt(k: number): { x: number; z: number } | null;
 }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
+  setLand((cafe.land ?? []).filter(l => l.bought).map(l => LAND.findIndex(x => x.id === l.id)).filter(k => k >= 0));
   const g = new THREE.Group();
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
   const cache = new Map<string, THREE.MeshStandardMaterial>();
@@ -343,12 +372,23 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // (Rounded corners: the streets curve round each block like a real town's.)
     add(roundSlab(C - 1.6, C - 1.6, 1.15, 0.18).translate(x, 0, z), curb);
     add(roundSlab(C - 1.75, C - 1.75, 1.05, 0.2).translate(x, 0, z), walk);
-    for (const [dx, dz, along] of [[q, 0, "z"], [0, q, "x"]] as const) {
-      for (let k = -1; k <= 1; k++) add(along === "z" ? new THREE.BoxGeometry(0.08, 0.02, 0.6).translate(x + dx, 0.06, z + k * 1.3) : new THREE.BoxGeometry(0.6, 0.02, 0.08).translate(x + k * 1.3, 0.06, z + dz), lane);
-      // Zebra crossings near both ends of this street.
-      for (const end of [-1, 1]) for (let b = -2; b <= 2; b++) {
-        const o = end * (q - 1.25);
-        add(along === "z" ? new THREE.BoxGeometry(0.22, 0.02, 0.5).translate(x + dx + b * 0.3, 0.06, z + o) : new THREE.BoxGeometry(0.5, 0.02, 0.22).translate(x + o, 0.06, z + dz + b * 0.3), zebra);
+  }
+  // Road markings, only on the streets between two blocks (the half-width street round the
+  // edge of town has none): a dashed center line, and a zebra crossing just before each end.
+  {
+    const inAll = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz);
+    for (const cell of ALL) {
+      const { x, z } = cellXZ(cell);
+      // The street on this block's +x side (runs along z) and on its +z side (runs along x).
+      if (inAll(cell[0] + 1, cell[1])) {
+        const sx = x + q;
+        for (let k = -1; k <= 1; k++) add(new THREE.BoxGeometry(0.08, 0.02, 0.55).translate(sx, 0.06, z + k * 1.1), lane);
+        for (const end of [-1, 1]) for (let b = -2; b <= 2; b++) add(new THREE.BoxGeometry(0.2, 0.02, 0.5).translate(sx + b * 0.3, 0.06, z + end * (q - 1.4)), zebra);
+      }
+      if (inAll(cell[0], cell[1] + 1)) {
+        const sz = z + q;
+        for (let k = -1; k <= 1; k++) add(new THREE.BoxGeometry(0.55, 0.02, 0.08).translate(x + k * 1.1, 0.06, sz), lane);
+        for (const end of [-1, 1]) for (let b = -2; b <= 2; b++) add(new THREE.BoxGeometry(0.5, 0.02, 0.2).translate(x + end * (q - 1.4), 0.06, sz + b * 0.3), zebra);
       }
     }
   }
@@ -524,6 +564,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     wm.add(sails);
     townTicksEarly.push(t => { sails.rotation.z = -t * 0.7; });
   }
+  // (Nothing of the countryside's goes on the land the player bought: that's for its own build.)
+  const landBuilt = (cafe.land ?? []).filter(l => l.bought).map(l => landSpot(LAND.findIndex(x => x.id === l.id), true));
+  const onLand = (x: number, z: number) => landBuilt.some(sp => Math.hypot(x - sp.x, z - sp.z) < sp.r * 1.05);
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
@@ -533,7 +576,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let x = -OFF - C - ISLAND_PAD; x <= OFF + 3 * C + ISLAND_PAD; x += 1.2) for (let z = -OFF - C - ISLAND_PAD; z <= OFF + 3 * C + ISLAND_PAD; z += 1.2) {
       const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
       k++;
-      if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3) continue;
+      if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3 || onLand(jx, jz)) continue;
       if (Math.hypot(jx - fx0, jz - fz0) < 1.6 || Math.hypot(jx - (fx0 + fallAt[0]) / 2, jz - (fz0 + fallAt[1]) / 2) < 1.0) continue;
       if (nearLane(jx, jz, 0.75)) continue;
       // Out in the countryside: farm fields in rows (wheat, greens, lavender, ploughed earth)
@@ -1446,13 +1489,22 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     }
     if (lot.ready) {
       // Ready to grow: scaffolding round the building and a glowing arrow above it.
+      // (It hugs the building itself, so it never reaches out over the street.)
       const sc = mats.c("#ff9a3b", 0.5, 0.3), plank = mats.c("#c8a070");
-      const h = Math.max(1.6, tops[i] * 0.85), w = 2.25;
-      for (const [px, pz] of [[-w, -w], [w, -w], [-w, w], [w, w]]) lotG.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, h, 5).translate(px, h / 2, pz), sc));
-      for (let y = 0.9; y < h; y += 0.9) {
-        lotG.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2, 0.05, 0.05).translate(0, y, w), sc));
-        for (const sd of [-1, 1]) lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, w * 2).translate(sd * w, y, 0), sc));
-        lotG.add(new THREE.Mesh(new THREE.BoxGeometry(w * 2, 0.04, 0.35).translate(0, y - 0.04, w - 0.2), plank));
+      lotG.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(lotG.matrixWorld).invert(), bb = new THREE.Box3();
+      for (const ch of lotG.children) { const b2 = new THREE.Box3().setFromObject(ch).applyMatrix4(inv); if (!b2.isEmpty() && b2.max.y > 0.25) bb.union(b2); }
+      const wx = bb.isEmpty() ? 1.2 : Math.min(1.95, Math.max(0.8, Math.max(-bb.min.x, bb.max.x) + 0.18));
+      const wz = bb.isEmpty() ? 1.2 : Math.min(1.95, Math.max(0.8, Math.max(-bb.min.z, bb.max.z) + 0.18));
+      const h = Math.min(Math.max(1.2, (bb.isEmpty() ? 1.6 : bb.max.y) + 0.15), 4);
+      for (const [px, pz] of [[-wx, -wz], [wx, -wz], [-wx, wz], [wx, wz], [0, wz], [0, -wz], [wx, 0], [-wx, 0]]) lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.06).translate(px, h / 2, pz), sc));
+      for (let y = 0.55; y < h; y += 0.55) {
+        for (const sd of [-1, 1]) {
+          lotG.add(new THREE.Mesh(new THREE.BoxGeometry(wx * 2, 0.05, 0.05).translate(0, y, sd * wz), sc));
+          lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, wz * 2).translate(sd * wx, y, 0), sc));
+        }
+        lotG.add(new THREE.Mesh(new THREE.BoxGeometry(wx * 2, 0.04, 0.28).translate(0, y - 0.04, wz - 0.12), plank));
+        lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, wz * 2).translate(wx - 0.12, y - 0.04, 0), plank));
       }
       const arrow = new THREE.Group();
       const am = mats.sign("#b48cff");
@@ -2003,6 +2055,131 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   life.add(saleCoin);
   const rush = ring(0xff4f8b, 2.5, 2.9), critic = ring(0x9a6cff, 2.3, 2.55), sel = ring(0xffe27a, 2.6, 2.95), gold = ring(0xffc93c, 2.2, 2.7);
 
+  // ---- Land next to the island (data/land.ts) ----
+  // On sale: a grassy piece of ground floating just off the edge, with a sale sign and a fence.
+  // Bought: it joins the island for good, with what was built there.
+  const landShown: ({ x: number; z: number } | null)[] = LAND.map(() => null);
+  (cafe.land ?? []).forEach(({ id, bought, sale }) => {
+    const k = LAND.findIndex(l => l.id === id);
+    if (k < 0 || (!bought && !sale)) return;
+    const sp = landSpot(k, bought), R = sp.r;
+    landShown[k] = { x: sp.x, z: sp.z };
+    const G = new THREE.Group();
+    G.position.set(sp.x, bought ? -0.004 : -0.8, sp.z);
+    g.add(G);
+    const L = (geo: THREE.BufferGeometry, m: THREE.Material) => { const me = new THREE.Mesh(geo, m); G.add(me); return me; };
+    // An organic outline (the same every time).
+    const pts: [number, number][] = [];
+    for (let a = 0; a < 16; a++) { const an = (a / 16) * Math.PI * 2, rr = R * (0.9 + 0.1 * Math.sin(an * 3 + k * 2) * Math.cos(an * 2 + k)); pts.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+    const layer = (scale: number, depth: number, top: number, m: THREE.Material) => {
+      const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x * scale, -z * scale)));
+      L(new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, top - depth, 0), m);
+    };
+    // (Bought land is part of the island itself now: its coast takes it in.)
+    if (!bought) {
+      layer(1, 0.12, 0, verge);
+      layer(0.97, 0.5, -0.12, earth);
+      layer(0.9, 1.0, -0.62, rock);
+      L(new THREE.ConeGeometry(R * 0.75, R * 1.4, 8).rotateX(Math.PI).translate(0, -1.62 - R * 0.7, 0), rockDark);
+    }
+    const tr = (x: number, z: number, s2 = 1) => { L(new THREE.CylinderGeometry(0.06 * s2, 0.1 * s2, 0.6 * s2, 6).translate(x, 0.3 * s2 + 0.12, z), trunk); L(new THREE.IcosahedronGeometry(0.5 * s2, 0).translate(x, 1.0 * s2 + 0.12, z), leaf); };
+    // Where things go: the far half of the piece (away from the island).
+    const [ddx, ddz] = LAND[k].dir, dl = Math.hypot(ddx, ddz), ux = ddx / dl, uz = ddz / dl;
+    const fx0 = 0, fz0 = 0;
+    if (!bought) {
+      // For sale: a fence round it, a sign, a couple of trees.
+      for (let a = 0; a < 20; a++) { const an = (a / 20) * Math.PI * 2; L(new THREE.BoxGeometry(0.06, 0.38, 0.06).translate(Math.cos(an) * R * 0.78, 0.3, Math.sin(an) * R * 0.78), wood); }
+      L(new THREE.TorusGeometry(R * 0.78, 0.025, 4, 40).rotateX(Math.PI / 2).translate(0, 0.42, 0), wood);
+      L(new THREE.BoxGeometry(0.1, 1.5, 0.1).translate(0, 0.85, 0), metal);
+      L(new THREE.BoxGeometry(1.7, 0.95, 0.1).translate(0, 1.45, 0), mats.sign("#2fbf71"));
+      L(new THREE.BoxGeometry(1.3, 0.14, 0.11).translate(0, 1.6, 0), mats.c("#ffffff"));
+      L(new THREE.BoxGeometry(0.9, 0.12, 0.11).translate(0, 1.3, 0), mats.c("#ffffff"));
+      tr(-1.6, -0.9, 0.9); tr(1.5, 1.0, 0.8); tr(1.2, -1.5, 0.7);
+      for (let f = 0; f < 10; f++) L(new THREE.SphereGeometry(0.08, 6, 4).translate(-1.8 + f * 0.35, 0.16, 1.7 - (f % 3) * 0.2), mats.c(flowersOn[f % 4], 0.8));
+      G.userData.dynamic = true;
+      townTicks.push(t => { G.position.y = -0.8 + Math.sin(t * 0.6 + k * 2) * 0.12; });
+      return;
+    }
+    const rot = Math.atan2(ux, uz);
+    const site = new THREE.Group();
+    site.position.set(fx0, 0.0, fz0);
+    site.scale.setScalar(1.5);
+    site.rotation.y = rot;
+    G.add(site);
+    const S2 = (geo: THREE.BufferGeometry, m: THREE.Material) => { const me = new THREE.Mesh(geo, m); site.add(me); return me; };
+    if (id === "meadow") {
+      // A sports field: striped grass, white lines, two goals, stands and floodlights.
+      for (let st2 = 0; st2 < 6; st2++) S2(new THREE.BoxGeometry(0.5, 0.03, 2.2).translate(-1.25 + st2 * 0.5, 0.02, 0), st2 % 2 ? grass : grass2);
+      const line = mats.c("#ffffff", 0.6);
+      for (const zz of [-1.1, 1.1]) S2(new THREE.BoxGeometry(3.0, 0.04, 0.05).translate(0, 0.04, zz), line);
+      for (const xx of [-1.5, 0, 1.5]) S2(new THREE.BoxGeometry(0.05, 0.04, 2.2).translate(xx, 0.04, 0), line);
+      S2(new THREE.TorusGeometry(0.35, 0.025, 4, 24).rotateX(Math.PI / 2).translate(0, 0.045, 0), line);
+      for (const sx of [-1, 1]) {
+        S2(new THREE.BoxGeometry(0.05, 0.4, 0.05).translate(sx * 1.5, 0.22, -0.4), line);
+        S2(new THREE.BoxGeometry(0.05, 0.4, 0.05).translate(sx * 1.5, 0.22, 0.4), line);
+        S2(new THREE.BoxGeometry(0.05, 0.05, 0.85).translate(sx * 1.5, 0.42, 0), line);
+      }
+      for (let r2 = 0; r2 < 3; r2++) {
+        S2(new THREE.BoxGeometry(3.0, 0.16, 0.3).translate(0, 0.08 + r2 * 0.16, -1.5 - r2 * 0.3), stone);
+        for (let c2 = 0; c2 < 10; c2++) S2(new THREE.BoxGeometry(0.2, 0.08, 0.16).translate(-1.35 + c2 * 0.3, 0.2 + r2 * 0.16, -1.5 - r2 * 0.3), mats.c(["#ff4f6d", "#4f8bff", "#ffd23a"][(c2 + r2) % 3], 0.6));
+      }
+      for (const [lx, lz] of [[-1.8, -1.3], [1.8, -1.3], [-1.8, 1.3], [1.8, 1.3]]) {
+        S2(new THREE.CylinderGeometry(0.04, 0.05, 1.9, 6).translate(lx, 0.95, lz), metal);
+        S2(new THREE.BoxGeometry(0.4, 0.22, 0.08).translate(lx, 1.95, lz), bulb);
+      }
+      // A match on: two teams.
+      for (let pl = 0; pl < 8; pl++) { const pp = makePerson(pl % 2 ? "#ff4f6d" : "#4f8bff"); pp.position.set(-1.1 + (pl % 4) * 0.7, 0.03, -0.6 + Math.floor(pl / 4) * 1.1); pp.rotation.y = pl % 2 ? -Math.PI / 2 : Math.PI / 2; site.add(pp); }
+      const ball = S2(new THREE.SphereGeometry(0.06, 8, 6).translate(0, 0.08, 0), line);
+      ball.userData.dynamic = true;
+      townTicks.push(t => { ball.position.set(Math.sin(t * 0.9) * 1.1, Math.abs(Math.sin(t * 3)) * 0.12, Math.sin(t * 1.7) * 0.6); });
+      landmarks[100 + k] = () => ({ x: sp.x + fx0, z: sp.z + fz0 });
+    } else if (id === "lakeside") {
+      // A lake with a pier and a rowing boat, and a Ferris wheel that turns.
+      S2(new THREE.CylinderGeometry(1.25, 1.25, 0.05, 24).translate(-0.6, 0.03, 0.4), water);
+      S2(new THREE.TorusGeometry(1.27, 0.07, 6, 28).rotateX(Math.PI / 2).translate(-0.6, 0.05, 0.4), stone);
+      S2(new THREE.BoxGeometry(0.3, 0.06, 0.9).translate(-0.6, 0.1, -0.5), wood);
+      const boat = S2(new THREE.BoxGeometry(0.22, 0.08, 0.45).translate(0, 0.08, 0), mats.c("#ff8a5c", 0.6));
+      boat.userData.dynamic = true;
+      const wheel = new THREE.Group();
+      wheel.position.set(1.2, 1.35, -0.3);
+      const rim = mats.c("#ffffff", 0.5, 0.2);
+      wheel.add(new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.04, 6, 32), rim));
+      for (let sp2 = 0; sp2 < 8; sp2++) {
+        const a = (sp2 / 8) * Math.PI * 2;
+        wheel.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.05, 0.03).translate(0, 0.52, 0).rotateZ(a), rim));
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.18), mats.c(["#ff4f6d", "#ffd23a", "#4f8bff", "#5ee0a0"][sp2 % 4], 0.5));
+        cab.position.set(Math.cos(a) * 1.05, Math.sin(a) * 1.05, 0);
+        wheel.add(cab);
+      }
+      // (Its face turned to the camera, like the windmill's sails.)
+      wheel.rotation.y = Math.PI / 4 - rot;
+      site.add(wheel);
+      for (const sx of [-0.5, 0.5]) for (const sz of [-0.15, 0.15]) S2(new THREE.BoxGeometry(0.06, 1.5, 0.06).rotateZ(sx * 0.5).translate(sx * 0.36, 0.68, sz).rotateY(Math.PI / 4 - rot).translate(1.2, 0, -0.3), metal);
+      wheel.userData.dynamic = true;
+      townTicks.push(t => {
+        wheel.rotation.z = t * 0.25;
+        wheel.children.forEach(c2 => { if ((c2 as THREE.Mesh).geometry?.type === "BoxGeometry" && c2.position.lengthSq() > 0.5) c2.rotation.z = -t * 0.25; });
+        boat.position.set(-0.6 + Math.cos(t * 0.3) * 0.7, 0, 0.4 + Math.sin(t * 0.3) * 0.7);
+        boat.rotation.y = -t * 0.3;
+      });
+      tr(-1.7, -1.0, 0.8); tr(0.2, 1.6, 0.75);
+      landmarks[100 + k] = () => ({ x: sp.x + fx0, z: sp.z + fz0 });
+    } else {
+      // Hillside homes: a little lane with family houses either side.
+      S2(new THREE.BoxGeometry(0.7, 0.03, 3.6).translate(0, 0.02, 0), road);
+      for (let h2 = 0; h2 < 6; h2++) {
+        const sx = h2 % 2 ? 1 : -1, hz = -1.2 + Math.floor(h2 / 2) * 1.2, w = 0.8, d = 0.75, hh = 0.55 + (h2 % 3) * 0.1;
+        const [wall, roofC] = COTTAGE[h2 % COTTAGE.length];
+        S2(new THREE.BoxGeometry(w, hh, d).translate(sx * 0.95, hh / 2, hz), mats.c(wall, 0.8));
+        S2(new THREE.ConeGeometry(0.62, 0.42, 4).rotateY(Math.PI / 4).translate(sx * 0.95, hh + 0.21, hz), mats.c(roofC, 0.7));
+        S2(new THREE.BoxGeometry(0.16, 0.3, 0.04).translate(sx * 0.95 - sx * 0.41, 0.17, hz), mats.c("#7a4a2e", 0.7));
+        for (const wz of [-0.2, 0.2]) S2(new THREE.BoxGeometry(0.04, 0.16, 0.14).translate(sx * 0.95 - sx * 0.41, hh * 0.62, hz + wz), winMat);
+      }
+      for (const [tx, tz] of [[-1.7, 1.5], [1.7, -1.6], [1.8, 1.2]]) S2(new THREE.IcosahedronGeometry(0.4, 0).translate(tx, 0.75, tz), leaf), S2(new THREE.CylinderGeometry(0.05, 0.08, 0.5, 6).translate(tx, 0.25, tz), trunk);
+      landmarks[100 + k] = () => ({ x: sp.x + fx0, z: sp.z + fz0 });
+    }
+  });
+
   if (blobGeos.length) { const bg = mergeGeometries(blobGeos); blobGeos.forEach(q => q.dispose()); if (bg) add(bg, blobM); }
   mergeStatic(g);
 
@@ -2020,10 +2197,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const lampW = lampAt.map(() => new THREE.Vector3());
   return {
     group: g,
-    top: i => (i === -1 ? plotTop : i < -1 ? 1.4 : tops[i] ?? 2),
+    top: i => (i === -1 ? plotTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),
     resident: () => block.resident(),
     landmark: r => (landmarks[r] ? landmarks[r]() : null),
     spot: id => block.spot(id),
+    landAt: k => landShown[k] ?? null,
     look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,
     update(t, night, live) {
@@ -2246,16 +2424,27 @@ export function roofProp(id: string, c1: THREE.Color, c2: THREE.Color): THREE.Gr
 /** How far the island reaches past the town's streets: a countryside ring of farms, cottages,
  *  a windmill and a winding lane (more to explore now that you can drag the town around). */
 const ISLAND_PAD = 3.4;
-const outlineCache = new Map<number, [number, number][]>();
-function islandOutline(pad = ISLAND_PAD): [number, number][] {
-  const hit = outlineCache.get(pad);
+const outlineCache = new Map<string, [number, number][]>();
+/** The island's coast takes in the land the player has bought (set by each town build). */
+let landKey = "";
+let landPts: [number, number][] = [];
+function setLand(bought: number[]): void {
+  landKey = bought.join(",");
+  landPts = [];
+  for (const k of bought) { const sp = landSpot(k, true); for (let a = 0; a < 12; a++) { const an = (a / 12) * Math.PI * 2, rr = sp.r - ISLAND_PAD * 0.55; landPts.push([sp.x + Math.cos(an) * rr, sp.z + Math.sin(an) * rr]); } }
+}
+/** The outline at `pad` from the town (the coast at ISLAND_PAD takes in bought land unless
+ *  `base`). */
+function islandOutline(pad = ISLAND_PAD, base = false): [number, number][] {
+  const withLand = !base && pad === ISLAND_PAD && landPts.length > 0, key = withLand ? `${pad}|${landKey}` : `${pad}`;
+  const hit = outlineCache.get(key);
   if (hit) return hit;
-  const r = makeOutline(pad);
-  outlineCache.set(pad, r);
+  const r = makeOutline(pad, withLand ? landPts : []);
+  outlineCache.set(key, r);
   return r;
 }
-function makeOutline(pad: number): [number, number][] {
-  const pts: [number, number][] = [];
+function makeOutline(pad: number, extra: [number, number][]): [number, number][] {
+  const pts: [number, number][] = [...extra];
   for (const c of [...ALL, ...BEACH]) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
   pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);

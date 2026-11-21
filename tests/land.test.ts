@@ -1,0 +1,44 @@
+import { describe, expect, it } from "vitest";
+import { buyLand, landOnSale, landPrice } from "../src/logic/land";
+import { LAND, LAND_BONUS } from "../src/data/land";
+import { defaultSave, normalize } from "../src/logic/save";
+import { multiplier, newEra } from "../src/logic/tycoon";
+import { BUSINESSES } from "../src/data/tycoon";
+
+describe("land next to the island", () => {
+  it("goes on sale once the company has two businesses, one piece at a time", () => {
+    const s = defaultSave();
+    expect(landOnSale(s)).toBeNull();
+    s.tycoon.levels = { [BUSINESSES[0].id]: 3, [BUSINESSES[1].id]: 1 };
+    s.tycoon.tips = 3;
+    expect(landOnSale(s)?.id).toBe(LAND[0].id);
+    s.tycoon.coins = 1e12;
+    expect(buyLand(s, LAND[1].id)).toBe("locked");
+    expect(buyLand(s, LAND[0].id)).toBe("ok");
+    expect(buyLand(s, LAND[0].id)).toBe("bought");
+    expect(landOnSale(s)?.id).toBe(LAND[1].id);
+  });
+  it("costs cash, refuses when short, and raises every business's earnings", () => {
+    const s = defaultSave();
+    s.tycoon.levels = { [BUSINESSES[0].id]: 3, [BUSINESSES[1].id]: 1 };
+    s.tycoon.tips = 3;
+    const l = landOnSale(s)!, price = landPrice(s, l);
+    expect(price).toBeGreaterThanOrEqual(l.min);
+    s.tycoon.coins = price - 1;
+    expect(buyLand(s, l.id)).toBe("short");
+    const before = multiplier(s, Date.now(), false);
+    s.tycoon.coins = price;
+    expect(buyLand(s, l.id)).toBe("ok");
+    expect(s.tycoon.coins).toBe(0);
+    expect(multiplier(s, Date.now(), false) / before).toBeCloseTo(1 + LAND_BONUS, 6);
+    // Bought land stays through a New Era.
+    s.tycoon.lifetime = 1e15;
+    newEra(s, Date.now());
+    expect(s.land).toEqual([l.id]);
+  });
+  it("survives a save round trip and drops unknown or repeated ids", () => {
+    const s = normalize({ ...defaultSave(), land: ["meadow", "meadow", "moon", 7] } as unknown as Record<string, unknown>);
+    expect(s.land).toEqual(["meadow"]);
+    expect(normalize({} as Record<string, unknown>).land).toEqual([]);
+  });
+});

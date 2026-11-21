@@ -32,6 +32,8 @@ import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
 import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg } from "./mayor";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
+import { buyLand, landOnSale, landPrice } from "../logic/land";
+import { LAND, LAND_BONUS } from "../data/land";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
 import { PAGE_INTRO } from "../data/guide";
 import { loadMemories, saveMemory, thenNowCard } from "./memories";
@@ -831,6 +833,9 @@ export class TycoonUI {
       const price = annexPrice(s);
       return { text: t("A new island is waiting!"), sub: t("Build a greenhouse or a lookout across the sky · {n}", { n: coins(price) }), pct: Math.min(1, ty.coins / price), tone: "gift", act: () => this.openAnnex() };
     }
+    // Land for sale next to the island, once the company can afford it.
+    { const l = landOnSale(s), lp = l ? landPrice(s, l) : 0;
+      if (l && ty.coins >= lp) return { text: t("Land for sale next to your island!"), sub: t("{name}: {what} · {n}", { name: t(l.name), what: t(l.what), n: coins(lp) }), pct: 1, tone: "gift", act: () => this.openLand() }; }
     // From here on every step says what it brings the town: the next rank and what it adds.
     const rk = townRank(s), nx = RANKS[rk + 1], left = nx ? Math.max(1, nx.at - usedFloors(s)) : 0;
     const toward = nx ? t("{n} business levels until {rank}: {unlock}", { n: fmt(left), rank: t(nx.name), unlock: t(nx.unlock) }) : "";
@@ -885,7 +890,10 @@ export class TycoonUI {
     // (During a story close-up only the Coffee Cart keeps its bubble: nothing covers the
     // neighbor and their moment.)
     const closeUp = live.frame;
-    this.put($("tcy-labels"), starterTag + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    // Land for sale next to the island: a green "for sale" bubble over it, with its price.
+    const sale = landOnSale(s), sk = sale ? LAND.indexOf(sale) : -1;
+    const landTag = sale && !closeUp ? `<button type="button" class="tag bub land-sale" data-tag="land-${sale.id}" data-i="${-10 - sk}" data-h="-1"><span class="tag-ico">🏞️</span><b>${esc(t("For sale"))} · ${esc(coins(landPrice(s, sale)))}</b></button>` : "";
+    this.put($("tcy-labels"), starterTag + landTag + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
@@ -1071,6 +1079,7 @@ export class TycoonUI {
       else this.openBuild();
       return;
     }
+    if (id.startsWith("land-")) { this.openLand(); return; }
     if (id === "starter") {
       const st = this.save.cafe.starter;
       if (st) toast(tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));
@@ -2183,6 +2192,29 @@ export class TycoonUI {
       void this.host.sharePicture(blob, t("Skyhaven: from {a} to {b}. It started with one neighbor.", { a: t(RANKS[first].name), b: t(RANKS[rk].name) }));
     });
     openModal($("scrapbook"));
+  }
+
+  /** Land for sale next to the island: Pip offers it; buying joins it to the island for good. */
+  private openLand(): void {
+    const s = this.save, l = landOnSale(s);
+    if (!l) return;
+    const price = landPrice(s, l), pct = Math.round(LAND_BONUS * 100), k = LAND.indexOf(l);
+    mayorChoice(t("Land for sale!"),
+      t("This piece of land next to our island is for sale. Buy it and it joins the island for good, every business earns {pct}% more, and we build something new there.", { pct }),
+      [{ label: `${l.icon} ${t(l.name)}`, sub: `${t(l.what)} · ${coins(price)}`, onPick: () => {
+        tick(s);
+        const r = buyLand(s, l.id);
+        if (r === "short") { toast(t("You need {n} more cash. Your businesses are earning it!", { n: coins(landPrice(s, l) - s.tycoon.coins) })); return; }
+        if (r !== "ok") return;
+        track("land_bought");
+        this.host.persist();
+        this.host.sound.unlock();
+        fireworks(2, () => this.host.sound.firework());
+        this.render();
+        window.setTimeout(() => this.host.visitLandmark(100 + k, 4000), 500);
+        window.setTimeout(() => toast(t("{icon} {name} is part of the island now! Every business earns +{pct}%", { icon: l.icon, name: t(l.name), pct })), 4600);
+      } }],
+      t("Later"));
   }
 
   /** The floating island next to the town: Pip offers the two landmarks. */

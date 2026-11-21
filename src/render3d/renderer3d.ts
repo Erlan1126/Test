@@ -853,7 +853,7 @@ export class Renderer3D {
       this.bizCafeIn = f.bizCafe;
       this.bizStyleKey = styleKey;
       const cafe = f.bizCafe ?? null;
-      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, ax: cafe.annex, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
+      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, ax: cafe.annex, ld: cafe.land, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
@@ -1029,7 +1029,9 @@ export class Renderer3D {
   /** Where a lot's building shows on screen: its base and its top (page px). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
-    const { x, z } = i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : lotPos(i), r = this.gl.domElement.getBoundingClientRect();
+    const land = i <= -10 ? this.biz.landAt(-10 - i) : null;
+    if (i <= -10 && !land) return null;
+    const { x, z } = land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     const at = (y: number): [number, number] => {

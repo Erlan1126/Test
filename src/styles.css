@@ -4019,3 +4019,8 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tycity:has(.tcy-goal:not([hidden])) .tcy-events, #tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 88px) !important; }
 #tycity .tcy-next { bottom: calc(env(safe-area-inset-bottom, 0px) + 110px) !important; }
 #tycity #tcy-top .tcy-wallet em { white-space: normal !important; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 10px !important; line-height: 1.15 !important; }
+
+/* Land for sale next to the island: a green bubble with the price. */
+#tycity .tag.land-sale { flex-direction: row; gap: 6px; padding: 6px 12px; background: linear-gradient(180deg, #34d27f, #16a35a) !important; color: #fff; box-shadow: 0 6px 16px rgba(10, 80, 40, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+#tycity .tag.land-sale b { font-size: 12px; letter-spacing: 0.02em; }
+#tycity .tag.land-sale .tag-ico { background: none; box-shadow: none; width: auto; height: auto; font-size: 16px; }
