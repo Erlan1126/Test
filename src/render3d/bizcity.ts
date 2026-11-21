@@ -55,7 +55,9 @@ export interface BizLive {
  *  the camera sees two faces of every building). The blocks run in a band toward you: the
  *  first business at the far end, the next ones fanning out, a plaza at the entrance. The
  *  oldest (tallest) buildings stand at the back, so they never hide the newer ones. */
-const C = 6.5;
+const C = 7.6;
+/** Half a street's width (each block's own side of it): streets are 2.4 wide. */
+const ROAD = 1.2;
 
 /** A flat slab with rounded corners, w by d, h thick, lying on y = 0..h (centered). */
 function roundSlab(w: number, d: number, r: number, h: number): THREE.BufferGeometry {
@@ -270,9 +272,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const rock = own(std(st.rock, { roughness: 1, flatShading: true }));
   const rockDark = own(std(new THREE.Color(st.rock).lerp(new THREE.Color("#2a2340"), 0.3), { roughness: 1, flatShading: true }));
   const earth = own(std(st.dirt, { roughness: 1 }));
-  const road = own(std("#4b4f66", { roughness: 0.85 }));
-  const walk = own(std("#dedbe6", { roughness: 0.8 }));
-  const curb = own(std("#b9b5c8", { roughness: 0.7 }));
+  const road = own(std("#3a3e52", { roughness: 0.9 }));
+  const walk = own(std("#e8d9c4", { roughness: 0.85 }));
+  const curb = own(std("#f2efe8", { roughness: 0.7 }));
   const verge = own(std(st.lawn, { roughness: 0.95 }));
   const grass = own(std(new THREE.Color("#7ccf6a").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
   const grass2 = own(std(new THREE.Color("#6cbf5c").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
@@ -370,25 +372,38 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const { x, z } = cellXZ(cell);
     add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
     // (Rounded corners: the streets curve round each block like a real town's.)
-    add(roundSlab(C - 1.6, C - 1.6, 1.15, 0.18).translate(x, 0, z), curb);
-    add(roundSlab(C - 1.75, C - 1.75, 1.05, 0.2).translate(x, 0, z), walk);
+    add(roundSlab(C - ROAD * 2, C - ROAD * 2, 1.3, 0.18).translate(x, 0, z), curb);
+    add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 1.2, 0.2).translate(x, 0, z), walk);
   }
   // Road markings, only on the streets between two blocks (the half-width street round the
-  // edge of town has none): a dashed center line, and a zebra crossing just before each end.
+  // edge of town has none). Two kinds of street, so the town doesn't look the same everywhere:
+  // avenues (every other street) with a planted median and little trees down the middle, and
+  // two-lane streets with a double yellow center line. Both have white edge lines, and a wide
+  // zebra crossing just before each crossing.
+  const medianTrees: [number, number][] = [];
   {
     const inAll = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz);
+    const edgeW = own(new THREE.MeshBasicMaterial({ color: 0xe8e6f2 }));
+    const cross = q - ROAD - 0.45, run = 2 * (cross - 0.45);
     for (const cell of ALL) {
       const { x, z } = cellXZ(cell);
       // The street on this block's +x side (runs along z) and on its +z side (runs along x).
-      if (inAll(cell[0] + 1, cell[1])) {
-        const sx = x + q;
-        for (let k = -1; k <= 1; k++) add(new THREE.BoxGeometry(0.08, 0.02, 0.55).translate(sx, 0.06, z + k * 1.1), lane);
-        for (const end of [-1, 1]) for (let b = -2; b <= 2; b++) add(new THREE.BoxGeometry(0.2, 0.02, 0.5).translate(sx + b * 0.3, 0.06, z + end * (q - 1.4)), zebra);
-      }
-      if (inAll(cell[0], cell[1] + 1)) {
-        const sz = z + q;
-        for (let k = -1; k <= 1; k++) add(new THREE.BoxGeometry(0.55, 0.02, 0.08).translate(x + k * 1.1, 0.06, sz), lane);
-        for (const end of [-1, 1]) for (let b = -2; b <= 2; b++) add(new THREE.BoxGeometry(0.5, 0.02, 0.2).translate(x + end * (q - 1.4), 0.06, sz + b * 0.3), zebra);
+      for (const along of ["z", "x"] as const) {
+        const nb = along === "z" ? inAll(cell[0] + 1, cell[1]) : inAll(cell[0], cell[1] + 1);
+        if (!nb) continue;
+        // (Which kind: avenues are the streets on even grid lines.)
+        const avenue = (along === "z" ? cell[0] : cell[1]) % 2 === 0;
+        const box = (w: number, d: number, ox: number, oz: number, y: number, m: THREE.Material, h = 0.02) =>
+          add(along === "z" ? new THREE.BoxGeometry(w, h, d).translate(x + q + ox, y, z + oz) : new THREE.BoxGeometry(d, h, w).translate(x + oz, y, z + q + ox), m);
+        if (avenue) {
+          box(0.44, run, 0, 0, 0.1, curb, 0.14);
+          box(0.34, run - 0.1, 0, 0, 0.1, grass, 0.16);
+          for (const o of [-run / 2 + 0.45, 0, run / 2 - 0.45]) medianTrees.push(along === "z" ? [x + q, z + o] : [x + o, z + q]);
+        } else {
+          for (const o of [-0.07, 0.07]) box(0.05, run, o, 0, 0.055, lane);
+        }
+        for (const o of [-(ROAD - 0.16), ROAD - 0.16]) box(0.05, run + 0.6, o, 0, 0.055, edgeW);
+        for (const end of [-1, 1]) for (let b = -3; b <= 3; b++) box(0.24, 0.6, b * 0.33, end * cross, 0.056, zebra);
       }
     }
   }
@@ -412,10 +427,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   const ringPaint = own(new THREE.MeshBasicMaterial({ color: 0xf4f2fa }));
   for (const [x, z] of roundabouts) {
-    add(new THREE.RingGeometry(0.74, 0.8, 28).rotateX(-Math.PI / 2).translate(x, 0.056, z), ringPaint);
-    add(new THREE.CylinderGeometry(0.52, 0.55, 0.16, 20).translate(x, 0.1, z), curb);
-    add(new THREE.CylinderGeometry(0.46, 0.46, 0.04, 20).translate(x, 0.2, z), grass);
-    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; add(new THREE.SphereGeometry(0.06, 6, 4).translate(x + Math.cos(a) * 0.34, 0.25, z + Math.sin(a) * 0.34), mats.c(["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"][k % 4], 0.8)); }
+    add(new THREE.RingGeometry(0.98, 1.05, 32).rotateX(-Math.PI / 2).translate(x, 0.056, z), ringPaint);
+    add(new THREE.CylinderGeometry(0.7, 0.74, 0.16, 24).translate(x, 0.1, z), curb);
+    add(new THREE.CylinderGeometry(0.63, 0.63, 0.04, 24).translate(x, 0.2, z), grass);
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; add(new THREE.SphereGeometry(0.065, 6, 4).translate(x + Math.cos(a) * 0.48, 0.25, z + Math.sin(a) * 0.48), mats.c(["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"][k % 4], 0.8)); }
   }
   // Trees in the island's style.
   // Soft contact shadows: a blurred dark patch under trees and houses grounds them (one
@@ -442,11 +457,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let k = 0; k < 3; k++) add(new THREE.SphereGeometry(0.07, 6, 4).translate(x - 0.12 + k * 0.12, 0.72, z + 0.08), mats.c(c, 0.8));
   };
   const flowersOn = ["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"];
-  for (const [x, z] of roundabouts) tree(x, z, 0.6, 0.22);
+  for (const [x, z] of roundabouts) tree(x, z, 0.7, 0.22);
+  for (const [x, z] of medianTrees) tree(x, z, 0.42, 0.26);
   // The two parks by the entrance: lawns, a path, a pond, benches.
   for (const [n, cell] of PARKS.entries()) {
     const { x, z } = cellXZ(cell);
-    add(roundSlab(C - 2.2, C - 2.2, 0.8, 0.06).translate(x, 0.2, z), grass);
+    add(roundSlab(C - ROAD * 2 - 0.6, C - ROAD * 2 - 0.6, 0.8, 0.06).translate(x, 0.2, z), grass);
     // A winding path and a loop instead of a straight cross.
     add(ribbon(sPath((C - 2.4) / 2, n === 1).map(([a, b]): [number, number] => [x + a, z + b]), 0.6, 0.275), pave);
     add(new THREE.RingGeometry(0.9, 1.25, 32).rotateX(-Math.PI / 2).translate(x + (n ? 0.5 : -0.5), 0.272, z + 0.6), pave);
@@ -473,14 +489,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   // Fire hydrants and mailboxes on the street corners.
   for (const [n, cell] of CELLS.entries()) {
-    const { x, z } = cellXZ(cell), e = q - 0.95;
+    const { x, z } = cellXZ(cell), e = q - ROAD - 0.15;
     add(new THREE.CylinderGeometry(0.07, 0.08, 0.26, 8).translate(x - e, 0.33, z - e + 0.4), mats.c("#ff4f4f", 0.5));
     add(new THREE.SphereGeometry(0.07, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(x - e, 0.46, z - e + 0.4), mats.c("#ff4f4f", 0.5));
     if (n % 3 === 0) { add(new THREE.BoxGeometry(0.22, 0.28, 0.18).translate(x + e - 0.4, 0.48, z - e), mats.c("#3a6fe0", 0.5)); add(new THREE.BoxGeometry(0.06, 0.26, 0.06).translate(x + e - 0.4, 0.22, z - e), metal); }
   }
   // Street furniture round the business blocks: planters at the corners, benches and bins.
   for (const [n, cell] of CELLS.entries()) {
-    const { x, z } = cellXZ(cell), e = q - 1.1;
+    const { x, z } = cellXZ(cell), e = q - ROAD - 0.32;
     planter(x - e, z + e, flowersOn[n % 4]);
     planter(x + e, z - e, flowersOn[(n + 1) % 4]);
     if (n % 2 === 0) bench(x - 0.9, z + e + 0.05, 0); else bench(x + e + 0.05, z - 0.9, -Math.PI / 2);
@@ -745,7 +761,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   lampMat.userData.dynamic = true;
   for (const cell of CELLS) {
     // (On the sidewalk's rounded corner: further in than the lot's square corner would be.)
-    const { x, z } = cellXZ(cell), e = q - 1.55;
+    const { x, z } = cellXZ(cell), e = q - ROAD - 0.72;
     for (const [a, b] of [[e, e], [-e, -e]]) {
       add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a, 0.9, z + b), pole);
       add(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a, 1.65, z + b), lampMat);
@@ -1232,7 +1248,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let plotTop = 1.2;
   {
     const { x, z } = cellXZ(PLOT);
-    add(roundSlab(C - 2.2, C - 2.2, 0.8, 0.06).translate(x, 0.2, z), grass);
+    add(roundSlab(C - ROAD * 2 - 0.6, C - ROAD * 2 - 0.6, 0.8, 0.06).translate(x, 0.2, z), grass);
     const tx = x + TOWER_AT.x, tz = z + TOWER_AT.z;
     add(new THREE.BoxGeometry(2.6, 0.08, 2.6).translate(tx, 0.25, tz), pave);
     const sc = cafe.starter;
@@ -1537,7 +1553,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   life.userData.dynamic = true;
   g.add(life);
   const loop = (inset: number) => outline(ALL, inset).map(p => new THREE.Vector3(p[0], 0, p[1]));
-  const carPath = new Path(loop(0.45)), walkPath = new Path(loop(1.15));
+  const carPath = new Path(loop(0.6)), walkPath = new Path(loop(ROAD + 0.35));
   const shirts = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff", "#ff8a5c", "#3ac0c0", "#e8457a"];
   // People: legs, a shirt with arms, a face and hair (sometimes a cap or a sun hat), all in
   // one mesh with painted colors, so each person is a single draw however detailed.
@@ -1709,7 +1725,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return out;
   };
   const isRound = (i: number, j: number) => cellIn(i - 1, j - 1) && cellIn(i, j - 1) && cellIn(i - 1, j) && cellIn(i, j);
-  const LANE = 0.38, END = 1.0;
+  const LANE = 0.6, END = ROAD + 0.25;
   const rightOf = (d: [number, number]) => new THREE.Vector3(-d[1], 0, d[0]);
   const dv = (d: [number, number]) => new THREE.Vector3(d[0], 0, d[1]);
   const bez = (a: THREE.Vector3, c: THREE.Vector3, b: THREE.Vector3): Seg => ({ a, b, c, len: a.distanceTo(c) + c.distanceTo(b) * 0.98 });
@@ -1752,7 +1768,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return bez(a, ctl, b);
   };
   // People out for a walk on the town's inner sidewalks (crossing at the zebras).
-  const FOOT = 0.95;
+  const FOOT = ROAD + 0.32;
   const strollers = starts.length ? Array.from({ length: 12 }, (_, k) => {
     const st0 = starts[Math.floor((k * 7 + 3) % starts.length)], p = makePerson(shirts[(k + 2) % shirts.length]);
     life.add(p);

@@ -139,7 +139,7 @@ export function buildBlock(S: BlockSetup): Block {
   truck.visible = box.visible = false;
   g.add(truck, box);
   // The street in front of the plot: the truck comes along it and stops by the tower.
-  const streetZ = S.plot.z + 3.25, stopX = S.plot.x + S.tower.x;
+  const streetZ = S.plot.z + 3.8, stopX = S.plot.x + S.tower.x;
   const placeTruck = (k: number, leaving: boolean) => {
     // k: 0..1 driving in (eases to a stop), or 0..1 driving away.
     const x = leaving ? stopX - k * 4.5 : stopX + (1 - (1 - k) * (1 - k)) * 0 + (1 - k) * (1 - k) * 9;
