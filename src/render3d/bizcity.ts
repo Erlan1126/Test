@@ -2370,6 +2370,56 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         g.userData.moving = k2 < 1;
       });
     }
+    // Little floating rocks either side of the bridge.
+    for (let r2 = 0; r2 < 3; r2++) {
+      const side = r2 % 2 ? 1 : -1, along = distEdge(ux, uz) + DIST_GAP * (0.3 + r2 * 0.25), off = side * (3 + r2 * 1.3);
+      const rx = -ux * along + uz * off, rz = -uz * along - ux * off, rr = 0.7 + (r2 % 2) * 0.4, ry = -1.2 - r2 * 0.7;
+      const isle = new THREE.Group();
+      isle.add(new THREE.Mesh(new THREE.CylinderGeometry(rr, rr * 0.92, 0.18, 9).translate(0, -0.09, 0), verge));
+      isle.add(new THREE.Mesh(new THREE.ConeGeometry(rr * 0.9, rr * 2.2, 7).rotateX(Math.PI).translate(0, -0.18 - rr * 1.1, 0), r2 % 2 ? rock : rockDark));
+      if (r2 !== 1) { isle.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.5, 6).translate(0, 0.25, 0), trunk)); isle.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0).translate(0, 0.62, 0), leaf)); }
+      isle.position.set(rx, ry, rz);
+      isle.userData.dynamic = true;
+      G.add(isle);
+      townTicks.push(t => { isle.position.y = ry + Math.sin(t * 0.5 + r2 * 2 + k) * 0.12; });
+    }
+    if (bought) {
+      // Life in the district: cars round its streets (both ways), people on its sidewalks.
+      const ring = (r: number) => new Path([new THREE.Vector3(-r, 0, -r), new THREE.Vector3(r, 0, -r), new THREE.Vector3(r, 0, r), new THREE.Vector3(-r, 0, r)]);
+      const roads = [ring(C - LANE), ring(C + LANE), ring(2 * C - LANE)];
+      const walks = [ring(C - ROAD - 0.32), ring(C + ROAD + 0.32), ring(2 * C - ROAD - 0.32)];
+      const dCars = Array.from({ length: 9 }, (_, n) => {
+        const m = new THREE.Mesh(carGeo(BODY[(n * 3 + k) % BODY.length], n % 4 === 2), carM);
+        G.add(m);
+        return { m, path: roads[n % 3], u: n / 9, sp: (n % 3 === 1 ? -1 : 1) * (0.012 + (n % 4) * 0.002) };
+      });
+      const dWalk = Array.from({ length: 14 }, (_, n) => {
+        const pp = makePerson(shirts[(n + k) % shirts.length]);
+        G.add(pp);
+        return { p: pp, path: walks[n % 3], u: n / 14, sp: (n % 2 ? 1 : -1) * (0.004 + (n % 4) * 0.001), ph: n * 1.3 };
+      });
+      const cp = new THREE.Vector3(), cd = new THREE.Vector3();
+      let lastT = 0;
+      townTicks.push(t => {
+        const dt = Math.min(0.1, lastT ? t - lastT : 0.016);
+        lastT = t;
+        for (const c of dCars) {
+          c.u = (c.u + c.sp * dt + 1) % 1;
+          c.path.at(c.u, cp, cd);
+          // (Cars going the other way round keep to their own side of the street.)
+          c.m.position.set(cp.x, 0.04, cp.z);
+          c.m.rotation.y = Math.atan2(cd.x, cd.z) + (c.sp < 0 ? Math.PI : 0);
+        }
+        for (const w of dWalk) {
+          w.u = (w.u + w.sp * dt + 1) % 1;
+          w.path.at(w.u, cp, cd);
+          const sw = Math.sin(t * 9 + w.ph);
+          w.p.position.set(cp.x, 0.2 + Math.abs(sw) * 0.04, cp.z);
+          w.p.rotation.y = Math.atan2(cd.x, cd.z) + (w.sp < 0 ? Math.PI : 0);
+          w.p.rotation.z = sw * 0.08;
+        }
+      });
+    }
     landSeen.add(id);
     landmarks[100 + k] = () => ({ x: sp.x, z: sp.z, zoom: 0.8 });
   });
