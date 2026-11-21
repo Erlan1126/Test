@@ -2350,6 +2350,64 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         for (const [tx, tz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) tr2(tx, tz, 0.7);
       }
     }
+    // The rim between the streets and the coast, in the district's own style, and the way in
+    // from the bridge: a paved path under a welcome arch with the district's name.
+    {
+      const rim = new THREE.Group();
+      const R0 = 2 * C + 0.35, inD = (x: number, z: number, m: number) => insidePoly(outlineD, x, z, m);
+      const landing = new THREE.Vector2(-ux, -uz), along = (x: number, z: number) => Math.abs(x * landing.y - z * landing.x);
+      const nearPath = (x: number, z: number) => x * landing.x + z * landing.y > 0 && along(x, z) < 1.7;
+      const R = (geo: THREE.BufferGeometry, m: THREE.Material) => rim.add(new THREE.Mesh(geo, m));
+      let n2 = 0;
+      for (let x = -DIST_H; x <= DIST_H; x += 0.9) for (let z = -DIST_H; z <= DIST_H; z += 0.9) {
+        const jx = x + Math.sin(n2 * 12.99 + k) * 0.35, jz = z + Math.cos(n2 * 78.2 + k) * 0.35, r = Math.abs(Math.sin(n2 * 3.7 + k));
+        n2++;
+        if (Math.max(Math.abs(jx), Math.abs(jz)) < R0 || !inD(jx, jz, 0.7) || nearPath(jx, jz)) continue;
+        if (id === "meadow") {
+          // Harbor: a sandy shore with palms, beach umbrellas and boats pulled up on the sand.
+          if (r < 0.12) { R(new THREE.CylinderGeometry(0.05, 0.08, 1.2, 6).translate(jx, 0.6, jz), trunk); for (let f = 0; f < 5; f++) R(new THREE.BoxGeometry(0.7, 0.04, 0.16).translate(0.3, 0, 0).rotateZ(-0.35).rotateY((f / 5) * Math.PI * 2).translate(jx, 1.2, jz), leaf); }
+          else if (r < 0.18) { R(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 4).translate(jx, 0.45, jz), metal); R(new THREE.ConeGeometry(0.45, 0.22, 8).translate(jx, 0.95, jz), mats.c(["#ff5f6d", "#ffd23a", "#2f9bff"][n2 % 3], 0.6)); }
+          else if (r < 0.22) R(new THREE.BoxGeometry(0.3, 0.12, 0.7).rotateY(n2).translate(jx, 0.08, jz), mats.c(["#ffffff", "#ff8a5c", "#4f8bff"][n2 % 3], 0.6));
+          else if (r < 0.26) R(new THREE.DodecahedronGeometry(0.2, 0).translate(jx, 0.1, jz), stone);
+        } else if (id === "lakeside") {
+          // Garden Hills: lawns with hedges, flower beds and trees.
+          if (r < 0.2) { R(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(jx, 0.3, jz), trunk); R(new THREE.IcosahedronGeometry(0.5, 0).translate(jx, 0.95, jz), leaf); }
+          else if (r < 0.32) R(new THREE.BoxGeometry(0.8, 0.35, 0.3).rotateY(Math.round(n2 % 2) * Math.PI / 2).translate(jx, 0.18, jz), leaf);
+          else if (r < 0.42) for (let f = 0; f < 5; f++) R(new THREE.SphereGeometry(0.07, 5, 4).translate(jx + Math.cos(f * 1.3) * 0.18, 0.1, jz + Math.sin(f * 1.3) * 0.18), mats.c(flowersOn[(n2 + f) % 4], 0.8));
+        } else {
+          // Downtown: a paved promenade with planters, benches and lamps.
+          if (r < 0.08) { R(new THREE.BoxGeometry(0.45, 0.28, 0.45).translate(jx, 0.18, jz), stone); R(new THREE.IcosahedronGeometry(0.24, 0).translate(jx, 0.45, jz), leaf); }
+          else if (r < 0.12) { R(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(jx, 0.7, jz), metal); R(new THREE.SphereGeometry(0.12, 8, 6).translate(jx, 1.45, jz), lampMat); }
+        }
+      }
+      // One continuous ground ring under the rim: sand for the harbor, paving for downtown.
+      if (id !== "lakeside") {
+        const sh = new THREE.Shape(outlineD.map(([x, z]) => new THREE.Vector2(x * 0.965, -z * 0.965)));
+        const h0 = R0 - 0.2, hole = new THREE.Path([new THREE.Vector2(-h0, -h0), new THREE.Vector2(-h0, h0), new THREE.Vector2(h0, h0), new THREE.Vector2(h0, -h0)]);
+        sh.holes.push(hole);
+        R(new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false, curveSegments: 4 }).rotateX(-Math.PI / 2).translate(0, 0.0, 0), id === "meadow" ? sandM : plazaM);
+      }
+      // The path in from the bridge, and the arch over it.
+      const pathLen = DIST_H - 2 * C + 0.6, pd = 2 * C + pathLen / 2 - 0.3, rot = Math.atan2(landing.x, landing.y);
+      R(new THREE.BoxGeometry(2.4, 0.05, pathLen).rotateY(rot).translate(landing.x * pd, 0.03, landing.y * pd), pave);
+      const arch = new THREE.Group();
+      const ac = ["#2f9bff", "#ff8a5c", "#8a6cff"][k];
+      for (const sx of [-1.4, 1.4]) { arch.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3).translate(sx, 1.1, 0), stone)); arch.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.42).translate(sx, 2.25, 0), mats.c(ac, 0.5))); }
+      arch.add(new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.5, 0.2).translate(0, 2.1, 0), mats.c(ac, 0.5)));
+      const sc = document.createElement("canvas"); sc.width = 512; sc.height = 80;
+      const cx3 = sc.getContext("2d");
+      if (cx3) { cx3.fillStyle = ac; cx3.fillRect(0, 0, 512, 80); cx3.fillStyle = "#ffffff"; cx3.font = "bold 46px Arial Black, sans-serif"; cx3.textAlign = "center"; cx3.textBaseline = "middle"; cx3.fillText(LAND[k].name.toUpperCase(), 256, 42, 490); }
+      const tex = new THREE.CanvasTexture(sc); tex.colorSpace = THREE.SRGBColorSpace;
+      const signM2 = own(new THREE.MeshBasicMaterial({ map: tex })); signM2.userData.dynamic = true;
+      for (const fz of [0.11, -0.11]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 0.44).translate(0, 2.1, 0), signM2); pl.position.z = fz; if (fz < 0) pl.rotation.y = Math.PI; arch.add(pl); }
+      const ad = DIST_H - 1.6;
+      arch.position.set(landing.x * ad, 0.02, landing.y * ad);
+      arch.rotation.y = rot;
+      arch.userData.dynamic = true;
+      if (bought) G.add(arch);
+      if (bought) G.add(rim);
+      if (bought) mergeStatic(rim, 0.0);
+    }
     mergeStatic(blocks, 0.2);
     if (!bought) {
       // For sale: a glowing outline round the island and a gentle bob.
