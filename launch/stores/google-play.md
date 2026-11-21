@@ -18,9 +18,19 @@ changed after that.
 
 **Short description** (80 max):
 
-> Stack floors in 3D, build your city in the sky and race the world to the top.
+> Stack towers, welcome neighbors and grow Skyhaven into the Capital of the Sky.
 
-**Full description:** use the description in `app-store.md` (the same text works here).
+**Full description:** use the English **Description** in `app-store.md` (the same text works here).
+
+## Five screenshot captions (English)
+
+Use these in sequence on both stores when the screenshot artwork is next regenerated. These are copy specifications; the existing PNGs are not changed in this PR.
+
+1. **ONE NEIGHBOR. A WHOLE SKY TO GROW.** — Start a home in Skyhaven.
+2. **STACK TOWERS. WELCOME NEW PEOPLE.** — Every floor helps your town grow.
+3. **WATCH YOUR NEIGHBORHOOD COME ALIVE.** — Grow businesses and unlock landmarks.
+4. **FROM HAMLET TO SKY CAPITAL.** — Seven ranks. One town to call home.
+5. **YOUR CAPITAL ABOVE THE CLOUDS.** — Make the floating skyline your own.
 
 **Graphics:**
 
