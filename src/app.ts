@@ -2724,6 +2724,7 @@ export class App implements DailyHost {
   bizPan(dx: number, dy: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPan(dx, dy); }
   bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }
   bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
+  bizHold(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizHold(); }
   visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
   /** A small picture of the town as it looks right now (for the scrapbook's memories). */
   townPicture(): string | null {

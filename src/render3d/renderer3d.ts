@@ -571,9 +571,12 @@ export class Renderer3D {
     this.cam.updateProjectionMatrix();
     // The sun follows what the camera looks at, so shadows stay sharp where you are.
     const focus = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(Math.max(0, v.level) * FH, BIZ_SLOT.y, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
+    // (In the town the sun's aim moves in steps of a few meters, with a wider shadow area to
+    // match, so dragging the view redraws the shadows only now and then, not every frame.)
+    if (k >= 1) { const STEP = 5; focus.x = Math.round(focus.x / STEP) * STEP; focus.z = Math.round(focus.z / STEP) * STEP; }
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
-    const span = Math.max(34, (v.H / S) * 0.75);
+    const span = Math.max(34, (v.H / S) * 0.75) + (k >= 1 ? 5 : 0);
     const sc = this.sun.shadow.camera;
     if (Math.abs(sc.top - span) > 2) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); this.shadowAt.set(1e9, 0, 0); }
     // In the town almost nothing that casts a shadow moves, so the shadow map is redrawn only
@@ -885,17 +888,29 @@ export class Renderer3D {
     // something (a close-up, a landmark, a tapped building). Along the town it never slides
     // off; across, it can move only as far as the zoom leaves room.
     const cu = this.camUser, mine = cu.on && !framing && !lm && si < 0;
+    this.bizBase.zoom = fo.zoom;
+    // Momentum: after a flick the town keeps gliding and slows to a stop.
+    if (mine && !cu.drag && (cu.vs || cu.vt)) {
+      cu.ds += cu.vs * dt; cu.dt += cu.vt * dt;
+      const k = Math.exp(-dt * 4.5);
+      cu.vs *= k; cu.vt *= k;
+      if (Math.abs(cu.vs) + Math.abs(cu.vt) < 0.05) cu.vs = cu.vt = 0;
+    }
     if (mine) this.bizLook.tzoom = Math.min(2.6, Math.max(1.0, fo.zoom * cu.zoom));
     if (!framing && !lm) {
       const tb = townBounds(), tc = (tb.tMin + tb.tMax) / 2;
       let sv = (this.bizLook.tx + this.bizLook.tz) * Math.SQRT1_2;
       let tv = tc;
+      this.bizBase.s = sv; this.bizBase.t = tc;
       if (mine) {
         const scale = ISO_SCALE * this.view.s * BIZ_ZOOM * this.bizLook.tzoom, fit = (this.view.W * 0.94) / (tb.tMax - tb.tMin);
         const room = Math.max(0, ((tb.tMax - tb.tMin) / 2) * (1 - fit / scale) + 0.8);
+        const dt0 = cu.dt;
         cu.dt = Math.max(-room, Math.min(room, cu.dt));
+        if (cu.dt !== dt0) cu.vt = 0;
         const sv0 = sv;
         sv = Math.min(tb.sMax - 3, Math.max(tb.sMin + 3, sv + cu.ds));
+        if (sv - sv0 !== cu.ds) cu.vs = 0;
         cu.ds = sv - sv0;
         tv = tc + cu.dt;
       } else sv = Math.min(tb.sMax - 6, Math.max(tb.sMin + 6, sv));
@@ -904,7 +919,7 @@ export class Renderer3D {
     }
     // (Testing: aim the town camera anywhere.)
     if (this.debugLook) { this.bizLook.tx = this.debugLook.x; this.bizLook.tz = this.debugLook.z; this.bizLook.tzoom = this.debugLook.zoom; }
-    const e = this.bizK < 0.02 ? 1 : mine && cu.drag ? Math.min(1, dt * 14) : Math.min(1, dt * 2);
+    const e = this.bizK < 0.02 ? 1 : mine && (cu.drag || cu.vs || cu.vt) ? 1 : Math.min(1, dt * 2);
     this.bizLook.x += (this.bizLook.tx - this.bizLook.x) * e;
     this.bizLook.z += (this.bizLook.tz - this.bizLook.z) * e;
     this.bizLook.zoom += (this.bizLook.tzoom - this.bizLook.zoom) * e;
@@ -932,25 +947,59 @@ export class Renderer3D {
   debugLook: { x: number; z: number; zoom: number } | null = null;
   /** The player's own look at the town: an offset along (s) and across (t) the island from
    *  where the game would look, and a zoom on top of the game's. */
-  private camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1 };
-  /** Drags the town by screen pixels (the finger moves the town with it). */
+  private camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1, vs: 0, vt: 0, at: 0 };
+  /** Where the game itself would look (along/across the island) and its zoom, so the
+   *  player's own view starts exactly where the camera is (no jump on the first touch). */
+  private bizBase = { s: 0, t: 0, zoom: 1 };
+  /** The finger touches the town: it takes over the camera right where it is. */
+  private grabTown(): void {
+    const cu = this.camUser;
+    cu.vs = cu.vt = 0;
+    if (cu.drag) return;
+    cu.drag = true;
+    {
+      const L = this.bizLook, s = (L.x + L.z) * Math.SQRT1_2, t = (L.x - L.z) * Math.SQRT1_2;
+      cu.ds = s - this.bizBase.s; cu.dt = t - this.bizBase.t;
+      cu.zoom = Math.min(2.2, Math.max(0.75, L.zoom / (this.bizBase.zoom || 1)));
+      L.tx = L.x; L.tz = L.z; L.tzoom = L.zoom;
+    }
+    cu.on = true;
+  }
+  /** Drags the town by screen pixels (the finger moves the town with it, 1:1). */
   bizPan(dxPx: number, dyPx: number): void {
     const scale = ISO_SCALE * this.view.s * BIZ_ZOOM * this.bizLook.zoom;
     if (!(scale > 0)) return;
-    const cu = this.camUser;
-    cu.on = true; cu.drag = true;
-    cu.dt -= dxPx / scale;
-    cu.ds -= dyPx / (scale * 0.62);
+    this.grabTown();
+    const cu = this.camUser, ddt = -dxPx / scale, dds = -dyPx / (scale * 0.62);
+    cu.dt += ddt; cu.ds += dds;
+    // How fast the finger moves (smoothed), for the glide after letting go.
+    const now = performance.now(), gap = Math.max(4, Math.min(100, now - (cu.at || now - 16)));
+    cu.at = now;
+    const k = 0.4;
+    this.flick.s = this.flick.s * (1 - k) + (dds / gap) * 1000 * k;
+    this.flick.t = this.flick.t * (1 - k) + (ddt / gap) * 1000 * k;
   }
+  private flick = { s: 0, t: 0 };
   /** Zooms the town by a factor (pinch, mouse wheel). */
   bizZoom(f: number): void {
-    const cu = this.camUser;
-    cu.on = true;
+    const cu = this.camUser, held = cu.drag;
+    this.grabTown();
+    cu.drag = held;
     cu.zoom = Math.min(2.2, Math.max(0.75, cu.zoom * f));
   }
-  bizPanEnd(): void { this.camUser.drag = false; }
+  /** Two fingers on the town: the camera follows them (no easing) until they lift. */
+  bizHold(): void { this.grabTown(); this.flick.s = this.flick.t = 0; }
+  bizPanEnd(): void {
+    const cu = this.camUser;
+    if (!cu.drag) return;
+    cu.drag = false;
+    // A flick glides on; a finger that stopped before lifting doesn't.
+    const fresh = performance.now() - cu.at < 70, sp = Math.hypot(this.flick.s, this.flick.t);
+    if (fresh && sp > 2) { const m = Math.min(1, 60 / sp); cu.vs = this.flick.s * m; cu.vt = this.flick.t * m; }
+    this.flick.s = this.flick.t = 0;
+  }
   /** Back to the game's own view of the town. */
-  bizCamReset(): void { this.camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1 }; }
+  bizCamReset(): void { this.camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1, vs: 0, vt: 0, at: 0 }; }
   /** How far the close-up framing is on (0-1, eased), so leaving a close-up glides. */
   private bizFrameK = 0;
   /** The camera's visit to a town rank's landmark (see bizcity landmark()). */

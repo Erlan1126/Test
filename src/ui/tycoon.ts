@@ -70,6 +70,7 @@ export interface TycoonHost {
   bizPan(dx: number, dy: number): void;
   bizZoom(f: number): void;
   bizPanEnd(): void;
+  bizHold(): void;
   /** This week's Community Spire (asks the server; null when it can't be reached). */
   fetchSpire(): Promise<SpireNow | null>;
 }
@@ -660,8 +661,10 @@ export class TycoonUI {
     const real = s.tycoon.coins;
     this.shownCoins = this.shownCoins < 0 || real < this.shownCoins ? real : this.shownCoins + (real - this.shownCoins) * 0.18;
     if (real - this.shownCoins < Math.max(0.5, real * 1e-4)) this.shownCoins = real;
-    $("ty-coins").textContent = coins(this.shownCoins);
-    $("tcy-coins").textContent = coins(this.shownCoins);
+    // (Tags first: they read sizes, so they go before anything on the page changes this frame.)
+    if (this.inCity) this.placeTags();
+    const shown = coins(this.shownCoins);
+    for (const id of ["ty-coins", "tcy-coins"]) { const el = $(id); if (el.textContent !== shown) el.textContent = shown; }
     if (!$("earnings").hidden && now - this.earnAt > 900) { this.earnAt = now; this.renderEarnings(); }
     this.reactions(now);
     for (const b of BUSINESSES) {
@@ -691,11 +694,11 @@ export class TycoonUI {
       if (bar) bar.style.width = `${p * 100}%`;
       if (this.inCity) {
         const tb = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"] .tag-ico`);
-        if (tb) tb.style.setProperty("--p", p.toFixed(3));
+        const pv = p.toFixed(2);
+        if (tb && tb.style.getPropertyValue("--p") !== pv) tb.style.setProperty("--p", pv);
         if (this.selected === id) { const cb = $("tcy-card").querySelector<HTMLElement>(".card-prog i"); if (cb) cb.style.width = `${p * 100}%`; }
       }
     }
-    if (this.inCity) this.placeTags();
     this.events(now);
     // Prices, labels and buttons follow the coins a few times a second.
     if (now - this.lastSoft > 300) { this.lastSoft = now; this.render(); }
@@ -983,27 +986,33 @@ export class TycoonUI {
 
   /** Keeps each tag floating over its building as the camera moves. */
   private placeTags(): void {
-    const items: { tag: HTMLElement; x: number; y: number; base: number }[] = [];
+    // (All reads first, then all writes: reading a size after moving a tag would make the
+    // browser lay the page out again for every tag, every frame, which is what made dragging
+    // the town feel heavy.)
+    const items: { tag: HTMLElement; x: number; y: number; base: number; w: number }[] = [], hide: HTMLElement[] = [];
     for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) {
       const p = this.host.bizScreen(Number(tag.dataset.i), Number(tag.dataset.h));
-      if (!p) { tag.style.visibility = "hidden"; continue; }
-      tag.style.visibility = "";
-      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1] });
+      if (!p) { hide.push(tag); continue; }
+      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: tag.offsetWidth || 44 });
     }
+    for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
     // Front buildings keep their spot; a bubble that would sit on another moves up a little.
     items.sort((a, b) => b.base - a.base);
     const placed: { x: number; y: number; w: number }[] = [];
     for (const it of items) {
-      const w = it.tag.offsetWidth || 44;
+      const w = it.w;
       for (let guard = 0; guard < 6; guard++) {
         const hit = placed.find(o => Math.abs(o.x - it.x) < (o.w + w) / 2 - 2 && Math.abs(o.y - it.y) < 42);
         if (!hit) break;
         it.y = hit.y - 44;
       }
       placed.push({ x: it.x, y: it.y, w });
-      it.tag.style.transform = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
+      const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
+      if (it.tag.style.visibility) it.tag.style.visibility = "";
+      if (it.tag.style.transform !== tr) it.tag.style.transform = tr;
       // Buildings nearer the front draw their tags on top.
-      it.tag.style.zIndex = it.tag.classList.contains("sel") ? "999" : String(Math.round(it.base));
+      const zi = it.tag.classList.contains("sel") ? "999" : String(Math.round(it.base));
+      if (it.tag.style.zIndex !== zi) it.tag.style.zIndex = zi;
     }
   }
 
@@ -1013,22 +1022,24 @@ export class TycoonUI {
   private dragMoved = 0;
   private wireTownCamera(): void {
     const el = $("tycity"), pts = new Map<number, { x: number; y: number }>();
-    let start: { x: number; y: number } | null = null, moved = false, pinch = 0;
+    let start: { x: number; y: number } | null = null, moved = false, pinch = 0, mid: { x: number; y: number } | null = null;
     const ui = (t: EventTarget | null) => !!(t as Element | null)?.closest?.(".tcy-top, .tcy-bar, .tcy-next, .tcy-card, .tcy-events, .block-skip, .tcy-coach, #block-say");
     el.addEventListener("pointerdown", e => {
       if (ui(e.target) || !this.inCity) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pts.size === 1) { start = { x: e.clientX, y: e.clientY }; moved = false; }
-      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); moved = true; }
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; moved = true; this.host.bizHold(); }
     });
     el.addEventListener("pointermove", e => {
       const p = pts.get(e.pointerId);
       if (!p) return;
       if (pts.size >= 2) {
         p.x = e.clientX; p.y = e.clientY;
-        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         if (pinch > 0 && d > 0) this.host.bizZoom(d / pinch);
-        pinch = d;
+        // (Two fingers also move the town, like a map.)
+        if (mid) this.host.bizPan(m.x - mid.x, m.y - mid.y);
+        pinch = d; mid = m;
         return;
       }
       if (!moved && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 9) return;
@@ -1038,7 +1049,9 @@ export class TycoonUI {
     });
     const end = (e: PointerEvent) => {
       if (!pts.delete(e.pointerId)) return;
-      if (pts.size < 2) pinch = 0;
+      if (pts.size < 2) { pinch = 0; mid = null; }
+      // (One finger left after a pinch: carry on dragging from where it is.)
+      if (pts.size === 1) { const [q] = [...pts.values()]; start = q; }
       if (pts.size === 0) { this.host.bizPanEnd(); if (moved) this.dragMoved = Date.now(); }
     };
     for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, e => end(e as PointerEvent));

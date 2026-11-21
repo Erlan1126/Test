@@ -99,6 +99,14 @@ const PLAZA: [number, number] = [4, 4];
 /** The plot beside the Coffee Cart where the player's first tower stands. */
 const PLOT: [number, number] = [-1, 0];
 const ALL = [...CELLS, ...PARKS, PLAZA, PLOT];
+/** A piece of a merged model, painted one color (vertex colors; no uv, so pieces merge). */
+function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
+  const g2 = geo.index ? geo.toNonIndexed() : geo, n = g2.attributes.position.count, cc = new THREE.Color(c), arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = cc.r; arr[i * 3 + 1] = cc.g; arr[i * 3 + 2] = cc.b; }
+  g2.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+  if (g2.attributes.uv) g2.deleteAttribute("uv");
+  return g2;
+}
 /** A soft round shadow (made once, shared by every town build). */
 let blobTexture: THREE.Texture | null = null;
 function softBlob(): THREE.Texture {
@@ -1214,6 +1222,120 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const doors = new Map<string, THREE.Vector3>();
   const lotGroups = new Map<string, THREE.Group>();
   const tops: number[] = [];
+  // ---- Cars: each one a single mesh with painted colors (one draw per car) ----
+  const carM = own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.15 }));
+  const BODY = ["#ffffff", "#ffc93c", "#4f8bff", "#ff4f8b", "#5ee0a0", "#e8e4f0", "#ff7a3b", "#2a3a6a", "#c8323a", "#7a5ad0"];
+  const carGeos = new Map<string, THREE.BufferGeometry>();
+  const carGeo = (c: string, van: boolean): THREE.BufferGeometry => {
+    const key = `${c}|${van}`;
+    let geo = carGeos.get(key);
+    if (geo) return geo;
+    const glass = "#2f4a7a", tire = "#23263a";
+    const parts = van ? [
+      paintGeo(new THREE.BoxGeometry(0.46, 0.46, 0.98).translate(0, 0.36, 0), c),
+      paintGeo(new THREE.BoxGeometry(0.47, 0.2, 0.22).translate(0, 0.45, 0.39), glass),
+      paintGeo(new THREE.BoxGeometry(0.47, 0.14, 0.5).translate(0, 0.48, -0.15), glass),
+    ] : [
+      paintGeo(new THREE.BoxGeometry(0.46, 0.2, 0.92).translate(0, 0.22, 0), c),
+      paintGeo(new THREE.BoxGeometry(0.4, 0.18, 0.5).translate(0, 0.41, -0.05), c),
+      paintGeo(new THREE.BoxGeometry(0.41, 0.13, 0.42).translate(0, 0.42, -0.05), glass),
+    ];
+    for (const wx of [-0.22, 0.22]) for (const wz of [-0.3, 0.3]) parts.push(paintGeo(new THREE.CylinderGeometry(0.1, 0.1, 0.07, 8).rotateZ(Math.PI / 2).translate(wx, 0.1, wz), tire));
+    for (const hx of [-0.15, 0.15]) {
+      parts.push(paintGeo(new THREE.BoxGeometry(0.1, 0.06, 0.02).translate(hx, 0.25, van ? 0.5 : 0.47), "#fff6c8"));
+      parts.push(paintGeo(new THREE.BoxGeometry(0.1, 0.05, 0.02).translate(hx, 0.25, van ? -0.5 : -0.47), "#ff3a4a"));
+    }
+    geo = mergeGeometries(parts)!;
+    carGeos.set(key, geo);
+    return geo;
+  };
+
+  // ---- Neighbors: the homes and corner shops on the lots no business has yet ----
+  const HOUSE = ["#fff1e0", "#e9f3ff", "#ffe8ef", "#eefbe8", "#fff7d6", "#f1ebff"];
+  const ROOF = ["#d9534a", "#5a6fd0", "#e07a9a", "#4f9a5a", "#b8683a", "#7a5ad0"];
+  const BRICK = ["#c9775a", "#d89a6a", "#b5655a", "#e0b48a", "#9a7ad0", "#6a9ad0"];
+  const neighborhood = (G: THREE.Group, i: number): number => {
+    const K = (geo: THREE.BufferGeometry, m: THREE.Material) => G.add(new THREE.Mesh(geo, m));
+    const r = (k: number) => ((i * 7 + k * 13) % 6);
+    // Ground: a small front lawn and a paved yard.
+    K(roundSlab(4.2, 4.2, 0.7, 0.06), grass2);
+    K(new THREE.BoxGeometry(4.0, 0.03, 1.1).translate(0, 0.07, 1.45), pave);
+    const windows = (w: number, d: number, y0: number, floors: number, fh: number, cx: number, cz: number, per: number) => {
+      for (let f = 0; f < floors; f++) {
+        const y = y0 + f * fh + fh * 0.55;
+        for (let k = 0; k < per; k++) {
+          const ox = -w / 2 + (k + 0.5) * (w / per);
+          K(new THREE.BoxGeometry(Math.min(0.3, w / per * 0.55), fh * 0.42, 0.04).translate(cx + ox, y, cz + d / 2 + 0.01), winMat);
+          K(new THREE.BoxGeometry(Math.min(0.36, w / per * 0.62), 0.04, 0.07).translate(cx + ox, y - fh * 0.24, cz + d / 2 + 0.02), mats.c("#ffffff", 0.6));
+        }
+        const perS = Math.max(1, Math.round(per * d / w));
+        for (let k = 0; k < perS; k++) {
+          const oz = -d / 2 + (k + 0.5) * (d / perS);
+          for (const sx of [-1, 1]) K(new THREE.BoxGeometry(0.04, fh * 0.42, Math.min(0.3, d / perS * 0.55)).translate(cx + sx * (w / 2 + 0.01), y, cz + oz), winMat);
+        }
+        if (f < floors - 1) K(new THREE.BoxGeometry(w + 0.06, 0.05, d + 0.06).translate(cx, y0 + (f + 1) * fh, cz), mats.c("#ffffff", 0.7));
+      }
+    };
+    const gable = (w: number, d: number, y: number, cx: number, cz: number, c: string) => {
+      // A pitched roof: a three-sided prism along x, its ridge up.
+      const geo = new THREE.CylinderGeometry(1, 1, w + 0.16, 3).rotateZ(Math.PI / 2).rotateX(-Math.PI / 2);
+      geo.scale(1, 0.55 * (d + 0.2) / Math.sqrt(3), (d + 0.2) / Math.sqrt(3));
+      K(geo.translate(cx, y + 0.275 * (d + 0.2) / Math.sqrt(3), cz), mats.c(c, 0.75));
+    };
+    const kind = i % 3;
+    let top = 0;
+    if (kind === 0) {
+      // Three town houses in a row, each its own color, with a door and a little chimney.
+      for (let k = 0; k < 3; k++) {
+        const w = 1.15, d = 1.9, h = 1.05 + ((i + k) % 3) * 0.28, cx = -1.25 + k * 1.25, cz = -0.25;
+        K(new THREE.BoxGeometry(w, h, d).translate(cx, h / 2 + 0.06, cz), mats.c(HOUSE[r(k)], 0.8));
+        windows(w, d, 0.06, 2, h / 2, cx, cz, 2);
+        K(new THREE.BoxGeometry(0.28, 0.44, 0.05).translate(cx + 0.28, 0.28, cz + d / 2 + 0.02), mats.c(ROOF[r(k + 2)], 0.6));
+        gable(w, d, h + 0.06, cx, cz, ROOF[r(k)]);
+        K(new THREE.BoxGeometry(0.14, 0.35, 0.14).translate(cx - 0.3, h + 0.45, cz - 0.4), mats.c("#a0705a", 0.8));
+        top = Math.max(top, h + 0.9);
+      }
+      // Picket fence and a hedge along the front.
+      K(new THREE.BoxGeometry(3.8, 0.05, 0.04).translate(0, 0.3, 1.0), mats.c("#ffffff", 0.6));
+      for (let k = 0; k < 13; k++) K(new THREE.BoxGeometry(0.05, 0.3, 0.04).translate(-1.85 + k * 0.31, 0.22, 1.0), mats.c("#ffffff", 0.6));
+    } else if (kind === 1) {
+      // A block of flats: brick, balconies on the front, a water tank on the roof.
+      const w = 3.1, d = 2.5, floors = 4 + (i % 2), fh = 0.55, cz = -0.35, h = floors * fh;
+      K(new THREE.BoxGeometry(w, h, d).translate(0, h / 2 + 0.06, cz), mats.c(BRICK[r(1)], 0.85));
+      windows(w, d, 0.06, floors, fh, 0, cz, 4);
+      for (let f = 1; f < floors; f++) for (const bx of [-0.78, 0.78]) {
+        K(new THREE.BoxGeometry(0.62, 0.05, 0.3).translate(bx, 0.06 + f * fh + 0.02, cz + d / 2 + 0.15), mats.c("#f4f2fa", 0.6));
+        K(new THREE.BoxGeometry(0.62, 0.16, 0.03).translate(bx, 0.06 + f * fh + 0.1, cz + d / 2 + 0.29), mats.c("#3a3f6a", 0.5, 0.3));
+      }
+      K(new THREE.BoxGeometry(w + 0.1, 0.12, d + 0.1).translate(0, h + 0.12, cz), mats.c("#f4f2fa", 0.7));
+      K(new THREE.CylinderGeometry(0.28, 0.28, 0.45, 10).translate(0.8, h + 0.5, cz - 0.5), mats.c("#8a6a4a", 0.8));
+      K(new THREE.ConeGeometry(0.32, 0.18, 10).translate(0.8, h + 0.82, cz - 0.5), mats.c("#6a4a3a", 0.8));
+      K(new THREE.BoxGeometry(0.5, 0.3, 0.4).translate(-0.7, h + 0.33, cz + 0.2), mats.c("#c8cce0", 0.5, 0.4));
+      K(new THREE.BoxGeometry(0.5, 0.62, 0.06).translate(0, 0.37, cz + d / 2 + 0.02), winMat);
+      top = h + 1.0;
+    } else {
+      // A corner shop with flats above: a glass shop front and a striped awning.
+      const w = 3.0, d = 2.4, cz = -0.3, gh = 0.75, floors = 2 + (i % 2), fh = 0.55, h = gh + floors * fh;
+      K(new THREE.BoxGeometry(w, gh, d).translate(0, gh / 2 + 0.06, cz), mats.c(ROOF[r(3)], 0.6));
+      K(new THREE.BoxGeometry(w - 0.4, gh - 0.22, 0.04).translate(0, gh / 2 + 0.04, cz + d / 2 + 0.01), winMat);
+      for (let k = 0; k < 8; k++) K(new THREE.BoxGeometry(w / 8, 0.05, 0.55).rotateX(0.35).translate(-w / 2 + (k + 0.5) * (w / 8), gh + 0.02, cz + d / 2 + 0.22), mats.c(k % 2 ? "#ffffff" : ROOF[r(3)], 0.6));
+      K(new THREE.BoxGeometry(w, floors * fh, d).translate(0, gh + 0.06 + floors * fh / 2, cz), mats.c(HOUSE[r(4)], 0.8));
+      windows(w, d, gh + 0.06, floors, fh, 0, cz, 4);
+      K(new THREE.BoxGeometry(w + 0.08, 0.1, d + 0.08).translate(0, h + 0.1, cz), mats.c("#ffffff", 0.7));
+      // Crates of fruit outside.
+      for (let k = 0; k < 3; k++) {
+        K(new THREE.BoxGeometry(0.34, 0.16, 0.26).translate(-1.0 + k * 0.4, 0.15, 1.25), mats.c("#b07a4a", 0.8));
+        for (let j = 0; j < 3; j++) K(new THREE.SphereGeometry(0.055, 6, 4).translate(-1.1 + k * 0.4 + j * 0.1, 0.26, 1.25), mats.c(["#ff4f4f", "#ffd23a", "#7ad35a"][(k + j) % 3], 0.6));
+      }
+      top = h + 0.6;
+    }
+    // A tree in the yard, and the neighbors' car parked out front on odd lots.
+    K(new THREE.CylinderGeometry(0.06, 0.09, 0.55, 6).translate(1.65, 0.33, -1.55), trunk);
+    K(new THREE.IcosahedronGeometry(0.45, 0).translate(1.65, 0.95, -1.55), leaf);
+    if (i % 2) { const car = carGeo(BODY[(i * 3) % BODY.length], false).clone().rotateY(Math.PI / 2).translate(-1.1, 0.04, 1.5); K(car, carM); }
+    return top;
+  };
+
   lots.forEach((lot, i) => {
     if (i >= CELLS.length) return;
     const { x, z, a } = lotPos(i);
@@ -1237,6 +1359,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         for (const [bx, bz] of [[-1.2, -0.8], [1.1, -1.1]]) K(new THREE.ConeGeometry(0.18, 0.45, 10).translate(bx, 0.25, bz), mats.c("#ff8a3b"));
         K(new THREE.BoxGeometry(0.9, 0.3, 0.5).translate(0.9, 0.15, 0.4), mats.c("#c86a4a"));
         tops[i] = 1.9;
+      } else if (i % 4 !== 3) {
+        // Until the business comes, ordinary neighbors live here: town houses, a block of
+        // flats or a corner shop with flats above, so the town looks lived in, like a real city.
+        tops[i] = neighborhood(lotG, i);
+        mergeStatic(lotG);
+        return;
       } else {
         // A little park until the business comes: lawn, a winding path, trees, a bench.
         K(roundSlab(4.2, 4.2, 0.7, 0.06), i % 2 ? grass : grass2);
@@ -1397,7 +1525,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     p.add(new THREE.Mesh(geo, personM));
     return p;
   };
-  const walkers = Array.from({ length: 22 }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: k / 22, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
+  const walkers = Array.from({ length: 14 }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: k / 14, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
   const crowd = Array.from({ length: 10 }, (_, k) => { const p = makePerson(shirts[(k + 3) % shirts.length]); p.visible = false; life.add(p); return p; });
   // Shoppers at every open business (the café has its own, in block.ts): they walk in from the
   // sidewalk, spend a moment inside, and come out with a bag in the shop's colors. Bigger
@@ -1508,13 +1636,115 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let coffeeSale = 0;
   const makeCar = (c: string, van: boolean) => {
     const v = new THREE.Group();
-    v.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, van ? 0.5 : 0.32, van ? 0.95 : 0.85).translate(0, van ? 0.38 : 0.28, 0), mats.c(c, 0.4, 0.3)));
-    v.add(new THREE.Mesh(new THREE.BoxGeometry(0.43, 0.22, van ? 0.25 : 0.45).translate(0, van ? 0.42 : 0.52, van ? 0.5 : -0.02), winMat));
-    for (const wx of [-0.22, 0.22]) for (const wz of [-0.3, 0.3]) v.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 10).rotateZ(Math.PI / 2).translate(wx, 0.1, wz), mats.c("#2a2f5a")));
+    v.add(new THREE.Mesh(carGeo(c, van), carM));
     life.add(v);
     return v;
   };
   const cars = [["#ffffff", true], ["#ffc93c", false], ["#4f8bff", true], ["#ff4f8b", false], ["#5ee0a0", false]].map(([c, van], k) => ({ v: makeCar(c as string, van as boolean), u: k / 5, sp: 0.018 + (k % 3) * 0.004 }));
+  // ---- Traffic: cars driving the town's own streets (on the right), turning at the
+  // crossings, going round the roundabouts and waiting for the car in front ----
+  type Seg = { a: THREE.Vector3; b: THREE.Vector3; c: THREE.Vector3; len: number };
+  const inTown = new Set(ALL.filter(c => c !== PLOT).map(([x, z]) => `${x},${z}`));
+  const cellIn = (x: number, z: number) => inTown.has(`${x},${z}`);
+  const nodeXZ = (i: number, j: number) => new THREE.Vector3((i - 0.5) * C - OFF, 0.04, (j - 0.5) * C - OFF);
+  // The streets out of a crossing (i, j): a street runs between two town blocks.
+  const exits = (i: number, j: number): [number, number][] => {
+    const out: [number, number][] = [];
+    if (cellIn(i, j - 1) && cellIn(i, j)) out.push([1, 0]);
+    if (cellIn(i - 1, j - 1) && cellIn(i - 1, j)) out.push([-1, 0]);
+    if (cellIn(i - 1, j) && cellIn(i, j)) out.push([0, 1]);
+    if (cellIn(i - 1, j - 1) && cellIn(i, j - 1)) out.push([0, -1]);
+    return out;
+  };
+  const isRound = (i: number, j: number) => cellIn(i - 1, j - 1) && cellIn(i, j - 1) && cellIn(i - 1, j) && cellIn(i, j);
+  const LANE = 0.38, END = 1.0;
+  const rightOf = (d: [number, number]) => new THREE.Vector3(-d[1], 0, d[0]);
+  const dv = (d: [number, number]) => new THREE.Vector3(d[0], 0, d[1]);
+  const bez = (a: THREE.Vector3, c: THREE.Vector3, b: THREE.Vector3): Seg => ({ a, b, c, len: a.distanceTo(c) + c.distanceTo(b) * 0.98 });
+  const street = (i: number, j: number, d: [number, number], lane = LANE): Seg => {
+    const A = nodeXZ(i, j), B = nodeXZ(i + d[0], j + d[1]), r = rightOf(d).multiplyScalar(lane), D = dv(d).multiplyScalar(lane > 0.6 ? lane : END);
+    const a = A.clone().add(D).add(r), b = B.clone().sub(D).add(r);
+    return bez(a, a.clone().lerp(b, 0.5), b);
+  };
+  const nodes: [number, number][] = [];
+  for (const [x, z] of ALL) for (const [i, j] of [[x, z], [x + 1, z], [x, z + 1], [x + 1, z + 1]] as [number, number][]) if (exits(i, j).length && !nodes.some(n => n[0] === i && n[1] === j)) nodes.push([i, j]);
+  const starts: { i: number; j: number; d: [number, number] }[] = [];
+  for (const [i, j] of nodes) for (const d of exits(i, j)) starts.push({ i, j, d });
+  const traffic = starts.length ? Array.from({ length: Math.min(9, starts.length) }, (_, k) => {
+    const st0 = starts[Math.floor((k * starts.length) / Math.min(9, starts.length))];
+    const v = makeCar(BODY[(k + 5) % BODY.length], k % 4 === 1);
+    return { v, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: (k % 3) * 0.3, sp: 1.15 + (k % 4) * 0.15, wait: 0, ahead: new THREE.Vector3(), lane: LANE };
+  }) : [];
+  const segAt = (sg: Seg, u: number, out: THREE.Vector3, dir: THREE.Vector3) => {
+    const m = 1 - u;
+    out.set(m * m * sg.a.x + 2 * m * u * sg.c.x + u * u * sg.b.x, 0.04, m * m * sg.a.z + 2 * m * u * sg.c.z + u * u * sg.b.z);
+    dir.set(2 * m * (sg.c.x - sg.a.x) + 2 * u * (sg.b.x - sg.c.x), 0, 2 * m * (sg.c.z - sg.a.z) + 2 * u * (sg.b.z - sg.c.z)).normalize();
+  };
+  /** At the end of a street: pick the next one (never back the way it came unless it must,
+   *  and only right or straight on at a roundabout), and the curve through the crossing. */
+  const nextLeg = (c: (typeof traffic)[number]) => {
+    const L = c.lane, E = L > 0.6 ? L : END, foot = L > 0.6;
+    const i = c.i + c.d[0], j = c.j + c.d[1], back: [number, number] = [-c.d[0], -c.d[1]];
+    const r = rightOf(c.d);
+    let opts = exits(i, j).filter(e => !(e[0] === back[0] && e[1] === back[1]));
+    if (!foot && isRound(i, j)) opts = opts.filter(e => !(e[0] === -r.x && e[1] === -r.z));
+    const d2 = opts.length ? opts[Math.floor(Math.random() * opts.length)] : back;
+    const B = nodeXZ(i, j), r2 = rightOf(d2);
+    const a = B.clone().sub(dv(c.d).multiplyScalar(E)).add(r.clone().multiplyScalar(L));
+    const b = B.clone().add(dv(d2).multiplyScalar(E)).add(r2.clone().multiplyScalar(L));
+    let ctl: THREE.Vector3;
+    if (d2[0] === c.d[0] && d2[1] === c.d[1]) ctl = foot ? a.clone().lerp(b, 0.5) : B.clone().add(r.clone().multiplyScalar(isRound(i, j) ? 1.6 : L));
+    else if (d2 === back) ctl = B.clone().add(dv(c.d).multiplyScalar(foot ? 0 : 0.7));
+    else ctl = B.clone().add(r.clone().multiplyScalar(L)).add(r2.clone().multiplyScalar(L));
+    c.i = i; c.j = j; c.d = d2;
+    return bez(a, ctl, b);
+  };
+  // People out for a walk on the town's inner sidewalks (crossing at the zebras).
+  const FOOT = 0.95;
+  const strollers = starts.length ? Array.from({ length: 12 }, (_, k) => {
+    const st0 = starts[Math.floor((k * 7 + 3) % starts.length)], p = makePerson(shirts[(k + 2) % shirts.length]);
+    life.add(p);
+    return { p, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d, FOOT), turn: false, u: (k % 5) * 0.2, sp: 0.32 + (k % 4) * 0.05, lane: FOOT, ph: k * 1.7 };
+  }) : [];
+  const tPos = new THREE.Vector3(), tDir = new THREE.Vector3(), tGap = new THREE.Vector3();
+  const trafficLive = (dt: number) => {
+    for (const c of traffic) {
+      // Wait for the car in front (but never forever, so two cars can't block each other).
+      let blocked = false;
+      for (const o of traffic) {
+        if (o === c) continue;
+        tGap.copy(o.v.position).sub(c.v.position);
+        const ahead = tGap.x * c.ahead.x + tGap.z * c.ahead.z, side = Math.abs(tGap.x * c.ahead.z - tGap.z * c.ahead.x);
+        if (ahead > 0.05 && ahead < 0.95 && side < 0.32) { blocked = true; break; }
+      }
+      if (blocked && c.wait < 1.6) { c.wait += dt; continue; }
+      c.wait = 0;
+      c.u += (c.sp * dt) / Math.max(0.3, c.seg.len);
+      while (c.u >= 1) {
+        c.u -= 1;
+        if (c.turn) { c.seg = street(c.i, c.j, c.d, c.lane); c.turn = false; }
+        else { c.seg = nextLeg(c); c.turn = true; }
+      }
+      segAt(c.seg, c.u, tPos, tDir);
+      c.v.position.copy(tPos);
+      c.v.rotation.y = Math.atan2(tDir.x, tDir.z);
+      c.ahead.copy(tDir);
+    }
+    const t = performance.now() / 1000;
+    for (const w of strollers) {
+      w.u += (w.sp * dt) / Math.max(0.3, w.seg.len);
+      while (w.u >= 1) {
+        w.u -= 1;
+        if (w.turn) { w.seg = street(w.i, w.j, w.d, FOOT); w.turn = false; }
+        else { w.seg = nextLeg(w as unknown as (typeof traffic)[number]); w.turn = true; }
+      }
+      segAt(w.seg, w.u, tPos, tDir);
+      const sw = Math.sin(t * 9 + w.ph);
+      w.p.position.set(tPos.x, 0.2 + Math.abs(sw) * 0.04, tPos.z);
+      w.p.rotation.y = Math.atan2(tDir.x, tDir.z);
+      w.p.rotation.z = sw * 0.08;
+    }
+  };
   // ---- Town ranks (data/ranks.ts): as the company grows, the town itself changes for good ----
   const rank = cafe.rank ?? 0;
   const landmarks: Record<number, () => { x: number; z: number }> = {};
@@ -1864,6 +2094,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         w.p.rotation.y = Math.atan2(dir.x, dir.z) + (w.v < 0 ? Math.PI : 0);
         w.p.rotation.z = Math.sin(t * 9 + w.u * 50) * 0.08;
       }
+      trafficLive(Math.min(0.1, dt));
       for (const c of cars) {
         c.u = (c.u + c.sp * dt) % 1;
         carPath.at(c.u, tmp, dir);
