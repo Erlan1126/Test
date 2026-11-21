@@ -3918,3 +3918,8 @@ body.tabs-open .tab-page :is(.tabs, .ty-tabs) button { flex: 1 1 0 !important; p
 body.tabs-open .tab-page :is(.tabs, .ty-tabs) button[aria-selected="true"] { color: #fff !important; background: linear-gradient(135deg, #6a3cff, #b04ad8) !important; box-shadow: 0 4px 10px rgba(106, 60, 255, 0.3) !important; }
 body.tabs-open .tab-page :is(.tabs, .ty-tabs) button[aria-selected="true"]::after { display: none !important; }
 body.tabs-open #profile .seg.tabs button { flex: 0 0 auto !important; }
+
+/* Round 5 (ChatGPT's phone check): informative labels no smaller than ~10.5px. */
+.tcy-goal small { font-size: 10.5px; }
+.ty-buy small, .ty-adv small { font-size: 10.5px; }
+#earnings .eb-hire small { font-size: 10px !important; }
