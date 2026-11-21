@@ -213,9 +213,9 @@ export function buildBlock(S: BlockSetup): Block {
   resFlowers.visible = false;
   res.add(resFlowers);
   // To the flower market, or (if the block chose the playground) to watch the kids play.
-  const ERR_TO: V2 = flowersOpen ? STALL_FRONT : [PLAY[0] + 0.9, PLAY[1] + 0.35];
-  const ERRAND: V2[] = [[FIRST_SEAT.x, CHAIRS_AT[1] + 0.35], C(-0.5, 1.25), C(-2.35, 1.25), [cz.x - 2.35, crossZ], [ERR_TO[0], crossZ], ERR_TO];
-  const ERRAND_BACK: V2[] = [...ERRAND].reverse().concat([[FIRST_SEAT.x, FIRST_SEAT.z]]);
+  const ERR_TO: V2 = flowersOpen ? STALL_FRONT : [PLAY[0] + 0.9, PLAY[1] - 0.25];
+  const ERRAND: V2[] = [[FIRST_SEAT.x, FIRST_SEAT.z], [FIRST_SEAT.x, CHAIRS_AT[1] + 0.35], C(-0.5, 1.25), C(-2.35, 1.25), [cz.x - 2.35, crossZ], [ERR_TO[0], crossZ], ERR_TO];
+  const ERRAND_BACK: V2[] = [...ERRAND].reverse();
   const errandWalk = pathLen(ERRAND) / SPEED, ERRAND_SIT = 22, ERRAND_PICK = flowersOpen ? 2.2 : 6;
   const errandLoop = ERRAND_SIT + errandWalk * 2 + ERRAND_PICK + 1;
 

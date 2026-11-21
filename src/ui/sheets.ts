@@ -623,7 +623,14 @@ export class Sheets {
     openModal($("profile"));
     // Start the path at where the player is now.
     const here = $("journey-path").querySelector<HTMLElement>(".lv-step.here");
-    if (here) requestAnimationFrame(() => here.scrollIntoView({ block: "center" }));
+    // (Only the path scrolls, never the profile card above it off the top.)
+    if (here) requestAnimationFrame(() => {
+      const sheet = here.closest<HTMLElement>(".sheet");
+      if (!sheet) return;
+      const top = here.getBoundingClientRect().top - sheet.getBoundingClientRect().top + sheet.scrollTop;
+      const room = sheet.clientHeight - here.offsetHeight - 24;
+      if (top > room) sheet.scrollTop = Math.max(0, top - room);
+    });
   }
 
   /** The level journey: every level with what it brings, and where the player is. */

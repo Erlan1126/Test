@@ -131,6 +131,12 @@ export function introduce(save: SaveData, persist: () => void): boolean {
 }
 
 /** Pip says something outside the chapters (one button to close). */
+/** Pip offers a choice: each option is a button in the list; the main button closes. */
+export function mayorChoice(title: string, text: string, options: { label: string; sub: string; onPick: () => void }[], button: string): void {
+  show(title, text, options.map((o, i) => `<li class="mayor-pick"><button type="button" data-pick="${i}"><b>${esc(o.label)}</b><small>${esc(o.sub)}</small></button></li>`).join(""), "", button, () => {});
+  $("mayor-goals").querySelectorAll<HTMLButtonElement>("[data-pick]").forEach(b => { b.onclick = () => { $("mayor").hidden = true; options[Number(b.dataset.pick)].onPick(); }; });
+}
+
 /** Pip with a checklist (the same list as a chapter's goals). */
 export function mayorList(title: string, text: string, items: { done: boolean; text: string; note: string }[], button: string, onOk: () => void = () => {}): void {
   show(title, text, items.map(x => `<li class="${x.done ? "done" : ""}"><span>${x.done ? "✓" : ""}</span>${esc(x.text)}<em>${esc(x.note)}</em></li>`).join(""), "", button, onOk);

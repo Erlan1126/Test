@@ -11,6 +11,11 @@ export interface TownRank {
   icon: string;
 }
 
+/** The floating island next to the town: it opens at this rank (Big City), and what's built
+ *  there makes every business earn this much more, for good. */
+export const ANNEX_RANK = 4;
+export const ANNEX_BONUS = 0.1;
+
 /** Each rank above the first adds this much to every business's earnings. */
 export const RANK_BONUS = 0.1;
 

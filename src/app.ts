@@ -1,6 +1,6 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
 import { migrateChapters } from "./data/chapters";
-import { RANKS } from "./data/ranks";
+import { ANNEX_RANK, RANKS } from "./data/ranks";
 import type { SkylineTower } from "./logic/skyline";
 import { ISLAND_THEMES, type IslandTheme } from "./data/islands";
 import { claimTournament, prizeText } from "./logic/tournament";
@@ -1206,7 +1206,7 @@ export class App implements DailyHost {
       tickTycoon(this.save);
       const bonus = towerBonus(this.save, run.floors);
       if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
-      if (run.floors > 0) this.outcome.rewards.unshift({ kind: "pass", text: t("+{n} office floors for Skyhaven Inc.: open more business levels!", { n: run.floors }) });
+      if (run.floors > 0) this.outcome.rewards.unshift({ kind: "pass", text: t("+{n} office floors for Skyhaven Inc.: open more business levels!", { n: run.floors * 2 }) });
       // A long perfect streak starts a construction boom.
       if (this.sim.bestStreak >= BOOM_STREAK) {
         startBoom(this.save);
@@ -1791,7 +1791,7 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save)]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -1806,6 +1806,7 @@ export class App implements DailyHost {
           ghostTerrace: c.terrace === 0 && c.asked,
           decor: [...this.save.decor],
           rank: townRank(this.save),
+          annex: this.save.annex.pick || (townRank(this.save) >= ANNEX_RANK ? "ghost" : ""),
           hq: Object.fromEntries(Object.entries(hqs).map(([id, tw]) => [id, look(tw)])),
         },
       };

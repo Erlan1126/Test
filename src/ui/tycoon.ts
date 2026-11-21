@@ -8,7 +8,7 @@ import { vipActive } from "../logic/vip";
 import { GEM_BONUS } from "../data/tycoon";
 import { bizThumb } from "../render3d/thumbs";
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_AT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
-import { t, tn } from "../i18n";
+import { getLang, t, tn } from "../i18n";
 import { orderFor, ORDER_MULT } from "../logic/orders";
 import { claimSpire, spireReady, SPIRE_GOALS, type SpireNow } from "../logic/spire";
 import { orderText } from "./orders";
@@ -30,7 +30,9 @@ import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { MAYOR_SVG, mayorList, mayorNote, mayorSvg } from "./mayor";
+import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg } from "./mayor";
+import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
+import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -279,6 +281,8 @@ export class TycoonUI {
     if (!this.host.onMenu() || this.inCity) return;
     tick(this.save);
     this.inCity = true;
+    // A rank the town reached while away (or with this update) is celebrated on the way in.
+    window.setTimeout(() => this.checkRank(), 2500);
     // A brand-new company opens with a bang: everything earns more for its first minutes.
     // (A brand-new company's grand opening starts with its first sale: see doAct.)
     if (this.save.tycoon.tips > 0 && startOpening(this.save)) { this.host.persist(); setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1500); }
@@ -700,6 +704,11 @@ export class TycoonUI {
       const st = readyStage(s, grow.id);
       return { text: t("Build the {name} HQ", { name: t(stageName(grow.id, st)) }), sub: this.hqSub(grow.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(grow.id); } };
     }
+    // The floating island next to the town (Big City): waiting for its landmark.
+    if (annexOpen(s) && !annexBuilt(s)) {
+      const price = annexPrice(s);
+      return { text: t("A new island is waiting!"), sub: t("Build a greenhouse or a lookout across the sky · {n}", { n: coins(price) }), pct: Math.min(1, ty.coins / price), tone: "gift", act: () => this.openAnnex() };
+    }
     // From here on every step says what it brings the town: the next rank and what it adds.
     const rk = townRank(s), nx = RANKS[rk + 1], left = nx ? Math.max(1, nx.at - usedFloors(s)) : 0;
     const toward = nx ? t("{n} business levels until {rank}: {unlock}", { n: fmt(left), rank: t(nx.name), unlock: t(nx.unlock) }) : "";
@@ -1116,7 +1125,7 @@ export class TycoonUI {
       ],
       me: [
         { id: "profile", name: "Profile", open: () => $("level-btn").click() },
-        { id: "ranks", name: "Leaderboard", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
+        { id: "ranks", name: "Leaders", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
         { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !$("city-btn").hidden },
         { id: "settings", name: "Settings", open: () => $("settings-btn").click() },
       ],
@@ -1931,12 +1940,12 @@ export class TycoonUI {
     if (el.hidden) return;
     const used = usedFloors(s), from = RANKS[rk].at;
     const k = nx ? Math.max(0, Math.min(1, (used - from) / (nx.at - from))) : 1;
-    const v = `${rk}|${used}`;
+    const v = `${rk}|${used}|${getLang()}`;
     if (el.dataset.v === v) return;
     el.dataset.v = v;
     el.innerHTML = `<span class="tg-ico">${iconSvg(nx ? nx.icon : "crown")}</span><span class="tg-main"><small>${esc(t("Goal: grow Skyhaven to the Sky Capital"))}</small>`
       + (nx ? `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))}</b><i class="tg-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i><em class="tg-next">${esc(t(nx.name))} ${fmt(used)}/${fmt(nx.at)}</em>`
-        : `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))} · ${esc(t("Sky Capital reached!"))}</b>`) + `</span>`;
+        : `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))} ✓</b><i class="tg-bar"><i style="width:100%"></i></i>`) + `</span>`;
     el.setAttribute("aria-label", nx ? t("Next rank: {name} at {n} business levels ({have} now)", { name: t(nx.name), n: fmt(nx.at), have: fmt(used) }) : t("Sky Capital reached!"));
   }
 
@@ -1947,6 +1956,34 @@ export class TycoonUI {
       t("Every tower brings new neighbors, every business you grow brings the town to life, and step by step Skyhaven becomes the capital of the sky."),
       RANKS.slice(1).map((r, i) => ({ done: i + 1 <= rk, text: `${t(r.name)}: ${t(r.unlock)}`, note: i + 1 <= rk ? "" : `${fmt(Math.min(used, r.at))} / ${fmt(r.at)}` })),
       t("Let's grow!"));
+  }
+
+  /** The floating island next to the town: Pip offers the two landmarks. */
+  private openAnnex(): void {
+    const s = this.save;
+    if (!annexOpen(s) || annexBuilt(s)) return;
+    const price = annexPrice(s), pct = Math.round(ANNEX_BONUS * 100);
+    const pick = (p: AnnexPick) => () => {
+      tick(s);
+      const r = buildAnnex(s, p);
+      if (r === "short") { toast(t("You need {n} more cash. Your businesses are earning it!", { n: coins(annexPrice(s) - s.tycoon.coins) })); return; }
+      if (r !== "ok") return;
+      track("annex_built");
+      this.host.persist();
+      this.host.sound.unlock();
+      fireworks(3, () => this.host.sound.firework());
+      this.render();
+      // The camera flies over to it; then the neighbor has something to say.
+      window.setTimeout(() => this.host.visitLandmark(7, 4500), 600);
+      window.setTimeout(() => toast(p === "greenhouse" ? t("🌿 The Sky Greenhouse is open! Every business earns +{pct}%", { pct }) : t("🔭 The Sky Lookout is open! Every business earns +{pct}%", { pct })), 5400);
+    };
+    mayorChoice(t("A new island!"),
+      t("The little island next to ours has floated up beside the town. Let's build something there for everyone. Pick one: it stays for good, and every business earns {pct}% more.", { pct }),
+      [
+        { label: t("🌿 Sky Greenhouse"), sub: t("A glass dome full of plants · {n}", { n: coins(price) }), onPick: pick("greenhouse") },
+        { label: t("🔭 Sky Lookout"), sub: t("A tower to see the whole sky · {n}", { n: coins(price) }), onPick: pick("lookout") },
+      ],
+      t("Later"));
   }
 
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
@@ -1968,6 +2005,7 @@ export class TycoonUI {
       const c = this.save.cafe;
       if (!this.momentDone && this.inCity && c.starter && c.moved && c.terrace === 2) {
         this.momentDone = true;
+        if (this.story.stage === "none") this.stage("seat");
         this.frameUntil = Date.now() + 6500;
         this.render();
         this.later(900, () => this.say(t(NEIGHBOR_LINES[rk - 1] ?? NEIGHBOR_LINES[0]), 5200));
@@ -1984,6 +2022,7 @@ export class TycoonUI {
       this.momentDone = false;
       mayorNote(t("Skyhaven is now a {name}!", { name: t(r.name) }),
         t("{unlock}. And every business earns {pct}% more for good. Go take a look!", { unlock: t(r.unlock), pct: Math.round(RANK_BONUS * 100) })
+        + (rk === ANNEX_RANK ? " " + t("And the little island next door has floated up: it's ready for you to build on!") : "")
         + (RANKS[rk + 1] ? " " + t("Next rank: {name} at {n} business levels.", { name: t(RANKS[rk + 1].name), n: fmt(RANKS[rk + 1].at) }) : ""),
         t("Let's see!"));
     };

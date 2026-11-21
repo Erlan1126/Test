@@ -3828,3 +3828,47 @@ body.tabs-open #tycity .tcy-goal { visibility: hidden; }
 /* Messages always above the town's bubbles (they were drawn under the "Open" pills). */
 #toast { z-index: 95; }
 #earnings .eb-hire small { font-size: 10px !important; }
+
+/* ---- One top bar: money, crystals and the town level in a single compact card ---- */
+.tcy-top { flex-wrap: wrap; align-items: center !important; gap: 2px 6px !important; padding: 6px 8px 7px; border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94); box-shadow: 0 6px 18px rgba(40, 20, 100, 0.18); }
+.tcy-top .tcy-wallet { flex: 1 1 0; min-width: 0; padding: 4px 26px 4px 6px !important; background: transparent !important; box-shadow: none !important; border-radius: 12px !important; }
+.tcy-top .tcy-wallet::after { right: 6px !important; font-size: 18px !important; }
+.tcy-top .tcy-gems { align-self: center !important; height: 32px; padding: 0 6px 0 10px !important; background: #f1edff !important; box-shadow: none !important; border-radius: 16px !important; }
+.tcy-top .tcy-gems::after { width: 20px !important; height: 20px !important; font-size: 14px !important; }
+.tcy-top .tcy-goal { position: static !important; flex: 1 0 100%; order: 3; margin: 0; padding: 3px 6px !important; border: 0 !important; border-radius: 10px !important;
+  background: linear-gradient(90deg, #fff6d8, #ffe9f2) !important; box-shadow: none !important; }
+.tcy-top .tcy-goal .tg-ico { width: 20px !important; height: 20px !important; border-radius: 6px !important; }
+.tcy-top .tcy-goal .tg-ico svg { width: 13px !important; height: 13px !important; }
+.tcy-top .tcy-goal b { font-size: 11px !important; }
+.tcy-top .tcy-goal .tg-bar { height: 5px !important; }
+#tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 96px) !important; }
+#tycity .tcy-coach { top: calc(env(safe-area-inset-top, 0px) + 128px) !important; }
+body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
+
+/* ---- One tab style everywhere (Company, Shop, Goals, Me, City, Leaderboard): the same
+   rounded pill row, so moving between menus feels like one place. ---- */
+.modal .seg.tabs, .ty-tabs, .tab-seg {
+  display: flex !important; gap: 4px !important; padding: 4px !important; margin: 8px 0 10px !important; border-radius: 16px !important;
+  background: #efeaff !important; border: 0 !important; box-shadow: none !important; overflow-x: auto; scrollbar-width: none;
+}
+.modal .seg.tabs::-webkit-scrollbar, .ty-tabs::-webkit-scrollbar { display: none; }
+.modal .seg.tabs button, .ty-tabs button, .tab-seg button {
+  flex: 1 1 0 !important; min-width: max-content; padding: 9px 8px !important; border: 0 !important; border-radius: 12px !important;
+  font: 400 11px/1 var(--display) !important; letter-spacing: 0.02em !important; color: #6b5fa0 !important; background: transparent !important;
+  box-shadow: none !important; text-shadow: none !important; white-space: nowrap;
+}
+.modal .seg.tabs button::after, .ty-tabs button::after, .tab-seg button::after { display: none !important; }
+.modal .seg.tabs button[aria-selected="true"], .ty-tabs button[aria-selected="true"], .tab-seg button.on {
+  color: #fff !important; background: linear-gradient(135deg, #6a3cff, #b04ad8) !important; box-shadow: 0 4px 10px rgba(106, 60, 255, 0.3) !important;
+}
+.tab-seg button { min-width: 0 !important; }
+.tcy-goal b { flex: 0 1 auto !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tcy-goal .tg-bar { flex: 1 1 30px !important; min-width: 24px !important; }
+/* Pip's choices (the new island's landmark) */
+#mayor-goals li.mayor-pick { padding: 0; background: none; border: 0; }
+#mayor-goals li.mayor-pick button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 12px 14px; border: 2px solid #ffd27a; border-radius: 16px; cursor: pointer; text-align: left;
+  background: linear-gradient(135deg, #fff6d8, #ffe9f2); box-shadow: 0 4px 0 rgba(180, 120, 40, 0.18); }
+#mayor-goals li.mayor-pick button:active { transform: translateY(2px); box-shadow: none; }
+#mayor-goals li.mayor-pick b { font: 400 15px var(--display); color: #3a2a5a; }
+#mayor-goals li.mayor-pick small { font-size: 12px; font-weight: 700; color: #8a5a20; }

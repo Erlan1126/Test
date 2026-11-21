@@ -2,7 +2,7 @@
 // from things the player does anyway (towers, height, people, city buildings...); finishing
 // all three pays a reward and opens the next chapter. It gives the game a beginning, a
 // middle and an end: from an empty meadow to the capital of the sky.
-import { usedFloors } from "../logic/tycoon";
+import { townRank, usedFloors } from "../logic/tycoon";
 import { RANKS } from "./ranks";
 import type { SaveData } from "../logic/save";
 
@@ -30,8 +30,9 @@ const businesses = (s: SaveData) => Object.keys(s.tycoon.levels).length;
 const terrace = (s: SaveData) => (s.cafe.terrace === 2 ? 1 : 0);
 const projects = (s: SaveData) => s.cafe.done.length;
 const grown = (s: SaveData) => Object.values(s.tycoon.evolved).filter(v => v >= 1).length;
-/** All business levels together (as for the town's rank; a rank reached is kept for good). */
-const levels = (s: SaveData) => Math.max(usedFloors(s), RANKS[Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)].at);
+/** All business levels together. A rank already reached (kept through a New Era) counts as met;
+ *  the next one counts real levels only, so Pip and the town's goal bar always agree. */
+const levelsFor = (need: number) => (s: SaveData) => (need <= RANKS[townRank(s)].at ? need : usedFloors(s));
 
 // One chapter per town rank: Pip's story and the goal bar in the town tell the same story.
 // The last goal of each chapter is the rank itself.
@@ -43,7 +44,7 @@ export const CHAPTERS: Chapter[] = [
     goals: [
       { text: "Build {n} towers", need: 3, have: towers },
       { text: "Open the café terrace", need: 1, have: terrace },
-      { text: "Reach {n} business levels", need: 50, have: levels },
+      { text: "Reach {n} business levels", need: 50, have: levelsFor(50) },
     ],
     reward: { stars: 10, crystals: 20 },
   },
@@ -54,7 +55,7 @@ export const CHAPTERS: Chapter[] = [
     goals: [
       { text: "Finish a block project", need: 1, have: projects },
       { text: "Hire {n} managers", need: 3, have: managers },
-      { text: "Reach {n} business levels", need: 150, have: levels },
+      { text: "Reach {n} business levels", need: 150, have: levelsFor(150) },
     ],
     reward: { stars: 15, crystals: 30 },
   },
@@ -65,7 +66,7 @@ export const CHAPTERS: Chapter[] = [
     goals: [
       { text: "Grow {n} businesses with a new HQ", need: 2, have: grown },
       { text: "Build a tower {n} m tall", need: 60, have: best },
-      { text: "Reach {n} business levels", need: 300, have: levels },
+      { text: "Reach {n} business levels", need: 300, have: levelsFor(300) },
     ],
     reward: { stars: 20, crystals: 40 },
   },
@@ -76,7 +77,7 @@ export const CHAPTERS: Chapter[] = [
     goals: [
       { text: "Open {n} businesses", need: 6, have: businesses },
       { text: "Finish both block projects", need: 2, have: projects },
-      { text: "Reach {n} business levels", need: 500, have: levels },
+      { text: "Reach {n} business levels", need: 500, have: levelsFor(500) },
     ],
     reward: { stars: 30, crystals: 60 },
   },
@@ -87,7 +88,7 @@ export const CHAPTERS: Chapter[] = [
     goals: [
       { text: "Open {n} businesses", need: 8, have: businesses },
       { text: "Build a tower {n} m tall", need: 150, have: best },
-      { text: "Reach {n} business levels", need: 800, have: levels },
+      { text: "Reach {n} business levels", need: 800, have: levelsFor(800) },
     ],
     reward: { stars: 40, crystals: 80 },
   },
@@ -98,7 +99,7 @@ export const CHAPTERS: Chapter[] = [
     goals: [
       { text: "Open all {n} businesses", need: 10, have: businesses },
       { text: "Build a tower {n} m tall", need: 300, have: best },
-      { text: "Reach {n} business levels", need: 1200, have: levels },
+      { text: "Reach {n} business levels", need: 1200, have: levelsFor(1200) },
     ],
     reward: { stars: 60, crystals: 150 },
   },
@@ -110,7 +111,9 @@ export const CHAPTERS_V = 2;
 export function migrateChapters(s: SaveData): boolean {
   if (s.chapters.v === CHAPTERS_V) return false;
   let done = 0;
-  while (done < CHAPTERS.length && s.chapters.done > 0 && CHAPTERS[done].goals.every(g => g.have(s) >= g.need)) done++;
+  // (Never past the chapters they'd already finished: a later chapter that's met pays normally.)
+  const old = s.chapters.done;
+  while (done < Math.min(CHAPTERS.length, old) && CHAPTERS[done].goals.every(g => g.have(s) >= g.need)) done++;
   s.chapters = { done, seen: done - 1, v: CHAPTERS_V };
   return true;
 }

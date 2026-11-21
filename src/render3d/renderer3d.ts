@@ -549,8 +549,11 @@ export class Renderer3D {
     // only trees and shore, so the town reads bigger on a phone); the camera then only slides up
     // and down the town.
     // (A young town, only a block or two, comes closer still: there's little else to see.)
-    const tb = townBounds(), fitS = ((v.W * 0.94) / (tb.tMax - tb.tMin)) * (this.bizLook.zoom >= 1.3 ? 1.4 : 1.16);
-    const bizS = this.bizFraming ? ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom : Math.min(ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom, fitS);
+    // Close-ups (the neighbor, a landmark) lift the limit; it comes back smoothly, never in a jump.
+    const zk = Math.max(0, Math.min(1, (this.bizLook.zoom - 1.12) / 0.23));
+    const tb = townBounds(), fitS = ((v.W * 0.94) / (tb.tMax - tb.tMin)) * (1.16 + 0.24 * zk);
+    const rawS = ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom;
+    const bizS = lerp(Math.min(rawS, fitS), rawS, this.bizFrameK);
     const S = lerp(ISO_SCALE * v.s * v.zoom, bizS, k);
     // Over the business district, the camera looks at its plaza instead of the tower.
     const target = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(v.level * FH, BIZ_SLOT.y + 2, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
@@ -833,7 +836,7 @@ export class Renderer3D {
       this.bizCafeIn = f.bizCafe;
       this.bizStyleKey = styleKey;
       const cafe = f.bizCafe ?? null;
-      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
+      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, ax: cafe.annex, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
         if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
@@ -856,8 +859,9 @@ export class Renderer3D {
     if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
     // A rank's new landmark: the camera visits it for a moment.
     const lm = this.bizVisit && performance.now() < this.bizVisit.until ? this.biz.landmark(this.bizVisit.rank) : null;
-    if (lm) { this.bizLook.tx = lm.x + 1.2; this.bizLook.tz = lm.z + 1.2; this.bizLook.tzoom = 1.6; }
+    if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = 1.8; }
     this.bizFraming = framing || !!this.debugLook || !!lm;
+    this.bizFrameK += ((this.bizFraming ? 1 : 0) - this.bizFrameK) * Math.min(1, dt * 2);
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
@@ -897,6 +901,8 @@ export class Renderer3D {
   private readonly townLook = { night: 0, dusk: 0, wet: 0, skyTop: new THREE.Color(), skyBot: new THREE.Color(), sun: new THREE.Vector3() };
   /** Testing only: where the town camera looks (null: the game decides). */
   debugLook: { x: number; z: number; zoom: number } | null = null;
+  /** How far the close-up framing is on (0-1, eased), so leaving a close-up glides. */
+  private bizFrameK = 0;
   /** The camera's visit to a town rank's landmark (see bizcity landmark()). */
   private bizVisit: { rank: number; until: number } | null = null;
   visitLandmark(rank: number, ms: number): boolean {
