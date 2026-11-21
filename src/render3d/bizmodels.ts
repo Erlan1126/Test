@@ -75,7 +75,7 @@ function kit(m: ModelMats) {
         if (!isGlass && floorN > 0) K.box(g, ledge, w + 0.06, 0.05, d + 0.06, x, y - 0.24, z);
         floorN++;
       }
-      if (!isGlass && h > 1.5) K.box(g, ledge, w + 0.14, 0.1, d + 0.14, x, y0 + h - 0.1, z);
+      if (!isGlass && h > 1.5) K.box(g, ledge, w + 0.14, 0.1, d + 0.14, x, y0 + h - 0.09, z);
       // Big blocks get a little rooftop life at the back: an air-con unit and a water tank.
       if (!isGlass && w >= 2.4 && d >= 2.4 && h >= 3) {
         K.box(g, m.c("#c8cce0", 0.5, 0.3), 0.45, 0.3, 0.35, x - w / 2 + 0.45, y0 + h, z - d / 2 + 0.4);

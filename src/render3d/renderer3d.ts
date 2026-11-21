@@ -582,7 +582,8 @@ export class Renderer3D {
     if (k >= 1) {
       this.gl.shadowMap.autoUpdate = false;
       this.shadowTick++;
-      if (this.shadowAt.distanceToSquared(focus) > 0.04 || this.shadowTick >= 20) { this.gl.shadowMap.needsUpdate = true; this.shadowAt.copy(focus); this.shadowTick = 0; }
+      // (Every frame while a building rises or bounces: its shadow moves with it.)
+      if (this.shadowAt.distanceToSquared(focus) > 0.04 || this.shadowTick >= 20 || this.biz?.group.userData.moving) { this.gl.shadowMap.needsUpdate = true; this.shadowAt.copy(focus); this.shadowTick = 0; }
     } else this.gl.shadowMap.autoUpdate = true;
   }
   private shadowAt = new THREE.Vector3(1e9, 0, 0);
@@ -859,6 +860,7 @@ export class Renderer3D {
         this.bizPrev = new Map(lots.map(l => [l.id, l.state === "open" ? l.s : -1]));
         if (lots.length) {
           this.biz = buildBizCity(lots, style, grown, cafe ?? undefined);
+          this.shadowAt.set(1e9, 0, 0);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
         }

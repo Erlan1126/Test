@@ -1752,4 +1752,5 @@ export const ES: Record<string, string> = {
   "Your tower still wins... for now": "Tu torre sigue ganando... por ahora",
   "Rematch? Tap the link · SKYRISE": "¿Revancha? Toca el enlace · SKYRISE",
   "Couldn't make this card. Try again in a moment.": "No se pudo crear la tarjeta. Inténtalo en un momento.",
+  "Picture saved, and the link is copied": "Imagen guardada y enlace copiado",
 };

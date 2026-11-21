@@ -13,7 +13,8 @@ export interface Try { id: string; at: number; name: string; score: number; beat
 export async function createChallenge(t: { name: string; score: number; meters: number; floors: number; pace: number[] }): Promise<{ id: string; url: string } | null> {
   if (!SERVER_URL) return null;
   try {
-    const res = await fetch(`${base()}/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(t) });
+    // (A stalled network mustn't leave the Share button doing nothing: give up after 4 s.)
+    const res = await fetch(`${base()}/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(t), signal: typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(4000) : undefined });
     if (!res.ok) return null;
     const { id } = await res.json() as { id?: string };
     return id ? { id, url: `${base()}/c/${id}` } : null;

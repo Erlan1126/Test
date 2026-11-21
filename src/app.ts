@@ -204,7 +204,7 @@ export class App implements DailyHost {
   private towerStars = 0;
   private readonly site = siteUrl();
   private last = performance.now();
-  private perf = { frames: 0, time: 0, bad: 0 };
+  private perf = { frames: 0, time: 0, bad: 0, best: 0 };
   /** The city's towers by district, worked out once per change instead of every frame. */
   private cityView: { theme: string; skyline: SkylineTower[]; districts: { theme: IslandTheme; towers: SkylineTower[] }[] } | null = null;
   /** Resolution multiplier, lowered step by step if the device can't keep up. */
@@ -818,7 +818,12 @@ export class App implements DailyHost {
     });
     $("peek").addEventListener("click", () => this.setPeek(true));
     $("unpeek").addEventListener("click", () => this.setPeek(false));
-    $("share").addEventListener("click", () => void this.share());
+    $("share").addEventListener("click", e => {
+      const b = e.currentTarget as HTMLButtonElement;
+      if (b.dataset.busy) return;
+      b.dataset.busy = "1";
+      void this.share().finally(() => { delete b.dataset.busy; });
+    });
     $("share-video").addEventListener("click", () => void this.shareVideo());
     $("ad-double").addEventListener("click", () => void this.adDouble());
 
@@ -2250,7 +2255,14 @@ export class App implements DailyHost {
         : t("Your friend's tower: {n} people. {more} more to win.", { n: fmt(this.friendScore), more: fmt(this.friendScore - sim.score + 1) });
       // The friend challenge card: both towers side by side, sent back with a rematch link.
       versus.innerHTML = `<span>${esc(line)}</span><button type="button" class="vs-send" id="vs-send">${esc(t("Send {name} our towers", { name: this.vs?.name || t("your friend") }))}</button>`;
-      $("vs-send").addEventListener("click", e => { e.stopPropagation(); this.sound.click(); void this.sendVersus(); });
+      $("vs-send").addEventListener("click", e => {
+        e.stopPropagation();
+        const b = e.currentTarget as HTMLButtonElement;
+        if (b.disabled) return;
+        b.disabled = true;
+        this.sound.click();
+        void this.sendVersus().finally(() => { b.disabled = false; });
+      });
     }
     const next = won ? nextChallenge(save) : undefined;
     const again = $("again"), nb = $("next-challenge");
@@ -2553,12 +2565,15 @@ export class App implements DailyHost {
       this.perf.time += raw;
       if (this.perf.time > 3) {
         const fps = this.perf.frames / this.perf.time;
-        this.perf.bad = fps < 50 ? this.perf.bad + 1 : 0;
+        // (Compared with the best this phone has managed: battery saver caps the screen at
+        // 30 fps, and that's not the game struggling.)
+        this.perf.best = Math.max(this.perf.best, fps);
+        this.perf.bad = fps < 50 && fps < this.perf.best * 0.8 ? this.perf.bad + 1 : 0;
         if (this.perf.bad >= 2) {
           this.perf.bad = 0;
           if (this.shaders) this.autoNoShaders = true;
           else if (this.renderScale > 0.85) { this.renderScale = 0.85; this.resize(); }
-          else if (!st.autoLow) { st.autoLow = true; this.persist(); this.resize(); }
+          else if (!st.autoLow && this.state === "playing") { st.autoLow = true; this.persist(); this.resize(); }
           else if (this.renderScale > 0.6) { this.renderScale -= 0.1; this.resize(); }
         }
         this.perf.frames = 0;
@@ -2689,6 +2704,8 @@ export class App implements DailyHost {
   /** Skyhaven Inc.'s lots for the 3D business district (the same list until one changes). */
   private bizCache: { key: string; list: BizLot[] } = { key: "", list: [] };
   private bizView(): BizLot[] {
+    // (Nothing in the town changes while a tower is being built: skip the work each frame.)
+    if (this.state === "playing" && this.bizCache.key) return this.bizCache.list;
     const s = this.save, lots: BizLot[] = BUSINESSES.map((b, i) => ({
       id: b.id, c: b.color[0], c2: b.color[1], s: stageNow(s, b.id),
       state: (s.tycoon.levels[b.id] ?? 0) > 0 ? "open" : unlockedBusiness(s, i) ? "lease" : "locked",
@@ -2736,7 +2753,8 @@ export class App implements DailyHost {
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-    toast(t("Your picture was saved"));
+    // (The picture is saved; the words and link go to the clipboard so they aren't lost.)
+    try { await navigator.clipboard.writeText(full); toast(t("Picture saved, and the link is copied")); } catch { toast(t("Your picture was saved")); }
   }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;

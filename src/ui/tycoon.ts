@@ -907,7 +907,8 @@ export class TycoonUI {
     this.put($("tcy-next"), `<span class="next-ico">${n.tone === "learn" ? COACH_FACE : n.tone === "gift" ? "🎁" : n.tone === "hot" ? "⚡" : n.tone === "grow" ? "🏗️" : n.tone === "save" ? "💰" : "✨"}</span>
       <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : esc(t("Next step"))}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
     $("tcy-next").className = `tcy-next tone-${n.tone}`;
-    $("tcy-next").hidden = !!this.selected;
+    // (Hidden while the neighbor arrives: the Skip button sits there.)
+    $("tcy-next").hidden = !!this.selected || this.story.stage === "arrive";
     this.renderCard(now);
     // Dots on the bar: only for something you can act on.
     const dot = (k: string, on: boolean) => { $("tcy-bar").querySelector<HTMLElement>(`[data-open="${k}"] .dot`)!.hidden = !on; };
@@ -2156,7 +2157,7 @@ export class TycoonUI {
       </div>`;
     }).join("");
     this.host.persist();
-    $("scrap-share")?.addEventListener("click", async e => {
+    document.getElementById("scrap-share")?.addEventListener("click", async e => {
       const btn = e.currentTarget as HTMLButtonElement;
       if (btn.disabled) return;
       btn.disabled = true;

@@ -374,7 +374,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // merged draw for all of them: much cheaper than real shadows on a phone).
   const blobTex = softBlob();
   const blobM = own(new THREE.MeshBasicMaterial({ map: blobTex, color: 0x1a2a3a, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
-  const blob = (x: number, z: number, r: number, y = 0.2) => add(new THREE.PlaneGeometry(r * 2, r * 2).rotateX(-Math.PI / 2).translate(x + r * 0.18, y + 0.012, z + r * 0.12), blobM);
+  // (All of them go into one mesh at the end of the build: one draw instead of dozens.)
+  const blobGeos: THREE.BufferGeometry[] = [];
+  const blob = (x: number, z: number, r: number, y = 0.2) => { blobGeos.push(new THREE.PlaneGeometry(r * 2, r * 2).rotateX(-Math.PI / 2).translate(x + r * 0.18, y + 0.012, z + r * 0.12)); };
   const tree = (x: number, z: number, s = 1, y = 0.2) => {
     blob(x, z, 0.62 * s, y);
     add(new THREE.CylinderGeometry(0.06 * s, 0.1 * s, 0.6 * s, 6).translate(x, y + 0.3 * s, z), trunk);
@@ -479,17 +481,18 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     if (s0 < 0) s0 = 0;
     for (let i = 0; i <= ring.length; i++) {
       const pnt = ring[(s0 + i) % ring.length];
-      if (pnt[1] > beachZ + 0.6) cur.push(pnt); else { if (cur.length > 2) runs.push(cur); cur = []; }
+      if (pnt[1] > beachZ + 0.6 && insidePoly(hull, pnt[0], pnt[1], 0.95)) cur.push(pnt); else { if (cur.length > 2) runs.push(cur); cur = []; }
     }
     if (cur.length > 2) runs.push(cur);
     for (const r of runs) { strip(r, 1.05, 0.015, laneEdgeM); strip(r, 0.8, 0.03, laneM); }
   }
   // The windmill: on the countryside at the front right, its sails turning in the breeze.
   {
-    const ring = islandOutline((1.0 + ISLAND_PAD) / 2 + 1.15);
-    let best = ring[0];
-    for (const p of ring) if (p[0] - p[1] * 0.2 > best[0] - best[1] * 0.2) best = p;
-    const [wx, wz] = best;
+    let best = hull[0];
+    for (const p of hull) if (p[0] - p[1] * 0.2 > best[0] - best[1] * 0.2) best = p;
+    let [wx, wz] = best;
+    // (Walk in from the coast until it stands well inside, clear of the railing and the lane.)
+    for (let k = 0; k < 40 && (!insidePoly(hull, wx, wz, 1.6) || nearLane(wx, wz, 1.1)); k++) { wx += (cx - wx) * 0.04; wz += (cz - wz) * 0.04; }
     const wm = new THREE.Group();
     wm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.62, 1.9, 8).translate(0, 0.95, 0), mats.c("#fff6e6", 0.8)));
     wm.add(new THREE.Mesh(new THREE.ConeGeometry(0.56, 0.62, 8).translate(0, 2.2, 0), mats.c("#c8463a", 0.7)));
@@ -497,7 +500,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     wm.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.03).translate(0, 1.2, 0.5), winMat));
     blob(wx, wz, 0.95, 0.02);
     wm.position.set(wx, 0, wz);
-    wm.rotation.y = Math.atan2(cx - wx, cz - wz) + 0.6;
+    wm.rotation.y = Math.PI / 4; // the sails face the camera
     g.add(wm);
     const sails = new THREE.Group();
     const sailM = mats.c("#f4efe6", 0.9);
@@ -523,6 +526,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
       k++;
       if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3) continue;
+      if (Math.hypot(jx - fx0, jz - fz0) < 1.6 || Math.hypot(jx - (fx0 + fallAt[0]) / 2, jz - (fz0 + fallAt[1]) / 2) < 1.0) continue;
       if (nearLane(jx, jz, 0.75)) continue;
       // Out in the countryside: farm fields in rows (wheat, greens, lavender, ploughed earth)
       // and the odd sheep, between the trees.
@@ -543,7 +547,6 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
           continue;
         }
       }
-      if (Math.hypot(jx - fx0, jz - fz0) < 1.25 || Math.hypot(jx - (fx0 + fallAt[0]) / 2, jz - (fz0 + fallAt[1]) / 2) < 0.7) continue;
       // Now and then, away from the very edge: a cottage, or a little vegetable garden, so the
       // outskirts look lived in rather than empty.
       const h = Math.abs(Math.sin(k * 45.1 + 7.3)) % 1;
@@ -1371,18 +1374,18 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return g2;
   };
   const makePerson = (c: string) => {
-    const v = personN++ % 30, key = `${c}|${v}`;
+    const v = personN++ % 6, key = `${c}|${v}`;
     let geo = personGeo.get(key);
     if (!geo) {
       const skin = SKIN[v % SKIN.length], hair = HAIR[(v * 7) % HAIR.length], pants = PANTS[(v * 3) % PANTS.length];
       const parts: THREE.BufferGeometry[] = [
         paint(new THREE.CapsuleGeometry(0.04, 0.12, 2, 5).translate(-0.05, 0.1, 0), pants),
         paint(new THREE.CapsuleGeometry(0.04, 0.12, 2, 5).translate(0.05, 0.1, 0), pants),
-        paint(new THREE.CapsuleGeometry(0.095, 0.13, 3, 7).translate(0, 0.3, 0), c),
+        paint(new THREE.CapsuleGeometry(0.095, 0.13, 2, 6).translate(0, 0.3, 0), c),
         paint(new THREE.CapsuleGeometry(0.03, 0.15, 2, 5).rotateZ(0.12).translate(-0.12, 0.3, 0), c),
         paint(new THREE.CapsuleGeometry(0.03, 0.15, 2, 5).rotateZ(-0.12).translate(0.12, 0.3, 0), c),
-        paint(new THREE.SphereGeometry(0.085, 10, 8).translate(0, 0.53, 0), skin),
-        paint(new THREE.SphereGeometry(0.09, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.9, 1).translate(0, 0.545, -0.008), hair),
+        paint(new THREE.SphereGeometry(0.085, 7, 5).translate(0, 0.53, 0), skin),
+        paint(new THREE.SphereGeometry(0.09, 7, 3, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.9, 1).translate(0, 0.545, -0.008), hair),
       ];
       if (v % 5 === 1) parts.push(paint(new THREE.CylinderGeometry(0.1, 0.1, 0.035, 10).translate(0, 0.6, 0.03), c), paint(new THREE.BoxGeometry(0.1, 0.012, 0.08).translate(0, 0.585, 0.11), c));
       else if (v % 7 === 3) parts.push(paint(new THREE.CylinderGeometry(0.16, 0.16, 0.012, 12).translate(0, 0.6, 0), "#f4e2b0"), paint(new THREE.CylinderGeometry(0.075, 0.085, 0.07, 10).translate(0, 0.64, 0), "#f4e2b0"));
@@ -1770,6 +1773,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   life.add(saleCoin);
   const rush = ring(0xff4f8b, 2.5, 2.9), critic = ring(0x9a6cff, 2.3, 2.55), sel = ring(0xffe27a, 2.6, 2.95), gold = ring(0xffc93c, 2.2, 2.7);
 
+  if (blobGeos.length) { const bg = mergeGeometries(blobGeos); blobGeos.forEach(q => q.dispose()); if (bg) add(bg, blobM); }
   mergeStatic(g);
 
   const idx = (id: string) => lots.findIndex(l => l.id === id);
@@ -1832,12 +1836,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (const a of arrows) { a.rotation.y = t * 2; a.position.y += (Math.sin(t * 3) * 0.004); }
       // A building that just grew rises from the ground, with dust and a burst of light.
       const risingNow = new Set<THREE.Group>();
+      g.userData.moving = false;
       for (const r of rising) {
         if (r.at < 0) r.at = t;
         const k = (t - r.at) / 1.3;
         if (k >= 1.6) { r.puff.opacity = 0; r.glow.opacity = 0; continue; }
         const e = k >= 1 ? 1 : 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
-        if (k < 1) { r.lg.scale.set(1, Math.max(0.02, e), 1); risingNow.add(r.lg); }
+        if (k < 1) { r.lg.scale.set(1, Math.max(0.02, e), 1); risingNow.add(r.lg); g.userData.moving = true; }
         r.puff.opacity = Math.max(0, 0.7 * (1 - k / 1.6));
         r.puffMesh.scale.setScalar(1 + k * 0.8);
         r.glow.opacity = Math.max(0, Math.sin(Math.min(1, k / 1.4) * Math.PI) * 0.35);
@@ -1847,7 +1852,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (const [id, lg] of lotGroups) {
         if (risingNow.has(lg)) continue;
         const k = id === live.pulse ? (now - (live.pulseAt ?? 0)) / 450 : 1;
-        if (k >= 0 && k < 1) { const b = Math.sin(k * Math.PI) * (1 - k); lg.scale.set(1 - b * 0.06, 1 + b * 0.14, 1 - b * 0.06); }
+        if (k >= 0 && k < 1) { g.userData.moving = true; const b = Math.sin(k * Math.PI) * (1 - k); lg.scale.set(1 - b * 0.06, 1 + b * 0.14, 1 - b * 0.06); }
         else lg.scale.set(1, 1, 1);
       }
       shopperLive(dt);
