@@ -144,6 +144,10 @@ export function lotPos(i: number): { x: number; z: number; a: number } {
   const a = gx < gz || (gx === gz && gx % 2 === 1) ? Math.PI / 2 : 0;
   return { x, z, a };
 }
+/** Which bought land the town has already shown (so a fresh purchase animates once), and
+ *  whether a town has been built yet this session (nothing animates on the first load). */
+const landSeen = new Set<string>();
+let landBuiltOnce = false;
 /** Land next to the island (data/land.ts): its middle and size, on sale (floating a little way
  *  off the edge) or bought (joined to the island, overlapping its edge). */
 const LAND_R = 4.2;
@@ -293,9 +297,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
     add(new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, top - depth, 0), m);
   };
+  // The edge, in layers like a real cliff: a lip of grass that hangs a little over the edge,
+  // dark topsoil, warm earth, then two tones of rock.
   slab(hull, 0.12, 0, verge);
-  slab(grow(hull, -0.05), 0.5, -0.12, earth);
-  slab(grow(hull, -0.2), 1.0, -0.62, rock);
+  slab(grow(hull, 0.07), 0.06, -0.02, own(std(new THREE.Color(st.lawn).multiplyScalar(0.8), { roughness: 0.95 })));
+  slab(grow(hull, -0.04), 0.12, -0.12, own(std("#5a3f2a", { roughness: 1 })));
+  slab(grow(hull, -0.07), 0.4, -0.24, earth);
+  slab(grow(hull, -0.2), 0.45, -0.64, rock);
+  slab(grow(hull, -0.28), 0.55, -1.09, rockDark);
   const cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
   const shrink = (k: number) => hull.map(([x, z]): [number, number] => [cx + (x - cx) * k, cz + (z - cz) * k]);
   slab(shrink(0.9), 1.6, -1.6, rockDark);
@@ -670,6 +679,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       im.userData.dynamic = true;
       g.add(im);
     }
+    // Vines and roots hanging down the cliff here and there.
+    { const vineM = own(std(new THREE.Color(st.leaf).multiplyScalar(0.85), { roughness: 0.9 }));
+      for (let i = 0; i < hull.length; i += 7) { const [vx, vz] = hull[i], len = 0.35 + Math.abs(Math.sin(i * 3.3)) * 0.7; add(new THREE.BoxGeometry(0.07, len, 0.07).translate(vx, -len / 2 - 0.02, vz), vineM); add(new THREE.SphereGeometry(0.08, 5, 4).translate(vx, -len - 0.02, vz), vineM); } }
     // A low railing of posts and a rail along the island's edge.
     const rail = grow(hull, -0.3);
     let railRun = 0;
@@ -811,7 +823,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const wetSandM = own(std("#dcc28a", { roughness: 0.9 }));
   const seaM = own(std("#2aa6e6", { roughness: 0.12, metalness: 0.05, emissive: 0x0a4a8a, emissiveIntensity: 0.05 }));
   seaM.userData.dynamic = true;
-  const shallowM = own(std("#7fe0e6", { roughness: 0.1, metalness: 0.1, emissive: 0x1a6a7a, emissiveIntensity: 0.1 }));
+  const shallowM = own(std("#8fd6f5", { roughness: 0.12, metalness: 0.05, emissive: 0x1a5a9a, emissiveIntensity: 0.05 }));
   shallowM.userData.dynamic = true;
   fx.water(seaM, true); fx.water(shallowM, true); fx.ground(sandM, 0.5); fx.ground(wetSandM, 0.4);
   let beachLive = (_t: number, _night: number) => {};
@@ -822,7 +834,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     slab(seaPoly, 0.08, 0.035, seaM);
     slab(clipZ(seaPoly, zShore - 0.9, false), 0.02, 0.045, shallowM);
     // Deeper water further out, and glints of light on the waves.
-    const deepM = own(std("#1a7fd0", { roughness: 0.06, metalness: 0.2, emissive: 0x062a5a, emissiveIntensity: 0.15 }));
+    const deepM = own(std("#1a7fd0", { roughness: 0.1, metalness: 0.05, emissive: 0x062a5a, emissiveIntensity: 0.05 }));
     fx.water(deepM, true);
     slab(clipZ(grow(seaPoly, -0.6), zShore - 3.2, true), 0.02, 0.042, deepM);
     const glintM = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
@@ -2170,6 +2182,22 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     site.scale.setScalar(1.5);
     site.rotation.y = rot;
     G.add(site);
+    // Just bought: what's built there rises out of the ground with a little bounce, a beat
+    // after the camera arrives (once per purchase; later visits show it as it is).
+    if (!landSeen.has(id) && landSeen.size + (cafe.land ?? []).filter(l => l.bought).length > 0 && landBuiltOnce) {
+      const t0 = performance.now() + 900;
+      site.scale.set(1.5, 0.001, 1.5);
+      G.userData.dynamic = true;
+      site.userData.dynamic = true;
+      townTicks.push(() => {
+        const k2 = Math.min(1, Math.max(0, (performance.now() - t0) / 1300));
+        if (k2 >= 1 && site.scale.y === 1.5) return;
+        const e = k2 < 1 ? 1 - Math.pow(1 - k2, 3) + Math.sin(k2 * Math.PI) * 0.12 : 1;
+        site.scale.y = Math.max(0.001, 1.5 * e);
+        g.userData.moving = k2 < 1;
+      });
+    }
+    landSeen.add(id);
     const S2 = (geo: THREE.BufferGeometry, m: THREE.Material) => { const me = new THREE.Mesh(geo, m); site.add(me); return me; };
     if (id === "meadow") {
       // A sports field: striped grass, white lines, two goals, stands and floodlights.
@@ -2244,6 +2272,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     }
   });
 
+  // (From now on, newly bought land animates in.)
+  for (const l of cafe.land ?? []) if (l.bought) landSeen.add(l.id);
+  landBuiltOnce = true;
   if (blobGeos.length) { const bg = mergeGeometries(blobGeos); blobGeos.forEach(q => q.dispose()); if (bg) add(bg, blobM); }
   mergeStatic(g, 0.0);
 

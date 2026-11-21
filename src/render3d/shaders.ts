@@ -175,6 +175,8 @@ float fxWave(vec2 p, float t) {
   h += sin(dot(p, vec2(0.9, 0.42)) * 5.3 - t * 2.3) * 0.18;
   h += (fxNoise(p * 3.0 + vec2(t * 0.6, t * 0.3)) - 0.5) * 0.5;
   h += (fxNoise(p * 7.0 - vec2(t * 0.9, -t * 0.5)) - 0.5) * 0.22;
+  // Long, slow swells you can see from far away.
+  h += (fxNoise(p * vec2(0.35, 0.9) + vec2(t * 0.12, -t * 0.05)) - 0.5) * 0.9 * uFxSea;
   return h;
 }`);
         frag(s, "#include <normal_fragment_maps>", `
@@ -183,40 +185,49 @@ float fxWave(vec2 p, float t) {
     vec2 p = vFxW.xz;
     float e = 0.04;
     float h0 = fxWave(p, tt), hx = fxWave(p + vec2(e, 0.0), tt), hz = fxWave(p + vec2(0.0, e), tt);
-    float bump = mix(0.07, 0.11, uFxSea) * (1.0 + uFxWet * 0.5);
+    float bump = mix(0.07, 0.15, uFxSea) * (1.0 + uFxWet * 0.5);
     vec3 nW = normalize(vec3(-(hx - h0) / e * bump, 1.0, -(hz - h0) / e * bump));
     normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
     fxH = h0;`);
         frag(s, "#include <emissivemap_fragment>", `
     vec3 V = fxView();
     vec3 N = fxWorldN(normal);
-    float depth = uFxSea > 0.5 ? clamp((uFxShore - vFxW.z) / 4.5, 0.0, 1.0) : 0.35;
-    // Deep blue out at sea, clear turquoise over the sand near the beach.
-    vec3 shallow = vec3(0.13, 0.72, 0.70), deep = vec3(0.02, 0.19, 0.46);
-    diffuseColor.rgb = mix(shallow, deep, pow(depth, 0.7));
-    float fr = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
+    float depth = uFxSea > 0.5 ? clamp((uFxShore - vFxW.z) / 9.0, 0.0, 1.0) : 0.35;
+    // Like real sea water: clear blue-green over the sand, a rich blue further out, deep navy
+    // far out. Wind streaks make long darker and lighter patches across it.
+    vec3 shallow = vec3(0.24, 0.70, 0.86), mid = vec3(0.06, 0.40, 0.72), deep = vec3(0.02, 0.15, 0.40);
+    vec3 wc = mix(shallow, mid, smoothstep(0.0, 0.35, depth));
+    wc = mix(wc, deep, smoothstep(0.3, 1.0, depth));
+    float wind = fxNoise(vFxW.xz * vec2(0.07, 0.22) + vec2(uFxT * uFxM * 0.01, 0.0)) * 0.7 + fxNoise(vFxW.xz * vec2(0.2, 0.6)) * 0.3;
+    wc *= mix(0.88, 1.1, wind * uFxSea + 0.5 * (1.0 - uFxSea));
+    diffuseColor.rgb = wc * 0.85;
+    float fr = 0.03 + 0.97 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
     vec3 R = reflect(-V, N);
     float day = 1.0 - uFxNight * 0.75;
     // The sky in the water (more at a glancing angle), the sun's glitter on the waves,
     // light through the top of a wave, and foam only on the biggest crests.
-    totalEmissiveRadiance += fxSky(R) * (0.12 + fr * 0.85) * day;
+    totalEmissiveRadiance += fxSky(R) * (0.05 + fr * 0.75) * day;
     float glit = pow(max(dot(R, uFxSun), 0.0), 220.0);
     totalEmissiveRadiance += vec3(1.0, 0.95, 0.82) * glit * 2.6 * day * (1.0 - uFxWet * 0.8);
-    totalEmissiveRadiance += vec3(0.08, 0.42, 0.36) * smoothstep(0.35, 0.9, fxH) * 0.22 * (1.0 - depth * 0.5) * day;
-    float cap = smoothstep(0.95, 1.15, fxH) * (0.5 + 0.5 * fxNoise(vFxW.xz * 9.0 + uFxT * uFxM)) * uFxSea;
-    totalEmissiveRadiance += vec3(0.9) * cap * 0.35 * day;
+    // Sparkles: tiny points of sunlight twinkling on the wave tops.
+    float spk = step(0.93, fxNoise(vFxW.xz * 16.0 + vec2(uFxT * uFxM * 1.7, -uFxT * uFxM * 1.1))) * pow(max(dot(R, uFxSun), 0.0), 18.0);
+    totalEmissiveRadiance += vec3(1.0, 0.97, 0.9) * spk * 1.6 * day * uFxSea * (1.0 - uFxWet);
+    totalEmissiveRadiance += vec3(0.10, 0.36, 0.62) * smoothstep(0.35, 0.9, fxH) * 0.22 * (1.0 - depth * 0.5) * day;
+    float cap = smoothstep(mix(1.15, 0.85, depth), 1.3, fxH) * (0.5 + 0.5 * fxNoise(vFxW.xz * 9.0 + uFxT * uFxM)) * uFxSea;
+    totalEmissiveRadiance += vec3(0.92) * cap * 0.45 * day;
     // Caustics: a bright wobbly net of light over the shallows (and in the ponds).
+    float tt2 = uFxT * uFxM;
     vec2 cp = vFxW.xz * 2.2;
-    float c1 = fxNoise(cp + vec2(tt * 0.4, 0.0)), c2 = fxNoise(cp * 1.3 - vec2(0.0, tt * 0.35));
+    float c1 = fxNoise(cp + vec2(uFxT * uFxM * 0.4, 0.0)), c2 = fxNoise(cp * 1.3 - vec2(0.0, uFxT * uFxM * 0.35));
     float caus = pow(max(0.0, 1.0 - abs(c1 - c2) * 2.2), 6.0);
-    totalEmissiveRadiance += vec3(0.6, 0.95, 0.9) * caus * 0.2 * (1.0 - depth) * day;
+    totalEmissiveRadiance += vec3(0.8, 0.94, 1.0) * caus * 0.2 * (1.0 - depth) * day;
     if (uFxSea > 0.5) {
       // Foam where the sea meets the sand: a soft white band that rolls in and out, and thin
       // lines of foam following the waves in.
       float d = uFxShore - vFxW.z;
-      float wob = (fxNoise(vFxW.xz * 1.3 + tt * 0.2) - 0.5) * 0.35;
-      float band = smoothstep(0.6 + wob, 0.05, d + sin(tt * 1.2) * 0.12);
-      float lines = smoothstep(0.82, 1.0, sin((d - tt * 0.35) * 7.0)) * smoothstep(1.8, 0.3, d) * (0.5 + 0.5 * fxNoise(vFxW.xz * 4.0));
+      float wob = (fxNoise(vFxW.xz * 1.3 + uFxT * uFxM * 0.2) - 0.5) * 0.35;
+      float band = smoothstep(0.6 + wob, 0.05, d + sin(uFxT * uFxM * 1.2) * 0.12);
+      float lines = smoothstep(0.82, 1.0, sin((d - uFxT * uFxM * 0.35) * 7.0)) * smoothstep(1.8, 0.3, d) * (0.5 + 0.5 * fxNoise(vFxW.xz * 4.0));
       totalEmissiveRadiance += vec3(1.0) * (band * 0.6 + lines * 0.3) * day;
     }
     totalEmissiveRadiance += ${LAMP} * fxLamps(vFxW) * uFxNight * 0.5;`);
