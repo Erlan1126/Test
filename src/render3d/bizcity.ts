@@ -6,6 +6,7 @@
 // at night the windows, signs and an empire's searchlight come on.
 import * as THREE from "three";
 import { mergeStatic } from "./world";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildBlock, type BizBlock } from "./block";
 import { townFx, type TownLook } from "./shaders";
 import { buildModel, buildStreetFront, buildTerrace, type ModelMats } from "./bizmodels";
@@ -132,14 +133,17 @@ export function lotPos(i: number): { x: number; z: number; a: number } {
   const a = gx < gz || (gx === gz && gx % 2 === 1) ? Math.PI / 2 : 0;
   return { x, z, a };
 }
-/** How far the island reaches on screen: across (t, screen x) and into the screen (s), local units. */
-let bounds: { tMin: number; tMax: number; sMin: number; sMax: number } | null = null;
-export function townBounds(): { tMin: number; tMax: number; sMin: number; sMax: number } {
-  if (!bounds) {
-    const pts = islandOutline(), ts = pts.map(([x, z]) => (x - z) * Math.SQRT1_2), ss = pts.map(([x, z]) => (x + z) * Math.SQRT1_2);
-    bounds = { tMin: Math.min(...ts), tMax: Math.max(...ts), sMin: Math.min(...ss), sMax: Math.max(...ss) };
+/** How far the island reaches on screen: across (t, screen x) and into the screen (s), local
+ *  units. `core`: just the town and its verge (what the camera frames), not the countryside. */
+const boundsCache = new Map<boolean, { tMin: number; tMax: number; sMin: number; sMax: number }>();
+export function townBounds(core = false): { tMin: number; tMax: number; sMin: number; sMax: number } {
+  let b = boundsCache.get(core);
+  if (!b) {
+    const pts = islandOutline(core ? 1.0 : ISLAND_PAD), ts = pts.map(([x, z]) => (x - z) * Math.SQRT1_2), ss = pts.map(([x, z]) => (x + z) * Math.SQRT1_2);
+    b = { tMin: Math.min(...ts), tMax: Math.max(...ts), sMin: Math.min(...ss), sMax: Math.max(...ss) };
+    boundsCache.set(core, b);
   }
-  return bounds;
+  return b;
 }
 /** Where the camera should look: the blocks you've built so far (and the next to open). */
 export function streetFocus(lots: BizLot[]): { x: number; z: number; zoom: number } {
@@ -340,6 +344,31 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
     }
   }
+  // Little roundabouts where four blocks meet (inside the town; the outer street where the
+  // cars and the tram run stays a plain loop): a stone curb, a round lawn with flowers and a
+  // lamp-post tree in the middle, and a painted ring on the road round it.
+  const roundabouts: [number, number][] = [];
+  {
+    const has = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz);
+    const seen = new Set<string>();
+    for (const [gx, gz] of ALL) {
+      for (const [ox, oz] of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) {
+        const ax = gx + ox, az = gz + oz, key = `${ax},${az}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!(has(ax, az) && has(ax + 1, az) && has(ax, az + 1) && has(ax + 1, az + 1))) continue;
+        const { x, z } = cellXZ([ax, az]);
+        roundabouts.push([x + q, z + q]);
+      }
+    }
+  }
+  const ringPaint = own(new THREE.MeshBasicMaterial({ color: 0xf4f2fa }));
+  for (const [x, z] of roundabouts) {
+    add(new THREE.RingGeometry(0.74, 0.8, 28).rotateX(-Math.PI / 2).translate(x, 0.056, z), ringPaint);
+    add(new THREE.CylinderGeometry(0.52, 0.55, 0.16, 20).translate(x, 0.1, z), curb);
+    add(new THREE.CylinderGeometry(0.46, 0.46, 0.04, 20).translate(x, 0.2, z), grass);
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; add(new THREE.SphereGeometry(0.06, 6, 4).translate(x + Math.cos(a) * 0.34, 0.25, z + Math.sin(a) * 0.34), mats.c(["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"][k % 4], 0.8)); }
+  }
   // Trees in the island's style.
   // Soft contact shadows: a blurred dark patch under trees and houses grounds them (one
   // merged draw for all of them: much cheaper than real shadows on a phone).
@@ -363,6 +392,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let k = 0; k < 3; k++) add(new THREE.SphereGeometry(0.07, 6, 4).translate(x - 0.12 + k * 0.12, 0.72, z + 0.08), mats.c(c, 0.8));
   };
   const flowersOn = ["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"];
+  for (const [x, z] of roundabouts) tree(x, z, 0.6, 0.22);
   // The two parks by the entrance: lawns, a path, a pond, benches.
   for (const [n, cell] of PARKS.entries()) {
     const { x, z } = cellXZ(cell);
@@ -413,15 +443,106 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // (A fixed step in from the edge, on the grass verge: never out on the ring road.)
   const inX = cx - fallAt[0], inZ = cz - fallAt[1], inL = Math.hypot(inX, inZ) || 1;
   const fx0 = fallAt[0] + (inX / inL) * 1.35, fz0 = fallAt[1] + (inZ / inL) * 1.35;
+  // ---- The countryside ring past the town: a winding lane, farm fields, a windmill ----
+  const townTicksEarly: ((t: number) => void)[] = [];
+  const coreHull = islandOutline(1.0);
+  // The lane: a sandy cobbled road that wanders round the town, half way out to the edge
+  // (not across the beach), with a low hedge of posts here and there.
+  const laneAll = islandOutline((1.0 + ISLAND_PAD) / 2 + 0.15).filter(p => p[1] > beachZ + 0.6);
+  const laneM = own(std("#e6d3a8", { roughness: 0.95 }));
+  const laneEdgeM = own(std("#cbb488", { roughness: 0.95 }));
+  fx.street(laneM); fx.ground(laneEdgeM, 0.4);
+  const nearLane = (x: number, z: number, d: number) => { for (const [lx, lz] of laneAll) if ((lx - x) ** 2 + (lz - z) ** 2 < d * d) return true; return false; };
+  {
+    // (The ring is open where it meets the beach: draw only the joined-up stretches.)
+    const strip = (pts: [number, number][], w: number, y: number, m: THREE.Material) => {
+      const pos: number[] = [], idx: number[] = [];
+      pts.forEach((pnt, i) => {
+        const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+        const tx = b[0] - a[0], tz = b[1] - a[1], l = Math.hypot(tx, tz) || 1, nx = -tz / l, nz = tx / l;
+        pos.push(pnt[0] + nx * w / 2, y, pnt[1] + nz * w / 2, pnt[0] - nx * w / 2, y, pnt[1] - nz * w / 2);
+        if (i < pts.length - 1) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+      });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.setAttribute("normal", new THREE.Float32BufferAttribute(pos.map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+      const mesh = add(geo, m);
+      (m as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+      return mesh;
+    };
+    const runs: [number, number][][] = [];
+    let cur: [number, number][] = [];
+    const ring = islandOutline((1.0 + ISLAND_PAD) / 2 + 0.15);
+    // Start the walk on the beach side so each joined stretch comes out in one piece.
+    let s0 = ring.findIndex(p => p[1] <= beachZ + 0.6);
+    if (s0 < 0) s0 = 0;
+    for (let i = 0; i <= ring.length; i++) {
+      const pnt = ring[(s0 + i) % ring.length];
+      if (pnt[1] > beachZ + 0.6) cur.push(pnt); else { if (cur.length > 2) runs.push(cur); cur = []; }
+    }
+    if (cur.length > 2) runs.push(cur);
+    for (const r of runs) { strip(r, 1.05, 0.015, laneEdgeM); strip(r, 0.8, 0.03, laneM); }
+  }
+  // The windmill: on the countryside at the front right, its sails turning in the breeze.
+  {
+    const ring = islandOutline((1.0 + ISLAND_PAD) / 2 + 1.15);
+    let best = ring[0];
+    for (const p of ring) if (p[0] - p[1] * 0.2 > best[0] - best[1] * 0.2) best = p;
+    const [wx, wz] = best;
+    const wm = new THREE.Group();
+    wm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.62, 1.9, 8).translate(0, 0.95, 0), mats.c("#fff6e6", 0.8)));
+    wm.add(new THREE.Mesh(new THREE.ConeGeometry(0.56, 0.62, 8).translate(0, 2.2, 0), mats.c("#c8463a", 0.7)));
+    wm.add(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.42, 0.04).translate(0, 0.21, 0.6), mats.c("#6a4a3a", 0.8)));
+    wm.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.03).translate(0, 1.2, 0.5), winMat));
+    blob(wx, wz, 0.95, 0.02);
+    wm.position.set(wx, 0, wz);
+    wm.rotation.y = Math.atan2(cx - wx, cz - wz) + 0.6;
+    g.add(wm);
+    const sails = new THREE.Group();
+    const sailM = mats.c("#f4efe6", 0.9);
+    for (let k = 0; k < 4; k++) {
+      const arm = new THREE.Group();
+      arm.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.15, 0.03).translate(0, 0.6, 0), wood));
+      arm.add(new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.85, 0.015).translate(0.13, 0.72, 0), sailM));
+      arm.rotation.z = (k / 4) * Math.PI * 2;
+      sails.add(arm);
+    }
+    sails.position.set(0, 1.75, 0.56);
+    sails.userData.dynamic = true;
+    wm.add(sails);
+    townTicksEarly.push(t => { sails.rotation.z = -t * 0.7; });
+  }
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
     const inside = (x: number, z: number, m = 0.45) => insidePoly(hull, x, z, m);
     let k = 0;
-    for (let x = -OFF - C; x <= OFF + 3 * C; x += 1.2) for (let z = -OFF - C; z <= OFF + 3 * C; z += 1.2) {
+    const FIELD = [["#e8c45a", "#d4a83a"], ["#7cc85a", "#5aa848"], ["#b48cdc", "#9a6ec8"], ["#c8945a", "#a8743a"]];
+    for (let x = -OFF - C - ISLAND_PAD; x <= OFF + 3 * C + ISLAND_PAD; x += 1.2) for (let z = -OFF - C - ISLAND_PAD; z <= OFF + 3 * C + ISLAND_PAD; z += 1.2) {
       const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
       k++;
       if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3) continue;
+      if (nearLane(jx, jz, 0.75)) continue;
+      // Out in the countryside: farm fields in rows (wheat, greens, lavender, ploughed earth)
+      // and the odd sheep, between the trees.
+      if (!insidePoly(coreHull, jx, jz)) {
+        const fh = Math.abs(Math.sin(Math.floor(jx / 2.4) * 12.1 + Math.floor(jz / 2.4) * 7.7)) % 1;
+        if (fh < 0.42 && inside(jx, jz, 0.7) && !nearLane(jx, jz, 1.0)) {
+          const fc = FIELD[Math.floor(fh * 100) % FIELD.length], ang = Math.floor(jx / 2.4 + jz / 2.4) % 2 ? 0 : Math.PI / 2;
+          add(new THREE.BoxGeometry(1.2, 0.04, 1.2).rotateY(ang).translate(jx, 0.03, jz), mats.c(fc[1], 0.95));
+          for (let row = -2; row <= 2; row++) add(new THREE.BoxGeometry(1.1, 0.07, 0.13).translate(0, 0, row * 0.22).rotateY(ang).translate(jx, 0.07, jz), mats.c(fc[0], 0.9));
+          continue;
+        }
+        if (fh > 0.9 && inside(jx, jz, 0.8)) {
+          // A sheep: a woolly body, a dark face.
+          const a = k * 1.7;
+          add(new THREE.SphereGeometry(0.16, 7, 5).scale(1.3, 0.9, 1).rotateY(a).translate(jx, 0.17, jz), mats.c("#fbfaf6", 0.95));
+          add(new THREE.SphereGeometry(0.075, 6, 5).translate(jx + Math.cos(a) * 0.2, 0.22, jz - Math.sin(a) * 0.2), mats.c("#3a3550", 0.8));
+          blob(jx, jz, 0.25, 0.0);
+          continue;
+        }
+      }
       if (Math.hypot(jx - fx0, jz - fz0) < 1.25 || Math.hypot(jx - (fx0 + fallAt[0]) / 2, jz - (fz0 + fallAt[1]) / 2) < 0.7) continue;
       // Now and then, away from the very edge: a cottage, or a little vegetable garden, so the
       // outskirts look lived in rather than empty.
@@ -506,6 +627,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   // Island upgrades bought with cash (data/decor.ts): each appears in the town for good.
   const townTicks: ((t: number, night: number) => void)[] = [];
+  townTicks.push(t => { for (const f of townTicksEarly) f(t); });
   const glowDecor = own(std("#fff2b0", { emissive: 0xffd27a, emissiveIntensity: 0.2 }));
   glowDecor.userData.dynamic = true;
   townTicks.push((_t, night) => { glowDecor.emissiveIntensity = 0.2 + night * 2.2; });
@@ -1234,11 +1356,42 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const loop = (inset: number) => outline(ALL, inset).map(p => new THREE.Vector3(p[0], 0, p[1]));
   const carPath = new Path(loop(0.45)), walkPath = new Path(loop(1.15));
   const shirts = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff", "#ff8a5c", "#3ac0c0", "#e8457a"];
-  const skinM = own(std("#f2c39a"));
+  // People: legs, a shirt with arms, a face and hair (sometimes a cap or a sun hat), all in
+  // one mesh with painted colors, so each person is a single draw however detailed.
+  const personM = own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75 }));
+  const personGeo = new Map<string, THREE.BufferGeometry>();
+  const SKIN = ["#f2c39a", "#d9a074", "#a86b45", "#7a4a2e", "#ffd9b8"], HAIR = ["#3a2a20", "#7a4a20", "#e8c070", "#1e1a22", "#b8442a", "#d8d4e0"];
+  const PANTS = ["#2f3a5a", "#4a4f6a", "#6a5a4a", "#2a5a7a", "#e8e0d0"];
+  let personN = 0;
+  const paint = (geo: THREE.BufferGeometry, c: string) => {
+    const g2 = geo.index ? geo.toNonIndexed() : geo, n = g2.attributes.position.count, cc = new THREE.Color(c), arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { arr[i * 3] = cc.r; arr[i * 3 + 1] = cc.g; arr[i * 3 + 2] = cc.b; }
+    g2.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+    if (g2.attributes.uv) g2.deleteAttribute("uv");
+    return g2;
+  };
   const makePerson = (c: string) => {
+    const v = personN++ % 30, key = `${c}|${v}`;
+    let geo = personGeo.get(key);
+    if (!geo) {
+      const skin = SKIN[v % SKIN.length], hair = HAIR[(v * 7) % HAIR.length], pants = PANTS[(v * 3) % PANTS.length];
+      const parts: THREE.BufferGeometry[] = [
+        paint(new THREE.CapsuleGeometry(0.04, 0.12, 2, 5).translate(-0.05, 0.1, 0), pants),
+        paint(new THREE.CapsuleGeometry(0.04, 0.12, 2, 5).translate(0.05, 0.1, 0), pants),
+        paint(new THREE.CapsuleGeometry(0.095, 0.13, 3, 7).translate(0, 0.3, 0), c),
+        paint(new THREE.CapsuleGeometry(0.03, 0.15, 2, 5).rotateZ(0.12).translate(-0.12, 0.3, 0), c),
+        paint(new THREE.CapsuleGeometry(0.03, 0.15, 2, 5).rotateZ(-0.12).translate(0.12, 0.3, 0), c),
+        paint(new THREE.SphereGeometry(0.085, 10, 8).translate(0, 0.53, 0), skin),
+        paint(new THREE.SphereGeometry(0.09, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.9, 1).translate(0, 0.545, -0.008), hair),
+      ];
+      if (v % 5 === 1) parts.push(paint(new THREE.CylinderGeometry(0.1, 0.1, 0.035, 10).translate(0, 0.6, 0.03), c), paint(new THREE.BoxGeometry(0.1, 0.012, 0.08).translate(0, 0.585, 0.11), c));
+      else if (v % 7 === 3) parts.push(paint(new THREE.CylinderGeometry(0.16, 0.16, 0.012, 12).translate(0, 0.6, 0), "#f4e2b0"), paint(new THREE.CylinderGeometry(0.075, 0.085, 0.07, 10).translate(0, 0.64, 0), "#f4e2b0"));
+      else if (v % 4 === 2) parts.push(paint(new THREE.SphereGeometry(0.05, 6, 5).translate(0, 0.52, -0.09), hair));
+      geo = mergeGeometries(parts)!;
+      personGeo.set(key, geo);
+    }
     const p = new THREE.Group();
-    p.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.22, 3, 6).translate(0, 0.28, 0), mats.c(c)));
-    p.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6).translate(0, 0.56, 0), skinM));
+    p.add(new THREE.Mesh(geo, personM));
     return p;
   };
   const walkers = Array.from({ length: 22 }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: k / 22, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
@@ -1704,6 +1857,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         walkPath.at(w.u, tmp, dir);
         w.p.position.set(tmp.x, 0.2 + Math.abs(Math.sin(t * 9 + w.u * 50)) * 0.04, tmp.z);
         w.p.rotation.y = Math.atan2(dir.x, dir.z) + (w.v < 0 ? Math.PI : 0);
+        w.p.rotation.z = Math.sin(t * 9 + w.u * 50) * 0.08;
       }
       for (const c of cars) {
         c.u = (c.u + c.sp * dt) % 1;
@@ -1853,7 +2007,18 @@ export function roofProp(id: string, c1: THREE.Color, c2: THREE.Color): THREE.Gr
 }
 
 /** The island's edge: the town's blocks wrapped in one smooth, convex outline with a verge. */
-function islandOutline(): [number, number][] {
+/** How far the island reaches past the town's streets: a countryside ring of farms, cottages,
+ *  a windmill and a winding lane (more to explore now that you can drag the town around). */
+const ISLAND_PAD = 3.4;
+const outlineCache = new Map<number, [number, number][]>();
+function islandOutline(pad = ISLAND_PAD): [number, number][] {
+  const hit = outlineCache.get(pad);
+  if (hit) return hit;
+  const r = makeOutline(pad);
+  outlineCache.set(pad, r);
+  return r;
+}
+function makeOutline(pad: number): [number, number][] {
   const pts: [number, number][] = [];
   for (const c of [...ALL, ...BEACH]) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
   pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -1861,7 +2026,7 @@ function islandOutline(): [number, number][] {
   const lower: [number, number][] = [], upper: [number, number][] = [];
   for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
   for (const p of [...pts].reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
-  const hull = grow([...lower.slice(0, -1), ...upper.slice(0, -1)], 1.0);
+  const hull = grow([...lower.slice(0, -1), ...upper.slice(0, -1)], pad);
   // A natural coastline instead of a cut shape: walk round the outline and push each point
   // out by a smooth, uneven amount (bays and headlands), then round it off. It never comes
   // in past the streets.

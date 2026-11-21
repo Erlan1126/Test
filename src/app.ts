@@ -2688,6 +2688,36 @@ export class App implements DailyHost {
   bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }
   bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
   visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
+  /** A small picture of the town as it looks right now (for the scrapbook's memories). */
+  townPicture(): string | null {
+    if (!(this.renderer instanceof Renderer3D)) return null;
+    try {
+      const src = this.renderer.output, w = 480, h = 600, c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const g = c.getContext("2d")!;
+      // The middle of the screen, 4:5 (above the bottom bar, below the top row).
+      const sh = Math.min(src.height * 0.72, (src.width * h) / w), sw = (sh * w) / h;
+      g.drawImage(src, (src.width - sw) / 2, src.height * 0.1, sw, sh, 0, 0, w, h);
+      return c.toDataURL("image/jpeg", 0.72);
+    } catch { return null; }
+  }
+  /** Shares a picture (the native share sheet, the browser's, or a download). */
+  async sharePicture(blob: Blob, text: string, name = "skyrise-skyhaven.jpg"): Promise<void> {
+    const full = this.site ? `${text} ${this.site}` : text;
+    if (await nativeShare(full, blob, name)) return;
+    try {
+      const file = new File([blob], name, { type: blob.type });
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text: full }); return; }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    toast(t("Your picture was saved"));
+  }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }

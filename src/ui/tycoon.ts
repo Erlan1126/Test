@@ -34,6 +34,7 @@ import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg } from "./mayor"
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
 import { PAGE_INTRO } from "../data/guide";
+import { loadMemories, saveMemory, thenNowCard } from "./memories";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -64,6 +65,8 @@ export interface TycoonHost {
   /** Where the café block's neighbor stands on screen, or null. */
   bizResident(): [number, number] | null;
   visitLandmark(rank: number, ms: number): boolean;
+  townPicture(): string | null;
+  sharePicture(blob: Blob, text: string): Promise<void>;
   bizPan(dx: number, dy: number): void;
   bizZoom(f: number): void;
   bizPanEnd(): void;
@@ -84,6 +87,14 @@ const NEIGHBOR_LINES = [
   "Airships! I waved at one this morning and it waved back 🎈",
   "Towers on the floating islands... I remember when this was a meadow.",
   "The capital of the sky. And it all started with your first tower. Thank you! 💛",
+];
+/** What the neighbor says on an ordinary day. */
+const DAILY_HELLO = [
+  "Good to see you! The coffee's still warm ☕",
+  "The town feels busier every day. I like it!",
+  "I saved you a seat on the terrace 🌷",
+  "Morning! The tram was full today: everybody wants to see our town.",
+  "One more tower and we'll have new neighbors!",
 ];
 const thumbFor = (b: (typeof BUSINESSES)[number], stage: number): string => bizThumb(b.id, stage, b.color[0], b.color[1]);
 /** A multiplier, short: 1.2, 3, 12.5, 1.2K. */
@@ -126,6 +137,20 @@ export class TycoonUI {
 
   constructor(private readonly host: TycoonHost) {
     $("block-skip").addEventListener("click", () => { this.host.sound.click(); this.skipArrival(); });
+    // "Why?": a greyed-out button can't be pressed, so a tap on it falls through to its row;
+    // find which button was under the finger and say what it needs.
+    document.addEventListener("click", e => {
+      const row = (e.target as Element | null)?.closest?.<HTMLElement>(".ty-biz");
+      if (!row) return;
+      for (const btn of row.querySelectorAll<HTMLButtonElement>("button[data-act]:disabled")) {
+        const r = btn.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          const why = this.whyLocked(row.dataset.biz ?? "", btn.dataset.act ?? "");
+          if (why) { this.host.sound.click(); toast(why); }
+          return;
+        }
+      }
+    });
     wireModal($("tycoon"));
     // The coin's gold gradient, defined once where it's always drawable (a gradient inside
     // a hidden element can't be used by the coins elsewhere on the page).
@@ -292,6 +317,13 @@ export class TycoonUI {
     this.inCity = true;
     // A rank the town reached while away (or with this update) is celebrated on the way in.
     window.setTimeout(() => this.checkRank(), 2500);
+    window.setTimeout(() => this.neighborNote(), 6000);
+    // The very first picture of the town ("then"), once the first tower stands in it and the
+    // camera has settled.
+    window.setTimeout(() => {
+      const s = this.save;
+      if (this.inCity && s.cafe.starter && !loadMemories()[0] && !openModalEl() && !document.body.classList.contains("tabs-open")) saveMemory(0, this.host.townPicture());
+    }, 5000);
     // A brand-new company opens with a bang: everything earns more for its first minutes.
     // (A brand-new company's grand opening starts with its first sale: see doAct.)
     if (this.save.tycoon.tips > 0 && startOpening(this.save)) { this.host.persist(); setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1500); }
@@ -674,6 +706,76 @@ export class TycoonUI {
   private nextAct: (() => void) | null = null;
 
   /** The one thing the player should do next, always on screen. */
+  /** A rough wait, in words: "40s", "12m", "3h 20m", "2d". */
+  private static wait(sec: number): string {
+    if (sec < 60) return t("{n}s", { n: Math.max(1, Math.ceil(sec)) });
+    if (sec < 3600) return t("{n}m", { n: Math.ceil(sec / 60) });
+    if (sec < 86400) { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return m ? t("{h}h {m}m", { h, m }) : t("{h}h", { h }); }
+    return t("{n}d", { n: Math.ceil(sec / 86400) });
+  }
+
+  /** Why a business's button is greyed out, in one plain line with the numbers. */
+  private whyLocked(id: string, act: string): string {
+    const s = this.save, ty = s.tycoon, i = BUSINESSES.findIndex(b => b.id === id), b = BUSINESSES[i];
+    if (!b) return "";
+    const ps = perSecond(s, Date.now());
+    const wait = (need: number) => ps > 0 ? t("about {time} at {rate}/s", { time: TycoonUI.wait(need / ps), rate: coins(ps) }) : t("sell to earn it");
+    if (act === "buy") {
+      if (!unlockedBusiness(s, i)) return t("Why? Open the {prev} first: businesses open one after another.", { prev: t(BUSINESSES[i - 1].name) });
+      const lv = levelOf(s, id), price = costOf(b, lv, this.amount === "max" ? 1 : this.amount);
+      if (freeFloors(s) < 1) return t("Why? Every business level needs an office floor, and yours are full. Build a tower: each floor adds 2.");
+      if (price > ty.coins) return t("Why? You need {n} more ({wait}).", { n: coins(price - ty.coins), wait: wait(price - ty.coins) });
+    }
+    if (act === "hire" && b.manager > ty.coins) return t("Why? A manager costs {price}: you need {n} more ({wait}).", { price: coins(b.manager), n: coins(b.manager - ty.coins), wait: wait(b.manager - ty.coins) });
+    return "";
+  }
+
+  /** Once a day, the first neighbor says one line about what changed in town since your last
+   *  visit (a new rank, a project, a decoration, the island), or just says hello. */
+  private neighborNote(): void {
+    const s = this.save, c = s.cafe;
+    if (!this.inCity || !c.starter || !c.moved || c.terrace !== 2 || this.momentDone || openModalEl() || document.body.classList.contains("tabs-open")) return;
+    const day = new Date().toDateString(), rk = townRank(s);
+    const sig = { rank: rk, done: (c.done ?? []).length, decor: (s.decor ?? []).length, annex: annexBuilt(s) ? 1 : 0 };
+    let last: { day?: string } & Partial<typeof sig> = {};
+    try { last = JSON.parse(localStorage.getItem("skyrise.neighbor.v1") || "{}"); } catch { /* first time */ }
+    if (last.day === day) return;
+    try { localStorage.setItem("skyrise.neighbor.v1", JSON.stringify({ day, ...sig })); } catch { /* private mode */ }
+    if (!last.day) return; // the very first day has its own story
+    const line = sig.rank > (last.rank ?? rk) ? t(NEIGHBOR_LINES[rk - 1] ?? NEIGHBOR_LINES[0])
+      : sig.annex > (last.annex ?? 0) ? t("Have you seen the island next door? I can see it from my table!")
+      : sig.done > (last.done ?? 0) ? t("The new project on our block is wonderful. Everyone's talking about it!")
+      : sig.decor > (last.decor ?? 0) ? t("Something new in town! I took the long way round just to see it.")
+      : t(DAILY_HELLO[Math.floor(Date.now() / 86400000) % DAILY_HELLO.length]);
+    if (this.story.stage === "none") this.stage("seat");
+    this.frameUntil = Date.now() + 5200;
+    this.render();
+    this.later(700, () => this.say(line, 4600));
+  }
+
+  /** A new player's first loop, as a checklist on the Next step card (until all five are done
+   *  or the town reaches Village): sell, buy a level, hire a manager, build a tower, open a
+   *  second business. */
+  private firstDay(): { steps: { label: string; ok: boolean }[]; done: number } | null {
+    const s = this.save, ty = s.tycoon;
+    if (townRank(s) > 0 || s.seenFeatures.includes("first-day-done")) return null;
+    const steps = [
+      { label: t("Sell a coffee"), ok: ty.tips >= 1 },
+      { label: t("Buy a level"), ok: ty.tips >= 2 },
+      { label: t("Hire a manager"), ok: ty.tips >= 3 || ty.managers.length > 0 },
+      { label: t("Build a tower"), ok: !!s.cafe.starter },
+      { label: t("Open a second business"), ok: levelOf(s, BUSINESSES[1].id) > 0 },
+    ];
+    const done = steps.filter(f => f.ok).length;
+    if (done === steps.length) {
+      s.seenFeatures.push("first-day-done");
+      this.host.persist();
+      toast(t("First day done! Now grow Skyhaven to the Village."));
+      return null;
+    }
+    return { steps, done };
+  }
+
   private nextStep(): { text: string; sub: string; pct?: number; tone: string; act: () => void } {
     const s = this.save, ty = s.tycoon, live = this.liveState();
     const nameOf = (id: string) => t(stageName(id, stageNow(s, id)));
@@ -793,8 +895,9 @@ export class TycoonUI {
     // The next step.
     const n = this.nextStep();
     this.nextAct = n.act;
+    const first = this.firstDay();
     this.put($("tcy-next"), `<span class="next-ico">${n.tone === "learn" ? COACH_FACE : n.tone === "gift" ? "🎁" : n.tone === "hot" ? "⚡" : n.tone === "grow" ? "🏗️" : n.tone === "save" ? "💰" : "✨"}</span>
-      <span class="next-txt"><small>${esc(t("Next step"))}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
+      <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : esc(t("Next step"))}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
     $("tcy-next").className = `tcy-next tone-${n.tone}`;
     $("tcy-next").hidden = !!this.selected;
     this.renderCard(now);
@@ -2007,9 +2110,11 @@ export class TycoonUI {
     const v = `${rk}|${used}|${getLang()}`;
     if (el.dataset.v === v) return;
     el.dataset.v = v;
-    el.innerHTML = `<span class="tg-ico">${iconSvg(nx ? nx.icon : "crown")}</span><span class="tg-main"><small>${esc(t("Goal: grow Skyhaven to the Sky Capital"))}</small>`
-      + (nx ? `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))}</b><i class="tg-bar"><i style="width:${(k * 100).toFixed(1)}%"></i></i><em class="tg-next">${esc(t(nx.name))} ${fmt(used)}/${fmt(nx.at)}</em>`
-        : `<b>${esc(t("Lv {n} {name}", { n: rk + 1, name: t(RANKS[rk].name) }))} ✓</b><i class="tg-bar"><i style="width:100%"></i></i>`) + `</span>`;
+    // A round badge: the town level in the middle, a ring that fills toward the next rank,
+    // and the rank's name with how far there is to go beside it.
+    el.innerHTML = `<span class="tg-ring" style="--k:${(k * 360).toFixed(1)}deg"><span class="tg-ico">${iconSvg(RANKS[rk].icon)}</span><b class="tg-lv">${rk + 1}</b></span>`
+      + `<span class="tg-main"><b>${esc(t(RANKS[rk].name))}</b>`
+      + (nx ? `<em class="tg-next">${fmt(used)}/${fmt(nx.at)}</em>` : `<em class="tg-next">★ ${esc(t("Top rank"))}</em>`) + `</span>`;
     el.setAttribute("aria-label", nx ? t("Next rank: {name} at {n} business levels ({have} now)", { name: t(nx.name), n: fmt(nx.at), have: fmt(used) }) : t("Sky Capital reached!"));
   }
 
@@ -2029,16 +2134,27 @@ export class TycoonUI {
     const day = (ms: number) => new Date(ms).toLocaleDateString(getLang(), { day: "numeric", month: "short", year: "numeric" });
     const tints = ["#7fd36a", "#ff9ac8", "#ffd23a", "#4f8bff", "#b48cff", "#3ac0c0", "#ffb13b"];
     $("scrap-sub").textContent = t("{n} of {total} postcards", { n: Math.min(RANKS.length, rk + 1), total: RANKS.length });
-    $("scrap-grid").innerHTML = RANKS.map((r, i) => {
+    const mem = loadMemories(), first = Object.keys(mem).map(Number).sort((a, b) => a - b)[0];
+    const share = first !== undefined && rk > first
+      ? `<button type="button" class="btn primary scrap-share" id="scrap-share">${esc(t("Then → Now: show a friend"))}</button>`
+      : `<p class="scrap-hint">${esc(t("Skyhaven remembers: a picture is taken at each new rank. Reach the next one to make your Then → Now card."))}</p>`;
+    $("scrap-grid").innerHTML = share + RANKS.map((r, i) => {
       const got = i <= rk, when = s.scrapbook[i];
       const text = i === 0 ? t("Where it all began: your first neighbor moved in.") : t(r.unlock);
       return `<div class="postcard${got ? "" : " locked"}" style="--pc:${tints[i % tints.length]}">
-        <div class="pc-art"><span class="pc-ico">${got ? iconSvg(r.icon) : LOCK_ICON}</span><b>${esc(t(r.name))}</b></div>
+        <div class="pc-art${got && mem[i] ? " photo" : ""}"${got && mem[i] ? ` style="background-image:url('${mem[i].img}')"` : ""}><span class="pc-ico">${got ? iconSvg(r.icon) : LOCK_ICON}</span><b>${esc(t(r.name))}</b></div>
         <p>${esc(got ? text : t("Reach {n} business levels to unlock", { n: fmt(r.at) }))}</p>
         <em>${got ? esc(when ? t("Reached {date}", { date: day(when) }) : t("Reached")) : esc(`${fmt(Math.min(used, r.at))} / ${fmt(r.at)}`)}</em>
       </div>`;
     }).join("");
     this.host.persist();
+    $("scrap-share")?.addEventListener("click", async () => {
+      this.host.sound.click();
+      const now = this.host.townPicture();
+      if (first === undefined || !now) { toast(t("Open the town first, then try again")); return; }
+      const blob = await thenNowCard(mem[first], now, first, rk);
+      if (blob) void this.host.sharePicture(blob, t("Skyhaven: from {a} to {b}. It started with one neighbor.", { a: t(RANKS[first].name), b: t(RANKS[rk].name) }));
+    });
     openModal($("scrapbook"));
   }
 
@@ -2102,7 +2218,12 @@ export class TycoonUI {
       // billboards...) and Pip tells you about it.
       if (!this.visitDone && this.inCity) {
         this.visitDone = true;
-        if (this.host.visitLandmark(rk, 4200)) { window.setTimeout(note, 4400); return; }
+        if (this.host.visitLandmark(rk, 4200)) {
+          // Skyhaven remembers: a picture of the new landmark, half way through the visit.
+          window.setTimeout(() => { if (!openModalEl() && !document.body.classList.contains("tabs-open")) saveMemory(rk, this.host.townPicture()); }, 2300);
+          window.setTimeout(note, 4400);
+          return;
+        }
       }
       this.visitDone = false;
       this.momentDone = false;

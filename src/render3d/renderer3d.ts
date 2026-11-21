@@ -371,6 +371,7 @@ export class Renderer3D {
     this.sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
     this.sun.shadow.map?.dispose();
     this.sun.shadow.map = null;
+    this.shadowAt.set(1e9, 0, 0);
     v.s = Math.min(v.W * 0.56, v.H * 0.36) / (BLOCK_SIZE * 2 * ISO_X);
     v.th = v.s * 1.3;
     if (!v.originY) v.originY = v.H * 0.56;
@@ -551,7 +552,7 @@ export class Renderer3D {
     // (A young town, only a block or two, comes closer still: there's little else to see.)
     // Close-ups (the neighbor, a landmark) lift the limit; it comes back smoothly, never in a jump.
     const zk = Math.max(0, Math.min(1, (this.bizLook.zoom - 1.12) / 0.23));
-    const tb = townBounds(), fitS = ((v.W * 0.94) / (tb.tMax - tb.tMin)) * (1.16 + 0.24 * zk);
+    const tb = townBounds(true), fitS = ((v.W * 0.94) / (tb.tMax - tb.tMin)) * (1.16 + 0.24 * zk);
     const rawS = ISO_SCALE * v.s * BIZ_ZOOM * this.bizLook.zoom;
     const bizS = lerp(Math.min(rawS, fitS), rawS, this.bizFrameK);
     const S = lerp(ISO_SCALE * v.s * v.zoom, bizS, k);
@@ -574,8 +575,18 @@ export class Renderer3D {
     this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
     const span = Math.max(34, (v.H / S) * 0.75);
     const sc = this.sun.shadow.camera;
-    if (Math.abs(sc.top - span) > 2) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); }
+    if (Math.abs(sc.top - span) > 2) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); this.shadowAt.set(1e9, 0, 0); }
+    // In the town almost nothing that casts a shadow moves, so the shadow map is redrawn only
+    // when the view moves (or a few times a second for the odd growing building): about a
+    // third less work per frame. Everywhere else it's redrawn every frame as before.
+    if (k >= 1) {
+      this.gl.shadowMap.autoUpdate = false;
+      this.shadowTick++;
+      if (this.shadowAt.distanceToSquared(focus) > 0.04 || this.shadowTick >= 20) { this.gl.shadowMap.needsUpdate = true; this.shadowAt.copy(focus); this.shadowTick = 0; }
+    } else this.gl.shadowMap.autoUpdate = true;
   }
+  private shadowAt = new THREE.Vector3(1e9, 0, 0);
+  private shadowTick = 0;
 
   /** Where a point on the island shows on screen (page px), or null when off screen. */
   screenOf(x: number, y: number, z: number): [number, number] | null {

@@ -56,9 +56,31 @@ function kit(m: ModelMats) {
     tower: (g: G, mat: THREE.Material, w: number, h: number, d: number, x = 0, z = 0, y0 = 0, opts: { ground?: boolean; cols?: number; fh?: number } = {}) => {
       K.box(g, mat, w, h, d, x, y0, z);
       const fh = opts.fh ?? 1.1, cols = opts.cols ?? Math.max(1, Math.round(w / 0.75)), sc = Math.max(1, Math.round(d / 0.75));
+      // Detail that reads at a glance: a white frame round every window, a thin ledge at each
+      // floor and a cornice along the top (all merged into the town's few meshes).
+      const frame = m.c("#fbf8ff", 0.6), ledge = m.c("#ffffff", 0.7);
+      const isGlass = mat === m.win;
+      let floorN = 0;
       for (let y = y0 + (opts.ground === false ? 0.45 : 1.15); y + 0.6 < y0 + h; y += fh) {
-        for (let k = 0; k < cols; k++) K.box(g, m.win, (w / cols) * 0.55, 0.55, 0.04, x - w / 2 + (k + 0.5) * (w / cols), y, z + d / 2 + 0.01);
-        for (const sd of [-1, 1]) for (let k = 0; k < sc; k++) K.box(g, m.win, 0.04, 0.55, (d / sc) * 0.55, x + sd * (w / 2 + 0.01), y, z - d / 2 + (k + 0.5) * (d / sc));
+        for (let k = 0; k < cols; k++) {
+          const wx = x - w / 2 + (k + 0.5) * (w / cols), ww = (w / cols) * 0.55;
+          K.box(g, m.win, ww, 0.55, 0.04, wx, y, z + d / 2 + 0.01);
+          if (!isGlass) { K.box(g, frame, ww + 0.1, 0.65, 0.025, wx, y - 0.05, z + d / 2 + 0.005); K.box(g, frame, ww + 0.16, 0.05, 0.08, wx, y - 0.06, z + d / 2 + 0.03); }
+        }
+        for (const sd of [-1, 1]) for (let k = 0; k < sc; k++) {
+          const wz = z - d / 2 + (k + 0.5) * (d / sc), wd = (d / sc) * 0.55;
+          K.box(g, m.win, 0.04, 0.55, wd, x + sd * (w / 2 + 0.01), y, wz);
+          if (!isGlass) K.box(g, frame, 0.025, 0.65, wd + 0.1, x + sd * (w / 2 + 0.005), y - 0.05, wz);
+        }
+        if (!isGlass && floorN > 0) K.box(g, ledge, w + 0.06, 0.05, d + 0.06, x, y - 0.24, z);
+        floorN++;
+      }
+      if (!isGlass && h > 1.5) K.box(g, ledge, w + 0.14, 0.1, d + 0.14, x, y0 + h - 0.1, z);
+      // Big blocks get a little rooftop life at the back: an air-con unit and a water tank.
+      if (!isGlass && w >= 2.4 && d >= 2.4 && h >= 3) {
+        K.box(g, m.c("#c8cce0", 0.5, 0.3), 0.45, 0.3, 0.35, x - w / 2 + 0.45, y0 + h, z - d / 2 + 0.4);
+        K.cyl(g, m.c("#b07a4a", 0.8), 0.22, 0.22, 0.4, x + w / 2 - 0.45, y0 + h + 0.12, z - d / 2 + 0.45, 10);
+        for (const sx of [-0.12, 0.12]) K.box(g, m.c("#4a4f7a", 0.5, 0.4), 0.04, 0.12, 0.04, x + w / 2 - 0.45 + sx, y0 + h, z - d / 2 + 0.45);
       }
     },
     /** A shop front: big window and a door. */

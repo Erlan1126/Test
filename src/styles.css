@@ -3923,3 +3923,89 @@ body.tabs-open #profile .seg.tabs button { flex: 0 0 auto !important; }
 .tcy-goal small { font-size: 10.5px; }
 .ty-buy small, .ty-adv small { font-size: 10.5px; }
 #earnings .eb-hire small { font-size: 10px !important; }
+
+/* ===== Round 6: the new top bar. One slim row of game-style glass pieces over the town:
+   a round level badge (its ring fills toward the next rank), money with its rate, crystals
+   and help. No white panel across the view. ===== */
+#tycity #tcy-top { flex-wrap: nowrap !important; align-items: center !important; gap: 6px !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+#tycity #tcy-top > * { --glass: linear-gradient(180deg, rgba(58, 40, 130, 0.78), rgba(34, 22, 86, 0.82)); }
+#tycity #tcy-top .tcy-goal { order: 0 !important; flex: 0 1 auto !important; min-width: 0; display: flex !important; align-items: center; gap: 6px; height: 48px; padding: 0 10px 0 0 !important; margin: 0 !important; border: 1.5px solid rgba(255, 255, 255, 0.22) !important; border-radius: 26px !important; background: var(--glass) !important; box-shadow: 0 6px 16px rgba(20, 10, 60, 0.3) !important; color: #fff; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#tycity #tcy-top .tcy-goal[hidden] { display: none !important; }
+#tycity #tcy-top .tg-ring { position: relative; flex: none; width: 48px; height: 48px; margin: -1.5px 0 -1.5px -1.5px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(#ffd23a 0deg, #ff7a59 calc(var(--k) * 0.6), #ff4f8b var(--k), rgba(255, 255, 255, 0.18) var(--k)); }
+#tycity #tcy-top .tg-ring::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: linear-gradient(160deg, #8a5cff, #4a2ad0); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35); }
+#tycity #tcy-top .tg-ring .tg-ico { position: relative; width: 22px !important; height: 22px !important; margin-top: -6px; background: none !important; border-radius: 0 !important; color: #fff; }
+#tycity #tcy-top .tg-ring .tg-ico svg { width: 22px !important; height: 22px !important; }
+#tycity #tcy-top .tg-lv { position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); min-width: 20px; padding: 0 5px; border-radius: 9px; font: 400 12px/18px var(--display) !important; text-align: center; color: #2a1f5c; background: linear-gradient(180deg, #fff3b0, #ffc93c); box-shadow: 0 2px 0 #c08a10; }
+#tycity #tcy-top .tg-main { display: flex !important; flex-direction: column; gap: 1px; min-width: 0; }
+#tycity #tcy-top .tg-main b { font: 400 13px/1.1 var(--display) !important; color: #fff !important; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; }
+#tycity #tcy-top .tg-main em { font: 800 10.5px/1.1 var(--ui) !important; font-style: normal; color: #ffe27a !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; }
+#tycity #tcy-top .tcy-wallet { order: 1 !important; flex: 1 1 0 !important; min-width: 0; display: flex !important; flex-direction: column !important; align-items: flex-start !important; justify-content: center; gap: 1px !important; height: 48px; padding: 0 12px !important; border: 1.5px solid rgba(255, 255, 255, 0.22) !important; border-radius: 24px !important; background: var(--glass) !important; box-shadow: 0 6px 16px rgba(20, 10, 60, 0.3) !important; color: #fff !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#tycity #tcy-top .tcy-wallet .tcy-coins { font-size: 19px !important; color: #fff !important; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35) !important; white-space: nowrap; }
+#tycity #tcy-top .tcy-wallet .tcy-coins .tc-coin { width: 18px !important; height: 18px !important; }
+#tycity #tcy-top .tcy-wallet em { font: 800 11px var(--ui) !important; color: #7dffb4 !important; letter-spacing: 0 !important; max-width: 100%; }
+#tycity #tcy-top .tcy-gems { order: 2 !important; height: 40px !important; padding: 0 5px 0 10px !important; border: 1.5px solid rgba(255, 255, 255, 0.22) !important; border-radius: 20px !important; background: var(--glass) !important; box-shadow: 0 6px 16px rgba(20, 10, 60, 0.3) !important; color: #fff !important; font-size: 15px !important; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35); }
+#tycity #tcy-top .tcy-help { order: 3 !important; width: 34px !important; height: 34px !important; margin: 0 !important; border: 2px solid rgba(255, 255, 255, 0.85) !important; font: 400 16px var(--display); color: #fff; background: linear-gradient(180deg, #8a5cff, #5a34e0) !important; box-shadow: 0 3px 0 #3a1fa0, 0 6px 14px rgba(20, 10, 60, 0.3) !important; }
+@media (max-width: 360px) { #tycity #tcy-top .tg-main { display: none !important; } #tycity #tcy-top .tcy-goal { padding: 0 !important; } }
+/* The town shows through further now: events and the coach sit just under the slim row. */
+#tycity:has(.tcy-goal:not([hidden])) .tcy-events, #tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 66px) !important; }
+#tycity:has(.tcy-goal:not([hidden])) .tcy-coach, #tycity .tcy-coach { top: calc(env(safe-area-inset-top, 0px) + 98px) !important; }
+
+/* ===== Round 6: the new bottom bar. A deep-purple glass dock (it reads over the town and over
+   the light menu pages alike); every button has its own glossy colored tile, and BUILD is a big
+   round button raised in the middle. ===== */
+#tycity #tcy-bar { left: 10px !important; right: 10px !important; padding: 7px 4px 6px !important; gap: 2px !important; border: 1.5px solid rgba(255, 255, 255, 0.18); border-radius: 26px !important;
+  background: linear-gradient(180deg, rgba(64, 42, 150, 0.9), rgba(36, 22, 92, 0.94)) !important; box-shadow: 0 10px 26px rgba(20, 10, 60, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important; }
+#tycity #tcy-bar button { gap: 3px !important; color: #fff !important; font: 400 10.5px var(--display) !important; letter-spacing: 0.02em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
+#tycity #tcy-bar button svg { width: 22px !important; height: 22px !important; padding: 8px !important; border-radius: 13px !important; color: #fff !important; transform: none;
+  background: var(--tile, linear-gradient(180deg, #8a7cff, #5a4ad8)) !important; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 0 var(--tile-edge, #3a2aa0) !important; }
+#tycity #tcy-bar button[data-open="shop"] { --tile: linear-gradient(180deg, #ffa36b, #ff5f6d); --tile-edge: #b83448; }
+#tycity #tcy-bar button[data-open="company"] { --tile: linear-gradient(180deg, #5ccfff, #2a86e8); --tile-edge: #1a5aa8; }
+#tycity #tcy-bar button[data-open="goals"] { --tile: linear-gradient(180deg, #ffe066, #ffab1a); --tile-edge: #c07a08; }
+#tycity #tcy-bar button[data-open="me"] { --tile: linear-gradient(180deg, #6eeab0, #1fae7c); --tile-edge: #12805a; }
+#tycity #tcy-bar button.on:not(.tcy-build) svg { transform: translateY(-3px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 0 var(--tile-edge, #3a2aa0), 0 0 0 2px #fff !important; }
+#tycity #tcy-bar button.on:not(.tcy-build) span { color: #ffe27a !important; }
+#tycity #tcy-bar .tcy-build svg { width: 32px !important; height: 32px !important; padding: 13px !important; margin-top: -30px !important; border-radius: 50% !important; border: 3px solid #fff;
+  background: radial-gradient(circle at 35% 30%, #ff9cc0, #ff4f8b 55%, #d82f6e) !important; box-shadow: 0 4px 0 #9a1a4a, 0 10px 22px rgba(255, 79, 139, 0.5) !important; }
+#tycity #tcy-bar .tcy-build span { font-size: 12px !important; color: #fff !important; }
+#tycity #tcy-bar .dot { top: 0 !important; right: calc(50% - 24px) !important; box-shadow: 0 0 0 2px #2a1a70 !important; }
+#tycity #tcy-bar .tcy-build .dot { top: -26px !important; right: calc(50% - 30px) !important; }
+#tycity #tcy-top .tg-main b, #tycity #tcy-top .tg-main em { max-width: 72px !important; }
+#tycity #tcy-top .tg-main b { font-size: 12px !important; }
+#tycity #tcy-top .tcy-goal { flex: none !important; }
+#tycity #tcy-top .tcy-wallet { flex: 1 1 auto !important; }
+#tycity #tcy-top .tcy-gems { flex: none !important; gap: 4px !important; }
+#tycity #tcy-top .tg-main { flex-direction: column !important; align-items: flex-start !important; justify-content: center !important; gap: 2px !important; padding: 0 !important; background: none !important; }
+#tycity #tcy-top .tcy-goal { gap: 7px !important; padding-right: 12px !important; }
+#tycity #tcy-top .tcy-wallet .tcy-coins { font-size: 18px !important; }
+/* First-day checklist dots on the Next step card. */
+.tcy-next .first-dots { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: 1px; }
+.tcy-next .first-dots i { width: 9px; height: 9px; border-radius: 50%; background: #e4def6; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12); }
+.tcy-next .first-dots i.ok { background: linear-gradient(180deg, #5ee0a0, #19a87a); box-shadow: none; }
+/* "Why?": a greyed-out button lets the tap through to its row, which explains what it needs. */
+.ty-biz button[data-act]:disabled { pointer-events: none; }
+/* Skyhaven remembers: postcards show the real picture taken when the rank was reached. */
+.postcard .pc-art.photo { background-size: cover !important; background-position: center !important; }
+.postcard .pc-art.photo .pc-ico { position: absolute; top: 8px; left: 8px; width: 30px; height: 30px; padding: 5px; border-radius: 10px; background: rgba(255, 255, 255, 0.9); color: var(--pc, #6a3cff); }
+.postcard .pc-art.photo b { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 8px; background: rgba(42, 31, 92, 0.75); color: #fff !important; }
+.postcard .pc-art { position: relative; }
+.scrap-grid .scrap-share { grid-column: 1 / -1; width: 100%; margin-bottom: 4px; }
+.scrap-grid .scrap-hint { grid-column: 1 / -1; margin: 0 4px 4px; font-size: 13px; color: #6a6f99; }
+#tycity #tcy-top .tg-main em { max-width: 92px !important; }
+body .scrap-grid .scrap-share { min-height: 52px; border: 0 !important; border-radius: 18px !important; color: #fff !important; font: 400 16px var(--display) !important; background: linear-gradient(135deg, #ff7aa8, #ff4f8b 50%, #b04ad8) !important; box-shadow: 0 4px 0 #a8204f, 0 10px 20px rgba(255, 79, 139, 0.35) !important; cursor: pointer; }
+body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8204f !important; }
+#tycity #tcy-top .tg-main b, #tycity #tcy-top .tg-main em { max-width: 70px !important; }
+#tycity #tcy-top .tg-main b { font-size: 11px !important; }
+#tycity #tcy-top .tcy-wallet { overflow: hidden; padding: 0 10px !important; }
+#tycity #tcy-top .tcy-wallet .tcy-coins { font-size: 17px !important; }
+#tycity #tcy-top .tcy-gems { padding: 0 4px 0 8px !important; }
+/* The rank name and progress sit in a small label under the round badge, so the money pill
+   always has room. */
+#tycity #tcy-top .tcy-goal { position: relative !important; width: 48px; padding: 0 !important; gap: 0 !important; overflow: visible !important; background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+#tycity #tcy-top .tg-ring { margin: 0 !important; box-shadow: 0 6px 16px rgba(20, 10, 60, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.85); }
+#tycity #tcy-top .tg-main { position: absolute !important; top: 54px; left: -4px; flex-direction: row !important; align-items: center !important; gap: 5px !important; padding: 2px 8px !important; border-radius: 10px; white-space: nowrap;
+  background: linear-gradient(180deg, rgba(58, 40, 130, 0.85), rgba(34, 22, 86, 0.88)) !important; box-shadow: 0 3px 8px rgba(20, 10, 60, 0.3); pointer-events: none; }
+#tycity #tcy-top .tg-main b, #tycity #tcy-top .tg-main em { max-width: none !important; font-size: 10.5px !important; }
+#tycity #tcy-top .tg-lv { font-family: var(--ui) !important; font-weight: 900 !important; }
+#tycity #tcy-top .tcy-goal { top: auto !important; left: auto !important; right: auto !important; }
+#tycity:has(.tcy-goal:not([hidden])) .tcy-events, #tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 82px) !important; }
