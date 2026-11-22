@@ -1825,4 +1825,12 @@ export const DE: Record<string, string> = {
   "Lake": "See",
   "Grow your buildings": "Lass deine Gebäude wachsen",
   "Every home, block of flats and office in town is yours: tap one to see who lives there and what it pays. Upgrade it and it grows, from little homes up to a glass skyscraper, and every business earns more. A green ⬆ shows the ones you can grow now.": "Jedes Haus, jeder Wohnblock und jedes Büro der Stadt gehört dir: Tippe eins an, um zu sehen, wer dort wohnt und was es zahlt. Bau es aus und es wächst, von kleinen Häusern bis zum Glaswolkenkratzer, und jedes Geschäft verdient mehr. Ein grünes ⬆ zeigt, was du jetzt ausbauen kannst.",
+  "Cloud Kingdom": "Wolkenreich",
+  "Crystal Spire": "Kristallspitze",
+  "Orbit Station": "Orbitalstation",
+  "A higher island: big family homes, parks, a lake and a Ferris wheel": "Eine höhere Insel: große Familienhäuser, Parks, ein See und ein Riesenrad",
+  "Higher still: tall towers round a fountain square": "Noch höher: hohe Türme rund um einen Brunnenplatz",
+  "Above the clouds: white marble villas with golden domes and a golden palace": "Über den Wolken: weiße Marmorvillen mit goldenen Kuppeln und ein goldener Palast",
+  "Higher than the clouds: glowing crystal towers round a giant crystal spire": "Höher als die Wolken: leuchtende Kristalltürme um eine riesige Kristallspitze",
+  "The edge of space: glass domes, a launch pad and a rocket ready to go": "Am Rand des Alls: Glaskuppeln, eine Startrampe und eine startbereite Rakete",
 };

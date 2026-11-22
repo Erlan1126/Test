@@ -1031,7 +1031,7 @@ export class Renderer3D {
   bizHomes(): string[] { return this.biz && this.bizK >= 0.5 ? this.biz.homes().map(h => h.key) : []; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
-    // (-100 and below: the homes round town, which pay rent.)
+    // (-100 and below: the town's properties.)
     const home = i <= -100 ? this.biz.homes()[-100 - i] : null;
     if (i <= -100 && !home) return null;
     if (home && height < 0) height = home.top + 0.4;
@@ -1040,8 +1040,10 @@ export class Renderer3D {
     const { x, z } = home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
+    // (Things on a higher island stand that much higher.)
+    const y0 = home?.y ?? land?.y ?? 0;
     const at = (y: number): [number, number] => {
-      const v = new THREE.Vector3(BIZ_SLOT.x + x, BIZ_SLOT.y + y, BIZ_SLOT.z + z).project(this.cam);
+      const v = new THREE.Vector3(BIZ_SLOT.x + x, BIZ_SLOT.y + y0 + y, BIZ_SLOT.z + z).project(this.cam);
       return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
     };
     return { base: at(0), top: at(height) };
