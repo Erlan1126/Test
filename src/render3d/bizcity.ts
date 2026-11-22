@@ -614,7 +614,38 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   // (Nothing of the countryside's goes on the land the player bought: that's for its own build.)
   const landBuilt = (cafe.land ?? []).filter(l => l.bought).map(l => landSpot(LAND.findIndex(x => x.id === l.id), true));
-  const onLand = (x: number, z: number) => landBuilt.some(sp => Math.hypot(x - sp.x, z - sp.z) < sp.r * 1.05);
+  const onLand = (x: number, z: number) => landBuilt.some(sp => Math.hypot(x - sp.x, z - sp.z) < sp.r * 1.05) || nearLink(x, z);
+  // The road from the town's streets out to the first island's bridge (once it's for sale or
+  // bought): where it runs, so the countryside keeps clear of it.
+  const link = (() => {
+    const l0 = (cafe.land ?? []).find(l => l.id === LAND[0].id && (l.bought || l.sale));
+    if (!l0) return null;
+    const sp0 = landSpot(0, true), h = islandOutline(ISLAND_PAD, true);
+    const tcx = h.reduce((a, p) => a + p[0], 0) / h.length, tcz = h.reduce((a, p) => a + p[1], 0) / h.length;
+    const dl0 = Math.hypot(sp0.x - tcx, sp0.z - tcz), ux0 = (sp0.x - tcx) / dl0, uz0 = (sp0.z - tcz) / dl0;
+    const sx = sp0.x - ux0 * distEdge(ux0, uz0) * 0.97, sz = sp0.z - uz0 * distEdge(ux0, uz0) * 0.97;
+    let t2 = 0;
+    while (t2 < 60 && !insidePoly(h, sx - ux0 * t2, sz - uz0 * t2, 0.6)) t2 += 0.25;
+    const ex = sx - ux0 * (t2 + 0.6), ez = sz - uz0 * (t2 + 0.6);
+    const inStreets = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 - 0.2 && Math.abs(z - p.z) < C / 2 - 0.2; });
+    let t3 = 0;
+    while (t3 < 60 && !inStreets(ex - ux0 * t3, ez - uz0 * t3)) t3 += 0.25;
+    return { ax: ex + ux0 * 0.4, az: ez + uz0 * 0.4, bx: ex - ux0 * (t3 + 0.6), bz: ez - uz0 * (t3 + 0.6) };
+  })();
+  const nearLink = (x: number, z: number) => {
+    if (!link) return false;
+    const vx = link.bx - link.ax, vz = link.bz - link.az, L2 = vx * vx + vz * vz || 1, t = Math.max(0, Math.min(1, ((x - link.ax) * vx + (z - link.az) * vz) / L2));
+    return Math.hypot(x - (link.ax + vx * t), z - (link.az + vz * t)) < 2.2;
+  };
+  /** A street from a to b: asphalt with curbs and sidewalks either side, as the town's. */
+  const streetStrip = (par: THREE.Object3D, ax: number, az: number, bx: number, bz: number, y: number, rM: THREE.Material, wM: THREE.Material, cM: THREE.Material) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 0.2) return;
+    const rot = Math.atan2(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    const S = (w: number, h: number, ox: number, m: THREE.Material) => par.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, len).translate(ox, h / 2, 0).rotateY(rot).translate(mx, y, mz), m));
+    S(ROAD * 2, 0.1, 0, rM);
+    for (const sd of [-1, 1]) { S(0.12, 0.18, sd * (ROAD + 0.06), cM); S(0.55, 0.2, sd * (ROAD + 0.39), wM); }
+  };
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
@@ -711,6 +742,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let i = 0; i < rail.length; i++) {
       const a = rail[i], b = rail[(i + 1) % rail.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if ((a[1] + b[1]) / 2 < beachZ - 0.5) continue; // the beach is open to the sea
+      if (link && Math.hypot((a[0] + b[0]) / 2 - link.ax, (a[1] + b[1]) / 2 - link.az) < 2.4) continue; // the road out to the bridge
       const ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
       add(new THREE.BoxGeometry(0.06, 0.06, len).rotateY(ang).translate((a[0] + b[0]) / 2, 0.45, (a[1] + b[1]) / 2), stone);
       // A post every 1.4 along the edge (the curved coastline has many short pieces).
@@ -1525,6 +1557,32 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         // A property (data/props.ts): it grows with its level.
         const key = `t:${cell[0]},${cell[1]}`;
         homeAt(x, z, propBuilding(lg, 20 + k, propLv(key), key), key);
+      }
+      // Street furniture on the corners: traffic lights, a street sign, now and then a bus
+      // stop, and a manhole cover in the street.
+      {
+        const e = C / 2 - ROAD - 0.73, red = own(std("#ff3a3a", { emissive: 0xff2020, emissiveIntensity: 0.6 })), amber = own(std("#ffb020", { emissive: 0xff9000, emissiveIntensity: 0.25 })), green = own(std("#3aff7a", { emissive: 0x20ff60, emissiveIntensity: 0.6 }));
+        for (const [sx, sz] of [[1, -1], [-1, 1]]) {
+          const px = x + sx * e, pz = z + sz * e;
+          ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.6, 6).translate(px, 1.0, pz), metal));
+          ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5).translate(px, 1.75, pz + sz * 0.25), metal));
+          ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.36, 0.12).translate(px, 1.6, pz + sz * 0.48), mats.c("#2a2f45", 0.5)));
+          [red, amber, green].forEach((lm, li) => ng.add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4).translate(px + sx * 0.07, 1.71 - li * 0.1, pz + sz * 0.48), (k + li) % 3 === 1 ? lm : mats.c("#3a3f55", 0.5))));
+        }
+        // A street-name sign on its post.
+        ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 5).translate(x - e, 0.85, z - e), metal));
+        ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.02).translate(x - e + 0.2, 1.45, z - e), mats.c("#2f8a5a", 0.5)));
+        ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.5).translate(x - e, 1.3, z - e + 0.2), mats.c("#2f8a5a", 0.5)));
+        if (k % 3 === 0) {
+          // A bus stop: a glass shelter with a bench and a sign.
+          const bx = x + 2.3, bz = z + 0.6;
+          ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 0.9).translate(bx + 0.12, 0.6, bz), own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.45, roughness: 0.05 }))));
+          ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 0.95).translate(bx, 1.0, bz), mats.c("#2f9bff", 0.5)));
+          ng.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.6).translate(bx + 0.02, 0.42, bz), wood));
+          ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 4).translate(bx - 0.12, 0.7, bz + 0.55), metal));
+          ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 10).rotateZ(Math.PI / 2).translate(bx - 0.12, 1.2, bz + 0.55), mats.c("#2f9bff", 0.5)));
+        }
+        ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.012, 12).translate(x + C / 2, 0.056, z + 1.1), mats.c("#3a3a44", 0.6, 0.4)));
       }
       // Street trees along the sidewalks, two per side.
       for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (const o of [-1.1, 1.1]) {
@@ -2384,6 +2442,17 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         // Lights along the underside of the sky bridges.
         if (k > 0) for (let q2 = 0; q2 < 8; q2++) B(new THREE.SphereGeometry(0.09, 6, 4).translate(0, -0.15, -len / 2 + (q2 + 0.5) * (len / 8)), lampMat);
       }
+      // Streets at both ends: the bridge leads road to road. On this island the street runs
+      // in from the coast to its street grid (below, with the arch); at the other end it runs
+      // in to the island before's grid, or through the countryside to the town's streets.
+      if (bought) {
+        if (k === 0 && link) streetStrip(g, link.ax, link.az, link.bx, link.bz, 0.0, road, walk, curb);
+        else if (k > 0) {
+          const pt = LAND[k - 1].theme, pc2 = pt === "cloud" ? ["#e6d7ae", "#fffaf0", "#ffd86a"] : pt === "crystal" ? ["#3a2f66", "#e8e0ff", "#8af0ff"] : pt === "orbit" ? ["#262a3a", "#c8d0e4", "#5ae0ff"] : null;
+          const inner = distEdge(ux, uz) - 2 * C + 0.2;
+          streetStrip(g, ex - ux * 0.3, ez - uz * 0.3, ex - ux * inner, ez - uz * inner, prev.y, pc2 ? mats.c(pc2[0], 0.7) : road, pc2 ? mats.c(pc2[1], 0.7) : walk, pc2 ? mats.c(pc2[2], 0.5, 0.2) : curb);
+        }
+      }
       bridge.position.set((sx0 + ex) / 2, (y0 + y1) / 2, (sz0 + ez) / 2);
       bridge.rotation.order = "YXZ";
       bridge.rotation.y = Math.atan2(ux, uz);
@@ -2575,7 +2644,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const rim = new THREE.Group();
       const R0 = 2 * C + 0.35, inD = (x: number, z: number, m: number) => insidePoly(outlineD, x, z, m);
       const landing = new THREE.Vector2(-ux, -uz), along = (x: number, z: number) => Math.abs(x * landing.y - z * landing.x);
-      const nearPath = (x: number, z: number) => x * landing.x + z * landing.y > 0 && along(x, z) < 1.7;
+      const nearPath = (x: number, z: number) => x * landing.x + z * landing.y > 0 && along(x, z) < 2.1;
       const R = (geo: THREE.BufferGeometry, m: THREE.Material) => rim.add(new THREE.Mesh(geo, m));
       let n2 = 0;
       for (let x = -DIST_H; x <= DIST_H; x += 0.9) for (let z = -DIST_H; z <= DIST_H; z += 0.9) {
@@ -2618,19 +2687,19 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         R(new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false, curveSegments: 4 }).rotateX(-Math.PI / 2).translate(0, 0.0, 0), id === "meadow" ? sandM : plazaM);
       }
       // The path in from the bridge, and the arch over it.
-      const pathLen = DIST_H - 2 * C + 0.6, pd = 2 * C + pathLen / 2 - 0.3, rot = Math.atan2(landing.x, landing.y);
-      R(new THREE.BoxGeometry(2.4, 0.05, pathLen).rotateY(rot).translate(landing.x * pd, 0.03, landing.y * pd), pave);
+      const rot = Math.atan2(landing.x, landing.y), coast = distEdge(landing.x, landing.y) * 0.97;
+      streetStrip(rim, landing.x * (2 * C - 0.2), landing.y * (2 * C - 0.2), landing.x * coast, landing.y * coast, 0, roadD, walkD, curbD);
       const arch = new THREE.Group();
       const ac = ["#2f9bff", "#ff8a5c", "#8a6cff", "#e8b020", "#b05aff", "#2a8fd0"][k];
-      for (const sx of [-1.4, 1.4]) { arch.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3).translate(sx, 1.1, 0), stone)); arch.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.42).translate(sx, 2.25, 0), mats.c(ac, 0.5))); }
-      arch.add(new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.5, 0.2).translate(0, 2.1, 0), mats.c(ac, 0.5)));
+      for (const sx of [-1.85, 1.85]) { arch.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.4, 0.3).translate(sx, 1.2, 0), stone)); arch.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.42).translate(sx, 2.45, 0), mats.c(ac, 0.5))); }
+      arch.add(new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.5, 0.2).translate(0, 2.3, 0), mats.c(ac, 0.5)));
       const sc = document.createElement("canvas"); sc.width = 512; sc.height = 80;
       const cx3 = sc.getContext("2d");
       if (cx3) { cx3.fillStyle = ac; cx3.fillRect(0, 0, 512, 80); cx3.fillStyle = "#ffffff"; cx3.font = "bold 46px Arial Black, sans-serif"; cx3.textAlign = "center"; cx3.textBaseline = "middle"; cx3.fillText(LAND[k].name.toUpperCase(), 256, 42, 490); }
       const tex = new THREE.CanvasTexture(sc); tex.colorSpace = THREE.SRGBColorSpace;
       const signM2 = own(new THREE.MeshBasicMaterial({ map: tex })); signM2.userData.dynamic = true;
-      for (const fz of [0.11, -0.11]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 0.44).translate(0, 2.1, 0), signM2); pl.position.z = fz; if (fz < 0) pl.rotation.y = Math.PI; arch.add(pl); }
-      const ad = DIST_H - 1.6;
+      for (const fz of [0.11, -0.11]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 0.44).translate(0, 2.3, 0), signM2); pl.position.z = fz; if (fz < 0) pl.rotation.y = Math.PI; arch.add(pl); }
+      const ad = coast - 1.4;
       arch.position.set(landing.x * ad, 0.02, landing.y * ad);
       arch.rotation.y = rot;
       arch.userData.dynamic = true;
