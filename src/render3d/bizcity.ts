@@ -820,9 +820,31 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     wm.add(sails);
     townTicksEarly.push(t => { sails.rotation.z = -t * 0.7; });
   }
-  // (Nothing of the countryside's goes on the land the player bought: that's for its own build.)
   const landBuilt = (cafe.land ?? []).filter(l => l.bought).map(l => landSpot(LAND.findIndex(x => x.id === l.id), true));
-  const onLand = (x: number, z: number) => landBuilt.some(sp => Math.hypot(x - sp.x, z - sp.z) < sp.r * 1.05) || nearLink(x, z);
+  const landBuilt0 = (cafe.land ?? []).filter(l => l.bought && landJoin(LAND.findIndex(x => x.id === l.id)) === "ground").map(l => landSpot(LAND.findIndex(x => x.id === l.id), true));
+  // Parks with a lake on the big open stretches of the island (between the town and the
+  // districts): found by looking for the spots furthest from any street, district or shore.
+  const parks: { x: number; z: number; r: number }[] = [];
+  {
+    const clear = (x: number, z: number) => {
+      let d = Infinity;
+      for (const c of ALL) { const p = cellXZ(c); d = Math.min(d, Math.hypot(Math.max(0, Math.abs(x - p.x) - C / 2), Math.max(0, Math.abs(z - p.z) - C / 2))); }
+      for (const sp of landBuilt0) d = Math.min(d, Math.hypot(Math.max(0, Math.abs(x - sp.x) - DIST_H), Math.max(0, Math.abs(z - sp.z) - DIST_H)));
+      d = Math.min(d, z - beachZ);
+      for (let m = 1; m < d && m < 14; m += 1) if (!insidePoly(hull, x, z, m)) { d = Math.min(d, m - 1); break; }
+      return d;
+    };
+    if (landBuilt0.length) {
+      const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
+      const cand: { x: number; z: number; r: number }[] = [];
+      for (let x = hx0; x <= hx1; x += 2) for (let z = hz0; z <= hz1; z += 2) { if (!insidePoly(hull, x, z)) continue; const r = clear(x, z); if (r >= 5.5) cand.push({ x, z, r }); }
+      cand.sort((a, b) => b.r - a.r);
+      for (const c of cand) { if (parks.length >= 3) break; if (parks.every(p => Math.hypot(p.x - c.x, p.z - c.z) > p.r + c.r + 2)) parks.push({ ...c, r: Math.min(c.r, 11) }); }
+    }
+  }
+  const inPark = (x: number, z: number) => parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r);
+  // (Nothing of the countryside's goes on the land the player bought: that's for its own build.)
+  const onLand = (x: number, z: number) => landBuilt.some(sp => Math.abs(x - sp.x) < DIST_H + 0.6 && Math.abs(z - sp.z) < DIST_H + 0.6) || nearLink(x, z) || inPark(x, z);
   // The road from the town's streets out to the first island's bridge (once it's for sale or
   // bought): where it runs, so the countryside keeps clear of it.
   const linkFor = (k: number) => {
@@ -855,6 +877,46 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     S(ROAD * 2, 0.1, 0, rM);
     for (const sd of [-1, 1]) { S(0.12, 0.18, sd * (ROAD + 0.06), cM); S(0.55, 0.2, sd * (ROAD + 0.39), wM); }
   };
+  // The parks: a lake with a sandy shore, a path all round it with benches facing the water,
+  // a wooden jetty with a rowboat, a white gazebo, flower beds, and trees in a ring.
+  parks.forEach((pk, pi) => {
+    const lr = pk.r * 0.46, ring: [number, number][] = [];
+    for (let a = 0; a < 28; a++) { const an = (a / 28) * Math.PI * 2, rr = lr * (1 + 0.14 * Math.sin(an * 3 + pi * 2) + 0.07 * Math.sin(an * 5 + pi)); ring.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+    const shape = (k2: number) => new THREE.Shape(ring.map(([x, z]) => new THREE.Vector2(x * k2, -z * k2)));
+    add(new THREE.ShapeGeometry(shape(1.12), 2).rotateX(-Math.PI / 2).translate(pk.x, 0.03, pk.z), mats.c("#e9d6a6", 0.95));
+    add(new THREE.ShapeGeometry(shape(1), 2).rotateX(-Math.PI / 2).translate(pk.x, 0.05, pk.z), water);
+    add(new THREE.ShapeGeometry(shape(0.55), 2).rotateX(-Math.PI / 2).translate(pk.x, 0.055, pk.z), mats.c("#3a9ee0", 0.15));
+    // The path round the lake.
+    const pr = lr * 1.12 + 1.1;
+    add(new THREE.RingGeometry(pr - 0.38, pr + 0.38, 48).rotateX(-Math.PI / 2).translate(pk.x, 0.04, pk.z), pave);
+    // Benches facing the water, lamps between them.
+    for (let b = 0; b < 6; b++) {
+      const an = (b / 6) * Math.PI * 2 + 0.3, bx = pk.x + Math.cos(an) * (pr + 0.7), bz = pk.z + Math.sin(an) * (pr + 0.7);
+      bench(bx, bz, -an - Math.PI / 2);
+      const la = an + Math.PI / 6, lx = pk.x + Math.cos(la) * (pr + 0.6), lz = pk.z + Math.sin(la) * (pr + 0.6);
+      add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(lx, 0.7, lz), metal);
+      add(new THREE.SphereGeometry(0.12, 8, 6).translate(lx, 1.45, lz), bulb);
+    }
+    // Trees in a loose ring outside the path, with flower beds between.
+    for (let t2 = 0; t2 < 14; t2++) {
+      const an = (t2 / 14) * Math.PI * 2 + pi, rr = pr + 1.7 + (t2 % 3) * 0.7;
+      if (rr > pk.r - 0.4) continue;
+      tree(pk.x + Math.cos(an) * rr, pk.z + Math.sin(an) * rr, 0.85 + (t2 % 3) * 0.2, 0);
+      if (t2 % 2) { const fa = an + 0.22, fx = pk.x + Math.cos(fa) * (pr + 1.3), fz = pk.z + Math.sin(fa) * (pr + 1.3); add(new THREE.CylinderGeometry(0.42, 0.46, 0.14, 12).translate(fx, 0.07, fz), stone); for (let f = 0; f < 6; f++) add(new THREE.SphereGeometry(0.08, 6, 4).translate(fx + Math.cos(f) * 0.24, 0.2, fz + Math.sin(f) * 0.24), mats.c(flowersOn[(f + t2) % 4], 0.8)); }
+    }
+    // A jetty out over the water with a rowboat, and a gazebo on the far side.
+    const ja = pi * 1.7 + 0.8, jx = Math.cos(ja), jz = Math.sin(ja);
+    for (let q = 0; q < 6; q++) add(new THREE.BoxGeometry(0.7, 0.05, 0.3).rotateY(-ja + Math.PI / 2).translate(pk.x + jx * (pr - 0.6 - q * 0.32), 0.1, pk.z + jz * (pr - 0.6 - q * 0.32)), wood);
+    add(new THREE.BoxGeometry(0.34, 0.12, 0.8).rotateY(-ja).translate(pk.x + jx * (pr - 2.6) - jz * 0.6, 0.1, pk.z + jz * (pr - 2.6) + jx * 0.6), mats.c("#ff8a5c", 0.6));
+    const ga = ja + Math.PI, gx = pk.x + Math.cos(ga) * (pr + 1.5), gz = pk.z + Math.sin(ga) * (pr + 1.5);
+    if (pr + 2.4 < pk.r) {
+      add(new THREE.CylinderGeometry(0.9, 0.95, 0.15, 8).translate(gx, 0.08, gz), mats.c("#f4f0e8", 0.6));
+      for (let c2 = 0; c2 < 6; c2++) { const ca = (c2 / 6) * Math.PI * 2; add(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6).translate(gx + Math.cos(ca) * 0.75, 0.6, gz + Math.sin(ca) * 0.75), mats.c("#ffffff", 0.5)); }
+      add(new THREE.ConeGeometry(1.05, 0.55, 8).translate(gx, 1.33, gz), mats.c("#5fae8a", 0.6));
+    }
+    // Ducks on the water.
+    for (let d2 = 0; d2 < 3; d2++) { const da = pi + d2 * 1.9, dx2 = pk.x + Math.cos(da) * lr * 0.5, dz2 = pk.z + Math.sin(da) * lr * 0.5; add(new THREE.SphereGeometry(0.09, 6, 5).scale(1.4, 0.8, 1).translate(dx2, 0.1, dz2), mats.c("#ffffff", 0.6)); add(new THREE.SphereGeometry(0.05, 6, 5).translate(dx2 + 0.1, 0.17, dz2), mats.c("#2f8a4a", 0.6)); }
+  });
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
@@ -862,7 +924,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const tufts: [number, number][] = [];
     let k = 0;
     const FIELD = [["#e8c45a", "#d4a83a"], ["#7cc85a", "#5aa848"], ["#b48cdc", "#9a6ec8"], ["#c8945a", "#a8743a"]];
-    for (let x = -OFF - C - ISLAND_PAD; x <= OFF + 3 * C + ISLAND_PAD; x += 1.2) for (let z = -OFF - C - ISLAND_PAD; z <= OFF + 3 * C + ISLAND_PAD; z += 1.2) {
+    const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
+    for (let x = hx0; x <= hx1; x += 1.2) for (let z = hz0; z <= hz1; z += 1.2) {
       const jx = x + Math.sin(k * 12.9898) * 0.4, jz = z + Math.cos(k * 78.233) * 0.4, r = Math.abs(Math.sin(k * 3.7));
       k++;
       if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3 || onLand(jx, jz)) continue;
@@ -3621,6 +3684,14 @@ function setLand(bought: number[]): void {
     if (landJoin(k) !== "ground") continue;
     const sp = landSpot(k, true);
     for (let a = 0; a < 24; a++) { const an = (a / 24) * Math.PI * 2, c = Math.cos(an), s2 = Math.sin(an), r = distEdge(c, s2) - 2.2; landPts.push([sp.x + c * r, sp.z + s2 * r]); }
+  }
+  // (Then round the whole thing off: a soft rounded square round everything, so the island
+  // is a full, rounded shape, never a long point or a wedge.)
+  if (landPts.length) {
+    const all = [...landPts, ...makeOutline(ISLAND_PAD, [])];
+    const x0 = Math.min(...all.map(p => p[0])), x1 = Math.max(...all.map(p => p[0])), z0 = Math.min(...all.map(p => p[1])), z1 = Math.max(...all.map(p => p[1]));
+    const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, rx = (x1 - x0) / 2, rz = (z1 - z0) / 2;
+    for (let a = 0; a < 64; a++) { const an = (a / 64) * Math.PI * 2, c = Math.cos(an), s2 = Math.sin(an), k = Math.pow(Math.pow(Math.abs(c), 3) + Math.pow(Math.abs(s2), 3), -1 / 3); landPts.push([mx + c * rx * k * 0.97, mz + s2 * rz * k * 0.97]); }
   }
 }
 /** The outline at `pad` from the town (the coast at ISLAND_PAD takes in bought land unless
