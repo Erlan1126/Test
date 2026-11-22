@@ -917,6 +917,35 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // Ducks on the water.
     for (let d2 = 0; d2 < 3; d2++) { const da = pi + d2 * 1.9, dx2 = pk.x + Math.cos(da) * lr * 0.5, dz2 = pk.z + Math.sin(da) * lr * 0.5; add(new THREE.SphereGeometry(0.09, 6, 5).scale(1.4, 0.8, 1).translate(dx2, 0.1, dz2), mats.c("#ffffff", 0.6)); add(new THREE.SphereGeometry(0.05, 6, 5).translate(dx2 + 0.1, 0.17, dz2), mats.c("#2f8a4a", 0.6)); }
   });
+  // Out past the town, the island is lived in: little neighbourhoods of houses with gardens
+  // and picket fences (from the model kit), a few to a cluster, round the open land.
+  const homesOut: [number, number][] = [];
+  {
+    const HOUSES = ["tt_house", "tt_house_2", "tt_house_3", "tt_bungalow", "tt_semi_detached", "tt_terraced_house"];
+    const nearCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 2 && Math.abs(z - p.z) < C / 2 + 2; });
+    const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
+    let n5 = 0;
+    for (let x = hx0; x <= hx1; x += 4.2) for (let z = hz0; z <= hz1; z += 4.2) {
+      n5++;
+      const h = Math.abs(Math.sin(Math.floor(x / 12.6) * 7.1 + Math.floor(z / 12.6) * 3.3));
+      if (h < 0.35) continue; // (open fields and woods between the neighbourhoods)
+      const jx = x + Math.sin(n5 * 3.1) * 0.5, jz = z + Math.cos(n5 * 1.7) * 0.5;
+      if (!insidePoly(hull, jx, jz, 2.2) || insidePoly(coreHull, jx, jz, -1.5) || nearCell(jx, jz) || jz < beachZ + 2.5) continue;
+      if (onLand(jx, jz) || landBuilt.some(sp => Math.abs(jx - sp.x) < DIST_H + 2.5 && Math.abs(jz - sp.z) < DIST_H + 2.5) || parks.some(p => Math.hypot(jx - p.x, jz - p.z) < p.r + 1.5) || nearLane(jx, jz, 1.8)) continue;
+      const kp = kitPlace(HOUSES[n5 % HOUSES.length], 2.1 + (n5 % 3) * 0.2, 1, n5 % 8);
+      if (!kp) continue;
+      kp.obj.position.set(jx, 0, jz); kp.obj.rotation.y = (n5 % 4) * (Math.PI / 2);
+      g.add(kp.obj);
+      homesOut.push([jx, jz]);
+      // A garden: lawn, a path to the door, a fence along the front, a tree.
+      add(new THREE.CylinderGeometry(1.7, 1.7, 0.03, 16).translate(jx, 0.015, jz), grass2);
+      const fr = kp.obj.rotation.y, fx2 = Math.sin(fr), fz2 = Math.cos(fr);
+      add(new THREE.BoxGeometry(0.4, 0.02, 1.2).rotateY(fr).translate(jx + fx2 * 1.6, 0.04, jz + fz2 * 1.6), pave);
+      for (const sd of [-1, 1]) add(new THREE.BoxGeometry(1.0, 0.25, 0.05).rotateY(fr + Math.PI / 2).rotateY(0).translate(jx + fx2 * 1.75 + fz2 * sd * 0.75, 0.13, jz + fz2 * 1.75 - fx2 * sd * 0.75), mats.c("#ffffff", 0.6));
+      tree(jx - fz2 * 1.5 - fx2 * 0.8, jz + fx2 * 1.5 - fz2 * 0.8, 0.8, 0);
+    }
+  }
+  const nearHomeOut = (x: number, z: number) => homesOut.some(([hx, hz]) => Math.abs(x - hx) < 2.2 && Math.abs(z - hz) < 2.2);
   // The verge: the island's own trees, bushes, flowers and boulders round the town.
   {
     const inCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 0.35 && Math.abs(z - p.z) < C / 2 + 0.35; });
@@ -930,7 +959,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       k++;
       if (inCell(jx, jz) || !inside(jx, jz) || jz < beachZ + 0.3 || onLand(jx, jz)) continue;
       if (Math.hypot(jx - fx0, jz - fz0) < 1.6 || Math.hypot(jx - (fx0 + fallAt[0]) / 2, jz - (fz0 + fallAt[1]) / 2) < 1.0) continue;
-      if (nearLane(jx, jz, 0.75)) continue;
+      if (nearLane(jx, jz, 0.75) || nearHomeOut(jx, jz)) continue;
       // Out in the countryside: farm fields in rows (wheat, greens, lavender, ploughed earth)
       // and the odd sheep, between the trees.
       if (!insidePoly(coreHull, jx, jz)) {
