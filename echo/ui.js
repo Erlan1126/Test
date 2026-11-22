@@ -504,7 +504,7 @@ function renderTitle() {
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
   { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : typeof stagePerson === "function" ? `${stagePerson(0)[0]} waits` : "Today's stage"; }
-  $("tileEndless").textContent = rs.best ? `Best ${rs.best.toLocaleString()}` : "How far can you go?";
+  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.best ? `Best ${rs.best.toLocaleString()}` : "All districts, no end"; }
   const we = weekEvent(), sn = streakNow();
   $("titleMeta").textContent = (typeof homesLit === "function" ? `${homesLit()}/${STAGES_N} homes relit · ` : `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · `) + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
@@ -714,7 +714,9 @@ tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !sta
 tap("stagesBtn", () => openSheet("stages"));
 tap("dailyRunBtn", () => { if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); } else playNow({ daily: true }); });
 // Hard mode: one touch and the run is over, but every point counts double.
-tap("hardBtn", () => playNow({}));
+// Endless opens once Downtown is finished: the story comes first.
+function endlessOpen() { return typeof stageSave !== "function" || !!(stageSave().best[10] && stageSave().best[10].stars) || (runSave().best || 0) > 0; }
+tap("hardBtn", () => { if (!endlessOpen()) { toast("Endless opens when Downtown is lit: finish stage 10"); return; } playNow({}); });
 tap("todayBtn", openToday);
 tap("todayClose", () => { $("todayPanel").hidden = true; });
 tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift · <b>+${n}</b> lights`, true); } renderToday2(); if (screen === "title") { const keep = $("todayPanel").hidden; renderTitle(); $("todayPanel").hidden = keep; } });

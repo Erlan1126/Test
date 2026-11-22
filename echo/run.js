@@ -626,6 +626,9 @@ const RUN_WORLDS = [
   { name: "Starline", sky: [[2, 3, 19], [10, 15, 46], [26, 24, 70]], tower: [11, 13, 26], win: [190, 180, 255], neon: [155, 140, 255], neon2: [120, 255, 220], night: 1, stars: 1 },
 ];
 const runWorld = b => RUN_WORLDS[b % RUN_WORLDS.length];
+// Each district has its own hour of the night, and the Tower climbs toward dawn (stage 60 is sunrise).
+// (The swing view reads the worlds in reverse, hence 7 - index.)
+const stageSky = si => 7 - (si.daily ? [6, 5, 4, 7, 3][dayNumber() % 5] : si.n === 60 ? 2 : si.n > 55 ? 3 : [6, 3, 5, 4, 7, 7][Math.min(5, Math.floor((si.n - 1) / 10))]);
 // Buildings along each side: the passage edge, held level for each block, so the walls step like towers.
 const BLOCK = 92;
 const blockEdge = (k, side) => { const a = k * BLOCK + BLOCK / 2, r = seeded(k * 7 + (side > 0 ? 3 : 0)); return caveMid(a) + side * (caveHalf(a, run ? run.dist : 0) + r() * 10); };
@@ -636,7 +639,7 @@ function runDraw(ctx, W, H) {
   const zoom = 1 - Math.min(0.1, (R.speed - 200) / 2000), S = W / 400 * zoom;
   const LY = H / S * (0.7 + Math.min(0.05, (R.speed - 200) / 4000));
   const shake = R.shake > 0 ? R.shake * 6 : 0, camX = R.camX || 0;
-  const m = R.dist / RUN.M, b = R.stageInfo ? Math.floor((R.stageInfo.daily ? dayNumber() : R.stageInfo.n - 1) / 2) % 8 : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
+  const m = R.dist / RUN.M, b = R.stageInfo ? stageSky(R.stageInfo) : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const wb = R.mode3 ? 7 - (b % 8) : b, wb2 = R.mode3 ? 7 - ((b + 1) % 8) : b + 1;
   const w1 = runWorld(wb), w2 = runWorld(wb2), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);

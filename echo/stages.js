@@ -9,7 +9,7 @@ const STAGES_N = 60;
 function stageInfo(n) {
   const daily = n === 0, k = daily ? 8 + (dayNumber() % 12) : n;
   const len = Math.min(980, 400 + k * 20), hard = Math.min(1, (k - 1) / 18);
-  return { n, daily, len, hard, boss: !daily && n % 10 === 0, wind: !daily && n >= 7 && n % 3 === 1, par: len / (25 + hard * 5), theme: (k - 1) % 5, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
+  return { n, daily, len, hard, boss: !daily && n % 10 === 0, wind: !daily && n >= 7 && n % 3 === 1, par: len / (25 + hard * 5), theme: daily ? (k - 1) % 5 : Math.min(4, Math.floor((n - 1) / 10)), tower: !daily && n > 50, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
 }
 function stageSave() {
   const S = save.stages || (save.stages = {});
@@ -206,7 +206,7 @@ document.getElementById("stStages").addEventListener("click", () => { $("stageCa
 document.getElementById("stShare").addEventListener("click", stageShare);
 
 // What's new on a stage: a short line the first time something appears.
-const STAGE_NEW = { 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };
+const STAGE_NEW = { 11: ["The Markets", "Lantern strings sway in the breeze: time your grab"], 21: ["The Harbour", "Fall in the water and you splash: it slows you down"], 31: ["The Arcade", "Neon pads on the rooftops bounce you sky-high"], 41: ["The Park", "Grab the glowing treetops for low, fast swings"], 51: ["The Tower", "Updrafts between the towers lift you up"], 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };
 
 // Star rewards: stars from stages unlock looks for free.
 const STAR_REWARDS = [[6, "s", 1], [12, "t", 2], [20, "b", 1], [30, "c", 1], [42, "s", 2], [55, "t", 6], [70, "b", 2], [85, "c", 2], [100, "s", 3], [120, "t", 7], [140, "b", 4], [160, "c", 3], [180, "s", 5]];

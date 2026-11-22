@@ -73,7 +73,7 @@ function runnerStart(R) {
     mode3: true, px: -6, py: 30, vx: 13, vy: 0, hold: false, teth: null, L: 0, anchors: [], blds: [], motes: [], haz: [], ups: [],
     genX: -60, lastA: null, darkX: -50, lit: 0, perfects: 0, roof: null, spin: 0, spinV: 0, fizzle: 0, fireworks: [], nextMile: 500,
     ev: null, nextEv: 380, rec: [], letterOut: false, phase: 0, kick: 0, slowT: 0, nearT: 0, v: 13, nextEvent: 1e9,
-    flow: 0, od: 0, dashes: 1, tethT: 0, perfT: 0, dashT: 0, bursts: [], restored: 0, boosts: [], winds: [], ringT: 0,
+    flow: 0, od: 0, dashes: 1, tethT: 0, perfT: 0, dashT: 0, bursts: [], restored: 0, boosts: [], winds: [], updrafts: [], ringT: 0,
   });
   if (runnerPerk("Tide")) R.hearts++;
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
@@ -106,6 +106,7 @@ function swingGen(R, toX) {
       const dK = R.stageLen ? hard : null;
       a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.27 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
       if (a.type === "drift") a.bx = ax;
+      if (ath.anchor === "lantern" && !a.type) { a.sway = true; a.bx = ax; a.by = a.y; }
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
       if (ax > 50 && r() < (R.stageLen ? 0.22 : 0.16) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
@@ -130,9 +131,11 @@ function swingGen(R, toX) {
     let maxH = 60; for (const a of R.anchors) if (a.x > x0 - 5 && a.x < x1 + 5) maxH = Math.min(maxH, a.y - 14);
     if (x0 < 45) maxH = Math.min(maxH, 15);   // the opening swing always has room
     const tall = (th.low ? 9 : 14) + r() * (th.low ? 12 : 26) + hard * 8;
-    const tree = th.park && r() < 0.5;
+    const tree = th.park && r() < 0.5, pad = th.neon > 0.8 && r() < 0.35;
     const b = { x0, x1: tree ? x0 + 8 + r() * 4 : x1, h: Math.max(7, Math.min(maxH, tree ? 12 + r() * 8 : tall)), style: th.fac[Math.floor(r() * th.fac.length)], litT: -1, n: R.blds.length, tree, seed: r() };
-    if (tree) b.x1 = Math.min(b.x1, x1);
+    if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: R.anchors.length + 9000, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
+    if (pad && !tree) b.pad = true;
+    if (R.stageInfo && R.stageInfo.tower && b.x0 > 40 && b.x0 < R.stageLen && r() < 0.35) R.updrafts.push({ x0: b.x1 + 0.5, x1: b.x1 + 6, f: 34 });
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
     if (prev && (R.stageLen ? hard > 0.04 && x0 > 50 && x0 < R.stageLen : x0 > 250) && r() < 0.14 + hard * 0.22 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });
@@ -265,7 +268,7 @@ function runnerUpdate(dt) {
   // still out of reach a moment later shows why ("Too far" / "Below you").
   if (R.hold && !R.teth) { if (swingAttach(R)) R.grabBuf = 0; else if (R.grabBuf > 0 && (R.grabBuf -= dt) <= 0) { R.grabBuf = 0; R.fizzle = 0.35; } }
   // Anchors that move, and anchors that crumble under you.
-  for (const a of R.anchors) if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2;
+  for (const a of R.anchors) { if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2; else if (a.sway && a !== R.teth) { const w = Math.sin(R.t * 1.3 + a.ph) * 0.35; a.x = a.bx + Math.sin(w) * 4; a.y = a.by + (1 - Math.cos(w)) * 4; } }
   if (R.teth) { R.tethT += dt; if (R.teth.type === "crumble" && R.tethT > 1.9) { const a = R.teth; a.broken = true; R.teth = null; R.hold = false; R.bursts.push({ x: a.x, y: a.y, t: 0, c: 0xff6a3d, big: true }); if (!R.attract) { runMsg("It crumbled!", "Let go of orange anchors quickly", 1.4); sfx.bump(); } } }
   // Flow fades slowly; Overdrive runs down.
   if (R.od > 0) { R.od -= dt; R.darkX = Math.min(R.darkX, R.px - 35); if (R.od <= 0) { R.od = 0; R.flow = 0; } } else R.flow = Math.max(0, R.flow - dt * 0.045);
@@ -297,6 +300,7 @@ function runnerUpdate(dt) {
       }
     } else R.vx *= 1 - 0.03 * h;
     for (const w of R.winds) if (R.px > w.x0 && R.px < w.x1) { R.vx += w.f * h; break; }
+    for (const u of R.updrafts) if (R.px > u.x0 && R.px < u.x1 && R.py < 55) { R.vy += u.f * h; break; }
     R.px += R.vx * h; R.py += R.vy * h;
     if (R.teth) {
       const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1;
@@ -311,6 +315,7 @@ function runnerUpdate(dt) {
         if (!R.roof && R.vy < -6) R.dust = { x: R.px, y: b.h, t: 0, k: Math.min(1, -R.vy / 20) };
         if (!R.roof && R.vy < -14) { R.kick = 0.4; if (!R.attract) sfx.land(); }
         R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0;
+        if (b.pad) { R.roof = null; R.vy = 24; R.vx = Math.max(R.vx, 14); R.padT = 0.5; b.padHit = R.t; R.bursts.push({ x: R.px, y: b.h, t: 0, c: 0xff5ad2, big: true }); if (!R.attract) { sfx.jump(); buzz(12); if (!R.padMsg) { R.padMsg = true; runBonus("Boing! Neon pad", 0, R.dist + 2, R.x); } } }
       } else if (ox < b.x0) {
         // Wall run: up the wall and over the top.
         R.px = b.x0 - 0.35; R.vx = Math.max(3, R.vx * 0.3); R.vy = Math.max(R.vy, 15); R.teth = null; R.shake = 0.25; R.wallT = 0.4;
