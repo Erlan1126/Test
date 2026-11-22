@@ -2819,6 +2819,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (lv >= 4) { Q(new THREE.TorusGeometry(1.4, 0.06, 6, 28).rotateX(Math.PI / 2).translate(0, topY - 0.5, 0), m2("#5ae0ff", 0.3, 0.4)); Q(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6).translate(0, topY + 1.4, 0), metal); }
       return topY + 1.5;
     };
+    const shardM: Record<string, THREE.Material> = {};
     for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
       const { x, z } = cellC(i, j), lg = new THREE.Group(), n = 40 + k * 20 + i * DIST_N + j;
       lg.position.set(x, 0.2, z);
@@ -2837,6 +2838,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (th === "villa" || th === "crystal" || th === "dome") {
         const key = `d${k}:${i},${j}`, lv = propLv(key);
         const top2 = skyProp(lg, th, n, lv);
+        // The lot's corners: gold-potted topiary in the clouds, glowing shards on the crystal.
+        if (th !== "dome") for (const [cx5, cz5] of [[-1.45, -1.45], [1.45, -1.45], [-1.45, 1.45], [1.45, 1.45]]) {
+          if (th === "villa") { P(new THREE.CylinderGeometry(0.14, 0.1, 0.18, 8).translate(cx5, 0.09, cz5), mats.gold); P(new THREE.SphereGeometry(0.17, 8, 6).translate(cx5, 0.33, cz5), mats.c("#7fcf8a", 0.8)); P(new THREE.SphereGeometry(0.11, 8, 6).translate(cx5, 0.56, cz5), mats.c("#7fcf8a", 0.8)); }
+          else { const cc5 = ["#9a7aff", "#7ad0ff", "#ff8ae0"][(n + Math.round(cx5 + cz5 * 2)) & 1 ? 1 : (n % 3)]; P(new THREE.OctahedronGeometry(0.12, 0).scale(1, 2.4, 1).rotateZ(cx5 * 0.12).translate(cx5, 0.28, cz5), shardM[cc5] ??= own(std(cc5, { roughness: 0.15, emissive: new THREE.Color(cc5), emissiveIntensity: 0.6, flatShading: true }))); }
+        }
         if (landBuiltOnce && (propsSeen[key] ?? 1) < lv) {
           lg.userData.dynamic = true;
           const t0 = performance.now() + 250;
@@ -3197,6 +3203,45 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         G.add(ship);
         const R2 = DIST_H * 0.7;
         townTicks.push(t => { const a = t * 0.05; ship.position.set(Math.cos(a) * R2, 8 + Math.sin(t * 0.5) * 0.4, Math.sin(a) * R2); ship.rotation.y = -a; });
+      }
+      // More life in the air: seagulls over the harbor, a helicopter over Downtown, a rainbow
+      // over Cloud Kingdom, a shuttle coming and going at Orbit Station.
+      if (id === "meadow") {
+        const gullM = mats.c("#ffffff", 0.6), gulls: THREE.Group[] = [];
+        for (let g5 = 0; g5 < 5; g5++) {
+          const gl = new THREE.Group(), wings: THREE.Mesh[] = [];
+          gl.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.32), gullM));
+          for (const sd of [-1, 1]) { const w5 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.02, 0.14).translate(sd * 0.21, 0, 0), gullM); gl.add(w5); wings.push(w5); }
+          gl.userData.dynamic = true; gl.userData.wings = wings; G.add(gl); gulls.push(gl);
+        }
+        townTicks.push(t => gulls.forEach((gl, g5) => { const a = t * (0.25 + g5 * 0.03) + g5 * 1.3, r5 = 5 + g5 * 1.6; gl.position.set(Math.cos(a) * r5, 4.5 + g5 * 0.5 + Math.sin(t * 0.8 + g5) * 0.3, Math.sin(a) * r5); gl.rotation.y = -a; const fl5 = Math.sin(t * 7 + g5) * 0.5; (gl.userData.wings as THREE.Mesh[]).forEach((w5, s5) => { w5.rotation.z = s5 ? fl5 : -fl5; }); }));
+      } else if (id === "hills") {
+        const heli = new THREE.Group();
+        heli.add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8).scale(1, 0.8, 1.4), mats.c("#e2453c", 0.4, 0.2)));
+        heli.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 6).scale(1, 0.8, 1).translate(0, 0.05, 0.35), winMat));
+        heli.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.1).translate(0, 0.1, -0.9), mats.c("#e2453c", 0.4, 0.2)));
+        heli.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.18).translate(0.05, 0.2, -1.42), metal));
+        for (const sd of [-1, 1]) heli.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.9).translate(sd * 0.3, -0.42, 0), metal));
+        const rotor = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.02, 0.1), metal);
+        rotor.position.y = 0.42; rotor.userData.dynamic = true; heli.add(rotor);
+        heli.userData.dynamic = true; G.add(heli);
+        townTicks.push(t => { const a = -t * 0.18; heli.position.set(Math.cos(a) * DIST_H * 0.6, 13 + Math.sin(t * 0.6) * 0.5, Math.sin(a) * DIST_H * 0.6); heli.rotation.y = -a + Math.PI; heli.rotation.z = 0.12; rotor.rotation.y = t * 25; });
+      } else if (theme === "cloud") {
+        const rainbow = new THREE.Group(), cols = ["#ff5f6d", "#ff9a4a", "#ffd23a", "#5ee0a0", "#4f8bff", "#9a6cff"];
+        cols.forEach((c5, i5) => rainbow.add(new THREE.Mesh(new THREE.TorusGeometry(DIST_H * 0.95 - i5 * 0.45, 0.24, 6, 48, Math.PI), own(new THREE.MeshBasicMaterial({ color: c5, transparent: true, opacity: 0.55, depthWrite: false })))));
+        rainbow.rotation.y = Math.atan2(ux, uz) + Math.PI / 2;
+        rainbow.position.y = -1.5;
+        for (const sd of [-1, 1]) rainbow.add(new THREE.Mesh(new THREE.SphereGeometry(2.0, 10, 8).scale(1.5, 0.7, 1.5).translate(sd * (DIST_H * 0.95 - 1.1), 0.3, 0), m2("#ffffff", 1, 0)));
+        G.add(rainbow);
+      } else if (theme === "orbit") {
+        const sh5 = new THREE.Group();
+        sh5.add(new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.42, 1.4, 10).rotateX(Math.PI / 2), m2("#ffffff", 0.3, 0.3)));
+        sh5.add(new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 10).rotateX(Math.PI / 2).translate(0, 0, 0.95), m2("#ffffff", 0.3, 0.3)));
+        sh5.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 0.5).translate(0, -0.1, -0.3), m2("#3a4160", 0.4, 0.4)));
+        const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.7, 8).rotateX(-Math.PI / 2).translate(0, 0, -1.05), own(new THREE.MeshBasicMaterial({ color: 0x8af0ff, transparent: true, opacity: 0.8 })));
+        flame.userData.dynamic = true; sh5.add(flame);
+        sh5.userData.dynamic = true; G.add(sh5);
+        townTicks.push(t => { const a = t * 0.3; sh5.position.set(Math.cos(a) * DIST_H * 1.25, 4 + Math.sin(a * 0.5) * 3, Math.sin(a) * DIST_H * 1.25); sh5.rotation.y = -a; flame.scale.z = 0.8 + Math.sin(t * 20) * 0.2; });
       }
       // Vines hanging down the district's cliff.
       for (let a = 0; a < outlineD.length; a += 5) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
