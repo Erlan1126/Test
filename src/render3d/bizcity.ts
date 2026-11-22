@@ -120,6 +120,22 @@ function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
 }
 /** A soft round shadow (made once, shared by every town build). */
 let blobTexture: THREE.Texture | null = null;
+/** Lays a street texture flat on the ground in world units (so it never stretches along a
+ *  long road and lines up across neighbouring pieces): `scale` texture tiles per unit. */
+function planarUV(root: THREE.Object3D, scales: Map<THREE.Material, number>): void {
+  root.updateMatrixWorld(true);
+  const v = new THREE.Vector3(), done = new Set<THREE.BufferGeometry>();
+  root.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || Array.isArray(m.material)) return;
+    const sc = scales.get(m.material as THREE.Material);
+    if (sc === undefined || done.has(m.geometry)) return;
+    done.add(m.geometry);
+    const pos = m.geometry.attributes.position, uv = new Float32Array(pos.count * 2);
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); uv[i * 2] = v.x * sc; uv[i * 2 + 1] = v.z * sc; }
+    m.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  });
+}
 /** Real street surfaces, drawn once and shared: asphalt with grain, worn patches and a few
  *  cracks, and sidewalk paving slabs with grout lines. */
 let asphaltTexture: THREE.CanvasTexture | null = null, paverTexture: THREE.CanvasTexture | null = null;
@@ -131,13 +147,12 @@ function asphaltTex(): THREE.CanvasTexture {
   let sd = 7;
   const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
   // Worn, patched areas a shade lighter or darker.
-  for (let i = 0; i < 9; i++) { x.fillStyle = rnd() < 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)"; const r = 20 + rnd() * 50; x.beginPath(); x.ellipse(rnd() * N, rnd() * N, r, r * (0.4 + rnd() * 0.6), rnd() * 3, 0, Math.PI * 2); x.fill(); }
+  for (let i = 0; i < 9; i++) { x.fillStyle = rnd() < 0.5 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.05)"; const r = 20 + rnd() * 50, ex = rnd() * N, ey = rnd() * N, rr = r * (0.4 + rnd() * 0.6), ra = rnd() * 3; for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) { x.beginPath(); x.ellipse(ex + ox, ey + oy, r, rr, ra, 0, Math.PI * 2); x.fill(); } }
   // Aggregate grain.
-  for (let i = 0; i < 5000; i++) { const v = rnd(); x.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.12 + rnd() * 0.15})` : `rgba(255,255,255,${0.06 + rnd() * 0.1})`; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 1.5, 1 + rnd() * 1.5); }
+  for (let i = 0; i < 5000; i++) { const v = rnd(); x.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.05 + rnd() * 0.07})` : `rgba(255,255,255,${0.03 + rnd() * 0.05})`; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 1.5, 1 + rnd() * 1.5); }
   // A few thin cracks and a tar-sealed seam.
-  x.strokeStyle = "rgba(20,20,26,0.45)"; x.lineWidth = 1;
-  for (let i = 0; i < 4; i++) { x.beginPath(); let px = rnd() * N, py = rnd() * N; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (rnd() - 0.5) * 24; py += (rnd() - 0.5) * 24; x.lineTo(px, py); } x.stroke(); }
-  x.strokeStyle = "rgba(20,20,26,0.35)"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, N * 0.7); x.lineTo(N, N * 0.72); x.stroke();
+  x.strokeStyle = "rgba(20,20,26,0.28)"; x.lineWidth = 1;
+  for (let i = 0; i < 2; i++) { x.beginPath(); let px = N * 0.3 + rnd() * N * 0.4, py = N * 0.3 + rnd() * N * 0.4; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (rnd() - 0.5) * 24; py += (rnd() - 0.5) * 24; x.lineTo(px, py); } x.stroke(); }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (asphaltTexture = t);
@@ -212,8 +227,20 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     // higher than the one before.
     const hull = islandOutline(ISLAND_PAD, true), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
     const first = landSpot(0, bought), a0 = Math.atan2(first.z - cz, first.x - cx), d0 = Math.hypot(first.x - cx, first.z - cz);
-    const a = a0 + k * 0.95, d = d0 + k * 3;
-    v = { x: cx + Math.cos(a) * d, z: cz + Math.sin(a) * d, r: LAND_R, y: LAND[k].y };
+    void d0;
+    // Measured from the coast in that direction (the island is not round), so no island ever
+    // sits over the town or its countryside, and pushed further out if it would crowd one of
+    // the islands before it.
+    const a = a0 + k * 0.95, dx = Math.cos(a), dz = Math.sin(a);
+    let t = 0;
+    while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
+    let out = t + distEdge(dx, dz) + DIST_GAP + 10 + k * 2;
+    const clear = (x: number, z: number) => {
+      for (let m = 0; m < k; m++) { const o = landSpot(m, bought); if (Math.hypot(o.x - x, o.z - z) < DIST_H * 2.9 + DIST_GAP) return false; }
+      return true;
+    };
+    while (out < 400 && !clear(cx + dx * out, cz + dz * out)) out += 1;
+    v = { x: cx + dx * out, z: cz + dz * out, r: LAND_R, y: LAND[k].y };
     landCache.set(key, v);
   }
   if (!v) {
@@ -345,12 +372,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const rockDark = own(std(new THREE.Color(st.rock).lerp(new THREE.Color("#2a2340"), 0.3), { roughness: 1, flatShading: true }));
   const earth = own(std(st.dirt, { roughness: 1 }));
   // (Real asphalt: one texture tile every 2.5 units of street.)
-  const roadTex = asphaltTex().clone(); roadTex.needsUpdate = true; roadTex.repeat.set(C / 2.5, C / 2.5);
+  const roadTex = asphaltTex().clone(); roadTex.needsUpdate = true; roadTex.repeat.set(1, 1);
   const road = own(std("#ffffff", { roughness: 0.92, map: roadTex }));
   const plazaM = own(std("#f7efe2", { roughness: 0.8 }));
   // (Paving slabs half a unit across; the sidewalk shapes are measured in world units.)
-  const walkTex = paverTex().clone(); walkTex.needsUpdate = true; walkTex.repeat.set(1.6, 1.6);
+  const walkTex = paverTex().clone(); walkTex.needsUpdate = true; walkTex.repeat.set(1, 1);
   const walk = own(std("#ffffff", { roughness: 0.85, map: walkTex }));
+  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.4]]);
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
   const verge = own(std(st.lawn, { roughness: 0.95 }));
   const grass = own(std(new THREE.Color("#7ccf6a").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
@@ -461,15 +489,19 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const medianTrees: [number, number][] = [];
   const paintM = own(new THREE.MeshBasicMaterial({ color: 0xefeee8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   /** The markings on one street: centred at (cx, cz), running along x or z, `run` long. */
-  const markStreet = (par: (geo: THREE.BufferGeometry, m: THREE.Material) => unknown, cx: number, cz: number, along: "x" | "z", run: number, y = 0.052) => {
-    const P = (w: number, d: number, ox: number, oz: number) => { const geo = new THREE.BoxGeometry(along === "z" ? w : d, 0.01, along === "z" ? d : w); par(geo.translate(cx + (along === "z" ? ox : oz), y, cz + (along === "z" ? oz : ox)), paintM); };
+  const markStreet = (par: (geo: THREE.BufferGeometry, m: THREE.Material) => unknown, cx: number, cz: number, along: "x" | "z", run: number, y = 0.062) => {
+    // (All of one street's paint is one mesh: a few hundred streets, not thousands of bars.)
+    const parts: THREE.BufferGeometry[] = [];
+    const P = (w: number, d: number, ox: number, oz: number) => { const geo = new THREE.PlaneGeometry(along === "z" ? w : d, along === "z" ? d : w).rotateX(-Math.PI / 2); parts.push(geo.translate(cx + (along === "z" ? ox : oz), y, cz + (along === "z" ? oz : ox))); };
     const cross = run / 2 - 0.45;
     for (const end of [-1, 1]) {
       for (let b = -3; b <= 3; b++) P(0.2, 0.62, b * 0.32, end * cross);
-      P(ROAD - 0.1, 0.07, end * (ROAD / 2), end * (cross - 0.5));
+      P(ROAD - 0.1, 0.1, end * (ROAD / 2), end * (cross - 0.5));
     }
     const dashFrom = -cross + 0.75, dashTo = cross - 0.75;
-    for (let d = dashFrom; d + 0.45 <= dashTo; d += 0.85) P(0.07, 0.45, 0, d + 0.225);
+    for (let d = dashFrom; d + 0.45 <= dashTo; d += 0.85) P(0.1, 0.45, 0, d + 0.225);
+    const merged = mergeGeometries(parts); parts.forEach(q => q.dispose());
+    if (merged) par(merged, paintM);
   };
   {
     const inAll = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz);
@@ -2742,6 +2774,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (bought) G.add(rim);
       if (bought) mergeStatic(rim, 0.0);
     }
+    planarUV(blocks, streetUV);
     mergeStatic(blocks, 0.2);
     if (!bought) {
       // For sale: a glowing outline round the island and a gentle bob.
@@ -2883,6 +2916,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   for (const l of cafe.land ?? []) if (l.bought) landSeen.add(l.id);
   landBuiltOnce = true;
   if (blobGeos.length) { const bg = mergeGeometries(blobGeos); blobGeos.forEach(q => q.dispose()); if (bg) add(bg, blobM); }
+  planarUV(g, streetUV);
   mergeStatic(g, 0.0);
 
   const idx = (id: string) => lots.findIndex(l => l.id === id);
