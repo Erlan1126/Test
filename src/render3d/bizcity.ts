@@ -303,9 +303,9 @@ const DIST_N = 4, DIST_H = (DIST_N / 2) * C + 3.2, DIST_GAP = 6;
 const distEdge = (dx: number, dz: number) => DIST_H / Math.pow(Math.pow(Math.abs(dx), 4) + Math.pow(Math.abs(dz), 4), 0.25);
 const LAND_R = DIST_H;
 const landCache = new Map<string, { x: number; z: number; r: number; y: number }>();
-/** The island a district's bridge leads back to: Downtown branches off the Harbor District
- *  (Garden Hills sits on the other side of it), every other one off the one before it. */
-export const landPrev = (k: number) => (k === 2 ? 0 : k - 1);
+/** The island a district's bridge leads back to (-1: the town): Downtown bridges straight to
+ *  the town's other side, every other one to the one before it. */
+export const landPrev = (k: number) => (k === 2 ? -1 : k - 1);
 export function landSpot(k: number, bought: boolean): { x: number; z: number; r: number; y: number } {
   const key = `${k}|${bought}`;
   let v = landCache.get(key);
@@ -318,12 +318,12 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     // Measured from the coast in that direction (the island is not round), so no island ever
     // sits over the town or its countryside, and pushed further out if it would crowd one of
     // the islands before it.
-    // Garden Hills sits off to the side of the town (where nothing of it is hidden behind the
-    // town); the islands after it carry on round the back from the Harbor District.
-    const a = k === 1 ? a0 - 1.05 : a0 + (k - 1) * 0.95, dx = Math.cos(a), dz = Math.sin(a);
+    // Garden Hills and Downtown sit off to either side of the town (where nothing of them is
+    // hidden behind the town); the islands after them carry on round from Downtown.
+    const a = k === 1 ? a0 - 1.05 : k === 2 ? a0 + 2.36 : a0 + (k - 1) * 0.95, dx = Math.cos(a), dz = Math.sin(a);
     let t = 0;
     while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
-    let out = t + distEdge(dx, dz) + DIST_GAP + 30 + k * 2;
+    let out = t + distEdge(dx, dz) + DIST_GAP + (k === 2 ? 18 : 30 + k * 2);
     const clear = (x: number, z: number) => {
       for (let m = 0; m < k; m++) { const o = landSpot(m, bought); if (Math.hypot(o.x - x, o.z - z) < DIST_H * 2.9 + DIST_GAP) return false; }
       return true;
@@ -815,10 +815,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const onLand = (x: number, z: number) => landBuilt.some(sp => Math.hypot(x - sp.x, z - sp.z) < sp.r * 1.05) || nearLink(x, z);
   // The road from the town's streets out to the first island's bridge (once it's for sale or
   // bought): where it runs, so the countryside keeps clear of it.
-  const link = (() => {
-    const l0 = (cafe.land ?? []).find(l => l.id === LAND[0].id && (l.bought || l.sale));
-    if (!l0) return null;
-    const sp0 = landSpot(0, true), h = islandOutline(ISLAND_PAD, true);
+  const linkFor = (k: number) => {
+    const l0 = (cafe.land ?? []).find(l => l.id === LAND[k].id && (l.bought || l.sale));
+    if (!l0 || landPrev(k) >= 0) return null;
+    const sp0 = landSpot(k, true), h = islandOutline(ISLAND_PAD, true);
     const tcx = h.reduce((a, p) => a + p[0], 0) / h.length, tcz = h.reduce((a, p) => a + p[1], 0) / h.length;
     const dl0 = Math.hypot(sp0.x - tcx, sp0.z - tcz), ux0 = (sp0.x - tcx) / dl0, uz0 = (sp0.z - tcz) / dl0;
     const sx = sp0.x - ux0 * distEdge(ux0, uz0) * 0.97, sz = sp0.z - uz0 * distEdge(ux0, uz0) * 0.97;
@@ -829,12 +829,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     let t3 = 0;
     while (t3 < 60 && !inStreets(ex - ux0 * t3, ez - uz0 * t3)) t3 += 0.25;
     return { ax: ex + ux0 * 0.4, az: ez + uz0 * 0.4, bx: ex - ux0 * (t3 + 0.6), bz: ez - uz0 * (t3 + 0.6) };
-  })();
-  const nearLink = (x: number, z: number) => {
-    if (!link) return false;
+  };
+  const linkOf = LAND.map((_, k) => linkFor(k));
+  const links = linkOf.filter((l): l is NonNullable<typeof l> => !!l);
+  const nearLink = (x: number, z: number) => links.some(link => {
     const vx = link.bx - link.ax, vz = link.bz - link.az, L2 = vx * vx + vz * vz || 1, t = Math.max(0, Math.min(1, ((x - link.ax) * vx + (z - link.az) * vz) / L2));
     return Math.hypot(x - (link.ax + vx * t), z - (link.az + vz * t)) < 2.2;
-  };
+  });
   /** A street from a to b: asphalt with curbs and sidewalks either side, as the town's. */
   const streetStrip = (par: THREE.Object3D, ax: number, az: number, bx: number, bz: number, y: number, rM: THREE.Material, wM: THREE.Material, cM: THREE.Material) => {
     const len = Math.hypot(bx - ax, bz - az);
@@ -940,7 +941,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let i = 0; i < rail.length; i++) {
       const a = rail[i], b = rail[(i + 1) % rail.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if ((a[1] + b[1]) / 2 < beachZ - 0.5) continue; // the beach is open to the sea
-      if (link && Math.hypot((a[0] + b[0]) / 2 - link.ax, (a[1] + b[1]) / 2 - link.az) < 2.4) continue; // the road out to the bridge
+      if (links.some(link => Math.hypot((a[0] + b[0]) / 2 - link.ax, (a[1] + b[1]) / 2 - link.az) < 2.4)) continue; // the road out to the bridge
       const ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
       add(new THREE.BoxGeometry(0.06, 0.06, len).rotateY(ang).translate((a[0] + b[0]) / 2, 0.45, (a[1] + b[1]) / 2), stone);
       // A post every 1.4 along the edge (the curved coastline has many short pieces).
@@ -2496,7 +2497,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const sp = landSpot(k, bought), theme = LAND[k].theme;
     landShown[k] = { x: sp.x, z: sp.z, y: sp.y };
     // The way back: toward the island before it (the first one, toward the town).
-    const prev = k > 0 ? landSpot(landPrev(k), true) : { x: townC.x, z: townC.z, y: 0, r: 0 };
+    const prev = landPrev(k) >= 0 ? landSpot(landPrev(k), true) : { x: townC.x, z: townC.z, y: 0, r: 0 };
     const dl = Math.hypot(sp.x - prev.x, sp.z - prev.z) || 1, ux = (sp.x - prev.x) / dl, uz = (sp.z - prev.z) / dl;
     const G = new THREE.Group();
     G.position.set(sp.x, sp.y + (bought ? 0 : -0.6), sp.z);
@@ -2579,7 +2580,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     {
       const sx0 = sp.x - ux * distEdge(ux, uz) * 0.97, sz0 = sp.z - uz * distEdge(ux, uz) * 0.97;
       let ex: number, ez: number;
-      if (k > 0) { ex = prev.x + ux * distEdge(ux, uz) * 0.97; ez = prev.z + uz * distEdge(ux, uz) * 0.97; }
+      if (landPrev(k) >= 0) { ex = prev.x + ux * distEdge(ux, uz) * 0.97; ez = prev.z + uz * distEdge(ux, uz) * 0.97; }
       else {
         const th2 = islandOutline(ISLAND_PAD, true);
         let t2 = 0;
@@ -2651,8 +2652,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // in from the coast to its street grid (below, with the arch); at the other end it runs
       // in to the island before's grid, or through the countryside to the town's streets.
       if (bought) {
-        if (k === 0 && link) streetStrip(g, link.ax, link.az, link.bx, link.bz, 0.0, road, walk, curb);
-        else if (k > 0) {
+        const link = linkOf[k];
+        if (link) streetStrip(g, link.ax, link.az, link.bx, link.bz, 0.0, road, walk, curb);
+        else if (landPrev(k) >= 0) {
           const pt = LAND[landPrev(k)].theme, pc2 = pt === "cloud" ? ["#e6d7ae", "#fffaf0", "#ffd86a"] : pt === "crystal" ? ["#3a2f66", "#e8e0ff", "#8af0ff"] : pt === "orbit" ? ["#262a3a", "#c8d0e4", "#5ae0ff"] : null;
           const inner = distEdge(ux, uz) - 2 * C + 0.2;
           streetStrip(g, ex - ux * 0.3, ez - uz * 0.3, ex - ux * inner, ez - uz * inner, prev.y, pc2 ? mats.c(pc2[0], 0.7) : road, pc2 ? mats.c(pc2[1], 0.7) : walk, pc2 ? mats.c(pc2[2], 0.5, 0.2) : curb);
