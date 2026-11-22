@@ -120,6 +120,45 @@ function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
 }
 /** A soft round shadow (made once, shared by every town build). */
 let blobTexture: THREE.Texture | null = null;
+/** Real street surfaces, drawn once and shared: asphalt with grain, worn patches and a few
+ *  cracks, and sidewalk paving slabs with grout lines. */
+let asphaltTexture: THREE.CanvasTexture | null = null, paverTexture: THREE.CanvasTexture | null = null;
+function asphaltTex(): THREE.CanvasTexture {
+  if (asphaltTexture) return asphaltTexture;
+  const N = 256, c = document.createElement("canvas"); c.width = c.height = N;
+  const x = c.getContext("2d")!;
+  x.fillStyle = "#5c5f68"; x.fillRect(0, 0, N, N);
+  let sd = 7;
+  const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  // Worn, patched areas a shade lighter or darker.
+  for (let i = 0; i < 9; i++) { x.fillStyle = rnd() < 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)"; const r = 20 + rnd() * 50; x.beginPath(); x.ellipse(rnd() * N, rnd() * N, r, r * (0.4 + rnd() * 0.6), rnd() * 3, 0, Math.PI * 2); x.fill(); }
+  // Aggregate grain.
+  for (let i = 0; i < 5000; i++) { const v = rnd(); x.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.12 + rnd() * 0.15})` : `rgba(255,255,255,${0.06 + rnd() * 0.1})`; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 1.5, 1 + rnd() * 1.5); }
+  // A few thin cracks and a tar-sealed seam.
+  x.strokeStyle = "rgba(20,20,26,0.45)"; x.lineWidth = 1;
+  for (let i = 0; i < 4; i++) { x.beginPath(); let px = rnd() * N, py = rnd() * N; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (rnd() - 0.5) * 24; py += (rnd() - 0.5) * 24; x.lineTo(px, py); } x.stroke(); }
+  x.strokeStyle = "rgba(20,20,26,0.35)"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, N * 0.7); x.lineTo(N, N * 0.72); x.stroke();
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (asphaltTexture = t);
+}
+function paverTex(): THREE.CanvasTexture {
+  if (paverTexture) return paverTexture;
+  const N = 128, c = document.createElement("canvas"); c.width = c.height = N;
+  const x = c.getContext("2d")!;
+  x.fillStyle = "#b8b2a8"; x.fillRect(0, 0, N, N);
+  let sd = 11;
+  const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const S = N / 2;
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+    const v = 226 + Math.floor(rnd() * 16);
+    x.fillStyle = `rgb(${v},${v - 4},${v - 12})`; x.fillRect(i * S + 2, j * S + 2, S - 4, S - 4);
+    for (let k = 0; k < 220; k++) { x.fillStyle = `rgba(0,0,0,${rnd() * 0.06})`; x.fillRect(i * S + 2 + rnd() * (S - 4), j * S + 2 + rnd() * (S - 4), 1.5, 1.5); }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (paverTexture = t);
+}
 function softBlob(): THREE.Texture {
   if (blobTexture) return blobTexture;
   const c = document.createElement("canvas"); c.width = c.height = 64;
@@ -305,9 +344,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const rock = own(std(st.rock, { roughness: 1, flatShading: true }));
   const rockDark = own(std(new THREE.Color(st.rock).lerp(new THREE.Color("#2a2340"), 0.3), { roughness: 1, flatShading: true }));
   const earth = own(std(st.dirt, { roughness: 1 }));
-  const road = own(std("#6e6761", { roughness: 0.95 }));
+  // (Real asphalt: one texture tile every 2.5 units of street.)
+  const roadTex = asphaltTex().clone(); roadTex.needsUpdate = true; roadTex.repeat.set(C / 2.5, C / 2.5);
+  const road = own(std("#ffffff", { roughness: 0.92, map: roadTex }));
   const plazaM = own(std("#f7efe2", { roughness: 0.8 }));
-  const walk = own(std("#eadfcc", { roughness: 0.85 }));
+  // (Paving slabs half a unit across; the sidewalk shapes are measured in world units.)
+  const walkTex = paverTex().clone(); walkTex.needsUpdate = true; walkTex.repeat.set(1.6, 1.6);
+  const walk = own(std("#ffffff", { roughness: 0.85, map: walkTex }));
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
   const verge = own(std(st.lawn, { roughness: 0.95 }));
   const grass = own(std(new THREE.Color("#7ccf6a").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
@@ -412,30 +455,28 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     add(roundSlab(C - ROAD * 2, C - ROAD * 2, 1.7, 0.18).translate(x, 0, z), curb);
     add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 1.6, 0.2).translate(x, 0, z), walk);
   }
-  // Cozy village streets: warm grey roads with no painted lines, and a cobbled crossing
-  // just before every crossing (only on the streets between two blocks; the edge street
-  // round the town has none).
+  // Road markings like a real city's, on the streets between blocks (the edge street round
+  // the town stays plain): a white zebra crossing and a stop line before every crossing,
+  // and a dashed line down the middle.
   const medianTrees: [number, number][] = [];
-  const cobbleA = own(std("#dcc6a4", { roughness: 0.95 })), cobbleB = own(std("#b59876", { roughness: 0.95 }));
-  const groutM = own(std("#9a8873", { roughness: 0.95 }));
-  fx.street(cobbleA); fx.street(cobbleB); fx.street(groutM);
+  const paintM = own(new THREE.MeshBasicMaterial({ color: 0xefeee8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  /** The markings on one street: centred at (cx, cz), running along x or z, `run` long. */
+  const markStreet = (par: (geo: THREE.BufferGeometry, m: THREE.Material) => unknown, cx: number, cz: number, along: "x" | "z", run: number, y = 0.052) => {
+    const P = (w: number, d: number, ox: number, oz: number) => { const geo = new THREE.BoxGeometry(along === "z" ? w : d, 0.01, along === "z" ? d : w); par(geo.translate(cx + (along === "z" ? ox : oz), y, cz + (along === "z" ? oz : ox)), paintM); };
+    const cross = run / 2 - 0.45;
+    for (const end of [-1, 1]) {
+      for (let b = -3; b <= 3; b++) P(0.2, 0.62, b * 0.32, end * cross);
+      P(ROAD - 0.1, 0.07, end * (ROAD / 2), end * (cross - 0.5));
+    }
+    const dashFrom = -cross + 0.75, dashTo = cross - 0.75;
+    for (let d = dashFrom; d + 0.45 <= dashTo; d += 0.85) P(0.07, 0.45, 0, d + 0.225);
+  };
   {
     const inAll = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz);
-    const cross = q - ROAD - 0.5;
     for (const cell of ALL) {
       const { x, z } = cellXZ(cell);
-      for (const along of ["z", "x"] as const) {
-        if (!(along === "z" ? inAll(cell[0] + 1, cell[1]) : inAll(cell[0], cell[1] + 1))) continue;
-        // (A band of grout-colored stone under the cobbles, so each crossing reads as one piece.)
-        for (const end of [-1, 1]) { const bg = new THREE.BoxGeometry(ROAD * 2 - 0.1, 0.02, 0.62); add(along === "z" ? bg.translate(x + q, 0.052, z + end * cross) : bg.rotateY(Math.PI / 2).translate(x + end * cross, 0.052, z + q), groutM); }
-        for (const end of [-1, 1]) for (let a = 0; a < 8; a++) for (let r = 0; r < 2; r++) {
-          // Rounded cobbles in two tones, offset row to row like real paving.
-          const w = 0.27, ox = -ROAD + 0.15 + a * 0.3 + (r % 2) * 0.15, oz = end * cross + (r - 0.5) * 0.27;
-          if (ox > ROAD - 0.12) continue;
-          const geo = new THREE.CylinderGeometry(w * 0.52, w * 0.55, 0.035, 6, 1).rotateY(a * 0.7 + r);
-          add(along === "z" ? geo.translate(x + q + ox, 0.06, z + oz) : geo.translate(x + oz, 0.06, z + q + ox), (a + r) % 3 ? cobbleA : cobbleB);
-        }
-      }
+      if (inAll(cell[0] + 1, cell[1])) markStreet(add, x + q, z, "z", C - 2 * 0.3);
+      if (inAll(cell[0], cell[1] + 1)) markStreet(add, x, z + q, "x", C - 2 * 0.3);
     }
   }
   // Little roundabouts where four blocks meet (inside the town; the outer street where the
@@ -2353,15 +2394,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         L(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a2 * e, 0.9, z + b2 * e), metal);
         L(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a2 * e, 1.65, z + b2 * e), lampMat);
       }
-      // Cobbled crossings on the streets between blocks.
-      for (const [di, dj] of [[1, 0], [0, 1]]) {
-        if (i + di >= DIST_N || j + dj >= DIST_N) continue;
-        for (const end of [-1, 1]) {
-          const cross = qd - ROAD - 0.5;
-          const bg = new THREE.BoxGeometry(ROAD * 2 - 0.1, 0.02, 0.62);
-          L(di ? bg.translate(x + qd, 0.052, z + end * cross) : bg.rotateY(Math.PI / 2).translate(x + end * cross, 0.052, z + qd), groutM);
-        }
-      }
+      // The same road markings on the streets between blocks.
+      if (i + 1 < DIST_N) markStreet(L, x + qd, z, "z", C - 0.6);
+      if (j + 1 < DIST_N) markStreet(L, x, z + qd, "x", C - 0.6);
     }
     // A low railing round the edge.
     for (let a = 0; a < outlineD.length; a += 2) {
