@@ -2520,7 +2520,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const TH = {
       cloud: { top: "#f6f2fb", lip: "#e2dcef", l1: "#fff6dc", l2: "#e8e2f4", l3: "#d8d0ea", road: "#e6d7ae", walk: "#fffaf0", curbC: "#ffd86a" },
       crystal: { top: "#c9b6f2", lip: "#a58ee0", l1: "#7a5ec8", l2: "#5a3fa8", l3: "#3f2a80", road: "#3a2f66", walk: "#e8e0ff", curbC: "#8af0ff" },
-      orbit: { top: "#9aa3bc", lip: "#6a7290", l1: "#4a5070", l2: "#3a3f5a", l3: "#2a2f45", road: "#262a3a", walk: "#c8d0e4", curbC: "#5ae0ff" },
+      orbit: { top: "#9aa3bc", lip: "#6a7290", l1: "#4a5070", l2: "#3a3f5a", l3: "#2a2f45", road: "#3a4160", walk: "#c8d0e4", curbC: "#5ae0ff" },
     } as const;
     const m2 = (c: string, r: number, m: number) => mats.c(c, r, m);
     const tc = theme === "cloud" || theme === "crystal" || theme === "orbit" ? TH[theme] : null;
@@ -2908,6 +2908,38 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         for (const [tx, tz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) tr2(tx, tz, 0.7);
       }
     }
+    // Along the sidewalks round every block, two to a side: trees in the district's own style
+    // (palms by the harbor, golden lamps and topiary in the clouds, crystals, landing lights).
+    if (bought) {
+      const sideG = new THREE.Group(), S2 = (geo: THREE.BufferGeometry, m: THREE.Material) => sideG.add(new THREE.Mesh(geo, m));
+      const glowS = theme === "crystal" || theme === "orbit" ? own(std(theme === "orbit" ? "#5ae0ff" : "#b9a0ff", { roughness: 0.2, emissive: new THREE.Color(theme === "orbit" ? "#5ae0ff" : "#9a7aff"), emissiveIntensity: 0.7, flatShading: true })) : null;
+      const pine = mats.c("#2f7a45", 0.8);
+      for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
+        const { x, z } = cellC(i, j), w = 2.36;
+        for (const [ox, oz] of [[-w, -1.25], [-w, 1.25], [w, -1.25], [w, 1.25], [-1.25, -w], [1.25, -w], [-1.25, w], [1.25, w]]) {
+          const tx = x + ox, tz = z + oz, v = (i * 7 + j * 3 + Math.round(ox * 5 + oz * 3)) & 3, Y0 = 0.18;
+          if (id === "meadow") {
+            S2(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 5).translate(tx, Y0 + 0.5, tz), trunk);
+            for (let f = 0; f < 5; f++) S2(new THREE.BoxGeometry(0.55, 0.03, 0.13).translate(0.24, 0, 0).rotateZ(-0.4).rotateY((f / 5) * Math.PI * 2 + v).translate(tx, Y0 + 1.0, tz), leaf);
+          } else if (id === "lakeside") {
+            S2(new THREE.CylinderGeometry(0.04, 0.06, 0.45, 5).translate(tx, Y0 + 0.22, tz), trunk);
+            S2(v === 3 ? new THREE.ConeGeometry(0.3, 0.8, 7).translate(tx, Y0 + 0.75, tz) : new THREE.IcosahedronGeometry(0.33, 0).translate(tx, Y0 + 0.65, tz), v === 3 ? pine : leaf);
+          } else if (id === "hills") {
+            S2(new THREE.BoxGeometry(0.34, 0.02, 0.34).translate(tx, Y0 + 0.01, tz), metal);
+            S2(new THREE.CylinderGeometry(0.035, 0.05, 0.55, 5).translate(tx, Y0 + 0.27, tz), trunk);
+            S2(new THREE.IcosahedronGeometry(0.3, 0).scale(1, 1.2, 1).translate(tx, Y0 + 0.75, tz), leaf);
+          } else if (theme === "cloud") {
+            if (v % 2) { S2(new THREE.CylinderGeometry(0.12, 0.09, 0.18, 8).translate(tx, Y0 + 0.09, tz), mats.gold); S2(new THREE.SphereGeometry(0.2, 8, 6).translate(tx, Y0 + 0.38, tz), mats.c("#7fcf8a", 0.8)); S2(new THREE.SphereGeometry(0.13, 8, 6).translate(tx, Y0 + 0.66, tz), mats.c("#7fcf8a", 0.8)); }
+            else { S2(new THREE.CylinderGeometry(0.025, 0.035, 0.9, 6).translate(tx, Y0 + 0.45, tz), mats.gold); S2(new THREE.SphereGeometry(0.09, 8, 6).translate(tx, Y0 + 0.95, tz), lampMat); }
+          } else if (glowS) {
+            if (theme === "crystal") S2(new THREE.OctahedronGeometry(0.18, 0).scale(1, 2.8 + v * 0.6, 1).translate(tx, Y0 + 0.5, tz), glowS);
+            else { S2(new THREE.CylinderGeometry(0.03, 0.04, 0.9, 6).translate(tx, Y0 + 0.45, tz), metal); S2(new THREE.BoxGeometry(0.3, 0.08, 0.12).translate(tx, Y0 + 0.92, tz), glowS); }
+          }
+        }
+      }
+      G.add(sideG);
+      mergeStatic(sideG, 0.0);
+    }
     // The rim between the streets and the coast, in the district's own style, and the way in
     // from the bridge: a paved path under a welcome arch with the district's name.
     {
@@ -2917,6 +2949,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const nearPath = (x: number, z: number) => x * landing.x + z * landing.y > 0 && along(x, z) < 2.1;
       const R = (geo: THREE.BufferGeometry, m: THREE.Material) => rim.add(new THREE.Mesh(geo, m));
       let n2 = 0;
+      const crystM: THREE.Material[] = [];
+      const orbGlass = own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.1 }));
+      const orbLight = own(std("#5ae0ff", { roughness: 0.3, emissive: 0x5ae0ff, emissiveIntensity: 1.2 }));
       for (let x = -DIST_H; x <= DIST_H; x += 0.9) for (let z = -DIST_H; z <= DIST_H; z += 0.9) {
         const jx = x + Math.sin(n2 * 12.99 + k) * 0.35, jz = z + Math.cos(n2 * 78.2 + k) * 0.35, r = Math.abs(Math.sin(n2 * 3.7 + k));
         n2++;
@@ -2930,23 +2965,35 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         } else if (id === "lakeside") {
           // Garden Hills: lawns with hedges, flower beds and trees.
           if (r < 0.2) { R(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(jx, 0.3, jz), trunk); R(new THREE.IcosahedronGeometry(0.5, 0).translate(jx, 0.95, jz), leaf); }
+          else if (r < 0.26) { R(new THREE.CylinderGeometry(0.05, 0.08, 0.9, 6).translate(jx, 0.45, jz), trunk); R(new THREE.ConeGeometry(0.42, 1.2, 7).translate(jx, 1.3, jz), mats.c("#2f7a45", 0.8)); }
+          else if (r < 0.29) { R(new THREE.BoxGeometry(0.6, 0.05, 0.2).rotateY(n2).translate(jx, 0.25, jz), wood); R(new THREE.BoxGeometry(0.6, 0.2, 0.04).translate(0, 0, -0.1).rotateY(n2).translate(jx, 0.38, jz), wood); }
           else if (r < 0.32) R(new THREE.BoxGeometry(0.8, 0.35, 0.3).rotateY(Math.round(n2 % 2) * Math.PI / 2).translate(jx, 0.18, jz), leaf);
           else if (r < 0.42) for (let f = 0; f < 5; f++) R(new THREE.SphereGeometry(0.07, 5, 4).translate(jx + Math.cos(f * 1.3) * 0.18, 0.1, jz + Math.sin(f * 1.3) * 0.18), mats.c(flowersOn[(n2 + f) % 4], 0.8));
         } else if (theme === "cloud") {
           // Cloud Kingdom: puffs of cloud drifting on the marble, golden lamps.
-          if (r < 0.1) R(new THREE.SphereGeometry(0.5 + r * 2, 10, 8).scale(1.3, 0.6, 1.3).translate(jx, 0.2, jz), m2("#ffffff", 1, 0));
-          else if (r < 0.14) { R(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(jx, 0.7, jz), mats.gold); R(new THREE.SphereGeometry(0.13, 8, 6).translate(jx, 1.45, jz), lampMat); }
+          if (r < 0.14) R(new THREE.SphereGeometry(0.45 + r * 2, 10, 8).scale(1.3, 0.6, 1.3).translate(jx, 0.2, jz), m2("#ffffff", 1, 0));
+          else if (r < 0.19) { R(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(jx, 0.7, jz), mats.gold); R(new THREE.SphereGeometry(0.13, 8, 6).translate(jx, 1.45, jz), lampMat); }
+          else if (r < 0.25) { R(new THREE.CylinderGeometry(0.16, 0.12, 0.25, 10).translate(jx, 0.13, jz), mats.gold); R(new THREE.ConeGeometry(0.22, 0.75, 10).translate(jx, 0.62, jz), mats.c("#7fcf8a", 0.8)); }
+          else if (r < 0.27) { R(new THREE.CylinderGeometry(0.4, 0.45, 0.16, 16).translate(jx, 0.08, jz), m2("#fbf8ff", 0.5, 0)); R(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 16).translate(jx, 0.17, jz), water); R(new THREE.SphereGeometry(0.1, 8, 6).translate(jx, 0.32, jz), mats.gold); }
         } else if (theme === "crystal") {
           // Crystal Spire: little crystals growing out of the ground.
-          if (r < 0.16) R(new THREE.OctahedronGeometry(0.22, 0).scale(1, 1.8 + r * 4, 1).translate(jx, 0.3, jz), own(std(["#9a7aff", "#7ad0ff", "#ff8ae0"][n2 % 3], { roughness: 0.15, emissive: new THREE.Color(["#9a7aff", "#7ad0ff", "#ff8ae0"][n2 % 3]), emissiveIntensity: 0.5, flatShading: true })));
+          const cc = ["#9a7aff", "#7ad0ff", "#ff8ae0"][n2 % 3], cm2 = crystM[n2 % 3] ??= own(std(cc, { roughness: 0.15, emissive: new THREE.Color(cc), emissiveIntensity: 0.5, flatShading: true }));
+          if (r < 0.16) R(new THREE.OctahedronGeometry(0.22, 0).scale(1, 1.8 + r * 4, 1).translate(jx, 0.3, jz), cm2);
+          else if (r < 0.24) for (let f = 0; f < 3; f++) R(new THREE.OctahedronGeometry(0.16, 0).scale(1, 2.2 + f, 1).rotateZ((f - 1) * 0.35).translate(jx + (f - 1) * 0.18, 0.35 + f * 0.1, jz), cm2);
+          else if (r < 0.27) R(new THREE.CylinderGeometry(0.45, 0.45, 0.04, 14).translate(jx, 0.03, jz), cm2);
         } else if (theme === "orbit") {
           // Orbit Station: solar panels and antennas.
-          if (r < 0.08) R(new THREE.BoxGeometry(0.9, 0.04, 0.6).rotateX(-0.5).translate(jx, 0.35, jz), m2("#2a3f8a", 0.2, 0.6));
-          else if (r < 0.11) { R(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 5).translate(jx, 0.6, jz), metal); R(new THREE.SphereGeometry(0.08, 6, 4).translate(jx, 1.25, jz), own(new THREE.MeshBasicMaterial({ color: 0xff3a4a }))); }
+          if (r < 0.12) { R(new THREE.BoxGeometry(0.9, 0.04, 0.6).rotateX(-0.5).translate(jx, 0.35, jz), m2("#2a3f8a", 0.2, 0.6)); R(new THREE.BoxGeometry(0.05, 0.3, 0.05).translate(jx, 0.15, jz), metal); }
+          else if (r < 0.17) { R(new THREE.CylinderGeometry(0.42, 0.45, 0.12, 14).translate(jx, 0.06, jz), metal); R(new THREE.SphereGeometry(0.38, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(jx, 0.12, jz), orbGlass); }
+          else if (r < 0.22) R(new THREE.BoxGeometry(0.14, 0.05, 0.14).translate(jx, 0.03, jz), orbLight);
+          else if (r < 0.25) { R(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 5).translate(jx, 0.6, jz), metal); R(new THREE.SphereGeometry(0.08, 6, 4).translate(jx, 1.25, jz), own(new THREE.MeshBasicMaterial({ color: 0xff3a4a }))); }
         } else {
           // Downtown: a paved promenade with planters, benches and lamps.
-          if (r < 0.08) { R(new THREE.BoxGeometry(0.45, 0.28, 0.45).translate(jx, 0.18, jz), stone); R(new THREE.IcosahedronGeometry(0.24, 0).translate(jx, 0.45, jz), leaf); }
-          else if (r < 0.12) { R(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(jx, 0.7, jz), metal); R(new THREE.SphereGeometry(0.12, 8, 6).translate(jx, 1.45, jz), lampMat); }
+          if (r < 0.1) { R(new THREE.BoxGeometry(0.45, 0.28, 0.45).translate(jx, 0.18, jz), stone); R(new THREE.IcosahedronGeometry(0.24, 0).translate(jx, 0.45, jz), leaf); }
+          else if (r < 0.2) { R(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 10).translate(jx, 0.07, jz), stone); R(new THREE.CylinderGeometry(0.05, 0.08, 0.8, 6).translate(jx, 0.5, jz), trunk); R(new THREE.IcosahedronGeometry(0.45, 0).translate(jx, 1.1, jz), leaf); }
+          else if (r < 0.24) { R(new THREE.BoxGeometry(0.6, 0.05, 0.2).rotateY(n2).translate(jx, 0.25, jz), wood); R(new THREE.BoxGeometry(0.6, 0.2, 0.04).translate(0, 0, -0.1).rotateY(n2).translate(jx, 0.38, jz), wood); }
+          else if (r < 0.25) { R(new THREE.BoxGeometry(0.5, 0.5, 0.4).translate(jx, 0.25, jz), mats.c(["#ff5f6d", "#2f9bff", "#ffd23a"][n2 % 3], 0.6)); R(new THREE.BoxGeometry(0.62, 0.06, 0.52).translate(jx, 0.53, jz), mats.c("#ffffff", 0.6)); }
+          else if (r < 0.29) { R(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(jx, 0.7, jz), metal); R(new THREE.SphereGeometry(0.12, 8, 6).translate(jx, 1.45, jz), lampMat); }
         }
       }
       // One continuous ground ring under the rim: sand for the harbor, paving for downtown.
