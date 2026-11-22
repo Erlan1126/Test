@@ -303,6 +303,9 @@ const DIST_N = 4, DIST_H = (DIST_N / 2) * C + 3.2, DIST_GAP = 6;
 const distEdge = (dx: number, dz: number) => DIST_H / Math.pow(Math.pow(Math.abs(dx), 4) + Math.pow(Math.abs(dz), 4), 0.25);
 const LAND_R = DIST_H;
 const landCache = new Map<string, { x: number; z: number; r: number; y: number }>();
+/** The island a district's bridge leads back to: Downtown branches off the Harbor District
+ *  (Garden Hills sits on the other side of it), every other one off the one before it. */
+export const landPrev = (k: number) => (k === 2 ? 0 : k - 1);
 export function landSpot(k: number, bought: boolean): { x: number; z: number; r: number; y: number } {
   const key = `${k}|${bought}`;
   let v = landCache.get(key);
@@ -315,7 +318,9 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     // Measured from the coast in that direction (the island is not round), so no island ever
     // sits over the town or its countryside, and pushed further out if it would crowd one of
     // the islands before it.
-    const a = a0 + k * 0.95, dx = Math.cos(a), dz = Math.sin(a);
+    // Garden Hills sits off to the side of the town (where nothing of it is hidden behind the
+    // town); the islands after it carry on round the back from the Harbor District.
+    const a = k === 1 ? a0 - 1.05 : a0 + (k - 1) * 0.95, dx = Math.cos(a), dz = Math.sin(a);
     let t = 0;
     while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
     let out = t + distEdge(dx, dz) + DIST_GAP + 30 + k * 2;
@@ -2491,7 +2496,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const sp = landSpot(k, bought), theme = LAND[k].theme;
     landShown[k] = { x: sp.x, z: sp.z, y: sp.y };
     // The way back: toward the island before it (the first one, toward the town).
-    const prev = k > 0 ? landSpot(k - 1, true) : { x: townC.x, z: townC.z, y: 0, r: 0 };
+    const prev = k > 0 ? landSpot(landPrev(k), true) : { x: townC.x, z: townC.z, y: 0, r: 0 };
     const dl = Math.hypot(sp.x - prev.x, sp.z - prev.z) || 1, ux = (sp.x - prev.x) / dl, uz = (sp.z - prev.z) / dl;
     const G = new THREE.Group();
     G.position.set(sp.x, sp.y + (bought ? 0 : -0.6), sp.z);
@@ -2648,7 +2653,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (bought) {
         if (k === 0 && link) streetStrip(g, link.ax, link.az, link.bx, link.bz, 0.0, road, walk, curb);
         else if (k > 0) {
-          const pt = LAND[k - 1].theme, pc2 = pt === "cloud" ? ["#e6d7ae", "#fffaf0", "#ffd86a"] : pt === "crystal" ? ["#3a2f66", "#e8e0ff", "#8af0ff"] : pt === "orbit" ? ["#262a3a", "#c8d0e4", "#5ae0ff"] : null;
+          const pt = LAND[landPrev(k)].theme, pc2 = pt === "cloud" ? ["#e6d7ae", "#fffaf0", "#ffd86a"] : pt === "crystal" ? ["#3a2f66", "#e8e0ff", "#8af0ff"] : pt === "orbit" ? ["#262a3a", "#c8d0e4", "#5ae0ff"] : null;
           const inner = distEdge(ux, uz) - 2 * C + 0.2;
           streetStrip(g, ex - ux * 0.3, ez - uz * 0.3, ex - ux * inner, ez - uz * inner, prev.y, pc2 ? mats.c(pc2[0], 0.7) : road, pc2 ? mats.c(pc2[1], 0.7) : walk, pc2 ? mats.c(pc2[2], 0.5, 0.2) : curb);
         }
