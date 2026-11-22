@@ -152,6 +152,8 @@ export function lotPos(i: number): { x: number; z: number; a: number } {
 /** Which bought land the town has already shown (so a fresh purchase animates once), and
  *  whether a town has been built yet this session (nothing animates on the first load). */
 const landSeen = new Set<string>();
+/** Each property's level as last built (so an upgrade animates once). */
+const propsSeen: Record<string, number> = {};
 let landBuiltOnce = false;
 /** Land next to the island (data/land.ts): its middle and size, on sale (floating a little way
  *  off the edge) or bought (joined to the island, overlapping its edge). */
@@ -227,6 +229,8 @@ export interface BizCafe {
   annex?: "" | "ghost" | "greenhouse" | "lookout";
   /** Land next to the island (data/land.ts): bought (part of the island) or on sale now. */
   land?: { id: LandId; bought: boolean; sale: boolean }[];
+  /** The town's properties' levels (data/props.ts), by key. */
+  props?: Record<string, number>;
 }
 /** A tower the player built, as the town draws it. */
 export type BizTower = NonNullable<BizCafe["starter"]>;
@@ -249,8 +253,8 @@ export interface BizCity {
   spot(id: "flowers" | "play"): { x: number; z: number };
   /** Where piece of land k stands now (for its "for sale" bubble), or null if it isn't shown. */
   landAt(k: number): { x: number; z: number } | null;
-  /** The homes and offices round town and in the districts (they pay rent). */
-  homes(): { x: number; z: number; top: number }[];
+  /** The town's properties (and the districts'): where each stands, how tall, its key. */
+  homes(): { x: number; z: number; top: number; key: string }[];
 }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
@@ -1352,8 +1356,32 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
 
   /** Every home, block of flats and office in town (and in the districts): where it stands
    *  and how tall it is, for the rent bubbles over them. */
-  const homeSpots: { x: number; z: number; top: number }[] = [];
-  const homeAt = (x: number, z: number, top: number) => { homeSpots.push({ x, z, top: top + 0.2 }); };
+  const homeSpots: { x: number; z: number; top: number; key: string }[] = [];
+  const homeAt = (x: number, z: number, top: number, key = "") => { homeSpots.push({ x, z, top: top + 0.2, key }); };
+  const propLv = (key: string) => Math.max(1, Math.min(5, cafe.props?.[key] ?? 1));
+  /** A property at its level: little homes or a corner shop, then flats getting taller, then
+   *  glass towers. One that was just upgraded grows up out of the ground. */
+  const propBuilding = (lg: THREE.Group, seed: number, level: number, key: string): number => {
+    const top = level <= 1 ? neighborhood(lg, seed * 3 + (seed % 2 ? 0 : 2))
+      : level === 2 ? neighborhood(lg, seed, 3)
+      : level === 3 ? neighborhood(lg, seed, 5)
+      : level === 4 ? (seed % 2 ? neighborhood(lg, seed, 8) : neighborhood(lg, seed, -7))
+      : neighborhood(lg, seed, -(11 + (seed % 3)));
+    if (landBuiltOnce && (propsSeen[key] ?? 1) < level) {
+      lg.userData.dynamic = true;
+      const t0 = performance.now() + 250;
+      lg.scale.y = 0.05;
+      townTicks.push(() => {
+        const k2 = Math.min(1, Math.max(0, (performance.now() - t0) / 900));
+        if (k2 >= 1 && lg.scale.y === 1) return;
+        lg.scale.y = k2 < 1 ? Math.max(0.05, 1 - Math.pow(1 - k2, 3) + Math.sin(k2 * Math.PI) * 0.12) : 1;
+        g.userData.moving = k2 < 1;
+      });
+      mergeStatic(lg, 0.05);
+    }
+    propsSeen[key] = level;
+    return top;
+  };
 
   // ---- Neighbors: the homes and corner shops on the lots no business has yet ----
   const HOUSE = ["#fff1e0", "#e9f3ff", "#ffe8ef", "#eefbe8", "#fff7d6", "#f1ebff"];
@@ -1462,7 +1490,6 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   {
     const ng = new THREE.Group();
     g.add(ng);
-    const inner = new Set(["2,0", "0,2", "3,1", "1,3", "4,2", "2,4"]);
     NEIGH.forEach((cell, k) => {
       const { x, z } = cellXZ(cell), lg = new THREE.Group();
       lg.position.set(x, 0.2, z);
@@ -1482,10 +1509,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         P(new THREE.BoxGeometry(0.7, 0.06, 0.22).translate(-0.4, 0.42, 0.4), wood);
         P(new THREE.BoxGeometry(0.7, 0.2, 0.05).translate(-0.4, 0.55, 0.3), wood);
         for (let f = 0; f < 6; f++) P(new THREE.SphereGeometry(0.08, 6, 4).translate(0.4 + f * 0.2, 0.12, 1.6), mats.c(flowersOn[(f + k) % 4], 0.8));
-      } else if (inner.has(`${cell[0]},${cell[1]}`)) {
-        // Next to downtown: mid-rise flats and glass offices (the skyline steps down outward).
-        homeAt(x, z, k % 2 ? neighborhood(lg, 20 + k, 6 + (k % 4)) : neighborhood(lg, 20 + k, -(6 + (k % 5))));
-      } else homeAt(x, z, neighborhood(lg, 20 + k));
+      } else {
+        // A property (data/props.ts): it grows with its level.
+        const key = `t:${cell[0]},${cell[1]}`;
+        homeAt(x, z, propBuilding(lg, 20 + k, propLv(key), key), key);
+      }
       // Street trees along the sidewalks, two per side.
       for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (const o of [-1.1, 1.1]) {
         const tx = x + sx * 2.33 + (sz ? o : 0), tz = z + sz * 2.33 + (sx ? o : 0);
@@ -2283,8 +2311,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         if (n % 3 === 0) { P(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(-1, 0.3, 0.8), trunk); P(new THREE.IcosahedronGeometry(0.5, 0).translate(-1, 0.95, 0.8), leaf); }
         continue;
       }
-      if (th === "home") { homeAt(sp.x + x, sp.z + z, neighborhood(lg, n)); continue; }
-      if (th === "tower") { homeAt(sp.x + x, sp.z + z, n % 2 ? neighborhood(lg, n, 6 + ((n * 7) % 5)) : neighborhood(lg, n, -(8 + ((n * 5) % 7)))); continue; }
+      if (th === "home" || th === "tower") { const key = `d${k}:${i},${j}`; homeAt(sp.x + x, sp.z + z, propBuilding(lg, n, Math.min(5, propLv(key) + (th === "tower" ? 2 : 0)), key), key); continue; }
       P(roundSlab(4.2, 4.2, 1.6, 0.06), n % 2 ? grass : grass2);
       const tr2 = (tx: number, tz: number, ts = 1) => { P(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk); P(new THREE.IcosahedronGeometry(0.5 * ts, 0).translate(tx, 0.95 * ts, tz), leaf); };
       if (th === "park") {

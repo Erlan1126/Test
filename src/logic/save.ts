@@ -78,6 +78,8 @@ export interface SaveData {
   annex: { pick: "" | "greenhouse" | "lookout" };
   /** Land bought next to the island (data/land.ts), in the order it was bought. */
   land: LandId[];
+  /** The town's properties (data/props.ts): their level, by key (missing means level 1). */
+  props: Record<string, number>;
   /** The town scrapbook: when each town rank was first reached (ms, by rank). */
   scrapbook: Record<string, number>;
   /** Your tallest towers, standing on their district's island. */
@@ -199,6 +201,7 @@ export function defaultSave(): SaveData {
     decor: [],
     annex: { pick: "" },
     land: [],
+    props: {},
     scrapbook: {},
     skyline: [],
     population: 0,
@@ -322,6 +325,7 @@ export function normalize(raw: unknown): SaveData {
     ownedShapes: strList(r.ownedShapes, shapeIds),
     decor: normalizeDecor(r.decor),
     scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
+    props: Object.fromEntries(Object.entries((r.props && typeof r.props === "object" ? r.props : {}) as Record<string, unknown>).filter(([k, v]) => /^[a-z0-9]{1,4}:-?\d{1,2},-?\d{1,2}$/.test(k) && Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5).slice(0, 400)) as Record<string, number>,
     land: (Array.isArray(r.land) ? r.land : []).filter((x, i, a): x is LandId => LAND.some(l => l.id === x) && a.indexOf(x) === i),
     annex: { pick: ((p: unknown) => (p === "greenhouse" || p === "lookout" ? p : ""))((r.annex as { pick?: unknown } | undefined)?.pick) },
     skyline: (Array.isArray(r.skyline) ? r.skyline : []).slice(0, SKYLINE_SIZE * 8).map(x => obj(x))

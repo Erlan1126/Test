@@ -1799,7 +1799,7 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -1816,6 +1816,7 @@ export class App implements DailyHost {
           rank: townRank(this.save),
           annex: this.save.annex.pick || (townRank(this.save) >= ANNEX_RANK ? "ghost" : ""),
           hq: Object.fromEntries(Object.entries(hqs).map(([id, tw]) => [id, look(tw)])),
+          props: { ...this.save.props },
           land: LAND.map(l => ({ id: l.id, bought: this.save.land.includes(l.id), sale: landOnSale(this.save)?.id === l.id })),
         },
       };
@@ -2760,7 +2761,7 @@ export class App implements DailyHost {
     // (The picture is saved; the words and link go to the clipboard so they aren't lost.)
     try { await navigator.clipboard.writeText(full); toast(t("Picture saved, and the link is copied")); } catch { toast(t("Your picture was saved")); }
   }
-  bizHomes(): number { return this.renderer instanceof Renderer3D ? this.renderer.bizHomes() : 0; }
+  bizHomes(): string[] { return this.renderer instanceof Renderer3D ? this.renderer.bizHomes() : []; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }

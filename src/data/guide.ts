@@ -13,7 +13,7 @@ export const GUIDE: GuideSection[] = [
       { icon: "home", title: "Your neighbor", text: "The first person in your first tower. They react whenever the town grows." },
       { icon: "island", title: "The island next door", text: "At Big City, a floating island rises. Build a greenhouse or a lookout there." },
       { icon: "pointer", title: "Looking around", text: "Drag one finger to move around the town. Pinch with two fingers to zoom." },
-      { icon: "home", title: "Rent", text: "The homes, flats and offices round town pay rent now and then: tap the yellow 🏠 bubble to collect it. Every district you buy adds more homes, so rent comes more often." },
+      { icon: "home", title: "Grow your buildings", text: "Every home, block of flats and office in town is yours: tap one to see who lives there and what it pays. Upgrade it and it grows, from little homes up to a glass skyscraper, and every business earns more. A green ⬆ shows the ones you can grow now." },
       { icon: "target", title: "Districts for sale", text: "A green \"For sale\" bubble floats over a new island beside your town. Buy it with cash: a bridge joins it to the town, a whole district is built there, and every business earns 15% more." },
       { icon: "star", title: "Town scrapbook", text: "A real picture of your town at every new rank. Share Then → Now with a friend (Me > Scrapbook)." },
       { icon: "target", title: "A greyed-out button?", text: "Tap it anyway: the game tells you why, and how long until you can." },

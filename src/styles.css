@@ -4072,13 +4072,13 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 
 /* Business bubbles: a glossy medal in the business's own colors, a white icon, a ring that
    fills as it sells, and its level on a little ribbon underneath. */
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj) { padding: 3px !important; background: #fff; box-shadow: 0 8px 18px rgba(40, 20, 100, 0.32), 0 0 0 2px rgba(255, 255, 255, 0.9); }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj) .tag-ico { width: 42px; height: 42px;
+#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) { padding: 3px !important; background: #fff; box-shadow: 0 8px 18px rgba(40, 20, 100, 0.32), 0 0 0 2px rgba(255, 255, 255, 0.9); }
+#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) .tag-ico { width: 42px; height: 42px;
   background: conic-gradient(#ffd23a calc(var(--p) * 1turn), rgba(42, 31, 92, 0.14) 0); }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj) .tag-ico::before { inset: 3px;
+#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) .tag-ico::before { inset: 3px;
   background: radial-gradient(120% 90% at 30% 20%, rgba(255, 255, 255, 0.55), transparent 45%), linear-gradient(160deg, var(--b1, #8a6cff), var(--b2, #5a3cff));
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.16), inset 0 2px 0 rgba(255, 255, 255, 0.35); }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj) .tag-ico svg.ic { width: 30px; height: 30px; padding: 4px; box-sizing: border-box; border-radius: 50%;
+#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) .tag-ico svg.ic { width: 30px; height: 30px; padding: 4px; box-sizing: border-box; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #ffffff, #f3efff 70%); box-shadow: 0 1px 2px rgba(30, 10, 70, 0.35), inset 0 -1px 0 rgba(40, 20, 90, 0.08); }
 #tcy-labels .tag.bub .tag-lv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1; padding: 1px 6px; border-radius: 999px;
   background: #2a1f5c; color: #fff; font: 400 9px/1.35 var(--display); font-style: normal; letter-spacing: 0.02em; white-space: nowrap; box-shadow: 0 2px 4px rgba(20, 10, 60, 0.3); border: 1.5px solid #fff; }
@@ -4093,3 +4093,10 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-labels .tag.bub.rent b { font: 400 12px var(--display); padding-right: 0; }
 @keyframes rent-bob { 50% { translate: 0 -4px; } }
 @media (prefers-reduced-motion: reduce) { #tcy-labels .tag.bub.rent { animation: none; } }
+
+/* Property upgrade bubbles: a green arrow over buildings that can grow now. */
+#tcy-labels .tag.bub.prop-up { padding: 3px !important; background: linear-gradient(180deg, #5ee08a, #1fa85a) !important; color: #fff; box-shadow: 0 6px 14px rgba(10, 80, 40, 0.35), 0 0 0 2px #fff; animation: rent-bob 1.4s ease-in-out infinite; }
+#tcy-labels .tag.bub.prop-up .tag-ico { width: 28px; height: 28px; background: rgba(255, 255, 255, 0.22); color: #fff; font: 400 16px/1 var(--display); }
+#tcy-labels .tag.bub.prop-up .tag-ico::before { display: none; }
+#tcy-labels .tag.bub.prop-up.sel { padding-right: 10px !important; animation: none; background: linear-gradient(135deg, #7ad3ff, #4f8bff) !important; }
+#tcy-labels .tag.bub.prop-up b { font: 400 12px var(--display); padding-right: 0; }

@@ -2,6 +2,7 @@
 // New Era reset. All pure functions over the save, so they're easy to test.
 import { ANNEX_BONUS, RANK_BONUS, RANKS } from "../data/ranks";
 import { LAND_BONUS } from "../data/land";
+import { PROP_BONUS } from "../data/props";
 import { decorMult } from "./decor";
 import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
 import type { SaveData } from "./save";
@@ -83,7 +84,7 @@ const perkOf = (s: SaveData, perk: Advisor["perk"]): Advisor[] => ADVISORS.filte
 export function multiplier(s: SaveData, now = Date.now(), live = true): number {
   const ups = UPGRADES.filter(u => u.biz === "all" && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
   const adv = perkOf(s, "all").reduce((m, a) => m * a.n, 1);
-  return workerBonus(s) * (1 + townRank(s) * RANK_BONUS) * (s.annex?.pick ? 1 + ANNEX_BONUS : 1) * (1 + (s.land?.length ?? 0) * LAND_BONUS) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1) * ups * adv
+  return workerBonus(s) * (1 + townRank(s) * RANK_BONUS) * (s.annex?.pick ? 1 + ANNEX_BONUS : 1) * (1 + (s.land?.length ?? 0) * LAND_BONUS) * (1 + PROP_BONUS * Object.values(s.props ?? {}).reduce((a, l) => a + Math.max(0, Math.min(5, l) - 1), 0)) * (1 + s.tycoon.gems * GEM_BONUS) * (s.tycoon.boost ? 2 : 1) * (vipActive(s, now) ? 1.25 : 1) * ups * adv
     * (live && s.tycoon.boom > now ? BOOM_MULT : 1) * (live && s.tycoon.opening > now ? OPENING_MULT : 1);
 }
 
@@ -569,16 +570,6 @@ export function reactionTip(s: SaveData, now = Date.now()): number {
   earn(s, n);
   return n;
 }
-
-/** Rent from the homes and offices round town (and in the districts): about 20 seconds of
- *  what the company earns (never less than a few coins), paid when its bubble is tapped. */
-export function collectRent(s: SaveData, now = Date.now()): number {
-  if (!BUSINESSES.some(x => levelOf(s, x.id) > 0)) return 0;
-  const n = Math.max(perSecond(s, now, false) * 20, 5);
-  earn(s, n);
-  return n;
-}
-export const rentPreview = (s: SaveData, now = Date.now()): number => Math.max(perSecond(s, now, false) * 20, 5);
 
 export function goldenTip(s: SaveData, now = Date.now()): number {
   const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
