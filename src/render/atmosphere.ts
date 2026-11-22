@@ -27,7 +27,9 @@ export class Weather {
   }
 
   /** Drawn over the scene, under the score. */
-  draw(p: Paint, dt: number, wind: number): void {
+  /** `storm`: lightning may strike (only while building a tower: in the town a flash of
+   *  the whole screen looks like a glitch). */
+  draw(p: Paint, dt: number, wind: number, storm = true): void {
     if (this.kind === "clear") return;
     const { ctx, view, env } = p, { W, H } = view;
     const count = env.low ? Math.floor(this.drops.length / 2) : this.drops.length;
@@ -51,7 +53,7 @@ export class Weather {
       }
       ctx.stroke();
       // Storms at night: lightning now and then
-      if (env.nf > 0.5) {
+      if (env.nf > 0.5 && storm) {
         this.nextBolt -= dt;
         if (this.nextBolt <= 0) {
           this.nextBolt = rand(7, 16);
@@ -77,7 +79,7 @@ export class Weather {
       ctx.globalAlpha = 1;
     }
     if (this.flash > 0) {
-      ctx.fillStyle = `rgba(220,230,255,${this.flash * 0.45})`;
+      ctx.fillStyle = `rgba(220,230,255,${this.flash * 0.22})`;
       ctx.fillRect(0, 0, W, H);
       if (this.bolt && this.flash > 0.5) {
         ctx.strokeStyle = `rgba(255,255,255,${this.flash})`;

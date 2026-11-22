@@ -1400,7 +1400,7 @@ export class Renderer3D {
     }
     fx.drawFlash(p, top, f.shape);
     fx.drawParticles(p);
-    this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0);
+    this.weather.draw(p, dt, f.showMover && m ? sim.windFor(m.y) : 0, f.shot === "play");
     if (f.shot === "play" && f.bestFloors > 2) this.drawBestLine(f);
     if (f.shot === "play" && f.ghost) this.drawGhost(f, f.ghost);
     if (f.shot === "play") drawLandmarkLabel(p, landmarkIndex(sim.meters) + 1, 1, f.hudBottom);

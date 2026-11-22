@@ -336,7 +336,14 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     const best: [number, number] = [cx + dx * t, cz + dz * t];
     // A whole district: its own island, a bridge's length off the coast.
     void bought;
-    const out = distEdge(dx, dz) + DIST_GAP;
+    // (Pushed further out until no part of it comes near the town's coast: one corner of
+    // the square district could otherwise tuck in under a bend of the coast.)
+    let out = distEdge(dx, dz) + DIST_GAP;
+    const nearTown = (x: number, z: number) => {
+      for (let a = 0; a < 32; a++) { const ca = Math.cos((a / 32) * Math.PI * 2), sa = Math.sin((a / 32) * Math.PI * 2), R = distEdge(ca, sa) + 11; if (insidePoly(hull, x + ca * R, z + sa * R)) return true; }
+      return false;
+    };
+    while (out < 200 && nearTown(best[0] + dx * out, best[1] + dz * out)) out += 0.5;
     v = { x: best[0] + dx * out, z: best[1] + dz * out, r: LAND_R, y: LAND[k].y };
     landCache.set(key, v);
   }
