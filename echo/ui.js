@@ -84,7 +84,7 @@ function toast(html, sound) {
 }
 function nextToast() {
   // Mid-run, awards wait for the run to end so nothing covers the game.
-  if (toastQueue.length && screen === "run" && run && !run.over && !run.cleared && !run.paused) { toastBusy = true; setTimeout(nextToast, 800); return; }
+  if (toastQueue.length && screen === "run" && run && !run.paused && $("stageCard").hidden && $("runOver").hidden) { toastBusy = true; setTimeout(nextToast, 800); return; }
   const item = toastQueue.shift();
   if (!item) { toastBusy = false; return; }
   toastBusy = true;

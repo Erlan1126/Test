@@ -228,7 +228,7 @@ function renderShop() {
       RUN_FRIENDS.map((f, i) => met[i] ? `<li><span><b>${f.name}</b><small>${FRIEND_PERKS[i]}</small></span>${as === i ? "<em>Playing</em>" : `<button data-char="${i}">Play</button>`}</li>` : `<li class="locked"><span><b>???</b><small>Still lost somewhere in the caves</small></span></li>`).join("");
   }
   if (cityPanel === "stages") $("shopList").innerHTML = stagesHtml();
-  if (cityPanel === "locker") $("shopList").innerHTML = lockerHtml();
+  if (cityPanel === "locker") { $("shopList").innerHTML = lockerHtml(); drawLockerPreview(); }
   if (cityPanel === "ranks") $("shopList").innerHTML = ranksHtml();
   if (cityPanel === "awards") $("shopList").innerHTML = RUN_ACHS.map(a => `<li class="${(save.runAch || {})[a.id] ? "won" : "locked"}"><span><b>${a.name}</b><small>${a.text}</small></span><em>+${a.r} ✦</em></li>`).join("");
 }
@@ -256,17 +256,44 @@ document.getElementById("cityCanvas").addEventListener("click", e => {
 // ---------- The locker: characters, hoodies, sneakers, boards ----------
 const hex = c => "#" + (c >>> 0).toString(16).padStart(6, "0");
 function lockerHtml() {
-  const L = runnerLook(), glow = save.glow || 0, row = (key, i, it, swatch, sub, cur) => {
-    const own = L.own[key + i], btn = cur ? "<em>Wearing</em>" : own ? `<button data-lk="${key}:${i}">Wear</button>` : `<button data-lk="${key}:${i}" ${glow >= it.cost ? "" : "disabled"}>✦ ${it.cost.toLocaleString()}</button>`;
-    return `<li class="${cur ? "won" : ""}"><span><i class="sw" style="background:${swatch}"></i><b>${it.name}</b><small>${sub}</small></span>${btn}</li>`;
+  const L = runnerLook(), glow = save.glow || 0, tile = (key, i, it, swatch, sub, cur) => {
+    const own = L.own[key + i], tag = cur ? "Wearing" : own ? "Owned · tap to wear" : `✦ ${it.cost.toLocaleString()}`;
+    return `<button class="lk-tile${cur ? " on" : ""}${own ? "" : " buy"}" data-lk="${key}:${i}" ${!own && glow < it.cost ? "disabled" : ""}><i style="--c:${swatch}"></i><b>${it.name}</b>${sub ? `<small>${sub}</small>` : ""}<em>${tag}</em></button>`;
   };
-  const caps = save.capsules || 0;
-  const capRow = `<li class="sec">Light capsules</li><li class="${caps ? "won" : "locked"}"><span><b>${caps} capsule${caps === 1 ? "" : "s"}</b><small>Earn one by swinging 600 m or making 10 Perfects in a run</small></span>${caps ? `<button data-cap="1">Open</button>` : ""}</li>`;
-  const ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";
-  return capRow + `<li class="sec">Forms of light</li>` + RUNNER_CHARS.map((c, i) => row("c", i, c, hex(c.look.glow), c.perk, L.char === i)).join("") +
-    `<li class="sec">Glow</li>` + RUNNER_TOPS.map((c, i) => row("t", i, c, hex(c.c ?? ch.look.glow), i ? "Your colour of light" : `${ch.name}'s own`, L.top === i)).join("") +
-    `<li class="sec">Scarves</li>` + RUNNER_SHOES.map((c, i) => row("s", i, c, c.c === "prism" ? prism : hex(c.c ?? runnerGlow()), c.twin ? "Two ribbons" : c.len > 30 ? "A long trail" : "A ribbon of light", L.shoe === i)).join("") +
-    `<li class="sec">Tethers</li>` + RUNNER_BOARDS.map((c, i) => row("b", i, c, c.c === "prism" ? prism : hex(c.c), "The colour of your tether", L.board === i)).join("");
+  const caps = save.capsules || 0, ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";
+  const grid = (title, html) => `<li class="sec">${title}</li><li class="lk-grid">${html}</li>`;
+  return `<li class="lk-prev"><canvas id="lkCanvas" width="360" height="260" aria-hidden="true"></canvas><div><small>You are</small><b>${ch.name}</b><span>${ch.perk}</span></div></li>` +
+    `<li class="${caps ? "won" : "locked"}"><span><b>✦ ${caps} light capsule${caps === 1 ? "" : "s"}</b><small>Earn one by swinging 600 m or making 10 Perfects in a run</small></span>${caps ? `<button data-cap="1">Open</button>` : ""}</li>` +
+    grid("Forms of light", RUNNER_CHARS.map((c, i) => tile("c", i, c, hex(c.look.glow), c.perk, L.char === i)).join("")) +
+    grid("Glow", RUNNER_TOPS.map((c, i) => tile("t", i, c, hex(c.c ?? ch.look.glow), "", L.top === i)).join("")) +
+    grid("Scarves", RUNNER_SHOES.map((c, i) => tile("s", i, c, c.c === "prism" ? prism : hex(c.c ?? runnerGlow()), c.twin ? "Two ribbons" : c.len > 30 ? "A long trail" : "", L.shoe === i)).join("")) +
+    grid("Tethers", RUNNER_BOARDS.map((c, i) => tile("b", i, c, c.c === "prism" ? prism : hex(c.c), "", L.board === i)).join(""));
+}
+// The locker's preview: your figure of light swinging on its tether, in what you're wearing.
+function drawLockerPreview() {
+  const c = document.getElementById("lkCanvas"); if (!c) return;
+  const x = c.getContext("2d"), W = c.width, H = c.height, L = runnerLook(), rgb = n => [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const gc = rgb(runnerGlow()), sc = RUNNER_SHOES[L.shoe] || RUNNER_SHOES[0], bc = RUNNER_BOARDS[L.board] || RUNNER_BOARDS[0];
+  const col = (v, a = 1) => v === "prism" ? `hsla(${(performance.now() / 8) % 360},90%,65%,${a})` : `rgba(${rgb(v ?? runnerGlow()).join(",")},${a})`;
+  let t0 = performance.now();
+  const frame = now => {
+    if (!document.getElementById("lkCanvas") || document.getElementById("sheet").hidden) return;
+    const t = (now - t0) / 1000, ang = Math.sin(t * 1.6) * 0.55, ax = W / 2, ay = 18, len = 150, px = ax + Math.sin(ang) * len, py = ay + Math.cos(ang) * len;
+    x.clearRect(0, 0, W, H);
+    const g = x.createRadialGradient(px, py, 0, px, py, 90); g.addColorStop(0, `rgba(${gc.join(",")},0.45)`); g.addColorStop(1, `rgba(${gc.join(",")},0)`); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.strokeStyle = col(bc.c); x.lineWidth = 3; x.beginPath(); x.moveTo(ax, ay); x.lineTo(px, py - 22); x.stroke();
+    x.fillStyle = "#fff"; x.beginPath(); x.arc(ax, ay, 6, 0, Math.PI * 2); x.fill();
+    // Scarf: a ribbon trailing behind the swing.
+    const n = Math.min(14, 6 + Math.round((sc.len || 20) / 4)), dir = -Math.cos(t * 1.6);
+    for (const off of sc.twin ? [-4, 4] : [0]) { x.beginPath(); for (let q = 0; q <= n; q++) { const k = q / n, sx = px + dir * k * 70 + off, sy = py - 14 + k * 18 + Math.sin(t * 6 + k * 5) * 5 * k; q ? x.lineTo(sx, sy) : x.moveTo(sx, sy); } x.strokeStyle = col(sc.c, 0.85); x.lineWidth = 6; x.lineCap = "round"; x.stroke(); }
+    // The figure.
+    x.save(); x.translate(px, py); x.rotate(-ang); x.strokeStyle = "#fff"; x.lineWidth = 7; x.lineCap = "round";
+    x.shadowColor = `rgb(${gc.join(",")})`; x.shadowBlur = 18;
+    x.beginPath(); x.moveTo(0, -18); x.lineTo(0, 10); x.moveTo(0, -14); x.lineTo(-2, -24); x.moveTo(0, -12); x.lineTo(-12, -2); x.moveTo(0, 10); x.lineTo(-8, 30); x.moveTo(0, 10); x.lineTo(8, 28); x.stroke();
+    x.fillStyle = "#fff"; x.beginPath(); x.arc(0, -30, 9, 0, Math.PI * 2); x.fill(); x.restore();
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 // ---------- Ranks: your best runs ----------
 function ranksHtml() {

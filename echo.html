@@ -758,6 +758,17 @@
   .stage-prog { position: fixed; top: calc(4px + var(--top)); left: 16px; right: 16px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.1); z-index: 3; }
   .stage-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #8be9ff, #ffd98a); box-shadow: 0 0 10px rgba(255,217,138,0.6); }
   .stage-prog b { position: absolute; right: -4px; top: -4px; width: 12px; height: 12px; border-radius: 3px 3px 1px 1px; background: #ffd98a; box-shadow: 0 0 10px #ffb84d; }
+  #shopList li.lk-prev { flex-direction: column; align-items: center; gap: 4px; padding: 6px 14px 14px; background: radial-gradient(80% 90% at 50% 40%, rgba(139,233,255,0.12), rgba(255,255,255,0.02)); }
+  #lkCanvas { width: 100%; max-width: 300px; height: auto; display: block; }
+  #shopList li.lk-prev div { text-align: center; display: flex; flex-direction: column; } #shopList li.lk-prev small { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mut); }
+  #shopList li.lk-prev b { font-size: 22px; font-weight: 800; } #shopList li.lk-prev span { font-size: 13px; color: var(--mut); }
+  #shopList li.lk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0; background: none; border: 0; }
+  #shopList .lk-tile { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 6px 10px; border-radius: 16px !important; border: 1px solid rgba(255,255,255,0.07); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); color: var(--txt); font: inherit; box-shadow: none; text-align: center; min-width: 0; }
+  #shopList .lk-tile i { width: 34px; height: 34px; border-radius: 50%; background: var(--c); box-shadow: 0 0 16px var(--c), inset 0 0 0 2px rgba(255,255,255,0.35); margin-bottom: 4px; }
+  #shopList .lk-tile b { font-size: 13px; font-weight: 700; } #shopList .lk-tile small { font-size: 10px; color: var(--mut); line-height: 1.25; }
+  #shopList .lk-tile em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--gold); margin-top: 2px; }
+  #shopList .lk-tile.on { border-color: rgba(139,233,255,0.8); background: linear-gradient(180deg, rgba(139,233,255,0.16), rgba(139,233,255,0.04)); } #shopList .lk-tile.on em { color: #8be9ff; }
+  #shopList .lk-tile:disabled { opacity: 0.45; } #shopList .lk-tile:active { transform: scale(0.95); }
   .shop-upg { display: grid !important; grid-template-columns: 44px 1fr auto; gap: 12px; }
   .shop-upg .ui { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), rgba(255,255,255,0.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
   .shop-upg .lv { display: flex; gap: 4px; margin-top: 6px; } .shop-upg .lv i { width: 22px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); } .shop-upg .lv i.on { background: linear-gradient(90deg, #ffd98a, #ffb84d); box-shadow: 0 0 6px rgba(255,184,77,0.6); }
