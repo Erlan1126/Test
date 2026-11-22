@@ -110,6 +110,20 @@ const NEIGH: [number, number][] = [[2, 0], [0, 2], [3, 1], [1, 3], [4, 2], [2, 4
 /** Which of those are little parks instead of homes. */
 const NEIGH_PARK = new Set(["3,0", "0,3", "5,4"]);
 const ALL = [...CELLS, ...PARKS, PLAZA, PLOT, ...NEIGH];
+/** Neighbouring blocks joined into one longer block (no street between them, a walking
+ *  street with trees and benches instead), so the town isn't a plain checkerboard: the two
+ *  parks and the plaza make one big central park, and some homes share a block with a park. */
+const JOINED: [[number, number], [number, number]][] = [
+  [[4, 3], [4, 4]], [[3, 4], [4, 4]], [[2, 0], [3, 0]], [[0, 2], [0, 3]], [[5, 3], [5, 4]], [[3, 5], [4, 5]], [[4, 2], [5, 2]],
+];
+const JOINED_SET = new Set(JOINED.flatMap(([a, b]) => [`${a}|${b}`, `${b}|${a}`]));
+/** Whether there's no street between two neighbouring blocks. */
+const joined = (ax: number, az: number, bx: number, bz: number) => JOINED_SET.has(`${ax},${az}|${bx},${bz}`);
+/** Each block's corner roundness (blocks of one joined pair share it), so blocks differ. */
+const blockRound = (gx: number, gz: number): number => {
+  for (const [a, b] of JOINED) if ((a[0] === gx && a[1] === gz) || (b[0] === gx && b[1] === gz)) { gx = a[0]; gz = a[1]; break; }
+  return [1.7, 0.7, 1.2, 1.7, 0.45][Math.abs(gx * 7 + gz * 13) % 5];
+};
 /** A piece of a merged model, painted one color (vertex colors; no uv, so pieces merge). */
 function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
   const g2 = geo.index ? geo.toNonIndexed() : geo, n = g2.attributes.position.count, cc = new THREE.Color(c), arr = new Float32Array(n * 3);
@@ -480,8 +494,18 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const { x, z } = cellXZ(cell);
     add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
     // (Rounded corners: the streets curve round each block like a real town's.)
-    add(roundSlab(C - ROAD * 2, C - ROAD * 2, 1.7, 0.18).translate(x, 0, z), curb);
-    add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 1.6, 0.2).translate(x, 0, z), walk);
+    const rr = blockRound(cell[0], cell[1]);
+    add(roundSlab(C - ROAD * 2, C - ROAD * 2, rr, 0.18).translate(x, 0, z), curb);
+    add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, rr - 0.1, 0.2).translate(x, 0, z), walk);
+  }
+  // Joined blocks: the street between them is paved over as one long block.
+  const promenades: { x: number; z: number; alongX: boolean }[] = [];
+  for (const [a, b] of JOINED) {
+    const A = cellXZ(a), B = cellXZ(b), mx = (A.x + B.x) / 2, mz = (A.z + B.z) / 2, alongX = a[1] === b[1];
+    const W = C - ROAD * 2;
+    add(new THREE.BoxGeometry(alongX ? C : W, 0.18, alongX ? W : C).translate(mx, 0.09, mz), curb);
+    add(new THREE.BoxGeometry(alongX ? C : W - 0.16, 0.2, alongX ? W - 0.16 : C).translate(mx, 0.1, mz), walk);
+    promenades.push({ x: mx, z: mz, alongX });
   }
   // Road markings like a real city's, on the streets between blocks (the edge street round
   // the town stays plain): a white zebra crossing and a stop line before every crossing,
@@ -507,8 +531,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const inAll = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz);
     for (const cell of ALL) {
       const { x, z } = cellXZ(cell);
-      if (inAll(cell[0] + 1, cell[1])) markStreet(add, x + q, z, "z", C - 2 * 0.3);
-      if (inAll(cell[0], cell[1] + 1)) markStreet(add, x, z + q, "x", C - 2 * 0.3);
+      if (inAll(cell[0] + 1, cell[1]) && !joined(cell[0], cell[1], cell[0] + 1, cell[1])) markStreet(add, x + q, z, "z", C - 2 * 0.3);
+      if (inAll(cell[0], cell[1] + 1) && !joined(cell[0], cell[1], cell[0], cell[1] + 1)) markStreet(add, x, z + q, "x", C - 2 * 0.3);
     }
   }
   // Little roundabouts where four blocks meet (inside the town; the outer street where the
@@ -524,6 +548,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         if (seen.has(key)) continue;
         seen.add(key);
         if (!(has(ax, az) && has(ax + 1, az) && has(ax, az + 1) && has(ax + 1, az + 1))) continue;
+        // (Not where a joined block makes it a T-junction or a corner.)
+        if (joined(ax, az, ax + 1, az) || joined(ax, az + 1, ax + 1, az + 1) || joined(ax, az, ax, az + 1) || joined(ax + 1, az, ax + 1, az + 1)) continue;
         const { x, z } = cellXZ([ax, az]);
         roundabouts.push([x + q, z + q]);
       }
@@ -563,6 +589,24 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const flowersOn = ["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"];
   for (const [x, z] of roundabouts) tree(x, z, 0.7, 0.22);
   for (const [x, z] of medianTrees) tree(x, z, 0.42, 0.26);
+  // The walking streets on joined blocks: a row of trees in planting beds down the middle,
+  // benches between them and lamps either side.
+  for (const pr of promenades) {
+    const ux = pr.alongX ? 0 : 1, uz = pr.alongX ? 1 : 0;
+    for (const t of [-1.05, 1.05]) {
+      const px = pr.x + ux * t, pz = pr.z + uz * t;
+      add(new THREE.BoxGeometry(0.7, 0.08, 0.7).translate(px, 0.24, pz), stone);
+      add(new THREE.BoxGeometry(0.58, 0.04, 0.58).translate(px, 0.27, pz), grass);
+      tree(px, pz, 0.62, 0.28);
+    }
+    bench(pr.x - (pr.alongX ? 0 : 0) + (pr.alongX ? 0.55 : 0), pr.z + (pr.alongX ? 0 : 0.55), pr.alongX ? Math.PI / 2 : 0);
+    bench(pr.x - (pr.alongX ? 0.55 : 0), pr.z - (pr.alongX ? 0 : 0.55), pr.alongX ? -Math.PI / 2 : Math.PI);
+    for (const t of [-2.1, 2.1]) {
+      const px = pr.x + ux * t, pz = pr.z + uz * t;
+      add(new THREE.CylinderGeometry(0.03, 0.04, 1.2, 6).translate(px, 0.8, pz), metal);
+      add(new THREE.SphereGeometry(0.1, 8, 6).translate(px, 1.42, pz), mats.c("#fff3c4", 0.3));
+    }
+  }
   // The two parks by the entrance: lawns, a path, a pond, benches.
   for (const [n, cell] of PARKS.entries()) {
     const { x, z } = cellXZ(cell);
@@ -1993,13 +2037,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // The streets out of a crossing (i, j): a street runs between two town blocks.
   const exits = (i: number, j: number): [number, number][] => {
     const out: [number, number][] = [];
-    if (cellIn(i, j - 1) && cellIn(i, j)) out.push([1, 0]);
-    if (cellIn(i - 1, j - 1) && cellIn(i - 1, j)) out.push([-1, 0]);
-    if (cellIn(i - 1, j) && cellIn(i, j)) out.push([0, 1]);
-    if (cellIn(i - 1, j - 1) && cellIn(i, j - 1)) out.push([0, -1]);
+    if (cellIn(i, j - 1) && cellIn(i, j) && !joined(i, j - 1, i, j)) out.push([1, 0]);
+    if (cellIn(i - 1, j - 1) && cellIn(i - 1, j) && !joined(i - 1, j - 1, i - 1, j)) out.push([-1, 0]);
+    if (cellIn(i - 1, j) && cellIn(i, j) && !joined(i - 1, j, i, j)) out.push([0, 1]);
+    if (cellIn(i - 1, j - 1) && cellIn(i, j - 1) && !joined(i - 1, j - 1, i, j - 1)) out.push([0, -1]);
     return out;
   };
-  const isRound = (i: number, j: number) => cellIn(i - 1, j - 1) && cellIn(i, j - 1) && cellIn(i - 1, j) && cellIn(i, j);
+  const isRound = (i: number, j: number) => cellIn(i - 1, j - 1) && cellIn(i, j - 1) && cellIn(i - 1, j) && cellIn(i, j) && exits(i, j).length === 4;
   const LANE = 0.6, END = ROAD + 0.25;
   const rightOf = (d: [number, number]) => new THREE.Vector3(-d[1], 0, d[0]);
   const dv = (d: [number, number]) => new THREE.Vector3(d[0], 0, d[1]);
