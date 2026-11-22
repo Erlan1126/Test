@@ -1833,4 +1833,6 @@ export const DE: Record<string, string> = {
   "Above the clouds: white marble villas with golden domes and a golden palace": "Über den Wolken: weiße Marmorvillen mit goldenen Kuppeln und ein goldener Palast",
   "Higher than the clouds: glowing crystal towers round a giant crystal spire": "Höher als die Wolken: leuchtende Kristalltürme um eine riesige Kristallspitze",
   "The edge of space: glass domes, a launch pad and a rocket ready to go": "Am Rand des Alls: Glaskuppeln, eine Startrampe und eine startbereite Rakete",
+  "Grow a building in town": "Lass ein Gebäude wachsen",
+  "{tier} → {next} · {n}": "{tier} → {next} · {n}",
 };

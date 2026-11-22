@@ -36,6 +36,8 @@ export const DEFAULT_STYLE: BizStyle = { lawn: "#7fd36a", rock: "#8a7fb0", dirt:
 export interface BizLive {
   /** The building whose card is open. */
   sel?: string;
+  /** The property whose card is open (the camera glides to it). */
+  selHome?: string;
   /** A building that just sold or grew (it bounces), and when. */
   pulse?: string;
   pulseAt?: number;

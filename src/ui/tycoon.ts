@@ -639,12 +639,13 @@ export class TycoonUI {
   }
 
   /** What's happening right now, for the 3D district. */
-  liveState(): { frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; pulse: string; pulseAt: number; block: BizBlock } {
+  liveState(): { frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; pulse: string; pulseAt: number; block: BizBlock } {
     const now = Date.now(), s = this.save;
     return {
       pulse: this.pulse.id,
       pulseAt: this.pulse.at,
       sel: this.inCity ? this.selected : "",
+      selHome: this.inCity ? this.selectedProp : "",
       rush: rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "",
       vip: this.vip.until > now ? this.vip.id : "",
       golden: this.golden.until > now ? this.golden.id : "",
@@ -866,6 +867,13 @@ export class TycoonUI {
     const up = upgradesOnOffer(s).find(u => u.cost <= ty.coins);
     if (up) return { text: t("Buy the {name} upgrade", { name: t(up.name) }), sub: up.biz === "all" ? t("Every business earns ×{n}", { n: up.mult }) : t("{name} earns ×{n}", { name: nameOf(up.biz), n: up.mult }), tone: "go", act: () => this.openSheet("upgrades") };
     if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: t("Build a tower to add office floors"), tone: "grow", act: () => this.openBuild() };
+    // A building the company can grow right now (the cheapest), now and then: every level
+    // makes every business earn more. Shown once the company has a few businesses going.
+    if (propsOpen(s) && BUSINESSES.filter(b => levelOf(s, b.id) > 0).length >= 2) {
+      const best = this.host.bizHomes().map(key => ({ key, lv: propLevel(s, key), price: propPrice(s, key) }))
+        .filter(h => h.lv < PROP_MAX && h.price <= ty.coins).sort((a, b) => a.price - b.price)[0];
+      if (best) return { text: t("Grow a building in town"), sub: t("{tier} → {next} · {n}", { tier: t(PROP_TIERS[best.lv]), next: t(PROP_TIERS[best.lv + 1]), n: coins(best.price) }), tone: "grow", act: () => this.selectProp(best.key) };
+    }
     // Saving up: what for, and how far along.
     if (ni >= 0) {
       const b = BUSINESSES[ni], price = costOf(b, 0, 1);
@@ -1175,9 +1183,20 @@ export class TycoonUI {
       </div>`);
   }
 
+  /** When the card switches to another building, its content slides in afresh. */
+  private cardFor(subject: string): void {
+    const card = $("tcy-card");
+    if (card.dataset.for === subject) return;
+    card.dataset.for = subject;
+    card.classList.remove("card-swap");
+    void card.offsetWidth;
+    card.classList.add("card-swap");
+  }
+
   private renderCard(now: number): void {
     if (this.holdingCard) return;
-    if (this.selectedProp && !this.selected) { this.renderPropCard(now); return; }
+    if (this.selectedProp && !this.selected) { this.renderPropCard(now); this.cardFor("p:" + this.selectedProp); return; }
+    if (this.selected) this.cardFor("b:" + this.selected); else $("tcy-card").dataset.for = "";
     const card = $("tcy-card"), s = this.save, ty = s.tycoon;
     const i = BUSINESSES.findIndex(b => b.id === this.selected);
     card.hidden = i < 0;

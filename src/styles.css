@@ -4100,3 +4100,8 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-labels .tag.bub.prop-up .tag-ico::before { display: none; }
 #tcy-labels .tag.bub.prop-up.sel { padding-right: 10px !important; animation: none; background: linear-gradient(135deg, #7ad3ff, #4f8bff) !important; }
 #tcy-labels .tag.bub.prop-up b { font: 400 12px var(--display); padding-right: 0; }
+
+/* Switching the card to another building: its content slides in. */
+#tcy-card.card-swap > * { animation: card-swap 0.28s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes card-swap { from { opacity: 0; transform: translateX(14px); } }
+@media (prefers-reduced-motion: reduce) { #tcy-card.card-swap > * { animation: none; } }

@@ -624,6 +624,22 @@ export class Renderer3D {
       env.skyTop = mixRgb(env.skyTop, [255, 170, 120], 0.55 * k);
       env.skyBot = mixRgb(env.skyBot, [255, 214, 150], 0.7 * k);
     }
+    // Looking at the high islands in town: the sky turns deep blue, then the dark of space.
+    if (this.biz && this.bizK > 0.5) {
+      let h = 0;
+      for (let k = 0; k < 6; k++) {
+        const a = this.biz.landAt(k);
+        if (!a || a.y < 8) continue;
+        const d = Math.hypot(this.bizLook.x - (a.x - a.y), this.bizLook.z - (a.z - a.y));
+        h = Math.max(h, a.y * clamp(1 - (d - 14) / 22, 0, 1));
+      }
+      const sk = clamp((h - 8) / 18, 0, 1) * this.bizK;
+      if (sk > 0.01) {
+        env.skyTop = mixRgb(env.skyTop, [6, 8, 34], sk);
+        env.skyBot = mixRgb(env.skyBot, sk > 0.7 ? [40, 26, 96] : [70, 90, 190], sk * 0.85);
+        this.skyExtra += `|s${Math.round(sk * 20)}`;
+      }
+    }
     env.nf = nightAt(skyN);
     env.climb = view.level * view.th * view.zoom;
     if (f.low !== this.low) this.resize(f.low);
@@ -884,10 +900,13 @@ export class Renderer3D {
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
+    // A tapped property: the camera glides to it too (a higher island's shows further back).
+    const hk = f.bizLive?.selHome, home = hk ? this.biz.homes().find(h => h.key === hk) : undefined;
+    if (home && si < 0) { this.bizLook.tx = home.x - home.y + 1.2; this.bizLook.tz = home.z - home.y + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
     // The player's own view (drag to look around, pinch to zoom), unless the game is showing
     // something (a close-up, a landmark, a tapped building). Along the town it never slides
     // off; across, it can move only as far as the zoom leaves room.
-    const cu = this.camUser, mine = cu.on && !framing && !lm && si < 0;
+    const cu = this.camUser, mine = cu.on && !framing && !lm && si < 0 && !home;
     this.bizBase.zoom = fo.zoom;
     // Momentum: after a flick the town keeps gliding and slows to a stop.
     if (mine && !cu.drag && (cu.vs || cu.vt)) {
