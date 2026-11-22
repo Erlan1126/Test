@@ -259,9 +259,12 @@ const SW2D = (() => {
       ctx.fillText(u.kind === "letter" ? u.ch : u.kind === "shard" ? "◆" : { magnet: "✧", shield: "◯", comet: "☄" }[u.kind] || "✦", x, y + 1);
     }
     ctx.textBaseline = "alphabetic";
+    if (!R.teth) R.pNow = false;
+    // Landing dust on a rooftop.
+    if (R.dust) { const k = R.dust.t / 0.5, dx2 = X(R.dust.x), dy2 = Y(R.dust.y); ctx.fillStyle = `rgba(200,210,230,${0.35 * (1 - k) * R.dust.k})`; for (let q = -1; q <= 1; q += 2) { ctx.beginPath(); ctx.ellipse(dx2 + q * (0.6 + k * 2.2) * s, dy2 - 0.3 * s, (0.5 + k * 0.8) * s, (0.3 + k * 0.3) * s, 0, 0, Math.PI * 2); ctx.fill(); } }
     // ---------- The trajectory: where you'd fly if you let go now (gold when it's a Perfect) ----------
     if (R.teth && !R.attract) {
-      const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, sp2 = Math.hypot(R.vx, R.vy), pw = perfectWindow(R), perfect = R.vx > 2.5 && ang > pw[0] && ang < pw[1] && sp2 > pw[2];
+      const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, sp2 = Math.hypot(R.vx, R.vy), pw = perfectWindow(R), perfect = R.vx > 2.5 && ang > pw[0] && ang < pw[1] && sp2 > pw[2]; R.pNow = perfect;
       let px = R.px, py = R.py + 1, vx = R.vx * (perfect ? 1.1 : 1), vy = R.vy * (perfect ? 1.1 : 1);
       ctx.fillStyle = perfect ? "#ffd25a" : "rgba(255,255,255,0.75)";
       for (let q = 1; q <= 14; q++) { for (let k2 = 0; k2 < 4; k2++) { vy -= SWING.G * 0.02; px += vx * 0.02; py += vy * 0.02; } if (py < 0) break; ctx.globalAlpha = (1 - q / 15) * 0.8; ctx.beginPath(); ctx.arc(X(px), Y(py), Math.max(1.5, 0.13 * s * (1 - q / 20)), 0, Math.PI * 2); ctx.fill(); }
@@ -314,7 +317,7 @@ const SW2D = (() => {
     const blink = R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
     if (R.shatter) { ctx.globalCompositeOperation = "lighter"; for (const q of R.shatter) { const z = 0.9 * s; ctx.drawImage(glow(glowRGB), X(q.x) - z / 2, Y(q.y) - z / 2, z, z); } ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff"; for (const q of R.shatter) ctx.fillRect(X(q.x) - 1.5, Y(q.y) - 1.5, 3, 3); }
     if (!blink && !R.shatter) {
-      const auraC = R.od > 0 ? [255, 194, 61] : R.power ? RUNNER_POWERS[R.power.kind].rgb.split(",").map(Number) : glowRGB, asz = (R.od > 0 ? 6 : R.dashT > 0 ? 5.5 : 4.5) * s;
+      const auraC = R.pNow ? [255, 214, 90] : R.od > 0 ? [255, 194, 61] : R.power ? RUNNER_POWERS[R.power.kind].rgb.split(",").map(Number) : glowRGB, asz = (R.pNow ? 6.5 + Math.sin(t * 20) * 0.4 : R.od > 0 ? 6 : R.dashT > 0 ? 5.5 : 4.5) * s;
       ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55 + night * 0.3; ctx.drawImage(glow(auraC), hx - asz / 2, Y(R.py + 1.2) - asz / 2, asz, asz); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
       const ch = RUNNER_CHARS[runnerLook().char] || RUNNER_CHARS[0], core = hex(ch.look.core), u = 1.55 * s, p = R.phase, sn = Math.sin(p);
       // Pose: hips, chest, head, hands, feet (metres around the figure's centre), then rotated.
@@ -371,6 +374,8 @@ const SW2D = (() => {
     if (P.rain) { ctx.strokeStyle = "rgba(200,225,255,0.35)"; ctx.lineWidth = 1; ctx.beginPath(); for (let q = 0; q < 70; q++) { const r = seeded(q * 31), x = (r() * W + t * 40) % W, y = (r() * H + t * 700) % H; ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 14); } ctx.stroke(); }
     for (const f of R.fireworks) { const r = seeded(Math.floor(f.seed * 1e6)); for (let b2 = 0; b2 < 3; b2++) { const bx = W * (0.2 + r() * 0.6), by = H * (0.15 + r() * 0.25), col = [255, Math.floor(120 + r() * 135), Math.floor(r() * 255)], tt = Math.max(0, f.t - b2 * 0.35), k = Math.max(0, 1 - tt / 2.2); if (!k) continue; ctx.fillStyle = `rgba(${col.join(",")},${k})`; for (let q = 0; q < 28; q++) { const a = q / 28 * Math.PI * 2, d = Math.min(tt, 1.4) * 70; ctx.fillRect(bx + Math.cos(a) * d, by + Math.sin(a) * d + tt * tt * 10, 3, 3); } } }
     // Screen positions for the overlay.
+    // Danger: a red glow rising from the bottom when the street is coming and nothing is in reach.
+    if (R.danger > 0.01 && !R.attract) { const g = ctx.createLinearGradient(0, H, 0, H * 0.7); g.addColorStop(0, `rgba(255,60,80,${0.45 * R.danger * (0.75 + 0.25 * Math.sin(t * 18))})`); g.addColorStop(1, "rgba(255,60,80,0)"); ctx.fillStyle = g; ctx.fillRect(0, H * 0.7, W, H * 0.3); }
     R.scrAim = aim ? [X(aim.x), Y(aim.y)] : null; R.scrDark = dx;
     return (x, at) => [hx, Y(R.py + 2.6)];
   }

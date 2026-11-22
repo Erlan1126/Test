@@ -271,6 +271,9 @@ function runnerUpdate(dt) {
   if (R.od > 0) { R.od -= dt; R.darkX = Math.min(R.darkX, R.px - 35); if (R.od <= 0) { R.od = 0; R.flow = 0; } } else R.flow = Math.max(0, R.flow - dt * 0.045);
   R.perfT = Math.max(0, R.perfT - dt); R.dashT = Math.max(0, R.dashT - dt); if (R.teth) R.streetT = 0; R.streetT = Math.max(0, (R.streetT || 0) - dt);
   if (R.snap) { R.snap.t += dt; if (R.snap.t > 0.2) R.snap = null; }
+  if (R.dust) { R.dust.t += dt; if (R.dust.t > 0.5) R.dust = null; }
+  // Danger: falling toward the street with nothing to grab (it costs a heart from stage 5).
+  { const streetHurts = R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5); const tHit = R.vy < 0 ? R.py / -R.vy : 9; R.danger = !R.teth && !R.roof && !R.aimOk && streetHurts && tHit < 0.9 && !swingBldAt(R, R.px + R.vx * tHit) ? Math.min(1, (R.danger || 0) + dt * 5) : Math.max(0, (R.danger || 0) - dt * 4); }
   for (const b of R.bursts) b.t += dt; R.bursts = R.bursts.filter(b => b.t < 0.8);
   const comet = R.power && R.power.kind === "comet";
   // Physics in small steps: gravity, the tether (a pendulum), rooftops, walls and the street.
@@ -304,6 +307,7 @@ function runnerUpdate(dt) {
     if (R.roof && (R.px > R.roof.x1 || R.px < R.roof.x0)) R.roof = null;
     if (b && R.py < b.h) {
       if (oy >= b.h - 0.25 || R.roof === b) {
+        if (!R.roof && R.vy < -6) R.dust = { x: R.px, y: b.h, t: 0, k: Math.min(1, -R.vy / 20) };
         if (!R.roof && R.vy < -14) { R.kick = 0.4; if (!R.attract) sfx.land(); }
         R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0;
       } else if (ox < b.x0) {
