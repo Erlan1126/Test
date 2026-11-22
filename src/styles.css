@@ -4124,3 +4124,10 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tycity .tag.hall.ready { background: linear-gradient(180deg, #ffcf3a, #ff9a1f) !important; animation: hallPulse 1.2s ease-in-out infinite; }
 @keyframes hallPulse { 0%, 100% { box-shadow: 0 6px 16px rgba(160, 80, 0, 0.35), 0 0 0 0 rgba(255, 207, 58, 0.7); } 50% { box-shadow: 0 6px 16px rgba(160, 80, 0, 0.35), 0 0 0 8px rgba(255, 207, 58, 0); } }
 @media (prefers-reduced-motion: reduce) { #tycity .tag.hall.ready { animation: none; } }
+/* Business bubbles: small pins that keep the city in view (bigger only when tapped). */
+#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up):not(.hall) { padding: 2px !important; box-shadow: 0 3px 8px rgba(40, 20, 100, 0.22); background: rgba(255, 255, 255, 0.88); }
+#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up):not(.hall) .tag-ico { width: 24px; height: 24px; }
+#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up):not(.hall) .tag-ico svg.ic { width: 20px; height: 20px; padding: 3px; }
+#tcy-labels .tag.bub:not(.sel) .tag-lv { bottom: -7px; padding: 0 4px; font-size: 7.5px; border-width: 1px; }
+#tcy-labels .tag.bub:not(.sel) .badge { top: -6px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; font-size: 8px; }
+#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale) { margin-bottom: 4px; }

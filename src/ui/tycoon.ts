@@ -1041,24 +1041,25 @@ export class TycoonUI {
     // (All reads first, then all writes: reading a size after moving a tag would make the
     // browser lay the page out again for every tag, every frame, which is what made dragging
     // the town feel heavy.)
-    const items: { tag: HTMLElement; x: number; y: number; base: number; w: number }[] = [], hide: HTMLElement[] = [];
+    const items: { tag: HTMLElement; x: number; y: number; base: number; w: number; h: number }[] = [], hide: HTMLElement[] = [];
     for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) {
       const p = this.host.bizScreen(Number(tag.dataset.i), Number(tag.dataset.h));
       if (!p) { hide.push(tag); continue; }
-      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: tag.offsetWidth || 44 });
+      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: tag.offsetWidth || 44, h: (tag.offsetHeight || 40) + 6 });
     }
     for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
     // Front buildings keep their spot; a bubble that would sit on another moves up a little.
     items.sort((a, b) => b.base - a.base);
-    const placed: { x: number; y: number; w: number }[] = [];
+    // (Spaced by each bubble's own height, so the small pins stack close, not in a tall column.)
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
     for (const it of items) {
-      const w = it.w;
+      const w = it.w, h = it.h;
       for (let guard = 0; guard < 6; guard++) {
-        const hit = placed.find(o => Math.abs(o.x - it.x) < (o.w + w) / 2 - 2 && Math.abs(o.y - it.y) < 42);
+        const hit = placed.find(o => Math.abs(o.x - it.x) < (o.w + w) / 2 - 2 && Math.abs(o.y - it.y) < (o.h + h) / 2 - 2);
         if (!hit) break;
-        it.y = hit.y - 44;
+        it.y = hit.y - (hit.h + h) / 2;
       }
-      placed.push({ x: it.x, y: it.y, w });
+      placed.push({ x: it.x, y: it.y, w, h });
       // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
       // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
       { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }

@@ -4,7 +4,7 @@
 // It's alive: customers stroll the sidewalks and walk into the busiest stores, delivery
 // vans drive round, a limousine brings each VIP, a rush hour draws a crowd and a glow, and
 // at night the windows, signs and an empire's searchlight come on.
-import { kitInstancer, kitPlace, kitPlaceH } from "./kitmodels";
+import { kitInstancer, kitPlace, kitPlaceH, kitVersion } from "./kitmodels";
 import * as THREE from "three";
 import { lawnTexture, mergeStatic } from "./world";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -431,6 +431,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   setLand((cafe.land ?? []).filter(l => l.bought).map(l => LAND.findIndex(x => x.id === l.id)).filter(k => k >= 0));
   const g = new THREE.Group();
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
+  const kitReady = kitVersion() > 0;
   let yachtAt: { x: number; z: number } | null = null;
   const cache = new Map<string, THREE.MeshStandardMaterial>();
   const signs: THREE.MeshStandardMaterial[] = [];
@@ -1101,7 +1102,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // Now and then, away from the very edge: a cottage, or a little vegetable garden, so the
       // outskirts look lived in rather than empty.
       const h = Math.abs(Math.sin(k * 45.1 + 7.3)) % 1;
-      if (h < 0.13 && inside(jx, jz, 1.1) && !nearLane(jx, jz, 1.05) && !inCell(jx + 0.6, jz) && !inCell(jx - 0.6, jz) && !inCell(jx, jz + 0.6) && !inCell(jx, jz - 0.6)) {
+      // (Once the model kit is loaded the neighbourhoods of real houses do this job: the
+      // little toy cottages would look out of scale next to them.)
+      if (!kitReady && h < 0.13 && inside(jx, jz, 1.1) && !nearLane(jx, jz, 1.05) && !inCell(jx + 0.6, jz) && !inCell(jx - 0.6, jz) && !inCell(jx, jz + 0.6) && !inCell(jx, jz - 0.6)) {
         const face = Math.atan2(cx - jx, cz - jz), col = COTTAGE[k % COTTAGE.length];
         const ch = new THREE.Group();
         ch.add(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.42, 0.52).translate(0, 0.21, 0), mats.c(col[0], 0.75)));
@@ -1155,8 +1158,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       im.userData.dynamic = true;
       g.add(im);
     }
-    // Vines and roots hanging down the cliff here and there.
-    { const vineM = own(std(new THREE.Color(st.leaf).multiplyScalar(0.85), { roughness: 0.9 }));
+    // Vines and roots hanging down the cliff here and there (few, short and leafy-dark: long
+    // thin ones read as spikes from far away).
+    if (false) { const vineM = own(std(new THREE.Color(st.leaf).multiplyScalar(0.85), { roughness: 0.9 }));
       for (let i = 0; i < hull.length; i += 7) { const [vx, vz] = hull[i], len = 0.35 + Math.abs(Math.sin(i * 3.3)) * 0.7; add(new THREE.BoxGeometry(0.07, len, 0.07).translate(vx, -len / 2 - 0.02, vz), vineM); add(new THREE.SphereGeometry(0.08, 5, 4).translate(vx, -len - 0.02, vz), vineM); } }
     // A low railing of posts and a rail along the island's edge.
     const rail = grow(hull, -0.3);
@@ -3570,7 +3574,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         townTicks.push(t => { ftex.offset.y = t * 1.6; mist.forEach((ms, m5) => { const ph = (t * 0.35 + m5 / 4) % 1; ms.position.set(dx5 * (edge + 0.6) + Math.sin(m5 * 2) * 0.5, -H5 * 0.55 - ph * 2, dz5 * (edge + 0.6) + Math.cos(m5 * 2) * 0.5); ms.scale.setScalar(0.6 + ph); (ms.material as THREE.MeshBasicMaterial).opacity = 0.35 * (1 - ph); }); });
       }
       // Vines hanging down the district's cliff.
-      for (let a = 0; a < (ground ? 0 : outlineD.length); a += 5) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
+      for (let a = 0; a < (ground ? 0 : outlineD.length); a += 15) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
     }
     landSeen.add(id);
     // (The camera looks a little further back for a higher island: that's where it shows.)
