@@ -474,7 +474,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // (Paving slabs half a unit across; the sidewalk shapes are measured in world units.)
   const walkTex = paverTex().clone(); walkTex.needsUpdate = true; walkTex.repeat.set(1, 1);
   const walk = own(std("#ffffff", { roughness: 0.85, map: walkTex }));
-  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.4]]);
+  const cobbleTex = paverTex().clone(); cobbleTex.needsUpdate = true;
+  const cobbleM = own(std("#d9b48c", { roughness: 0.9, map: cobbleTex }));
+  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.4], [cobbleM, 2.2]]);
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
   // (What bends point by point to follow the curving streets; the road paint joins it below.)
   const bendPts = new Set<THREE.Material>([curb, walk]);
@@ -2525,7 +2527,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const m2 = (c: string, r: number, m: number) => mats.c(c, r, m);
     const tc = theme === "cloud" || theme === "crystal" || theme === "orbit" ? TH[theme] : null;
     const topM = tc ? own(std(tc.top, { roughness: theme === "orbit" ? 0.5 : 0.85, metalness: theme === "orbit" ? 0.4 : 0 })) : verge;
-    const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : road;
+    // (Garden Hills is a village: warm cobbled lanes instead of asphalt.)
+    const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : id === "lakeside" ? cobbleM : road;
     const walkD = tc ? own(std(tc.walk, { roughness: 0.7 })) : walk;
     const curbD = tc ? own(std(tc.curbC, { roughness: 0.5, metalness: theme === "cloud" ? 0.6 : 0.2, emissive: new THREE.Color(theme === "cloud" ? "#000000" : tc.curbC), emissiveIntensity: theme === "cloud" ? 0 : 0.35 })) : curb;
     layer(1, 0.12, 0, topM);
@@ -2535,7 +2538,20 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     layer(0.95, 1.2, -0.74, tc ? own(std(tc.l2, { roughness: 0.9, flatShading: true })) : rock);
     layer(0.82, 2.0, -1.94, tc ? own(std(tc.l3, { roughness: 0.9, flatShading: true })) : rockDark);
     layer(0.6, 2.6, -3.94, tc ? own(std(tc.l2, { roughness: 0.9, flatShading: true })) : rock);
-    L(new THREE.ConeGeometry(DIST_H * 0.45, DIST_H * 0.9, 9).rotateX(Math.PI).translate(0, -6.5 - DIST_H * 0.45, 0), tc ? own(std(tc.l3, { roughness: 0.9, flatShading: true })) : rockDark);
+    // The underside: not one spike but a cluster of rough rock (or crystal, or cloud-stone)
+    // points of different lengths, like the bottom of a real torn-off piece of ground.
+    {
+      const um = tc ? own(std(tc.l3, { roughness: 0.9, flatShading: true })) : rockDark, um2 = tc ? own(std(tc.l2, { roughness: 0.9, flatShading: true })) : rock;
+      const spikes: [number, number, number, number][] = [[0, 0, DIST_H * 0.42, DIST_H * 0.85]];
+      for (let s5 = 0; s5 < 7; s5++) { const an = (s5 / 7) * Math.PI * 2 + k * 0.7, rr = DIST_H * (0.3 + (s5 % 3) * 0.08); spikes.push([Math.cos(an) * rr, Math.sin(an) * rr, DIST_H * (0.17 + (s5 % 2) * 0.06), DIST_H * (0.3 + ((s5 * 5 + k) % 4) * 0.09)]); }
+      spikes.forEach(([sx5, sz5, r5, h5], i5) => {
+        const geo = new THREE.ConeGeometry(r5, h5, 8, 3);
+        const pa = geo.attributes.position;
+        for (let v5 = 0; v5 < pa.count; v5++) { const y5 = pa.getY(v5); if (y5 > h5 / 2 - 0.01 || y5 < -h5 / 2 + 0.01) continue; const j5 = 1 + 0.22 * Math.sin(v5 * 12.9 + i5 * 3.1 + k); pa.setX(v5, pa.getX(v5) * j5); pa.setZ(v5, pa.getZ(v5) * j5); }
+        geo.computeVertexNormals();
+        L(geo.rotateX(Math.PI).translate(sx5, -5.5 - h5 / 2, sz5), i5 % 2 ? um2 : um);
+      });
+    }
     if (theme === "cloud") {
       // A bank of soft clouds the island floats on.
       const cloudM = own(std("#ffffff", { roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.15 }));
@@ -3242,6 +3258,30 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         flame.userData.dynamic = true; sh5.add(flame);
         sh5.userData.dynamic = true; G.add(sh5);
         townTicks.push(t => { const a = t * 0.3; sh5.position.set(Math.cos(a) * DIST_H * 1.25, 4 + Math.sin(a * 0.5) * 3, Math.sin(a) * DIST_H * 1.25); sh5.rotation.y = -a; flame.scale.z = 0.8 + Math.sin(t * 20) * 0.2; });
+      }
+      // A waterfall: Garden Hills' lake and the Harbor's sea spill over the island's front edge,
+      // falling away into the sky in a veil that fades out, with a cloud of spray.
+      if (id === "lakeside" || id === "meadow") {
+        const an0 = Math.PI / 4, cands = [an0 - 0.5, an0 + 0.5];
+        const an = cands.reduce((b, a) => (Math.cos(a) * -ux + Math.sin(a) * -uz < Math.cos(b) * -ux + Math.sin(b) * -uz ? a : b));
+        const dx5 = Math.cos(an), dz5 = Math.sin(an), edge = distEdge(dx5, dz5) * 0.985, H5 = 14, W5 = 1.6;
+        const fc = document.createElement("canvas"); fc.width = 32; fc.height = 128;
+        const fx = fc.getContext("2d");
+        if (fx) { fx.fillStyle = "#bfe9ff"; fx.fillRect(0, 0, 32, 128); for (let q = 0; q < 40; q++) { fx.fillStyle = q % 3 ? "rgba(255,255,255,0.7)" : "rgba(90,170,230,0.6)"; fx.fillRect((q * 7) % 32, (q * 37) % 128, 2 + (q % 3), 10 + (q % 5) * 6); } }
+        const ftex = new THREE.CanvasTexture(fc); ftex.wrapS = ftex.wrapT = THREE.RepeatWrapping; ftex.repeat.set(1, 3); ftex.colorSpace = THREE.SRGBColorSpace;
+        const ac = document.createElement("canvas"); ac.width = 4; ac.height = 64;
+        const ax = ac.getContext("2d");
+        if (ax) { const gr = ax.createLinearGradient(0, 0, 0, 64); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.55, "#bbbbbb"); gr.addColorStop(1, "#000000"); ax.fillStyle = gr; ax.fillRect(0, 0, 4, 64); }
+        const fallM = own(new THREE.MeshBasicMaterial({ map: ftex, alphaMap: new THREE.CanvasTexture(ac), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }));
+        fallM.userData.dynamic = true;
+        const fall = new THREE.Mesh(new THREE.PlaneGeometry(W5, H5).translate(0, -H5 / 2 + 0.1, 0), fallM);
+        fall.position.set(dx5 * edge, 0.05, dz5 * edge); fall.rotation.y = Math.atan2(dx5, dz5);
+        fall.userData.dynamic = true; G.add(fall);
+        // The stream across the edge to the fall.
+        L(new THREE.BoxGeometry(W5, 0.04, 3.2).translate(0, 0.06, -1.5).rotateY(Math.atan2(dx5, dz5)).translate(dx5 * edge, 0, dz5 * edge), water);
+        const mist: THREE.Mesh[] = [];
+        for (let m5 = 0; m5 < 4; m5++) { const ms = new THREE.Mesh(new THREE.SphereGeometry(0.9 + m5 * 0.2, 10, 8), own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }))); ms.userData.dynamic = true; G.add(ms); mist.push(ms); }
+        townTicks.push(t => { ftex.offset.y = t * 1.6; mist.forEach((ms, m5) => { const ph = (t * 0.35 + m5 / 4) % 1; ms.position.set(dx5 * (edge + 0.6) + Math.sin(m5 * 2) * 0.5, -H5 * 0.55 - ph * 2, dz5 * (edge + 0.6) + Math.cos(m5 * 2) * 0.5); ms.scale.setScalar(0.6 + ph); (ms.material as THREE.MeshBasicMaterial).opacity = 0.35 * (1 - ph); }); });
       }
       // Vines hanging down the district's cliff.
       for (let a = 0; a < outlineD.length; a += 5) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
