@@ -15,6 +15,7 @@ function show(name) {
   screen = name;
   // The tab bar sits under Home and the City; sheets close when the screen changes.
   document.body.classList.toggle("tabs", name === "title" || name === "city");
+  document.body.classList.toggle("inrun", name === "run");
   for (const [id, scr] of [["tabHome", "title"], ["levelsBtn", "city"]]) { const b = $(id); if (b) b.classList.toggle("on", name === scr); }
   for (const id of ["todayPanel", "sheet"]) { const el = $(id); if (el) el.hidden = true; }
   if (name === "title") { const t = $("titleScreen"); if (t) t.classList.remove("launch"); }
@@ -82,6 +83,8 @@ function toast(html, sound) {
   if (!toastBusy) nextToast();
 }
 function nextToast() {
+  // Mid-run, awards wait for the run to end so nothing covers the game.
+  if (toastQueue.length && screen === "run" && run && !run.paused && $("stageCard").hidden && $("runOver").hidden) { toastBusy = true; setTimeout(nextToast, 800); return; }
   const item = toastQueue.shift();
   if (!item) { toastBusy = false; return; }
   toastBusy = true;
@@ -496,17 +499,18 @@ function renderTitle() {
   $("starCount").textContent = t;
   $("playLabel").textContent = "Play";
   const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
-  $("homeBest").textContent = best.toLocaleString();
+  if (typeof homesLit === "function") { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; } else $("homeBest").textContent = best.toLocaleString();
   $("playSub").textContent = "Hold to swing, let go to fly";
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
-  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("dailyRunBtn").textContent = ds ? `Daily ${"★".repeat(ds.stars || 1)}` : "Daily"; }
-  $("hardBtn").textContent = rs.best ? `Endless · ${rs.best.toLocaleString()}` : "Endless";
+  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : typeof stagePerson === "function" ? `${stagePerson(0)[0]} waits` : "Today's stage"; }
+  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.best ? `Best ${rs.best.toLocaleString()}` : "All districts, no end"; }
   const we = weekEvent(), sn = streakNow();
-  $("titleMeta").textContent = `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · ` + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
+  $("titleMeta").textContent = (typeof homesLit === "function" ? `${homesLit()}/${STAGES_N} homes relit · ` : `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · `) + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
   $("playLabel").textContent = "Play";
-  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = `Stage ${n}`; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : n === 1 ? "Hold to swing, let go to fly" : "Tap to play"; }
+  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;
+    const [who, line] = stagePerson(n); $("heroWhere").textContent = `${stageChapter(n)} · Stage ${n}${n % 10 === 0 ? " · Boss" : ""}`; $("heroWho").textContent = stageWaiting(n); $("heroLine").textContent = st ? `“${line}”` : "Their window is still dark. Bring the light home."; }
   if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
   else if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()}`; }
   // The daily gift waits on the Today tab (its dot); nothing pops up over Play.
@@ -706,11 +710,13 @@ function playNow(opts = {}) {
   $("titleScreen").classList.add("launch");
   setTimeout(() => startRun(opts), 230);
 }
-tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageRace.n, { race: stageRace }); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageNext()); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
+tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageRace.n, { race: stageRace }); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } if (typeof startStage === "function") { if (!save.opening && !(stageSave().best[1] && stageSave().best[1].stars) && typeof playOpening === "function") { playOpening(() => { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(1), 200); }); return; } $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageNext()); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
 tap("stagesBtn", () => openSheet("stages"));
 tap("dailyRunBtn", () => { if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); } else playNow({ daily: true }); });
 // Hard mode: one touch and the run is over, but every point counts double.
-tap("hardBtn", () => playNow({}));
+// Endless opens once Downtown is finished: the story comes first.
+function endlessOpen() { return typeof stageSave !== "function" || !!(stageSave().best[10] && stageSave().best[10].stars) || (runSave().best || 0) > 0; }
+tap("hardBtn", () => { if (!endlessOpen()) { toast("Endless opens when Downtown is lit: finish stage 10"); return; } playNow({}); });
 tap("todayBtn", openToday);
 tap("todayClose", () => { $("todayPanel").hidden = true; });
 tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift · <b>+${n}</b> lights`, true); } renderToday2(); if (screen === "title") { const keep = $("todayPanel").hidden; renderTitle(); $("todayPanel").hidden = keep; } });

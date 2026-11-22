@@ -18,9 +18,9 @@ const RUN = {
     { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
-    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `The magnet reaches ${9 + lv * 2} m` : "A stronger magnet power-up" },
+    { id: "magnet", name: "Light magnet", tiers: [40, 90, 160], tip: lv => `Lights fly to you from ${9 + lv * 2} m` },
     { id: "song", name: "Longer power-ups", tiers: [50, 110, 190], tip: lv => `Power-ups last ${100 + lv * 20}% as long` },
-    { id: "heart", name: "Brighter heart", tiers: [120], tip: lv => `Start each run with ${3 + lv} lights of your own` },
+    { id: "heart", name: "Extra heart", tiers: [120], tip: lv => `Start every stage with ${3 + lv} hearts` },
   ],
 };
 const runUpg = id => ((save.run || {}).upg || {})[id] || 0;
@@ -203,6 +203,7 @@ function runHud() {
   if (run.attract) return;
   if (run.stageInfo) { $("runScore").textContent = (run.stageT || 0).toFixed(1); } else $("runScore").textContent = runScore().toLocaleString();
   $("runLights").textContent = `✦ ${run.lights}`;
+  { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; } } } }
   const maxH = Math.max(run.hearts, (run.hard ? 1 : 3 + runUpg("heart")) + (perk(11) ? 1 : 0));
   $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join("");
   const ab = $("abilityBtn"), as = playingAs();
@@ -287,6 +288,8 @@ function runSpawnExtra(at) {
 
 function runMsg(text, sub = "", dur = 2, gold = false) {
   if (run.attract) return;
+  // After the finish, only the celebration speaks.
+  if (run.cleared && !gold) return;
   if (run.msgs.length > 2) run.msgs.splice(1, 1);
   run.msgs.push({ text, sub, t: dur, dur, gold });
 }
@@ -623,6 +626,9 @@ const RUN_WORLDS = [
   { name: "Starline", sky: [[2, 3, 19], [10, 15, 46], [26, 24, 70]], tower: [11, 13, 26], win: [190, 180, 255], neon: [155, 140, 255], neon2: [120, 255, 220], night: 1, stars: 1 },
 ];
 const runWorld = b => RUN_WORLDS[b % RUN_WORLDS.length];
+// Each district has its own hour of the night, and the Tower climbs toward dawn (stage 60 is sunrise).
+// (The swing view reads the worlds in reverse, hence 7 - index.)
+const stageSky = si => 7 - (si.daily ? [6, 5, 4, 7, 3][dayNumber() % 5] : si.n === 60 ? 2 : si.n > 55 ? 3 : [6, 3, 5, 4, 7, 7][Math.min(5, Math.floor((si.n - 1) / 10))]);
 // Buildings along each side: the passage edge, held level for each block, so the walls step like towers.
 const BLOCK = 92;
 const blockEdge = (k, side) => { const a = k * BLOCK + BLOCK / 2, r = seeded(k * 7 + (side > 0 ? 3 : 0)); return caveMid(a) + side * (caveHalf(a, run ? run.dist : 0) + r() * 10); };
@@ -633,7 +639,7 @@ function runDraw(ctx, W, H) {
   const zoom = 1 - Math.min(0.1, (R.speed - 200) / 2000), S = W / 400 * zoom;
   const LY = H / S * (0.7 + Math.min(0.05, (R.speed - 200) / 4000));
   const shake = R.shake > 0 ? R.shake * 6 : 0, camX = R.camX || 0;
-  const m = R.dist / RUN.M, b = R.stageInfo ? Math.floor((R.stageInfo.daily ? dayNumber() : R.stageInfo.n - 1) / 2) % 8 : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
+  const m = R.dist / RUN.M, b = R.stageInfo ? stageSky(R.stageInfo) : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const wb = R.mode3 ? 7 - (b % 8) : b, wb2 = R.mode3 ? 7 - ((b + 1) % 8) : b + 1;
   const w1 = runWorld(wb), w2 = runWorld(wb2), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
@@ -1024,8 +1030,10 @@ function runDraw(ctx, W, H) {
   // The world's name as you enter it; mission messages.
   if (R.banner > 0 && !R.attract) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? runnerTheme(0).name.toUpperCase() : R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
-    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08); ctx.globalAlpha = 1;
+    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (typeof stageChapter === "function" && !R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : R.mode3 ? runWorld(7 - (R.biome % 8)).name.toUpperCase() : `DISTRICT ${R.biome + 1}`).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
+    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : R.mode3 ? runnerTheme(R.biome * RUN.BIOME_M).name : runWorld(R.biome).name, W / 2, H * 0.26 + W * 0.08);
+    if (R.stageInfo && typeof stagePerson === "function") { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); }
+    ctx.globalAlpha = 1;
   }
 
 }
@@ -1080,7 +1088,17 @@ function runLoop(now) {
   document.addEventListener("visibilitychange", () => { if (document.hidden) { downs.clear(); if (run && run.mode3) swingHold(false); p = null; } });
   window.addEventListener("keydown", e => { if (screen !== "run") return; if (e.key === " ") { e.preventDefault(); if (run && run.mode3) runnerSwipe("up"); else runSing(); } if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") { e.preventDefault(); runDash(); } });
 }
-document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; $("runPause").hidden = false; musicStop(); });
+// The pause card: who is waiting, and how each star is going so far.
+function runPauseInfo() {
+  const R = run, who = $("pzWho"), ul = $("pzGoals"); if (!who || !ul) return;
+  if (!R || !R.stageInfo || typeof stagePerson !== "function") { who.textContent = ""; ul.innerHTML = ""; return; }
+  const tot = Math.max(1, R.motesTotal), share = R.motesGot / tot, par = R.stageInfo.par, pct = Math.max(0, Math.min(100, Math.floor(R.px / R.stageLen * 100)));
+  who.textContent = `${stageWaiting(R.stageInfo.n)} · ${pct}% of the way`;
+  const g = (stars, text, now, ok, alive = true) => `<li class="${ok ? "ok" : alive ? "" : "no"}"><b>${stars}</b><span>${text}</span><em>${now}</em></li>`;
+  ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch half the lights", `${Math.round(share * 100)}%`, share >= 0.5) +
+    g("★★★", `80% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
+}
+document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
@@ -1142,10 +1160,11 @@ function runBuy(id) {
   save.glow -= cost; r.upg[u.id] = lv + 1; persist(); sfx.unlock(); buzz(20); return true;
 }
 function runShopHtml() {
+  const icons = { magnet: "🧲", song: "⏳", heart: "❤" };
   return RUN.upgrades.map(u => {
     const lv = runUpg(u.id), next = u.tiers[lv], afford = next != null && (save.glow || 0) >= next;
-    return `<li><span><b>${u.name}</b> ${"◆".repeat(lv)}${"◇".repeat(u.tiers.length - lv)}<small>${u.tip(lv)}</small></span>` +
-      (next == null ? `<em>Best</em>` : `<button data-run="${u.id}" ${afford ? "" : "disabled"}>✦ ${next}</button>`) + "</li>";
+    return `<li class="shop-upg"><span class="ui">${icons[u.id] || "✦"}</span><span><b>${u.name}</b><small>${u.tip(lv)}${next != null ? ` → <b>${u.tip(lv + 1).replace(/^.*?(\d+[^ ]*).*$/, "$1")}</b>` : ""}</small><span class="lv">${u.tiers.map((_, q) => `<i class="${q < lv ? "on" : ""}"></i>`).join("")}</span></span>` +
+      (next == null ? `<em>Maxed</em>` : `<button data-run="${u.id}" ${afford ? "" : "disabled"}>✦ ${next}</button>`) + "</li>";
   }).join("");
 }
 function runShop() {
@@ -1155,5 +1174,5 @@ function runShop() {
 
 // Leaving the app mid-run pauses it.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; $("runPause").hidden = false; musicStop(); }
+  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
 });

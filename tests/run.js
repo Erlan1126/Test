@@ -557,18 +557,35 @@ const SIM = `
       { const R = run; const a = { x: R.px + 5, y: R.py + 8, kind: "lamp", id: 7777 }; R.teth = a; const [lo, hi, v] = perfectWindow(R); const ang = (hi + 8) * Math.PI / 180, sp = v + 2; R.vx = Math.cos(ang) * sp; R.vy = Math.sin(ang) * sp; const l1 = R.lights, p1 = R.perfects; swingHold(false); out.aNearMissReleaseIsStillGood = R.lights === l1 + 1 && R.perfects === p1; }
       save.look = null; stageSave().best = {}; for (let n = 1; n <= 6; n++) stageSave().best[n] = { stars: 1, time: 30 }; starRewards(); out.starsUnlockLooks = runnerLook().own.s1 === 1;
       startStage(7); out.windStagesHaveGusts = run.stageInfo.wind && run.winds.length > 0; { const R = run, w = R.winds[0]; R.teth = null; R.hold = false; R.roof = null; R.blds.length = 0; R.px = (w.x0 + w.x1) / 2; R.py = 30; R.vx = 10; R.vy = 0; R.inv = 1; for (let q = 0; q < 30; q++) runUpdate(1 / 60); out.windPushesYou = Math.sign(R.vx - 10 + (w.f < 0 ? 0 : 0)) === Math.sign(w.f) || Math.abs(R.vx - 10) > 1; }
+      stageSave().unlocked = 60; startStage(21); { const R = run; R.blds.length = 0; R.teth = null; R.hold = false; R.roof = null; R.inv = 0; R.streetT = 0; R.power = null; R.py = 0.6; R.vy = -8; const h0 = R.hearts; for (let q = 0; q < 3; q++) runUpdate(1 / 60); out.theHarbourSplashesInsteadOfHurting = runnerTheme(R.px).water && R.hearts === h0 && !!R.splash; }
+      { let done = false; save.opening = 0; playOpening(() => { done = true; }); const shown = !$("opening").hidden; $("opSkip").click(); out.theOpeningPlaysAndCanBeSkipped = shown && done && $("opening").hidden && save.opening === 1; }
       // Audit fixes: a cleared stage can't be failed; dying at the finish isn't a clear; one render loop; a release while paused counts.
       startStage(1); { const R = run; R.cleared = true; R.inv = 0; R.hearts = 1; swingHit(R, "test"); out.aClearedStageCantBeHit = R.hearts === 1 && !R.failed; }
       startStage(5); { const R = run; R.over = 0.001; R.px = R.stageLen + 1; R.inv = 1; runUpdate(1 / 60); out.dyingAtTheFinishIsNotAClear = !R.cleared; }
       startStage(1); startStage(1); out.retryingKeepsOneRenderLoop = runLoop.on === true;
       startStage(1); { const R = run; swingHold(true); R.paused = true; swingHold(false); R.paused = false; out.aReleaseWhilePausedCounts = R.hold === false; }
       startStage(3); run.inv = 0; run.hearts = 1; runHit(); out.theLastHeartShattersTheFigure = Array.isArray(run.shatter) && run.shatter.length > 10;
-            openSheet("stages"); out.theStageMapShowsSixtyStages = document.querySelectorAll("#shopList .st").length === 60 && document.querySelectorAll("#shopList .st.boss").length === 6;
+            openSheet("stages"); out.theCityMapShowsSixtyHomes = document.querySelectorAll("#shopList .bld").length === 60 && document.querySelectorAll("#shopList .bld.boss").length === 6 && document.querySelectorAll("#shopList .district").length === 6;
+            { const nb = document.querySelector("#shopList .bld:not([disabled])"); nb.click(); out.tappingAHomeShowsWhoLivesThere = document.querySelector("#shopList .map-pick").textContent.includes(stagePerson(Number(nb.dataset.pick))[0]); }
       document.getElementById("sheet").hidden = true; run = null;
       return out;
     });
     for (const [k, v] of Object.entries(r)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     check("no page errors", errors.length === 0, errors[0]);
+    // The people: every stage has someone waiting; clearing it brings them light.
+    {
+      const pr = await page.evaluate(async () => {
+        const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]);
+        stageSave().unlocked = 60; startStage(4); const R = run; R.inv = 9; R.px = R.stageLen + 0.5; runUpdate(1 / 60);
+        await new Promise(r => setTimeout(r, 1500));
+        o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
+        o.homesLitCountsClearedStages = homesLit() >= 1;
+        run = null; showTitle(); o.homeShowsHomesRelit = $("homeBest").textContent === String(homesLit()) && $("tileCity").textContent.includes("/60");
+        o.dailyHasANamedNeighbour = stagePerson(0)[0] && stagePerson(0)[0] !== "A stranger";
+        return o;
+      });
+      for (const [k, v] of Object.entries(pr)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    }
     // Progress survives a reload (the swing game's saves used to be dropped by the loader).
     await page.evaluate(() => { stageSave().unlocked = 7; save.city = { lit: 12 }; persist(); });
     await page.reload(); await page.waitForTimeout(800);

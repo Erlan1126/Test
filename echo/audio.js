@@ -290,6 +290,8 @@ sfx.caught = () => {
   note(80, { dur: 0.5, vol: 0.18, glide: 40, echo: 0.3, attack: 0.005 });
 };
 // A pebble: a soft toss, then a bright clatter where it lands.
+// Reeling in: a soft tick that climbs as the rope gets shorter.
+sfx.reel = (k = 0) => note(520 + k * 520, { dur: 0.045, vol: 0.022, type: "triangle", attack: 0.004 });
 sfx.toss = () => noise({ freq: 1800, glide: 900, q: 1, dur: 0.18, attack: 0.02, vol: 0.03 });
 sfx.clatter = (dx = 0) => { for (let k = 0; k < 4; k++) note(1700 + Math.random() * 900, { at: k * 0.06 + Math.random() * 0.03, dur: 0.06, vol: 0.06 - k * 0.012, type: "square", lowpass: 4200, echo: 0.8, pan: dx / 4 }); };
 // A Lurker's eye opening on you: a low, wet creak.
