@@ -29,6 +29,7 @@ import { t } from "../i18n";
 import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
+import { kitVersion } from "./kitmodels";
 import { buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
@@ -863,7 +864,7 @@ export class Renderer3D {
     const lots = f.bizLots ?? [];
     const look = lookFor(f.skin, "normal"), th = f.theme;
     const style: BizStyle = { lawn: th.lawn, rock: th.rockL, dirt: th.dirtL, plaza: th.plaza, road: th.road, leaf: th.leaf[0], trunk: th.trunk, tree: th.tree, glass: look.glass, lit: look.lit[0] ?? "#ffd99a" };
-    const styleKey = `${th.id}|${f.skin.id}`;
+    const styleKey = `${th.id}|${f.skin.id}|${kitVersion()}`;
     if (lots !== this.bizIn || styleKey !== this.bizStyleKey || f.bizCafe !== this.bizCafeIn) {
       this.bizIn = lots;
       this.bizCafeIn = f.bizCafe;
