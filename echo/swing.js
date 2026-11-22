@@ -136,6 +136,8 @@ function swingGen(R, toX) {
     if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: R.anchors.length + 9000, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
     if (pad && !tree) b.pad = true;
     if (R.stageInfo && R.stageInfo.tower && b.x0 > 40 && b.x0 < R.stageLen && r() < 0.35) R.updrafts.push({ x0: b.x1 + 0.5, x1: b.x1 + 6, f: 34 });
+    // Leave the plot past the finish free for the home of the person who's waiting.
+    if (R.stageLen && b.x1 > R.stageLen + 1 && b.x0 < R.stageLen + 17) { R.genX = Math.max(R.genX + 1, R.stageLen + 18); continue; }
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
     if (prev && (R.stageLen ? hard > 0.04 && x0 > 50 && x0 < R.stageLen : x0 > 250) && r() < 0.14 + hard * 0.22 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });

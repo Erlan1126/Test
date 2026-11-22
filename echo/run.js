@@ -127,7 +127,7 @@ function runHit() {
   if (run.hearts <= 0) { if (!run.hard && run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
 function runMission(kind, value) {
-  if (run.attract) return;
+  if (run.attract || run.cleared) return;
   const r = save.run;
   for (const m of r.missions) {
     const def = RUN.missions[m.k];

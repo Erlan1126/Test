@@ -93,7 +93,7 @@ function startStage(n, opts = {}) {
   startRun({ stage: n, ghost: race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
 }
 function stageClear(R) {
-  R.cleared = true; R.clearAt = R.t; R.inv = 9; R.slowT = 0.6; R.fireworks.push({ t: 0, seed: Math.random() }, { t: -0.4, seed: Math.random() });
+  R.cleared = true; R.msgs.length = 0; R.clearAt = R.t; R.clearFrom = { x: R.px, y: R.py + 1.2 }; R.inv = 9; R.slowT = 0.6; R.fireworks.push({ t: 0, seed: Math.random() }, { t: -0.4, seed: Math.random() });
   const total = Math.max(1, R.motesTotal), share = R.motesGot / total, time = R.stageT;
   const stars = 1 + (share >= 0.5 ? 1 : 0) + (share >= 0.8 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
   R.stageStars = stars; R.stageTime = time;
