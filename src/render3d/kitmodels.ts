@@ -23,6 +23,8 @@ function prep(root: THREE.Object3D): void {
       for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) f[i * a.itemSize + k] = a.getComponent(i, k);
       geo.setAttribute(name, new THREE.BufferAttribute(f, a.itemSize));
     }
+    // (Some files carry no normals: give them crisp, flat-shaded ones.)
+    if (!m.geometry.attributes.normal) { const flat = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry; flat.computeVertexNormals(); m.geometry = flat; }
     const src = m.material as THREE.Material & { color?: THREE.Color; map?: THREE.Texture | null };
     // (Colours painted per vertex become the material's own colour, their average: the town's
     // batching keeps one colour per material.)

@@ -656,6 +656,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const blob = (x: number, z: number, r: number, y = 0.2) => { blobGeos.push(new THREE.PlaneGeometry(r * 2, r * 2).rotateX(-Math.PI / 2).translate(x + r * 0.18, y + 0.012, z + r * 0.12)); };
   const tree = (x: number, z: number, s = 1, y = 0.2) => {
     blob(x, z, 0.62 * s, y);
+    // (From the model kit once it's loaded: palms, pines or round leafy trees.)
+    const tk = Math.abs(Math.round(x * 7 + z * 13));
+    const kt = kitPlace(st.tree === "palm" ? "tree_palm" : st.tree === "pine" ? "tree_pine" : ["tree_oak", "tree_fat", "tree_oak", "tree_autumn", "tree_dark", "tree_pine_tall"][tk % 6], 1.0 * s, 1.1);
+    if (kt) { kt.obj.position.set(x, y, z); kt.obj.rotation.y = tk; g.add(kt.obj); return; }
     add(new THREE.CylinderGeometry(0.06 * s, 0.1 * s, 0.6 * s, 6).translate(x, y + 0.3 * s, z), trunk);
     if (st.tree === "palm") for (let k = 0; k < 5; k++) add(new THREE.BoxGeometry(0.8 * s, 0.05, 0.2 * s).translate(0.35 * s, 0, 0).rotateZ(-0.35).rotateY((k / 5) * Math.PI * 2).translate(x, y + 0.65 * s, z), leaf);
     else add(st.tree === "pine" ? new THREE.ConeGeometry(0.5 * s, 1.3 * s, 7).translate(x, y + 0.6 * s + 0.65 * s, z) : new THREE.IcosahedronGeometry(0.5 * s, 0).translate(x, y + 0.6 * s + 0.4 * s, z), leaf);
@@ -1609,10 +1613,41 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const propLv = (key: string) => Math.max(1, Math.min(5, cafe.props?.[key] ?? 1));
   /** A property at its level: little homes or a corner shop, then flats getting taller, then
    *  glass towers. One that was just upgraded grows up out of the ground. */
+  /** A building from the model kit on a lot (once the kit is loaded), sized by level: a
+   *  house at first, then an office block, then a skyscraper. Its height, or null. */
+  const KIT_LOTS = [
+    ["tt_house", "tt_house_2", "tt_house_3", "tt_bungalow", "tt_semi_detached", "building_small_a", "building_small_b", "building_small_c", "building_small_d"],
+    ["tt_terraced_house", "tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy", "tt_apartment_3", "building_small_b", "building_small_c"],
+    ["tt_apartment", "tt_apartment_2", "tt_hotel", "tt_bank", "tt_library", "tt_school", "tt_town_hall", "tt_church", "building_a", "building_c", "building_e", "building_g"],
+    ["tt_office", "tt_tower_block", "building_b", "building_d", "building_f", "building_h", "skyscraper_a"],
+    ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_office", "tt_tower_block"],
+  ];
+  const kitBuilding = (lg: THREE.Group, seed: number, level: number): number | null => {
+    const sv = Math.abs(seed) >>> 0;
+    const pool = KIT_LOTS[Math.max(1, Math.min(5, level)) - 1], name = pool[sv % pool.length];
+    const sky = name.startsWith("skyscraper") || name === "tt_tower_block" || name === "tt_office";
+    const kp = kitPlace(name, level <= 2 ? 2.8 + level * 0.2 : sky ? 2.7 : 3.3, sky ? 1 + Math.max(0, level - 4) * 0.3 : 1);
+    if (!kp) return null;
+    const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
+    K(roundSlab(4.2, 4.2, 1.6, 0.06), level <= 2 ? grass2 : plazaM);
+    K(new THREE.BoxGeometry(4.0, 0.03, 0.8).translate(0, 0.07, 1.6), pave);
+    if (level <= 2) {
+      // A garden: a tree, bushes and flowers from the nature kit.
+      const put = (nm: string, w: number, x: number, z: number, ry = 0) => { const o = kitPlace(nm, w); if (o) { o.obj.position.set(x, 0.06, z); o.obj.rotation.y = ry; lg.add(o.obj); } };
+      put(["tree_oak", "tree_fat", "tree_autumn", "tree_pine"][sv % 4], 1.1, sv % 2 ? -1.55 : 1.55, -1.5, sv);
+      put("bush", 0.5, sv % 2 ? 1.6 : -1.6, -1.2); put("bush_large", 0.6, sv % 2 ? 1.55 : -1.55, 0.6);
+      for (let f = 0; f < 3; f++) put("flower_red", 0.22, -0.6 + f * 0.6, 1.15, f);
+    }
+    else for (const tx of [-1.6, 1.6]) { K(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 10).translate(tx, 0.1, 1.6), stone); K(new THREE.IcosahedronGeometry(0.24, 0).translate(tx, 0.38, 1.6), leaf); }
+    kp.obj.rotation.y = level <= 2 ? 0 : ((sv >> 3) % 4) * (Math.PI / 2);
+    kp.obj.position.set(0, 0.06, level <= 2 ? -0.2 : 0);
+    lg.add(kp.obj);
+    return kp.h + 0.1;
+  };
   const propBuilding = (lg: THREE.Group, seed: number, level: number, key: string): number => {
     // (Every property has a design of its own for every size: see propgen.ts.)
     let hsh = 0; for (const ch of key) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
-    const top = genBuilding(lg, hsh + seed, level, genKit);
+    const top = kitBuilding(lg, hsh + seed, level) ?? genBuilding(lg, hsh + seed, level, genKit);
     if (landBuiltOnce && (propsSeen[key] ?? 1) < level) {
       lg.userData.dynamic = true;
       const t0 = performance.now() + 250;
@@ -1634,6 +1669,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const ROOF = ["#d9534a", "#5a6fd0", "#e07a9a", "#4f9a5a", "#b8683a", "#7a5ad0"];
   const BRICK = ["#c9775a", "#d89a6a", "#b5655a", "#e0b48a", "#9a7ad0", "#6a9ad0"];
   const neighborhood = (G: THREE.Group, i: number, tall = 0): number => {
+    const kb = kitBuilding(G, i * 31 + 7, tall ? 3 : 1 + (i % 3 === 2 ? 2 : 0));
+    if (kb !== null) return kb;
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => G.add(new THREE.Mesh(geo, m));
     const r = (k: number) => ((i * 7 + k * 13) % 6);
     // Ground: a small front lawn and a paved yard.
@@ -2110,8 +2147,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     terrace: cafe.terrace, done: cafe.done ?? [], offered: !!cafe.offered,
   });
   let coffeeSale = 0;
+  const KIT_CARS = ["sedan", "taxi", "suv", "van", "hatchback_sports", "police_car", "delivery_van", "sedan", "taxi"];
+  let carN = 0;
   const makeCar = (c: string, van: boolean) => {
     const v = new THREE.Group();
+    const kc = kitPlace(KIT_CARS[carN++ % KIT_CARS.length], van ? 1.0 : 0.92);
+    if (kc) { v.add(kc.obj); life.add(v); return v; }
     v.add(new THREE.Mesh(carGeo(c, van), carM));
     life.add(v);
     return v;
@@ -2856,7 +2897,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         // skyscraper from the city kit on a paved plaza with a strip of lawn.
         const key = `d${k}:${i},${j}`, lv = Math.min(5, propLv(key) + 2);
         const sky = lv >= 4 || n % 3 === 0;
-        const kp = kitPlace(sky ? ["skyscraper_a", "skyscraper_b", "skyscraper_c"][n % 3] : `building_${"abcdefgh"[(n * 5) % 8]}`, sky ? 2.9 : 3.3, 1 + (lv - 3) * 0.18);
+        const kp = kitPlace(sky ? ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_office", "tt_tower_block"][n % 5] : [`building_${"abcdefgh"[(n * 5) % 8]}`, "tt_hotel", "tt_bank", "tt_apartment_2"][n % 4 === 3 ? 1 + (n >> 2) % 3 : 0], sky ? 2.9 : 3.3, 1 + (lv - 3) * 0.18);
         if (kp) {
           P(roundSlab(4.2, 4.2, 1.6, 0.06), plazaM);
           P(new THREE.BoxGeometry(3.9, 0.05, 0.5).translate(0, 0.07, 1.75), grass);
@@ -3006,8 +3047,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const glowS = theme === "crystal" || theme === "orbit" ? own(std(theme === "orbit" ? "#5ae0ff" : "#b9a0ff", { roughness: 0.2, emissive: new THREE.Color(theme === "orbit" ? "#5ae0ff" : "#9a7aff"), emissiveIntensity: 0.7, flatShading: true })) : null;
       const pine = mats.c("#2f7a45", 0.8);
       // (Downtown's street trees from the model kit, when it's loaded.)
-      const kitTree = (tx: number, y: number, tz: number, v: number): boolean => {
-        const kt = kitPlace(v % 2 ? "tree_fat" : "tree_oak", 0.75);
+      const kitTree = (tx: number, y: number, tz: number, v: number, name = v % 2 ? "tree_fat" : "tree_oak"): boolean => {
+        const kt = kitPlace(name, name === "tree_palm" ? 0.9 : 0.75, name === "tree_palm" ? 1.2 : 1);
         if (!kt) return false;
         kt.obj.position.set(tx, y, tz); kt.obj.rotation.y = v;
         sideG.add(kt.obj);
@@ -3017,7 +3058,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         const { x, z } = cellC(i, j), w = 2.36;
         for (const [ox, oz] of [[-w, -1.25], [-w, 1.25], [w, -1.25], [w, 1.25], [-1.25, -w], [1.25, -w], [-1.25, w], [1.25, w]]) {
           const tx = x + ox, tz = z + oz, v = (i * 7 + j * 3 + Math.round(ox * 5 + oz * 3)) & 3, Y0 = 0.18;
-          if (id === "meadow") {
+          if (id === "meadow" && kitTree(tx, Y0, tz, v, "tree_palm")) {
+            // (a kit palm)
+          } else if (id === "lakeside" && kitTree(tx, Y0, tz, v, v === 3 ? "tree_pine" : v % 2 ? "tree_fat" : "tree_oak")) {
+            // (a kit tree)
+          } else if (id === "meadow") {
             S2(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 5).translate(tx, Y0 + 0.5, tz), trunk);
             for (let f = 0; f < 5; f++) S2(new THREE.BoxGeometry(0.55, 0.03, 0.13).translate(0.24, 0, 0).rotateZ(-0.4).rotateY((f / 5) * Math.PI * 2 + v).translate(tx, Y0 + 1.0, tz), leaf);
           } else if (id === "lakeside") {
