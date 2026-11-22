@@ -3323,7 +3323,8 @@ body.tabs-open .modal.tab-page > .sheet { height: 100%; max-height: none !import
 body.tabs-open .modal.tab-page > .sheet::before { display: none; }
 @keyframes tab-in { from { transform: translateY(14px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
 /* The tab bar closes pages: no close buttons needed on them. */
-body.tabs-open .modal.tab-page .close-btn { display: none !important; }
+/* (A small close button stays, so every page has a clear way back to town.) */
+body.tabs-open .modal.tab-page .close-btn { opacity: 0.85; }
 /* The Company page: cash is already in the top bar. */
 body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-open #tycoon .ty-top { display: none !important; }
 /* Page chips (Goals | Sky Pass, Profile | Ranks | Sky City | Settings). */
@@ -4105,3 +4106,14 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-card.card-swap > * { animation: card-swap 0.28s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes card-swap { from { opacity: 0; transform: translateX(14px); } }
 @media (prefers-reduced-motion: reduce) { #tcy-card.card-swap > * { animation: none; } }
+
+
+/* A tapped business: its bubble opens into a pill in its own colors with its name. */
+#tcy-labels .tag.bub.sel:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) { background: linear-gradient(135deg, var(--b1), var(--b2)); color: #fff; padding-right: 12px !important; }
+#tcy-labels .tag.bub.sel:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) b { color: #fff; }
+/* The HQ to build, under the Buy button on a business card. */
+#tycity .card-hq { display: flex; align-items: center; gap: 8px; width: 100%; margin: 8px 0 2px; padding: 9px 12px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #8a6cff, #6a3cff); color: #fff; font: 400 13px var(--display); text-align: left; box-shadow: 0 4px 10px rgba(80, 40, 200, 0.3); }
+#tycity .card-hq b { flex: 1; font-weight: 400; }
+#tycity .card-hq small { font: 700 11px sans-serif; opacity: 0.9; }
+#tycity .card-perk { margin: -2px 0 8px; font-size: 12px; font-weight: 800; color: #13924f; }
+#tycity .card-main.short { filter: grayscale(0.5); opacity: 0.75; }

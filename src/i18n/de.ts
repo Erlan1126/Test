@@ -1835,4 +1835,8 @@ export const DE: Record<string, string> = {
   "The edge of space: glass domes, a launch pad and a rocket ready to go": "Am Rand des Alls: Glaskuppeln, eine Startrampe und eine startbereite Rakete",
   "Grow a building in town": "Lass ein Gebäude wachsen",
   "{tier} → {next} · {n}": "{tier} → {next} · {n}",
+  "Every level: +{pct}% to every business, for good": "Jede Stufe: +{pct} % für jedes Geschäft, für immer",
+  "A new island is for sale!": "Eine neue Insel ist zu verkaufen!",
+  "Save for {name}": "Spare für {name}",
+  "Buy this island": "Diese Insel kaufen",
 };

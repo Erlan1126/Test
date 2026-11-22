@@ -11,6 +11,7 @@ import { buildBlock, type BizBlock } from "./block";
 import { townFx, type TownLook } from "./shaders";
 import { buildModel, buildStreetFront, buildTerrace, type ModelMats } from "./bizmodels";
 import { LAND, type LandId } from "../data/land";
+import { genBuilding, type GenKit } from "./propgen";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -1370,15 +1371,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
    *  and how tall it is, for the rent bubbles over them. */
   const homeSpots: { x: number; z: number; top: number; key: string; y: number }[] = [];
   const homeAt = (x: number, z: number, top: number, key = "", y = 0) => { homeSpots.push({ x, z, top: top + 0.2, key, y }); };
+  const genKit: GenKit = { mats, lawn: grass2, pave, metal, slab: roundSlab };
   const propLv = (key: string) => Math.max(1, Math.min(5, cafe.props?.[key] ?? 1));
   /** A property at its level: little homes or a corner shop, then flats getting taller, then
    *  glass towers. One that was just upgraded grows up out of the ground. */
   const propBuilding = (lg: THREE.Group, seed: number, level: number, key: string): number => {
-    const top = level <= 1 ? neighborhood(lg, seed * 3 + (seed % 2 ? 0 : 2))
-      : level === 2 ? neighborhood(lg, seed, 3)
-      : level === 3 ? neighborhood(lg, seed, 5)
-      : level === 4 ? (seed % 2 ? neighborhood(lg, seed, 8) : neighborhood(lg, seed, -7))
-      : neighborhood(lg, seed, -(11 + (seed % 3)));
+    // (Every property has a design of its own for every size: see propgen.ts.)
+    let hsh = 0; for (const ch of key) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+    const top = genBuilding(lg, hsh + seed, level, genKit);
     if (landBuiltOnce && (propsSeen[key] ?? 1) < level) {
       lg.userData.dynamic = true;
       const t0 = performance.now() + 250;
