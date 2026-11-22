@@ -1573,6 +1573,7 @@ export const FR: Record<string, string> = {
   "A little tram starts running round the streets": "Un petit tramway se met à rouler dans les rues",
   "Glowing billboards light up the corners": "Des panneaux lumineux éclairent les coins de rue",
   "Airships float over the island": "Des dirigeables flottent au-dessus de l'île",
+  "Why? It's in the {land}: buy the {land} first.": "Pourquoi ? C'est dans {land} : achète d'abord {land}.",
   "Town Hall": "Hôtel de ville",
   "Chapter done!": "Chapitre terminé !",
   "A superyacht anchors in the bay": "Un superyacht jette l'ancre dans la baie",

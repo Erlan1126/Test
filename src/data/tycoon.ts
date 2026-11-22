@@ -1,3 +1,4 @@
+import { LAND, type LandId } from "./land";
 // Skyhaven Tycoon: the businesses of the sky city. Each one earns coins every cycle; buying
 // levels raises what it earns, every few milestones it runs twice as fast, a manager runs it
 // on its own (even while the game is closed), and a "New Era" resets the businesses for Sky
@@ -20,6 +21,8 @@ export interface Business {
   cycle: number;
   /** What a manager costs. */
   manager: number;
+  /** The district it stands in (data/land.ts); none: the town. */
+  land?: LandId;
 }
 
 export const BUSINESSES: Business[] = [
@@ -33,7 +36,41 @@ export const BUSINESSES: Business[] = [
   { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 4e9, growth: 1.1, income: 6e6, cycle: 384, manager: 1.6e10 },
   { id: "casino", name: "Starlight Stage", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1.5e11, growth: 1.1, income: 5.2e7, cycle: 768, manager: 6e11 },
   { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 6e12, growth: 1.09, income: 4.5e8, cycle: 1536, manager: 2.4e13 },
+  ...districtBusinesses(),
 ];
+
+/** Each district's own six businesses, opened one after another once the district is bought:
+ *  priced from the district's price, each about 14 times the one before, earning like a town
+ *  business of the same price (the same curve of income and cycle time). */
+function districtBusinesses(): Business[] {
+  const D: [LandId, [string, string, string, string][]][] = [
+    ["meadow", [["fishmarket", "Fish Market", "dish", "#7fd3ff"], ["surfshop", "Surf Shop", "sun", "#ffb13b"], ["boattours", "Boat Tours", "flag", "#4f8bff"], ["seafood", "Seafood Grill", "fire", "#ff8a5c"], ["marina", "Marina Club", "star", "#3ac0c0"], ["cruise", "Cruise Terminal", "globe", "#2f6fff"]]],
+    ["lakeside", [["icecream", "Ice Cream Parlor", "gift", "#ff9ac8"], ["toystore", "Toy Store", "balloon", "#ffd23a"], ["gardencenter", "Garden Center", "leaf", "#5ee0a0"], ["pettingzoo", "Petting Zoo", "home", "#c89a5a"], ["themepark", "Theme Park", "star", "#ff5f8b"], ["golfclub", "Golf Club", "flag", "#19a87a"]]],
+    ["hills", [["boutique", "Fashion Boutique", "gift", "#e8457a"], ["gym", "City Gym", "fire", "#ff8a3b"], ["startup", "Tech Startup", "sparkle", "#6a3cff"], ["bank", "Grand Bank", "gem", "#e8b020"], ["exchange", "Stock Exchange", "building", "#3a8dff"], ["tvstudio", "TV Studio", "film", "#b48cff"]]],
+    ["cloud", [["cloudspa", "Cloud Spa", "cloud", "#bfe6ff"], ["royalbakery", "Royal Bakery", "sun", "#ffe27a"], ["skyopera", "Sky Opera", "star", "#d9ccff"], ["palacehotel", "Palace Hotel", "building", "#ffd86a"], ["goldexchange", "Gold Exchange", "gem", "#e8b020"], ["royalball", "Royal Ball", "sparkle", "#ff9ac8"]]],
+    ["crystal", [["gemshop", "Gem Shop", "gem", "#b48cff"], ["crystalcafe", "Crystal Café", "coffee", "#8af0ff"], ["lightshow", "Light Show", "sparkle", "#ff8ae0"], ["jewelry", "Jewelry House", "gem", "#7ad0ff"], ["crystallab", "Crystal Lab", "globe", "#9a7aff"], ["prismtower", "Prism Tower", "building", "#c8a8ff"]]],
+    ["orbit", [["spacediner", "Space Diner", "dish", "#5ae0ff"], ["zerogym", "Zero-G Gym", "fire", "#8a96ff"], ["satellite", "Satellite Co.", "globe", "#3a8dff"], ["moontours", "Moon Tours", "rocket", "#c8d0e4"], ["rocketworks", "Rocket Works", "rocket", "#ff5f6d"], ["starport", "Star Port", "star", "#ffd23f"]]],
+  ];
+  // The town's curve: price to income and to cycle, read off between the town's businesses.
+  const TOWN: [number, number, number][] = [[10, 1, 3], [100, 12, 6], [1200, 110, 12], [14000, 1000, 24], [170000, 9000, 48], [4e6, 80000, 96], [1.2e8, 7e5, 192], [4e9, 6e6, 384], [1.5e11, 5.2e7, 768], [6e12, 4.5e8, 1536]];
+  const along = (cost: number): [number, number] => {
+    const lc = Math.log10(cost);
+    let a = TOWN[0], b = TOWN[1];
+    for (let i = 0; i < TOWN.length - 1; i++) { a = TOWN[i]; b = TOWN[i + 1]; if (lc <= Math.log10(b[0])) break; }
+    const f = (lc - Math.log10(a[0])) / (Math.log10(b[0]) - Math.log10(a[0]));
+    return [10 ** (Math.log10(a[1]) + f * (Math.log10(b[1]) - Math.log10(a[1]))), 10 ** (Math.log10(a[2]) + f * (Math.log10(b[2]) - Math.log10(a[2])))];
+  };
+  const dark = (hex: string) => { const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255, k = 0.72; return "#" + [r, g, b].map(v => Math.round(v * k).toString(16).padStart(2, "0")).join(""); };
+  const out: Business[] = [];
+  for (const [land, list] of D) {
+    const base = (LAND.find(l => l.id === land)?.min ?? 1e6) * 0.3;
+    list.forEach(([id, name, icon, c], j) => {
+      const cost = Math.round(base * 14 ** j), [income, cycle] = along(cost);
+      out.push({ id, name, icon, color: [c, dark(c)], cost, growth: 1.1, income: Math.round(income), cycle: Math.round(cycle), manager: Math.round(cost * 4), land });
+    });
+  }
+  return out;
+}
 
 /** Level milestones: reaching each one makes a business run twice as fast. */
 export const MILESTONES_AT = [10, 25, 50, 100, 150, 200, 300, 400, 500, 600, 800, 1000];
@@ -75,7 +112,8 @@ export function amount(n: number): string {
  *  richer room. */
 export const STAGE_AT = [1, 25, 100, 200, 400];
 export const STAGE_LABEL = ["Stand", "Shop", "Store", "Flagship", "Empire"];
-export const STAGE_NAMES: Record<string, string[]> = {
+export const STAGE_NAMES: Record<string, string[]> = new Proxy({
+
   coffee: ["Coffee Cart", "Coffee Shop", "Corner Café", "Coffee House", "Coffee Empire"],
   flowers: ["Flower Kiosk", "Flower Shop", "Garden Boutique", "Botanical Hall", "Bloom Empire"],
   bakery: ["Cloud Bakery", "Bakery Shop", "Patisserie", "Grand Bakery", "Pastry Empire"],
@@ -86,7 +124,10 @@ export const STAGE_NAMES: Record<string, string[]> = {
   airport: ["Airship Port", "Airfield", "Sky Airport", "Air Hub", "Sky Gateway"],
   casino: ["Starlight Stage", "Concert Hall", "Starlight Arena", "Arena Resort", "Arena Empire"],
   spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate"],
-};
+} as Record<string, string[]>, {
+  // (The districts' businesses: their name, then grander versions of it.)
+  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return [n, `Big ${n}`, `Grand ${n}`, `${n} Plaza`, `${n} Empire`]; })(),
+});
 /** Rush hour: one business earns this many times more for a short while. */
 export const RUSH_MULT = 3, RUSH_SECONDS = 45;
 
@@ -128,7 +169,7 @@ const BIZ_UPGRADES: Record<string, [string, string, string]> = {
 /** Upgrade prices, as multiples of the business's first-level price. */
 export const UPGRADE_COST = [5000, 1e6, 2e8];
 export const UPGRADES: Upgrade[] = [
-  ...BUSINESSES.flatMap(b => BIZ_UPGRADES[b.id].map((name, k) => ({ id: `${b.id}${k}`, name, biz: b.id, mult: 3, cost: b.cost * UPGRADE_COST[k], icon: b.icon }))),
+  ...BUSINESSES.flatMap(b => (BIZ_UPGRADES[b.id] ?? ["Better Tools", "Extra Staff", "Star Service"]).map((name, k) => ({ id: `${b.id}${k}`, name, biz: b.id, mult: 3, cost: b.cost * UPGRADE_COST[k], icon: b.icon }))),
   { id: "all0", name: "Neon Signs", biz: "all", mult: 2, cost: 1e7, icon: "sparkle" },
   { id: "all1", name: "City Billboards", biz: "all", mult: 2, cost: 1e9, icon: "star" },
   { id: "all2", name: "Sky Subway", biz: "all", mult: 2, cost: 1e11, icon: "rocket" },

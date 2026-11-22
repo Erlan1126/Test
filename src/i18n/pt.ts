@@ -1573,6 +1573,7 @@ export const PT: Record<string, string> = {
   "A little tram starts running round the streets": "Um bondinho começa a rodar pelas ruas",
   "Glowing billboards light up the corners": "Painéis luminosos iluminam as esquinas",
   "Airships float over the island": "Dirigíveis flutuam sobre a ilha",
+  "Why? It's in the {land}: buy the {land} first.": "Por quê? Fica em {land}: compre {land} primeiro.",
   "Town Hall": "Prefeitura",
   "Chapter done!": "Capítulo concluído!",
   "A superyacht anchors in the bay": "Um superiate ancora na baía",

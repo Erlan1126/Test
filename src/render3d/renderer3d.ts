@@ -30,7 +30,7 @@ import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
 import { kitVersion } from "./kitmodels";
-import { buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
+import { CITY_LOTS, buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -900,7 +900,11 @@ export class Renderer3D {
     this.bizFrameK += ((this.bizFraming ? 1 : 0) - this.bizFrameK) * Math.min(1, dt * 2);
     // A tapped building: the camera glides to it.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
-    if (si >= 0) { const p = lotPos(si); this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
+    if (si >= 0) {
+      // (A district's business: its own spot, further back the higher its island floats.)
+      const db = this.biz.bizAt(si), p = db ? { x: db.x - db.y, z: db.z - db.y } : lotPos(si);
+      this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25);
+    }
     // A tapped property: the camera glides to it too (a higher island's shows further back).
     const hk = f.bizLive?.selHome, home = hk ? this.biz.homes().find(h => h.key === hk) : undefined;
     if (home && si < 0) { this.bizLook.tx = home.x - home.y + 1.2; this.bizLook.tz = home.z - home.y + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
@@ -1057,11 +1061,15 @@ export class Renderer3D {
     if (home && height < 0) height = home.top + 0.4;
     const land = i <= -10 && i > -100 ? this.biz.landAt(-10 - i) : null;
     if (i <= -10 && i > -100 && !land) return null;
-    const { x, z } = home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
+    // (A district's business stands on its district; one not built yet has no spot.)
+    const db = i >= CITY_LOTS ? this.biz.bizAt(i) : null;
+    if (i >= CITY_LOTS && !db) return null;
+    if (db && height < 0) height = db.top + 0.5;
+    const { x, z } = db ?? home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     // (Things on a higher island stand that much higher.)
-    const y0 = home?.y ?? land?.y ?? 0;
+    const y0 = db?.y ?? home?.y ?? land?.y ?? 0;
     const at = (y: number): [number, number] => {
       const v = new THREE.Vector3(BIZ_SLOT.x + x, BIZ_SLOT.y + y0 + y, BIZ_SLOT.z + z).project(this.cam);
       return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];

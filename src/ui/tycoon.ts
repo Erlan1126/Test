@@ -17,7 +17,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -742,7 +742,11 @@ export class TycoonUI {
     const ps = perSecond(s, Date.now());
     const wait = (need: number) => ps > 0 ? t("about {time} at {rate}/s", { time: TycoonUI.wait(need / ps), rate: coins(ps) }) : t("sell to earn it");
     if (act === "buy") {
-      if (!unlockedBusiness(s, i)) return t("Why? Open the {prev} first: businesses open one after another.", { prev: t(BUSINESSES[i - 1].name) });
+      if (!unlockedBusiness(s, i)) {
+        const b0 = BUSINESSES[i], land = b0.land ? LAND.find(l => l.id === b0.land) : null, p = prevBusiness(i);
+        if (land && !s.land.includes(land.id)) return t("Why? It's in the {land}: buy the {land} first.", { land: t(land.name) });
+        return t("Why? Open the {prev} first: businesses open one after another.", { prev: t(BUSINESSES[Math.max(0, p)].name) });
+      }
       const lv = levelOf(s, id), room = Math.max(1, freeFloors(s));
       const n = lv === 0 ? 1 : Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
       const price = costOf(b, lv, n);
@@ -1705,7 +1709,7 @@ export class TycoonUI {
     $("ty-sky").className = `ty-sky ${h >= 20 || h < 6 ? "tod-night" : h >= 17 || h < 8 ? "tod-dusk" : "tod-day"}`;
     const rows: string[] = [];
     BUSINESSES.forEach((b, i) => {
-      if (!unlockedBusiness(s, i) && (i === 0 || !unlockedBusiness(s, i - 1))) return;
+      if (!shownBusiness(s, i)) return;
       rows.push(this.roomHtml(b, i, now));
     });
     const step = ty.tips;

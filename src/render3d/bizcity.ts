@@ -4,6 +4,7 @@
 // It's alive: customers stroll the sidewalks and walk into the busiest stores, delivery
 // vans drive round, a limousine brings each VIP, a rush hour draws a crowd and a glow, and
 // at night the windows, signs and an empire's searchlight come on.
+import { BUSINESSES } from "../data/tycoon";
 import { kitInstancer, kitPlace, kitPlaceH, kitVersion } from "./kitmodels";
 import * as THREE from "three";
 import { lawnTexture, mergeStatic } from "./world";
@@ -104,6 +105,8 @@ const sPath = (h: number, flip = false): [number, number][] => {
   return [[-h * f, -h], [-h * 0.2 * f, -h * 0.45], [h * 0.25 * f, h * 0.05], [-h * 0.05 * f, h * 0.55], [h * 0.6 * f, h]];
 };
 const CELLS: [number, number][] = [[0, 0], [1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2], [3, 2], [2, 3], [3, 3]];
+/** How many businesses stand in the town itself (the rest are the districts'). */
+export const CITY_LOTS = CELLS.length;
 const PARKS: [number, number][] = [[4, 3], [3, 4]];
 const PLAZA: [number, number] = [4, 4];
 /** The plot beside the Coffee Cart where the player's first tower stands. */
@@ -368,7 +371,7 @@ export function townBounds(core = false): { tMin: number; tMax: number; sMin: nu
 /** Where the camera should look: the blocks you've built so far (and the next to open). */
 export function streetFocus(lots: BizLot[]): { x: number; z: number; zoom: number } {
   let last = 0;
-  lots.forEach((l, i) => { if (l.state !== "locked") last = i; });
+  lots.forEach((l, i) => { if (l.state !== "locked" && i < CELLS.length) last = i; });
   const a = lotPos(0), b = lotPos(last), d = CELLS[last][0] + CELLS[last][1];
   const k = 0.5;
   const o = d >= 5 ? -0.5 : 1.5;
@@ -425,6 +428,8 @@ export interface BizCity {
   landAt(k: number): { x: number; z: number; y: number } | null;
   /** The town's properties (and the districts'): where each stands, how tall, its key. */
   homes(): { x: number; z: number; top: number; key: string; y: number }[];
+  /** Where a district business stands (its building or its lot for lease), or null. */
+  bizAt(i: number): { x: number; z: number; y: number; top: number } | null;
 }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
@@ -2803,6 +2808,39 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // empty, a glowing outline and a ghost of the bridge. Bought: a bridge joins it to the town
   // and the whole district is built: its own houses, shops and a landmark of its own.
   const landShown: ({ x: number; z: number; y: number } | null)[] = LAND.map(() => null);
+  /** A district business's building on its block: a shop that grows with its stage (from the
+   *  model kit, in the business's colors: an awning and a sign), or a lot for lease. Its top. */
+  const bizSpots: Record<number, { x: number; z: number; y: number; top: number }> = {};
+  const districtBiz = (lg: THREE.Group, lot: BizLot, bid: string, c1: string, n: number): number => {
+    const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
+    const col = mats.c(c1, 0.55), dark = mats.c(new THREE.Color(c1).multiplyScalar(0.7), 0.6);
+    K(roundSlab(4.2, 4.2, 1.6, 0.06), plazaM);
+    if (lot.state === "lease") {
+      // For lease: an empty lot, a little fence and a board in the business's color.
+      K(new THREE.BoxGeometry(3.4, 0.03, 3.4).translate(0, 0.08, 0), grass2);
+      for (const [fx, fz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) K(new THREE.BoxGeometry(0.1, 0.4, 0.1).translate(fx, 0.25, fz), wood);
+      K(new THREE.BoxGeometry(0.08, 1.2, 0.08).translate(0, 0.6, 1.2), metal);
+      K(new THREE.BoxGeometry(1.4, 0.7, 0.08).translate(0, 1.3, 1.2), col);
+      K(new THREE.BoxGeometry(1.0, 0.14, 0.09).translate(0, 1.32, 1.21), mats.c("#ffffff", 0.5));
+      return 1.8;
+    }
+    // Open: a shop at first, a bigger building as it grows.
+    const st5 = Math.max(0, Math.min(4, lot.s));
+    const POOLS = [["tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy"], ["tt_supermarket", "tt_shop_2", "tt_bank", "tt_library"], ["tt_hotel", "building_a", "building_c", "tt_apartment_2"], ["building_e", "building_g", "tt_office", "building_b"], ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_tower_block"]];
+    let hsh = 0; for (const ch of bid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+    const pool = POOLS[st5], kp = kitPlace(pool[hsh % pool.length], st5 >= 3 ? 2.8 : 3.0, st5 >= 4 ? 1.2 : 1, hsh % 8);
+    let top = 2.4;
+    if (kp) { kp.obj.position.y = 0.06; lg.add(kp.obj); top = kp.h + 0.1; }
+    else K(new THREE.BoxGeometry(2.6, 1.6 + st5 * 0.8, 2.2).translate(0, 0.8 + st5 * 0.4, -0.2), col);
+    // The business's colors out front: an awning, a sign on a post, and planters.
+    K(new THREE.BoxGeometry(2.4, 0.06, 0.6).rotateX(0.25).translate(0, 0.95, 1.45), col);
+    for (let w = 0; w < 6; w++) K(new THREE.BoxGeometry(0.4, 0.065, 0.62).rotateX(0.25).translate(-1.0 + w * 0.4, 0.955, 1.45), w % 2 ? mats.c("#ffffff", 0.6) : dark);
+    K(new THREE.BoxGeometry(0.07, 1.5, 0.07).translate(1.75, 0.75, 1.75), metal);
+    K(new THREE.BoxGeometry(0.75, 0.5, 0.08).translate(1.75, 1.45, 1.75), col);
+    for (const px of [-1.75, -1.2]) { K(new THREE.CylinderGeometry(0.2, 0.17, 0.25, 10).translate(px, 0.13, 1.8), stone); K(new THREE.IcosahedronGeometry(0.22, 0).translate(px, 0.42, 1.8), leaf); }
+    void n;
+    return top;
+  };
   const townC = (() => { const h = islandOutline(ISLAND_PAD, true); return { x: h.reduce((a, p) => a + p[0], 0) / h.length, z: h.reduce((a, p) => a + p[1], 0) / h.length }; })();
   (cafe.land ?? []).forEach(({ id, bought, sale }) => {
     const k = LAND.findIndex(l => l.id === id);
@@ -3088,6 +3126,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       return topY + 1.5;
     };
     const shardM: Record<string, THREE.Material> = {};
+    // The district's own businesses: each on its own block (the plain ones, in a set order),
+    // a business building once it's open, a lot "for lease" once it can be.
+    const SPECIAL = new Set(["1,1", "2,2", "0,0", "2,1", "1,2"]);
+    const slotOrder = [[0, 1], [1, 0], [0, 2], [2, 0], [3, 1], [1, 3], [3, 2], [2, 3], [0, 3], [3, 0], [3, 3]].filter(([a, b]) => !SPECIAL.has(`${a},${b}`) || (id === "crystal" && `${a},${b}` !== "1,1"));
+    const myBiz = BUSINESSES.map((b, bi) => (b.land === id ? bi : -1)).filter(bi => bi >= 0);
+    const slotBiz = new Map<string, number>();
+    myBiz.forEach((bi, q) => { const c = slotOrder[q]; if (c) slotBiz.set(`${c[0]},${c[1]}`, bi); });
     for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
       const { x, z } = cellC(i, j), lg = new THREE.Group(), n = 40 + k * 20 + i * DIST_N + j;
       lg.position.set(x, 0.2, z);
@@ -3095,6 +3140,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       blocks.add(lg);
       const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
       const th = themeOf(i, j);
+      const bi = slotBiz.get(`${i},${j}`), blot = bi !== undefined ? lots[bi] : undefined;
+      if (bought && blot && blot.state !== "locked") {
+        const bz = BUSINESSES[bi!], c1 = bz.color[0], top = districtBiz(lg, blot, bz.id, c1, n);
+        bizSpots[bi!] = { x: sp.x + x, z: sp.z + z, y: sp.y, top };
+        continue;
+      }
       if (!bought) {
         // For sale: open ground with a tree or two, waiting to be built on.
         P(roundSlab(4.2, 4.2, 1.6, 0.06), tc ? topM : n % 2 ? grass : grass2);
@@ -3611,6 +3662,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     spot: id => (id === "hall" ? hallAt ?? { x: 0, z: 0 } : block.spot(id)),
     landAt: k => landShown[k] ?? null,
     homes: () => homeSpots,
+    bizAt: i => bizSpots[i] ?? null,
     look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,
     update(t, night, live) {

@@ -276,7 +276,28 @@ export const townRank = (s: SaveData): number => { const n = usedFloors(s); let 
 export const freeFloors = (s: SaveData): number => Math.max(0, officeFloors(s) - usedFloors(s));
 
 /** A business is offered once the one before it has been bought. */
-export const unlockedBusiness = (s: SaveData, i: number): boolean => i === 0 || levelOf(s, BUSINESSES[i - 1].id) > 0;
+/** The business opened just before this one in its own place (the town, or its district), or -1. */
+export const prevBusiness = (i: number): number => {
+  const land = BUSINESSES[i]?.land;
+  for (let j = i - 1; j >= 0; j--) if (BUSINESSES[j].land === land) return j;
+  return -1;
+};
+/** Whether business i can be opened: the town's one after another; a district's once the
+ *  district is bought, then one after another there too. */
+export const unlockedBusiness = (s: SaveData, i: number): boolean => {
+  const b = BUSINESSES[i];
+  if (!b) return false;
+  if (b.land && !s.land.includes(b.land)) return false;
+  const p = prevBusiness(i);
+  return p < 0 || levelOf(s, BUSINESSES[p].id) > 0;
+};
+/** Shown in the lists (open now, or the next one to open). */
+export const shownBusiness = (s: SaveData, i: number): boolean => {
+  if (unlockedBusiness(s, i)) return true;
+  const b = BUSINESSES[i], p = prevBusiness(i);
+  if (b.land) return p >= 0 ? unlockedBusiness(s, p) : false;
+  return p >= 0 && unlockedBusiness(s, p);
+};
 
 function earn(s: SaveData, n: number): void {
   if (!(n > 0) || !Number.isFinite(n)) return;

@@ -1,3 +1,4 @@
+import { BUSINESSES } from "../data/tycoon";
 // Little pictures of each business's building, at its stage, for the Company cards: the same
 // 3D models as the town, rendered once on a small canvas of their own and kept as images.
 import * as THREE from "three";
@@ -49,7 +50,10 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
     scene.add(sun);
     const g = new THREE.Group();
     const mats = materials();
-    buildModel(g, id, stage, c1, c2, mats, () => roofProp(id, new THREE.Color(c1), new THREE.Color(c2)));
+    // (A district's business looks like the town business of its kind, in its own colors.)
+    const modelId = ["coffee", "flowers", "bakery", "pizza", "cinema", "hotel", "mall", "airport", "casino", "spaceport"].includes(id) ? id
+      : ({ dish: "pizza", fire: "pizza", sun: "bakery", coffee: "coffee", leaf: "flowers", balloon: "flowers", gift: "mall", flag: "airport", star: "casino", sparkle: "casino", gem: "casino", film: "cinema", home: "hotel", building: "hotel", cloud: "hotel", globe: "spaceport", rocket: "spaceport" } as Record<string, string>)[BUSINESSES.find(b => b.id === id)?.icon ?? ""] ?? "mall";
+    buildModel(g, modelId, stage, c1, c2, mats, () => roofProp(modelId, new THREE.Color(c1), new THREE.Color(c2)));
     // A little round plot of grass and paving under it.
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.7, 0.18, 40).translate(0, -0.09, 0), mats.c("#7fd36a", 0.95)));
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 0.03, 40).translate(0, 0.01, 0.2), mats.c("#efe9df", 0.8)));

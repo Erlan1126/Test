@@ -1574,6 +1574,7 @@ export const ES: Record<string, string> = {
   "A little tram starts running round the streets": "Un pequeño tranvía empieza a recorrer las calles",
   "Glowing billboards light up the corners": "Carteles luminosos iluminan las esquinas",
   "Airships float over the island": "Dirigibles flotan sobre la isla",
+  "Why? It's in the {land}: buy the {land} first.": "¿Por qué? Está en {land}: compra primero {land}.",
   "Town Hall": "Ayuntamiento",
   "Chapter done!": "¡Capítulo completado!",
   "A superyacht anchors in the bay": "Un superyate ancla en la bahía",
