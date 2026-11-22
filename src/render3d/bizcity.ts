@@ -66,11 +66,14 @@ const ROAD = 1.2;
 function roundSlab(w: number, d: number, r: number, h: number): THREE.BufferGeometry {
   const x = w / 2, z = d / 2, rr = Math.min(r, x, z);
   const sh = new THREE.Shape();
+  // (The straight sides have points along them too, so a slab can be bent to follow a
+  // curving street.)
+  const line = (ax: number, az: number, bx: number, bz: number) => { for (let i = 1; i <= 8; i++) sh.lineTo(ax + ((bx - ax) * i) / 8, az + ((bz - az) * i) / 8); };
   sh.moveTo(-x + rr, -z);
-  sh.lineTo(x - rr, -z); sh.absarc(x - rr, -z + rr, rr, -Math.PI / 2, 0, false);
-  sh.lineTo(x, z - rr); sh.absarc(x - rr, z - rr, rr, 0, Math.PI / 2, false);
-  sh.lineTo(-x + rr, z); sh.absarc(-x + rr, z - rr, rr, Math.PI / 2, Math.PI, false);
-  sh.lineTo(-x, -z + rr); sh.absarc(-x + rr, -z + rr, rr, Math.PI, Math.PI * 1.5, false);
+  line(-x + rr, -z, x - rr, -z); sh.absarc(x - rr, -z + rr, rr, -Math.PI / 2, 0, false);
+  line(x, -z + rr, x, z - rr); sh.absarc(x - rr, z - rr, rr, 0, Math.PI / 2, false);
+  line(x - rr, z, -x + rr, z); sh.absarc(-x + rr, z - rr, rr, Math.PI / 2, Math.PI, false);
+  line(-x, z - rr, -x, -z + rr); sh.absarc(-x + rr, -z + rr, rr, Math.PI, Math.PI * 1.5, false);
   return new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 12 }).rotateX(Math.PI / 2).translate(0, h, 0);
 }
 
@@ -124,6 +127,73 @@ const blockRound = (gx: number, gz: number): number => {
   for (const [a, b] of JOINED) if ((a[0] === gx && a[1] === gz) || (b[0] === gx && b[1] === gz)) { gx = a[0]; gz = a[1]; break; }
   return [1.7, 1.7, 1.35][Math.abs(gx * 7 + gz * 13) % 3];
 };
+/** Curving avenues: two streets each way across town swing in gentle S-curves (each stretch
+ *  between two crossings bows out one way, the next the other way). */
+const CURVE_A = 0.85, CURVE_LINES = [1, 3];
+const ALL_KEYS = new Set(ALL.map(c => `${c[0]},${c[1]}`));
+/** How far the middle of one stretch of street bows out (signed; 0 = straight). `vertical`:
+ *  the street between columns `line` and `line + 1`, beside block row `seg`. */
+function streetBend(vertical: boolean, line: number, seg: number): number {
+  if (!CURVE_LINES.includes(line)) return 0;
+  const [ax, az, bx, bz] = vertical ? [line, seg, line + 1, seg] : [seg, line, seg, line + 1];
+  if (!ALL_KEYS.has(`${ax},${az}`) || !ALL_KEYS.has(`${bx},${bz}`) || joined(ax, az, bx, bz)) return 0;
+  return CURVE_A * ((seg + line + (vertical ? 0 : 1)) % 2 ? 1 : -1);
+}
+/** How far the ground at (x, z) moves to follow the curving streets: all the way on the
+ *  street and its sidewalks, fading out toward the middle of the blocks (which stay put). */
+function bendD(x: number, z: number): [number, number] {
+  const fx = (x + 2 * C) / C, fz = (z + 2 * C) / C;
+  const w = (d: number) => (d <= ROAD + 0.4 ? 1 : d >= ROAD + 1.5 ? 0 : 1 - (d - ROAD - 0.4) / 1.1);
+  let dx = 0, dz = 0;
+  for (const L of CURVE_LINES) {
+    const dv = Math.abs(fx - (L + 0.5)) * C;
+    if (dv < ROAD + 1.5) { const seg = Math.round(fz), t = fz - seg + 0.5, a = streetBend(true, L, seg); if (a) dx += a * Math.sin(Math.PI * t) * w(dv); }
+    const dh = Math.abs(fz - (L + 0.5)) * C;
+    if (dh < ROAD + 1.5) { const seg = Math.round(fx), t = fx - seg + 0.5, a = streetBend(false, L, seg); if (a) dz += a * Math.sin(Math.PI * t) * w(dh); }
+  }
+  return [dx, dz];
+}
+/** Bends the town to follow the curving streets: curbs, sidewalks and road paint point by
+ *  point, everything else (lamps, trees, signs, buildings) moved whole by where it stands. */
+function bendTown(root: THREE.Object3D, perVertex: Set<THREE.Material>): void {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3(), c = new THREE.Vector3(), c2 = new THREE.Vector3(), v = new THREE.Vector3(), inv = new THREE.Matrix4();
+  const meshes: THREE.Mesh[] = [];
+  const visit = (o: THREE.Object3D) => {
+    if (o !== root && (o.userData.dynamic || o.userData.bent)) return;
+    const m = o as THREE.Mesh;
+    if (m.isMesh && !(m as unknown as THREE.InstancedMesh).isInstancedMesh) meshes.push(m);
+    for (const ch of o.children) visit(ch);
+  };
+  visit(root);
+  const done = new Set<THREE.BufferGeometry>();
+  for (const m of meshes) {
+    if (!Array.isArray(m.material) && perVertex.has(m.material)) {
+      if (done.has(m.geometry)) continue;
+      done.add(m.geometry);
+      const pos = m.geometry.attributes.position;
+      inv.copy(m.matrixWorld).invert();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+        const [dx, dz] = bendD(v.x, v.z);
+        if (!dx && !dz) continue;
+        v.x += dx; v.z += dz; v.applyMatrix4(inv);
+        pos.setXYZ(i, v.x, v.y, v.z);
+      }
+      pos.needsUpdate = true; m.geometry.computeBoundingSphere(); m.geometry.computeBoundingBox();
+      continue;
+    }
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    box.copy(m.geometry.boundingBox!).applyMatrix4(m.matrixWorld).getCenter(c);
+    const [dx, dz] = bendD(c.x, c.z);
+    if (!dx && !dz) continue;
+    c2.set(c.x + dx, c.y, c.z + dz);
+    const par = m.parent!;
+    par.worldToLocal(c); par.worldToLocal(c2);
+    m.position.add(c2.sub(c));
+  }
+  root.userData.bent = true;
+}
 /** A piece of a merged model, painted one color (vertex colors; no uv, so pieces merge). */
 function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
   const g2 = geo.index ? geo.toNonIndexed() : geo, n = g2.attributes.position.count, cc = new THREE.Color(c), arr = new Float32Array(n * 3);
@@ -394,6 +464,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const walk = own(std("#ffffff", { roughness: 0.85, map: walkTex }));
   const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.4]]);
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
+  // (What bends point by point to follow the curving streets; the road paint joins it below.)
+  const bendPts = new Set<THREE.Material>([curb, walk]);
   const verge = own(std(st.lawn, { roughness: 0.95 }));
   const grass = own(std(new THREE.Color("#7ccf6a").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
   const grass2 = own(std(new THREE.Color("#6cbf5c").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
@@ -511,6 +583,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // the town stays plain): a zebra crossing half way along and a dashed centre line,
   const medianTrees: [number, number][] = [];
   const paintM = own(new THREE.MeshBasicMaterial({ color: 0xefeee8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  bendPts.add(paintM);
   /** The markings on one street: centred at (cx, cz), running along x or z, `run` long. */
   const markStreet = (par: (geo: THREE.BufferGeometry, m: THREE.Material) => unknown, cx: number, cz: number, along: "x" | "z", run: number, y = 0.062) => {
     // (All of one street's paint is one mesh: a few hundred streets, not thousands of bars.)
@@ -1704,6 +1777,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         ng.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0).translate(tx, 0.85, tz), leaf));
       }
     });
+    bendTown(ng, bendPts);
     mergeStatic(ng, 0.2);
   }
 
@@ -1734,6 +1808,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         // Until the business comes, ordinary neighbors live here: town houses, a block of
         // flats or a corner shop with flats above, so the town looks lived in, like a real city.
         tops[i] = neighborhood(lotG, i);
+        bendTown(lotG, bendPts);
         mergeStatic(lotG, 0.05);
         return;
       } else {
@@ -1749,6 +1824,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         K(new THREE.BoxGeometry(0.7, 0.2, 0.05).translate(0.9, 0.55, -0.2), wood);
         tops[i] = 1.5;
       }
+      bendTown(lotG, bendPts);
       mergeStatic(lotG, 0.05);
       return;
     }
@@ -1846,6 +1922,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       arrows.push(arrow);
       g.add(arrow);
     }
+    bendTown(lotG, bendPts);
     mergeStatic(lotG, 0.05);
     lotG.userData.dynamic = true;
     lotGroups.set(lot.id, lotG);
@@ -2043,11 +2120,18 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const LANE = 0.6, END = ROAD + 0.25;
   const rightOf = (d: [number, number]) => new THREE.Vector3(-d[1], 0, d[0]);
   const dv = (d: [number, number]) => new THREE.Vector3(d[0], 0, d[1]);
+  /** Moves a point on the streets along with the curving avenues. */
+  const bendV = (v: THREE.Vector3) => { const [dx, dz] = bendD(v.x, v.z); v.x += dx; v.z += dz; return v; };
   const bez = (a: THREE.Vector3, c: THREE.Vector3, b: THREE.Vector3): Seg => ({ a, b, c, len: a.distanceTo(c) + c.distanceTo(b) * 0.98 });
   const street = (i: number, j: number, d: [number, number], lane = LANE): Seg => {
     const A = nodeXZ(i, j), B = nodeXZ(i + d[0], j + d[1]), r = rightOf(d).multiplyScalar(lane), D = dv(d).multiplyScalar(lane > 0.6 ? lane : END);
     const a = A.clone().add(D).add(r), b = B.clone().sub(D).add(r);
-    return bez(a, a.clone().lerp(b, 0.5), b);
+    // (Along a curving avenue the lane bows with it: the curve's middle sits where the
+    // street's middle has moved to.)
+    const mid = a.clone().lerp(b, 0.5), [mx, mz] = bendD(mid.x, mid.z);
+    mid.x += mx; mid.z += mz;
+    bendV(a); bendV(b);
+    return bez(a, mid.multiplyScalar(2).sub(a.clone().add(b).multiplyScalar(0.25)).sub(a.clone().add(b).multiplyScalar(0.25)), b);
   };
   const nodes: [number, number][] = [];
   for (const [x, z] of ALL) for (const [i, j] of [[x, z], [x + 1, z], [x, z + 1], [x + 1, z + 1]] as [number, number][]) if (exits(i, j).length && !nodes.some(n => n[0] === i && n[1] === j)) nodes.push([i, j]);
@@ -2080,6 +2164,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     else if (d2 === back) ctl = B.clone().add(dv(c.d).multiplyScalar(foot ? 0 : 0.7));
     else ctl = B.clone().add(r.clone().multiplyScalar(L)).add(r2.clone().multiplyScalar(L));
     c.i = i; c.j = j; c.d = d2;
+    const [ax, az] = bendD(a.x, a.z), [bx, bz] = bendD(b.x, b.z);
+    a.x += ax; a.z += az; b.x += bx; b.z += bz; ctl.x += (ax + bx) / 2; ctl.z += (az + bz) / 2;
     return bez(a, ctl, b);
   };
   // People out for a walk on the town's inner sidewalks (crossing at the zebras).
@@ -2956,6 +3042,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   for (const l of cafe.land ?? []) if (l.bought) landSeen.add(l.id);
   landBuiltOnce = true;
   if (blobGeos.length) { const bg = mergeGeometries(blobGeos); blobGeos.forEach(q => q.dispose()); if (bg) add(bg, blobM); }
+  bendTown(g, bendPts);
   planarUV(g, streetUV);
   mergeStatic(g, 0.0);
 
