@@ -770,6 +770,13 @@
   #shopList .lk-tile em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--gold); margin-top: 2px; }
   #shopList .lk-tile.on { border-color: rgba(139,233,255,0.8); background: linear-gradient(180deg, rgba(139,233,255,0.16), rgba(139,233,255,0.04)); } #shopList .lk-tile.on em { color: #8be9ff; }
   #shopList .lk-tile:disabled { opacity: 0.45; } #shopList .lk-tile:active { transform: scale(0.95); }
+  .opening { position: fixed; inset: 0; z-index: 60; background: #04050a; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 24px calc(48px + var(--bottom)); }
+  .opening[hidden] { display: none; }
+  #openingCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .op-cap { position: relative; margin: 0 0 22px; min-height: 3em; font-size: 20px; font-weight: 600; line-height: 1.35; text-align: center; color: #f3f6ff; text-shadow: 0 2px 20px rgba(0,0,0,0.8); transition: opacity 0.5s; max-width: 340px; }
+  .op-cap.out { opacity: 0; } .op-cap b { color: #ffd98a; }
+  .op-skip { position: absolute; top: calc(16px + var(--top)); right: 16px; padding: 8px 14px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: rgba(255,255,255,0.75); font: inherit; font-size: 13px; }
+  .op-go { position: relative; width: min(320px, 100%); animation: rise 0.6s ease both; }
   .shop-upg { display: grid !important; grid-template-columns: 44px 1fr auto; gap: 12px; }
   .shop-upg .ui { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), rgba(255,255,255,0.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
   .shop-upg .lv { display: flex; gap: 4px; margin-top: 6px; } .shop-upg .lv i { width: 22px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); } .shop-upg .lv i.on { background: linear-gradient(90deg, #ffd98a, #ffb84d); box-shadow: 0 0 6px rgba(255,184,77,0.6); }
@@ -996,6 +1003,12 @@
 </div>
 
 <div id="iris"></div>
+<div class="opening" id="opening" hidden>
+  <canvas id="openingCanvas" aria-hidden="true"></canvas>
+  <p class="op-cap" id="opCap"></p>
+  <button class="op-skip" id="opSkip">Skip</button>
+  <button class="primary op-go" id="opGo" hidden>Bring the light</button>
+</div>
 <div class="screen" id="runScreen">
   <canvas id="runCanvas" aria-label="Bip flying up through the city"></canvas>
   <div class="run-hud">

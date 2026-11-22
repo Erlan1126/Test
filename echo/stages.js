@@ -218,3 +218,47 @@ function starRewards() {
   persist();
 }
 const nextStarReward = () => STAR_REWARDS.find(rw => !runnerLook().own[rw[1] + rw[2]]);
+
+// ---------- The opening: why the city is dark, and who is waiting (first Play only, about 10 s) ----------
+function playOpening(done) {
+  const el = $("opening"), c = $("openingCanvas"), cap = $("opCap"), go = $("opGo"), skip = $("opSkip");
+  if (!el || !c) { done(); return; }
+  el.hidden = false; go.hidden = true; let t0 = performance.now(), ended = false, lastCap = -1;
+  const caps = ["Every night, the city glowed.", "Then the <b>Hush</b> came,<br>and put out every light.", "But one light was left.<br><b>You.</b>", `<b>${stagePerson(1)[0]}</b> is waiting in the dark.<br>Bring the light back.`];
+  const finish = () => { if (ended) return; ended = true; el.hidden = true; save.opening = 1; persist(); done(); };
+  skip.onclick = e => { e.stopPropagation(); finish(); };
+  go.onclick = e => { e.stopPropagation(); audio(); finish(); };
+  const d = Math.min(2, window.devicePixelRatio || 1);
+  const blds = Array.from({ length: 16 }, (_, i) => { const r = seeded(i * 77 + 5); return { x: i / 16, w: 0.05 + r() * 0.05, h: 0.18 + r() * 0.32, wins: Array.from({ length: 40 }, () => [r(), r(), r()]) }; });
+  const frame = now => {
+    if (ended) return;
+    const t = (now - t0) / 1000, W = c.clientWidth, H = c.clientHeight;
+    if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
+    const x = c.getContext("2d"); x.setTransform(d, 0, 0, d, 0, 0);
+    const scene = t < 2.6 ? 0 : t < 5.2 ? 1 : t < 7.6 ? 2 : 3;
+    if (scene !== lastCap) { lastCap = scene; cap.classList.add("out"); setTimeout(() => { cap.innerHTML = caps[scene]; cap.classList.remove("out"); }, lastCap ? 350 : 0); if (scene === 3) setTimeout(() => { go.hidden = false; }, 700); }
+    // Sky.
+    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#05060f"); g.addColorStop(1, scene === 0 ? "#2a1d3a" : "#0b0d1a"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    const rs = seeded(9); x.fillStyle = "#fff"; for (let q = 0; q < 70; q++) { x.globalAlpha = 0.25 + rs() * 0.5; x.fillRect(rs() * W, rs() * H * 0.5, 1.2, 1.2); } x.globalAlpha = 1;
+    // The Hush: a front of darkness sweeping right to left during scene 1.
+    const hush = t < 2.6 ? W * 1.2 : t < 4.8 ? W * 1.2 - (t - 2.6) / 2.2 * W * 1.5 : -W;
+    const base = H * 0.78;
+    for (const b of blds) {
+      const bx = b.x * W, bw = b.w * W, bh = b.h * H; x.fillStyle = "#121624"; x.fillRect(bx, base - bh, bw, bh + H);
+      for (const [u, v, k] of b.wins) { const wx = bx + 4 + u * (bw - 10), wy = base - bh + 6 + v * (bh - 12), on = wx < hush && k < 0.7; if (!on) continue; x.fillStyle = `rgba(255,${200 + k * 40},${130 + k * 60},0.9)`; x.fillRect(wx, wy, 3, 4); }
+    }
+    if (scene === 1) { const gg = x.createLinearGradient(hush, 0, hush + 120, 0); gg.addColorStop(0, "rgba(4,5,10,0)"); gg.addColorStop(0.3, "rgba(60,20,90,0.55)"); gg.addColorStop(1, "rgba(4,5,10,0.85)"); x.fillStyle = gg; x.fillRect(hush, 0, W, H); }
+    x.fillStyle = "#07080e"; x.fillRect(0, base, W, H - base);
+    // The spark that becomes you.
+    if (scene >= 2) { const k = Math.min(1, (t - 5.2) / 1.4), px = W * 0.5, py = H * 0.5 - (scene === 3 ? Math.min(1, (t - 7.6)) * H * 0.12 : 0), r = 6 + k * 46 + Math.sin(t * 5) * 3;
+      const sg = x.createRadialGradient(px, py, 0, px, py, r * 2.4); sg.addColorStop(0, "rgba(200,245,255,0.95)"); sg.addColorStop(0.3, "rgba(139,233,255,0.45)"); sg.addColorStop(1, "rgba(139,233,255,0)"); x.fillStyle = sg; x.fillRect(px - r * 3, py - r * 3, r * 6, r * 6);
+      if (k > 0.6) { x.globalAlpha = (k - 0.6) / 0.4; x.strokeStyle = "#fff"; x.lineWidth = 4; x.lineCap = "round"; x.beginPath(); x.moveTo(px, py - 10); x.lineTo(px, py + 12); x.moveTo(px, py - 6); x.lineTo(px - 12, py - 18); x.moveTo(px, py - 6); x.lineTo(px + 12, py - 18); x.moveTo(px, py + 12); x.lineTo(px - 8, py + 28); x.moveTo(px, py + 12); x.lineTo(px + 8, py + 28); x.stroke(); x.fillStyle = "#fff"; x.beginPath(); x.arc(px, py - 18, 6, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; } }
+    // Far away, one window waiting.
+    if (scene === 3) { const k = Math.min(1, (t - 7.6) / 1.2), b = blds[12], bx = b.x * W + b.w * W * 0.3, by = base - b.h * H * 0.55, pulse = 0.5 + 0.5 * Math.sin(t * 3);
+      x.fillStyle = `rgba(255,200,120,${0.12 * k * pulse})`; x.beginPath(); x.arc(bx + 6, by + 8, 30, 0, Math.PI * 2); x.fill();
+      x.fillStyle = "#1b2030"; x.fillRect(bx, by, 14, 18); x.fillStyle = `rgba(150,160,190,${0.7 * k})`; x.beginPath(); x.arc(bx + 7, by + 7, 3, 0, Math.PI * 2); x.fill(); x.fillRect(bx + 4, by + 10, 6, 8);
+      x.strokeStyle = `rgba(255,217,138,${0.5 * k * pulse})`; x.lineWidth = 1.5; x.setLineDash([4, 6]); x.beginPath(); x.moveTo(W * 0.5, H * 0.5 - H * 0.12 * k); x.lineTo(bx + 7, by + 9); x.stroke(); x.setLineDash([]); }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
