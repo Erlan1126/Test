@@ -2742,7 +2742,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // A space habitat: glass domes on a metal base, then stacked modules, then a tall
       // tower with a ring and an antenna.
       const metalP = m2("#c8d0e4", 0.35, 0.6), glass = own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.1 }));
-      if (seed % 3 === 1) {
+      // (Six kinds, so no two neighbouring blocks look alike, each growing as it levels up.)
+      const ov = seed % 6;
+      if (ov === 1) {
         // Another kind: a cluster of small domes joined by tubes, with a radar dish.
         Q(new THREE.CylinderGeometry(1.8, 1.9, 0.25, 20).translate(0, 0.17, 0), metalP);
         const pods: [number, number, number][] = [[0, 0, 0.9 + lv * 0.08], [-1.05, 0.7, 0.55], [1.05, 0.6, 0.6], [0.2, -1.1, 0.5]];
@@ -2755,16 +2757,58 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         Q(new THREE.SphereGeometry(0.45, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(-Math.PI / 2.6).translate(1.3, 1.7, -0.9), metalP);
         return 1.2 + lv * 0.35 + 0.9;
       }
-      if (seed % 3 === 2 && lv >= 2) {
+      if (ov === 2) {
         // Another kind: a tall station tower with docking rings and a landing pad beside it.
-        const hT = 1.6 + lv * 1.3;
+        const hT = 1.2 + lv * 1.3;
         Q(new THREE.CylinderGeometry(1.7, 1.8, 0.25, 20).translate(0, 0.17, 0), metalP);
         Q(new THREE.CylinderGeometry(0.55, 0.7, hT, 12).translate(-0.4, 0.3 + hT / 2, -0.3), metalP);
-        for (let r5 = 1; r5 <= Math.min(3, lv - 1); r5++) Q(new THREE.TorusGeometry(0.95, 0.08, 6, 24).rotateX(Math.PI / 2).translate(-0.4, 0.3 + (hT * r5) / (Math.min(3, lv - 1) + 1), -0.3), m2("#5ae0ff", 0.3, 0.4));
+        for (let r5 = 1; r5 <= Math.min(3, lv); r5++) Q(new THREE.TorusGeometry(0.95, 0.08, 6, 24).rotateX(Math.PI / 2).translate(-0.4, 0.3 + (hT * r5) / (Math.min(3, lv) + 1), -0.3), m2("#5ae0ff", 0.3, 0.4));
         Q(new THREE.SphereGeometry(0.6, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(-0.4, 0.3 + hT, -0.3), glass);
         Q(new THREE.CylinderGeometry(0.75, 0.75, 0.08, 16).translate(0.9, 0.36, 0.9), m2("#2a2f45", 0.6, 0.3));
         Q(new THREE.TorusGeometry(0.55, 0.04, 4, 20).rotateX(Math.PI / 2).translate(0.9, 0.41, 0.9), m2("#ffd86a", 0.4, 0.2));
         return 0.3 + hT + 0.8;
+      }
+      const blue = m2("#5ae0ff", 0.3, 0.4), panel = m2("#2a3f8a", 0.2, 0.6);
+      if (ov === 3) {
+        // A greenhouse: long glass vaults full of plants, with solar wings.
+        Q(new THREE.BoxGeometry(3.4, 0.25, 2.6).translate(0, 0.17, 0), metalP);
+        const vaults = lv >= 3 ? 2 : 1, len = 2.2 + lv * 0.22;
+        for (let v5 = 0; v5 < vaults; v5++) {
+          const vz = vaults === 1 ? 0 : (v5 ? 0.62 : -0.62), r = vaults === 1 ? 0.95 : 0.58;
+          Q(new THREE.CylinderGeometry(r, r, len, 16, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateX(-Math.PI / 2).rotateX(Math.PI / 2).translate(0, 0.3, vz), glass);
+          for (let p5 = 0; p5 < 4; p5++) Q(new THREE.IcosahedronGeometry(r * 0.36, 0).translate(-len / 2 + 0.35 + p5 * ((len - 0.7) / 3), 0.3 + r * 0.3, vz), m2(p5 % 2 ? "#5ec46a" : "#8af08a", 0.8, 0));
+          for (const ex of [-len / 2, len / 2]) Q(new THREE.TorusGeometry(r, 0.05, 4, 16, Math.PI).rotateY(Math.PI / 2).translate(ex, 0.3, vz), metalP);
+        }
+        for (const sx of [-1, 1]) for (let w5 = 0; w5 < Math.min(3, lv); w5++) Q(new THREE.BoxGeometry(0.5, 0.04, 0.9).rotateZ(sx * 0.3).translate(sx * (1.95 + w5 * 0.0), 0.9 + w5 * 0.45, -0.9 + w5 * 0.0), panel);
+        Q(new THREE.CylinderGeometry(0.05, 0.05, 0.6 + lv * 0.4, 6).translate(1.5, 0.6 + lv * 0.2, -1.0), metal);
+        return 1.4 + lv * 0.25;
+      }
+      if (ov === 4) {
+        // A ring habitat: a wheel on a pillar round a glass hub, more rings as it grows.
+        Q(new THREE.CylinderGeometry(1.3, 1.5, 0.3, 20).translate(0, 0.2, 0), metalP);
+        const hP = 0.9 + lv * 0.55;
+        Q(new THREE.CylinderGeometry(0.22, 0.3, hP, 10).translate(0, 0.35 + hP / 2, 0), metalP);
+        const rings = lv >= 4 ? 2 : 1;
+        for (let r5 = 0; r5 < rings; r5++) {
+          const ry = 0.35 + hP - r5 * 0.9, rr = 1.5 - r5 * 0.35;
+          Q(new THREE.TorusGeometry(rr, 0.2, 8, 32).rotateX(Math.PI / 2).translate(0, ry, 0), r5 ? blue : metalP);
+          for (let sp5 = 0; sp5 < 4; sp5++) Q(new THREE.BoxGeometry(rr * 2, 0.06, 0.08).rotateY((sp5 * Math.PI) / 4).translate(0, ry, 0), metal);
+          for (let w5 = 0; w5 < 10; w5++) { const an = (w5 / 10) * Math.PI * 2; Q(new THREE.BoxGeometry(0.12, 0.08, 0.02).rotateY(-an + Math.PI / 2).translate(Math.cos(an) * (rr + 0.2), ry, Math.sin(an) * (rr + 0.2)), winMat); }
+        }
+        Q(new THREE.SphereGeometry(0.5, 14, 10).translate(0, 0.35 + hP, 0), glass);
+        return 0.35 + hP + 0.8;
+      }
+      if (ov === 5) {
+        // An observatory: a round hall, a telescope dome with its slot open, a tilted telescope.
+        const hB = 0.6 + lv * 0.4;
+        Q(new THREE.CylinderGeometry(1.5, 1.6, 0.25, 20).translate(0, 0.17, 0), metalP);
+        Q(new THREE.CylinderGeometry(1.05, 1.1, hB, 18).translate(0, 0.3 + hB / 2, 0), m2("#e8ecf4", 0.4, 0.3));
+        for (let f = 0; f < 8; f++) { const an = (f / 8) * Math.PI * 2; Q(new THREE.BoxGeometry(0.2, 0.16, 0.02).rotateY(-an + Math.PI / 2).translate(Math.cos(an) * 1.11, 0.3 + hB * 0.6, Math.sin(an) * 1.11), winMat); }
+        Q(new THREE.SphereGeometry(1.0, 18, 10, 0.5, Math.PI * 2 - 1.0, 0, Math.PI / 2).translate(0, 0.3 + hB, 0), m2("#f4f6fb", 0.45, 0.15));
+        Q(new THREE.CylinderGeometry(0.2, 0.26, 1.6, 10).rotateZ(-0.7).translate(0.5, 0.3 + hB + 0.6, 0.05), m2("#ffffff", 0.3, 0.2));
+        Q(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6).translate(-1.2, 0.75, -0.7), metal);
+        Q(new THREE.SphereGeometry(0.07, 6, 4).translate(-1.2, 1.22, -0.7), m2("#ff3a4a", 0.5, 0));
+        return 0.3 + hB + 1.4;
       }
       Q(new THREE.CylinderGeometry(1.6, 1.7, 0.3, 20).translate(0, 0.2, 0), metalP);
       const mods = [0, 0, 1, 2, 4, 7][lv];
