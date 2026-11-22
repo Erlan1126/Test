@@ -303,9 +303,8 @@ const DIST_N = 4, DIST_H = (DIST_N / 2) * C + 3.2, DIST_GAP = 6;
 const distEdge = (dx: number, dz: number) => DIST_H / Math.pow(Math.pow(Math.abs(dx), 4) + Math.pow(Math.abs(dz), 4), 0.25);
 const LAND_R = DIST_H;
 const landCache = new Map<string, { x: number; z: number; r: number; y: number }>();
-/** The island a district's bridge leads back to (-1: the town): Downtown bridges straight to
- *  the town's other side, every other one to the one before it. */
-export const landPrev = (k: number) => (k === 2 ? -1 : k - 1);
+/** The island a district's bridge leads back to (-1: the town): the one before it. */
+export const landPrev = (k: number) => k - 1;
 export function landSpot(k: number, bought: boolean): { x: number; z: number; r: number; y: number } {
   const key = `${k}|${bought}`;
   let v = landCache.get(key);
@@ -318,12 +317,13 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     // Measured from the coast in that direction (the island is not round), so no island ever
     // sits over the town or its countryside, and pushed further out if it would crowd one of
     // the islands before it.
-    // Garden Hills and Downtown sit off to either side of the town (where nothing of them is
-    // hidden behind the town); the islands after them carry on round from Downtown.
-    const a = k === 1 ? a0 - 1.05 : k === 2 ? a0 + 2.36 : a0 + (k - 1) * 0.95, dx = Math.cos(a), dz = Math.sin(a);
+    // (Round from the Harbor District, each a step further round: Garden Hills in front of the
+    // town, Downtown close by off its front-right side (the Harbor District's mirror), then the high islands round the right and back,
+    // where they still show above the town.)
+    const a = a0 + ([0, -0.7, -1.45, -2.55, -3.55, -4.45][k] ?? k * 0.95), dx = Math.cos(a), dz = Math.sin(a);
     let t = 0;
     while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
-    let out = t + distEdge(dx, dz) + DIST_GAP + (k === 2 ? 18 : 30 + k * 2);
+    let out = t + distEdge(dx, dz) + DIST_GAP + (k === 2 ? 4 : 30 + k * 2);
     const clear = (x: number, z: number) => {
       for (let m = 0; m < k; m++) { const o = landSpot(m, bought); if (Math.hypot(o.x - x, o.z - z) < DIST_H * 2.9 + DIST_GAP) return false; }
       return true;
