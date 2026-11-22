@@ -318,7 +318,7 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     const a = a0 + k * 0.95, dx = Math.cos(a), dz = Math.sin(a);
     let t = 0;
     while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
-    let out = t + distEdge(dx, dz) + DIST_GAP + 22 + k * 2;
+    let out = t + distEdge(dx, dz) + DIST_GAP + 30 + k * 2;
     const clear = (x: number, z: number) => {
       for (let m = 0; m < k; m++) { const o = landSpot(m, bought); if (Math.hypot(o.x - x, o.z - z) < DIST_H * 2.9 + DIST_GAP) return false; }
       return true;
@@ -2675,6 +2675,29 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const skyProp = (G2: THREE.Group, style: string, seed: number, lv: number): number => {
       const Q = (geo: THREE.BufferGeometry, m: THREE.Material) => G2.add(new THREE.Mesh(geo, m));
       Q(roundSlab(4.2, 4.2, 1.6, 0.06), topM);
+      if (style === "villa" && seed % 3 !== 0) {
+        // Two more kinds of cloud villa, so the island isn't one design repeated: a round
+        // tower with a pointed roof and a balcony, or a long hall with twin domes and an arch.
+        const marble = m2(["#fbf8ff", "#fff3f6", "#f4f8ff"][seed % 3], 0.5, 0), roofC = [mats.gold, m2("#ff9fbf", 0.4, 0.3), m2("#8fd0ff", 0.4, 0.3)][(seed >> 1) % 3];
+        const h = [0, 1.2, 2.0, 3.0, 4.4, 6.8][lv];
+        Q(new THREE.CylinderGeometry(1.9, 2.0, 0.2, 20).translate(0, 0.1, 0), m2("#e8e0d0", 0.6, 0));
+        if (seed % 3 === 1) {
+          Q(new THREE.CylinderGeometry(1.0, 1.15, h, 16).translate(0, 0.2 + h / 2, 0), marble);
+          Q(new THREE.TorusGeometry(1.2, 0.06, 6, 24).rotateX(Math.PI / 2).translate(0, 0.2 + h * 0.62, 0), mats.gold);
+          Q(new THREE.CylinderGeometry(1.25, 1.25, 0.06, 20).translate(0, 0.17 + h * 0.62, 0), marble);
+          for (let f = 0; f < Math.max(1, Math.round(h / 1.1)); f++) for (let a5 = 0; a5 < 4; a5++) { const an = (a5 / 4) * Math.PI * 2 + 0.4; Q(new THREE.BoxGeometry(0.28, 0.42, 0.04).rotateY(-an + Math.PI / 2).translate(Math.cos(an) * 1.04, 0.55 + f * 1.1, Math.sin(an) * 1.04), winMat); }
+          Q(new THREE.ConeGeometry(1.2, 1.6, 16).translate(0, 0.2 + h + 0.8, 0), roofC);
+          Q(new THREE.SphereGeometry(0.12, 8, 6).translate(0, 0.2 + h + 1.7, 0), mats.gold);
+          return 0.2 + h + 1.9;
+        }
+        const hh = Math.max(1, h * 0.7);
+        Q(new THREE.BoxGeometry(3.2, hh, 1.7).translate(0, 0.2 + hh / 2, 0), marble);
+        for (const ox of [-1.0, 1.0]) { Q(new THREE.CylinderGeometry(0.55, 0.55, 0.3, 14).translate(ox, 0.35 + hh, 0), marble); Q(new THREE.SphereGeometry(0.55, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(ox, 0.5 + hh, 0), roofC); }
+        Q(new THREE.TorusGeometry(0.42, 0.1, 6, 14, Math.PI).translate(0, 0.2 + Math.min(hh, 1.1) * 0.55, 0.86), mats.gold);
+        for (let f = 0; f < 4; f++) Q(new THREE.BoxGeometry(0.3, 0.5, 0.04).translate(-1.35 + f * 0.9 + (f > 1 ? 0 : 0), 0.2 + hh * 0.55, 0.86), winMat);
+        if (lv >= 3) { Q(new THREE.CylinderGeometry(0.4, 0.45, h, 12).translate(0, 0.2 + h / 2, -0.4), marble); Q(new THREE.SphereGeometry(0.5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.2 + h, -0.4), mats.gold); }
+        return 0.2 + Math.max(hh + 1.1, lv >= 3 ? h + 0.6 : 0);
+      }
       if (style === "villa") {
         // White marble with golden domes: a villa, then grander, up to a palace tower.
         const marble = m2("#fbf8ff", 0.5, 0), gold = mats.gold, h = [0, 1.0, 1.8, 2.8, 4.2, 6.5][lv], w = lv >= 4 ? 2.0 : 2.6;
@@ -2691,6 +2714,19 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         // A glowing crystal tower, taller with every level, with smaller shards round it.
         const h = [0, 1.6, 3.0, 4.6, 6.6, 9.5][lv], hue = ["#9a7aff", "#7ad0ff", "#ff8ae0", "#8affd0"][seed % 4];
         const cm = own(std(hue, { roughness: 0.15, metalness: 0.2, emissive: new THREE.Color(hue), emissiveIntensity: 0.45, flatShading: true }));
+        if (seed % 3 === 1) {
+          // Another kind: a stack of turning crystal blocks, each a little smaller.
+          const n5 = 2 + lv;
+          for (let b5 = 0; b5 < n5; b5++) { const sz = 1.25 - b5 * (0.7 / n5), hb = h / n5; Q(new THREE.BoxGeometry(sz, hb * 0.92, sz).rotateY(b5 * 0.35).translate(0, 0.06 + hb * (b5 + 0.5), 0), cm); }
+          Q(new THREE.OctahedronGeometry(0.4, 0).scale(1, 1.8, 1).translate(0, h + 0.7, 0), cm);
+          return h + 1.5;
+        }
+        if (seed % 3 === 2) {
+          // Another kind: three leaning crystal spires growing from one base.
+          for (let c7 = 0; c7 < 3; c7++) { const an = (c7 / 3) * Math.PI * 2 + seed, hh = h * (c7 ? 0.7 : 1); Q(new THREE.CylinderGeometry(0.35, 0.55, hh, 6).translate(0, hh / 2, 0).rotateZ(c7 ? 0.22 : 0).rotateY(an).translate(Math.cos(an) * (c7 ? 0.45 : 0), 0.06, Math.sin(an) * (c7 ? 0.45 : 0)), cm); }
+          Q(new THREE.ConeGeometry(0.35, 1.0, 6).translate(0, h + 0.55, 0), cm);
+          return h + 1.2;
+        }
         Q(new THREE.CylinderGeometry(0.75, 0.95, h, 6).translate(0, h / 2 + 0.06, 0), cm);
         Q(new THREE.ConeGeometry(0.75, 1.4, 6).translate(0, h + 0.76, 0), cm);
         for (let c6 = 0; c6 < Math.min(5, lv + 1); c6++) { const an = c6 * 1.3 + seed, hh = 0.6 + (c6 % 3) * 0.5 + lv * 0.25; Q(new THREE.OctahedronGeometry(0.35, 0).scale(1, hh * 1.6, 1).translate(Math.cos(an) * 1.35, hh * 0.55, Math.sin(an) * 1.35), cm); }
@@ -2699,6 +2735,30 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // A space habitat: glass domes on a metal base, then stacked modules, then a tall
       // tower with a ring and an antenna.
       const metalP = m2("#c8d0e4", 0.35, 0.6), glass = own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.1 }));
+      if (seed % 3 === 1) {
+        // Another kind: a cluster of small domes joined by tubes, with a radar dish.
+        Q(new THREE.CylinderGeometry(1.8, 1.9, 0.25, 20).translate(0, 0.17, 0), metalP);
+        const pods: [number, number, number][] = [[0, 0, 0.9 + lv * 0.08], [-1.05, 0.7, 0.55], [1.05, 0.6, 0.6], [0.2, -1.1, 0.5]];
+        pods.forEach(([px, pz, r], i5) => {
+          Q(new THREE.CylinderGeometry(r, r, 0.25 + (i5 ? 0 : lv * 0.35), 16).translate(px, 0.42 + (i5 ? 0 : lv * 0.17), pz), metalP);
+          Q(new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2).translate(px, 0.55 + (i5 ? 0 : lv * 0.35), pz), glass);
+          if (i5) Q(new THREE.CylinderGeometry(0.12, 0.12, Math.hypot(px, pz), 8).rotateZ(Math.PI / 2).rotateY(-Math.atan2(pz, px)).translate(px / 2, 0.45, pz / 2), m2("#5ae0ff", 0.3, 0.4));
+        });
+        Q(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6).translate(1.3, 1.0, -0.9), metal);
+        Q(new THREE.SphereGeometry(0.45, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(-Math.PI / 2.6).translate(1.3, 1.7, -0.9), metalP);
+        return 1.2 + lv * 0.35 + 0.9;
+      }
+      if (seed % 3 === 2 && lv >= 2) {
+        // Another kind: a tall station tower with docking rings and a landing pad beside it.
+        const hT = 1.6 + lv * 1.3;
+        Q(new THREE.CylinderGeometry(1.7, 1.8, 0.25, 20).translate(0, 0.17, 0), metalP);
+        Q(new THREE.CylinderGeometry(0.55, 0.7, hT, 12).translate(-0.4, 0.3 + hT / 2, -0.3), metalP);
+        for (let r5 = 1; r5 <= Math.min(3, lv - 1); r5++) Q(new THREE.TorusGeometry(0.95, 0.08, 6, 24).rotateX(Math.PI / 2).translate(-0.4, 0.3 + (hT * r5) / (Math.min(3, lv - 1) + 1), -0.3), m2("#5ae0ff", 0.3, 0.4));
+        Q(new THREE.SphereGeometry(0.6, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(-0.4, 0.3 + hT, -0.3), glass);
+        Q(new THREE.CylinderGeometry(0.75, 0.75, 0.08, 16).translate(0.9, 0.36, 0.9), m2("#2a2f45", 0.6, 0.3));
+        Q(new THREE.TorusGeometry(0.55, 0.04, 4, 20).rotateX(Math.PI / 2).translate(0.9, 0.41, 0.9), m2("#ffd86a", 0.4, 0.2));
+        return 0.3 + hT + 0.8;
+      }
       Q(new THREE.CylinderGeometry(1.6, 1.7, 0.3, 20).translate(0, 0.2, 0), metalP);
       const mods = [0, 0, 1, 2, 4, 7][lv];
       for (let m3 = 0; m3 < mods; m3++) Q(new THREE.CylinderGeometry(1.0 - m3 * 0.05, 1.0 - m3 * 0.05, 0.7, 16).translate(0, 0.7 + m3 * 0.75, 0), m3 % 2 ? metalP : m2("#5ae0ff", 0.3, 0.4));
@@ -2770,8 +2830,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
           Q(new THREE.CylinderGeometry(0.25, 0.25, 0.04, 12).rotateX(Math.PI / 2).translate(0, 4.2, 0.56), winMat);
         } else if (th === "dish") {
           const metalP = m2("#e8ecf4", 0.3, 0.5);
+          // (The dish is a thin shell: both sides drawn, or from this side it vanishes and
+          // only its shadow shows.)
+          const dishM = own(std("#e8ecf4", { roughness: 0.3, metalness: 0.5, side: THREE.DoubleSide }));
           Q(new THREE.CylinderGeometry(0.2, 0.3, 1.4, 10).translate(0, 0.9, 0), metalP);
-          Q(new THREE.SphereGeometry(1.4, 20, 10, 0, Math.PI * 2, 0, Math.PI / 3).rotateX(Math.PI * 0.75).translate(0, 2.1, 0), metalP);
+          Q(new THREE.SphereGeometry(1.4, 20, 10, 0, Math.PI * 2, 0, Math.PI / 3).rotateX(Math.PI * 0.75).translate(0, 2.1, 0), dishM);
           Q(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 6).rotateX(-Math.PI / 4).translate(0, 2.6, 0.4), metal);
           for (const [tx, tz] of [[-1.4, 1.2], [1.4, 1.2]]) Q(new THREE.BoxGeometry(1.0, 0.04, 0.6).rotateX(-0.5).translate(tx, 0.6, tz), m2("#2a3f8a", 0.2, 0.6));
         }

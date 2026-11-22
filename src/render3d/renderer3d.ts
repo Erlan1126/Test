@@ -629,11 +629,11 @@ export class Renderer3D {
       let h = 0;
       for (let k = 0; k < 6; k++) {
         const a = this.biz.landAt(k);
-        if (!a || a.y < 8) continue;
+        if (!a || a.y < 14) continue;
         const d = Math.hypot(this.bizLook.x - (a.x - a.y), this.bizLook.z - (a.z - a.y));
         h = Math.max(h, a.y * clamp(1 - (d - 14) / 22, 0, 1));
       }
-      const sk = clamp((h - 8) / 18, 0, 1) * this.bizK;
+      const sk = clamp((h - 14) / 28, 0, 1) * this.bizK;
       if (sk > 0.01) {
         env.skyTop = mixRgb(env.skyTop, [6, 8, 34], sk);
         env.skyBot = mixRgb(env.skyBot, sk > 0.7 ? [40, 26, 96] : [70, 90, 190], sk * 0.85);
