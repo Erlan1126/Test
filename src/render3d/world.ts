@@ -426,17 +426,14 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     });
   }
   if (has(10)) {
-    // A soft rainbow arching behind the island.
-    const colors = [0xff6b6b, 0xffa94d, 0xffd43b, 0x69db7c, 0x4dabf7, 0x9775fa];
-    const bow = new THREE.Group();
-    colors.forEach((cl, i) => {
-      bow.add(new THREE.Mesh(new THREE.TorusGeometry(34 - i * 1.1, 0.55, 6, 48, Math.PI), new THREE.MeshBasicMaterial({ color: cl, transparent: true, opacity: 0.3, depthWrite: false })));
+    // Paper lanterns drifting up round the island, glowing at dusk and night.
+    const lantM = new THREE.MeshStandardMaterial({ color: 0xffb35a, emissive: 0xff8a2a, emissiveIntensity: 0.5, roughness: 0.6 });
+    const lanterns: THREE.Mesh[] = [];
+    for (let k = 0; k < 14; k++) { const ln = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.32, 0.8, 8), lantM); ln.userData.dynamic = true; g.add(ln); lanterns.push(ln); }
+    anims.push((t, night) => {
+      lantM.emissiveIntensity = 0.4 + night * 1.6;
+      lanterns.forEach((ln, k) => { const a = k * 2.4 + t * 0.03, r = 22 + (k % 5) * 4, h = ((t * 0.6 + k * 7) % 40); ln.position.set(Math.cos(a) * r, 4 + h, Math.sin(a) * r); ln.scale.setScalar(1 - h / 60); });
     });
-    bow.rotation.y = Math.PI / 4;
-    bow.position.set(-30, -14, -30);
-    bow.userData.dynamic = true;
-    g.add(bow);
-    anims.push((_t, night) => bow.children.forEach(m => { ((m as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.3 * (1 - night * 0.8); }));
   }
   if (has(11)) {
     // A golden obelisk whose beam of light reaches up into the night sky.

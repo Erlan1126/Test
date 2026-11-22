@@ -2325,22 +2325,64 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       const y0 = sp.y + (bought ? 0 : -0.6), y1 = prev.y, run = Math.hypot(sx0 - ex, sz0 - ez), rise = y0 - y1, len = Math.hypot(run, rise);
       const bridge = new THREE.Group();
-      const deckC = theme === "cloud" ? "#fffaf0" : theme === "crystal" ? "#b9a0ff" : theme === "orbit" ? "#8a93b0" : "#b07a4a";
-      const deckM = bought ? (theme === "harbor" || theme === "garden" || theme === "downtown" ? wood : mats.c(deckC, 0.4, theme === "orbit" ? 0.5 : 0.1)) : own(new THREE.MeshBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.35, depthWrite: false }));
-      bridge.add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.16, len).translate(0, 0.06, 0), deckM));
-      if (bought) {
-        const railC = theme === "cloud" ? m2("#ffd86a", 0.3, 0.7) : theme === "crystal" ? m2("#8af0ff", 0.2, 0.1) : theme === "orbit" ? m2("#5ae0ff", 0.3, 0.3) : wood;
-        for (const sx of [-1.15, 1.15]) {
-          bridge.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, len).translate(sx, 0.62, 0), railC));
-          const posts = Math.max(4, Math.round(len / 1.2));
-          for (let b = 0; b <= posts; b++) bridge.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.55, 0.1).translate(sx, 0.38, -len / 2 + (b * len) / posts), railC));
+      const B = (geo: THREE.BufferGeometry, mat: THREE.Material) => { bridge.add(new THREE.Mesh(geo, mat)); };
+      if (!bought) {
+        // For sale: a see-through ghost of the bridge to come.
+        B(new THREE.BoxGeometry(2.6, 0.16, len).translate(0, 0.06, 0), own(new THREE.MeshBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.35, depthWrite: false })));
+      } else {
+        // A suspension bridge in the island's style: a deck with a paved road and walkways,
+        // side girders, two towers with lights on top, main cables sagging between them and
+        // down to the ends, and hangers holding up the deck.
+        const style = {
+          harbor: { deck: "#b07a4a", girder: "#f4f2fa", tower: "#ffffff", cable: "#e2453c" },
+          garden: { deck: "#c8b08a", girder: "#4f9a5a", tower: "#f4fff0", cable: "#3fae5a" },
+          downtown: { deck: "#6e6761", girder: "#c8463a", tower: "#c8463a", cable: "#c8463a" },
+          cloud: { deck: "#fffaf0", girder: "#ffd86a", tower: "#fbf8ff", cable: "#e8b020" },
+          crystal: { deck: "#3a2f66", girder: "#8af0ff", tower: "#b9a0ff", cable: "#8af0ff" },
+          orbit: { deck: "#4a5070", girder: "#5ae0ff", tower: "#c8d0e4", cable: "#5ae0ff" },
+        }[theme];
+        const glow = theme === "crystal" || theme === "orbit";
+        const deckM = mats.c(style.deck, 0.8, theme === "orbit" ? 0.4 : 0), girderM = glow ? own(std(style.girder, { roughness: 0.3, emissive: new THREE.Color(style.girder), emissiveIntensity: 0.5 })) : mats.c(style.girder, 0.5, 0.2);
+        const towerM = mats.c(style.tower, 0.5, theme === "orbit" ? 0.5 : 0.1), cableM = glow ? girderM : mats.c(style.cable, 0.4, 0.3);
+        const W = 2.8, roadM = theme === "harbor" || theme === "garden" ? deckM : mats.c(theme === "downtown" ? "#4a4f66" : style.deck, 0.8);
+        B(new THREE.BoxGeometry(W, 0.22, len).translate(0, 0, 0), deckM);
+        B(new THREE.BoxGeometry(1.7, 0.03, len).translate(0, 0.125, 0), roadM);
+        if (theme === "harbor" || theme === "garden") for (let p2 = 0; p2 < Math.floor(len / 0.5); p2++) B(new THREE.BoxGeometry(W - 0.1, 0.02, 0.06).translate(0, 0.12, -len / 2 + 0.25 + p2 * 0.5), mats.c("#8a5a3a", 0.9));
+        for (const sx of [-1, 1]) {
+          B(new THREE.BoxGeometry(0.16, 0.42, len).translate(sx * (W / 2 + 0.05), -0.08, 0), girderM);
+          B(new THREE.BoxGeometry(0.06, 0.06, len).translate(sx * (W / 2 - 0.05), 0.55, 0), girderM);
+          const posts = Math.max(6, Math.round(len / 0.8));
+          for (let b = 0; b <= posts; b++) B(new THREE.BoxGeometry(0.05, 0.42, 0.05).translate(sx * (W / 2 - 0.05), 0.33, -len / 2 + (b * len) / posts), girderM);
         }
-        if (theme === "orbit") bridge.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, len, 16, 1, true, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(0, 0.1, 0), own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide, depthWrite: false }))));
-        if (k === 0) for (const bz of [-len / 4, len / 4]) bridge.add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 4, 8).translate(0, -2, bz), rock));
-        for (const bz of [-len / 2 + 0.5, len / 2 - 0.5]) for (const sx of [-1.3, 1.3]) {
-          bridge.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(sx, 0.75, bz), metal));
-          bridge.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6).translate(sx, 1.5, bz), lampMat));
+        // The two towers, a fifth of the way in from each end.
+        const TH = 3.4, tz = [-len * 0.3, len * 0.3];
+        for (const z of tz) {
+          for (const sx of [-1, 1]) B(new THREE.BoxGeometry(0.28, TH, 0.36).translate(sx * (W / 2 + 0.12), TH / 2 - 0.1, z), towerM);
+          B(new THREE.BoxGeometry(W + 0.5, 0.26, 0.3).translate(0, TH - 0.4, z), towerM);
+          B(new THREE.BoxGeometry(W + 0.5, 0.18, 0.3).translate(0, TH * 0.55, z), towerM);
+          for (const sx of [-1, 1]) B(new THREE.SphereGeometry(0.13, 8, 6).translate(sx * (W / 2 + 0.12), TH, z), lampMat);
         }
+        // Main cables: a sag between the towers and down to each end; hangers to the deck.
+        const cable = (z0: number, z1: number, y0c: number, y1c: number, sag: number, sx: number) => {
+          const n = 12;
+          for (let q2 = 0; q2 < n; q2++) {
+            const ta = q2 / n, tb = (q2 + 1) / n;
+            const ya = y0c + (y1c - y0c) * ta - sag * 4 * ta * (1 - ta), yb = y0c + (y1c - y0c) * tb - sag * 4 * tb * (1 - tb);
+            const za = z0 + (z1 - z0) * ta, zb = z0 + (z1 - z0) * tb, sl = Math.hypot(zb - za, yb - ya);
+            B(new THREE.CylinderGeometry(0.04, 0.04, sl, 5).rotateX(Math.PI / 2 - Math.atan2(yb - ya, zb - za)).translate(sx * (W / 2 + 0.12), (ya + yb) / 2, (za + zb) / 2), cableM);
+            if (q2 > 0) B(new THREE.CylinderGeometry(0.015, 0.015, Math.max(0.05, ya - 0.5), 4).translate(sx * (W / 2 + 0.12), (ya + 0.5) / 2, za), cableM);
+          }
+        };
+        for (const sx of [-1, 1]) {
+          cable(tz[0], tz[1], TH, TH, TH - 1.0, sx);
+          cable(-len / 2, tz[0], 0.6, TH, -0.3, sx);
+          cable(tz[1], len / 2, TH, 0.6, -0.3, sx);
+        }
+        if (theme === "orbit") B(new THREE.CylinderGeometry(1.7, 1.7, len, 16, 1, true, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(0, 0.15, 0), own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.22, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false })));
+        // Down low the bridge also stands on two stone piers.
+        if (k === 0) for (const z of tz) B(new THREE.CylinderGeometry(0.6, 0.9, 5, 8).translate(0, -2.6, z), rock);
+        // Lights along the underside of the sky bridges.
+        if (k > 0) for (let q2 = 0; q2 < 8; q2++) B(new THREE.SphereGeometry(0.09, 6, 4).translate(0, -0.15, -len / 2 + (q2 + 0.5) * (len / 8)), lampMat);
       }
       bridge.position.set((sx0 + ex) / 2, (y0 + y1) / 2, (sz0 + ez) / 2);
       bridge.rotation.order = "YXZ";

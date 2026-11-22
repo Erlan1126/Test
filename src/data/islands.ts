@@ -67,7 +67,7 @@ export const ISLAND_UPGRADES = [
   { at: msAt("cntower"), name: "Waterfall" },
   { at: msAt("skytree"), name: "Floating gardens" },
   { at: msAt("merdeka"), name: "Fireworks" },
-  { at: msAt("burj"), name: "Rainbow" },
+  { at: msAt("burj"), name: "Sky lanterns" },
   { at: msAt("jeddah"), name: "Sky beacon" },
 ];
 /** Before upgrades needed taller towers, the first six came at these heights (meters).

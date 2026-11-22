@@ -1840,4 +1840,5 @@ export const ES: Record<string, string> = {
   "A new island is for sale!": "¡Hay una isla nueva en venta!",
   "Save for {name}": "Ahorra para {name}",
   "Buy this island": "Comprar esta isla",
+  "Sky lanterns": "Farolillos al cielo",
 };
