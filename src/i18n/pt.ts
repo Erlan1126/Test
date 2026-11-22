@@ -1573,6 +1573,8 @@ export const PT: Record<string, string> = {
   "A little tram starts running round the streets": "Um bondinho começa a rodar pelas ruas",
   "Glowing billboards light up the corners": "Painéis luminosos iluminam as esquinas",
   "Airships float over the island": "Dirigíveis flutuam sobre a ilha",
+  "Town Hall": "Prefeitura",
+  "Chapter done!": "Capítulo concluído!",
   "A superyacht anchors in the bay": "Um superiate ancora na baía",
   "The golden Skyhaven Tower stands over everything": "A Torre dourada de Skyhaven se ergue sobre tudo",
   "Every floor you build adds two office floors for your company. A perfect streak of 10 starts a construction boom!": "Cada andar que você constrói adiciona dois andares de escritório à sua empresa. Uma sequência perfeita de 10 inicia um boom de construção!",

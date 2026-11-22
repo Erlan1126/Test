@@ -2724,6 +2724,7 @@ export class App implements DailyHost {
   private bizFocus = false;
   canCity(): boolean { return this.renderer instanceof Renderer3D && !this.visiting; }
   setBizFocus(on: boolean): void { this.bizFocus = on; }
+  openStory(): void { this.sound.click(); openMayor(this.save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); }
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
   bizPan(dx: number, dy: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPan(dx, dy); }
   bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }

@@ -1,5 +1,6 @@
 // The Tycoon screens: the business list (tap to run, buy levels, hire managers), boosts,
 // the New Era, the live card on the home screen and the "while you were away" welcome.
+import { CHAPTERS, chapterIndex, chapterReady } from "../data/chapters";
 import { decorMult } from "../logic/decor";
 import { DECOR_BONUS } from "../data/decor";
 import { RANK_BONUS, RANKS } from "../data/ranks";
@@ -58,6 +59,8 @@ export interface TycoonHost {
   canCity(): boolean;
   /** Flies the camera over the business district (or back). */
   setBizFocus(on: boolean): void;
+  /** Opens Mayor Pip's story (the Town Hall). */
+  openStory(): void;
   /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
   bizHomes(): string[];
@@ -928,7 +931,11 @@ export class TycoonUI {
       .sort((a, b) => (a.key === this.selectedProp ? -1 : b.key === this.selectedProp ? 1 : a.price - b.price)).slice(0, 3)
       .map(h => `<button type="button" class="tag bub prop-up${h.key === this.selectedProp ? " sel" : ""}" data-tag="prop-${h.key}" data-i="${-100 - h.idx}" data-h="-1" aria-label="${esc(t("Upgrade this building"))}"><span class="tag-ico">${h.key === this.selectedProp ? "🏠" : "⬆"}</span>${h.key === this.selectedProp ? `<b>${esc(t("Lv {n}", { n: h.lv }))}</b>` : ""}</button>`).join("");
     this.labelsDirty = true;
-    this.put($("tcy-labels"), starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    // The Town Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
+    // is ready to finish).
+    const ci = chapterIndex(s), ch = CHAPTERS[ci], ready = !!ch && chapterReady(s);
+    const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(t("Town Hall"))}"><span class="tag-ico">${ready ? "❗" : "🏛️"}</span><b>${esc(ready ? t("Chapter done!") : t(ch.title))}</b></button>` : "";
+    this.put($("tcy-labels"), hallTag + starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
@@ -1122,6 +1129,7 @@ export class TycoonUI {
       return;
     }
     if (id.startsWith("land-")) { this.openLand(); return; }
+    if (id === "hall") { this.host.openStory(); return; }
     if (id.startsWith("prop-")) { this.selectProp(id.slice(5)); return; }
     if (id === "starter") {
       const st = this.save.cafe.starter;

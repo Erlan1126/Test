@@ -420,7 +420,7 @@ export interface BizCity {
   /** Where a town rank's landmark is (the camera visits it when the rank is reached). */
   landmark(rank: number): { x: number; z: number; zoom?: number } | null;
   /** The flower market's and the playground's spots. */
-  spot(id: "flowers" | "play"): { x: number; z: number };
+  spot(id: "flowers" | "play" | "hall"): { x: number; z: number };
   /** Where piece of land k stands now (for its "for sale" bubble), or null if it isn't shown. */
   landAt(k: number): { x: number; z: number; y: number } | null;
   /** The town's properties (and the districts'): where each stands, how tall, its key. */
@@ -830,6 +830,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // Parks with a lake on the big open stretches of the island (between the town and the
   // districts): found by looking for the spots furthest from any street, district or shore.
   const parks: { x: number; z: number; r: number }[] = [];
+  let hallAt: { x: number; z: number } | null = null, hallTop = 3;
   {
     const clear = (x: number, z: number) => {
       let d = Infinity;
@@ -839,15 +840,26 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (let m = 1; m < d && m < 14; m += 1) if (!insidePoly(hull, x, z, m)) { d = Math.min(d, m - 1); break; }
       return d;
     };
+    // The Town Hall's square: the open spot nearest the middle of town with room round it.
+    {
+      const tcx = ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, tcz = ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length;
+      const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
+      let bestD = Infinity;
+      for (let x = hx0; x <= hx1; x += 1) for (let z = hz0; z <= hz1; z += 1) {
+        if (!insidePoly(hull, x, z) || clear(x, z) < 3.4) continue;
+        const d = Math.hypot(x - tcx, z - tcz);
+        if (d < bestD) { bestD = d; hallAt = { x, z }; }
+      }
+    }
     if (landBuilt0.length) {
       const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
       const cand: { x: number; z: number; r: number }[] = [];
       for (let x = hx0; x <= hx1; x += 2) for (let z = hz0; z <= hz1; z += 2) { if (!insidePoly(hull, x, z)) continue; const r = clear(x, z); if (r >= 5.5) cand.push({ x, z, r }); }
       cand.sort((a, b) => b.r - a.r);
-      for (const c of cand) { if (parks.length >= 3) break; if (parks.every(p => Math.hypot(p.x - c.x, p.z - c.z) > p.r + c.r + 2)) parks.push({ ...c, r: Math.min(c.r, 11) }); }
+      for (const c of cand) { if (parks.length >= 3) break; if (hallAt && Math.hypot(hallAt.x - c.x, hallAt.z - c.z) < c.r + 4) continue; if (parks.every(p => Math.hypot(p.x - c.x, p.z - c.z) > p.r + c.r + 2)) parks.push({ ...c, r: Math.min(c.r, 11) }); }
     }
   }
-  const inPark = (x: number, z: number) => parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r);
+  const inPark = (x: number, z: number) => parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r) || (!!hallAt && Math.hypot(x - hallAt.x, z - hallAt.z) < 3.4);
   // (Nothing of the countryside's goes on the land the player bought: that's for its own build.)
   const onLand = (x: number, z: number) => landBuilt.some(sp => Math.abs(x - sp.x) < DIST_H + 0.6 && Math.abs(z - sp.z) < DIST_H + 0.6) || nearLink(x, z) || inPark(x, z);
   // The road from the town's streets out to the first island's bridge (once it's for sale or
@@ -882,6 +894,96 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     S(ROAD * 2, 0.1, 0, rM);
     for (const sd of [-1, 1]) { S(0.12, 0.18, sd * (ROAD + 0.06), cM); S(0.55, 0.2, sd * (ROAD + 0.39), wM); }
   };
+  // The ring boulevard: a curving avenue all round the town (once the city spreads past it),
+  // between the town and its neighbourhoods; it stops at the shore, the districts, the
+  // parks and the Town Hall's square, and everything else keeps clear of it.
+  if (landBuilt0.length) {
+    let ringR = grow(coreHull, 5.2);
+    for (let r6 = 0; r6 < 2; r6++) { const nx: [number, number][] = []; for (let i = 0; i < ringR.length; i++) { const a = ringR[i], b = ringR[(i + 1) % ringR.length]; nx.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); } ringR = nx; }
+    // (Even steps, about 1.1 apart, so the curve reads as one smooth road.)
+    const even: [number, number][] = [];
+    for (let i = 0; i < ringR.length; i++) { const a = ringR[i], b = ringR[(i + 1) % ringR.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let d = 0; d < L; d += 1.1) even.push([a[0] + ((b[0] - a[0]) * d) / L, a[1] + ((b[1] - a[1]) * d) / L]); }
+    const okAt = (x: number, z: number) => insidePoly(hull, x, z, 1.6) && z > beachZ + 1.2 && !landBuilt.some(sp => Math.abs(x - sp.x) < DIST_H + 0.8 && Math.abs(z - sp.z) < DIST_H + 0.8) && !parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r) && !(hallAt && Math.hypot(x - hallAt.x, z - hallAt.z) < 3.6) && !ALL.some(c => { const q = cellXZ(c); return Math.abs(x - q.x) < C / 2 + 1.4 && Math.abs(z - q.z) < C / 2 + 1.4; });
+    for (let i = 0; i < even.length; i++) {
+      const a = even[i], b = even[(i + 1) % even.length];
+      if (!okAt(a[0], a[1]) || !okAt(b[0], b[1])) continue;
+      // (A little past each end, so the pieces overlap round the bends: no gaps.)
+      const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1, ex = (dx / L) * 0.12, ez = (dz / L) * 0.12;
+      streetStrip(g, a[0] - ex, a[1] - ez, b[0] + ex, b[1] + ez, 0, road, walk, curb);
+      laneAll.push(a);
+      if (i % 9 === 0) { add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(a[0] - (dz / L) * 1.75, 0.7, a[1] + (dx / L) * 1.75), metal); add(new THREE.SphereGeometry(0.12, 8, 6).translate(a[0] - (dz / L) * 1.75, 1.45, a[1] + (dx / L) * 1.75), bulb); }
+    }
+  }
+  // The Town Hall: the city's main building on its own square, growing with the town's rank
+  // (a wooden hall, then a clock tower, a stone hall with columns, wings, a dome, a golden
+  // dome and statue, and at last a grand capitol with a beacon). Tap it for Mayor Pip's story.
+  if (hallAt) {
+    const { x: hx, z: hz } = hallAt, rk = cafe.rank ?? 0, H = new THREE.Group();
+    const T = (geo: THREE.BufferGeometry, m: THREE.Material) => H.add(new THREE.Mesh(geo, m));
+    const stoneW = mats.c(rk >= 2 ? "#f4efe4" : "#e9d9bf", 0.7), roofC = mats.c(rk >= 2 ? "#5a6fa8" : "#b8553f", 0.7), trim = mats.c(rk >= 5 ? "#e8b020" : "#ffffff", rk >= 5 ? 0.35 : 0.6, rk >= 5 ? 0.6 : 0), goldM = mats.gold;
+    // The square: paving, steps and planters.
+    T(new THREE.CylinderGeometry(3.3, 3.35, 0.08, 32).translate(0, 0.04, 0), plazaM);
+    T(new THREE.RingGeometry(3.0, 3.25, 32).rotateX(-Math.PI / 2).translate(0, 0.085, 0), mats.c("#d9cfbd", 0.8));
+    const sc = 1 + rk * 0.08, W = 2.6 * sc, D = 1.8 * sc, Hh = 1.0 + rk * 0.12;
+    T(new THREE.BoxGeometry(W + 0.5, 0.18, D + 0.5).translate(0, 0.17, 0), mats.c("#d9d2c4", 0.8));
+    T(new THREE.BoxGeometry(W + 0.2, 0.14, D + 0.2).translate(0, 0.33, 0), mats.c("#e6dfd2", 0.8));
+    T(new THREE.BoxGeometry(W, Hh, D).translate(0, 0.4 + Hh / 2, 0), stoneW);
+    // Windows all round, a big door with steps up to it.
+    const winC = winMat;
+    for (let w = 0; w < 5; w++) { const wx = -W / 2 + (w + 0.5) * (W / 5); T(new THREE.BoxGeometry(0.22, 0.38, 0.03).translate(wx, 0.4 + Hh * 0.55, D / 2 + 0.01), winC); T(new THREE.BoxGeometry(0.22, 0.38, 0.03).translate(wx, 0.4 + Hh * 0.55, -D / 2 - 0.01), winC); }
+    T(new THREE.BoxGeometry(0.5, 0.65, 0.04).translate(0, 0.72, D / 2 + 0.02), mats.c("#7a4a2e", 0.7));
+    for (let st5 = 0; st5 < 3; st5++) T(new THREE.BoxGeometry(1.1 - st5 * 0.15, 0.08, 0.25).translate(0, 0.08 + st5 * 0.08, D / 2 + 0.6 - st5 * 0.2), mats.c("#e6dfd2", 0.8));
+    // A colonnade and a pediment once it's a town of stone.
+    if (rk >= 2) {
+      for (let c5 = 0; c5 < 6; c5++) T(new THREE.CylinderGeometry(0.08, 0.09, Hh, 10).translate(-W * 0.38 + c5 * (W * 0.76 / 5), 0.4 + Hh / 2, D / 2 + 0.3), trim);
+      T(new THREE.BoxGeometry(W * 0.86, 0.1, 0.5).translate(0, 0.45 + Hh, D / 2 + 0.25), trim);
+      const ped = new THREE.Shape([new THREE.Vector2(-W * 0.45, 0), new THREE.Vector2(W * 0.45, 0), new THREE.Vector2(0, 0.45)]);
+      T(new THREE.ExtrudeGeometry(ped, { depth: 0.5, bevelEnabled: false }).translate(0, 0.5 + Hh, D / 2), stoneW);
+    } else {
+      // A pitched roof while it's still a village hall.
+      const rf = new THREE.Shape([new THREE.Vector2(-D / 2 - 0.15, 0), new THREE.Vector2(D / 2 + 0.15, 0), new THREE.Vector2(0, 0.7)]);
+      T(new THREE.ExtrudeGeometry(rf, { depth: W + 0.2, bevelEnabled: false }).translate(0, 0, -(W + 0.2) / 2).rotateY(Math.PI / 2).translate(0, 0.4 + Hh, 0), roofC);
+    }
+    // Wings either side from City rank.
+    if (rk >= 3) for (const sd of [-1, 1]) { T(new THREE.BoxGeometry(W * 0.4, Hh * 0.8, D * 0.85).translate(sd * (W / 2 + W * 0.2), 0.4 + Hh * 0.4, -0.05), stoneW); T(new THREE.BoxGeometry(W * 0.42, 0.08, D * 0.9).translate(sd * (W / 2 + W * 0.2), 0.42 + Hh * 0.8, -0.05), trim); }
+    // The clock tower (Village), then a dome on a drum (Big City), golden (Metropolis).
+    let top = 0.5 + Hh;
+    if (rk >= 1 && rk < 4) {
+      const th = 1.1 + rk * 0.25;
+      T(new THREE.BoxGeometry(0.7, th, 0.7).translate(0, top + th / 2 + (rk >= 2 ? 0.4 : 0.5), -0.1), stoneW);
+      T(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 16).rotateX(Math.PI / 2).translate(0, top + th * 0.75 + 0.45, 0.26), mats.c("#ffffff", 0.4));
+      T(new THREE.ConeGeometry(0.55, 0.7, 4).rotateY(Math.PI / 4).translate(0, top + th + 0.85, -0.1), roofC);
+      top += th + 1.2;
+    } else if (rk >= 4) {
+      const dr = 0.75 + rk * 0.05;
+      T(new THREE.CylinderGeometry(dr, dr, 0.6, 20).translate(0, top + 0.3, -0.1), stoneW);
+      for (let c5 = 0; c5 < 12; c5++) { const a5 = (c5 / 12) * Math.PI * 2; T(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 6).translate(Math.cos(a5) * (dr + 0.03), top + 0.3, Math.sin(a5) * (dr + 0.03) - 0.1), trim); }
+      T(new THREE.SphereGeometry(dr, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, top + 0.6, -0.1), rk >= 5 ? goldM : mats.c("#7fa8c8", 0.4, 0.3));
+      T(new THREE.CylinderGeometry(0.12, 0.16, 0.4, 10).translate(0, top + 0.6 + dr + 0.15, -0.1), trim);
+      top += 0.6 + dr + 0.5;
+      if (rk >= 6) {
+        // The beacon spire of the Sky Capital.
+        T(new THREE.ConeGeometry(0.12, 1.6, 8).translate(0, top + 0.8, -0.1), goldM);
+        const bm = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 1.2 })); bm.userData.dynamic = true;
+        T(new THREE.SphereGeometry(0.16, 10, 8).translate(0, top + 1.7, -0.1), bm);
+        townTicksEarly.push(t => { bm.emissiveIntensity = 0.8 + Math.sin(t * 2.5) * 0.5; });
+        top += 1.9;
+      }
+    }
+    // Flags at the front, and a statue (Metropolis) on the square.
+    for (const sd of [-1, 1]) {
+      T(new THREE.CylinderGeometry(0.03, 0.03, 2.2, 6).translate(sd * 1.6, 1.1, D / 2 + 1.4), mats.c("#e8ecf4", 0.4, 0.5));
+      T(new THREE.BoxGeometry(0.02, 0.36, 0.55).translate(sd * 1.6, 2.0, D / 2 + 1.4 + 0.28), mats.c(sd < 0 ? "#2f9bff" : "#ff5f6d", 0.6));
+    }
+    if (rk >= 5) { T(new THREE.CylinderGeometry(0.3, 0.35, 0.5, 12).translate(0, 0.33, D / 2 + 2.1), mats.c("#d9d2c4", 0.8)); T(new THREE.CapsuleGeometry(0.13, 0.4, 3, 8).translate(0, 0.85, D / 2 + 2.1), goldM); }
+    for (const [px, pz] of [[-2.5, 1.6], [2.5, 1.6], [-2.5, -1.6], [2.5, -1.6]]) { T(new THREE.CylinderGeometry(0.3, 0.26, 0.3, 10).translate(px, 0.15, pz), stone); T(new THREE.IcosahedronGeometry(0.32, 0).translate(px, 0.5, pz), leaf); }
+    // Facing the town's middle.
+    const tcx = ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, tcz = ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length;
+    H.rotation.y = Math.atan2(tcx - hx, tcz - hz);
+    H.position.set(hx, 0, hz);
+    g.add(H);
+    hallTop = top + 0.3;
+  }
   // The parks: a lake with a sandy shore, a path all round it with benches facing the water,
   // a wooden jetty with a rowboat, a white gazebo, flower beds, and trees in a ring.
   parks.forEach((pk, pi) => {
@@ -927,6 +1029,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const homesOut: [number, number][] = [];
   {
     const HOUSES = ["tt_house", "tt_house_2", "tt_house_3", "tt_bungalow", "tt_semi_detached", "tt_terraced_house"];
+    const cxT = ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, czT = ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length;
     const nearCell = (x: number, z: number) => ALL.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + 2 && Math.abs(z - p.z) < C / 2 + 2; });
     const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
     let n5 = 0;
@@ -937,7 +1040,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const jx = x + Math.sin(n5 * 3.1) * 0.5, jz = z + Math.cos(n5 * 1.7) * 0.5;
       if (!insidePoly(hull, jx, jz, 2.2) || insidePoly(coreHull, jx, jz, -1.5) || nearCell(jx, jz) || jz < beachZ + 2.5) continue;
       if (onLand(jx, jz) || landBuilt.some(sp => Math.abs(jx - sp.x) < DIST_H + 2.5 && Math.abs(jz - sp.z) < DIST_H + 2.5) || parks.some(p => Math.hypot(jx - p.x, jz - p.z) < p.r + 1.5) || nearLane(jx, jz, 1.8)) continue;
-      const kp = kitPlace(HOUSES[n5 % HOUSES.length], 2.1 + (n5 % 3) * 0.2, 1, n5 % 8);
+      // (The city rises as it grows: houses at first, then apartments and shops, then offices
+      // and towers, nearest the middle first.)
+      const rkO = cafe.rank ?? 0, nearMid = Math.hypot(jx - cxT, jz - czT), up = rkO - 2 - Math.floor(nearMid / 18) + (n5 % 3 === 0 ? 1 : 0);
+      const pool = up >= 3 ? ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_office", "tt_tower_block"] : up >= 2 ? ["tt_office", "building_a", "building_c", "building_e", "tt_hotel"] : up >= 1 ? ["tt_apartment", "tt_apartment_2", "tt_apartment_3", "tt_shop", "tt_shop_3", "tt_cafe"] : HOUSES;
+      const kp = kitPlace(pool[n5 % pool.length], up >= 2 ? 2.4 : 2.1 + (n5 % 3) * 0.2, 1, n5 % 8);
       if (!kp) continue;
       kp.obj.position.set(jx, 0, jz); kp.obj.rotation.y = (n5 % 4) * (Math.PI / 2);
       g.add(kp.obj);
@@ -3482,10 +3589,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const lampW = lampAt.map(() => new THREE.Vector3());
   return {
     group: g,
-    top: i => (i === -1 ? plotTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),
+    top: i => (i === -1 ? plotTop : i === -4 ? hallTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),
     resident: () => block.resident(),
     landmark: r => (landmarks[r] ? landmarks[r]() : null),
-    spot: id => block.spot(id),
+    spot: id => (id === "hall" ? hallAt ?? { x: 0, z: 0 } : block.spot(id)),
     landAt: k => landShown[k] ?? null,
     homes: () => homeSpots,
     look(l) { fx.look(l); Object.assign(look, l); },
