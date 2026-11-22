@@ -499,17 +499,18 @@ function renderTitle() {
   $("starCount").textContent = t;
   $("playLabel").textContent = "Play";
   const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
-  if (typeof homesLit === "function") { $("homeBestLabel").textContent = "Homes relit"; $("homeBest").textContent = `${homesLit()}/${STAGES_N}`; } else $("homeBest").textContent = best.toLocaleString();
+  if (typeof homesLit === "function") { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; } else $("homeBest").textContent = best.toLocaleString();
   $("playSub").textContent = "Hold to swing, let go to fly";
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
-  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("dailyRunBtn").textContent = ds ? `Daily ${"★".repeat(ds.stars || 1)}` : "Daily"; }
-  $("hardBtn").textContent = rs.best ? `Endless · ${rs.best.toLocaleString()}` : "Endless";
+  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : typeof stagePerson === "function" ? `${stagePerson(0)[0]} waits` : "Today's stage"; }
+  $("tileEndless").textContent = rs.best ? `Best ${rs.best.toLocaleString()}` : "How far can you go?";
   const we = weekEvent(), sn = streakNow();
   $("titleMeta").textContent = (typeof homesLit === "function" ? `${homesLit()}/${STAGES_N} homes relit · ` : `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · `) + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
   $("playLabel").textContent = "Play";
-  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = `Stage ${n}`; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : stageWaiting(n); }
+  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;
+    const [who, line] = stagePerson(n); $("heroWhere").textContent = `${stageChapter(n)} · Stage ${n}${n % 10 === 0 ? " · Boss" : ""}`; $("heroWho").textContent = stageWaiting(n); $("heroLine").textContent = st ? `“${line}”` : "Their window is still dark. Bring the light home."; }
   if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
   else if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()}`; }
   // The daily gift waits on the Today tab (its dot); nothing pops up over Play.

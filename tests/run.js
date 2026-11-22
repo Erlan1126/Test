@@ -578,7 +578,7 @@ const SIM = `
         await new Promise(r => setTimeout(r, 1500));
         o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
         o.homesLitCountsClearedStages = homesLit() >= 1;
-        run = null; showTitle(); o.homeShowsHomesRelit = /\/60$/.test($("homeBest").textContent);
+        run = null; showTitle(); o.homeShowsHomesRelit = $("homeBest").textContent === String(homesLit()) && $("tileCity").textContent.includes("/60");
         o.dailyHasANamedNeighbour = stagePerson(0)[0] && stagePerson(0)[0] !== "A stranger";
         return o;
       });

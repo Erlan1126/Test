@@ -27,7 +27,7 @@ const SW2D = (() => {
   };
   const smoke = mk(64, 64, (x) => { const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(6,2,16,0.95)"); gr.addColorStop(0.6, "rgba(16,6,36,0.55)"); gr.addColorStop(1, "rgba(16,6,36,0)"); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); });
   // Buildings: one image per building (dark and lit), drawn at a fixed scale and copied each frame.
-  const PX = 8;  // pixels per metre in the cached images
+  const PX = 14;  // pixels per metre in the cached images (sharp on phone screens)
   const STYLE = [
     { base: "#232b38", day: "#9fb2c6", win: "#3a4a5c", lit: "#ffd9a0", cols: 4, rows: 1 },
     { base: "#3a2622", day: "#a2614a", win: "#2c3846", lit: "#ffcf8a", cols: 3, rows: 1 },
@@ -36,15 +36,40 @@ const SW2D = (() => {
     { base: "#2c2a28", day: "#b8b2a6", win: "#2b3541", lit: "#ffd59a", cols: 2, rows: 0.8 },
     { base: "#33282c", day: "#d9b8a8", win: "#35414f", lit: "#ffd0b0", cols: 4, rows: 1 },
   ];
+  // A facade with real detail: corner pilasters, a ledge every few floors, framed windows (some with
+  // curtains or someone inside), a lit shopfront at street level, and a darker base. Drawn once.
   function paintFacade(x, w, h, st, lit, day, seed) {
-    const r = seeded(Math.floor(seed * 1e6));
-    x.fillStyle = day ? st.day : st.base; x.fillRect(0, 0, w, h);
-    const fl = 3.4 * PX, cw = w / st.cols;
-    for (let y = 6; y + fl * 0.55 < h - 4; y += fl) for (let c = 0; c < st.cols; c++) {
-      const on = lit && r() < 0.62, ww = cw * 0.62, hh = fl * 0.5 * st.rows;
-      x.fillStyle = on ? st.lit : day ? "rgba(40,55,75,0.85)" : st.win; x.fillRect(c * cw + (cw - ww) / 2, y, ww, Math.min(hh, fl * 0.62));
+    const r = seeded(Math.floor(seed * 1e6)), base = day ? st.day : st.base;
+    x.fillStyle = base; x.fillRect(0, 0, w, h);
+    const sh = x.createLinearGradient(0, 0, 0, h); sh.addColorStop(0, "rgba(255,255,255,0.06)"); sh.addColorStop(0.6, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,0.35)"); x.fillStyle = sh; x.fillRect(0, 0, w, h);
+    // Pilasters at the corners.
+    const pil = Math.max(4, w * 0.05); x.fillStyle = "rgba(255,255,255,0.05)"; x.fillRect(0, 0, pil, h); x.fillStyle = "rgba(0,0,0,0.22)"; x.fillRect(w - pil, 0, pil, h);
+    const fl = 3.4 * PX, shop = Math.min(h * 0.3, 4.2 * PX), cols = st.cols, mx = pil + 3, cw = (w - mx * 2) / cols;
+    let floor = 0;
+    for (let y = 8; y + fl * 0.6 < h - shop; y += fl, floor++) {
+      if (floor % 4 === 3) { x.fillStyle = "rgba(255,255,255,0.07)"; x.fillRect(0, y - 4, w, 2); x.fillStyle = "rgba(0,0,0,0.25)"; x.fillRect(0, y - 2, w, 2); }
+      for (let c = 0; c < cols; c++) {
+        const ww = cw * 0.64, hh = Math.min(fl * 0.52 * st.rows, fl * 0.64), wx = mx + c * cw + (cw - ww) / 2, on = lit && r() < 0.6, roll = r();
+        x.fillStyle = "rgba(0,0,0,0.35)"; x.fillRect(wx - 1.5, y - 1.5, ww + 3, hh + 3);                       // the frame's shadow
+        if (on) {
+          const g = x.createLinearGradient(0, y, 0, y + hh); g.addColorStop(0, st.lit); g.addColorStop(1, roll < 0.5 ? "#ffb066" : "#ffe4b8"); x.fillStyle = g; x.fillRect(wx, y, ww, hh);
+          if (roll < 0.25) { x.fillStyle = "rgba(120,50,40,0.45)"; x.fillRect(wx, y, ww * 0.28, hh); x.fillRect(wx + ww * 0.72, y, ww * 0.28, hh); }   // curtains
+          else if (roll < 0.36) { x.fillStyle = "rgba(40,25,20,0.75)"; x.beginPath(); x.arc(wx + ww * 0.5, y + hh * 0.48, hh * 0.16, 0, Math.PI * 2); x.fill(); x.fillRect(wx + ww * 0.38, y + hh * 0.62, ww * 0.24, hh * 0.38); }   // someone home
+        } else {
+          x.fillStyle = day ? "rgba(40,55,75,0.85)" : st.win; x.fillRect(wx, y, ww, hh);
+          x.fillStyle = "rgba(170,200,255,0.07)"; x.beginPath(); x.moveTo(wx, y + hh); x.lineTo(wx + ww * 0.55, y); x.lineTo(wx + ww * 0.8, y); x.lineTo(wx + ww * 0.25, y + hh); x.fill();   // sky in the glass
+        }
+        x.fillStyle = "rgba(0,0,0,0.3)"; x.fillRect(wx + ww / 2 - 0.75, y, 1.5, hh); x.fillStyle = "rgba(255,255,255,0.1)"; x.fillRect(wx - 1, y + hh, ww + 2, 1.5);   // mullion and sill
+      }
     }
-    x.fillStyle = "rgba(255,255,255,0.08)"; x.fillRect(0, 0, w, 3);
+    // Street level: a shopfront, lit when the building is.
+    const sy = h - shop; x.fillStyle = "rgba(0,0,0,0.4)"; x.fillRect(0, sy, w, shop);
+    const aw = ["#b8463a", "#2f7d6d", "#3b5fa8", "#a8783b", "#7a3ba8"][Math.floor(r() * 5)];
+    x.fillStyle = aw; x.fillRect(pil, sy + 2, w - pil * 2, shop * 0.14); x.fillStyle = "rgba(255,255,255,0.18)"; for (let q = pil; q < w - pil; q += 10) x.fillRect(q, sy + 2, 5, shop * 0.14);
+    const gx = pil + 4, gw = w - pil * 2 - 8, gy = sy + shop * 0.24, gh = shop * 0.62;
+    if (lit) { const g = x.createLinearGradient(0, gy, 0, gy + gh); g.addColorStop(0, "#ffe7b8"); g.addColorStop(1, "#ffb874"); x.fillStyle = g; } else x.fillStyle = "#10141c";
+    x.fillRect(gx, gy, gw, gh); x.fillStyle = "rgba(0,0,0,0.35)"; for (let q = 1; q < 4; q++) x.fillRect(gx + gw * q / 4 - 1, gy, 2, gh);
+    x.fillStyle = "rgba(255,255,255,0.1)"; x.fillRect(0, 0, w, 3);
   }
   const bldImg = new Map();
   function imgFor(b, lit, day) {
@@ -52,7 +77,7 @@ const SW2D = (() => {
     let c = bldImg.get(key); if (c) return c;
     const w = (b.x1 - b.x0) * PX, h = b.h * PX, st = STYLE[b.style % STYLE.length];
     c = mk(w, h, (x) => paintFacade(x, w, h, st, lit, day, b.seed || 0.5));
-    bldImg.set(key, c); if (bldImg.size > 240) bldImg.delete(bldImg.keys().next().value);
+    bldImg.set(key, c); if (bldImg.size > 90) bldImg.delete(bldImg.keys().next().value);
     return c;
   }
   // Background skyline: silhouettes with sparse warm windows, three layers of parallax.
@@ -68,7 +93,7 @@ const SW2D = (() => {
   }
   const stars = Array.from({ length: 90 }, (_, q) => { const r = seeded(q * 7 + 3); return [r(), r() * 0.6, 0.5 + r() * 1.2, r() * 6]; });
   const hist = [];
-  let cam = null, sCur = 24;
+  let cam = null, sCur = 24, skyC = null;
   const strips = [null, null];
 
   function draw(ctx, W, H, P) {
@@ -100,6 +125,11 @@ const SW2D = (() => {
     // moves past it, the zoom changes, the time of day changes or buildings light up.
     let palKey = Math.round(night * 8) + (P.blackout ? 100 : 0); for (const c of P.sky) palKey = palKey * 977 + ((c[0] >> 3) * 1089 + (c[1] >> 3) * 33 + (c[2] >> 3));
     const splitX = ox + (R.px - cam.x) * s;     // left of the figure: lit; right: still dark
+    // The sky: one cached gradient, stretched to the screen; then the moon, so the skyline stands in front of it.
+    if (!skyC || skyC.key !== palKey || skyC.height !== Math.ceil(H)) { const k3 = skyCss(); skyC = mk(1, H, (x) => { const gs = x.createLinearGradient(0, 0, 0, H); gs.addColorStop(0, k3[0]); gs.addColorStop(0.55, k3[1]); gs.addColorStop(1, k3[2]); x.fillStyle = gs; x.fillRect(0, 0, 1, H); }); skyC.key = palKey; }
+    ctx.drawImage(skyC, 0, 0, W, H);
+    if (night > 0.3) { ctx.globalAlpha = (night - 0.3) / 0.7; ctx.drawImage(glow(0xf6f3e6), W * 0.12, H * 0.06, W * 0.22, W * 0.22); ctx.fillStyle = "#f6f3e6"; ctx.beginPath(); ctx.arc(W * 0.23, H * 0.06 + W * 0.11, W * 0.035, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "rgba(180,175,160,0.5)"; ctx.beginPath(); ctx.arc(W * 0.215, H * 0.06 + W * 0.1, W * 0.008, 0, Math.PI * 2); ctx.arc(W * 0.24, H * 0.06 + W * 0.12, W * 0.006, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+    if (day > 0.3) { ctx.globalAlpha = day; ctx.drawImage(glow(0xfff2d8), W * 0.55, H * 0.02, W * 0.5, W * 0.5); ctx.globalAlpha = 1; }
     LAYERS.forEach((L, li) => {
       const camL = cam.x * L.par, sL = s * (0.45 + li * 0.18);
       let S = strips[li];
@@ -111,31 +141,44 @@ const SW2D = (() => {
         for (const lit of [false, true]) {
           const x = (lit ? S.cl : S.c).getContext("2d"); x.clearRect(0, 0, sw, shh);
           const base = shh - H * (0.12 - li * 0.04), start = Math.floor(x0 / L.sp) - 1, end = Math.ceil((x0 + sw / sL) / L.sp) + 1;
-          for (let i = start; i <= end; i++) { const im = bgFor(li, i, lit && !P.blackout), w = im.wM * sL, h = im.hM * sL, sx = (i * L.sp - x0) * sL; x.drawImage(im, sx, base - h, w, h); x.fillStyle = "#0d1018"; x.fillRect(sx, base - 1, w, shh); }
-          x.globalCompositeOperation = "source-atop"; x.globalAlpha = L.haze * (0.6 + day * 0.4); x.fillStyle = skyCss()[2]; x.fillRect(0, 0, sw, shh); x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
+          for (let i = start; i <= end; i++) { const im = bgFor(li, i, lit && !P.blackout), w = im.wM * sL, h = im.hM * sL, sx = (i * L.sp - x0) * sL; x.drawImage(im, sx, base - h, w, h); }
+          // The ground this layer stands on, all the way down: no building ever floats.
+          x.fillStyle = "#0d1018"; x.fillRect(0, base - 1, sw, shh - base + 1);
+          x.globalCompositeOperation = "source-atop"; x.globalAlpha = L.haze * (0.6 + day * 0.4); x.fillStyle = skyCss()[2]; x.fillRect(0, 0, sw, shh);
+          // Ground fog: the bottoms of distant buildings melt into the haze.
+          const fg = x.createLinearGradient(0, base - H * 0.3, 0, base + 2); fg.addColorStop(0, "rgba(0,0,0,0)"); fg.addColorStop(1, skyCss()[2]); x.globalAlpha = 0.55 + li * 0.1; x.fillStyle = fg; x.fillRect(0, base - H * 0.3, sw, shh - base + H * 0.3);
+          x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
           if (li === 0) {
             // The sky and its stars go behind the far skyline: one solid image, no blending each frame.
             x.globalCompositeOperation = "destination-over";
             if (night > 0.35) { x.fillStyle = "#fff"; const rs = seeded(li * 17 + 5); for (let q = 0; q < 140; q++) { x.globalAlpha = (night - 0.35) * (0.4 + rs() * 0.6); x.fillRect(rs() * sw, rs() * shh * 0.55, 1 + rs(), 1 + rs()); } x.globalAlpha = 1; }
-            const gs = x.createLinearGradient(0, shh - H * 1.15, 0, shh); const k3 = skyCss(); gs.addColorStop(0, k3[0]); gs.addColorStop(0.55, k3[1]); gs.addColorStop(1, k3[2]); x.fillStyle = k3[0]; x.fillRect(0, 0, sw, shh); x.fillStyle = gs; x.fillRect(0, shh - H * 1.15, sw, H * 1.15);
             x.globalCompositeOperation = "source-over";
           }
         }
       }
       // Copy only what's on screen: the lit part left of the figure, the dark part right of it.
-      const dx0 = (S.x0 - camL) * sL + W / 2, dy0 = H - S.c.height - (cam.y - 20) * sL * 0.15, srcY = Math.max(0, -dy0), hh = Math.min(S.c.height - srcY, H - Math.max(0, dy0));
-      if (li === 0 && dy0 + S.c.height < H) { ctx.fillStyle = "#0d1018"; ctx.fillRect(0, dy0 + S.c.height - 1, W, H); }
+      // Each layer's ground line sits where the world's ground would be at its depth (true parallax).
+      const baseIn = S.c.height - H * (0.12 - li * 0.04), dx0 = (S.x0 - camL) * sL + W / 2, dy0 = Math.min(H * 0.25, oy + Math.min(cam.y, 45) * sL * 0.9 - baseIn), srcY = Math.max(0, -dy0), hh = Math.min(S.c.height - srcY, H - Math.max(0, dy0));
+      if (dy0 + S.c.height < H) { ctx.fillStyle = skyCss()[2]; ctx.globalAlpha = 0.25; ctx.fillRect(0, dy0 + S.c.height - 1, W, H); ctx.globalAlpha = 1; ctx.fillStyle = "#0d1018"; ctx.globalAlpha = 0.8; ctx.fillRect(0, dy0 + S.c.height - 1, W, H); ctx.globalAlpha = 1; }
       if (hh <= 0) return;
       const seg = (img, xa, xb) => { xa = Math.max(0, xa); xb = Math.min(W, xb); if (xb - xa < 1) return; ctx.drawImage(img, xa - dx0, srcY, xb - xa, hh, xa, Math.max(0, dy0), xb - xa, hh); };
       seg(S.cl, 0, splitX); seg(S.c, splitX, W);
-      if (li === 0) {
-        // Moon by night, sun by day, in front of the far skyline.
-        if (night > 0.3) { ctx.globalAlpha = (night - 0.3) / 0.7; ctx.drawImage(glow(0xf6f3e6), W * 0.12, H * 0.06, W * 0.22, W * 0.22); ctx.fillStyle = "#f6f3e6"; ctx.beginPath(); ctx.arc(W * 0.23, H * 0.06 + W * 0.11, W * 0.035, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
-        if (day > 0.3) { ctx.globalAlpha = day; ctx.drawImage(glow(0xfff2d8), W * 0.55, H * 0.02, W * 0.5, W * 0.5); ctx.globalAlpha = 1; }
-      }
     });
     // ---------- The street (and the harbour) ----------
-    const gy = Y(0); if (gy < H) { const th = runnerTheme(R.px); ctx.fillStyle = th.water ? "#123a57" : "#1c1f26"; ctx.fillRect(0, gy, W, H - gy); if (th.water) { ctx.fillStyle = "rgba(160,210,255,0.12)"; for (let q = 0; q < 6; q++) ctx.fillRect(0, gy + 6 + q * 9, W, 1); } }
+    const gy = Y(0); if (gy < H + 6 * s) { const th = runnerTheme(R.px);
+      if (th.water) { ctx.fillStyle = "#0f2d45"; ctx.fillRect(0, gy, W, H - gy); ctx.fillStyle = "rgba(160,210,255,0.14)"; for (let q = 0; q < 7; q++) { const off = ((t * 18 + q * 37) % W); ctx.fillRect(off - W, gy + 5 + q * 8, W * 0.6, 1); ctx.fillRect(off, gy + 5 + q * 8, W * 0.4, 1); } }
+      else {
+        // Sidewalk and curb, then the wet road with the lamps' reflections.
+        ctx.fillStyle = "#262a33"; ctx.fillRect(0, gy, W, 0.7 * s); ctx.fillStyle = "#3a404c"; ctx.fillRect(0, gy, W, 2);
+        ctx.fillStyle = "#12151b"; ctx.fillRect(0, gy + 0.7 * s, W, H - gy); ctx.fillStyle = "rgba(255,255,255,0.18)"; const dash = 3 * s, off = -((cam.x * s) % (dash * 2)); for (let q = off; q < W; q += dash * 2) ctx.fillRect(q, gy + 2.2 * s, dash, 2);
+      }
+      // Street lamps every 16 m, with a pool of light (skipped where a building stands).
+      const lx0 = Math.floor((cam.x - W / 2 / s) / 16) * 16;
+      for (let lx = lx0; lx < cam.x + W / 2 / s + 16; lx += 16) { if (swingBldAt(R, lx)) continue; const px3 = X(lx), top3 = Y(6.5);
+        ctx.strokeStyle = "#2c313b"; ctx.lineWidth = Math.max(2, 0.18 * s); ctx.beginPath(); ctx.moveTo(px3, gy); ctx.lineTo(px3, top3); ctx.lineTo(px3 + 1.2 * s, top3); ctx.stroke();
+        ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.45 + night * 0.45; ctx.drawImage(glow([255, 214, 150]), px3 + 1.2 * s - 1.6 * s, top3 - 1.2 * s, 3.2 * s, 3.2 * s); ctx.globalAlpha = 0.18 + night * 0.2; ctx.drawImage(glow([255, 200, 130]), px3 - 3 * s, gy - 2 * s, 8 * s, 3.5 * s);
+        if (!th.water) { ctx.globalAlpha = 0.12 + night * 0.12; ctx.drawImage(glow([255, 200, 130]), px3 + 0.4 * s, gy + 0.8 * s, 1.6 * s, 5 * s); }
+        ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; } }
     // ---------- Play-line buildings ----------
     const glowHex = runnerGlow(), glowRGB = rgbOf(glowHex), glowCss = hex(glowHex);
     for (const b of R.blds) {
@@ -154,6 +197,16 @@ const SW2D = (() => {
       if (k > 0) {
         ctx.fillStyle = glowCss; ctx.globalAlpha = k; ctx.fillRect(x0 - 2, top - 3, x1 - x0 + 4, 2); ctx.globalAlpha = k * 0.6; ctx.fillRect(x0, top, 2, bot - top); ctx.fillRect(x1 - 2, top, 2, bot - top); ctx.globalAlpha = 1;
         if (k < 1) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.sin(k * Math.PI) * 0.6; const yy = bot - (bot - top) * k; ctx.drawImage(glow([255, 236, 200]), x0, yy - 12, x1 - x0, 24); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+      }
+      // Rooftop life: a water tank, an antenna or vents, a railing; a neon sign in livelier districts.
+      { const r = seeded(b.n * 7919 + 3), kind = r(), wM = b.x1 - b.x0, dark = dayImg ? "#5b616c" : "#20242d", rim = dayImg ? "#9aa1ad" : "#3d4452";
+        ctx.fillStyle = dark; ctx.strokeStyle = dark; ctx.lineWidth = Math.max(1, 0.12 * s);
+        if (kind < 0.35 && wM > 8) { const tx = X(b.x0 + wM * (0.2 + r() * 0.5)), tw = 2.2 * s, th2 = 2.4 * s; ctx.fillRect(tx - tw / 2, top - 3 - th2 - 1.2 * s, tw, th2); ctx.fillStyle = rim; ctx.fillRect(tx - tw / 2, top - 3 - th2 - 1.2 * s, tw, 0.25 * s); ctx.beginPath(); ctx.moveTo(tx - tw / 2, top - 3 - th2 - 1.2 * s); ctx.lineTo(tx, top - 3 - th2 - 2 * s); ctx.lineTo(tx + tw / 2, top - 3 - th2 - 1.2 * s); ctx.fillStyle = dark; ctx.fill(); ctx.beginPath(); ctx.moveTo(tx - tw * 0.4, top - 3 - 1.2 * s); ctx.lineTo(tx - tw * 0.4, top - 3); ctx.moveTo(tx + tw * 0.4, top - 3 - 1.2 * s); ctx.lineTo(tx + tw * 0.4, top - 3); ctx.stroke(); }
+        else if (kind < 0.6) { const ax = X(b.x0 + wM * (0.3 + r() * 0.5)), ah = (3 + r() * 4) * s; ctx.beginPath(); ctx.moveTo(ax, top - 3); ctx.lineTo(ax, top - 3 - ah); ctx.moveTo(ax - 0.5 * s, top - 3 - ah * 0.6); ctx.lineTo(ax + 0.5 * s, top - 3 - ah * 0.6); ctx.stroke(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 3 + b.n); ctx.drawImage(glow([255, 60, 60]), ax - 0.6 * s, top - 3 - ah - 0.6 * s, 1.2 * s, 1.2 * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+        else { for (let q = 0; q < 2; q++) { const vx = X(b.x0 + wM * (0.15 + q * 0.4 + r() * 0.2)); ctx.fillRect(vx, top - 3 - 0.9 * s, 1.4 * s, 0.9 * s); } }
+        ctx.strokeStyle = rim; ctx.globalAlpha = 0.6; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, top - 3 - 0.7 * s); ctx.lineTo(x1, top - 3 - 0.7 * s); for (let q = x0; q <= x1; q += 0.9 * s) { ctx.moveTo(q, top - 3); ctx.lineTo(q, top - 3 - 0.7 * s); } ctx.stroke(); ctx.globalAlpha = 1;
+        const th3 = runnerTheme(R.px); if (k > 0 && r() < th3.neon && b.h > 12) { const words = ["OPEN", "NOODLES", "HOTEL", "BAR", "24H", "ARCADE", "LUMEN", "CAFE"], word = words[Math.floor(r() * words.length)], nc = [[255, 80, 160], [80, 220, 255], [255, 210, 90], [140, 255, 120]][Math.floor(r() * 4)], ny = Y(b.h * (0.45 + r() * 0.35)), nx = X(b.x0) - 0.2 * s;
+          ctx.save(); ctx.translate(nx, ny); ctx.rotate(-Math.PI / 2); ctx.font = `800 ${Math.round(0.95 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; const fl2 = Math.sin(t * 13 + b.n * 3) > -0.92 ? k : 0.3; ctx.globalAlpha = fl2 * 0.5; ctx.globalCompositeOperation = "lighter"; const tw2 = word.length * 0.7 * s; ctx.drawImage(glow(nc), -tw2 / 2 - s, -1.6 * s, tw2 + 2 * s, 2.4 * s); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = fl2; ctx.fillStyle = `rgb(${nc.map(v => Math.min(255, v + 60))})`; ctx.fillText(word, 0, 0); ctx.restore(); }
       }
     }
     // ---------- Hazards: live wires, drones ----------
