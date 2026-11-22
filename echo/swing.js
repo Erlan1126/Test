@@ -272,6 +272,7 @@ function runnerUpdate(dt) {
   R.perfT = Math.max(0, R.perfT - dt); R.dashT = Math.max(0, R.dashT - dt); if (R.teth) R.streetT = 0; R.streetT = Math.max(0, (R.streetT || 0) - dt);
   if (R.snap) { R.snap.t += dt; if (R.snap.t > 0.2) R.snap = null; }
   if (R.dust) { R.dust.t += dt; if (R.dust.t > 0.5) R.dust = null; }
+  if (R.splash) { R.splash.t += dt; if (R.splash.t > 0.9) R.splash = null; }
   // Danger: falling toward the street with nothing to grab (it costs a heart from stage 5).
   { const streetHurts = R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5); const tHit = R.vy < 0 ? R.py / -R.vy : 9; R.danger = !R.teth && !R.roof && !R.aimOk && streetHurts && tHit < 0.9 && !swingBldAt(R, R.px + R.vx * tHit) ? Math.min(1, (R.danger || 0) + dt * 5) : Math.max(0, (R.danger || 0) - dt * 4); }
   for (const b of R.bursts) b.t += dt; R.bursts = R.bursts.filter(b => b.t < 0.8);
@@ -319,7 +320,14 @@ function runnerUpdate(dt) {
     }
     if (R.roof) { R.py = R.roof.h; R.vx = Math.max(R.vx * (1 - 0.15 * h), 9); }
     // The street.
-    if (R.py < 0.4) {
+    if (R.py < 0.4 && runnerTheme(R.px).water && !R.attract) {
+      // The harbour: you splash into the water instead of hitting the street. No heart lost, but it
+      // drags your speed down and costs Flow; you bob back up.
+      R.py = 0.4; R.vy = 17; R.vx = Math.max(6, R.vx * 0.55); R.teth = null; R.flow = Math.max(0, R.flow - 0.35); R.combo = 0; R.pChain = 0;
+      R.splash = { x: R.px, t: 0 }; R.shake = 0.35; R.bursts.push({ x: R.px, y: 0.5, t: 0, c: 0x7fd8ff, big: true });
+      if (!R.wetMsg) { R.wetMsg = true; runMsg("Splash!", "The water slows you down. Stay up high", 1.4); } sfx.land(); buzz(10);
+    }
+    else if (R.py < 0.4) {
       R.py = 0.4; R.vy = 21.5; R.vx = Math.max(R.vx, 10); R.teth = null; R.flow = Math.max(0, R.flow - 0.3);
       if (R.streetT > 0 || (R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5))) swingHit(R, "Keep off the street!"); else if (!R.attract) { runMsg("Bounce!", "Grab a light before you land again", 1.2); sfx.land(); }
       R.streetT = 4;

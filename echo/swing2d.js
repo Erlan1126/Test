@@ -260,6 +260,9 @@ const SW2D = (() => {
     }
     ctx.textBaseline = "alphabetic";
     if (!R.teth) R.pNow = false;
+    // A splash in the harbour: a crown of spray and spreading rings.
+    if (R.splash) { const k = R.splash.t / 0.9, sx2 = X(R.splash.x), sy2 = Y(0); ctx.strokeStyle = `rgba(170,225,255,${0.7 * (1 - k)})`; ctx.lineWidth = 2; for (let q = 0; q < 2; q++) { ctx.beginPath(); ctx.ellipse(sx2, sy2 + 3, (1 + k * 6 + q * 2) * s, (0.25 + k * 0.6) * s, 0, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = `rgba(200,235,255,${0.8 * (1 - k)})`; for (let q = 0; q < 9; q++) { const a = Math.PI * (0.15 + 0.7 * q / 8), v = 9 + (q % 3) * 3, tt = R.splash.t; const px4 = sx2 + Math.cos(a) * v * tt * s * 0.5, py4 = sy2 - (Math.sin(a) * v * tt - 14 * tt * tt) * s * 0.5; if (py4 <= sy2 + 2) { ctx.beginPath(); ctx.arc(px4, py4, 0.22 * s, 0, Math.PI * 2); ctx.fill(); } } }
     // Landing dust on a rooftop.
     if (R.dust) { const k = R.dust.t / 0.5, dx2 = X(R.dust.x), dy2 = Y(R.dust.y); ctx.fillStyle = `rgba(200,210,230,${0.35 * (1 - k) * R.dust.k})`; for (let q = -1; q <= 1; q += 2) { ctx.beginPath(); ctx.ellipse(dx2 + q * (0.6 + k * 2.2) * s, dy2 - 0.3 * s, (0.5 + k * 0.8) * s, (0.3 + k * 0.3) * s, 0, 0, Math.PI * 2); ctx.fill(); } }
     // ---------- The trajectory: where you'd fly if you let go now (gold when it's a Perfect) ----------
