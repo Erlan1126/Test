@@ -1616,8 +1616,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   /** A building from the model kit on a lot (once the kit is loaded), sized by level: a
    *  house at first, then an office block, then a skyscraper. Its height, or null. */
   const KIT_LOTS = [
-    ["tt_house", "tt_house_2", "tt_house_3", "tt_bungalow", "tt_semi_detached", "building_small_a", "building_small_b", "building_small_c", "building_small_d"],
-    ["tt_terraced_house", "tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy", "tt_apartment_3", "building_small_b", "building_small_c"],
+    ["tt_house", "tt_house_2", "tt_house_3", "tt_bungalow", "tt_semi_detached", "tt_house_2", "tt_house"],
+    ["tt_terraced_house", "tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy", "tt_apartment_3", "tt_house_3"],
     ["tt_apartment", "tt_apartment_2", "tt_hotel", "tt_bank", "tt_library", "tt_school", "tt_town_hall", "tt_church", "building_a", "building_c", "building_e", "building_g"],
     ["tt_office", "tt_tower_block", "building_b", "building_d", "building_f", "building_h", "skyscraper_a"],
     ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_office", "tt_tower_block"],
@@ -1626,7 +1626,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const sv = Math.abs(seed) >>> 0;
     const pool = KIT_LOTS[Math.max(1, Math.min(5, level)) - 1], name = pool[sv % pool.length];
     const sky = name.startsWith("skyscraper") || name === "tt_tower_block" || name === "tt_office";
-    const kp = kitPlace(name, level <= 2 ? 2.8 + level * 0.2 : sky ? 2.7 : 3.3, sky ? 1 + Math.max(0, level - 4) * 0.3 : 1);
+    const kp = kitPlace(name, level <= 2 ? 2.8 + level * 0.2 : sky ? 2.7 : 3.3, sky ? 1 + Math.max(0, level - 4) * 0.3 : 1, (sv >> 4) % 8);
     if (!kp) return null;
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
     K(roundSlab(4.2, 4.2, 1.6, 0.06), level <= 2 ? grass2 : plazaM);

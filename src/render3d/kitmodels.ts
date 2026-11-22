@@ -37,7 +37,10 @@ function prep(root: THREE.Object3D): void {
     // (Unlit materials hold screen colours; lit, they'd wash out. Leaves take the town's green.)
     if ((src as THREE.MeshBasicMaterial).isMeshBasicMaterial) col.convertSRGBToLinear();
     if (/leaf/i.test(src.name)) col.set("#4fa04a");
-    const mat = new THREE.MeshStandardMaterial({ color: col, map: src.map ?? null, roughness: 0.75, metalness: 0 });
+    // Windows read as glass (a sheen and a faint glow of the sky), the rest a soft matte.
+    const glassy = /window|glass/i.test(src.name);
+    const mat = new THREE.MeshStandardMaterial({ color: glassy ? new THREE.Color("#7fb6e8") : col, map: src.map ?? null, roughness: glassy ? 0.12 : 0.8, metalness: glassy ? 0.35 : 0, emissive: glassy ? new THREE.Color("#3a6fa8") : new THREE.Color(0), emissiveIntensity: glassy ? 0.12 : 0 });
+    mat.name = src.name;
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
     m.material = mat;
     m.castShadow = true; m.receiveShadow = true;
@@ -72,12 +75,31 @@ export function kitVersion(): number {
 
 /** A copy of a model scaled so its footprint is `width` across, standing on y = 0 and centred,
  *  stretched `tall` times in height; with its height. Null until the models are ready. */
-export function kitPlace(name: string, width: number, tall = 1): { obj: THREE.Object3D; h: number } | null {
+/** Wall and roof colours to vary the kit's houses and shops, so a street isn't one colour. */
+const WALLS = ["#f4e9d8", "#e9d3c0", "#f6e3a8", "#cfe0ea", "#e6c9c2", "#dfe8d0", "#f2f0ea", "#efd6b8"];
+const ROOFS = ["#d9644a", "#4f5f8f", "#7a4a3a", "#3f6f5a", "#b8553f", "#5a5a68"];
+const recol = new Map<string, THREE.Material>();
+function recolor(root: THREE.Object3D, v: number): void {
+  root.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mat = m.material as THREE.MeshStandardMaterial;
+    const pal = /^wall/i.test(mat.name) ? WALLS : /^roof/i.test(mat.name) ? ROOFS : null;
+    if (!pal) return;
+    const c = pal[(v + (pal === ROOFS ? 3 : 0)) % pal.length], key = `${mat.uuid}|${c}`;
+    let nm = recol.get(key) as THREE.MeshStandardMaterial | undefined;
+    if (!nm) { nm = mat.clone(); nm.color.set(c); recol.set(key, nm); }
+    m.material = nm;
+  });
+}
+
+export function kitPlace(name: string, width: number, tall = 1, variant = -1): { obj: THREE.Object3D; h: number } | null {
   if (!version) return null;
   const m = models.get(name);
   if (!m) return null;
   const s = width / Math.max(m.size.x, m.size.z, 1e-3);
   const inner = m.obj.clone(true);
+  if (variant >= 0) recolor(inner, variant);
   inner.position.set(-(m.min.x + m.size.x / 2) * s, -m.min.y * s * tall, -(m.min.z + m.size.z / 2) * s);
   inner.scale.set(s, s * tall, s);
   const g = new THREE.Group();
