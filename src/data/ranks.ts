@@ -25,6 +25,6 @@ export const RANKS: TownRank[] = [
   { name: "Town", at: 150, unlock: "A little tram starts running round the streets", icon: "map" },
   { name: "City", at: 300, unlock: "Glowing billboards light up the corners", icon: "film" },
   { name: "Big City", at: 500, unlock: "Airships float over the island", icon: "airship" },
-  { name: "Metropolis", at: 800, unlock: "A skyline rises on the floating islands", icon: "building" },
+  { name: "Metropolis", at: 800, unlock: "A superyacht anchors in the bay", icon: "building" },
   { name: "Sky Capital", at: 1200, unlock: "The golden Skyhaven Tower stands over everything", icon: "crown" },
 ];

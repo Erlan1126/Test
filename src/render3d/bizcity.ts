@@ -320,57 +320,35 @@ const DIST_N = 4, DIST_H = (DIST_N / 2) * C + 3.2, DIST_GAP = 6;
 const distEdge = (dx: number, dz: number) => DIST_H / Math.pow(Math.pow(Math.abs(dx), 4) + Math.pow(Math.abs(dz), 4), 0.25);
 const LAND_R = DIST_H;
 const landCache = new Map<string, { x: number; z: number; r: number; y: number }>();
-/** The island a district's bridge leads back to (-1: the town): the one before it. */
-export const landPrev = (k: number) => k - 1;
+/** What a district joins (-1: the town): the sky city's later islands join its first. */
+export const landPrev = (k: number) => (k <= 3 ? -1 : 3);
 export function landSpot(k: number, bought: boolean): { x: number; z: number; r: number; y: number } {
   const key = `${k}|${bought}`;
   let v = landCache.get(key);
-  if (!v && k > 0) {
-    // The next islands follow round the town, each a step further round, further out and
-    // higher than the one before.
-    const hull = islandOutline(ISLAND_PAD, true), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
-    const first = landSpot(0, bought), a0 = Math.atan2(first.z - cz, first.x - cx), d0 = Math.hypot(first.x - cx, first.z - cz);
-    void d0;
-    // Measured from the coast in that direction (the island is not round), so no island ever
-    // sits over the town or its countryside, and pushed further out if it would crowd one of
-    // the islands before it.
-    // (Round from the Harbor District, each a step further round: Garden Hills in front of the
-    // town, Downtown close by off its front-right side (the Harbor District's mirror), then the high islands round the right and back,
-    // where they still show above the town.)
-    const a = a0 + ([0, -0.7, -1.45, -2.55, -3.55, -4.45][k] ?? k * 0.95), dx = Math.cos(a), dz = Math.sin(a);
-    let t = 0;
-    while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
-    let out = t + distEdge(dx, dz) + DIST_GAP + (k === 2 ? 4 : 30 + k * 2);
-    const clear = (x: number, z: number) => {
-      for (let m = 0; m < k; m++) { const o = landSpot(m, bought); if (Math.hypot(o.x - x, o.z - z) < DIST_H * 2.9 + DIST_GAP) return false; }
-      return true;
-    };
-    while (out < 400 && !clear(cx + dx * out, cz + dz * out)) out += 1;
-    v = { x: cx + dx * out, z: cz + dz * out, r: LAND_R, y: LAND[k].y };
-    landCache.set(key, v);
-  }
   if (!v) {
-    const hull = islandOutline(ISLAND_PAD, true), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
-    const [dx0, dz0] = LAND[k].dir, l = Math.hypot(dx0, dz0), dx = dx0 / l, dz = dz0 / l;
-    // Where a line out from the middle of the island in that direction meets the coast.
-    let t = 0;
-    while (t < 200 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
-    const best: [number, number] = [cx + dx * t, cz + dz * t];
-    // A whole district: its own island, a bridge's length off the coast.
+    // One city: the Harbor District, Garden Hills and Downtown join the town's own land on
+    // three of its sides (overlapping its edge, no gap and no bridge); the sky districts
+    // float together as one sky city above and behind the town, side by side, the first
+    // straight behind it (reached by a sky lift), the next two beside it.
     void bought;
-    // (Pushed further out until no part of it comes near the town's coast: one corner of
-    // the square district could otherwise tuck in under a bend of the coast.)
-    let out = distEdge(dx, dz) + DIST_GAP;
-    const nearTown = (x: number, z: number) => {
-      for (let a = 0; a < 32; a++) { const ca = Math.cos((a / 32) * Math.PI * 2), sa = Math.sin((a / 32) * Math.PI * 2), R = distEdge(ca, sa) + 11; if (insidePoly(hull, x + ca * R, z + sa * R)) return true; }
-      return false;
-    };
-    while (out < 200 && nearTown(best[0] + dx * out, best[1] + dz * out)) out += 0.5;
-    v = { x: best[0] + dx * out, z: best[1] + dz * out, r: LAND_R, y: LAND[k].y };
+    const hull = islandOutline(ISLAND_PAD, true), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
+    const exit = (dx: number, dz: number) => { let t = 0; while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25; return t; };
+    if (k <= 2) {
+      const [dx, dz] = LAND[k].dir, out = exit(dx, dz) + distEdge(dx, dz) - 4.5;
+      v = { x: cx + dx * out, z: cz + dz * out, r: LAND_R, y: LAND[k].y };
+    } else {
+      const bx = -Math.SQRT1_2, bz = -Math.SQRT1_2, out = exit(bx, bz) + DIST_H * 1.35 + 6;
+      const sx = cx + bx * out, sz = cz + bz * out, step = 2 * DIST_H * 0.97;
+      const [dx, dz] = k === 3 ? [0, 0] : LAND[k].dir;
+      v = { x: sx + dx * step, z: sz + dz * step, r: LAND_R, y: LAND[k].y };
+    }
     landCache.set(key, v);
   }
   return v;
 }
+/** How a district joins the city: "ground" (on the town's land), "lift" (the sky city's
+ *  first island, a sky lift up from the town) or "sky" (beside the sky city's first island). */
+export const landJoin = (k: number): "ground" | "lift" | "sky" => (k <= 2 ? "ground" : k === 3 ? "lift" : "sky");
 /** How far the island reaches on screen: across (t, screen x) and into the screen (s), local
  *  units. `core`: just the town and its verge (what the camera frames), not the countryside. */
 const boundsCache = new Map<boolean, { tMin: number; tMax: number; sMin: number; sMax: number }>();
@@ -453,6 +431,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   setLand((cafe.land ?? []).filter(l => l.bought).map(l => LAND.findIndex(x => x.id === l.id)).filter(k => k >= 0));
   const g = new THREE.Group();
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
+  let yachtAt: { x: number; z: number } | null = null;
   const cache = new Map<string, THREE.MeshStandardMaterial>();
   const signs: THREE.MeshStandardMaterial[] = [];
   const winMat = own(std(st.glass, { roughness: 0.15, metalness: 0.3, emissive: new THREE.Color(st.lit), emissiveIntensity: 0.05 }));
@@ -848,7 +827,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // bought): where it runs, so the countryside keeps clear of it.
   const linkFor = (k: number) => {
     const l0 = (cafe.land ?? []).find(l => l.id === LAND[k].id && (l.bought || l.sale));
-    if (!l0 || landPrev(k) >= 0) return null;
+    if (!l0 || landJoin(k) !== "ground") return null;
     const sp0 = landSpot(k, true), h = islandOutline(ISLAND_PAD, true);
     const tcx = h.reduce((a, p) => a + p[0], 0) / h.length, tcz = h.reduce((a, p) => a + p[1], 0) / h.length;
     const dl0 = Math.hypot(sp0.x - tcx, sp0.z - tcz), ux0 = (sp0.x - tcx) / dl0, uz0 = (sp0.z - tcz) / dl0;
@@ -1226,6 +1205,42 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     boat.rotation.y = Math.PI / 2 + 0.3;
     boat.userData.dynamic = true;
     g.add(boat);
+    // The superyacht: once the town is a Metropolis, a big white yacht anchors in the bay:
+    // a long sleek hull, three decks with dark glass, a sun deck with a pool, a helipad at
+    // the stern, a radar mast, and a tender boat alongside.
+    if ((cafe.rank ?? 0) >= 5) {
+      const zy = zShore - 2.9, [yx0, yx1] = seaXs(zy), yl = Math.min(7, (yx1 - yx0) * 0.45);
+      const yacht = new THREE.Group(), Y = (geo: THREE.BufferGeometry, mat: THREE.Material) => { yacht.add(new THREE.Mesh(geo, mat)); };
+      const white = mats.c("#fbfbff", 0.35, 0.1), navy = mats.c("#1e2a4a", 0.3, 0.3), tint = own(std("#26344f", { roughness: 0.08, metalness: 0.6, emissive: new THREE.Color("#2a4a7a"), emissiveIntensity: 0.15 })), teak = mats.c("#c89a62", 0.7);
+      // Hull: a long box tapering to a pointed bow, navy below the waterline stripe.
+      const hs = new THREE.Shape([new THREE.Vector2(-yl / 2, -0.55), new THREE.Vector2(yl * 0.28, -0.55), new THREE.Vector2(yl / 2, 0), new THREE.Vector2(yl * 0.28, 0.55), new THREE.Vector2(-yl / 2, 0.55)]);
+      Y(new THREE.ExtrudeGeometry(hs, { depth: 0.45, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 2 }).rotateX(-Math.PI / 2).translate(0, -0.15, 0), white);
+      Y(new THREE.ExtrudeGeometry(hs, { depth: 0.12, bevelEnabled: false }).rotateX(-Math.PI / 2).scale(1.01, 1, 1.02).translate(0, -0.2, 0), navy);
+      Y(new THREE.ExtrudeGeometry(hs, { depth: 0.02, bevelEnabled: false }).rotateX(-Math.PI / 2).scale(0.96, 1, 0.92).translate(0, 0.36, 0), teak);
+      // Decks, each shorter, set back from the bow, with a band of dark glass.
+      [[yl * 0.62, 0.92, 0.38, -yl * 0.08], [yl * 0.44, 0.82, 0.34, -yl * 0.12], [yl * 0.26, 0.7, 0.3, -yl * 0.14]].forEach(([w, d, h, x], i) => {
+        const yb = 0.38 + i * 0.36;
+        Y(new THREE.BoxGeometry(w, h, d).translate(x, yb + h / 2, 0), white);
+        Y(new THREE.BoxGeometry(w * 0.92, h * 0.5, d + 0.02).translate(x + w * 0.02, yb + h * 0.55, 0), tint);
+        Y(new THREE.BoxGeometry(w + 0.08, 0.04, d + 0.1).translate(x, yb + h + 0.02, 0), white);
+      });
+      // Sun deck: a pool with loungers, and a helipad at the stern.
+      Y(new THREE.BoxGeometry(0.7, 0.03, 0.5).translate(yl * 0.18, 0.39, 0), water);
+      for (const zz of [-0.32, 0.32]) Y(new THREE.BoxGeometry(0.3, 0.05, 0.12).translate(yl * 0.32, 0.41, zz), white);
+      Y(new THREE.CylinderGeometry(0.42, 0.42, 0.04, 20).translate(-yl * 0.42, 0.4, 0), mats.c("#3a4560", 0.6));
+      Y(new THREE.TorusGeometry(0.3, 0.025, 4, 20).rotateX(Math.PI / 2).translate(-yl * 0.42, 0.43, 0), mats.c("#ffd23a", 0.5));
+      // Radar mast with a light, and a tender boat tied alongside.
+      Y(new THREE.CylinderGeometry(0.03, 0.04, 0.8, 6).translate(-yl * 0.12, 1.8, 0), white);
+      Y(new THREE.BoxGeometry(0.5, 0.04, 0.06).translate(-yl * 0.12, 2.05, 0), white);
+      Y(new THREE.SphereGeometry(0.06, 8, 6).translate(-yl * 0.12, 2.24, 0), lampMat);
+      Y(new THREE.BoxGeometry(0.9, 0.18, 0.34).translate(-yl * 0.05, -0.05, 0.9), mats.c("#ffffff", 0.4));
+      Y(new THREE.BoxGeometry(0.3, 0.12, 0.24).translate(-yl * 0.1, 0.1, 0.9), navy);
+      yacht.position.set(yx0 + (yx1 - yx0) * 0.38, 0.08, zy);
+      yacht.userData.dynamic = true;
+      g.add(yacht);
+      townTicks.push(t => { yacht.position.y = 0.08 + Math.sin(t * 0.6) * 0.04; yacht.rotation.z = Math.sin(t * 0.45) * 0.015; });
+      yachtAt = { x: yacht.position.x, z: zy };
+    }
     // Buoys out at sea.
     const buoys: THREE.Mesh[] = [];
     const [sx0, sx1] = seaXs(zShore - 2.4);
@@ -2451,7 +2466,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   if (rank >= 5) {
     // Metropolis: slim glass towers rise on the floating islands.
     const tones = ["#bfe6ff", "#d9ccff", "#ffd9c2"];
-    { const it = islets[1] ?? islets[0]; if (it) landmarks[5] = () => ({ x: it.o.position.x, z: it.o.position.z }); }
+    { const it = islets[1] ?? islets[0], ya = yachtAt; if (ya) landmarks[5] = () => ({ x: ya.x, z: ya.z, zoom: 2 }); else if (it) landmarks[5] = () => ({ x: it.o.position.x, z: it.o.position.z }); }
     islets.forEach((it, k) => {
       if (k === 1 && cafe.annex) return;
       const n = k === 0 ? 3 : 2;
@@ -2604,6 +2619,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : id === "lakeside" ? cobbleM : road;
     const walkD = tc ? own(std(tc.walk, { roughness: 0.7 })) : walk;
     const curbD = tc ? own(std(tc.curbC, { roughness: 0.5, metalness: theme === "cloud" ? 0.6 : 0.2, emissive: new THREE.Color(theme === "cloud" ? "#000000" : tc.curbC), emissiveIntensity: theme === "cloud" ? 0 : 0.35 })) : curb;
+    // (A ground district stands on the town's own land: no cliff, underside or railing of its own.)
+    const ground = landJoin(k) === "ground" && bought;
+    if (!ground) {
     layer(1, 0.12, 0, topM);
     layer(1.006, 0.06, -0.02, tc ? own(std(tc.lip, { roughness: 0.8 })) : own(std(new THREE.Color(st.lawn).multiplyScalar(0.8), { roughness: 0.95 })));
     layer(0.995, 0.12, -0.12, tc ? own(std(tc.l1, { roughness: 0.8 })) : own(std("#5a3f2a", { roughness: 1 })));
@@ -2624,6 +2642,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         geo.computeVertexNormals();
         L(geo.rotateX(Math.PI).translate(sx5, -5.5 - h5 / 2, sz5), i5 % 2 ? um2 : um);
       });
+    }
     }
     if (theme === "cloud") {
       // A bank of soft clouds the island floats on.
@@ -2659,13 +2678,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (j + 1 < DIST_N) markStreet(L, x, z + qd, "x", C - 0.6);
     }
     // A low railing round the edge.
-    for (let a = 0; a < outlineD.length; a += 2) {
+    for (let a = 0; a < (ground ? 0 : outlineD.length); a += 2) {
       const [px, pz] = outlineD[a], kk = 0.96;
       L(new THREE.BoxGeometry(0.12, 0.42, 0.12).translate(px * kk, 0.21, pz * kk), stone);
     }
-    // The bridge: from this island's coast back to the island before it (or the town's
-    // coast), sloping up as the islands climb. Wood on stone piers down low; marble and gold,
-    // glowing crystal or a lit metal tube higher up (a see-through ghost while for sale).
+    // How it joins the city: the ground districts' streets run straight on into the town's;
+    // the sky city's first island has a sky lift up from the town's edge; the others join it.
     {
       const sx0 = sp.x - ux * distEdge(ux, uz) * 0.97, sz0 = sp.z - uz * distEdge(ux, uz) * 0.97;
       let ex: number, ez: number;
@@ -2676,67 +2694,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         while (t2 < 60 && !insidePoly(th2, sx0 - ux * t2, sz0 - uz * t2, 0.6)) t2 += 0.25;
         ex = sx0 - ux * (t2 + 0.6); ez = sz0 - uz * (t2 + 0.6);
       }
-      const y0 = sp.y + (bought ? 0 : -0.6), y1 = prev.y, run = Math.hypot(sx0 - ex, sz0 - ez), rise = y0 - y1, len = Math.hypot(run, rise);
-      const bridge = new THREE.Group();
-      const B = (geo: THREE.BufferGeometry, mat: THREE.Material) => { bridge.add(new THREE.Mesh(geo, mat)); };
-      if (!bought) {
-        // For sale: a see-through ghost of the bridge to come.
-        B(new THREE.BoxGeometry(2.6, 0.16, len).translate(0, 0.06, 0), own(new THREE.MeshBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.35, depthWrite: false })));
-      } else {
-        // A suspension bridge in the island's style: a deck with a paved road and walkways,
-        // side girders, two towers with lights on top, main cables sagging between them and
-        // down to the ends, and hangers holding up the deck.
-        const style = {
-          harbor: { deck: "#b07a4a", girder: "#f4f2fa", tower: "#ffffff", cable: "#e2453c" },
-          garden: { deck: "#c8b08a", girder: "#4f9a5a", tower: "#f4fff0", cable: "#3fae5a" },
-          downtown: { deck: "#6e6761", girder: "#c8463a", tower: "#c8463a", cable: "#c8463a" },
-          cloud: { deck: "#fffaf0", girder: "#ffd86a", tower: "#fbf8ff", cable: "#e8b020" },
-          crystal: { deck: "#3a2f66", girder: "#8af0ff", tower: "#b9a0ff", cable: "#8af0ff" },
-          orbit: { deck: "#4a5070", girder: "#5ae0ff", tower: "#c8d0e4", cable: "#5ae0ff" },
-        }[theme];
-        const glow = theme === "crystal" || theme === "orbit";
-        const deckM = mats.c(style.deck, 0.8, theme === "orbit" ? 0.4 : 0), girderM = glow ? own(std(style.girder, { roughness: 0.3, emissive: new THREE.Color(style.girder), emissiveIntensity: 0.5 })) : mats.c(style.girder, 0.5, 0.2);
-        const towerM = mats.c(style.tower, 0.5, theme === "orbit" ? 0.5 : 0.1), cableM = glow ? girderM : mats.c(style.cable, 0.4, 0.3);
-        const W = 2.8, roadM = theme === "harbor" || theme === "garden" ? deckM : mats.c(theme === "downtown" ? "#4a4f66" : style.deck, 0.8);
-        B(new THREE.BoxGeometry(W, 0.22, len).translate(0, 0, 0), deckM);
-        B(new THREE.BoxGeometry(1.7, 0.03, len).translate(0, 0.125, 0), roadM);
-        if (theme === "harbor" || theme === "garden") for (let p2 = 0; p2 < Math.floor(len / 0.5); p2++) B(new THREE.BoxGeometry(W - 0.1, 0.02, 0.06).translate(0, 0.12, -len / 2 + 0.25 + p2 * 0.5), mats.c("#8a5a3a", 0.9));
-        for (const sx of [-1, 1]) {
-          B(new THREE.BoxGeometry(0.16, 0.42, len).translate(sx * (W / 2 + 0.05), -0.08, 0), girderM);
-          B(new THREE.BoxGeometry(0.06, 0.06, len).translate(sx * (W / 2 - 0.05), 0.55, 0), girderM);
-          const posts = Math.max(6, Math.round(len / 0.8));
-          for (let b = 0; b <= posts; b++) B(new THREE.BoxGeometry(0.05, 0.42, 0.05).translate(sx * (W / 2 - 0.05), 0.33, -len / 2 + (b * len) / posts), girderM);
-        }
-        // The two towers, a fifth of the way in from each end.
-        const TH = 3.4, tz = [-len * 0.3, len * 0.3];
-        for (const z of tz) {
-          for (const sx of [-1, 1]) B(new THREE.BoxGeometry(0.28, TH, 0.36).translate(sx * (W / 2 + 0.12), TH / 2 - 0.1, z), towerM);
-          B(new THREE.BoxGeometry(W + 0.5, 0.26, 0.3).translate(0, TH - 0.4, z), towerM);
-          B(new THREE.BoxGeometry(W + 0.5, 0.18, 0.3).translate(0, TH * 0.55, z), towerM);
-          for (const sx of [-1, 1]) B(new THREE.SphereGeometry(0.13, 8, 6).translate(sx * (W / 2 + 0.12), TH, z), lampMat);
-        }
-        // Main cables: a sag between the towers and down to each end; hangers to the deck.
-        const cable = (z0: number, z1: number, y0c: number, y1c: number, sag: number, sx: number) => {
-          const n = 12;
-          for (let q2 = 0; q2 < n; q2++) {
-            const ta = q2 / n, tb = (q2 + 1) / n;
-            const ya = y0c + (y1c - y0c) * ta - sag * 4 * ta * (1 - ta), yb = y0c + (y1c - y0c) * tb - sag * 4 * tb * (1 - tb);
-            const za = z0 + (z1 - z0) * ta, zb = z0 + (z1 - z0) * tb, sl = Math.hypot(zb - za, yb - ya);
-            B(new THREE.CylinderGeometry(0.04, 0.04, sl, 5).rotateX(Math.PI / 2 - Math.atan2(yb - ya, zb - za)).translate(sx * (W / 2 + 0.12), (ya + yb) / 2, (za + zb) / 2), cableM);
-            if (q2 > 0) B(new THREE.CylinderGeometry(0.015, 0.015, Math.max(0.05, ya - 0.5), 4).translate(sx * (W / 2 + 0.12), (ya + 0.5) / 2, za), cableM);
-          }
-        };
-        for (const sx of [-1, 1]) {
-          cable(tz[0], tz[1], TH, TH, TH - 1.0, sx);
-          cable(-len / 2, tz[0], 0.6, TH, -0.3, sx);
-          cable(tz[1], len / 2, TH, 0.6, -0.3, sx);
-        }
-        if (theme === "orbit") B(new THREE.CylinderGeometry(1.7, 1.7, len, 16, 1, true, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(0, 0.15, 0), own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.22, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false })));
-        // Down low the bridge also stands on two stone piers.
-        if (k === 0) for (const z of tz) B(new THREE.CylinderGeometry(0.6, 0.9, 5, 8).translate(0, -2.6, z), rock);
-        // Lights along the underside of the sky bridges.
-        if (k > 0) for (let q2 = 0; q2 < 8; q2++) B(new THREE.SphereGeometry(0.09, 6, 4).translate(0, -0.15, -len / 2 + (q2 + 0.5) * (len / 8)), lampMat);
-      }
+      const y0 = sp.y + (bought ? 0 : -0.6);
+      const join = landJoin(k);
+      // (The sky city floats free above the town: nothing ties it down across the view.)
+      void join; void y0;
       // Streets at both ends: the bridge leads road to road. On this island the street runs
       // in from the coast to its street grid (below, with the arch); at the other end it runs
       // in to the island before's grid, or through the countryside to the town's streets.
@@ -2749,11 +2710,6 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
           streetStrip(g, ex - ux * 0.3, ez - uz * 0.3, ex - ux * inner, ez - uz * inner, prev.y, pc2 ? mats.c(pc2[0], 0.7) : road, pc2 ? mats.c(pc2[1], 0.7) : walk, pc2 ? mats.c(pc2[2], 0.5, 0.2) : curb);
         }
       }
-      bridge.position.set((sx0 + ex) / 2, (y0 + y1) / 2, (sz0 + ez) / 2);
-      bridge.rotation.order = "YXZ";
-      bridge.rotation.y = Math.atan2(ux, uz);
-      bridge.rotation.x = -Math.atan2(rise, run);
-      g.add(bridge);
     }
     // What's built on each block: the district's own theme.
     const blocks = new THREE.Group();
@@ -3222,8 +3178,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         g.userData.moving = k2 < 1;
       });
     }
-    // Little floating rocks either side of the bridge.
-    for (let r2 = 0; r2 < 3; r2++) {
+    // Little floating rocks round the sky lift's walkway.
+    for (let r2 = 0; r2 < (landJoin(k) === "lift" ? 3 : 0); r2++) {
       const side = r2 % 2 ? 1 : -1, along = distEdge(ux, uz) + DIST_GAP * (0.3 + r2 * 0.25), off = side * (3 + r2 * 1.3);
       const rx = -ux * along + uz * off, rz = -uz * along - ux * off, rr = 0.7 + (r2 % 2) * 0.4, ry = -1.2 - r2 * 0.7;
       const isle = new THREE.Group();
@@ -3372,7 +3328,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       // A waterfall: Garden Hills' lake and the Harbor's sea spill over the island's front edge,
       // falling away into the sky in a veil that fades out, with a cloud of spray.
-      if (id === "lakeside" || id === "meadow") {
+      if (!ground && (id === "lakeside" || id === "meadow")) {
         const an0 = Math.PI / 4, cands = [an0 - 0.5, an0 + 0.5];
         const an = cands.reduce((b, a) => (Math.cos(a) * -ux + Math.sin(a) * -uz < Math.cos(b) * -ux + Math.sin(b) * -uz ? a : b));
         const dx5 = Math.cos(an), dz5 = Math.sin(an), edge = distEdge(dx5, dz5) * 0.985, H5 = 14, W5 = 1.6;
@@ -3395,7 +3351,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         townTicks.push(t => { ftex.offset.y = t * 1.6; mist.forEach((ms, m5) => { const ph = (t * 0.35 + m5 / 4) % 1; ms.position.set(dx5 * (edge + 0.6) + Math.sin(m5 * 2) * 0.5, -H5 * 0.55 - ph * 2, dz5 * (edge + 0.6) + Math.cos(m5 * 2) * 0.5); ms.scale.setScalar(0.6 + ph); (ms.material as THREE.MeshBasicMaterial).opacity = 0.35 * (1 - ph); }); });
       }
       // Vines hanging down the district's cliff.
-      for (let a = 0; a < outlineD.length; a += 5) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
+      for (let a = 0; a < (ground ? 0 : outlineD.length); a += 5) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
     }
     landSeen.add(id);
     // (The camera looks a little further back for a higher island: that's where it shows.)
@@ -3659,8 +3615,13 @@ let landPts: [number, number][] = [];
 function setLand(bought: number[]): void {
   landKey = bought.join(",");
   landPts = [];
-  // (Districts are islands of their own now: the town's coast stays as it is.)
-  void bought;
+  // The ground districts are part of the town's own land: its coast takes in their corners,
+  // so the city is one island with one coastline, one cliff and one railing all round.
+  for (const k of bought) {
+    if (landJoin(k) !== "ground") continue;
+    const sp = landSpot(k, true);
+    for (let a = 0; a < 24; a++) { const an = (a / 24) * Math.PI * 2, c = Math.cos(an), s2 = Math.sin(an), r = distEdge(c, s2) - 2.2; landPts.push([sp.x + c * r, sp.z + s2 * r]); }
+  }
 }
 /** The outline at `pad` from the town (the coast at ISLAND_PAD takes in bought land unless
  *  `base`). */
