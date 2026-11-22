@@ -570,6 +570,16 @@ export function reactionTip(s: SaveData, now = Date.now()): number {
   return n;
 }
 
+/** Rent from the homes and offices round town (and in the districts): about 20 seconds of
+ *  what the company earns (never less than a few coins), paid when its bubble is tapped. */
+export function collectRent(s: SaveData, now = Date.now()): number {
+  if (!BUSINESSES.some(x => levelOf(s, x.id) > 0)) return 0;
+  const n = Math.max(perSecond(s, now, false) * 20, 5);
+  earn(s, n);
+  return n;
+}
+export const rentPreview = (s: SaveData, now = Date.now()): number => Math.max(perSecond(s, now, false) * 20, 5);
+
 export function goldenTip(s: SaveData, now = Date.now()): number {
   const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
   if (!owned.length) return 0;

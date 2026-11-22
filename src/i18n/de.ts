@@ -1796,4 +1796,8 @@ export const DE: Record<string, string> = {
   "A new island joins your town by a bridge": "Eine neue Insel wird per Brücke mit deiner Stadt verbunden",
   "Districts for sale": "Viertel zu verkaufen",
   "A green \"For sale\" bubble floats over a new island beside your town. Buy it with cash: a bridge joins it to the town, a whole district is built there, and every business earns 15% more.": "Eine grüne „Zu verkaufen“-Blase schwebt über einer neuen Insel neben deiner Stadt. Kauf sie mit Geld: Eine Brücke verbindet sie mit der Stadt, ein ganzes Viertel wird gebaut und jedes Geschäft verdient 15 % mehr.",
+  "Collect rent": "Miete kassieren",
+  "🏠 Rent collected! The people in your town's homes and offices pay rent now and then. Buy districts for more homes.": "🏠 Miete kassiert! Die Leute in den Häusern und Büros deiner Stadt zahlen ab und zu Miete. Kauf Viertel für mehr Häuser.",
+  "Rent": "Miete",
+  "The homes, flats and offices round town pay rent now and then: tap the yellow 🏠 bubble to collect it. Every district you buy adds more homes, so rent comes more often.": "Die Häuser, Wohnungen und Büros der Stadt zahlen ab und zu Miete: Tippe auf die gelbe 🏠-Blase, um sie zu kassieren. Jedes gekaufte Viertel bringt mehr Häuser, also kommt die Miete öfter.",
 };

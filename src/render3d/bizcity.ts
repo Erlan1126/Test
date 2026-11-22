@@ -68,7 +68,7 @@ function roundSlab(w: number, d: number, r: number, h: number): THREE.BufferGeom
   sh.lineTo(x, z - rr); sh.absarc(x - rr, z - rr, rr, 0, Math.PI / 2, false);
   sh.lineTo(-x + rr, z); sh.absarc(-x + rr, z - rr, rr, Math.PI / 2, Math.PI, false);
   sh.lineTo(-x, -z + rr); sh.absarc(-x + rr, -z + rr, rr, Math.PI, Math.PI * 1.5, false);
-  return new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 6 }).rotateX(Math.PI / 2).translate(0, h, 0);
+  return new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 12 }).rotateX(Math.PI / 2).translate(0, h, 0);
 }
 
 /** A curving path (a flat ribbon) through points, w wide, at height y. */
@@ -249,6 +249,8 @@ export interface BizCity {
   spot(id: "flowers" | "play"): { x: number; z: number };
   /** Where piece of land k stands now (for its "for sale" bubble), or null if it isn't shown. */
   landAt(k: number): { x: number; z: number } | null;
+  /** The homes and offices round town and in the districts (they pay rent). */
+  homes(): { x: number; z: number; top: number }[];
 }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
@@ -287,7 +289,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const rockDark = own(std(new THREE.Color(st.rock).lerp(new THREE.Color("#2a2340"), 0.3), { roughness: 1, flatShading: true }));
   const earth = own(std(st.dirt, { roughness: 1 }));
   const road = own(std("#6e6761", { roughness: 0.95 }));
-  const plazaM = own(std("#f7efe2", { roughness: 0.8 })), plazaRing = own(std("#cdb99c", { roughness: 0.85 }));
+  const plazaM = own(std("#f7efe2", { roughness: 0.8 }));
   const walk = own(std("#eadfcc", { roughness: 0.85 }));
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
   const verge = own(std(st.lawn, { roughness: 0.95 }));
@@ -390,14 +392,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const { x, z } = cellXZ(cell);
     add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
     // (Rounded corners: the streets curve round each block like a real town's.)
-    add(roundSlab(C - ROAD * 2, C - ROAD * 2, 0.75, 0.18).translate(x, 0, z), curb);
-    add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 0.66, 0.2).translate(x, 0, z), walk);
-    // A little round plaza on every corner: pale paving with a ring of darker stones.
-    for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-      const pc = C / 2 - ROAD - 0.5;
-      add(new THREE.CylinderGeometry(0.42, 0.42, 0.03, 24).translate(x + sx * pc, 0.262, z + sz * pc), plazaM);
-      add(new THREE.TorusGeometry(0.4, 0.035, 4, 28).rotateX(Math.PI / 2).translate(x + sx * pc, 0.272, z + sz * pc), plazaRing);
-    }
+    add(roundSlab(C - ROAD * 2, C - ROAD * 2, 1.7, 0.18).translate(x, 0, z), curb);
+    add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 1.6, 0.2).translate(x, 0, z), walk);
   }
   // Cozy village streets: warm grey roads with no painted lines, and a cobbled crossing
   // just before every crossing (only on the streets between two blocks; the edge street
@@ -509,7 +505,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // sidewalk, a flower pot on one plaza and a bench with a bin on another (the street lamps
   // stand on the other two). Nothing sits on the curb or in the road.
   for (const [n, cell] of CELLS.entries()) {
-    const { x, z } = cellXZ(cell), side = C / 2 - ROAD - 0.22, pc = C / 2 - ROAD - 0.5;
+    const { x, z } = cellXZ(cell), side = C / 2 - ROAD - 0.22, pc = C / 2 - ROAD - 0.73;
     add(new THREE.CylinderGeometry(0.07, 0.08, 0.26, 8).translate(x - side, 0.33, z - 1.0), mats.c("#ff4f4f", 0.5));
     add(new THREE.SphereGeometry(0.07, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(x - side, 0.46, z - 1.0), mats.c("#ff4f4f", 0.5));
     if (n % 3 === 0) { add(new THREE.BoxGeometry(0.2, 0.26, 0.16).translate(x + 1.0, 0.48, z - side), mats.c("#3a6fe0", 0.5)); add(new THREE.BoxGeometry(0.06, 0.26, 0.06).translate(x + 1.0, 0.22, z - side), metal); }
@@ -806,7 +802,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   lampMat.userData.dynamic = true;
   for (const cell of CELLS) {
     // (On the sidewalk's rounded corner: further in than the lot's square corner would be.)
-    const { x, z } = cellXZ(cell), e = C / 2 - ROAD - 0.5;
+    const { x, z } = cellXZ(cell), e = C / 2 - ROAD - 0.73;
     for (const [a, b] of [[e, e], [-e, -e]]) {
       add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a, 0.9, z + b), pole);
       add(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a, 1.65, z + b), lampMat);
@@ -1354,6 +1350,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return geo;
   };
 
+  /** Every home, block of flats and office in town (and in the districts): where it stands
+   *  and how tall it is, for the rent bubbles over them. */
+  const homeSpots: { x: number; z: number; top: number }[] = [];
+  const homeAt = (x: number, z: number, top: number) => { homeSpots.push({ x, z, top: top + 0.2 }); };
+
   // ---- Neighbors: the homes and corner shops on the lots no business has yet ----
   const HOUSE = ["#fff1e0", "#e9f3ff", "#ffe8ef", "#eefbe8", "#fff7d6", "#f1ebff"];
   const ROOF = ["#d9534a", "#5a6fd0", "#e07a9a", "#4f9a5a", "#b8683a", "#7a5ad0"];
@@ -1362,7 +1363,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => G.add(new THREE.Mesh(geo, m));
     const r = (k: number) => ((i * 7 + k * 13) % 6);
     // Ground: a small front lawn and a paved yard.
-    K(roundSlab(4.2, 4.2, 1.2, 0.06), grass2);
+    K(roundSlab(4.2, 4.2, 1.6, 0.06), grass2);
     K(new THREE.BoxGeometry(4.0, 0.03, 1.1).translate(0, 0.07, 1.45), pave);
     const windows = (w: number, d: number, y0: number, floors: number, fh: number, cx: number, cz: number, per: number) => {
       for (let f = 0; f < floors; f++) {
@@ -1470,7 +1471,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       ng.add(lg);
       if (NEIGH_PARK.has(`${cell[0]},${cell[1]}`)) {
         const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
-        P(roundSlab(4.2, 4.2, 1.2, 0.06), k % 2 ? grass : grass2);
+        P(roundSlab(4.2, 4.2, 1.6, 0.06), k % 2 ? grass : grass2);
         P(ribbon(sPath(1.9, k % 2 === 1), 0.55, 0.075), pave);
         P(new THREE.CylinderGeometry(0.7, 0.7, 0.05, 20).translate(0.9, 0.08, -0.9), water);
         P(new THREE.TorusGeometry(0.72, 0.06, 6, 20).rotateX(Math.PI / 2).translate(0.9, 0.1, -0.9), stone);
@@ -1483,8 +1484,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         for (let f = 0; f < 6; f++) P(new THREE.SphereGeometry(0.08, 6, 4).translate(0.4 + f * 0.2, 0.12, 1.6), mats.c(flowersOn[(f + k) % 4], 0.8));
       } else if (inner.has(`${cell[0]},${cell[1]}`)) {
         // Next to downtown: mid-rise flats and glass offices (the skyline steps down outward).
-        if (k % 2) neighborhood(lg, 20 + k, 6 + (k % 4)); else neighborhood(lg, 20 + k, -(6 + (k % 5)));
-      } else neighborhood(lg, 20 + k);
+        homeAt(x, z, k % 2 ? neighborhood(lg, 20 + k, 6 + (k % 4)) : neighborhood(lg, 20 + k, -(6 + (k % 5))));
+      } else homeAt(x, z, neighborhood(lg, 20 + k));
       // Street trees along the sidewalks, two per side.
       for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (const o of [-1.1, 1.1]) {
         const tx = x + sx * 2.33 + (sz ? o : 0), tz = z + sz * 2.33 + (sx ? o : 0);
@@ -1508,7 +1509,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // Locked: a little park. For lease: a cleared plot with a sale sign.
       const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lotG.add(new THREE.Mesh(geo, m));
       if (lot.state === "lease") {
-        K(roundSlab(4.2, 4.2, 1.2, 0.06), grass2);
+        K(roundSlab(4.2, 4.2, 1.6, 0.06), grass2);
         K(new THREE.BoxGeometry(3.2, 0.07, 3.2).translate(0, 0.04, -0.2), earth);
         for (const [sx, sz] of [[-1.6, -1.8], [1.6, -1.8], [-1.6, 1.4], [1.6, 1.4]]) K(new THREE.BoxGeometry(0.06, 0.5, 0.06).translate(sx, 0.25, sz), wood);
         for (const [sx, sz, w, d] of [[0, -1.8, 3.2, 0.03], [0, 1.4, 3.2, 0.03], [-1.6, -0.2, 0.03, 3.2], [1.6, -0.2, 0.03, 3.2]] as const) K(new THREE.BoxGeometry(w, 0.05, d).translate(sx, 0.42, sz), mats.c("#ff8a3b"));
@@ -1526,7 +1527,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         return;
       } else {
         // A little park until the business comes: lawn, a winding path, trees, a bench.
-        K(roundSlab(4.2, 4.2, 1.2, 0.06), i % 2 ? grass : grass2);
+        K(roundSlab(4.2, 4.2, 1.6, 0.06), i % 2 ? grass : grass2);
         K(ribbon(sPath(1.9, i % 2 === 1), 0.55, 0.075), pave);
         for (const [tx, tz, ts] of [[-1.3, -1.2, 1], [1.3, 0.8, 0.9], [-1.4, 1.5, 0.75], [1.4, -1.5, 0.8]]) {
           K(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk);
@@ -1541,8 +1542,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       return;
     }
     // The lot: a paved forecourt with a strip of lawn round the back.
-    lotG.add(new THREE.Mesh(roundSlab(4.3, 4.3, 1.2, 0.05), grass));
-    lotG.add(new THREE.Mesh(roundSlab(4.3, 2.6, 1.1, 0.06).translate(0, 0, 0.85), pave));
+    lotG.add(new THREE.Mesh(roundSlab(4.3, 4.3, 1.6, 0.05), grass));
+    lotG.add(new THREE.Mesh(roundSlab(4.3, 2.6, 1.25, 0.06).translate(0, 0, 0.85), pave));
     const hqT = cafe.hq?.[lot.id];
     // Once the café terrace is there (or its preview), the Coffee Cart's building, at any
     // stage, keeps clear of it: it moves back (and slims if it must) so its front stops
@@ -2216,16 +2217,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
       const { x, z } = cellC(i, j);
       L(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0, z), road);
-      L(roundSlab(C - ROAD * 2, C - ROAD * 2, 0.75, 0.18).translate(x, 0, z), curb);
-      L(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 0.66, 0.2).translate(x, 0, z), walk);
-      for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-        const pc = C / 2 - ROAD - 0.5;
-        L(new THREE.CylinderGeometry(0.42, 0.42, 0.03, 20).translate(x + sx * pc, 0.262, z + sz * pc), plazaM);
-        L(new THREE.TorusGeometry(0.4, 0.035, 4, 24).rotateX(Math.PI / 2).translate(x + sx * pc, 0.272, z + sz * pc), plazaRing);
-      }
+      L(roundSlab(C - ROAD * 2, C - ROAD * 2, 1.7, 0.18).translate(x, 0, z), curb);
+      L(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 1.6, 0.2).translate(x, 0, z), walk);
       // Lamps on two corners.
       for (const [a2, b2] of [[1, 1], [-1, -1]]) {
-        const e = C / 2 - ROAD - 0.5;
+        const e = C / 2 - ROAD - 0.73;
         L(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a2 * e, 0.9, z + b2 * e), metal);
         L(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a2 * e, 1.65, z + b2 * e), lampMat);
       }
@@ -2272,7 +2268,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const key = `${i},${j}`;
       if (id === "meadow") return key === "1,1" ? "marina" : key === "2,2" ? "market" : key === "0,0" ? "lighthouse" : key === "2,1" ? "park" : "home";
       if (id === "lakeside") return key === "1,1" ? "lake" : key === "2,1" ? "wheel" : key === "1,2" || key === "2,2" ? "park" : "home";
-      return key === "1,1" ? "fountain" : key === "2,2" ? "park" : "tower";
+      return key === "1,1" ? "fountain" : key === "2,2" ? "park" : key === "2,1" ? "plaza" : "tower";
     };
     for (let i = 0; i < DIST_N; i++) for (let j = 0; j < DIST_N; j++) {
       const { x, z } = cellC(i, j), lg = new THREE.Group(), n = 40 + k * 20 + i * DIST_N + j;
@@ -2283,13 +2279,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const th = themeOf(i, j);
       if (!bought) {
         // For sale: open grass with a tree or two, waiting to be built on.
-        P(roundSlab(4.2, 4.2, 1.2, 0.06), n % 2 ? grass : grass2);
+        P(roundSlab(4.2, 4.2, 1.6, 0.06), n % 2 ? grass : grass2);
         if (n % 3 === 0) { P(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(-1, 0.3, 0.8), trunk); P(new THREE.IcosahedronGeometry(0.5, 0).translate(-1, 0.95, 0.8), leaf); }
         continue;
       }
-      if (th === "home") { neighborhood(lg, n); continue; }
-      if (th === "tower") { if (n % 2) neighborhood(lg, n, 6 + ((n * 7) % 5)); else neighborhood(lg, n, -(8 + ((n * 5) % 7))); continue; }
-      P(roundSlab(4.2, 4.2, 1.2, 0.06), n % 2 ? grass : grass2);
+      if (th === "home") { homeAt(sp.x + x, sp.z + z, neighborhood(lg, n)); continue; }
+      if (th === "tower") { homeAt(sp.x + x, sp.z + z, n % 2 ? neighborhood(lg, n, 6 + ((n * 7) % 5)) : neighborhood(lg, n, -(8 + ((n * 5) % 7)))); continue; }
+      P(roundSlab(4.2, 4.2, 1.6, 0.06), n % 2 ? grass : grass2);
       const tr2 = (tx: number, tz: number, ts = 1) => { P(new THREE.CylinderGeometry(0.06 * ts, 0.1 * ts, 0.6 * ts, 6).translate(tx, 0.3 * ts, tz), trunk); P(new THREE.IcosahedronGeometry(0.5 * ts, 0).translate(tx, 0.95 * ts, tz), leaf); };
       if (th === "park") {
         P(ribbon(sPath(1.9, n % 2 === 1), 0.55, 0.075), pave);
@@ -2478,6 +2474,49 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         }
       });
     }
+    if (bought) {
+      // Each district's signature, seen from anywhere: a hot-air balloon drifting over Garden
+      // Hills, a supertall with a blinking spire in Downtown, a sailboat round the Harbor.
+      if (id === "lakeside") {
+        const bal = new THREE.Group();
+        const stripes = ["#ff5f6d", "#ffd23a", "#2f9bff", "#5ee0a0"];
+        for (let b2 = 0; b2 < 8; b2++) bal.add(new THREE.Mesh(new THREE.SphereGeometry(1.1, 6, 10, (b2 / 8) * Math.PI * 2, Math.PI / 4).scale(1, 1.2, 1), mats.c(stripes[b2 % 4], 0.6)));
+        bal.add(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.35, 8).translate(0, -1.75, 0), wood));
+        for (const [ox, oz] of [[0.3, 0.3], [-0.3, 0.3], [0.3, -0.3], [-0.3, -0.3]]) bal.add(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.6, 0.02).translate(ox * 0.9, -1.35, oz * 0.9), metal));
+        bal.userData.dynamic = true;
+        G.add(bal);
+        townTicks.push(t => { bal.position.set(Math.sin(t * 0.07) * 9, 9 + Math.sin(t * 0.4) * 0.6, Math.cos(t * 0.05) * 7); bal.rotation.y = t * 0.1; });
+      } else if (id === "hills") {
+        const st2 = new THREE.Group(), hgt = 9.5;
+        st2.add(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.8, 2.6).translate(0, 0.4, 0), mats.c("#e9e4f5", 0.6)));
+        st2.add(new THREE.Mesh(new THREE.BoxGeometry(2.0, hgt, 2.0).translate(0, 0.8 + hgt / 2, 0), winMat));
+        for (let f = 0; f <= 14; f++) st2.add(new THREE.Mesh(new THREE.BoxGeometry(2.06, 0.06, 2.06).translate(0, 0.8 + (f * hgt) / 14, 0), mats.c("#f4f2fa", 0.5)));
+        st2.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1.4).translate(0, 0.8 + hgt + 0.6, 0), winMat));
+        st2.add(new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.4, 4).rotateY(Math.PI / 4).translate(0, 0.8 + hgt + 1.9, 0), mats.c("#d6d2e6", 0.4, 0.5)));
+        st2.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 6).translate(0, 0.8 + hgt + 3.4, 0), metal));
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6).translate(0, 0.8 + hgt + 4.2, 0), own(new THREE.MeshBasicMaterial({ color: 0xff3a4a })));
+        tip.userData.dynamic = true; tip.material.userData.dynamic = true;
+        st2.add(tip);
+        const { x: cx4, z: cz4 } = cellC(2, 1);
+        st2.position.set(cx4, 0.2, cz4);
+        G.add(st2);
+        townTicks.push(t => { tip.visible = Math.sin(t * 3) > 0; });
+      } else {
+        // A little airship with the harbor's colors, cruising round the island.
+        const ship = new THREE.Group();
+        ship.add(new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10).scale(0.55, 0.55, 1.6), mats.c("#ffffff", 0.5)));
+        for (const z2 of [-0.6, 0, 0.6]) ship.add(new THREE.Mesh(new THREE.TorusGeometry(0.56 * Math.sqrt(1 - (z2 / 1.6) ** 2), 0.025, 4, 20).translate(0, 0, z2), mats.c("#2f9bff", 0.5)));
+        ship.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.6).translate(0, -0.65, 0.1), mats.c("#2f9bff", 0.5)));
+        for (const sd of [-1, 1]) ship.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 0.4).translate(sd * 0.3, 0.05, -1.45), mats.c("#ff5f6d", 0.6)));
+        ship.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.4).translate(0, 0.05, -1.45), mats.c("#ff5f6d", 0.6)));
+        ship.userData.dynamic = true;
+        G.add(ship);
+        const R2 = DIST_H * 0.7;
+        townTicks.push(t => { const a = t * 0.05; ship.position.set(Math.cos(a) * R2, 8 + Math.sin(t * 0.5) * 0.4, Math.sin(a) * R2); ship.rotation.y = -a; });
+      }
+      // Vines hanging down the district's cliff.
+      for (let a = 0; a < outlineD.length; a += 5) { const [vx, vz] = outlineD[a], len = 0.4 + Math.abs(Math.sin(a * 2.7 + k)) * 0.9; L(new THREE.BoxGeometry(0.08, len, 0.08).translate(vx * 0.99, -len / 2 - 0.02, vz * 0.99), leaf); }
+    }
     landSeen.add(id);
     landmarks[100 + k] = () => ({ x: sp.x, z: sp.z, zoom: 0.8 });
   });
@@ -2507,6 +2546,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     landmark: r => (landmarks[r] ? landmarks[r]() : null),
     spot: id => block.spot(id),
     landAt: k => landShown[k] ?? null,
+    homes: () => homeSpots,
     look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,
     update(t, night, live) {

@@ -16,7 +16,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, vipTip,
+  payOf, perSecond, progressOf, collectRent, rentPreview, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, vipTip,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -58,6 +58,7 @@ export interface TycoonHost {
   setBizFocus(on: boolean): void;
   /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
+  bizHomes(): number;
   /** Set when the results card sent the player here, to see their tower or the café. */
   townDest: "" | "tower" | "terrace" | "cafe" | "project";
   /** Starts a café-contract tower (the flower market now). */
@@ -123,6 +124,9 @@ export class TycoonUI {
   private vip = { id: "", until: 0 };
   /** A golden customer: rare, sparkling, and gone in a minute. */
   private golden = { id: "", until: 0 };
+  /** Rent bubbles over homes round town: which home, how much, until when. */
+  private rent: { i: number; amt: number; until: number }[] = [];
+  private nextRent = 0;
   /** The first visit's close look at the starter tower runs until this time. */
   private frameUntil = 0;
   private openingWas = false;
@@ -895,7 +899,8 @@ export class TycoonUI {
     // Land for sale next to the island: a green "for sale" bubble over it, with its price.
     const sale = landOnSale(s), sk = sale ? LAND.indexOf(sale) : -1;
     const landTag = sale && !closeUp ? `<button type="button" class="tag bub land-sale" data-tag="land-${sale.id}" data-i="${-10 - sk}" data-h="-1"><span class="tag-ico">🏞️</span><b>${esc(t("For sale"))} · ${esc(coins(landPrice(s, sale)))}</b></button>` : "";
-    this.put($("tcy-labels"), starterTag + landTag + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    const rentTags = closeUp ? "" : this.rent.map(r => `<button type="button" class="tag bub rent" data-tag="rent-${r.i}" data-i="${-100 - r.i}" data-h="-1" aria-label="${esc(t("Collect rent"))}"><span class="tag-ico">🏠</span><b>+${esc(coins(r.amt))}</b></button>`).join("");
+    this.put($("tcy-labels"), starterTag + landTag + rentTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
@@ -1084,6 +1089,22 @@ export class TycoonUI {
       return;
     }
     if (id.startsWith("land-")) { this.openLand(); return; }
+    if (id.startsWith("rent-")) {
+      const i = Number(id.slice(5)), k = this.rent.findIndex(r => r.i === i);
+      if (k < 0) return;
+      this.rent.splice(k, 1);
+      tick(this.save);
+      const got = collectRent(this.save);
+      const box = tag?.querySelector(".tag-pops") ?? $("tcy-labels");
+      popCoin(box as HTMLElement, coins(got));
+      for (let n = 0; n < 4; n++) setTimeout(() => flyCoin(tag ?? $("tcy-labels"), "tcy-coins"), n * 70);
+      this.host.sound.coins();
+      vibrate(this.save.settings.vibrate, 12);
+      if (!this.save.seenFeatures.includes("rent-first")) { this.save.seenFeatures.push("rent-first"); toast(t("🏠 Rent collected! The people in your town's homes and offices pay rent now and then. Buy districts for more homes.")); }
+      this.host.persist();
+      this.render();
+      return;
+    }
     if (id === "starter") {
       const st = this.save.cafe.starter;
       if (st) toast(tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));
@@ -1437,6 +1458,21 @@ export class TycoonUI {
   /** Live moments while the tower is open: VIPs, critics, power cuts and rush hours. */
   private events(now: number): void {
     const s = this.save, owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
+    // Rent: now and then a home, a block of flats or an office round town has rent to collect
+    // (more homes, from the districts, means rent more often). At most two at a time.
+    if (this.inCity && owned.length && s.tycoon.tips >= 3) {
+      const homes = this.host.bizHomes();
+      const before = this.rent.length;
+      this.rent = this.rent.filter(r => r.until > now && r.i < homes);
+      if (!this.nextRent) this.nextRent = now + 20000;
+      if (homes > 0 && now > this.nextRent && this.rent.length < 2) {
+        const free = Array.from({ length: homes }, (_, i) => i).filter(i => !this.rent.some(r => r.i === i));
+        const i = free[Math.floor(Math.random() * free.length)];
+        this.rent.push({ i, amt: rentPreview(s, now), until: now + 30000 });
+        this.nextRent = now + Math.max(12000, 45000 - homes * 400) * (0.75 + Math.random() * 0.5);
+      }
+      if (this.rent.length !== before) this.render();
+    }
     // Golden customers: the first a few minutes in, then every 15-30 minutes, a few a day.
     if (owned.length && s.tycoon.tips >= 3 && this.inCity) {
       if (!this.nextGolden) this.nextGolden = now + 150000 + Math.random() * 150000;

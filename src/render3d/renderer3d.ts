@@ -1027,11 +1027,17 @@ export class Renderer3D {
   }
 
   /** Where a lot's building shows on screen: its base and its top (page px). */
+  /** How many homes there are round town (they pay rent). */
+  bizHomes(): number { return this.biz && this.bizK >= 0.5 ? this.biz.homes().length : 0; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
-    const land = i <= -10 ? this.biz.landAt(-10 - i) : null;
-    if (i <= -10 && !land) return null;
-    const { x, z } = land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
+    // (-100 and below: the homes round town, which pay rent.)
+    const home = i <= -100 ? this.biz.homes()[-100 - i] : null;
+    if (i <= -100 && !home) return null;
+    if (home && height < 0) height = home.top + 0.4;
+    const land = i <= -10 && i > -100 ? this.biz.landAt(-10 - i) : null;
+    if (i <= -10 && i > -100 && !land) return null;
+    const { x, z } = home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     const at = (y: number): [number, number] => {

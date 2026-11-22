@@ -4085,3 +4085,11 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-labels .tag.bub.sel:not(.lease) .tag-ico { width: 46px; height: 46px; }
 #tcy-labels .tag.bub.sel:not(.lease) .tag-ico svg.ic { width: 33px; height: 33px; }
 #tcy-labels .tag.bub:not(.lease):not(.land-sale) { margin-bottom: 6px; }
+
+/* Rent bubbles over the homes round town: a warm yellow pill with a little bounce. */
+#tcy-labels .tag.bub.rent { flex-direction: row; gap: 4px; padding: 4px 10px 4px 4px !important; background: linear-gradient(180deg, #ffe27a, #ffb21e) !important; color: #5a3a00; box-shadow: 0 6px 14px rgba(120, 70, 0, 0.35), 0 0 0 2px #fff; animation: rent-bob 1.4s ease-in-out infinite; }
+#tcy-labels .tag.bub.rent .tag-ico { width: 26px; height: 26px; background: #fff; font-size: 15px; }
+#tcy-labels .tag.bub.rent .tag-ico::before { display: none; }
+#tcy-labels .tag.bub.rent b { font: 400 12px var(--display); padding-right: 0; }
+@keyframes rent-bob { 50% { translate: 0 -4px; } }
+@media (prefers-reduced-motion: reduce) { #tcy-labels .tag.bub.rent { animation: none; } }
