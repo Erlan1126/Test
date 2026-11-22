@@ -122,7 +122,7 @@ const joined = (ax: number, az: number, bx: number, bz: number) => JOINED_SET.ha
 /** Each block's corner roundness (blocks of one joined pair share it), so blocks differ. */
 const blockRound = (gx: number, gz: number): number => {
   for (const [a, b] of JOINED) if ((a[0] === gx && a[1] === gz) || (b[0] === gx && b[1] === gz)) { gx = a[0]; gz = a[1]; break; }
-  return [1.7, 0.7, 1.2, 1.7, 0.45][Math.abs(gx * 7 + gz * 13) % 5];
+  return [1.7, 1.7, 1.35][Math.abs(gx * 7 + gz * 13) % 3];
 };
 /** A piece of a merged model, painted one color (vertex colors; no uv, so pieces merge). */
 function paintGeo(geo: THREE.BufferGeometry, c: string): THREE.BufferGeometry {
@@ -248,7 +248,7 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     const a = a0 + k * 0.95, dx = Math.cos(a), dz = Math.sin(a);
     let t = 0;
     while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25;
-    let out = t + distEdge(dx, dz) + DIST_GAP + 10 + k * 2;
+    let out = t + distEdge(dx, dz) + DIST_GAP + 22 + k * 2;
     const clear = (x: number, z: number) => {
       for (let m = 0; m < k; m++) { const o = landSpot(m, bought); if (Math.hypot(o.x - x, o.z - z) < DIST_H * 2.9 + DIST_GAP) return false; }
       return true;
@@ -508,8 +508,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     promenades.push({ x: mx, z: mz, alongX });
   }
   // Road markings like a real city's, on the streets between blocks (the edge street round
-  // the town stays plain): a white zebra crossing and a stop line before every crossing,
-  // and a dashed line down the middle.
+  // the town stays plain): a zebra crossing half way along and a dashed centre line,
   const medianTrees: [number, number][] = [];
   const paintM = own(new THREE.MeshBasicMaterial({ color: 0xefeee8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   /** The markings on one street: centred at (cx, cz), running along x or z, `run` long. */
@@ -517,13 +516,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // (All of one street's paint is one mesh: a few hundred streets, not thousands of bars.)
     const parts: THREE.BufferGeometry[] = [];
     const P = (w: number, d: number, ox: number, oz: number) => { const geo = new THREE.PlaneGeometry(along === "z" ? w : d, along === "z" ? d : w).rotateX(-Math.PI / 2); parts.push(geo.translate(cx + (along === "z" ? ox : oz), y, cz + (along === "z" ? oz : ox))); };
-    const cross = run / 2 - 0.45;
-    for (const end of [-1, 1]) {
-      for (let b = -3; b <= 3; b++) P(0.2, 0.62, b * 0.32, end * cross);
-      P(ROAD - 0.1, 0.1, end * (ROAD / 2), end * (cross - 0.5));
-    }
-    const dashFrom = -cross + 0.75, dashTo = cross - 0.75;
-    for (let d = dashFrom; d + 0.45 <= dashTo; d += 0.85) P(0.1, 0.45, 0, d + 0.225);
+    // One zebra crossing in the middle of the street (clear of the rounded corners and the
+    // roundabouts), then the dashed centre line out to just short of each crossing.
+    for (let b = -3; b <= 3; b++) P(0.2, 0.62, b * 0.32, 0);
+    for (const end of [-1, 1]) for (let d = 0.75; d + 0.4 <= run / 2 - 0.95; d += 0.75) P(0.1, 0.4, 0, end * (d + 0.2));
     const merged = mergeGeometries(parts); parts.forEach(q => q.dispose());
     if (merged) par(merged, paintM);
   };
