@@ -132,7 +132,7 @@ function showStageCard(won) {
   // Who you brought the light to (or who is still waiting).
   { const [who, line] = stagePerson(info.n), pe = $("stPerson"); if (pe) { pe.hidden = false; pe.innerHTML = won ? `<b>You brought light to ${who}.</b><span>“${line}”</span><small>${info.daily ? "Back tomorrow: someone new will be waiting" : `${homesLit()} of ${STAGES_N} homes relit`}</small>` : `<b>${stageWaiting(info.n).replace("waiting", "still waiting")} in the dark.</b><span>Try again. They're counting on you.</span>`; } }
   $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : "Out of light";
-  $("stStars").textContent = won ? starText(R.stageStars) : "☆☆☆";
+  $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);
   $("stTime").textContent = won ? R.stageTime.toFixed(1) : "–";
   $("stLights").textContent = `${R.motesGot}/${R.motesTotal}`;

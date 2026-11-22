@@ -676,7 +676,7 @@
   .panel h2, .levels-title, .city-title { font-weight: 700; letter-spacing: -0.01em; }
   .ic { width: 22px; height: 22px; display: block; } .ic.sm { width: 14px; height: 14px; }
   .glass, .panel, .card2, .sheet-card, .tabbar, .chip2, .icon2, .seg { background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%); }
-  .primary { background: #fff; color: #090a10; border: 0; border-radius: 16px; font-weight: 700; font-size: 16px; padding: 15px 22px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: transform 0.12s; }
+  .primary { background: linear-gradient(180deg, #ffe7a8, #ffbf52); color: #2a1600; box-shadow: 0 8px 26px rgba(255,180,70,0.35), 0 0 0 1px rgba(255,240,200,0.5) inset; border: 0; border-radius: 16px; font-weight: 800; font-size: 16px; padding: 15px 22px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: transform 0.12s; }
   .primary:active, .ghost:active, .play2:active, .tabbar button:active { transform: scale(0.96); }
   .primary:disabled { opacity: 0.4; }
   .primary.wide { width: 100%; margin: 4px 0 6px; }
@@ -745,6 +745,23 @@
   *, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
   .st-stars { font-size: 44px; letter-spacing: 6px; color: #ffd98a; text-align: center; margin: 6px 0 10px; text-shadow: 0 0 22px rgba(255, 210, 90, 0.45); }
   .st-stars.lost { color: rgba(255,255,255,0.25); text-shadow: none; }
+  .st-stars span { display: inline-block; animation: starPop 0.55s cubic-bezier(.2,1.6,.4,1) both; }
+  .st-stars span:nth-child(2) { animation-delay: 0.18s; } .st-stars span:nth-child(3) { animation-delay: 0.36s; }
+  .st-stars span.off { color: rgba(255,255,255,0.18); text-shadow: none; }
+  @keyframes starPop { from { transform: scale(0) rotate(-40deg); opacity: 0; } 70% { transform: scale(1.25) rotate(8deg); opacity: 1; } }
+  #stageCard { background: radial-gradient(120% 70% at 50% 0%, rgba(255,200,110,0.16), transparent 60%), rgba(14,16,24,0.96); border: 1px solid rgba(255,210,140,0.25); }
+  .pz-who { margin: 4px 0 10px; color: var(--gold); font-weight: 700; text-align: center; }
+  .pz-goals { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+  .pz-goals li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); font-size: 14px; }
+  .pz-goals li b { color: var(--gold); font-weight: 800; min-width: 3em; } .pz-goals li span { flex: 1; } .pz-goals li em { font-style: normal; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .pz-goals li.ok em { color: #8dff9a; } .pz-goals li.no { opacity: 0.55; }
+  .stage-prog { position: fixed; top: calc(4px + var(--top)); left: 16px; right: 16px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.1); z-index: 3; }
+  .stage-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #8be9ff, #ffd98a); box-shadow: 0 0 10px rgba(255,217,138,0.6); }
+  .stage-prog b { position: absolute; right: -4px; top: -4px; width: 12px; height: 12px; border-radius: 3px 3px 1px 1px; background: #ffd98a; box-shadow: 0 0 10px #ffb84d; }
+  .shop-upg { display: grid !important; grid-template-columns: 44px 1fr auto; gap: 12px; }
+  .shop-upg .ui { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), rgba(255,255,255,0.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+  .shop-upg .lv { display: flex; gap: 4px; margin-top: 6px; } .shop-upg .lv i { width: 22px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); } .shop-upg .lv i.on { background: linear-gradient(90deg, #ffd98a, #ffb84d); box-shadow: 0 0 6px rgba(255,184,77,0.6); }
+  .shop-upg small b { color: #8dff9a; font-weight: 700; }
   #shopList li.dawn { flex-direction: column; align-items: stretch; gap: 8px; background: linear-gradient(135deg, rgba(255,190,90,0.10), rgba(139,233,255,0.06)); }
   #shopList li.dawn > div:first-child { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 15px; }
   #shopList li.dawn b { font-size: 26px; color: var(--gold); }
@@ -971,11 +988,11 @@
   <canvas id="runCanvas" aria-label="Bip flying up through the city"></canvas>
   <div class="run-hud">
     <div class="hud-side"><div class="hearts" id="runHearts"></div></div>
-    <div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div><div class="flow" id="flowBar" hidden><i id="flowFill"></i><b id="flowDash"></b><span id="flowText">FLOW</span></div></div>
+    <div class="stage-prog" id="stageProg" hidden><i id="stageProgFill"></i><b></b></div><div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div><div class="flow" id="flowBar" hidden><i id="flowFill"></i><b id="flowDash"></b><span id="flowText">FLOW</span></div></div>
     <div class="hud-side right"><button class="icon2" id="runPauseBtn" aria-label="Pause"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></div>
   </div>
   <button class="ability" id="abilityBtn" hidden aria-label="Ability"><span id="abilityName"></span></button>
-  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="info">Hold anywhere to grab a light · let go to fly</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
+  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="pz-who" id="pzWho"></p><ul class="pz-goals" id="pzGoals"></ul><p class="info">Hold to grab the ringed light · keep holding to reel in · let go to fly</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
   <div class="card2 mid" id="runContinue" hidden><h2>Keep going?</h2><div class="ring" id="runContinueTime">5</div><p class="info">Spend lights to carry on</p><div class="row2"><button class="ghost" id="runContinueNo">Rest</button><button class="primary" id="runContinueGo"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg> <span id="runContinueCost">25</span></button></div></div>
   <div class="card2 bottom" id="stageCard" hidden>
     <div class="ro-head"><span id="stTitle">Stage 1</span><span class="badge" id="stBadge"></span></div>

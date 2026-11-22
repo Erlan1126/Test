@@ -18,9 +18,9 @@ const RUN = {
     { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
-    { id: "magnet", name: "Magnet", tiers: [40, 90, 160], tip: lv => lv ? `The magnet reaches ${9 + lv * 2} m` : "A stronger magnet power-up" },
+    { id: "magnet", name: "Light magnet", tiers: [40, 90, 160], tip: lv => `Lights fly to you from ${9 + lv * 2} m` },
     { id: "song", name: "Longer power-ups", tiers: [50, 110, 190], tip: lv => `Power-ups last ${100 + lv * 20}% as long` },
-    { id: "heart", name: "Brighter heart", tiers: [120], tip: lv => `Start each run with ${3 + lv} lights of your own` },
+    { id: "heart", name: "Extra heart", tiers: [120], tip: lv => `Start every stage with ${3 + lv} hearts` },
   ],
 };
 const runUpg = id => ((save.run || {}).upg || {})[id] || 0;
@@ -203,6 +203,7 @@ function runHud() {
   if (run.attract) return;
   if (run.stageInfo) { $("runScore").textContent = (run.stageT || 0).toFixed(1); } else $("runScore").textContent = runScore().toLocaleString();
   $("runLights").textContent = `✦ ${run.lights}`;
+  { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; } } } }
   const maxH = Math.max(run.hearts, (run.hard ? 1 : 3 + runUpg("heart")) + (perk(11) ? 1 : 0));
   $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join("");
   const ab = $("abilityBtn"), as = playingAs();
@@ -1084,7 +1085,17 @@ function runLoop(now) {
   document.addEventListener("visibilitychange", () => { if (document.hidden) { downs.clear(); if (run && run.mode3) swingHold(false); p = null; } });
   window.addEventListener("keydown", e => { if (screen !== "run") return; if (e.key === " ") { e.preventDefault(); if (run && run.mode3) runnerSwipe("up"); else runSing(); } if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") { e.preventDefault(); runDash(); } });
 }
-document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; $("runPause").hidden = false; musicStop(); });
+// The pause card: who is waiting, and how each star is going so far.
+function runPauseInfo() {
+  const R = run, who = $("pzWho"), ul = $("pzGoals"); if (!who || !ul) return;
+  if (!R || !R.stageInfo || typeof stagePerson !== "function") { who.textContent = ""; ul.innerHTML = ""; return; }
+  const tot = Math.max(1, R.motesTotal), share = R.motesGot / tot, par = R.stageInfo.par, pct = Math.max(0, Math.min(100, Math.floor(R.px / R.stageLen * 100)));
+  who.textContent = `${stageWaiting(R.stageInfo.n)} · ${pct}% of the way`;
+  const g = (stars, text, now, ok, alive = true) => `<li class="${ok ? "ok" : alive ? "" : "no"}"><b>${stars}</b><span>${text}</span><em>${now}</em></li>`;
+  ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch half the lights", `${Math.round(share * 100)}%`, share >= 0.5) +
+    g("★★★", `80% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
+}
+document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
@@ -1146,10 +1157,11 @@ function runBuy(id) {
   save.glow -= cost; r.upg[u.id] = lv + 1; persist(); sfx.unlock(); buzz(20); return true;
 }
 function runShopHtml() {
+  const icons = { magnet: "🧲", song: "⏳", heart: "❤" };
   return RUN.upgrades.map(u => {
     const lv = runUpg(u.id), next = u.tiers[lv], afford = next != null && (save.glow || 0) >= next;
-    return `<li><span><b>${u.name}</b> ${"◆".repeat(lv)}${"◇".repeat(u.tiers.length - lv)}<small>${u.tip(lv)}</small></span>` +
-      (next == null ? `<em>Best</em>` : `<button data-run="${u.id}" ${afford ? "" : "disabled"}>✦ ${next}</button>`) + "</li>";
+    return `<li class="shop-upg"><span class="ui">${icons[u.id] || "✦"}</span><span><b>${u.name}</b><small>${u.tip(lv)}${next != null ? ` → <b>${u.tip(lv + 1).replace(/^.*?(\d+[^ ]*).*$/, "$1")}</b>` : ""}</small><span class="lv">${u.tiers.map((_, q) => `<i class="${q < lv ? "on" : ""}"></i>`).join("")}</span></span>` +
+      (next == null ? `<em>Maxed</em>` : `<button data-run="${u.id}" ${afford ? "" : "disabled"}>✦ ${next}</button>`) + "</li>";
   }).join("");
 }
 function runShop() {
@@ -1159,5 +1171,5 @@ function runShop() {
 
 // Leaving the app mid-run pauses it.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; $("runPause").hidden = false; musicStop(); }
+  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
 });
