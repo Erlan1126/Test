@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { KIT_GLB } from "./kitdata";
 
 /** Artist-made 3D models (free CC0 packs, see kit/NOTICE.md), unpacked once at startup.
@@ -36,7 +37,9 @@ function prep(root: THREE.Object3D): void {
     }
     // (Unlit materials hold screen colours; lit, they'd wash out. Leaves take the town's green.)
     if ((src as THREE.MeshBasicMaterial).isMeshBasicMaterial) col.convertSRGBToLinear();
-    if (/leaf/i.test(src.name)) col.set("#4fa04a");
+    // (The nature kit's mint greens and orange "dirt" become the town's own greens and stone.)
+    const TONE: Record<string, string> = { leafsGreen: "#4fa04a", leafsDark: "#3c8650", grass: "#5fae4a", dirt: "#a39d94", leafsFall: "#f08a3c" };
+    if (TONE[src.name]) col.set(TONE[src.name]);
     // Windows read as glass (a sheen and a faint glow of the sky), the rest a soft matte.
     const glassy = /window|glass/i.test(src.name);
     const mat = new THREE.MeshStandardMaterial({ color: glassy ? new THREE.Color("#7fb6e8") : col, map: src.map ?? null, roughness: glassy ? 0.12 : 0.8, metalness: glassy ? 0.35 : 0, emissive: glassy ? new THREE.Color("#3a6fa8") : new THREE.Color(0), emissiveIntensity: glassy ? 0.12 : 0 });
@@ -45,6 +48,41 @@ function prep(root: THREE.Object3D): void {
     m.material = mat;
     m.castShadow = true; m.receiveShadow = true;
   });
+}
+
+/** Rigged characters, posed once (their standing pose) and frozen into one plain mesh: a
+ *  person then costs the town one draw and no animation work, however many walk about. */
+function bakePose(root: THREE.Object3D, clips: THREE.AnimationClip[]): void {
+  const skinned: THREE.SkinnedMesh[] = [];
+  root.traverse(o => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(o as THREE.SkinnedMesh); });
+  if (!skinned.length) return;
+  const clip = clips.find(c => c.name === "idle") ?? clips[0];
+  const mixer = new THREE.AnimationMixer(root);
+  mixer.clipAction(clip).play();
+  mixer.update(0.25);
+  root.updateMatrixWorld(true);
+  const geos: THREE.BufferGeometry[] = [], v = new THREE.Vector3();
+  let mat: THREE.Material | null = null;
+  for (const sm of skinned) {
+    sm.skeleton.update();
+    const src = sm.geometry, n = src.attributes.position.count, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { sm.getVertexPosition(i, v); v.applyMatrix4(sm.matrixWorld); pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z; }
+    let ng = new THREE.BufferGeometry();
+    ng.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    if (src.attributes.uv) ng.setAttribute("uv", src.attributes.uv.clone());
+    if (src.index) ng.setIndex(src.index.clone());
+    ng = ng.toNonIndexed();
+    ng.computeVertexNormals();
+    geos.push(ng);
+    mat = mat ?? (sm.material as THREE.Material);
+  }
+  mixer.stopAllAction();
+  const merged = mergeGeometries(geos);
+  if (!merged || !mat) return;
+  for (const c of [...root.children]) root.remove(c);
+  const mesh = new THREE.Mesh(merged, mat);
+  mesh.castShadow = true;
+  root.add(mesh);
 }
 
 function start(): void {
@@ -57,6 +95,7 @@ function start(): void {
       for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
       loader.parse(buf.buffer, "", gl => {
         prep(gl.scene);
+        if (gl.animations.length) bakePose(gl.scene, gl.animations);
         gl.scene.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(gl.scene);
         models.set(name, { obj: gl.scene, size: box.getSize(new THREE.Vector3()), min: box.min.clone() });
@@ -106,3 +145,20 @@ export function kitPlace(name: string, width: number, tall = 1, variant = -1): {
   g.add(inner);
   return { obj: g, h: m.size.y * s * tall };
 }
+
+/** A copy of a model scaled to `height` tall (people), standing on y = 0 and centred. */
+export function kitPlaceH(name: string, height: number): { obj: THREE.Object3D; h: number } | null {
+  if (!version) return null;
+  const m = models.get(name);
+  if (!m) return null;
+  const s = height / Math.max(m.size.y, 1e-3);
+  const inner = m.obj.clone(true);
+  inner.position.set(-(m.min.x + m.size.x / 2) * s, -m.min.y * s, -(m.min.z + m.size.z / 2) * s);
+  inner.scale.setScalar(s);
+  const g = new THREE.Group();
+  g.add(inner);
+  return { obj: g, h: height };
+}
+
+// (Test hook for the debug build: lets a check look at a single model.)
+if (typeof location !== "undefined" && location.search.includes("debug")) (globalThis as unknown as { __kit: unknown }).__kit = { kitPlaceH, kitPlace };

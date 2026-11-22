@@ -4,7 +4,7 @@
 // It's alive: customers stroll the sidewalks and walk into the busiest stores, delivery
 // vans drive round, a limousine brings each VIP, a rush hour draws a crowd and a glow, and
 // at night the windows, signs and an empire's searchlight come on.
-import { kitPlace } from "./kitmodels";
+import { kitPlace, kitPlaceH } from "./kitmodels";
 import * as THREE from "three";
 import { mergeStatic } from "./world";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -654,6 +654,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // (All of them go into one mesh at the end of the build: one draw instead of dozens.)
   const blobGeos: THREE.BufferGeometry[] = [];
   const blob = (x: number, z: number, r: number, y = 0.2) => { blobGeos.push(new THREE.PlaneGeometry(r * 2, r * 2).rotateX(-Math.PI / 2).translate(x + r * 0.18, y + 0.012, z + r * 0.12)); };
+  /** Places a kit model (bush, rock, stump, log...) at a spot; false until the kit is loaded. */
+  const kitAt = (name: string, w: number, x: number, y: number, z: number, ry = 0): boolean => {
+    const kp = kitPlace(name, w);
+    if (!kp) return false;
+    kp.obj.position.set(x, y, z); kp.obj.rotation.y = ry;
+    g.add(kp.obj);
+    return true;
+  };
   const tree = (x: number, z: number, s = 1, y = 0.2) => {
     blob(x, z, 0.62 * s, y);
     // (From the model kit once it's loaded: palms, pines or round leafy trees.)
@@ -913,7 +921,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         continue;
       }
       if (r < 0.4) tree(jx, jz, 0.7 + r, 0);
+      else if (r < 0.6 && kitAt(r < 0.5 ? "bush" : "bush_large", 0.5 + r * 0.4, jx, 0, jz, k)) { /* a kit bush */ }
       else if (r < 0.6) add(new THREE.IcosahedronGeometry(0.28, 0).translate(jx, 0.15, jz), leaf);
+      else if (r < 0.72 && kitAt(["rock_small", "rock_large", "rock_tall", "stump", "log", "rock_small"][k % 6], [0.5, 0.8, 0.5, 0.4, 0.8, 0.35][k % 6] * (0.8 + r * 0.6), jx, 0, jz, k * 1.7)) { /* a kit rock, stump or log */ }
       else if (r < 0.72) add(new THREE.DodecahedronGeometry(0.22 + r * 0.2, 0).translate(jx, 0.1, jz), stone);
       else if (r < 0.8) {
         // A small clump of wild flowers (a few heads close together, not lone dots).
@@ -2014,7 +2024,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     if (g2.attributes.uv) g2.deleteAttribute("uv");
     return g2;
   };
+  const KIT_PEOPLE = ["mini_male_a", "mini_female_a", "mini_male_b", "mini_female_b", "mini_male_c", "mini_female_c", "mini_male_d", "mini_female_d", "mini_male_e", "mini_female_e", "mini_male_f", "mini_female_f"];
+  let kitPersonN = 0;
   const makePerson = (c: string) => {
+    // (From the model kit once it's loaded: twelve different people, men and women.)
+    const kp = kitPlaceH(KIT_PEOPLE[kitPersonN++ % KIT_PEOPLE.length], 0.66);
+    if (kp) { const p = new THREE.Group(); p.add(kp.obj); p.userData.person = true; return p; }
     const v = personN++ % 6, key = `${c}|${v}`;
     let geo = personGeo.get(key);
     if (!geo) {
