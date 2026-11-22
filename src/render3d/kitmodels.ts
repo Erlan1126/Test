@@ -46,7 +46,7 @@ function prep(root: THREE.Object3D): void {
     mat.name = src.name;
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
     m.material = mat;
-    m.castShadow = true; m.receiveShadow = true;
+    m.castShadow = false; m.receiveShadow = true;
   });
 }
 
@@ -162,3 +162,68 @@ export function kitPlaceH(name: string, height: number): { obj: THREE.Object3D; 
 
 // (Test hook for the debug build: lets a check look at a single model.)
 if (typeof location !== "undefined" && location.search.includes("debug")) (globalThis as unknown as { __kit: unknown }).__kit = { kitPlaceH, kitPlace };
+
+/** Many copies of kit models drawn in one batch each (people, cars): each copy is an empty
+ *  stand-in object the town moves about as usual; once a frame its place is copied into an
+ *  instanced mesh, so fifty people cost a dozen draws, not fifty. */
+export function kitInstancer(parent: THREE.Object3D) {
+  type Part = { geo: THREE.BufferGeometry; mat: THREE.Material; local: THREE.Matrix4 };
+  const sets = new Map<string, { parts: Part[]; base: THREE.Matrix4; proxies: THREE.Object3D[]; meshes: THREE.InstancedMesh[] }>();
+  const inv = new THREE.Matrix4(), m4 = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  let built = false;
+  return {
+    /** A stand-in for model `name`, `size` tall (byHeight) or across; null until loaded. */
+    proxy(name: string, size: number, byHeight: boolean): THREE.Group | null {
+      if (!version || built) return null;
+      const m = models.get(name);
+      if (!m) return null;
+      const key = `${name}|${size}|${byHeight}`;
+      let set = sets.get(key);
+      if (!set) {
+        const s = byHeight ? size / Math.max(m.size.y, 1e-3) : size / Math.max(m.size.x, m.size.z, 1e-3);
+        const base = new THREE.Matrix4().makeTranslation(-(m.min.x + m.size.x / 2) * s, -m.min.y * s, -(m.min.z + m.size.z / 2) * s).multiply(new THREE.Matrix4().makeScale(s, s, s));
+        const parts: Part[] = [];
+        m.obj.updateMatrixWorld(true);
+        m.obj.traverse(o => { const me = o as THREE.Mesh; if (me.isMesh) parts.push({ geo: me.geometry, mat: me.material as THREE.Material, local: me.matrixWorld.clone() }); });
+        set = { parts, base, proxies: [], meshes: [] };
+        sets.set(key, set);
+      }
+      const p = new THREE.Group();
+      set.proxies.push(p);
+      return p;
+    },
+    /** Makes the batches once every stand-in is made. */
+    build(): void {
+      built = true;
+      for (const set of sets.values()) {
+        set.meshes = set.parts.map(pt => {
+          const im = new THREE.InstancedMesh(pt.geo, pt.mat, set.proxies.length);
+          im.frustumCulled = false; im.castShadow = false; im.receiveShadow = true;
+          im.userData.dynamic = true;
+          parent.add(im);
+          return im;
+        });
+      }
+    },
+    /** Copies every stand-in's place into its batch (call once a frame). */
+    update(): void {
+      parent.updateWorldMatrix(true, false);
+      inv.copy(parent.matrixWorld).invert();
+      // (Only the ones showing are drawn: hidden ones are left out of the count, not shrunk.)
+      void zero;
+      for (const set of sets.values()) {
+        let j = 0;
+        for (const p of set.proxies) {
+          let vis = true;
+          for (let q: THREE.Object3D | null = p; q && q !== parent; q = q.parent) if (!q.visible) { vis = false; break; }
+          if (!vis) continue;
+          p.updateWorldMatrix(true, false);
+          m4.multiplyMatrices(inv, p.matrixWorld).multiply(set.base);
+          set.meshes.forEach((im, k) => { const mm = im.userData.tmp ?? (im.userData.tmp = new THREE.Matrix4()); mm.multiplyMatrices(m4, set.parts[k].local); im.setMatrixAt(j, mm); });
+          j++;
+        }
+        for (const im of set.meshes) { im.count = j; im.visible = j > 0; im.instanceMatrix.needsUpdate = true; }
+      }
+    },
+  };
+}

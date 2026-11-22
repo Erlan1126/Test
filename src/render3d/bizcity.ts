@@ -4,9 +4,9 @@
 // It's alive: customers stroll the sidewalks and walk into the busiest stores, delivery
 // vans drive round, a limousine brings each VIP, a rush hour draws a crowd and a glow, and
 // at night the windows, signs and an empire's searchlight come on.
-import { kitPlace, kitPlaceH } from "./kitmodels";
+import { kitInstancer, kitPlace, kitPlaceH } from "./kitmodels";
 import * as THREE from "three";
-import { mergeStatic } from "./world";
+import { lawnTexture, mergeStatic } from "./world";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildBlock, type BizBlock } from "./block";
 import { townFx, type TownLook } from "./shaders";
@@ -476,9 +476,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
   // (What bends point by point to follow the curving streets; the road paint joins it below.)
   const bendPts = new Set<THREE.Material>([curb, walk]);
-  const verge = own(std(st.lawn, { roughness: 0.95 }));
-  const grass = own(std(new THREE.Color("#7ccf6a").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
-  const grass2 = own(std(new THREE.Color("#6cbf5c").lerp(new THREE.Color(st.lawn), 0.15), { roughness: 0.95 }));
+  // The same real lawn as the tower's island: sunny and lush patches, mowing stripes and
+  // thousands of blades, laid flat in world units so it never stretches.
+  const lawnTex = lawnTexture({ id: "meadow", lawn: st.lawn } as unknown as Parameters<typeof lawnTexture>[0]);
+  lawnTex.wrapS = lawnTex.wrapT = THREE.RepeatWrapping; lawnTex.userData.own = true;
+  const verge = own(std("#ffffff", { roughness: 0.95, map: lawnTex }));
+  const grass = own(std("#f2fff0", { roughness: 0.95, map: lawnTex }));
+  const grass2 = own(std("#e2f2df", { roughness: 0.95, map: lawnTex }));
+  streetUV.set(verge, 1 / 30).set(grass, 1 / 30).set(grass2, 1 / 30);
   const pave = own(std("#efe9df", { roughness: 0.7 }));
   const water = own(std("#5fc2ff", { roughness: 0.14, metalness: 0.0, emissive: 0x2a6fbf, emissiveIntensity: 0.06 }));
   fx.ground(verge); fx.ground(grass); fx.ground(grass2); fx.ground(earth, 0.6); fx.water(water);
@@ -1203,7 +1208,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       let k = 0;
       const sx = seaPoly.map(q => q[0]), sz = seaPoly.map(q => q[1]);
       const inSea = (x: number, z: number) => insidePoly(seaPoly, x, z, 0.3);
-      for (let x = Math.min(...sx); x < Math.max(...sx); x += 1.1) for (let z = Math.min(...sz); z < zShore - 0.8; z += 0.9) {
+      // (Hidden: the water shader makes its own glitter now, so none are made.)
+      for (let x = Math.min(...sx); x < Math.max(...sx) && false; x += 1.1) for (let z = Math.min(...sz); z < zShore - 0.8; z += 0.9) {
         const jx = x + Math.sin(k * 12.9898) * 0.45, jz = z + Math.cos(k * 78.233) * 0.35;
         k++;
         if (!inSea(jx, jz) || Math.abs(Math.sin(k * 3.1)) < 0.35) continue;
@@ -2130,6 +2136,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const life = new THREE.Group();
   life.userData.dynamic = true;
   g.add(life);
+  // (People and cars from the model kit: drawn in batches, one per kind.)
+  const crowdKit = kitInstancer(life);
   const loop = (inset: number) => outline(ALL, inset).map(p => new THREE.Vector3(p[0], 0, p[1]));
   const carPath = new Path(loop(0.6)), walkPath = new Path(loop(ROAD + 0.35));
   const shirts = ["#4f8bff", "#ff6fa0", "#5ee0a0", "#ffb13b", "#b48cff", "#ff8a5c", "#3ac0c0", "#e8457a"];
@@ -2151,8 +2159,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let kitPersonN = 0;
   const makePerson = (c: string) => {
     // (From the model kit once it's loaded: twelve different people, men and women.)
-    const kp = kitPlaceH(KIT_PEOPLE[kitPersonN++ % KIT_PEOPLE.length], 0.66);
-    if (kp) { const p = new THREE.Group(); p.add(kp.obj); p.userData.person = true; return p; }
+    const pn = KIT_PEOPLE[kitPersonN++ % KIT_PEOPLE.length], kp = crowdKit.proxy(pn, 0.66, true) ?? kitPlaceH(pn, 0.66)?.obj;
+    if (kp) { const p = new THREE.Group(); p.add(kp); p.userData.person = true; return p; }
     const v = personN++ % 6, key = `${c}|${v}`;
     let geo = personGeo.get(key);
     if (!geo) {
@@ -2289,8 +2297,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   let carN = 0;
   const makeCar = (c: string, van: boolean) => {
     const v = new THREE.Group();
-    const kc = kitPlace(KIT_CARS[carN++ % KIT_CARS.length], van ? 1.0 : 0.92);
-    if (kc) { v.add(kc.obj); life.add(v); return v; }
+    const kc = crowdKit.proxy(KIT_CARS[carN++ % KIT_CARS.length], van ? 1.0 : 0.92, false);
+    if (kc) { v.add(kc); life.add(v); return v; }
     v.add(new THREE.Mesh(carGeo(c, van), carM));
     life.add(v);
     return v;
@@ -3457,6 +3465,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   bendTown(g, bendPts);
   planarUV(g, streetUV);
   mergeStatic(g, 0.0);
+  crowdKit.build();
+  townTicks.push(() => crowdKit.update());
 
   const idx = (id: string) => lots.findIndex(l => l.id === id);
   const lotRing = (r: { mesh: THREE.Mesh; m: THREE.MeshBasicMaterial }, id: string) => {

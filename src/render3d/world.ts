@@ -805,7 +805,7 @@ function treeInstances(list: { x: number; z: number; size: number; hue: number }
 }
 
 /** Mown stripes and a little noise on the lawn. */
-function lawnTexture(t: IslandTheme): THREE.Texture {
+export function lawnTexture(t: IslandTheme): THREE.Texture {
   // 1024 px over the whole island (about 23 px a unit), so blades stay crisp up close.
   const N = 1024, c = document.createElement("canvas");
   c.width = c.height = N;

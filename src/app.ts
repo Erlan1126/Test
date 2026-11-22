@@ -2577,7 +2577,7 @@ export class App implements DailyHost {
           this.perf.bad = 0;
           if (this.shaders) this.autoNoShaders = true;
           else if (this.renderScale > 0.85) { this.renderScale = 0.85; this.resize(); }
-          else if (!st.autoLow && this.state === "playing") { st.autoLow = true; this.persist(); this.resize(); }
+          else if (!st.autoLow) { st.autoLow = true; this.persist(); this.resize(); }
           else if (this.renderScale > 0.6) { this.renderScale -= 0.1; this.resize(); }
         }
         this.perf.frames = 0;
