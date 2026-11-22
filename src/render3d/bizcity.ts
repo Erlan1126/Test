@@ -244,16 +244,32 @@ function asphaltTex(): THREE.CanvasTexture {
 }
 function paverTex(): THREE.CanvasTexture {
   if (paverTexture) return paverTexture;
-  const N = 128, c = document.createElement("canvas"); c.width = c.height = N;
+  // Sidewalk paving: warm stone bricks laid in a herringbone, each brick a slightly
+  // different shade with a soft bevel and a speckled face, in sandy grout.
+  const N = 256, c = document.createElement("canvas"); c.width = c.height = N;
   const x = c.getContext("2d")!;
-  x.fillStyle = "#b8b2a8"; x.fillRect(0, 0, N, N);
+  x.fillStyle = "#b9ad9c"; x.fillRect(0, 0, N, N);
   let sd = 11;
   const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
-  const S = N / 2;
-  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
-    const v = 226 + Math.floor(rnd() * 16);
-    x.fillStyle = `rgb(${v},${v - 4},${v - 12})`; x.fillRect(i * S + 2, j * S + 2, S - 4, S - 4);
-    for (let k = 0; k < 220; k++) { x.fillStyle = `rgba(0,0,0,${rnd() * 0.06})`; x.fillRect(i * S + 2 + rnd() * (S - 4), j * S + 2 + rnd() * (S - 4), 1.5, 1.5); }
+  const TONES = [[226, 218, 204], [214, 204, 188], [232, 225, 212], [205, 194, 178], [220, 208, 190], [238, 231, 219]];
+  const u = N / 8, g = 2.2;
+  const brick = (bx: number, by: number, w: number, h: number) => {
+    const [r0, g0, b0] = TONES[Math.floor(rnd() * TONES.length)], d = Math.floor(rnd() * 10) - 5;
+    for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) {
+      const X = bx + ox + g / 2, Y = by + oy + g / 2, W = w - g, H = h - g;
+      if (X > N || Y > N || X + W < 0 || Y + H < 0) continue;
+      x.fillStyle = `rgb(${r0 + d},${g0 + d},${b0 + d})`; x.fillRect(X, Y, W, H);
+      x.fillStyle = "rgba(255,255,255,0.18)"; x.fillRect(X, Y, W, 1.2); x.fillRect(X, Y, 1.2, H);
+      x.fillStyle = "rgba(0,0,0,0.12)"; x.fillRect(X, Y + H - 1.2, W, 1.2); x.fillRect(X + W - 1.2, Y, 1.2, H);
+      for (let k = 0; k < (W * H) / 30; k++) { x.fillStyle = `rgba(${rnd() < 0.5 ? "0,0,0" : "255,255,255"},${0.04 + rnd() * 0.05})`; x.fillRect(X + rnd() * W, Y + rnd() * H, 1.2, 1.2); }
+    }
+  };
+  // Herringbone: pairs of 2:1 bricks, one lying and one standing, stepping diagonally.
+  for (let i = -8; i < 16; i++) for (let j = -8; j < 16; j++) {
+    const ox = (i - j) * u, oy = (i + j) * u;
+    if (ox > N + 2 * u || oy > N + 2 * u || ox < -3 * u || oy < -3 * u) continue;
+    brick(ox, oy, 2 * u, u);
+    brick(ox + u, oy + u, u, 2 * u);
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
@@ -477,7 +493,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const walk = own(std("#ffffff", { roughness: 0.85, map: walkTex }));
   const cobbleTex = paverTex().clone(); cobbleTex.needsUpdate = true;
   const cobbleM = own(std("#d9b48c", { roughness: 0.9, map: cobbleTex }));
-  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.4], [cobbleM, 2.2]]);
+  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.0], [cobbleM, 1.5]]);
   const curb = own(std("#d6c9b5", { roughness: 0.75 }));
   // (What bends point by point to follow the curving streets; the road paint joins it below.)
   const bendPts = new Set<THREE.Material>([curb, walk]);
