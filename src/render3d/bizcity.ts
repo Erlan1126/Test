@@ -541,7 +541,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // The annex island floats up level with the town, and grows to make room.
       const yy = k === 1 && cafe.annex ? -0.2 : y;
       if (k === 1 && cafe.annex && cafe.annex !== "ghost") o.scale.set(ANNEX_S, 1, ANNEX_S);
-      o.position.set(x, yy, z);
+      // (Pushed out from the middle until all of it is clear of the coast: the island grows as
+      // land is bought, and an islet must never sit on it.)
+      const rr = r * (k === 1 && cafe.annex && cafe.annex !== "ghost" ? ANNEX_S : 1) + 1.4;
+      let px = x, pz = z;
+      const dl = Math.hypot(x - cx, z - cz) || 1, ox = (x - cx) / dl, oz = (z - cz) / dl;
+      const touches = (qx: number, qz: number) => { for (let a = 0; a < 16; a++) { const an = (a / 16) * Math.PI * 2; if (insidePoly(hull, qx + Math.cos(an) * rr, qz + Math.sin(an) * rr)) return true; } return insidePoly(hull, qx, qz); };
+      for (let s5 = 0; s5 < 200 && touches(px, pz); s5++) { px += ox * 0.5; pz += oz * 0.5; }
+      o.position.set(px, yy, pz);
       o.userData.dynamic = true;
       g.add(o);
       islets.push({ o, y: yy, k });
@@ -1238,7 +1245,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   if (decor.has("skytram") && islets[0]) {
     // A cable car from a little station on the edge out to the first floating island.
-    const it = islets[0], st = new THREE.Vector3(it.o.position.x + 3.4, 0.9, it.o.position.z);
+    // (The station stands on the coast nearest the islet, a little way in.)
+    const it = islets[0];
+    let ce = hull[0];
+    for (const p of hull) if (Math.hypot(p[0] - it.o.position.x, p[1] - it.o.position.z) < Math.hypot(ce[0] - it.o.position.x, ce[1] - it.o.position.z)) ce = p;
+    const cdl = Math.hypot(ce[0] - it.o.position.x, ce[1] - it.o.position.z) || 1;
+    const st = new THREE.Vector3(ce[0] + ((ce[0] - it.o.position.x) / cdl) * 1.2, 0.9, ce[1] + ((ce[1] - it.o.position.z) / cdl) * 1.2);
     add(new THREE.BoxGeometry(0.5, 0.8, 0.5).translate(st.x, 0.4, st.z), mats.c("#e9e4f5", 0.6));
     add(new THREE.BoxGeometry(0.6, 0.08, 0.6).translate(st.x, 0.84, st.z), mats.c("#ff5f8b", 0.5));
     const cable = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), own(new THREE.LineBasicMaterial({ color: 0x3a3f5a })));
