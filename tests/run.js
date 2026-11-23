@@ -470,7 +470,7 @@ const SIM = `
       R.blds.pop(); R.inv = 0; R.hearts = 3; R.streetT = 0; R.power = null; R.py = 30; R.vy = 0; R.darkX = R.px + 2; step(1);
       out.theDarknessCatchesTheSlow = R.hearts === 2 && R.darkX < R.px - 10;
       // Landing on a roof: you run along it.
-      R.inv = 1; R.teth = null; R.hold = false; R.blds.push({ x0: R.px - 2, x1: R.px + 30, h: R.py - 0.5, style: 0, litT: -1, n: 998, seed: 0.3 }); R.vy = -3; step(10);
+      R.inv = 1; R.teth = null; R.hold = false; R.power = null; R.ups.length = 0; R.haz.length = 0; R.boosts.length = 0; R.winds.length = 0; R.updrafts.length = 0; R.blds = R.blds.filter(q => q.x1 < R.px - 3 || q.x0 > R.px + 40); R.blds.push({ x0: R.px - 2, x1: R.px + 30, h: R.py - 0.5, style: 0, litT: -1, n: 998, seed: 0.3 }); R.vy = -3; step(10);
       out.youCanLandAndRunOnRooftops = !!R.roof && R.vx >= 9;
       R.blds.pop(); R.roof = null;
       // Events.
@@ -561,6 +561,8 @@ const SIM = `
       { let done = false; save.opening = 0; playOpening(() => { done = true; }); const shown = !$("opening").hidden; $("opSkip").click(); out.theOpeningPlaysAndCanBeSkipped = shown && done && $("opening").hidden && save.opening === 1; }
       startStage(15); out.eachDistrictHasItsOwnMusic = music.district && music.district.base === 146.83; { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 60; q++) runUpdate(1 / 60); out.theWindowChimesWhenYourLightLands = R.cleared && R.chimed === true; }
       { const od = outageDistrict(); startStage(od * 10 + 2); const R = run; out.theOutageDistrictFlickers = R.outage === true && R.anchors.some(a => a.flicker); let offSeen = false; for (let q = 0; q < 240; q++) { runUpdate(1 / 60); for (const a of R.anchors) if (a.off && a === R.aim) offSeen = true; } out.aDarkAnchorIsNeverTheTarget = !offSeen; }
+      for (const n of [44, 45, 50]) { startStage(n); swingGen(run, run.stageLen + 60); if (run.anchors.some(a => a.tree && a.x > run.stageLen + 1 && a.x < run.stageLen + 17)) out.theHomePlotHasNoStrayTreetop = false; } if (out.theHomePlotHasNoStrayTreetop !== false) out.theHomePlotHasNoStrayTreetop = true;
+      startStage(25); { const R = run; R.blds.length = 0; R.teth = null; R.hold = false; R.roof = null; R.anchors = []; R.py = 6; R.vy = -12; R.inv = 1; let md = 0; for (let q = 0; q < 30; q++) { runUpdate(1 / 60); md = Math.max(md, R.danger || 0); } out.noDangerGlowOverHarbourWater = md === 0; }
       // Audit fixes: a cleared stage can't be failed; dying at the finish isn't a clear; one render loop; a release while paused counts.
       startStage(1); { const R = run; R.cleared = true; R.inv = 0; R.hearts = 1; swingHit(R, "test"); out.aClearedStageCantBeHit = R.hearts === 1 && !R.failed; }
       startStage(5); { const R = run; R.over = 0.001; R.px = R.stageLen + 1; R.inv = 1; runUpdate(1 / 60); out.dyingAtTheFinishIsNotAClear = !R.cleared; }

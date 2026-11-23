@@ -277,7 +277,7 @@ function drawLockerPreview() {
   const col = (v, a = 1) => v === "prism" ? `hsla(${(performance.now() / 8) % 360},90%,65%,${a})` : `rgba(${rgb(v ?? runnerGlow()).join(",")},${a})`;
   let t0 = performance.now();
   const frame = now => {
-    if (!document.getElementById("lkCanvas") || document.getElementById("sheet").hidden) return;
+    if (c !== document.getElementById("lkCanvas") || document.getElementById("sheet").hidden) return;   // a newer preview took over
     const t = (now - t0) / 1000, ang = Math.sin(t * 1.6) * 0.55, ax = W / 2, ay = 18, len = 150, px = ax + Math.sin(ang) * len, py = ay + Math.cos(ang) * len;
     x.clearRect(0, 0, W, H);
     const g = x.createRadialGradient(px, py, 0, px, py, 90); g.addColorStop(0, `rgba(${gc.join(",")},0.45)`); g.addColorStop(1, `rgba(${gc.join(",")},0)`); x.fillStyle = g; x.fillRect(0, 0, W, H);

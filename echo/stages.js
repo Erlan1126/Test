@@ -226,6 +226,8 @@ const nextStarReward = () => STAR_REWARDS.find(rw => !runnerLook().own[rw[1] + r
 function playOpening(done) {
   const el = $("opening"), c = $("openingCanvas"), cap = $("opCap"), go = $("opGo"), skip = $("opSkip");
   if (!el || !c) { done(); return; }
+  if (!el.hidden) return;   // already playing (a second Play press)
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   el.hidden = false; go.hidden = true; let t0 = performance.now(), ended = false, lastCap = -1;
   const caps = ["Every night, the city glowed.", "Then the <b>Hush</b> came,<br>and put out every light.", "But one light was left.<br><b>You.</b>", `<b>${stagePerson(1)[0]}</b> is waiting in the dark.<br>Bring the light back.`];
   const finish = () => { if (ended) return; ended = true; el.hidden = true; save.opening = 1; persist(); done(); };

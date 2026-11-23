@@ -49,6 +49,7 @@ window.addEventListener("popstate", () => {
   }
 });
 function showTitle() {
+  if (typeof music !== "undefined") music.district = null;   // the next game picks its own music
   // The cave behind the title is the next one you'll play, in your current world's colours.
   // Lumi floats near the middle of it and sings now and then.
   loadLevel(nextUnplayed(), true);

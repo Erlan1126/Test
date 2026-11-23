@@ -137,11 +137,11 @@ function swingGen(R, toX) {
     const tall = (th.low ? 9 : 14) + r() * (th.low ? 12 : 26) + hard * 8;
     const tree = th.park && r() < 0.5, pad = th.neon > 0.8 && r() < 0.35;
     const b = { x0, x1: tree ? x0 + 8 + r() * 4 : x1, h: Math.max(7, Math.min(maxH, tree ? 12 + r() * 8 : tall)), style: th.fac[Math.floor(r() * th.fac.length)], litT: -1, n: R.blds.length, tree, seed: r() };
+    // Leave the plot past the finish free for the home of the person who's waiting.
+    if (R.stageLen && b.x1 > R.stageLen + 1 && b.x0 < R.stageLen + 17) { R.genX = Math.max(R.genX + 1, R.stageLen + 18); continue; }
     if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: R.anchors.length + 9000, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
     if (pad && !tree) b.pad = true;
     if (R.stageInfo && R.stageInfo.tower && b.x0 > 40 && b.x0 < R.stageLen && r() < 0.35) R.updrafts.push({ x0: b.x1 + 0.5, x1: b.x1 + 6, f: 34 });
-    // Leave the plot past the finish free for the home of the person who's waiting.
-    if (R.stageLen && b.x1 > R.stageLen + 1 && b.x0 < R.stageLen + 17) { R.genX = Math.max(R.genX + 1, R.stageLen + 18); continue; }
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
     if (prev && (R.stageLen ? hard > 0.04 && x0 > 50 && x0 < R.stageLen : x0 > 250) && r() < 0.14 + hard * 0.22 && !tree && !prev.tree && Math.abs(prev.h - b.h) < 5 && gap < 9) R.haz.push({ kind: "wire", x0: prev.x1 - 0.4, x1: x0 + 0.4, y: Math.min(prev.h, b.h) + 2.4 });
@@ -285,7 +285,7 @@ function runnerUpdate(dt) {
   if (R.wantShotAt && R.t >= R.wantShotAt) { R.wantShotAt = 0; R.wantShot = true; }
   if (R.cleared && !R.chimed && R.clearAt != null && R.t - R.clearAt > 0.65) { R.chimed = true; if (!R.attract) { sfx.home(); buzz([10, 30, 10]); } }
   // Danger: falling toward the street with nothing to grab (it costs a heart from stage 5).
-  { const streetHurts = R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5); const tHit = R.vy < 0 ? R.py / -R.vy : 9; R.danger = !R.teth && !R.roof && !R.aimOk && streetHurts && tHit < 0.9 && !swingBldAt(R, R.px + R.vx * tHit) ? Math.min(1, (R.danger || 0) + dt * 5) : Math.max(0, (R.danger || 0) - dt * 4); }
+  { const streetHurts = R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5) && !runnerTheme(R.px).water; const tHit = R.vy < 0 ? R.py / -R.vy : 9; R.danger = !R.teth && !R.roof && !R.aimOk && streetHurts && tHit < 0.9 && !swingBldAt(R, R.px + R.vx * tHit) ? Math.min(1, (R.danger || 0) + dt * 5) : Math.max(0, (R.danger || 0) - dt * 4); }
   for (const b of R.bursts) b.t += dt; R.bursts = R.bursts.filter(b => b.t < 0.8);
   const comet = R.power && R.power.kind === "comet";
   // Physics in small steps: gravity, the tether (a pendulum), rooftops, walls and the street.

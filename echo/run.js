@@ -193,12 +193,12 @@ function runEnd() {
     $("runOverTitle").textContent = run.challenge ? (score > run.challenge.score ? "Challenge won" : "Challenge lost") : run.daily ? "Daily run" : run.hard ? "Hard run" : "Run over";
     const dm = dailyMissions();
     // Endless is the Night shift: how many windows you lit, and this week's best.
-    if (run.mode3 && !run.stageInfo) {
+    if (run.mode3 && !run.stageInfo && !run.challenge && !run.daily) {
       const wk = weekNumber(), ns = r.night && r.night.week === wk ? r.night : (r.night = { week: wk, best: 0 }), lit = run.lit || 0, nb = lit > ns.best; if (nb) ns.best = lit; persist();
       $("runOverTitle").textContent = "Night shift over"; $("roCombo").textContent = lit; $("roCombo").nextElementSibling.textContent = "windows lit";
       $("runOverBest").textContent = nb ? "Week's best" : best ? "New best" : `Best ${r.best.toLocaleString()}`;
     } else if ($("roCombo").nextElementSibling) $("roCombo").nextElementSibling.textContent = "best combo";
-    $("runOverDaily").textContent = (run.mode3 && !run.stageInfo ? `This week's best: ${(r.night || {}).best || 0} windows · ` : "") + `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}-day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
+    $("runOverDaily").textContent = (run.mode3 && !run.stageInfo && !run.challenge && !run.daily ? `This week's best: ${(r.night || {}).best || 0} windows · ` : "") + `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}-day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
     runMissions($("runOverMissions")); runShop();
     $("runOver").hidden = false;
   }, 900);
@@ -1160,7 +1160,7 @@ function titleLoop(now) {
   run = keep;
   titleRaf = requestAnimationFrame(titleLoop);
 }
-document.getElementById("titleCanvas").addEventListener("click", () => { if (screen === "title" && typeof playNow === "function") { playNow(challengeFrom ? { challenge: challengeFrom } : {}); return; } if (!titleRun) return; const keep = run; run = titleRun; run.songCd = 0; runSing(); run = keep; });
+document.getElementById("titleCanvas").addEventListener("click", () => { if (screen === "title" && typeof playNow === "function") { if (typeof startStage === "function" && !challengeFrom) { $("playBtn").click(); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); return; } if (!titleRun) return; const keep = run; run = titleRun; run.songCd = 0; runSing(); run = keep; });
 // Upgrades, from the end of a run or the city.
 function runBuy(id) {
   const u = RUN.upgrades.find(q => q.id === id), r = runSave(), lv = runUpg(u.id), cost = u.tiers[lv];
