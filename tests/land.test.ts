@@ -31,10 +31,10 @@ describe("land next to the island", () => {
     expect(buyLand(s, l.id)).toBe("ok");
     expect(s.tycoon.coins).toBe(0);
     expect(multiplier(s, Date.now(), false) / before).toBeCloseTo(1 + LAND_BONUS, 6);
-    // Bought land stays through a New Era.
+    // A New Era starts the city over: the land is for sale again.
     s.tycoon.lifetime = 1e15;
     newEra(s, Date.now());
-    expect(s.land).toEqual([l.id]);
+    expect(s.land).toEqual([]);
   });
   it("survives a save round trip and drops unknown or repeated ids", () => {
     const s = normalize({ ...defaultSave(), land: ["meadow", "meadow", "moon", 7] } as unknown as Record<string, unknown>);

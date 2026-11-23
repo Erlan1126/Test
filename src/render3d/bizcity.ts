@@ -557,7 +557,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (k === 1 && cafe.annex && cafe.annex !== "ghost") o.scale.set(ANNEX_S, 1, ANNEX_S);
       // (Pushed out from the middle until all of it is clear of the coast: the island grows as
       // land is bought, and an islet must never sit on it.)
-      const rr = r * (k === 1 && cafe.annex && cafe.annex !== "ghost" ? ANNEX_S : 1) + 1.4;
+      // (Well clear: tall things on them must never stand over the city's edge blocks.)
+      const rr = r * (k === 1 && cafe.annex && cafe.annex !== "ghost" ? ANNEX_S : 1) + (gridOut.length ? 4.5 : 1.4);
       let px = x, pz = z;
       const dl = Math.hypot(x - cx, z - cz) || 1, ox = (x - cx) / dl, oz = (z - cz) / dl;
       const touches = (qx: number, qz: number) => { for (let a = 0; a < 16; a++) { const an = (a / 16) * Math.PI * 2; if (insidePoly(hull, qx + Math.cos(an) * rr, qz + Math.sin(an) * rr)) return true; } return insidePoly(hull, qx, qz); };
@@ -799,11 +800,22 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
       add(roundSlab(C - ROAD * 2, C - ROAD * 2, 1.7, 0.18).translate(x, 0, z), curb);
       add(roundSlab(C - ROAD * 2 - 0.16, C - ROAD * 2 - 0.16, 1.6, 0.2).translate(x, 0, z), walk);
+      const distAt = (gx: number, gz: number) => { const p = cellXZ([gx, gz]); return inDist(p.x, p.z, -0.1); };
       for (const [a, b, along] of [[1, 0, "z"], [0, 1, "x"]] as const) {
         const n = `${cell[0] + a},${cell[1] + b}`;
-        if (outerSet.has(n) || inAllO(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
+        if (outerSet.has(n) || inAllO(cell[0] + a, cell[1] + b) || distAt(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
       }
-      for (const [a, b, along] of [[-1, 0, "z"], [0, -1, "x"]] as const) if (inAllO(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
+      for (const [a, b, along] of [[-1, 0, "z"], [0, -1, "x"]] as const) if (inAllO(cell[0] + a, cell[1] + b) || distAt(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
+      // Where the city ends (no street beyond): the last half street is a sidewalk with a curb,
+      // not asphalt running out onto the grass.
+      const beachSet = BEACH.some(c => c[0] === cell[0] && c[1] === cell[1] - 1);
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nx2 = cell[0] + a, nz2 = cell[1] + b;
+        if (outerSet.has(`${nx2},${nz2}`) || inAllO(nx2, nz2) || distAt(nx2, nz2) || (b === -1 && beachSet)) continue;
+        const ex = x + a * (C / 2 - ROAD / 2), ez = z + b * (C / 2 - ROAD / 2), w = a ? ROAD : C, d = a ? C : ROAD;
+        add(new THREE.BoxGeometry(w, 0.2, d).translate(ex, 0.1, ez), walk);
+        add(new THREE.BoxGeometry(a ? 0.14 : C, 0.22, a ? C : 0.14).translate(x + a * (C / 2 - 0.07), 0.11, z + b * (C / 2 - 0.07)), curb);
+      }
     }
   }
   // (No dirt lane round the island any more: every road is part of the street grid.)
@@ -1035,9 +1047,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // Facing the town's middle.
     const tcx = ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, tcz = ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length;
     H.rotation.y = Math.atan2(tcx - hx, tcz - hz);
-    H.position.set(hx, 0, hz);
+    // (On the city grid it stands square to the streets and fits inside its block.)
+    const hs = outer.length ? 0.72 : 1;
+    if (outer.length) { H.rotation.y = Math.round(H.rotation.y / (Math.PI / 2)) * (Math.PI / 2); H.scale.setScalar(hs); }
+    H.position.set(hx, outer.length ? 0.2 : 0, hz);
     g.add(H);
-    hallTop = top + 0.3;
+    hallTop = (top + 0.3) * hs;
   }
   // The parks: a lake with a sandy shore, a path all round it with benches facing the water,
   // a wooden jetty with a rowboat, a white gazebo, flower beds, and trees in a ring.
@@ -2923,7 +2938,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const tc = theme === "cloud" || theme === "crystal" || theme === "orbit" ? TH[theme] : null;
     const topM = tc ? own(std(tc.top, { roughness: theme === "orbit" ? 0.5 : 0.85, metalness: theme === "orbit" ? 0.4 : 0 })) : verge;
     // (Garden Hills is a village: warm cobbled lanes instead of asphalt.)
-    const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : id === "lakeside" ? cobbleM : road;
+    // (Ground districts share the town's asphalt: one city, no seam where the paving changes.)
+    const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : road;
     const walkD = tc ? own(std(tc.walk, { roughness: 0.7 })) : walk;
     const curbD = tc ? own(std(tc.curbC, { roughness: 0.5, metalness: theme === "cloud" ? 0.6 : 0.2, emissive: new THREE.Color(theme === "cloud" ? "#000000" : tc.curbC), emissiveIntensity: theme === "cloud" ? 0 : 0.35 })) : curb;
     // (A ground district stands on the town's own land: no cliff, underside or railing of its own.)

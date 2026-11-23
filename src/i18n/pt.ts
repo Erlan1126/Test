@@ -1876,4 +1876,5 @@ export const PT: Record<string, string> = {
   "One last dream: Orbit Station, at the very top of the sky city. Open every business in Skyhaven and make it the capital of the sky.": "Um último sonho: a Estação Orbital, no topo da cidade do céu. Abra todos os negócios de Skyhaven e faça dela a capital do céu.",
   "City Plan: chapter {n} of {total} · next: {title}": "Plano da cidade: capítulo {n} de {total} · depois: {title}",
   "City Plan: the last chapter!": "Plano da cidade: o último capítulo!",
+  "Each gem adds 2% to all earnings, for good. A New Era collects them and starts your whole city over, from a little hamlet.": "Cada gema soma 2% a todos os ganhos, para sempre. Uma Nova Era as coleta e recomeça toda a sua cidade, a partir de um pequeno vilarejo.",
 };

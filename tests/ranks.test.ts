@@ -27,7 +27,7 @@ describe("town ranks", () => {
 });
 
 describe("town rank after a New Era", () => {
-  it("is kept for good", async () => {
+  it("starts over with the city", async () => {
     const { newEra } = await import("../src/logic/tycoon");
     const s = defaultSave();
     s.tycoon.levels = { coffee: 60 };
@@ -35,6 +35,6 @@ describe("town rank after a New Era", () => {
     expect(townRank(s)).toBe(1);
     expect(newEra(s)).toBeGreaterThan(0);
     expect(s.tycoon.levels).toEqual({ coffee: 1 });
-    expect(townRank(s)).toBe(1);
+    expect(townRank(s)).toBe(0);
   });
 });

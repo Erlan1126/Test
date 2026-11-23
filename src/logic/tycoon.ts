@@ -450,12 +450,20 @@ export function newEra(s: SaveData, now = Date.now()): number {
   const g = eraGems(s);
   if (g <= 0) return 0;
   const t = s.tycoon;
-  t.rankBest = townRank(s); // the town keeps its rank (and what it built) through the new era
+  // A new era starts the city over: its rank, every building's height, the districts and
+  // the floating island bought with cash, business HQs and upgrades. (What was paid for with
+  // crystals, the gems, the story so far and the player's own towers stay.)
+  t.rankBest = 0;
   t.gems += g;
   t.coins = 0;
   t.levels = { coffee: 1 };
   t.managers = [];
   t.runs = {};
+  t.evolved = {};
+  t.upgrades = [];
+  s.props = {};
+  s.land = [];
+  s.annex = { pick: "" };
   t.eras++;
   t.last = now;
   return g;

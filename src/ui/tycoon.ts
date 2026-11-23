@@ -2320,7 +2320,7 @@ export class TycoonUI {
   private renderEra(): void {
     const s = this.save, g = eraGems(s);
     this.put($("ty-era-card"), `<span class="ty-gem">${iconSvg("sparkle")}</span>
-      <span><b>${esc(t("{n} Sky Gems", { n: fmt(s.tycoon.gems) }))}</b><small>${esc(t("Each gem adds 2% to all earnings, for good. Start a New Era to collect the gems your cash has earned."))}</small></span>
+      <span><b>${esc(t("{n} Sky Gems", { n: fmt(s.tycoon.gems) }))}</b><small>${esc(t("Each gem adds 2% to all earnings, for good. A New Era collects them and starts your whole city over, from a little hamlet."))}</small></span>
       <button type="button" class="buy era-go"${g > 0 ? "" : " disabled"}>${g > 0 ? esc(this.eraArmed ? t("Tap again to reset businesses") : t("New Era: +{n}", { n: fmt(g) })) : esc(t("Keep earning"))}</button>`);
   }
 
