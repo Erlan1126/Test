@@ -339,11 +339,19 @@ const SW2D = (() => {
       if (R.over) rot += t * 6;
       const cx = hx, cy = Y(R.py + 1.1), cr = Math.cos(rot), sr = Math.sin(rot), P2 = (dx, dy) => [cx + (dx * cr - dy * sr) * u, cy - (dx * sr + dy * cr) * u];
       const hip = P2(0, -0.15), chest = P2(0, 0.45), head = P2(0, 0.85), sh = P2(0, 0.38);
-      ctx.strokeStyle = core; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.lineWidth = 0.2 * u; for (const [ex, ey] of [legA, legB]) { const k2 = P2(ex * 0.6, (ey - 0.15) * 0.5 - 0.1), f = P2(ex, ey - 0.15); ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(k2[0], k2[1]); ctx.lineTo(f[0], f[1]); ctx.stroke(); }
-      ctx.lineWidth = 0.32 * u; ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(chest[0], chest[1]); ctx.stroke();
-      ctx.lineWidth = 0.15 * u; for (const [ex, ey] of [armA, armB]) { const e = P2(ex * 0.5, 0.38 + ey * 0.45), hnd = P2(ex, 0.38 + ey); ctx.beginPath(); ctx.moveTo(sh[0], sh[1]); ctx.lineTo(e[0], e[1]); ctx.lineTo(hnd[0], hnd[1]); ctx.stroke(); }
+      // A body of light, in three passes: a soft coloured halo, the bright body, a white-hot inner line.
+      const limbs = (k) => {
+        ctx.lineWidth = 0.2 * u * k; for (const [ex, ey] of [legA, legB]) { const k2 = P2(ex * 0.6, (ey - 0.15) * 0.5 - 0.1), f = P2(ex, ey - 0.15); ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(k2[0], k2[1]); ctx.lineTo(f[0], f[1]); ctx.stroke(); }
+        ctx.lineWidth = 0.32 * u * k; ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(chest[0], chest[1]); ctx.stroke();
+        ctx.lineWidth = 0.15 * u * k; for (const [ex, ey] of [armA, armB]) { const e = P2(ex * 0.5, 0.38 + ey * 0.45), hnd = P2(ex, 0.38 + ey); ctx.beginPath(); ctx.moveTo(sh[0], sh[1]); ctx.lineTo(e[0], e[1]); ctx.lineTo(hnd[0], hnd[1]); ctx.stroke(); }
+      };
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = `rgba(${auraC.join(",")},0.28)`; limbs(2.6); ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = core; limbs(1);
+      ctx.strokeStyle = "rgba(255,255,255,0.85)"; limbs(0.35);
       ctx.fillStyle = core; ctx.beginPath(); ctx.arc(head[0], head[1], 0.2 * u, 0, Math.PI * 2); ctx.fill();
+      // A small heart of light in the chest, beating.
+      { const hb = P2(0, 0.22), beat = 0.5 + 0.5 * Math.pow(Math.max(0, Math.sin(t * 7)), 6), hz = (0.35 + beat * 0.25) * u; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(auraC), hb[0] - hz, hb[1] - hz, hz * 2, hz * 2); ctx.globalCompositeOperation = "source-over"; }
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(0xffffff), head[0] - 0.5 * u, head[1] - 0.5 * u, u, u); ctx.globalCompositeOperation = "source-over";
       if (R.power && R.power.kind === "shield") { ctx.strokeStyle = "rgba(90,210,255,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 1.5 * u, 0, Math.PI * 2); ctx.stroke(); }
     }
