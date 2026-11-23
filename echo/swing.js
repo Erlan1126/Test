@@ -207,12 +207,12 @@ function swingHold(down) {
     if (!R.attract) { runBonus("Good +1 ✦", 0, R.dist + 2, R.x); sfx.clear(); }
   } else { R.spinV = 4; R.pChain = 0; }
   if (!R.attract) sfx.whoosh(Math.hypot(R.vx, R.vy));
-  if (R.tut === 1) runnerTutStep();
+  if (R.tut === 1 || R.tut === 3) runnerTutStep();
 }
 function runnerTutStep() {
   const R = run;
   R.tut++; R.slow = 1; R.tutText = "";
-  if (R.tut > 2) { R.tut = 0; const s = runSave(); s.tutDone = true; persist(); runMsg("You've got it!", "The ringed light is always the one you'll grab", 2.6, true); }
+  if (R.tut > 3) { R.tut = 0; const s = runSave(); s.tutDone = true; persist(); runMsg("You've got it!", "The ringed light is always the one you'll grab", 2.6, true); }
 }
 // The Flow bar lives in the page (not the canvas), touched only when it changes.
 const flowEls = {};
@@ -423,8 +423,12 @@ function runnerUpdate(dt) {
     }
   }
   // The first run teaches by doing: let go, then hold.
-  if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.3; R.tutText = "Let go to fly!"; } else if (a) R.tutText = "Keep holding: you reel in and speed up"; }
-  else if (R.tut === 2) { R.tutText = "Hold to grab the ringed light"; R.slow = R.vy < 0 ? 0.35 : 1; }
+  // Lesson 1: wait for the swing to come up, then let go (time slows right at that moment, and only then).
+  if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.35; R.tutText = "Let go now!"; } else { R.slow = 1; R.tutText = a ? "Wait for the swing up…" : ""; } }
+  // Lesson 2: hold to grab the ringed light (slows while you fall, so there is time to read it).
+  else if (R.tut === 2) { R.tutText = R.teth ? "" : "Hold to grab the ringed light"; R.slow = !R.teth && R.vy < 0 ? 0.45 : 1; }
+  // Lesson 3: keep holding to reel in (the rope shortens, you speed up), then let go.
+  else if (R.tut === 3) { R.slow = 1; R.tutText = R.teth ? (R.L > SWING.LMIN + 1 ? "Keep holding to reel in" : "Let go as you swing up!") : ""; }
   else { R.slow = R.slowT > 0 ? 0.55 : 1; }
   R.slowT = Math.max(0, R.slowT - dt * 2);
   // Events: a light shower, a surge of darkness.
