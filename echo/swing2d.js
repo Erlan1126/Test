@@ -225,6 +225,7 @@ const SW2D = (() => {
       const x = X(a.x), y = Y(a.y + (a.broken ? -(a.fallY = (a.fallY || 0) + 0.3) : 0)); if (x < -40 || x > W + 40) continue;
       const col = a.tree ? [150, 255, 150] : a.type === "gold" ? [255, 210, 90] : a.type === "crumble" ? [255, 122, 61] : a.type === "drift" ? [127, 240, 255] : a.type === "spring" ? [141, 255, 106] : glowRGB, hot = a === best || a === R.teth;
       if (a.broken) { ctx.globalAlpha = 0.5; }
+      if (a.off) { ctx.globalAlpha = 0.25; ctx.strokeStyle = "#8aa0c0"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 0.6 * s, 0, Math.PI * 2); ctx.stroke(); if (Math.sin(t * 40 + a.id) > 0.85) { ctx.globalAlpha = 0.9; ctx.drawImage(glow([200, 230, 255]), x - 0.8 * s, y - 0.8 * s, 1.6 * s, 1.6 * s); } ctx.globalAlpha = 1; continue; }
       // A mast to the roof below, if there is one.
       if (a.sway) { const pvx = X(a.bx), pvy = Y(a.by + 4); ctx.strokeStyle = "rgba(200,170,120,0.55)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(pvx, 0); ctx.lineTo(pvx, pvy); ctx.lineTo(x, y); ctx.stroke(); ctx.fillStyle = "#c9a46a"; ctx.fillRect(pvx - 2, pvy - 2, 4, 4); ctx.fillStyle = "rgba(255,120,60,0.85)"; ctx.beginPath(); ctx.ellipse(x, y + 0.9 * s, 0.55 * s, 0.75 * s, 0, 0, Math.PI * 2); ctx.fill(); }
       const below = a.sway || a.tree ? null : R.blds.find(q => !q.tree && a.x >= q.x0 && a.x <= q.x1); if (below && a.y - below.h < 22) { ctx.strokeStyle = "#2b2f38"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, Y(below.h)); ctx.stroke(); }

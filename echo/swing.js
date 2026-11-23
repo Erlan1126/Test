@@ -79,10 +79,12 @@ function runnerStart(R) {
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
   // The run starts mid-swing from a first anchor overhead.
   if (R.stageInfo) {
+    R.outage = !R.stageInfo.daily && typeof outageDistrict === "function" && Math.floor((R.stageInfo.n - 1) / 10) === outageDistrict();
     Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
     const nw = !R.attract && typeof STAGE_NEW !== "undefined" && STAGE_NEW[R.stageInfo.n];
     R.banner = 2.6;
     if (nw && !R.tut) runMsg(nw[0], nw[1], 3, true);
+    if (R.outage && !R.attract && !R.tut) runMsg("⚡ Outage week", "Some lights flicker out · every light counts double", 2.6, true);
     if (R.stageInfo.boss) { R.ev = { kind: "heart", t: 1e9, hits: 0 }; R.hearted = { all: true }; for (const f of [0.3, 0.6, 0.85]) R.ups.push({ x: R.stageInfo.len * f, y: 26 + runR() * 6, kind: "shard" }); }
   }
   const a0 = { x: 2, y: 40, kind: "lamp", id: 0 }; R.anchors.push(a0); R.lastA = a0;
@@ -107,6 +109,7 @@ function swingGen(R, toX) {
       a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.27 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
       if (a.type === "drift") a.bx = ax;
       if (ath.anchor === "lantern" && !a.type) { a.sway = true; a.bx = ax; a.by = a.y; }
+      if (R.outage && !a.type && ax > 40 && a.id % 3 === 0) a.flicker = true;   // (no random draw: the course stays the same)
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
       if (ax > 50 && r() < (R.stageLen ? 0.22 : 0.16) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
@@ -155,7 +158,7 @@ function swingAim(R) {
   // The nearest anchor ahead that you can reach; if none can be reached, the nearest one ahead (shown dim).
   const reach = swingReach(R); let best = null, near = null;
   for (const a of R.anchors) {
-    if (a.broken || a === R.teth || a === R.lastLet || a.x < R.px - 1) continue;
+    if (a.broken || a.off || a === R.teth || a === R.lastLet || a.x < R.px - 1) continue;
     if (!near || a.x < near.x) near = a;
     const d = Math.hypot(a.x - R.px, a.y - R.py);
     if (d <= reach && d >= 1.5 && a.y > R.py + 1 && (!best || a.x < best.x)) best = a;
@@ -270,7 +273,7 @@ function runnerUpdate(dt) {
   // still out of reach a moment later shows why ("Too far" / "Below you").
   if (R.hold && !R.teth) { if (swingAttach(R)) R.grabBuf = 0; else if (R.grabBuf > 0 && (R.grabBuf -= dt) <= 0) { R.grabBuf = 0; R.fizzle = 0.35; } }
   // Anchors that move, and anchors that crumble under you.
-  for (const a of R.anchors) { if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2; else if (a.sway && a !== R.teth) { const w = Math.sin(R.t * 1.3 + a.ph) * 0.35; a.x = a.bx + Math.sin(w) * 4; a.y = a.by + (1 - Math.cos(w)) * 4; } }
+  for (const a of R.anchors) { if (a.flicker) a.off = a !== R.teth && Math.sin(R.t * 2.1 + a.ph * 3) < -0.35; if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2; else if (a.sway && a !== R.teth) { const w = Math.sin(R.t * 1.3 + a.ph) * 0.35; a.x = a.bx + Math.sin(w) * 4; a.y = a.by + (1 - Math.cos(w)) * 4; } }
   if (R.teth) { R.tethT += dt; if (R.teth.type === "crumble" && R.tethT > 1.9) { const a = R.teth; a.broken = true; R.teth = null; R.hold = false; R.bursts.push({ x: a.x, y: a.y, t: 0, c: 0xff6a3d, big: true }); if (!R.attract) { runMsg("It crumbled!", "Let go of orange anchors quickly", 1.4); sfx.bump(); } } }
   // Flow fades slowly; Overdrive runs down.
   if (R.od > 0) { R.od -= dt; R.darkX = Math.min(R.darkX, R.px - 35); if (R.od <= 0) { R.od = 0; R.flow = 0; } } else R.flow = Math.max(0, R.flow - dt * 0.045);
@@ -373,7 +376,7 @@ function runnerUpdate(dt) {
     const d = Math.hypot(c.x - R.px, c.y - R.py - 0.9);
     if ((mag || R.od > 0) && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
     if (d < 1.5 || comet && d < 3) {
-      c.got = true; c.t = 0; if (R.stageLen) R.motesGot++; R.lights += (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1); swingFlow(R, 0.022);
+      c.got = true; c.t = 0; if (R.stageLen) R.motesGot++; R.lights += (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1); swingFlow(R, 0.022);
       R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
       if (runnerPerk("Nova") && R.combo % 10 === 0) { R.lights += 5; runBonus("+5 ✦", 0, R.dist + 2, R.x); }
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }

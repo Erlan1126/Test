@@ -55,6 +55,8 @@ const DAILY_PEOPLE = [["Felix", "He'd been holding a candle for hours."], ["Hana
 const stagePerson = n => n === 0 ? DAILY_PEOPLE[dayNumber() % DAILY_PEOPLE.length] : STAGE_PEOPLE[(n - 1) % STAGE_PEOPLE.length];
 const stageChapter = n => STAGE_CHAPTERS[Math.min(STAGE_CHAPTERS.length - 1, Math.floor((n - 1) / 10))];
 const stageWaiting = n => { const w = stagePerson(n)[0]; return `${w} ${/^(The twins|The night nurses|The harbour crews|Mo and Ari)$/.test(w) ? "are" : "is"} waiting`; };
+// The weekly outage: one district a week flickers (some anchors go dark for moments) but every light there counts double.
+const outageDistrict = () => 1 + weekNumber() % (STAGE_CHAPTERS.length - 1);   // never Downtown: new players learn without it
 const homesLit = () => Object.values(stageSave().best).filter(b => b && b.stars).length;
 
 // ---------- Ghosts: a run's path, sampled every 0.1 s, packed small enough for a link ----------
@@ -181,7 +183,7 @@ function stagesHtml() {
   for (let c = 0; c < STAGE_CHAPTERS.length; c++) {
     let got = 0; for (let n = c * 10 + 1; n <= c * 10 + 10; n++) if (S.best[n] && S.best[n].stars) got++;
     const open = c * 10 + 1 <= S.unlocked;
-    h += `<li class="district ${got === 10 ? "full" : ""} ${open ? "" : "shut"}"><div class="dist-head"><b>${STAGE_CHAPTERS[c]}</b><span>${open ? `${got}/10 lit` : "Locked"}</span></div><div class="skyline">`;
+    h += `<li class="district ${got === 10 ? "full" : ""} ${open ? "" : "shut"} ${c === outageDistrict() ? "outage" : ""}"><div class="dist-head"><b>${STAGE_CHAPTERS[c]}${c === outageDistrict() ? ` <em class="out-badge">⚡ Outage week · ×2 lights</em>` : ""}</b><span>${open ? `${got}/10 lit` : "Locked"}</span></div><div class="skyline">`;
     for (let n = c * 10 + 1; n <= c * 10 + 10; n++) {
       const b = S.best[n], locked = n > S.unlocked, r = seeded(n * 131)(), ht = n % 10 === 0 ? 100 : 46 + Math.round(r * 40);
       h += `<button class="bld${b && b.stars ? " lit" : ""}${locked ? " lock" : ""}${n === nx && !locked ? " next" : ""}${n === mapPick ? " sel" : ""}${n % 10 === 0 ? " boss" : ""}" style="height:${ht}%" data-pick="${n}" ${locked ? "disabled" : ""} aria-label="Stage ${n}"><i></i><i></i><small>${n}</small></button>`;
