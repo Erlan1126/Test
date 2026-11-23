@@ -406,6 +406,10 @@ export interface BizCafe {
   decor?: string[];
   /** The town's rank (data/ranks.ts): each one adds something new to the town. */
   rank?: number;
+  /** How many of the city grid's blocks are built so far (the city spreads as it grows). */
+  grow?: number;
+  /** How many of the town's own home blocks are built so far (nearest the middle first). */
+  homes?: number;
   /** The floating island next to the town: "ghost" (waiting to be built), or what's built. */
   annex?: "" | "ghost" | "greenhouse" | "lookout";
   /** Land next to the island (data/land.ts): bought (part of the island) or on sale now. */
@@ -441,7 +445,7 @@ export interface BizCity {
 }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
-  setLand((cafe.land ?? []).filter(l => l.bought).map(l => LAND.findIndex(x => x.id === l.id)).filter(k => k >= 0));
+  setLand((cafe.land ?? []).filter(l => l.bought).map(l => LAND.findIndex(x => x.id === l.id)).filter(k => k >= 0), cafe.grow ?? 0);
   const g = new THREE.Group();
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
   const kitReady = kitVersion() > 0;
@@ -918,7 +922,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         if (d < bestD) { bestD = d; hallAt = { x, z }; }
       }
     }
-    if (landBuilt0.length && !outer.length) {
+    if (false as boolean) {
       const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
       const cand: { x: number; z: number; r: number }[] = [];
       for (let x = hx0; x <= hx1; x += 2) for (let z = hz0; z <= hz1; z += 2) { if (!insidePoly(hull, x, z)) continue; const r = clear(x, z); if (r >= 5.5) cand.push({ x, z, r }); }
@@ -933,7 +937,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // bought): where it runs, so the countryside keeps clear of it.
   const linkFor = (k: number) => {
     const l0 = (cafe.land ?? []).find(l => l.id === LAND[k].id && (l.bought || l.sale));
-    if (!l0 || landJoin(k) !== "ground" || outer.length) return null;
+    if (!l0 || landJoin(k) !== "ground" || true) return null;
     const sp0 = landSpot(k, true), h = islandOutline(ISLAND_PAD, true);
     const tcx = h.reduce((a, p) => a + p[0], 0) / h.length, tcz = h.reduce((a, p) => a + p[1], 0) / h.length;
     const dl0 = Math.hypot(sp0.x - tcx, sp0.z - tcz), ux0 = (sp0.x - tcx) / dl0, uz0 = (sp0.z - tcz) / dl0;
@@ -964,7 +968,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // The ring boulevard: a curving avenue all round the town (once the city spreads past it),
   // between the town and its neighbourhoods; it stops at the shore, the districts, the
   // parks and the Town Hall's square, and everything else keeps clear of it.
-  if (landBuilt0.length && !outer.length) {
+  if (false as boolean) {
     let ringR = grow(coreHull, 5.2);
     for (let r6 = 0; r6 < 2; r6++) { const nx: [number, number][] = []; for (let i = 0; i < ringR.length; i++) { const a = ringR[i], b = ringR[(i + 1) % ringR.length]; nx.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); } ringR = nx; }
     // (Even steps, about 1.1 apart, so the curve reads as one smooth road.)
@@ -1162,7 +1166,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         }
         continue;
       }
-      if (r < 0.4) tree(jx, jz, 0.7 + r, 0);
+      if (r < 0.4) tree(jx, jz, 0.5 + r * 0.6, 0); // (In scale with the city's street trees.)
       else if (r < 0.6 && kitAt(r < 0.5 ? "bush" : "bush_large", 0.5 + r * 0.4, jx, 0, jz, k)) { /* a kit bush */ }
       else if (r < 0.6) add(new THREE.IcosahedronGeometry(0.28, 0).translate(jx, 0.15, jz), leaf);
       else if (r < 0.72 && kitAt(["rock_small", "rock_large", "rock_tall", "stump", "log", "rock_small"][k % 6], [0.5, 0.8, 0.5, 0.4, 0.8, 0.35][k % 6] * (0.8 + r * 0.6), jx, 0, jz, k * 1.7)) { /* a kit rock, stump or log */ }
@@ -2068,6 +2072,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   {
     const ng = new THREE.Group();
     g.add(ng);
+    // (The town fills in from its middle: the nearest blocks are built first.)
+    const homeOrder = new Map<number, number>();
+    {
+      const mid = cellXZ(PLAZA);
+      NEIGH.map((c, k) => ({ k, d: Math.hypot(cellXZ(c).x - mid.x, cellXZ(c).z - mid.z) })).filter(o => !NEIGH_PARK.has(`${NEIGH[o.k][0]},${NEIGH[o.k][1]}`)).sort((a, b) => a.d - b.d).forEach((o, i) => homeOrder.set(o.k, i));
+    }
     NEIGH.forEach((cell, k) => {
       const { x, z } = cellXZ(cell), lg = new THREE.Group();
       lg.position.set(x, 0.2, z);
@@ -2087,10 +2097,19 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         P(new THREE.BoxGeometry(0.7, 0.06, 0.22).translate(-0.4, 0.42, 0.4), wood);
         P(new THREE.BoxGeometry(0.7, 0.2, 0.05).translate(-0.4, 0.55, 0.3), wood);
         for (let f = 0; f < 6; f++) P(new THREE.SphereGeometry(0.08, 6, 4).translate(0.4 + f * 0.2, 0.12, 1.6), mats.c(flowersOn[(f + k) % 4], 0.8));
-      } else {
+      } else if (homeOrder.get(k)! < (cafe.homes ?? 999) || cafe.props?.[`t:${cell[0]},${cell[1]}`]) {
         // A property (data/props.ts): it grows with its level.
         const key = `t:${cell[0]},${cell[1]}`;
         homeAt(x, z, propBuilding(lg, 20 + k, propLv(key), key), key);
+      } else {
+        // Not built yet: an empty lot of grass with a couple of young trees, waiting for the
+        // town to grow out to it.
+        const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
+        P(roundSlab(4.2, 4.2, 1.6, 0.06), grass2);
+        for (const [tx, tz] of [[-1.3, -1.1], [1.2, 1.3]]) {
+          P(new THREE.CylinderGeometry(0.04, 0.06, 0.4, 6).translate(tx, 0.2, tz), trunk);
+          P(new THREE.IcosahedronGeometry(0.3, 0).translate(tx, 0.55, tz), leaf);
+        }
       }
       // Street furniture on the corners: traffic lights, a street sign, now and then a bus
       // stop, and a manhole cover in the street.
@@ -3490,7 +3509,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       arch.rotation.y = rot;
       arch.userData.dynamic = true;
       // (On the city grid the district's streets join the grid's: no gate or ring round it.)
-      const onGrid = outer.length > 0 && landJoin(k) === "ground";
+      const onGrid = landJoin(k) === "ground";
       if (bought && !onGrid) G.add(arch);
       if (bought && !onGrid) G.add(rim);
       if (bought && !onGrid) mergeStatic(rim, 0.0);
@@ -3955,8 +3974,8 @@ const outlineCache = new Map<string, [number, number][]>();
 /** The island's coast takes in the land the player has bought (set by each town build). */
 let landKey = "";
 let landPts: [number, number][] = [];
-function setLand(bought: number[]): void {
-  landKey = bought.join(",");
+function setLand(bought: number[], grow = 0): void {
+  landKey = bought.join(",") + "|" + grow;
   landPts = [];
   // The ground districts are part of the town's own land: its coast takes in their corners,
   // so the city is one island with one coastline, one cliff and one railing all round.
@@ -3977,8 +3996,10 @@ function setLand(bought: number[]): void {
   // blocks of the town's own street grid, grown street by street out from the town (so every
   // street joins up), and the coast is drawn round those blocks (never through one).
   gridOut = [];
-  if (landPts.length) {
-    const shape = makeOutline(ISLAND_PAD, landPts);
+  if (grow > 0) {
+    // Where the city can spread: the land round the town and its districts and a few blocks
+    // further out; the island grows with it.
+    const shape = makeOutline(ISLAND_PAD + 2.5 * C, landPts);
     const dists = bought.filter(k => landJoin(k) === "ground").map(k => landSpot(k, true));
     const inDist = (x: number, z: number) => dists.some(sp => Math.abs(x - sp.x) < 2 * C - 0.1 && Math.abs(z - sp.z) < 2 * C - 0.1);
     const taken = new Set([...ALL, ...BEACH].map(c => `${c[0]},${c[1]}`));
@@ -3991,13 +4012,19 @@ function setLand(bought: number[]): void {
     const road = (gx: number, gz: number) => taken.has(`${gx},${gz}`) || (() => { const { x, z } = cellXZ([gx, gz]); return inDist(x, z); })();
     const xs = shape.map(p => p[0]), zs = shape.map(p => p[1]);
     const gx0 = Math.floor((Math.min(...xs) + OFF) / C) - 1, gx1 = Math.ceil((Math.max(...xs) + OFF) / C) + 1, gz0 = Math.floor((Math.min(...zs) + OFF) / C) - 1, gz1 = Math.ceil((Math.max(...zs) + OFF) / C) + 1;
-    const seen = new Set<string>(), queue: [number, number][] = [];
     const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    for (let gx = gx0; gx <= gx1; gx++) for (let gz = gz0; gz <= gz1; gz++) if (fits(gx, gz) && N4.some(([a, b]) => road(gx + a, gz + b))) { queue.push([gx, gz]); seen.add(`${gx},${gz}`); }
-    while (queue.length) {
-      const c = queue.shift()!;
-      gridOut.push(c);
-      for (const [a, b] of N4) { const n: [number, number] = [c[0] + a, c[1] + b], key = `${n[0]},${n[1]}`; if (!seen.has(key) && fits(n[0], n[1])) { seen.add(key); queue.push(n); } }
+    // (The city spreads out from the middle of town, block by block, nearest first: every new
+    // block joins a street that's already there.)
+    const tc = ALL.reduce((a, c) => { const p = cellXZ(c); return [a[0] + p.x / ALL.length, a[1] + p.z / ALL.length]; }, [0, 0]);
+    const dist = (gx: number, gz: number) => { const p = cellXZ([gx, gz]); return Math.hypot(p.x - tc[0], (p.z - tc[1]) * 1.1) + ((gx * 7 + gz * 13) % 5) * 0.35; };
+    const frontier = new Map<string, [number, number]>(), seen = new Set<string>();
+    for (let gx = gx0; gx <= gx1; gx++) for (let gz = gz0; gz <= gz1; gz++) if (fits(gx, gz) && N4.some(([a, b]) => road(gx + a, gz + b))) { frontier.set(`${gx},${gz}`, [gx, gz]); seen.add(`${gx},${gz}`); }
+    while (frontier.size && gridOut.length < grow) {
+      let best: [number, number] | null = null, bk = "", bd = Infinity;
+      for (const [k, c] of frontier) { const d = dist(c[0], c[1]); if (d < bd) { bd = d; best = c; bk = k; } }
+      frontier.delete(bk);
+      gridOut.push(best!);
+      for (const [a, b] of N4) { const n: [number, number] = [best![0] + a, best![1] + b], key = `${n[0]},${n[1]}`; if (!seen.has(key) && fits(n[0], n[1])) { seen.add(key); frontier.set(key, n); } }
     }
     for (const c of gridOut) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) landPts.push([x + dx * C / 2, z + dz * C / 2]); }
   }

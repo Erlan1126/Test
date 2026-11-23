@@ -272,6 +272,12 @@ export const officeFloors = (s: SaveData): number => FREE_FLOORS + 2 * Math.max(
 export const usedFloors = (s: SaveData): number => Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
 
 /** The town's rank (0 = Hamlet), from all its business levels together. */
+/** How many blocks of the city grid are built: the city starts as the town alone and spreads
+ *  out, a few blocks for every 40 business levels. */
+export const cityGrow = (s: SaveData): number => 4 * Math.floor(usedFloors(s) / 40);
+/** How many of the town's own home blocks are built: a few at the start, one more for every
+ *  6 business levels, nearest the middle first. */
+export const townHomes = (s: SaveData): number => 2 + Math.floor(usedFloors(s) / 6);
 export const townRank = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return Math.max(r, Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)); };
 export const freeFloors = (s: SaveData): number => Math.max(0, officeFloors(s) - usedFloors(s));
 

@@ -76,7 +76,7 @@ import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { COIN_SVG, TycoonUI } from "./ui/tycoon";
-import { claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness } from "./logic/tycoon";
+import { claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness, cityGrow, townHomes } from "./logic/tycoon";
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
 import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, DAILY_REWARDS, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
@@ -1799,7 +1799,7 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props, cityGrow(this.save), townHomes(this.save)]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -1814,6 +1814,8 @@ export class App implements DailyHost {
           ghostTerrace: c.terrace === 0 && c.asked,
           decor: [...this.save.decor],
           rank: townRank(this.save),
+          grow: cityGrow(this.save),
+          homes: townHomes(this.save),
           annex: this.save.annex.pick || (townRank(this.save) >= ANNEX_RANK ? "ghost" : ""),
           hq: Object.fromEntries(Object.entries(hqs).map(([id, tw]) => [id, look(tw)])),
           props: { ...this.save.props },
