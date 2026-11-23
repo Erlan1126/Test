@@ -50,6 +50,10 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
     const sun = new THREE.DirectionalLight(0xfff1dd, 2.2);
     sun.position.set(4, 8, 6);
     scene.add(sun);
+    // (A cool rim light from behind: edges glow, so the building and its emblem stand out.)
+    const rim = new THREE.DirectionalLight(0xcfe6ff, 1.1);
+    rim.position.set(-6, 5, -7);
+    scene.add(rim);
     const g = new THREE.Group();
     const mats = materials();
     // (A district's business looks like the town business of its kind, in its own colors.)
@@ -61,7 +65,7 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
     if (land && kitVersion() > 0) {
       const top = districtShop(g, id, stage, c1, c2, mats, new THREE.CylinderGeometry(0.01, 0.01, 0.01), mats.c("#efe9df"), mats.c("#d9d2e6", 0.6), mats.leaf, mats.c("#4a4f7a", 0.5, 0.4));
       // (The emblem, big, crowning the roof: what the business is, at a glance.)
-      const em = bizEmblem(id, c1, c2, mats); em.scale.setScalar(2.0); em.position.set(0, top - 0.05, -0.2); em.rotation.y = 0.35; g.add(em);
+      const em = bizEmblem(id, c1, c2, mats, stage); em.scale.setScalar(1.9); em.position.set(0, top - 0.05, -0.2); em.rotation.y = 0.35; g.add(em);
     } else buildModel(g, modelId, stage, c1, c2, mats, () => roofProp(modelId, new THREE.Color(c1), new THREE.Color(c2)));
     // A little round plot of grass and paving under it.
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.7, 0.18, 40).translate(0, -0.09, 0), mats.c("#7fd36a", 0.95)));

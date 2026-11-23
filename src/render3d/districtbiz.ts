@@ -8,10 +8,12 @@ import { kitPlace } from "./kitmodels";
 type Mats = Pick<ModelMats, "c" | "gold">;
 
 /** The emblem of business `id`, about one unit tall, standing on y = 0. */
-export function bizEmblem(id: string, c1: string, c2: string, m: Mats): THREE.Group {
-  const g = new THREE.Group();
+export function bizEmblem(id: string, c1: string, c2: string, m: Mats, stage = -1): THREE.Group {
+  const root = new THREE.Group(), g = new THREE.Group();
+  root.add(g);
   const A = (geo: THREE.BufferGeometry, mat: THREE.Material) => { const me = new THREE.Mesh(geo, mat); g.add(me); return me; };
-  const p = m.c(c1, 0.45), q = m.c(c2, 0.45), w = m.c("#ffffff", 0.5), dk = m.c("#2a2f45", 0.5), gold = m.gold;
+  // (Glossy, toy-like finishes: they catch the light like the town's signs.)
+  const p = m.c(c1, 0.28, 0.08), q = m.c(c2, 0.3, 0.08), w = m.c("#ffffff", 0.35), dk = m.c("#2a2f45", 0.35), gold = m.gold;
   const ph = (r: number, x = 0, y = 0, z = 0, mat = p, sx = 1, sy = 1, sz = 1) => A(new THREE.SphereGeometry(r, 14, 10).scale(sx, sy, sz).translate(x, y, z), mat);
   const box = (x: number, y: number, z: number, px: number, py: number, pz: number, mat = p) => A(new THREE.BoxGeometry(x, y, z).translate(px, py, pz), mat);
   const cyl = (rt: number, rb: number, h: number, px: number, py: number, pz: number, mat = p, seg = 16) => A(new THREE.CylinderGeometry(rt, rb, h, seg).translate(px, py, pz), mat);
@@ -60,7 +62,25 @@ export function bizEmblem(id: string, c1: string, c2: string, m: Mats): THREE.Gr
     case "starport": { const sh = new THREE.Shape(); for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 + Math.PI / 2, r = k % 2 ? 0.17 : 0.42; if (k) sh.lineTo(Math.cos(a) * r, Math.sin(a) * r); else sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); } A(new THREE.ExtrudeGeometry(sh, { depth: 0.1, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 1 }).translate(0, 0.5, -0.05), gold); break; }
     default: ph(0.3, 0, 0.4, 0, p);
   }
-  return g;
+  if (stage < 0) return root;
+  // Its stand grows grander with each stage: a plinth (Stand), a taller one with a gold band
+  // (Shop), a ring of lights (Store), a golden laurel behind it (Flagship), and a crown with
+  // a starburst on top (Empire).
+  const R = (geo: THREE.BufferGeometry, mat: THREE.Material) => { const me = new THREE.Mesh(geo, mat); root.add(me); return me; };
+  const ph0 = 0.12 + Math.min(stage, 2) * 0.08;
+  R(new THREE.CylinderGeometry(0.42, 0.48, ph0, 24).translate(0, ph0 / 2, 0), q);
+  R(new THREE.CylinderGeometry(0.44, 0.44, 0.03, 24).translate(0, ph0 + 0.015, 0), w);
+  g.position.y = ph0 + 0.03;
+  if (stage >= 1) R(new THREE.CylinderGeometry(0.485, 0.485, 0.05, 24).translate(0, ph0 * 0.55, 0), gold);
+  if (stage >= 2) for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; R(new THREE.SphereGeometry(0.035, 8, 6).translate(Math.cos(a) * 0.47, ph0 * 0.85, Math.sin(a) * 0.47), m.c(k % 2 ? "#fff3c0" : c1, 0.2, 0.1)); }
+  if (stage >= 3) { const lr = R(new THREE.TorusGeometry(0.55, 0.035, 8, 32, Math.PI * 1.4).rotateZ(-Math.PI * 0.2).translate(0, ph0 + 0.62, -0.25), gold); lr.scale.z = 0.4; for (let k = 0; k < 8; k++) { const a = -Math.PI * 0.2 + (k / 7) * Math.PI * 1.4; R(new THREE.SphereGeometry(0.05, 6, 4).scale(1.6, 0.8, 0.6).translate(Math.cos(a) * 0.55, ph0 + 0.62 + Math.sin(a) * 0.55, -0.25), m.c("#3fae5a", 0.4)); } }
+  if (stage >= 4) {
+    const cy = ph0 + 1.25;
+    R(new THREE.CylinderGeometry(0.2, 0.17, 0.12, 12, 1, true).translate(0, cy, 0), gold);
+    for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; R(new THREE.ConeGeometry(0.045, 0.14, 6).translate(Math.cos(a) * 0.18, cy + 0.12, Math.sin(a) * 0.18), gold); }
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; R(new THREE.BoxGeometry(0.03, 0.22, 0.01).translate(0, 0.32, 0).rotateZ(a).translate(0, cy + 0.05, -0.3), m.c("#ffe27a", 0.3, 0.3)); }
+  }
+  return root;
 }
 
 /** A district business's building on its block, from the model kit by stage (null if the kit
@@ -86,7 +106,12 @@ export function districtShop(lg: THREE.Object3D, id: string, stage: number, c1: 
   em.scale.setScalar(0.62); em.position.set(1.75, 1.32, 1.8);
   lg.add(em);
   for (const px of [-1.75, -1.2]) { K(new THREE.CylinderGeometry(0.2, 0.17, 0.25, 10).translate(px, 0.13, 1.8), stone); K(new THREE.IcosahedronGeometry(0.22, 0).translate(px, 0.42, 1.8), leaf); }
+  // As it grows: flags (Store), outdoor tables under umbrellas (Flagship), and a red carpet
+  // with spotlights (Empire).
+  if (st5 >= 2) for (const fx of [-1.9, 1.9]) { K(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 6).translate(fx, 0.9, -1.7), metal); K(new THREE.BoxGeometry(0.02, 0.32, 0.5).translate(fx, 1.62, -1.45), col); }
+  if (st5 >= 3) for (const tx of [-0.7, 0.4]) { K(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 12).translate(tx, 0.42, 2.0), m.c("#ffffff", 0.5)); K(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6).translate(tx, 0.2, 2.0), metal); K(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6).translate(tx, 0.85, 2.0), metal); K(new THREE.ConeGeometry(0.45, 0.22, 8).translate(tx, 1.3, 2.0), tx < 0 ? col : dark); }
+  if (st5 >= 4) { K(new THREE.BoxGeometry(0.7, 0.02, 1.4).translate(0, 0.08, 1.6), m.c("#d9314a", 0.7)); for (const sx of [-0.55, 0.55]) { K(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6).translate(sx, 0.32, 2.15), m.gold); K(new THREE.CylinderGeometry(0.1, 0.14, 0.18, 10).rotateX(-0.6).translate(sx, 0.6, 2.15), metal); } }
   // (In town, its emblem also stands on the roof, big enough to read from afar.)
-  if (roof) { const big = bizEmblem(id, c1, c2, m); big.scale.setScalar(1.5); big.position.set(0, top - 0.05, -0.2); lg.add(big); top += 1.5; }
+  if (roof) { const big = bizEmblem(id, c1, c2, m, st5); big.scale.setScalar(1.3); big.position.set(0, top - 0.05, -0.2); lg.add(big); top += 1.3 + (st5 >= 4 ? 1.9 : 1.3); }
   return top;
 }
