@@ -127,7 +127,7 @@ function stageClear(R) {
   save.glow = (save.glow || 0) + R.lights + stars * 10;
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
   if (typeof seasonGain === "function") seasonGain(Math.round(stars * 15 + R.lights / 2));
-  progressEvent("dist", Math.floor(R.px)); persist(); if (typeof checkAchievements === "function") checkAchievements();
+  progressEvent("dist", Math.floor(R.px)); progressEvent("home"); progressEvent("stars", stars); if (info.daily) progressEvent("daily"); persist(); if (typeof checkAchievements === "function") checkAchievements();
   R.wantShotAt = R.t + 1.3;   // the picture to share: their window lit, them waving
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);

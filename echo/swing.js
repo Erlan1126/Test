@@ -200,7 +200,7 @@ function swingHold(down) {
     R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
-    R.pChain = (R.pChain || 0) + 1;
+    R.pChain = (R.pChain || 0) + 1; if (!R.attract) { progressEvent("perfect"); progressEvent("pchain", R.pChain); }
     if (!R.attract) { runBonus(R.pChain > 1 ? `Perfect ×${R.pChain}! +${1 + R.pChain} ✦` : "Perfect! +2 ✦", 0, R.dist + 2, R.x); R.lights += 1 + R.pChain; sfx.perfect(R.pChain); runMission("trail", R.perfects); }
   } else if (R.vx > 1.5 && ang > pwLo - 12 && ang < pwHi + 12 && spd > pwV - 3) {
     R.vx *= 1.04; R.vy *= 1.04; R.spinV = 6; R.pChain = 0; R.lights += 1; swingFlow(R, 0.06);
@@ -380,7 +380,7 @@ function runnerUpdate(dt) {
     const d = Math.hypot(c.x - R.px, c.y - R.py - 0.9);
     if ((mag || R.od > 0) && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
     if (d < 1.5 || comet && d < 3) {
-      c.got = true; c.t = 0; if (R.stageLen) R.motesGot++; R.lights += (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1); swingFlow(R, 0.022);
+      c.got = true; c.t = 0; if (R.stageLen) R.motesGot++; { const w = (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1); R.lights += w; if (!R.attract) progressEvent("lights", w); } swingFlow(R, 0.022);
       R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
       if (runnerPerk("Nova") && R.combo % 10 === 0) { R.lights += 5; runBonus("+5 ✦", 0, R.dist + 2, R.x); }
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }

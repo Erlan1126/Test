@@ -194,7 +194,7 @@ function runEnd() {
     const dm = dailyMissions();
     // Endless is the Night shift: how many windows you lit, and this week's best.
     if (run.mode3 && !run.stageInfo && !run.challenge && !run.daily) {
-      const wk = weekNumber(), ns = r.night && r.night.week === wk ? r.night : (r.night = { week: wk, best: 0 }), lit = run.lit || 0, nb = lit > ns.best; if (nb) ns.best = lit; persist();
+      const wk = weekNumber(), ns = r.night && r.night.week === wk ? r.night : (r.night = { week: wk, best: 0 }), lit = run.lit || 0, nb = lit > ns.best; if (nb) ns.best = lit; progressEvent("nightlit", lit); checkAchievements(); persist();
       $("runOverTitle").textContent = "Night shift over"; $("roCombo").textContent = lit; $("roCombo").nextElementSibling.textContent = "windows lit";
       $("runOverBest").textContent = nb ? "Week's best" : best ? "New best" : `Best ${r.best.toLocaleString()}`;
     } else if ($("roCombo").nextElementSibling) $("roCombo").nextElementSibling.textContent = "best combo";

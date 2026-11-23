@@ -364,7 +364,7 @@ const SIM = `
       save.glow = 1000; save.builds = {}; save.runAch = Object.fromEntries(RUN_ACHS.map(a => [a.id, 1])); out.lightsRebuildTheCity = buildIt("lamps") && built("lamps") && save.glow === 960;
       save.runFriends = { 4: 1 }; runSave().char = 4; out.playingAsAFriendGivesItsGift = playingAs() === 4 && perk(4);
       runSave().char = -1;
-      save.runAch = {}; save.prog = { dist: 600 }; out.achievementsPay = checkAchievements().some(a => a.id === "m500");
+      save.runAch = {}; save.prog = { home: 1 }; out.achievementsPay = checkAchievements().some(a => a.id === "home1");
       // Challenge a friend: the same cave from the same seed.
       const cave = seed => { startRun({ challenge: { seed, score: 100 } }); for (let q = 0; q < 200; q++) runUpdate(1 / 60); return run.items.filter(i => i.type !== "light").map(i => i.type + Math.round(i.at)).join(","); };
       out.challengeLinksReplayTheSameCave = cave(4242) === cave(4242) && challengeLink(4242, 100).includes("ch=4242.100") && typeof shareRun === "function";
@@ -563,6 +563,8 @@ const SIM = `
       { const od = outageDistrict(); startStage(od * 10 + 2); const R = run; out.theOutageDistrictFlickers = R.outage === true && R.anchors.some(a => a.flicker); let offSeen = false; for (let q = 0; q < 240; q++) { runUpdate(1 / 60); for (const a of R.anchors) if (a.off && a === R.aim) offSeen = true; } out.aDarkAnchorIsNeverTheTarget = !offSeen; }
       for (const n of [44, 45, 50]) { startStage(n); swingGen(run, run.stageLen + 60); if (run.anchors.some(a => a.tree && a.x > run.stageLen + 1 && a.x < run.stageLen + 17)) out.theHomePlotHasNoStrayTreetop = false; } if (out.theHomePlotHasNoStrayTreetop !== false) out.theHomePlotHasNoStrayTreetop = true;
       startStage(25); { const R = run; R.blds.length = 0; R.teth = null; R.hold = false; R.roof = null; R.anchors = []; R.py = 6; R.vy = -12; R.inv = 1; let md = 0; for (let q = 0; q < 30; q++) { runUpdate(1 / 60); md = Math.max(md, R.danger || 0); } out.noDangerGlowOverHarbourWater = md === 0; }
+      { save.dm = { v: 2, day: today(), list: DM_POOL.map((_, i) => ({ i, prog: 0, done: false })), all: true }; startStage(2); const R = run; for (let q = 0; q < 60 * 60 && !R.cleared; q++) { runnerAuto(); R.inv = 1; R.hearts = 3; runUpdate(1 / 60); }
+        const pr = k => save.dm.list.find(m => DM_POOL[m.i].k === k).prog; out.missionsCountWhatYouDo = pr("home") === 1 && pr("perfect") > 0 && pr("pchain") > 0 && pr("lights") > 0 && pr("free") > 0 && pr("stars") >= 1; }
       // Audit fixes: a cleared stage can't be failed; dying at the finish isn't a clear; one render loop; a release while paused counts.
       startStage(1); { const R = run; R.cleared = true; R.inv = 0; R.hearts = 1; swingHit(R, "test"); out.aClearedStageCantBeHit = R.hearts === 1 && !R.failed; }
       startStage(5); { const R = run; R.over = 0.001; R.px = R.stageLen + 1; R.inv = 1; runUpdate(1 / 60); out.dyingAtTheFinishIsNotAClear = !R.cleared; }
