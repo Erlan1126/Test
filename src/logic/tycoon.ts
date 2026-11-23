@@ -146,7 +146,7 @@ export function startRush(s: SaveData, now = Date.now(), rnd = Math.random): str
 export const stageOf = (level: number): number => Math.max(0, STAGE_AT.filter(a => level >= a).length - 1);
 /** The stage a business is at now: as big as its level allows and its headquarters built. */
 export const stageNow = (s: SaveData, id: string): number => Math.min(stageOf(levelOf(s, id)), s.tycoon.evolved[id] ?? 0);
-export const stageName = (id: string, stage: number): string => STAGE_NAMES[id]?.[Math.max(0, Math.min(4, stage))] ?? id;
+export const stageName = (id: string, stage: number): string => STAGE_NAMES[id]?.[Math.max(0, Math.min(STAGE_AT.length - 1, stage))] ?? id;
 /** The stage a business is ready to grow into (its level is big enough), or 0. */
 export function readyStage(s: SaveData, id: string): number {
   const now = s.tycoon.evolved[id] ?? 0;

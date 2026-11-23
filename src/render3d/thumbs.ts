@@ -2,7 +2,7 @@ import { BUSINESSES } from "../data/tycoon";
 // Little pictures of each business's building, at its stage, for the Company cards: the same
 // 3D models as the town, rendered once on a small canvas of their own and kept as images.
 import * as THREE from "three";
-import { buildModel, type ModelMats } from "./bizmodels";
+import { buildModelStaged, type ModelMats } from "./bizmodels";
 import { roofProp } from "./bizcity";
 import { bizEmblem, districtShop } from "./districtbiz";
 import { kitVersion } from "./kitmodels";
@@ -66,14 +66,17 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
       const top = districtShop(g, id, stage, c1, c2, mats, new THREE.CylinderGeometry(0.01, 0.01, 0.01), mats.c("#efe9df"), mats.c("#d9d2e6", 0.6), mats.leaf, mats.c("#4a4f7a", 0.5, 0.4));
       // (The emblem, big, crowning the roof: what the business is, at a glance.)
       const em = bizEmblem(id, c1, c2, mats, stage); em.scale.setScalar(1.9); em.position.set(0, top - 0.05, -0.2); em.rotation.y = 0.35; g.add(em);
-    } else buildModel(g, modelId, stage, c1, c2, mats, () => roofProp(modelId, new THREE.Color(c1), new THREE.Color(c2)));
+    } else buildModelStaged(g, modelId, stage, c1, c2, mats, () => roofProp(modelId, new THREE.Color(c1), new THREE.Color(c2)));
     // A little round plot of grass and paving under it.
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.7, 0.18, 40).translate(0, -0.09, 0), mats.c("#7fd36a", 0.95)));
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 0.03, 40).translate(0, 0.01, 0.2), mats.c("#efe9df", 0.8)));
     scene.add(g);
     // The town's angle, framed to fit the building.
     const box = new THREE.Box3().setFromObject(g), size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
-    const half = Math.max(size.x, size.z) * 0.62 + 0.4, tall = size.y * 0.75 + 0.6, sx = Math.max(half, tall * (W / H)) ;
+    // (From stage 5 on, every picture uses the same zoom, so each stage shows taller than the
+    // last instead of being shrunk to fit.)
+    const half = Math.max(size.x, size.z) * 0.62 + 0.4, tall = (stage >= 4 ? Math.max(size.y, 7) : size.y) * 0.75 + 0.6, sx = Math.max(half, tall * (W / H));
+    if (stage >= 4) mid.y = box.min.y + Math.max(size.y, 7) / 2;
     const cam = new THREE.OrthographicCamera(-sx, sx, sx * (H / W), -sx * (H / W), 0.1, 100);
     cam.position.set(mid.x + 10, mid.y + 7.5, mid.z + 10);
     cam.lookAt(mid);
@@ -98,4 +101,4 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
 }
 
 // (Test hook for the debug build: draws a business's picture on demand.)
-if (typeof location !== "undefined" && location.search.includes("debug")) (globalThis as unknown as { __thumb: unknown }).__thumb = bizThumb;
+if (typeof location !== "undefined" && location.search.includes("debug")) { (globalThis as unknown as { __thumb: unknown; __biz: unknown }).__thumb = bizThumb; (globalThis as unknown as { __biz: unknown }).__biz = BUSINESSES; }

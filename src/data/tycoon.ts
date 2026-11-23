@@ -110,23 +110,23 @@ export function amount(n: number): string {
 /** Every business grows through five stages as it levels up: a stand becomes a shop, a
  *  store, a flagship and finally an empire. Each stage has its own name and a bigger,
  *  richer room. */
-export const STAGE_AT = [1, 25, 100, 200, 400];
-export const STAGE_LABEL = ["Stand", "Shop", "Store", "Flagship", "Empire"];
+export const STAGE_AT = [1, 25, 100, 200, 400, 600, 800, 1000];
+export const STAGE_LABEL = ["Stand", "Shop", "Store", "Flagship", "Empire", "Skyscraper", "Megatower", "Sky Wonder"];
 export const STAGE_NAMES: Record<string, string[]> = new Proxy({
 
-  coffee: ["Coffee Cart", "Coffee Shop", "Corner Café", "Coffee House", "Coffee Empire"],
-  flowers: ["Flower Kiosk", "Flower Shop", "Garden Boutique", "Botanical Hall", "Bloom Empire"],
-  bakery: ["Cloud Bakery", "Bakery Shop", "Patisserie", "Grand Bakery", "Pastry Empire"],
-  pizza: ["Pizza Place", "Pizzeria", "Trattoria", "Pizza Palace", "Pizza Empire"],
-  cinema: ["Sky Cinema", "Movie Theater", "Multiplex", "Cinema Plaza", "Film Studio"],
-  hotel: ["Cloud Hotel", "Boutique Hotel", "Grand Hotel", "Luxury Resort", "Hotel Empire"],
-  mall: ["Sky Mall", "Shopping Center", "Mega Mall", "Shopping Plaza", "Mall Empire"],
-  airport: ["Airship Port", "Airfield", "Sky Airport", "Air Hub", "Sky Gateway"],
-  casino: ["Starlight Stage", "Concert Hall", "Starlight Arena", "Arena Resort", "Arena Empire"],
-  spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate"],
+  coffee: ["Coffee Cart", "Coffee Shop", "Corner Café", "Coffee House", "Coffee Empire", "Coffee Tower", "Coffee Megatower", "Coffee Sky Wonder"],
+  flowers: ["Flower Kiosk", "Flower Shop", "Garden Boutique", "Botanical Hall", "Bloom Empire", "Bloom Tower", "Bloom Megatower", "Bloom Sky Wonder"],
+  bakery: ["Cloud Bakery", "Bakery Shop", "Patisserie", "Grand Bakery", "Pastry Empire", "Pastry Tower", "Pastry Megatower", "Pastry Sky Wonder"],
+  pizza: ["Pizza Place", "Pizzeria", "Trattoria", "Pizza Palace", "Pizza Empire", "Pizza Tower", "Pizza Megatower", "Pizza Sky Wonder"],
+  cinema: ["Sky Cinema", "Movie Theater", "Multiplex", "Cinema Plaza", "Film Studio", "Film Tower", "Film Megatower", "Film Sky Wonder"],
+  hotel: ["Cloud Hotel", "Boutique Hotel", "Grand Hotel", "Luxury Resort", "Hotel Empire", "Hotel Tower", "Hotel Megatower", "Hotel Sky Wonder"],
+  mall: ["Sky Mall", "Shopping Center", "Mega Mall", "Shopping Plaza", "Mall Empire", "Mall Tower", "Mall Megatower", "Mall Sky Wonder"],
+  airport: ["Airship Port", "Airfield", "Sky Airport", "Air Hub", "Sky Gateway", "Sky Port Tower", "Sky Port Megatower", "Sky Port Wonder"],
+  casino: ["Starlight Stage", "Concert Hall", "Starlight Arena", "Arena Resort", "Arena Empire", "Arena Tower", "Arena Megatower", "Arena Sky Wonder"],
+  spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate", "Star Tower", "Star Megatower", "Galaxy Wonder"],
 } as Record<string, string[]>, {
   // (The districts' businesses: their name, then grander versions of it.)
-  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return [n, `Big ${n}`, `Grand ${n}`, `${n} Plaza`, `${n} Empire`]; })(),
+  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return [n, `Big ${n}`, `Grand ${n}`, `${n} Plaza`, `${n} Empire`, `${n} Tower`, `${n} Megatower`, `${n} Sky Wonder`]; })(),
 });
 /** Rush hour: one business earns this many times more for a short while. */
 export const RUSH_MULT = 3, RUSH_SECONDS = 45;
@@ -134,7 +134,7 @@ export const RUSH_MULT = 3, RUSH_SECONDS = 45;
 // ---------- Grand openings: every evolution needs its new headquarters built ----------
 
 /** Floors the new headquarters needs, by the stage it opens (stage 0 needs none). */
-export const HQ_FLOORS = [0, 15, 30, 50, 80];
+export const HQ_FLOORS = [0, 15, 30, 50, 80, 100, 125, 150];
 /** Each evolved stage doubles what a business earns. */
 export const STAGE_MULT = 1.5;
 /** A tower built with a perfect streak this long starts a construction boom... */

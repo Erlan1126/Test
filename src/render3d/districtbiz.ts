@@ -2,10 +2,10 @@
 // Ice Cream Parlor...) that stands on its sign and in its picture, and its building: a shop
 // from the model kit that grows with its stage, with an awning and a sign in its colors.
 import * as THREE from "three";
-import type { ModelMats } from "./bizmodels";
+import { skyTower, type ModelMats } from "./bizmodels";
 import { kitPlace } from "./kitmodels";
 
-type Mats = Pick<ModelMats, "c" | "gold">;
+type Mats = ModelMats;
 
 /** The emblem of business `id`, about one unit tall, standing on y = 0. */
 export function bizEmblem(id: string, c1: string, c2: string, m: Mats, stage = -1): THREE.Group {
@@ -80,6 +80,9 @@ export function bizEmblem(id: string, c1: string, c2: string, m: Mats, stage = -
     for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; R(new THREE.ConeGeometry(0.045, 0.14, 6).translate(Math.cos(a) * 0.18, cy + 0.12, Math.sin(a) * 0.18), gold); }
     for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; R(new THREE.BoxGeometry(0.03, 0.22, 0.01).translate(0, 0.32, 0).rotateZ(a).translate(0, cy + 0.05, -0.3), m.c("#ffe27a", 0.3, 0.3)); }
   }
+  if (stage >= 5) R(new THREE.TorusGeometry(0.62, 0.03, 8, 40).rotateX(Math.PI / 2).translate(0, ph0 + 0.08, 0), m.c("#8af0ff", 0.2, 0.3));
+  if (stage >= 6) for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; R(new THREE.OctahedronGeometry(0.06, 0).translate(Math.cos(a) * 0.7, ph0 + 0.5 + (k % 2) * 0.25, Math.sin(a) * 0.7), m.gold); }
+  if (stage >= 7) R(new THREE.CylinderGeometry(0.5, 0.56, 0.06, 24).translate(0, 0.03, 0), m.gold);
   return root;
 }
 
@@ -90,12 +93,16 @@ export function districtShop(lg: THREE.Object3D, id: string, stage: number, c1: 
   const K = (geo: THREE.BufferGeometry, mat: THREE.Material) => lg.add(new THREE.Mesh(geo, mat));
   const col = m.c(c1, 0.55), dark = m.c(new THREE.Color(c1).multiplyScalar(0.7), 0.6);
   K(slab, slabM);
-  const st5 = Math.max(0, Math.min(4, stage));
-  const POOLS = [["tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy"], ["tt_supermarket", "tt_shop_2", "tt_bank", "tt_library"], ["tt_hotel", "building_a", "building_c", "tt_apartment_2"], ["building_e", "building_g", "tt_office", "building_b"], ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_tower_block"]];
+  const st5 = Math.max(0, Math.min(7, stage));
+  // (From stage 6 on, a block from stage 4 with the business's own skyscraper rising from it.)
+  const P4 = ["building_e", "building_g", "tt_office", "building_b"];
+  const POOLS = [["tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy"], ["tt_supermarket", "tt_shop_2", "tt_bank", "tt_library"], ["tt_hotel", "building_a", "building_c", "tt_apartment_2"], P4, ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_tower_block"], P4, P4, P4];
+  const TALL = [1, 1, 1, 1, 1.2, 1, 1, 1];
   let hsh = 0; for (const ch of id) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
-  const pool = POOLS[st5], kp = kitPlace(pool[hsh % pool.length], st5 >= 3 ? 2.8 : 3.0, st5 >= 4 ? 1.2 : 1, hsh % 8);
-  let top = 1.6 + st5 * 0.8;
+  const pool = POOLS[st5], kp = kitPlace(pool[hsh % pool.length], st5 >= 3 ? 2.8 : 3.0, TALL[st5], hsh % 8);
+  let top = 1.6 + Math.min(4, st5) * 0.8;
   if (kp) { kp.obj.position.y = 0.06; lg.add(kp.obj); top = kp.h + 0.1; }
+  if (st5 >= 5) { if (kp) lg.remove(kp.obj); top = skyTower(lg as THREE.Group, id, st5 - 4, c1, c2, m as ModelMats, 0.06, 0, -0.3, 2.7); }
   else K(new THREE.BoxGeometry(2.6, top, 2.2).translate(0, top / 2, -0.2), col);
   // An awning in its colors, a sign on a post with the emblem on it, planters.
   K(new THREE.BoxGeometry(2.4, 0.06, 0.6).rotateX(0.25).translate(0, 0.95, 1.45), col);
@@ -111,6 +118,8 @@ export function districtShop(lg: THREE.Object3D, id: string, stage: number, c1: 
   if (st5 >= 2) for (const fx of [-1.9, 1.9]) { K(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 6).translate(fx, 0.9, -1.7), metal); K(new THREE.BoxGeometry(0.02, 0.32, 0.5).translate(fx, 1.62, -1.45), col); }
   if (st5 >= 3) for (const tx of [-0.7, 0.4]) { K(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 12).translate(tx, 0.42, 2.0), m.c("#ffffff", 0.5)); K(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6).translate(tx, 0.2, 2.0), metal); K(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6).translate(tx, 0.85, 2.0), metal); K(new THREE.ConeGeometry(0.45, 0.22, 8).translate(tx, 1.3, 2.0), tx < 0 ? col : dark); }
   if (st5 >= 4) { K(new THREE.BoxGeometry(0.7, 0.02, 1.4).translate(0, 0.08, 1.6), m.c("#d9314a", 0.7)); for (const sx of [-0.55, 0.55]) { K(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6).translate(sx, 0.32, 2.15), m.gold); K(new THREE.CylinderGeometry(0.1, 0.14, 0.18, 10).rotateX(-0.6).translate(sx, 0.6, 2.15), metal); } }
+  // The towering stages: a band of light round the top (Skyscraper), a sky bridge garden on
+  // the roof edge (Megatower), and a golden spire with a beacon (Sky Wonder).
   // (In town, its emblem also stands on the roof, big enough to read from afar.)
   if (roof) { const big = bizEmblem(id, c1, c2, m, st5); big.scale.setScalar(1.3); big.position.set(0, top - 0.05, -0.2); lg.add(big); top += 1.3 + (st5 >= 4 ? 1.9 : 1.3); }
   return top;

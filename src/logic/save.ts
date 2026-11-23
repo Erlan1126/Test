@@ -552,7 +552,7 @@ export function importCode(code: string): SaveData | null {
 function normalizeEvolved(v: unknown, levels: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = {};
   if (v && typeof v === "object") {
-    for (const [k, x] of Object.entries(v as Record<string, unknown>)) if (BUSINESSES.some(b => b.id === k) && Number.isInteger(x) && (x as number) > 0) out[k] = Math.min(4, x as number);
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) if (BUSINESSES.some(b => b.id === k) && Number.isInteger(x) && (x as number) > 0) out[k] = Math.min(7, x as number);
   } else {
     for (const [k, lv] of Object.entries(levels)) { const st = stageOf(lv); if (st > 0) out[k] = st; }
   }

@@ -1250,7 +1250,7 @@ export class TycoonUI {
     const pay = payOf(s, b, now), cyc = cycleOf(b, Math.max(1, lv));
     const secs = (x: number) => (x >= 60 ? t("{n} min", { n: fmt(Math.round(x / 6) / 10) }) : t("{n} s", { n: x >= 10 ? Math.round(x) : Math.round(x * 10) / 10 }));
     const nm = owned ? nextMilestone(lv) : undefined, prevM = owned ? [0, ...MILESTONES_AT].filter(m => m <= lv).pop() ?? 0 : 0;
-    const stars = `<span class="card-stars" aria-label="${esc(t("Stage {n} of 5", { n: st + 1 }))}">${[0, 1, 2, 3, 4].map(k => `<i class="${k <= st ? "on" : ""}"></i>`).join("")}</span>`;
+    const stars = `<span class="card-stars" aria-label="${esc(t("Stage {n} of 8", { n: st + 1 }))}">${STAGE_AT.map((_, k) => `<i class="${k <= st ? "on" : ""}"></i>`).join("")}</span>`;
     const stat = (label: string, value: string, tone = "") => `<span class="card-stat ${tone}"><small>${esc(label)}</small><b>${esc(value)}</b></span>`;
     const nextRow = (ico: string, text: string, k: number) => `<div class="card-next"><span class="cn-ico">${ico}</span><span class="cn-txt">${esc(text)}<i class="cn-bar"><i style="width:${Math.round(Math.max(0, Math.min(1, k)) * 100)}%"></i></i></span></div>`;
     const nextRows = !owned ? "" : [
@@ -1259,7 +1259,7 @@ export class TycoonUI {
     ].join("");
     this.put(card, `<div class="card-head" style="--b1:${b.color[0]};--b2:${b.color[1]}">
         <span class="card-ico">${iconSvg(b.icon)}</span>
-        <span class="card-name"><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b><small>${owned ? `${stars} ${esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 5", { n: st + 1 }) : t(b.name))}` : esc(t("For lease"))}</small></span>
+        <span class="card-name"><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b><small>${owned ? `${stars} ${esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 8", { n: st + 1 }) : t(b.name))}` : esc(t("For lease"))}</small></span>
         <button type="button" class="card-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
       </div>
       ${owned ? `<div class="card-stats">

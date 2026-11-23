@@ -12,7 +12,7 @@ import { lawnTexture, mergeStatic } from "./world";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildBlock, type BizBlock } from "./block";
 import { townFx, type TownLook } from "./shaders";
-import { buildModel, buildStreetFront, buildTerrace, type ModelMats } from "./bizmodels";
+import { buildModelStaged, buildStreetFront, buildTerrace, type ModelMats } from "./bizmodels";
 import { LAND, type LandId } from "../data/land";
 import { genBuilding, type GenKit } from "./propgen";
 
@@ -2176,7 +2176,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const shop = new THREE.Group();
       shop.scale.setScalar(0.62);
       shop.position.set(0, 0, 1.05);
-      buildModel(shop, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+      buildModelStaged(shop, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
       if (keepClear) fitBehind(shop, -0.3);
       lotG.add(shop);
       const n = hqT.b.length, roof = playerTower(lotG, hqT, 0, -1.25, 0.82, Math.min(0.34, 9 / Math.max(1, n)), 0.05);
@@ -2185,10 +2185,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       lotG.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.03).translate(0.24, roof + 0.66, -1.25), mats.sign(lot.c2)));
     } else if (keepClear) {
       const body = new THREE.Group();
-      buildModel(body, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+      buildModelStaged(body, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
       fitBehind(body, -2.1);
       lotG.add(body);
-    } else buildModel(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
+    } else buildModelStaged(lotG, lot.id, lot.s, lot.c, lot.c2, mats, () => roofProp(lot.id, col(lot.c), col(lot.c2)));
     // The street front (planters, a sign, bikes); the café keeps its front for the terrace.
     // (The building's own size, before the street front goes in front of it: the
     // scaffolding hugs this.)

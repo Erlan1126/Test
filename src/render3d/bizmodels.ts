@@ -534,3 +534,93 @@ export function buildStreetFront(g: G, c1: string, c2: string, stage: number, m:
   K.box(g, bike, 0.34, 0.03, 0.03, 0.74, 0.22, 2.08);
   if (stage >= 2) for (const x of [-0.75, 0.75]) { K.cyl(g, metal, 0.025, 0.03, 0.9, x, 0, 1.55, 6); K.sph(g, m.bulb, 0.08, x, 0.95, 1.55); }
 }
+
+/** Builds business `id` at any stage (0-7): stages 0-4 are its own building; from stage 5
+ *  (Skyscraper, Megatower, Sky Wonder) a glass tower in its colors rises behind it, taller at
+ *  each stage, with setbacks, a lit crown and, at the last, a golden spire. */
+/** Each business's own skyscraper design for its towering stages: a shape, how it steps in,
+ *  twists, and what crowns it. */
+interface TowerStyle { seg: number; rot?: number; taper: number[]; twist?: number; slab?: number; twin?: boolean; tiers?: "cream" | "leaf" | "gold"; top: "dome" | "spire" | "pod" | "pool" | "point" | "crown" | "flat" }
+const TOWER: Record<string, TowerStyle> = {
+  coffee: { seg: 24, taper: [1, 0.92, 0.84], tiers: "cream", top: "flat" },
+  flowers: { seg: 8, taper: [1, 0.78, 0.56], tiers: "leaf", top: "dome" },
+  bakery: { seg: 24, taper: [1, 0.74, 0.5], tiers: "cream", top: "flat" },
+  pizza: { seg: 6, taper: [1, 0.9, 0.8], twist: 0.35, top: "point" },
+  cinema: { seg: 4, rot: Math.PI / 4, taper: [1, 1, 0.8], twin: true, top: "spire" },
+  hotel: { seg: 4, rot: Math.PI / 4, taper: [1, 0.95, 0.9], slab: 0.55, top: "pool" },
+  mall: { seg: 8, taper: [1, 0.85, 0.7], top: "dome" },
+  airport: { seg: 16, taper: [0.55, 0.45, 0.4], top: "pod" },
+  casino: { seg: 4, rot: Math.PI / 4, taper: [1, 0.85, 0.7], twist: 0.6, tiers: "gold", top: "crown" },
+  spaceport: { seg: 12, taper: [0.9, 0.7, 0.45], top: "point" },
+};
+const STYLES = Object.values(TOWER);
+export function towerStyle(id: string): TowerStyle {
+  if (TOWER[id]) return TOWER[id];
+  let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return STYLES[h % STYLES.length];
+}
+
+/** Raises business `id`'s own skyscraper from (cx, y0, cz), at towering stage k (1-3: taller each
+ *  time, with a roof garden from 2 and a golden crown and beacon at 3). Returns its top. */
+export function skyTower(g: G, id: string, k: number, c1: string, c2: string, m: ModelMats, y0: number, cx: number, cz: number, wB: number): number {
+  const st = towerStyle(id), H = [0, 4.8, 6.2, 7.8][k];
+  const wall = m.c(new THREE.Color(c1).lerp(new THREE.Color("#ffffff"), 0.2), 0.5, 0.08), band = m.c(c2, 0.4, 0.3), trim = m.c(c1, 0.4, 0.2);
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material) => { const me = new THREE.Mesh(geo, mat); g.add(me); return me; };
+  const section = (x: number, z: number, r: number, h: number, y: number, rot: number) => {
+    const sz = st.slab ?? 1;
+    const mk = (rr: number, hh: number) => new THREE.CylinderGeometry(rr, rr, hh, st.seg).rotateY((st.rot ?? 0) + rot).scale(1, 1, sz);
+    add(mk(r, h).translate(x, y + h / 2, z), wall);
+    // Window ribbons, a floor each.
+    for (let f = 0; f * 0.42 + 0.3 < h; f++) add(mk(r * 1.015, 0.2).translate(x, y + 0.3 + f * 0.42, z), m.win);
+    add(mk(r * 1.06, 0.1).translate(x, y + h - 0.05, z), band);
+    if (st.tiers === "cream") add(new THREE.TorusGeometry(r * 1.02, 0.07, 6, st.seg * 2).rotateX(Math.PI / 2).scale(1, 1, sz).translate(x, y + h, z), m.c("#fff6e8", 0.5));
+    if (st.tiers === "leaf") for (let q = 0; q < st.seg; q++) { const a = (q / st.seg) * Math.PI * 2; add(new THREE.IcosahedronGeometry(0.13, 0).translate(x + Math.cos(a) * r, y + h + 0.08, z + Math.sin(a) * r * sz), m.leaf); }
+    if (st.tiers === "gold") add(mk(r * 1.08, 0.08).translate(x, y + h - 0.2, z), m.gold);
+  };
+  const r0 = wB / 2;
+  const fr = [0.46, 0.32, 0.22];
+  const build = (x: number, z: number, scaleH: number) => {
+    let y = y0;
+    st.taper.forEach((tp, i) => { const h = H * fr[i] * scaleH; section(x, z, r0 * tp, h, y, (st.twist ?? 0) * i); y += h; });
+    return y;
+  };
+  let top: number;
+  if (st.twin) {
+    const ta = build(cx - r0 * 0.55, cz, 1), tb = build(cx + r0 * 0.55, cz, 0.8);
+    add(new THREE.BoxGeometry(r0 * 0.6, 0.25, r0 * 0.5).translate(cx, y0 + H * 0.55, cz), band);
+    top = Math.max(ta, tb);
+    cx -= r0 * 0.55;
+  } else top = build(cx, cz, 1);
+  const rt = r0 * st.taper[st.taper.length - 1];
+  switch (st.top) {
+    case "dome": add(new THREE.SphereGeometry(rt * 0.95, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2).translate(cx, top, cz), m.win); top += rt * 0.95; break;
+    case "spire": add(new THREE.ConeGeometry(rt * 0.5, 1.4, 8).translate(cx, top + 0.7, cz), trim); top += 1.4; break;
+    case "pod": add(new THREE.CylinderGeometry(rt * 2.2, rt * 1.4, 0.45, 20).translate(cx, top + 0.22, cz), band); add(new THREE.CylinderGeometry(rt * 2.25, rt * 2.25, 0.18, 20).translate(cx, top + 0.3, cz), m.win); add(new THREE.CylinderGeometry(0.04, 0.04, 1.0, 6).translate(cx, top + 0.95, cz), m.c("#e8ecf4", 0.3, 0.6)); top += 1.45; break;
+    case "pool": add(new THREE.BoxGeometry(rt * 1.2, 0.06, rt * 0.6).translate(cx, top + 0.03, cz), m.c("#5fc2ff", 0.1)); top += 0.1; break;
+    case "point": add(new THREE.ConeGeometry(rt * 1.05, 1.1, st.seg).rotateY(st.rot ?? 0).translate(cx, top + 0.55, cz), trim); top += 1.1; break;
+    case "crown": for (let q = 0; q < 6; q++) { const a = (q / 6) * Math.PI * 2; add(new THREE.ConeGeometry(0.08, 0.35, 6).translate(cx + Math.cos(a) * rt * 0.8, top + 0.17, cz + Math.sin(a) * rt * 0.8), m.gold); } top += 0.35; break;
+    default: add(new THREE.BoxGeometry(rt * 1.1, 0.12, rt * 1.1).translate(cx, top + 0.06, cz), trim); top += 0.12;
+  }
+  // Stage 7: a roof garden or helipad ring; stage 8: a golden crown with a beacon above it.
+  if (k >= 2) add(new THREE.TorusGeometry(Math.max(0.25, rt * 0.9), 0.05, 6, 24).rotateX(Math.PI / 2).translate(cx, top - 0.05, cz), k >= 3 ? m.gold : band);
+  if (k >= 3) {
+    add(new THREE.ConeGeometry(0.12, 1.2, 8).translate(cx, top + 0.6, cz), m.gold);
+    add(new THREE.SphereGeometry(0.11, 10, 8).translate(cx, top + 1.25, cz), m.bulb);
+    top += 1.3;
+  }
+  return top;
+}
+
+/** Builds business `id` at any stage (0-7): stages 0-4 are its own building; from stage 5 its
+ *  own skyscraper rises from its roof, taller at each stage. */
+export function buildModelStaged(g: G, id: string, s: number, c1: string, c2: string, m: ModelMats, prop: () => THREE.Group): void {
+  if (s < 5) { buildModel(g, id, s, c1, c2, m, prop); return; }
+  // Its own skyscraper from the ground up, on a podium with an entrance canopy, crowned with
+  // the business's spinning sign.
+  const K = kit(m);
+  K.podium(g, 3.6, 3.6, 0.3);
+  K.box(g, m.c(c1, 0.5), 1.6, 0.08, 0.6, 0, 0.9, 1.5);
+  for (const x of [-0.7, 0.7]) K.box(g, m.c("#e8ecf4", 0.3, 0.6), 0.06, 0.6, 0.06, x, 0.3, 1.75);
+  const top = skyTower(g, id, Math.min(3, s - 4), c1, c2, m, 0.3, 0, -0.1, 2.7);
+  const p = prop(); p.position.set(0.95, top + 0.1, -0.1); p.scale.setScalar(0.8); p.userData.dynamic = true; p.userData.spin = true; g.add(p);
+}

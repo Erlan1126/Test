@@ -132,16 +132,18 @@ import { STAGE_NAMES } from "../src/data/tycoon";
 import { nextStage, payOf, rushOn, stageName, stageOf, startRush, vipTip } from "../src/logic/tycoon";
 
 describe("tycoon evolution and live events", () => {
-  it("businesses grow through five named stages", () => {
-    expect([1, 24, 25, 99, 100, 200, 399, 400, 9999].map(stageOf)).toEqual([0, 0, 1, 1, 2, 3, 3, 4, 4]);
+  it("businesses grow through eight named stages", () => {
+    expect([1, 24, 25, 99, 100, 200, 399, 400, 599, 600, 800, 999, 1000, 9999].map(stageOf)).toEqual([0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7]);
     expect(stageName("coffee", 0)).toBe("Coffee Cart");
     expect(stageName("coffee", 1)).toBe("Coffee Shop");
     expect(stageName("mall", 4)).toBe("Mall Empire");
     expect(nextStage(1)).toBe(25);
     expect(nextStage(150)).toBe(200);
-    expect(nextStage(400)).toBeUndefined();
+    expect(nextStage(400)).toBe(600);
+    expect(nextStage(1000)).toBeUndefined();
+    expect(stageName("mall", 7)).toBe("Mall Sky Wonder");
     for (const b of BUSINESSES) {
-      expect(STAGE_NAMES[b.id]).toHaveLength(5);
+      expect(STAGE_NAMES[b.id]).toHaveLength(8);
       expect(STAGE_NAMES[b.id][0]).toBe(b.name);
     }
   });

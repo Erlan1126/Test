@@ -1769,7 +1769,7 @@ export const FR: Record<string, string> = {
   "A new neighborhood of family homes": "Un nouveau quartier de maisons familiales",
   "Land for sale": "Terrain à vendre",
   "Green \"For sale\" bubbles float next to your island. Buy the land with cash: it joins the island for good, something new is built there, and every business earns 5% more.": "Des bulles vertes « À vendre » flottent à côté de ton île. Achète le terrain avec ton argent : il rejoint l'île pour de bon, on y construit quelque chose de nouveau, et chaque commerce gagne 5 % de plus.",
-  "Stage {n} of 5": "Étape {n} sur 5",
+  "Stage {n} of 8": "Étape {n} sur 8",
   "Level {n}: it sells twice as fast": "Niveau {n} : il vend deux fois plus vite",
   "Level {n}: it grows into {name}": "Niveau {n} : il devient {name}",
   "Earns": "Gagne",
