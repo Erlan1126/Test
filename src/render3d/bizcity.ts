@@ -2149,6 +2149,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     bendTown(ng, bendPts);
     mergeStatic(ng, 0.2);
   }
+  let growSpot: { x: number; z: number; zoom: number } | null = null;
   // The city grid's blocks: a building on each (rising with the city's rank, tallest nearest
   // the middle), a little park now and then, and the Town Hall's square.
   if (outer.length) {
@@ -2194,15 +2195,38 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const level = Math.max(1, Math.min(5, rkG - 1 - Math.floor(d / 20) + (h % 3 === 0 ? 1 : 0)));
       if (kitReady) kitBuilding(lg, h, level);
       else { P(roundSlab(4.2, 4.2, 0.6, 0.06), grass2); P(new THREE.BoxGeometry(2.6, 1.6 + level * 0.8, 2.6).translate(0, 0.8 + level * 0.4, 0), mats.c(["#f2e6d0", "#e8d8f0", "#d8ecf6", "#f6dcd0"][h % 4], 0.7)); }
-      // Street trees on the corners.
+      // Street life on its sidewalks: trees along the curb, lamps on two corners, a bench
+      // and a bin, and now and then a bus stop or a phone box.
       for (const [sx, sz] of [[1, 1], [-1, -1], [1, -1], [-1, 1]]) {
-        const tx = sx * 2.33, tz = sz * 2.33;
+        const tx = sx * 2.33, tz = sz * 1.2;
         P(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 6).translate(tx, 0.25, tz), trunk);
         P(new THREE.IcosahedronGeometry(0.3, 0).translate(tx, 0.65, tz), leaf);
+      }
+      for (const [sx, sz] of [[1, 1], [-1, -1]]) {
+        P(new THREE.CylinderGeometry(0.035, 0.045, 1.4, 6).translate(sx * 2.3, 0.7, sz * 2.3), metal);
+        P(new THREE.BoxGeometry(0.06, 0.05, 0.36).translate(sx * 2.3, 1.4, sz * 2.3 - sz * 0.15), metal);
+        P(new THREE.SphereGeometry(0.1, 8, 6).translate(sx * 2.3, 1.36, sz * 2.3 - sz * 0.3), lampMat);
+      }
+      // (The bench faces the street, on the front sidewalk.)
+      P(new THREE.BoxGeometry(0.6, 0.05, 0.2).translate(0.7, 0.3, 2.35), wood);
+      P(new THREE.BoxGeometry(0.6, 0.18, 0.04).translate(0.7, 0.42, 2.27), wood);
+      P(new THREE.CylinderGeometry(0.08, 0.07, 0.26, 8).translate(-0.4, 0.13, 2.4), mats.c("#3f6e58", 0.6));
+      if (h % 5 === 1) {
+        P(new THREE.BoxGeometry(0.9, 0.05, 0.32).translate(-1.2, 0.85, 2.38), mats.c("#2f9bff", 0.5));
+        P(new THREE.BoxGeometry(0.9, 0.6, 0.03).translate(-1.2, 0.5, 2.22), own(new THREE.MeshStandardMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.45, roughness: 0.05 })));
+        P(new THREE.BoxGeometry(0.7, 0.05, 0.16).translate(-1.2, 0.3, 2.3), wood);
+      } else if (h % 5 === 3) {
+        P(new THREE.BoxGeometry(0.26, 0.75, 0.26).translate(-1.2, 0.38, 2.35), mats.c("#d8333f", 0.5));
+        P(new THREE.BoxGeometry(0.2, 0.3, 0.02).translate(-1.2, 0.5, 2.49), mats.c("#bfe6ff", 0.2));
       }
     });
     bendTown(og, bendPts);
     mergeStatic(og, 0.2);
+    // Where the newest blocks went up (the camera glides there when the city grows).
+    if (fresh < outer.length) {
+      const nw = outer.slice(fresh).map(c => cellXZ(c)), mx = nw.reduce((a, p) => a + p.x, 0) / nw.length, mz = nw.reduce((a, p) => a + p.z, 0) / nw.length;
+      growSpot = { x: mx, z: mz, zoom: 1.1 };
+    }
   }
   gridShown = outer.length;
 
@@ -2653,6 +2677,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // ---- Town ranks (data/ranks.ts): as the company grows, the town itself changes for good ----
   const rank = cafe.rank ?? 0;
   const landmarks: Record<number, () => { x: number; z: number; zoom?: number }> = {};
+  if (growSpot) { const gs = growSpot; landmarks[50] = () => gs; }
   const outward = (u: number, out: THREE.Vector3, d: THREE.Vector3) => {
     carPath.at(u, out, d);
     const nx = d.z, nz = -d.x, sgn = (out.x - cx) * nx + (out.z - cz) * nz > 0 ? 1 : -1;
@@ -2791,8 +2816,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     });
     landmarks[4] = () => ({ x: ships[0].position.x, z: ships[0].position.z });
     townTicks.push(t => ships.forEach((a, k) => {
-      const ang = t * (k ? -0.035 : 0.045) + k * 2.6, r = 6.5 + k * 2.5;
-      a.position.set(cx + Math.cos(ang) * r, 6.2 + k * 1.4 + Math.sin(t * 0.4 + k) * 0.25, cz + Math.sin(ang) * r);
+      // (Well above the tallest towers: never brushing a rooftop.)
+      const ang = t * (k ? -0.035 : 0.045) + k * 2.6, r = 10 + k * 4;
+      a.position.set(cx + Math.cos(ang) * r, 15 + k * 1.6 + Math.sin(t * 0.4 + k) * 0.25, cz + Math.sin(ang) * r);
       a.rotation.y = -ang + (k ? Math.PI / 2 : -Math.PI / 2);
     }));
   }
@@ -2975,7 +3001,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // (Garden Hills is a village: warm cobbled lanes instead of asphalt.)
     // (Ground districts share the town's asphalt: one city, no seam where the paving changes.)
     const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : road;
-    const walkD = tc ? own(std(tc.walk, { roughness: 0.7 })) : walk;
+    // (Each ground district has its own paving: sandy harbor stone, soft garden stone,
+    // downtown granite.)
+    const groundWalk: Record<string, string> = { meadow: "#f3dfb6", lakeside: "#e2ecd2", hills: "#cfd2dc" };
+    const walkD = tc ? own(std(tc.walk, { roughness: 0.7 })) : groundWalk[id] ? own(std(groundWalk[id], { roughness: 0.85, map: walk.map })) : walk;
+    if (!tc && groundWalk[id]) streetUV.set(walkD, 1.0);
     const curbD = tc ? own(std(tc.curbC, { roughness: 0.5, metalness: theme === "cloud" ? 0.6 : 0.2, emissive: new THREE.Color(theme === "cloud" ? "#000000" : tc.curbC), emissiveIntensity: theme === "cloud" ? 0 : 0.35 })) : curb;
     // (A ground district stands on the town's own land: no cliff, underside or railing of its own.)
     const ground = landJoin(k) === "ground" && bought;
@@ -3030,6 +3060,21 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         const e = C / 2 - ROAD - 0.73;
         L(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(x + a2 * e, 0.9, z + b2 * e), metal);
         L(new THREE.SphereGeometry(0.12, 8, 6).translate(x + a2 * e, 1.65, z + b2 * e), lampMat);
+      }
+      // The district's own touch on the other two corners: mooring bollards and a coil of
+      // rope by the harbor, flower tubs in Garden Hills, lit steel bollards downtown.
+      for (const [a2, b2] of [[1, -1], [-1, 1]]) {
+        const e = C / 2 - ROAD - 0.6, cx2 = x + a2 * e, cz2 = z + b2 * e;
+        if (id === "meadow") {
+          for (const o2 of [-0.22, 0.22]) { L(new THREE.CylinderGeometry(0.07, 0.09, 0.28, 8).translate(cx2 + o2, 0.34, cz2), mats.c("#2f3a4a", 0.5)); L(new THREE.SphereGeometry(0.08, 8, 5).translate(cx2 + o2, 0.48, cz2), mats.c("#2f3a4a", 0.5)); }
+          L(new THREE.TorusGeometry(0.12, 0.04, 5, 12).rotateX(Math.PI / 2).translate(cx2, 0.24, cz2 - b2 * 0.3), mats.c("#c8a46a", 0.9));
+        } else if (id === "lakeside") {
+          L(new THREE.CylinderGeometry(0.26, 0.22, 0.26, 10).translate(cx2, 0.33, cz2), mats.c("#b8704a", 0.8));
+          L(new THREE.IcosahedronGeometry(0.22, 0).translate(cx2, 0.55, cz2), leaf);
+          for (let f = 0; f < 4; f++) L(new THREE.SphereGeometry(0.06, 6, 4).translate(cx2 + Math.cos(f * 1.6) * 0.15, 0.66, cz2 + Math.sin(f * 1.6) * 0.15), mats.c(["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"][f], 0.8));
+        } else if (id === "hills") {
+          for (const o2 of [-0.25, 0.25]) { L(new THREE.CylinderGeometry(0.05, 0.05, 0.42, 8).translate(cx2 + o2, 0.41, cz2), mats.c("#8a92a8", 0.3, 0.6)); L(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 8).translate(cx2 + o2, 0.58, cz2), lampMat); }
+        }
       }
       // The same road markings on the streets between blocks.
       if (i + 1 < DIST_N) markStreet(L, x + qd, z, "z", C - 0.6);
@@ -3658,7 +3703,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         ship.userData.dynamic = true;
         G.add(ship);
         const R2 = DIST_H * 0.7;
-        townTicks.push(t => { const a = t * 0.05; ship.position.set(Math.cos(a) * R2, 8 + Math.sin(t * 0.5) * 0.4, Math.sin(a) * R2); ship.rotation.y = -a; });
+        townTicks.push(t => { const a = t * 0.05; ship.position.set(Math.cos(a) * R2, 14 + Math.sin(t * 0.5) * 0.4, Math.sin(a) * R2); ship.rotation.y = -a; });
       }
       // More life in the air: seagulls over the harbor, a helicopter over Downtown, a rainbow
       // over Cloud Kingdom, a shuttle coming and going at Orbit Station.

@@ -17,7 +17,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -2028,6 +2028,7 @@ export class TycoonUI {
         if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(flyFrom as HTMLElement); }
         else if (crossed) { toast(t("{name} now runs twice as fast!", { name })); fireworks(2, () => this.host.sound.firework()); }
         this.checkRank();
+        this.checkGrow();
         this.host.persist();
         this.render();
         return;
@@ -2479,6 +2480,24 @@ export class TycoonUI {
         { label: t("🔭 Sky Lookout"), sub: t("A tower to see the whole sky · {n}", { n: coins(price) }), onPick: pick("lookout") },
       ],
       t("Later"));
+  }
+
+  /** The city spread out (new blocks past the town): the camera glides over to watch them
+   *  rise, with a building sound and a short note. Never on the first look (a fresh load). */
+  private grewSeen = -1;
+  private checkGrow(): void {
+    const g = cityGrow(this.save);
+    if (this.grewSeen < 0 || g < this.grewSeen) { this.grewSeen = g; return; }
+    if (g === this.grewSeen) return;
+    if (!this.inCity || openModalEl() || !$("mayor").hidden || this.selected || this.selectedProp || document.body.classList.contains("tabs-open")) return;
+    this.grewSeen = g;
+    // (The town rebuilds on the next frame; the new blocks start rising then.)
+    window.setTimeout(() => {
+      if (this.host.visitLandmark(50, 3200)) {
+        this.host.sound.unlock();
+        toast(t("Skyhaven is growing: new blocks are going up!"));
+      }
+    }, 350);
   }
 
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */

@@ -1877,4 +1877,5 @@ export const PT: Record<string, string> = {
   "City Plan: chapter {n} of {total} · next: {title}": "Plano da cidade: capítulo {n} de {total} · depois: {title}",
   "City Plan: the last chapter!": "Plano da cidade: o último capítulo!",
   "Each gem adds 2% to all earnings, for good. A New Era collects them and starts your whole city over, from a little hamlet.": "Cada gema soma 2% a todos os ganhos, para sempre. Uma Nova Era as coleta e recomeça toda a sua cidade, a partir de um pequeno vilarejo.",
+  "Skyhaven is growing: new blocks are going up!": "Skyhaven está crescendo: novos quarteirões estão subindo!",
 };
