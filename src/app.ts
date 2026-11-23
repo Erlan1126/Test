@@ -1220,7 +1220,7 @@ export class App implements DailyHost {
       for (const d of opened) this.outcome.rewards.unshift({ kind: "island", text: t("🎉 New district open: {name}! Build there from your City", { name: t(d.name) }) });
     }
     // The tower's workers report to the businesses: a coin bonus for Skyhaven Inc.
-    if (this.save.profile.towers >= 1 && this.mode !== "zen") {
+    if (HAS_CITY && this.save.profile.towers >= 1 && this.mode !== "zen") {
       tickTycoon(this.save);
       const bonus = towerBonus(this.save, run.floors);
       if (bonus > 0) this.outcome.rewards.push({ kind: "star", text: t("+{n} for Skyhaven Inc.", { n: tycoonCoins(bonus) }) });
