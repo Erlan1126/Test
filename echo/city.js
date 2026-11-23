@@ -218,7 +218,7 @@ function openSheet(kind) { cityPanel = kind; renderShop(); $("todayPanel").hidde
 function renderShop() {
   const glow = save.glow || 0;
   const head = { upgrades: ["Shop", `Upgrades for every run. You have ${glow.toLocaleString()} lights.`], build: ["Rebuild the city", `Bring the Singer's city back to life, one place at a time. You have ✦ ${glow}.`],
-    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], stages: ["The city", "Every window is a home. Tap one to see who lives there."], locker: ["Locker", `Forms of light, glows, scarves and tethers. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your best runs on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
+    friends: ["Friends", "Friends you've found can come with you. Each brings a gift."], stages: ["The city", "Every window is a home. Tap one to see who lives there."], locker: ["Locker", `Forms of light, glows, scarves and tethers. You have ✦ ${glow.toLocaleString()}.`], ranks: ["Ranks", "Your records on this phone"], awards: ["Awards", `${Object.keys(save.runAch || {}).length} of ${RUN_ACHS.length} earned`] }[cityPanel];
   $("shopTitle").textContent = head[0]; $("shopSub").textContent = head[1];
   if (cityPanel === "upgrades") $("shopList").innerHTML = runShopHtml();
   if (cityPanel === "build") $("shopList").innerHTML = CITY_BUILDS.map(b => `<li class="${built(b.id) ? "won" : ""}"><span><b>${b.name}</b><small>${b.text}</small></span>` + (built(b.id) ? "<em>Rebuilt</em>" : `<button data-build="${b.id}" ${glow >= b.cost ? "" : "disabled"}>✦ ${b.cost}</button>`) + "</li>").join("");
@@ -297,15 +297,18 @@ function drawLockerPreview() {
 }
 // ---------- Ranks: your best runs ----------
 function ranksHtml() {
-  const r = runSave(), top = r.top || [], h = huntState(), today = dayNumber();
-  const when = d => d === today ? "today" : d === today - 1 ? "yesterday" : `${today - d} days ago`;
-  return `<li class="sec">Records</li>` +
-    `<li><span><b>Best score</b><small>All runs</small></span><em>${(r.best || 0).toLocaleString()}</em></li>` +
-    `<li><span><b>Longest run</b><small>Your best distance</small></span><em>${(r.bestM || 0).toLocaleString()} m</em></li>` +
-    `<li><span><b>Today's daily run</b><small>${save.ghost && save.ghost.day === today ? "Your ghost is waiting in today's daily run" : "Play the daily run to set a ghost to race"}</small></span><em>${(r.dailyDay === today ? r.dailyBest || 0 : 0).toLocaleString()}</em></li>` +
-    `<li><span><b>Letter hunt</b><small>Find L·U·M·E·N in the sky today for ✦ 250</small></span><em>${HUNT.split("").map((c, i) => (i < h.got.length ? c : "·")).join(" ")}</em></li>` +
-    `<li class="sec">Top runs</li>` + (top.length ? top.map((t, i) => `<li><span><b>#${i + 1}  ${t.s.toLocaleString()}</b><small>${t.m.toLocaleString()} m · ${t.c || "Kai"}${t.daily ? " · daily" : ""} · ${when(t.d)}</small></span></li>`).join("") : `<li class="locked"><span><b>No runs yet</b><small>Your best ten runs will show here</small></span></li>`) +
-    `<li class="locked"><span><b>Friends and world rankings</b><small>Coming with online accounts</small></span></li>`;
+  const r = runSave(), h = huntState(), today = dayNumber(), S = typeof stageSave === "function" ? stageSave() : { best: {} };
+  const best = S.best || {}, lit = Object.values(best).filter(b => b && b.stars).length, stars = Object.values(best).reduce((a, b) => a + ((b && b.stars) || 0), 0), three = Object.values(best).filter(b => b && b.stars === 3).length;
+  const ns = r.night && r.night.week === weekNumber() ? r.night.best : 0, ds = save.dailyStage && save.dailyStage.day === today ? save.dailyStage : null;
+  const card = (big, label, sub) => `<div class="rk-card"><b>${big}</b><span>${label}</span>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  let html = `<li class="rk-grid">${card(`${lit}<i>/60</i>`, "homes relit", lit >= 60 ? "Dawn is back" : `${60 - lit} waiting`)}${card(`${stars}<i>/180</i>`, "stars", `${three} perfect stages`)}${card(ns, "windows this week", "Night shift")}${card(ds ? ds.time.toFixed(1) + "s" : "–", "today's daily", ds ? "★".repeat(ds.stars || 1) : "Not played yet")}</li>`;
+  html += `<li class="sec">Fastest in each district</li>`;
+  for (let c = 0; c < STAGE_CHAPTERS.length; c++) {
+    let f = null; for (let n = c * 10 + 1; n <= c * 10 + 10; n++) { const b = best[n]; if (b && b.time && (!f || b.time / stageInfo(n).par < f.k)) f = { n, t: b.time, k: b.time / stageInfo(n).par, s: b.stars }; }
+    html += f ? `<li><span><b>${STAGE_CHAPTERS[c]}</b><small>Stage ${f.n} · ${stagePerson(f.n)[0]} · ${"★".repeat(f.s)}</small></span><em>${f.t.toFixed(1)} s${f.k <= 1 ? " · under par" : ""}</em></li>` : `<li class="locked"><span><b>${STAGE_CHAPTERS[c]}</b><small>No home reached here yet</small></span></li>`;
+  }
+  html += `<li class="sec">Hunts</li><li><span><b>Letter hunt</b><small>Find L·U·M·E·N in the sky today for ✦ 250</small></span><em>${HUNT.split("").map((ch, i) => (i < h.got.length ? ch : "·")).join(" ")}</em></li>`;
+  return html;
 }
 document.getElementById("shopList").addEventListener("click", e => {
   const cb = e.target.closest("button[data-cap]");
