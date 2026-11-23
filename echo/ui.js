@@ -149,7 +149,7 @@ tap("restoreCode", () => {
     for (const k of ["settings", "stats", "daily"]) Object.assign(save[k], data[k] || {});
     for (const k in data) if (!["settings", "stats", "daily"].includes(k) && data[k] != null) save[k] = data[k];
     persist();
-    muted = !!save.muted;
+    muted = false;
     applyVolumes();
     renderSettings();
     renderTitle();
@@ -165,13 +165,11 @@ tap("setReset", () => {
     setTimeout(() => { if (resetArmed) renderSettings(); }, 3500);
     return;
   }
-  save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.looksViewed = 1; save.ach = {}; save.story = {}; save.cards = {};
-  save.stats = { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 };
-  save.daily = { last: "", streak: 0, best: 0, stars: {} };
-  for (const k of ["found", "family", "hat", "weekly", "glow", "home", "quests", "variants", "vs", "lookSeen"]) delete save[k];
+  // Everything goes except your settings: stages, homes, stars, looks, lights, missions, awards.
+  for (const k of Object.keys(save)) if (k !== "settings") delete save[k];
+  Object.assign(save, { stars: [], best: [], ach: {}, stats: { lights: 0 }, daily: { last: "", streak: 0, best: 0, stars: {} } });
   persist();
-  toast("Progress erased");
-  renderSettings();
+  location.reload();
 });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {

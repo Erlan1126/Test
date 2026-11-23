@@ -2,7 +2,7 @@
 "use strict";
 
 // ---------- Audio ----------
-let AC = null, master = null, sfxBus = null, musicBus = null, echoBus = null, muted = !!save.muted;
+let AC = null, master = null, sfxBus = null, musicBus = null, echoBus = null, muted = false;   // (an old mute flag from the cave game is ignored: the volume sliders control sound)
 // The key and scale the sound effects play in.
 const mood = { root: 220.0, scale: [0, 3, 5, 7, 10] };
 const pitch = (deg, oct = 0) => {
