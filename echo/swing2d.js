@@ -103,7 +103,7 @@ const SW2D = (() => {
     // A new run: forget the last run's scarf trail and camera.
     if (draw.lastR !== R) { hist.length = 0; cam = null; draw.lastR = R; draw.lt = null; }
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
-    const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (33 + Math.min(4, Math.max(0, spd - 18) * 0.25)) * punch;
+    const spd = R.v || 10, punch = save.settings && save.settings.calm ? 1 : 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (33 + Math.min(4, Math.max(0, spd - 18) * 0.25)) * punch;
     // Smoothing by time, not by frame, so it feels the same at 30 or 60 frames per second.
     const fdt = Math.min(0.1, Math.max(0, t - (draw.lt ?? t))); draw.lt = t; const ease = k => 1 - Math.exp(-k * fdt);
     sCur += (sTarget - sCur) * ease(punch > 1.01 ? 7 : 2.5); const s = sCur;
@@ -118,7 +118,7 @@ const SW2D = (() => {
     if (!cam || Math.abs(cam.x - tx) > 80) cam = { x: tx, y: ty };
     cam.x += (tx - cam.x) * ease(4); cam.y += (ty - cam.y) * ease(2.6);
     if (!R.cleared) { cam.x = Math.max(R.px + halfW * 0.1, Math.min(R.px + halfW * 0.6, cam.x)); cam.y = Math.max(R.py - halfH * 0.5, Math.min(R.py + halfH * 0.55, cam.y)); }
-    const sh = R.shake > 0 ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (R.kick || 0) * 8;
+    const calm = !!(save.settings && save.settings.calm), sh = R.shake > 0 && !calm ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (calm ? 0 : (R.kick || 0) * 8);
     const X = x => ox + (x - cam.x) * s, Y = y => oy - (y - cam.y) * s;
     // ---------- Sky (baked into the far skyline strip below) ----------
     let sk = null; const skyCss = () => sk || (sk = P.sky.map(c => `rgb(${c.map(v => Math.round(v)).join(",")})`));

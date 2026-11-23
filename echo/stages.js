@@ -141,7 +141,7 @@ function showStageCard(won) {
   $("stPerf").textContent = R.perfects;
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   $("stNote").textContent = raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch half the lights for ★★" : `★★★: 80% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc.");
-  const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? "Next stage" : "Retry";
+  const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
   next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
   $("stShare").hidden = !won;
