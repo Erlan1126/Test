@@ -1181,6 +1181,8 @@ export const FR: Record<string, string> = {
   "Crystal speed-ups left today: {n} of {max}": "Accélérations en cristaux aujourd'hui : {n} sur {max}",
   "Double it · 💎 {n}": "Doubler · 💎 {n}",
   "Double it": "Doubler",
+  "▶ Watch an ad to double it": "▶ Regarde une pub pour doubler",
+  "Doubled! +{n}": "Doublé ! +{n}",
   "No more speed-ups today. Come back tomorrow!": "Plus d'accélérations aujourd'hui. Reviens demain !",
   "Time warp: 1 hour": "Saut temporel : 1 heure",
   "Time warp: 8 hours": "Saut temporel : 8 heures",

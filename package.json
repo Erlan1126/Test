@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:skyrise": "tsc --noEmit && vite build --mode skyrise",
+    "build:city": "tsc --noEmit && vite build --mode city",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

@@ -41,6 +41,7 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
+import { HAS_CITY } from "./edition";
 import { bestRun, dropGrid, type Drop } from "./logic/dailycard";
 import type { SpireNow } from "./logic/spire";
 import { orderFor, orderProgress, recordHq, ORDER_MULT, type Order, type OrderRun } from "./logic/orders";
@@ -298,9 +299,9 @@ export class App implements DailyHost {
       const show = () => {
         if (document.getElementById("splash")) { setTimeout(show, 400); return; }
         // The Tycoon is the front door: the app opens on Skyhaven Inc.
-        if (this.state === "menu" && this.save.profile.towers >= 1 && !this.visiting) this.tycoon.open();
-        if (this.state === "menu") this.tycoon.welcome(earned, away);
-        if (this.state === "menu") this.tycoon.freshStart();
+        if (HAS_CITY && this.state === "menu" && this.save.profile.towers >= 1 && !this.visiting) this.tycoon.open();
+        if (HAS_CITY && this.state === "menu") this.tycoon.welcome(earned, away);
+        if (HAS_CITY && this.state === "menu") this.tycoon.freshStart();
         this.startupShown = true;
       };
       setTimeout(show, 1500);
@@ -309,7 +310,7 @@ export class App implements DailyHost {
       if (document.visibilityState === "hidden") { tickTycoon(this.save); this.persist(); return; }
       const away = Date.now() - this.save.tycoon.last, earned = tickTycoon(this.save);
       this.persist();
-      if (this.state === "menu" && earned > 0) this.tycoon.welcome(earned, away);
+      if (HAS_CITY && this.state === "menu" && earned > 0) this.tycoon.welcome(earned, away);
     });
     if (this.payments) {
       const test = !this.payments.live;
@@ -317,7 +318,7 @@ export class App implements DailyHost {
       this.payments.onVip = on => {
         if (!setVip(this.save, on)) { this.persist(); return; }
         this.persist();
-        if (on) { this.sound.purchase(); toast(t("👑 Skyrise VIP is on! Collect your daily gift in the Shop.")); }
+        if (on) { track("purchase_done", { pack: "vip", test }, false); this.sound.purchase(); toast(t("👑 Skyrise VIP is on! Collect your daily gift in the Shop.")); }
         this.refresh();
         this.sheets?.refreshShop();
       };
@@ -490,7 +491,9 @@ export class App implements DailyHost {
     const pay = this.payments;
     if (!pay) return;
     this.sound.ensure();
+    track("purchase_started", { pack: pack.id }, false);
     const r = await pay.buy(pack, this.save.playerId);
+    if (r === "error") track("purchase_failed", { pack: pack.id }, false);
     if (r === "error") toast(t("Couldn't open the checkout. Check your connection and try again."));
   }
 
@@ -498,7 +501,9 @@ export class App implements DailyHost {
     const pay = this.payments;
     if (!pay?.buyVip) return;
     this.sound.ensure();
+    track("purchase_started", { pack: "vip" }, false);
     const r = await pay.buyVip();
+    if (r === "error") track("purchase_failed", { pack: "vip" }, false);
     if (r === "error") toast(t("Couldn't open the checkout. Check your connection and try again."));
   }
 
@@ -508,6 +513,8 @@ export class App implements DailyHost {
   private async packBought(p: PackPurchase, test: boolean): Promise<boolean> {
     const { added, durable } = await creditDurably(this.save, p.pack, p.tx, () => this.saveDurably());
     if (added) {
+      track("purchase_done", { pack: p.pack, test }, false);
+      if (!test) track("first_purchase", { pack: p.pack, towers: this.save.profile.towers });
       if (p.pack === STARTER_PACK.id) {
         closeModal($("starter"));
         this.save.skin = STARTER_SKIN;
@@ -551,6 +558,7 @@ export class App implements DailyHost {
     clearInterval(this.starterTimer);
     this.starterTimer = window.setInterval(tick, 1000);
     tick();
+    track("starter_shown");
     openModal($("starter"));
   }
 
@@ -563,6 +571,7 @@ export class App implements DailyHost {
     const r = buyWithCrystals(this.save, product.id);
     if (r === "short") { toast(t("Not enough Sky Crystals")); this.sheets.openShop("crystals"); return; }
     if (r !== "ok") return;
+    track("crystals_spent", { item: product.id }, false);
     this.persist();
     this.sound.purchase();
     toast(t("Unlocked: {name}", { name: t(product.name) }));
@@ -1009,6 +1018,7 @@ export class App implements DailyHost {
     if (this.projectRun) { track("project_started", { project: this.projectRun }); if (!this.save.seenFeatures.includes("try-contract")) this.save.seenFeatures.push("try-contract"); }
     if (this.hq && !this.save.seenFeatures.includes("try-hq")) this.save.seenFeatures.push("try-hq");
     if (mode === "classic" && this.save.profile.towers === 2) track("third_tower_started");
+    if (mode === "daily") { track("first_daily"); track("daily_played", {}, false); }
     // 3, 2, 1, BUILD! (not on the very first guided tower).
     this.countIn = this.tutorial ? 0 : 3;
     this.countShown = 0;
@@ -1244,12 +1254,15 @@ export class App implements DailyHost {
     // The café loop: tower one becomes the starter building, floors open the terrace, and
     // the contract's wide floors are counted.
     const terraceBefore = this.save.cafe.terrace, wasProject = this.projectRun;
-    const cafeR = cafeRun(this.save.cafe, { mode: this.mode, floors: run.floors, stack: this.sim.stack, skin: this.builtSkin || this.save.skin, shape: this.builtShape || "square", wide: this.wideCount, project: this.projectRun });
+    // (Skyrise on its own has no café loop: the tower game alone.)
+    const cafeR = HAS_CITY ? cafeRun(this.save.cafe, { mode: this.mode, floors: run.floors, stack: this.sim.stack, skin: this.builtSkin || this.save.skin, shape: this.builtShape || "square", wide: this.wideCount, project: this.projectRun })
+      : { starter: false, terraceReady: false, projectDone: "" as const };
+    if (!HAS_CITY && this.save.profile.towers === 1) track("first_tower_completed", { floors: run.floors });
     this.lastProject = wasProject;
     this.projectRun = "";
     $("contract-chip").hidden = true;
     // Without the 3D town (some low-end phones), the terrace opens right here instead.
-    if (!this.canCity() && claimTerrace(this.save.cafe)) {
+    if (HAS_CITY && !this.canCity() && claimTerrace(this.save.cafe)) {
       this.outcome.rewards.unshift({ kind: "island", text: t("☕ The café terrace is open!") + " " + t("The Coffee Cart earns ×{n}", { n: TERRACE_MULT }) });
       track("terrace_claimed");
     }
@@ -1267,7 +1280,7 @@ export class App implements DailyHost {
       this.outcome.rewards.unshift({ kind: "island", text: cafeR.projectDone === "flowers" ? t("🌷 The flower market opens in your block!") : t("🛝 The playground opens in your block!") });
       track("project_done", { project: cafeR.projectDone });
     }
-    if (this.mode !== "zen" && run.floors > 0) {
+    if (HAS_CITY && this.mode !== "zen" && run.floors > 0) {
       if (terraceBefore === 0 && !cafeR.terraceReady) this.cafeLine = t("+{n} floors · Café terrace {have} of {need} floors", { n: run.floors, have: this.save.cafe.floors, need: TERRACE_FLOORS });
       else if (cafeR.terraceReady) this.cafeLine = t("+{n} floors · Café terrace ready to open!", { n: run.floors });
       else if (wasProject === "flowers") this.cafeLine = t("Flower market: {n} of {total} wide floors", { n: Math.min(this.wideCount, FLOWER_WIDE), total: FLOWER_WIDE });
@@ -1615,11 +1628,11 @@ export class App implements DailyHost {
 
   private renderMenu(): void {
     // After the fifth tower, the Starter Pack is offered once (if purchases work here).
-    if (this.payments && maybeOfferStarter(this.save)) { this.persist(); setTimeout(() => { if (this.state === "menu" && !openModalEl() && !this.moving) this.openStarter(); }, 700); }
+    if (this.payments && maybeOfferStarter(this.save)) { track("starter_offered"); this.persist(); setTimeout(() => { if (this.state === "menu" && !openModalEl() && !this.moving) this.openStarter(); }, 700); }
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     // The Tycoon: the business card on the home screen and its dock tile.
-    this.tycoon.renderHome(p.towers >= 1);
+    this.tycoon.renderHome(HAS_CITY && p.towers >= 1);
     // The business district is the game's home (once the first tower is built). The old
     // home screen stays hidden underneath, so it never flashes up between screens.
     const cityHome = p.towers >= 1 && this.canCity();
@@ -1635,9 +1648,9 @@ export class App implements DailyHost {
       this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); });
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
-    renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
+    if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     // (In the town, Pip's chapter waits until the first steps there are done.)
-    if (p.towers >= 1 && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
+    if (HAS_CITY && p.towers >= 1 && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");
@@ -2449,7 +2462,7 @@ export class App implements DailyHost {
     if (!n || btn.disabled) return;
     btn.disabled = true;
     this.sound.duck(true);
-    const ok = await showRewarded();
+    const ok = await showRewarded("tower");
     this.sound.duck(false);
     btn.disabled = false;
     if (!ok) { toast(t("No reward this time. Try again later.")); return; }
@@ -2468,6 +2481,7 @@ export class App implements DailyHost {
     if (!id || this.vs?.id === id) return;
     void fetchChallenge(id).then(c => {
       if (!c) return;
+      track("challenge_link_opened", {}, false);
       this.vs = c;
       this.friendScore = c.score;
       toast(t("{name} challenges you: beat {n} people!", { name: c.name || t("A friend"), n: fmt(c.score) }));
@@ -2521,6 +2535,7 @@ export class App implements DailyHost {
         storeSent(sent);
       }
     }
+    track("share", { kind: "tower", mode: this.mode, link: url.includes("/c/") }, false);
     const text = this.shareText();
     const full = url ? `${text}${this.mode === "daily" ? "\n" : " "}${url}` : text;
     const pic = this.mode === "daily" ? null : this.shareBlob;
@@ -2724,7 +2739,7 @@ export class App implements DailyHost {
 
   /** The camera is over the business district (the Tycoon city is open). */
   private bizFocus = false;
-  canCity(): boolean { return this.renderer instanceof Renderer3D && !this.visiting; }
+  canCity(): boolean { return HAS_CITY && this.renderer instanceof Renderer3D && !this.visiting; }
   setBizFocus(on: boolean): void { this.bizFocus = on; }
   openStory(): void { this.sound.click(); openMayor(this.save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); }
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
@@ -2749,6 +2764,7 @@ export class App implements DailyHost {
   /** Shares a picture (the native share sheet, the browser's, or a download). */
   async sharePicture(blob: Blob, text: string, name = "skyrise-skyhaven.jpg", addSite = true): Promise<void> {
     const full = this.site && addSite ? `${text} ${this.site}` : text;
+    track("share", { kind: name.replace(/^skyrise-?|\.\w+$/g, "") || "picture" }, false);
     if (await nativeShare(full, blob, name)) return;
     try {
       const file = new File([blob], name, { type: blob.type });

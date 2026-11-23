@@ -282,6 +282,35 @@ describe("anonymous stats", () => {
     const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM stats").first();
     expect(n).toEqual({ n: 2 });
   });
+
+  it("gives the studio a report (day-1 and day-7 returns, first steps, purchases, ads) only with its key", async () => {
+    const get = async (key?: string, e: Record<string, unknown> = env) => {
+      const res = await worker.fetch(new Request("https://api.example/stats/report", { headers: key ? { "x-stats-key": key } : {} }), e as never);
+      return { status: res.status, body: await res.json() as Record<string, any> };
+    };
+    expect((await get("k")).status).toBe(404); // no key set: the report is off
+    const e = { ...env, STATS_KEY: "studio-key" };
+    expect((await get(undefined, e)).status).toBe(404);
+    expect((await get("wrong-key!", e)).status).toBe(404);
+    // Three installs first played 10 days ago; two came back the next day, one a week later.
+    const now = Date.now(), ago = (d: number) => now - d * 864e5;
+    const add = (at: number, install: string, kind: string, day: number, data: unknown = {}) =>
+      env.DB.prepare("INSERT INTO stats (at, install, kind, day, towers, v, lang, data) VALUES (?, ?, ?, ?, 0, '', 'en', ?)").bind(at, install, kind, day, JSON.stringify(data)).run();
+    for (const i of ["a", "b", "c"]) await add(ago(10), i, "open", 0);
+    await add(ago(9), "a", "open", 1); await add(ago(9), "b", "open", 1); await add(ago(3), "a", "open", 7);
+    await add(ago(10), "a", "event", 0, { name: "first_tower_completed" });
+    await add(ago(10), "b", "event", 0, { name: "first_tower_completed" });
+    await add(ago(9), "a", "event", 1, { name: "purchase_done", pack: "starter" });
+    await add(ago(9), "b", "event", 1, { name: "purchase_done", pack: "starter", test: true });
+    await add(ago(9), "c", "event", 1, { name: "ad_watched", where: "welcome" });
+    const r = await get("studio-key", e);
+    expect(r.status).toBe(200);
+    expect(r.body.day1).toEqual({ cohort: 3, returned: 2, percent: 66.7 });
+    expect(r.body.day7).toEqual({ cohort: 3, returned: 1, percent: 33.3 });
+    expect(r.body.steps).toContainEqual({ step: "first_tower_completed", installs: 2 });
+    expect(r.body.purchases).toEqual([{ pack: "starter", n: 1 }]); // test purchases left out
+    expect(r.body.ads).toEqual([{ place: "welcome", n: 1 }]);
+  });
 });
 
 describe("friends' cities", () => {

@@ -1181,6 +1181,8 @@ export const DE: Record<string, string> = {
   "Crystal speed-ups left today: {n} of {max}": "Kristall-Booster heute übrig: {n} von {max}",
   "Double it · 💎 {n}": "Verdoppeln · 💎 {n}",
   "Double it": "Verdoppeln",
+  "▶ Watch an ad to double it": "▶ Werbung ansehen und verdoppeln",
+  "Doubled! +{n}": "Verdoppelt! +{n}",
   "No more speed-ups today. Come back tomorrow!": "Heute keine Booster mehr. Komm morgen wieder!",
   "Time warp: 1 hour": "Zeitsprung: 1 Stunde",
   "Time warp: 8 hours": "Zeitsprung: 8 Stunden",

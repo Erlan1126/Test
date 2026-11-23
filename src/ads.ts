@@ -1,9 +1,12 @@
 // Optional rewarded ads: the player chooses to watch a short ad for a reward (doubling a
-// tower's stars). Nothing is ever shown without a tap, and there are no other ads.
+// tower's stars, or doubling what the city earned while away). Nothing is ever shown
+// without a tap, and there are no other ads.
 //
 // The ad network itself (Google AdMob) plugs in here once its account exists: a provider
 // that can say whether an ad is loaded and show it. Until then `adsReady()` is false and
 // the game hides every ad button, so this costs nothing.
+
+import { track } from "./stats";
 
 export interface AdProvider {
   /** An ad is loaded and can be shown right away. */
@@ -29,10 +32,11 @@ function watched(): { day: number; n: number } {
 export const adsReady = (): boolean => !!provider?.ready() && watched().n < ADS_PER_DAY;
 
 /** Shows a rewarded ad. True when the player earned the reward. */
-export async function showRewarded(): Promise<boolean> {
+export async function showRewarded(where: string): Promise<boolean> {
   if (!adsReady()) return false;
   let ok = false;
   try { ok = await provider!.show(); } catch { ok = false; }
+  track(ok ? "ad_watched" : "ad_skipped", { where }, false);
   if (ok) { const w = watched(); try { localStorage.setItem(KEY, JSON.stringify({ day: w.day, n: w.n + 1 })); } catch { /* private mode */ } }
   return ok;
 }

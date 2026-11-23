@@ -14,6 +14,7 @@
 // counted once (the server skips ids it already has).
 import { SERVER_URL } from "./data/server";
 import type { RunSummary } from "./logic/types";
+import { EDITION } from "./edition";
 
 const KEY = "skyrise.stats";
 const QUEUE_KEY = "skyrise.stats.queue";
@@ -125,7 +126,7 @@ export async function flushStats(lang: string): Promise<void> {
     const res = await fetch(`${SERVER_URL.replace(/\/$/, "")}/stats`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: l.id, v: version, lang, items }),
+      body: JSON.stringify({ id: l.id, v: EDITION === "full" ? version : `${EDITION}-${version}`, lang, items }),
     });
     if (!res.ok) throw new Error(String(res.status));
     // Sent: forget them (only now, so closing the app mid-send loses nothing).

@@ -17,7 +17,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow, adDoubleAway,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -26,6 +26,7 @@ import { $, closeModal, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, 
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
 import { track } from "../stats";
+import { adsReady, showRewarded } from "../ads";
 import { claimTerrace, FLOWER_WIDE, PLAY_FLOORS, projectsOpen, seatingNeed, WIDE_SHARE, type ProjectId } from "../logic/cafe";
 import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
@@ -2606,6 +2607,24 @@ export class TycoonUI {
     x3.textContent = t("Double it · 💎 {n}", { n: price });
     x3.hidden = speedupsLeft(this.save) <= 0;
     let paid = false;
+    // Or free, for a short optional ad (when ads are set up and today's limit isn't reached).
+    const ad = $<HTMLButtonElement>("welcome-ad");
+    ad.hidden = !adsReady();
+    ad.disabled = false;
+    ad.onclick = async () => {
+      if (paid || ad.disabled) return;
+      ad.disabled = true;
+      this.host.sound.duck(true);
+      const ok = await showRewarded("welcome");
+      this.host.sound.duck(false);
+      ad.disabled = false;
+      if (!ok) { toast(t("No reward this time. Try again later.")); return; }
+      if (paid || !adDoubleAway(this.save, earned)) return;
+      paid = true;
+      this.host.sound.purchase(); fireworks(3);
+      toast(t("Doubled! +{n}", { n: coins(earned) }));
+      this.close();
+    };
     x3.onclick = () => {
       if (paid) return;
       if (this.save.crystals < price) { toast(t("You need {n} more Sky Crystals", { n: price - this.save.crystals })); return; }

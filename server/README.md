@@ -91,3 +91,10 @@ To turn it on, when you decide to release it:
 2. Deploy the worker again, the same way as in Part 1.
 
 Nothing else changes for players who haven't updated.
+
+## The studio report (optional)
+`npx wrangler secret put STATS_KEY` with a long password only the studio knows, then
+`npx wrangler deploy`. Read it with
+`curl -H "x-stats-key: YOUR-PASSWORD" https://<your worker>/stats/report?days=30`:
+new installs, day-1 and day-7 returns, first-session steps, purchases per pack and ads
+watched per spot. Without the secret the address answers "not found". (See docs/GROWTH_PLAN.md.)

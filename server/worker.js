@@ -52,7 +52,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/city", "/spire"].includes(url.pathname)
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/spire"].includes(url.pathname)
       || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
@@ -338,6 +338,31 @@ async function rankings(request, url, env, now) {
     if (stmts.length) await db.batch(stmts);
     if (Math.random() < 0.01) await db.prepare("DELETE FROM stats WHERE id <= (SELECT MAX(id) - 300000 FROM stats)").run();
     return json({ ok: true });
+  }
+
+  // The studio's numbers from the anonymous stats: do new players come back (day 1, day 7),
+  // how far they get in their first steps, and what they buy and watch. Only with the
+  // studio's key (set it with: npx wrangler secret put STATS_KEY); without one it's off.
+  if (url.pathname === "/stats/report" && request.method === "GET") {
+    const key = env.STATS_KEY, given = request.headers.get("x-stats-key") ?? "";
+    if (!key || given.length !== key.length || !(await sha256(given) === await sha256(key))) return json({ error: "not found" }, 404);
+    const days = Math.max(1, Math.min(90, Number(url.searchParams.get("days")) || 30));
+    const since = now - days * 864e5;
+    const first = (n) => db.prepare("SELECT COUNT(DISTINCT install) AS n FROM stats WHERE kind = 'open' AND day = 0 AND at >= ? AND at < ?").bind(since, now - n * 864e5).first().then(r => Number(r?.n) || 0);
+    const back = (n) => db.prepare("SELECT COUNT(DISTINCT s.install) AS n FROM stats s WHERE s.kind = 'open' AND s.day = ? AND s.install IN (SELECT install FROM stats WHERE kind = 'open' AND day = 0 AND at >= ? AND at < ?)").bind(n, since, now - n * 864e5).first().then(r => Number(r?.n) || 0);
+    const [c1, r1, c7, r7] = await Promise.all([first(1), back(1), first(7), back(7)]);
+    const rows = async (sql, ...b) => (await db.prepare(sql).bind(...b).all()).results ?? [];
+    const steps = await rows("SELECT json_extract(data, '$.name') AS step, COUNT(DISTINCT install) AS installs FROM stats WHERE kind = 'event' AND at >= ? GROUP BY step ORDER BY installs DESC LIMIT 60", since);
+    const buys = await rows("SELECT json_extract(data, '$.pack') AS pack, COUNT(*) AS n FROM stats WHERE kind = 'event' AND json_extract(data, '$.name') = 'purchase_done' AND json_extract(data, '$.test') IS NOT 1 AND at >= ? GROUP BY pack ORDER BY n DESC", since);
+    const ads = await rows("SELECT json_extract(data, '$.where') AS place, COUNT(*) AS n FROM stats WHERE kind = 'event' AND json_extract(data, '$.name') = 'ad_watched' AND at >= ? GROUP BY place ORDER BY n DESC", since);
+    const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
+    return json({
+      days,
+      newInstalls: c1,
+      day1: { cohort: c1, returned: r1, percent: pct(r1, c1) },
+      day7: { cohort: c7, returned: r7, percent: pct(r7, c7) },
+      steps, purchases: buys, ads,
+    });
   }
 
   if (url.pathname === "/runs" && request.method === "POST") {

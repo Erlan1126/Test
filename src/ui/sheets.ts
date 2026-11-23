@@ -1,4 +1,5 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
+import { track } from "../stats";
 import { GUIDE } from "../data/guide";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
@@ -279,6 +280,8 @@ export class Sheets {
     this.seen("shop");
     this.seen("skins");
     this.renderShop();
+    track("shop_opened", { tab });
+    track("shop_visit", { tab }, false);
     showTab($("shop"), tab);
     openModal($("shop"));
     // (Always from the top, so the first card is in view.)

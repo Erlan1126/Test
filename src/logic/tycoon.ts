@@ -524,6 +524,13 @@ export function doubleAway(s: SaveData, earned: number, awayMs: number, now = Da
   return true;
 }
 
+/** Doubles the welcome-back coins after a rewarded ad (free; the ad's daily limit applies). */
+export function adDoubleAway(s: SaveData, earned: number): boolean {
+  if (!(earned > 0)) return false;
+  earn(s, earned);
+  return true;
+}
+
 // ---------- Company goals: three a day ----------
 
 /** Goal kinds with three sizes; each pays stars by size, all three a crystal bonus. */

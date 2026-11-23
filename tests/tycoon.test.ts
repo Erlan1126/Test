@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
 import { BUSINESSES, coins, ERA_SCALE } from "../src/data/tycoon";
-import { doubleAway, doublePrice, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
+import { adDoubleAway, doubleAway, doublePrice, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
 import { affordable, buyLevels, freeFloors, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
 
 const T0 = 1_800_000_000_000;
@@ -105,6 +105,17 @@ describe("Skyhaven Tycoon", () => {
     expect(speedupsLeft(s, T0)).toBe(0);
     expect(speedupsLeft(s, T0 + 86400e3)).toBe(3);
     expect(timeWarp(s, 1, T0 + 86400e3)).toBeGreaterThan(0);
+  });
+
+  it("a rewarded ad doubles the welcome-back coins for free, without using a speed-up", () => {
+    const s = defaultSave();
+    const before = s.tycoon.coins, crystals = s.crystals, left = speedupsLeft(s, T0);
+    expect(adDoubleAway(s, 500)).toBe(true);
+    expect(s.tycoon.coins).toBe(before + 500);
+    expect(s.crystals).toBe(crystals);
+    expect(speedupsLeft(s, T0)).toBe(left);
+    expect(adDoubleAway(s, 0)).toBe(false);
+    expect(adDoubleAway(s, NaN)).toBe(false);
   });
 
   it("doubling the welcome-back coins costs more the longer you were away", () => {
