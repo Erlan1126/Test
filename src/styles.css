@@ -4137,3 +4137,15 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-labels .tag.bub:not(.sel) .tag-lv { bottom: -7px; padding: 0 4px; font-size: 7.5px; border-width: 1px; }
 #tcy-labels .tag.bub:not(.sel) .badge { top: -6px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; font-size: 8px; }
 #tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale) { margin-bottom: 4px; }
+
+/* ---------- Smooth menus: fade the backdrop in, slide a closing sheet away, crossfade swaps ---------- */
+@keyframes modal-fade { from { opacity: 0; } }
+@keyframes sheet-out { to { transform: translateY(105%); } }
+@keyframes modal-out { to { opacity: 0; } }
+@keyframes sheet-swap { from { opacity: 0; transform: translateY(10px) scale(0.99); } }
+.modal:not([hidden]) { animation: modal-fade 0.2s ease-out; }
+.modal.modal-swap:not([hidden]) { animation: none; }
+.modal.modal-swap .sheet { animation: sheet-swap 0.18s ease-out; }
+.modal-ghost { pointer-events: none; animation: modal-out 0.24s ease-in forwards; z-index: 6; }
+.modal-ghost .sheet { animation: sheet-out 0.24s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; }
+@media (prefers-reduced-motion: reduce) { .modal:not([hidden]), .modal .sheet, .modal.modal-swap .sheet { animation: none; } }

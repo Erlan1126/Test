@@ -2871,8 +2871,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const col = mats.c(c1, 0.55);
     if (lot.state === "lease") {
       K(roundSlab(4.2, 4.2, 1.6, 0.06), plazaM);
-      // For lease: an empty lot, a little fence and a board in the business's color.
-      K(new THREE.BoxGeometry(3.4, 0.03, 3.4).translate(0, 0.08, 0), grass2);
+      // For lease: an empty lot (paved in the district's own stone, not a patch of lawn that
+      // looked out of place on the clouds and in orbit), a little fence and a board in the
+      // business's color.
+      K(new THREE.BoxGeometry(3.4, 0.03, 3.4).translate(0, 0.08, 0), stone);
       for (const [fx, fz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) K(new THREE.BoxGeometry(0.1, 0.4, 0.1).translate(fx, 0.25, fz), wood);
       K(new THREE.BoxGeometry(0.08, 1.2, 0.08).translate(0, 0.6, 1.2), metal);
       K(new THREE.BoxGeometry(1.4, 0.7, 0.08).translate(0, 1.3, 1.2), col);
@@ -3632,7 +3634,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       } else if (theme === "cloud") {
         const rainbow = new THREE.Group(), cols = ["#ff5f6d", "#ff9a4a", "#ffd23a", "#5ee0a0", "#4f8bff", "#9a6cff"];
         cols.forEach((c5, i5) => rainbow.add(new THREE.Mesh(new THREE.TorusGeometry(DIST_H * 0.95 - i5 * 0.45, 0.24, 6, 48, Math.PI), own(new THREE.MeshBasicMaterial({ color: c5, transparent: true, opacity: 0.55, depthWrite: false })))));
-        rainbow.rotation.y = Math.atan2(ux, uz) + Math.PI / 2;
+        // (Turned to face the town's camera, so it reads as an arch over the island and never
+        // edge-on as a thin line.)
+        rainbow.rotation.y = Math.PI / 4;
         rainbow.position.y = -1.5;
         for (const sd of [-1, 1]) rainbow.add(new THREE.Mesh(new THREE.SphereGeometry(2.0, 10, 8).scale(1.5, 0.7, 1.5).translate(sd * (DIST_H * 0.95 - 1.1), 0.3, 0), m2("#ffffff", 1, 0)));
         G.add(rainbow);

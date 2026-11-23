@@ -41,16 +41,42 @@ export function toast(msg: string): void {
 // Modal sheets remember what opened them so focus goes back there on close.
 const openers = new Map<HTMLElement, Element | null>();
 
+// Menus come and go smoothly: a closing sheet slides away (a copy of it, so the game sees it
+// closed at once), and going from one menu straight to another crossfades instead of
+// dropping one and sliding the other up.
+let lastClose = 0, ghost: HTMLElement | null = null;
+const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+function ghostOut(el: HTMLElement): void {
+  if (reduced() || typeof document === "undefined") return;
+  ghost?.remove();
+  const g = el.cloneNode(true) as HTMLElement;
+  g.removeAttribute("id");
+  g.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
+  g.classList.add("modal-ghost");
+  g.setAttribute("aria-hidden", "true");
+  const sheet = el.querySelector<HTMLElement>(".sheet"), gs = g.querySelector<HTMLElement>(".sheet");
+  if (sheet && gs) gs.scrollTop = sheet.scrollTop;
+  el.parentElement?.appendChild(g);
+  if (gs && sheet) gs.scrollTop = sheet.scrollTop;
+  ghost = g;
+  window.setTimeout(() => { g.remove(); if (ghost === g) ghost = null; }, 260);
+}
+
 export function openModal(el: HTMLElement, focusEl?: HTMLElement | null): void {
   if (el.hidden) {
     openers.set(el, document.activeElement);
     window.dispatchEvent(new Event("skyrise:sheet"));
+    // (Straight from another menu: swap in place, no second slide.)
+    const swap = performance.now() - lastClose < 80;
+    el.classList.toggle("modal-swap", swap);
+    if (swap) { ghost?.remove(); ghost = null; }
   }
   el.hidden = false;
   (focusEl ?? el.querySelector<HTMLElement>(".close-btn"))?.focus();
 }
 
 export function closeModal(el: HTMLElement): void {
+  if (!el.hidden) { ghostOut(el); lastClose = performance.now(); }
   el.hidden = true;
   const opener = openers.get(el);
   openers.delete(el);
