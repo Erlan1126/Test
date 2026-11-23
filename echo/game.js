@@ -611,9 +611,8 @@ document.getElementById("pebbleBtn").addEventListener("pointerdown", e => {
   L.aiming = !L.aiming; aimButton();
   if (L.aiming) setHint("Tap where to throw the pebble", 2.5);
 });
-// Where a point on the screen is in the cave (the 3D view has its own camera).
+// Where a point on the screen is in the cave.
 function screenToCave(px, py) {
-  if (window.R3D && save.settings.view3d !== false && R3D.toCave) { const w = R3D.toCave(px, py); if (w) return w; }
   return [(px - OX) / TS, (py - OY) / TS];
 }
 function throwPebbleAt(px, py) {

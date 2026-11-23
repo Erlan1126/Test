@@ -1058,17 +1058,10 @@ function frame(now) {
   if (L && L.slowmo > 0) L.slowmo -= dt;
   if (L && (screen === "play" || (screen === "title" && L.demo))) update(L.slowmo > 0 ? dt * 0.3 : dt);
   if (L) stepArtJob(screen === "play" ? 5 : 10);
-  // The 3D view draws the cave and everything in it on its own canvas underneath; this canvas
-  // then only carries the vignette, flashes and fades on top.
   // The run, the title's live run, the city and the films cover the whole screen: draw nothing under them.
-  if (CORE && ["title", "run", "city", "movie"].includes(screen)) { if (!frame.idle) { if (R3D) R3D.show(false); ctx.clearRect(0, 0, W, H); frame.idle = true; } setTimeout(() => requestAnimationFrame(frame), 250); return; }
+  if (CORE && ["title", "run", "city", "movie"].includes(screen)) { if (!frame.idle) { ctx.clearRect(0, 0, W, H); frame.idle = true; } setTimeout(() => requestAnimationFrame(frame), 250); return; }
   frame.idle = false;
-  const in3d = !!(L && R3D && save.settings.view3d !== false);
-  if (R3D) R3D.show(in3d);
-  if (in3d) {
-    R3D.render(dt);
-    ctx.clearRect(0, 0, W, H);
-  } else {
+  {
     drawBackground(dt);
     if (L) { drawCave(); drawThings(); }
     else drawTitle(dt);

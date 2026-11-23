@@ -41,7 +41,7 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  #game, #game3d { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  #game { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
   button {
     font: inherit;
     color: inherit;
@@ -630,7 +630,6 @@
   .run-panel h3 { margin: 4px 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8fa6c8; font-weight: 500; }
 
   /* The title is a live run: Lumi gliding up the glowing cave behind the name. */
-  #runner3d, #titleScreen > #runner3d, #runScreen > #runner3d, #run3d, #titleScreen > #run3d, #runScreen > #run3d { position: absolute !important; inset: 0; width: 100%; height: 100%; display: block; z-index: 0 !important; pointer-events: none; }
   #titleCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
   #titleScreen > :not(#titleCanvas) { position: relative; z-index: 1; }
   #titleScreen { background: none; }
@@ -1202,11 +1201,8 @@
       <div class="set"><label>Joystick size</label><div class="seg" id="setStick"><button data-v="0">Small</button><button data-v="1">Medium</button><button data-v="2">Large</button></div></div>
       </section>
       <section class="set-group"><h3>Look &amp; comfort</h3>
-      <div class="set"><label>3D view<small>The caves in 3D. Turn off for the classic flat view</small></label><button class="toggle" id="setView3d" aria-label="3D view"></button></div>
       <div class="set"><label>Reduce motion<small>No screen shake, flashes or speed streaks</small></label><button class="toggle" id="setCalm" aria-label="Reduce motion"></button></div>
       <div class="set"><label>Show FPS<small>A small frame-rate counter while you play</small></label><button class="toggle" id="setFps" aria-label="Show FPS"></button></div>
-      <div class="set"><label>Smooth mode<small>The full game in fast 2D, with all the details. Turn off for the older 3D view</small></label><button class="toggle" id="setSmooth" aria-label="Smooth mode"></button></div>
-      <div class="set"><label>Full graphics<small>Real-time shadows and full sharpness. Turn off if the game feels slow</small></label><button class="toggle" id="setLighting" aria-label="Lighting"></button></div>
       <div class="set"><label>Large text</label><button class="toggle" id="setBigText" aria-label="Large text"></button></div>
       <div class="set"><label>High contrast<small>Brighter lights with star shapes, outlined creatures</small></label><button class="toggle" id="setContrast" aria-label="High contrast"></button></div>
       <div class="set"><label>Guiding glow<small>Lights, the portal and creatures show a little even before your song finds them</small></label><button class="toggle" id="setGlow" aria-label="Guiding glow"></button></div>
@@ -1237,14 +1233,6 @@
 <script src="echo/game.js"></script>
 <script src="echo/mobs.js"></script>
 <script src="echo/draw.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="echo/r3d.js"></script>
 <script src="echo/story.js"></script>
 <script src="echo/movie.js"></script>
 <script src="echo/meta.js"></script>

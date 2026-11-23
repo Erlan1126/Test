@@ -50,11 +50,9 @@ function startRun(opts = {}) {
     lights: 0, freed: 0, songs: 0, hitAt: 0, trails: 0, songCd: 0, rings: [], items: [], parts: [], trail: [],
     next: 260, note: 0, biome: 0, banner: 1.5, flash: 0, t: 0, mult: r.mult, paused: false, nohit: true,
   };
-  // The 3D runner when the phone can draw it (runner.js); the classic flight otherwise.
   // A stage: a fixed course (same seed every time), a ghost to race.
   if (opts.stage != null && typeof stageInfo === "function") { const si = stageInfo(opts.stage); Object.assign(run, { stage: opts.stage, stageInfo: si, rng: seeded(si.seed), seed: si.seed, ghostTrace: opts.ghost || null, ghostLabel: opts.ghostLabel || "", raceTime: opts.raceTime || 0 }); }
-  const can3 = typeof swingSmooth === "function" && swingSmooth() || (typeof runner3D === "function" && runner3D());
-  if (!(save.set && save.set.classic) && typeof runnerStart === "function" && can3) runnerStart(run);
+  if (!(save.set && save.set.classic)) runnerStart(run);
   if (opts.attract) { run.hearts = 1e9; return run; }
   if (!r.tutDone && !daily) run.tut = 1;
   if (run.hard) run.hearts = 1;
@@ -652,24 +650,11 @@ function runDraw(ctx, W, H) {
   const w1 = runWorld(wb), w2 = runWorld(wb2), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
   const rim = neon, rock = tower, deep = mixC(w1.sky[0], w2.sky[0], f);
-  // The 3D city when the phone can draw it (run3d.js); the flat city otherwise.
   const pal = { night, tower, winC, neon, neon2, rain: f < 0.5 ? w1.rain : w2.rain, sky: [mixC(w1.sky[0], w2.sky[0], f), mixC(w1.sky[1], w2.sky[1], f), mixC(w1.sky[2], w2.sky[2], f)] };
   if (R.mode3 && R.ev && R.ev.kind === "blackout") Object.assign(pal, { night: 1, blackout: true, sky: [[3, 4, 9], [7, 9, 16], [12, 14, 24]] });
-  const smooth = R.mode3 && typeof swingSmooth === "function" && swingSmooth();
-  if (smooth && typeof RUNNER3D_ !== "undefined" && RUNNER3D_) RUNNER3D_.hide();
-  const R3 = R.mode3 && !smooth && typeof runner3D === "function" ? runner3D() : null;
-  const proj = smooth ? SW2D.draw(ctx, W, H, pal) : R3 ? R3.draw(ctx, W, H, pal) : !R.mode3 && typeof RUN3D !== "undefined" && RUN3D && !(save.set && save.set.flat) ? RUN3D.draw(ctx, W, H, pal) : null;
-  if (typeof RUN3D !== "undefined" && RUN3D && (R.mode3 || !proj)) RUN3D.hide();
-  if (!R.mode3 && typeof RUNNER3D_ !== "undefined" && RUNNER3D_) RUNNER3D_.hide();
-  const R3o = smooth ? SW2D : R3;
+  const smooth = !!R.mode3;
+  const proj = smooth ? SW2D.draw(ctx, W, H, pal) : null;
   if (R.mode3 && !proj) { ctx.fillStyle = "#0b0d14"; ctx.fillRect(0, 0, W, H); return; }
-  // The swing's overlay layer is left alone when there's nothing on it (cheaper on phones).
-  if (R.mode3 && proj && !smooth) {
-    const a0 = R.scrAim, offA = a0 && !R.attract && (a0[0] < 16 || a0[0] > W - 16 || a0[1] < 16 || a0[1] > H - 16);
-    const need = R.msgs.length || (R.pops && R.pops.length) || R.perfT > 0 || (R.banner > 0 && !R.attract) || R.tutText || R.flash !== 0 || (R.od > 0 && !R.attract) || offA || (!R.attract && R.scrDark != null && R.scrDark > -W * 0.6) || R.over;
-    if (!need) { if (!R.ovClear) { ctx.clearRect(0, 0, W, H); R.ovClear = true; } return; }
-    R.ovClear = false;
-  }
   if (proj) { if (!smooth) ctx.clearRect(0, 0, W, H); } else {
   // The sky.
   const sky = ctx.createLinearGradient(0, 0, 0, H);
@@ -947,7 +932,7 @@ function runDraw(ctx, W, H) {
   }
   ctx.restore();
   }
-  const P2 = proj || ((x, at) => [W / 2 + (x - 200 - camX) * S, (LY - (at - R.dist)) * S]), pxU = proj ? (R3o || RUN3D).pxU : S;
+  const P2 = proj || ((x, at) => [W / 2 + (x - 200 - camX) * S, (LY - (at - R.dist)) * S]), pxU = proj ? SW2D.pxU : S;
   // The Hunter: a vast shadow rising behind Lumi, closer as the gap closes.
   if (R.event && R.event.kind === "hunter") {
     const gy = H * (1.15 - (1 - R.hunterGap) * 0.42), gx = W / 2 + Math.sin(t * 0.8) * W * 0.1;
@@ -1062,10 +1047,10 @@ function smoothCanvas(c, on) {
   c.style.opacity = on ? "0" : "";
   return on ? sc : c;
 }
-const canvasD = () => Math.min(run && run.mode3 && typeof swingSmooth === "function" && swingSmooth() ? pace.d2 : run && run.mode3 ? 1.5 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1);
+const canvasD = () => Math.min(run && run.mode3 ? pace.d2 : modestPhone ? 1.25 : 1.75, window.devicePixelRatio || 1);
 function runLoop(now) {
   if (!run || screen !== "run") { runLoop.on = false; return; }
-  const c0 = $("runCanvas"), smoothNow = !!(run.mode3 && typeof swingSmooth === "function" && swingSmooth()), c = smoothCanvas(c0, smoothNow), d = canvasD(), W = c0.clientWidth, H = c0.clientHeight;
+  const c0 = $("runCanvas"), smoothNow = !!run.mode3, c = smoothCanvas(c0, smoothNow), d = canvasD(), W = c0.clientWidth, H = c0.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   if (!run.paused) runUpdate(dt * (run.slow || 1));
@@ -1073,7 +1058,7 @@ function runLoop(now) {
   // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
   if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
   // The best moment of the run, kept as a picture to share (2D view only: it has everything on one canvas).
-  if (run && run.wantShot) { run.wantShot = false; if (typeof swingSmooth === "function" && swingSmooth()) { const t0 = performance.now(); try { run.moment = c.toDataURL("image/jpeg", 0.72); } catch (e) {} run.shotAt = run.t; } }
+  if (run && run.wantShot) { run.wantShot = false; if (run.mode3) { const t0 = performance.now(); try { run.moment = c.toDataURL("image/jpeg", 0.72); } catch (e) {} run.shotAt = run.t; } }
   requestAnimationFrame(runLoop);
 }
 
@@ -1141,7 +1126,7 @@ function startTitleRun() {
 function titleLoop(now) {
   titleRaf = 0;
   if (screen !== "title" || !titleRun) return;
-  const c0 = $("titleCanvas"), sm = typeof swingSmooth === "function" && swingSmooth() && titleRun.mode3, c = smoothCanvas(c0, sm), d = Math.min(sm ? pace.d2 : modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c0.clientWidth, H = c0.clientHeight;
+  const c0 = $("titleCanvas"), sm = !!titleRun.mode3, c = smoothCanvas(c0, sm), d = Math.min(sm ? pace.d2 : modestPhone ? 1.25 : 1.5, window.devicePixelRatio || 1), W = c0.clientWidth, H = c0.clientHeight;
   paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   if (W && c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const keep = run; run = titleRun;

@@ -1,17 +1,8 @@
-// Smooth mode: the swing drawn in fast 2D on the run canvas, no WebGL at all. Everything that
-// would be expensive is drawn once into small images (buildings, glows, smoke) and then only
-// copied each frame, so phones keep a steady 60 fps. It reads the same game state as the 3D view
-// (swing.js) and gives the overlay the same screen positions. Default on phones; Settings can
-// switch to the full 3D view.
+// The swing drawn in fast 2D on the run canvas, no WebGL at all. Everything that would be
+// expensive is drawn once into small images (buildings, glows, smoke) and then only copied each
+// frame, so phones keep a steady 60 fps. It reads the game state (swing.js) and gives the
+// overlay in run.js the screen positions it needs.
 "use strict";
-
-const swingSmooth = () => {
-  const st = save.settings || {};
-  // The 2D view is the full game everywhere now (homes, district mechanics, all the detail);
-  // the 3D view stays as an option in Settings.
-  if (st.smooth != null) return !!st.smooth;
-  return true;
-};
 
 const SW2D = (() => {
   const mk = (w, h, paint) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); paint(c.getContext("2d"), c.width, c.height); return c; };
