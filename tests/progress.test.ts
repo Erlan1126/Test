@@ -187,8 +187,9 @@ describe("Mayor Pip's chapters", () => {
   });
   it("follow the town ranks: each chapter ends at the next rank", async () => {
     const { RANKS } = await import("../src/data/ranks");
-    expect(CHAPTERS.length).toBe(RANKS.length - 1);
-    CHAPTERS.forEach((c, i) => expect(c.goals.at(-1)!.need).toBe(RANKS[i + 1].at));
+    // (Every rank is a chapter's business-levels goal, in order; the districts' chapters come between.)
+    const at = CHAPTERS.flatMap(c => c.goals.filter(g => g.kind === "levels").map(g => g.need));
+    expect(at).toEqual(RANKS.slice(1).map(r => r.at));
   });
   it("moves old story progress over without paying again", () => {
     const s = freshSave();

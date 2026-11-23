@@ -1,6 +1,6 @@
 // The Tycoon screens: the business list (tap to run, buy levels, hire managers), boosts,
 // the New Era, the live card on the home screen and the "while you were away" welcome.
-import { CHAPTERS, chapterIndex, chapterReady } from "../data/chapters";
+import { CHAPTERS, chapterIndex, chapterReady, goalDone } from "../data/chapters";
 import { decorMult } from "../logic/decor";
 import { DECOR_BONUS } from "../data/decor";
 import { RANK_BONUS, RANKS } from "../data/ranks";
@@ -808,6 +808,56 @@ export class TycoonUI {
     return { steps, done };
   }
 
+  /** The Next step card's heading: the City Plan chapter it belongs to, with a dot per goal. */
+  private planLabel(): string {
+    const s = this.save, ci = chapterIndex(s), ch = CHAPTERS[ci];
+    if (!ch) return esc(t("Next step"));
+    return `${esc(t("City Plan {n}/{total} · {title}", { n: ci + 1, total: CHAPTERS.length, title: t(ch.title) }))}<span class="first-dots">${ch.goals.map(g => `<i class="${goalDone(s, g) ? "ok" : ""}"></i>`).join("")}</span>`;
+  }
+
+  /** The step toward the current chapter's first unfinished goal, when there's one to take. */
+  private planStep(select: (id: string) => () => void): { text: string; sub: string; pct?: number; tone: string; act: () => void } | null {
+    const s = this.save, ty = s.tycoon, ch = CHAPTERS[chapterIndex(s)];
+    if (!ch || chapterReady(s)) return null;
+    const g = ch.goals.find(x => !goalDone(s, x));
+    if (!g) return null;
+    const play = () => { this.leave(); this.host.play("classic"); };
+    switch (g.kind) {
+      case "towers": return { text: t("Build a tower"), sub: t("{n} of {total} towers for this chapter", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: g.have(s) / g.need, tone: "grow", act: play };
+      case "height": return { text: t("Build a tower {n} m tall", { n: fmt(g.need) }), sub: t("Your best so far: {n} m", { n: fmt(Math.floor(g.have(s))) }), pct: Math.min(1, g.have(s) / g.need), tone: "grow", act: play };
+      case "land": {
+        const l = LAND.find(x => x.id === g.land), sale = landOnSale(s);
+        if (!l || !sale || sale.id !== l.id) return null;
+        const lp = landPrice(s, l);
+        return ty.coins >= lp
+          ? { text: t("Buy the {name}!", { name: t(l.name) }), sub: t(l.what), pct: 1, tone: "gift", act: () => this.openLand() }
+          : { text: t("Save {n} for the {name}", { n: coins(lp), name: t(l.name) }), sub: t(l.what), pct: Math.min(1, ty.coins / lp), tone: "save", act: () => this.openLand() };
+      }
+      case "landOpen": {
+        if (!g.land || !s.land.includes(g.land)) return null;
+        const i = BUSINESSES.findIndex((b, k) => b.land === g.land && levelOf(s, b.id) === 0 && unlockedBusiness(s, k));
+        if (i < 0) return null;
+        const b = BUSINESSES[i], price = costOf(b, 0, 1);
+        return ty.coins >= price
+          ? { text: t("Open the {name}!", { name: t(b.name) }), sub: t("{n} of {total} open in this district", { n: fmt(g.have(s)), total: fmt(g.need) }), tone: "go", act: select(b.id) }
+          : { text: t("Save {n} to open the {name}", { n: coins(price), name: t(b.name) }), sub: t("{n} of {total} open in this district", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: Math.min(1, ty.coins / price), tone: "save", act: select(b.id) };
+      }
+      case "projects": return projectsOpen(s.cafe) ? { text: t("Choose your block's next project"), sub: t(g.text, { n: fmt(g.need) }), tone: "grow", act: () => this.openBuild() } : null;
+      case "grown": {
+        const b = BUSINESSES.find(x => readyStage(s, x.id));
+        if (!b) return null;
+        const st = readyStage(s, b.id);
+        return { text: t("Build the {name} HQ", { name: t(stageName(b.id, st)) }), sub: this.hqSub(b.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(b.id); } };
+      }
+      case "managers": {
+        const b = BUSINESSES.find(x => levelOf(s, x.id) > 0 && !ty.managers.includes(x.id));
+        if (!b) return null;
+        return { text: t("Hire a manager for {name}", { name: t(stageName(b.id, stageNow(s, b.id))) }), sub: t("{n} of {total} managers for this chapter", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: Math.min(1, ty.coins / b.manager), tone: ty.coins >= b.manager ? "go" : "save", act: select(b.id) };
+      }
+      default: return null;
+    }
+  }
+
   private nextStep(): { text: string; sub: string; pct?: number; tone: string; act: () => void } {
     const s = this.save, ty = s.tycoon, live = this.liveState();
     const nameOf = (id: string) => t(stageName(id, stageNow(s, id)));
@@ -841,6 +891,10 @@ export class TycoonUI {
     if (live.vip) return { text: t("A VIP is at {name}!", { name: nameOf(live.vip) }), sub: t("Tap them for a big tip"), tone: "hot", act: select(live.vip) };
     if (live.critic) return { text: t("A food critic is at {name}!", { name: nameOf(live.critic) }), sub: t("Serve them for a five-star review"), tone: "hot", act: select(live.critic) };
     if (live.power) return { text: t("Power cut at {name}!", { name: nameOf(live.power) }), sub: t("Tap it to fix the lights"), tone: "hot", act: select(live.power) };
+    // The City Plan: the chapter's next goal leads (the town's main path), when it's
+    // something to go and do; business levels fall through to the steps below.
+    const plan = this.planStep(select);
+    if (plan) return plan;
     // Every other little while, the bigger goals get their turn before the HQ: the next
     // island (when it's affordable, or close), or a building to grow.
     if (Math.floor(Date.now() / 15000) % 2 === 1) {
@@ -964,7 +1018,7 @@ export class TycoonUI {
     this.nextAct = n.act;
     const first = this.firstDay();
     this.put($("tcy-next"), `<span class="next-ico">${n.tone === "learn" ? COACH_FACE : n.tone === "gift" ? "🎁" : n.tone === "hot" ? "⚡" : n.tone === "grow" ? "🏗️" : n.tone === "save" ? "💰" : "✨"}</span>
-      <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : esc(t("Next step"))}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
+      <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : this.planLabel()}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
     $("tcy-next").className = `tcy-next tone-${n.tone}`;
     // (Hidden while the neighbor arrives: the Skip button sits there.)
     $("tcy-next").hidden = !!this.selected || !!this.selectedProp || this.story.stage === "arrive";

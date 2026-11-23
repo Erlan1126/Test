@@ -75,8 +75,15 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
 
 const num = (n: number) => (n >= 1e6 ? coins(n) : fmt(n));
 
+/** The City Plan road: one step per chapter (done, this one, still ahead), and what's next. */
+function planRoad(save: SaveData): string {
+  const i = chapterIndex(save), next = CHAPTERS[i + 1];
+  return `<li class="plan-road"><div>${CHAPTERS.map((c, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}" title="${esc(t(c.title))}"></i>`).join("")}</div>
+    <small>${esc(next ? t("City Plan: chapter {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length, title: t(next.title) }) : t("City Plan: the last chapter!"))}</small></li>`;
+}
+
 function goalsHtml(save: SaveData, c: Chapter): string {
-  return c.goals.map(g => {
+  return planRoad(save) + c.goals.map(g => {
     const done = goalDone(save, g);
     return `<li class="${done ? "done" : ""}"><span>${done ? "✓" : ""}</span>${esc(goalText(g.text, g.need))}
       <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}</em></li>`;

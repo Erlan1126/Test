@@ -1137,7 +1137,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         ch.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) add(m.geometry.clone().applyMatrix4(m.matrixWorld), m.material as THREE.Material); });
         continue;
       }
-      if (h < 0.19 && inside(jx, jz, 0.9)) {
+      if (h < 0 && inside(jx, jz, 0.9)) { // (garden beds: retired, they read as dirt patches)
         // Garden rows: brown beds with green tops.
         const ga = Math.atan2(cx - jx, cz - jz);
         for (let row = 0; row < 3; row++) {
