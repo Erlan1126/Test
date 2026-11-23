@@ -4,6 +4,8 @@ import { BUSINESSES } from "../data/tycoon";
 import * as THREE from "three";
 import { buildModel, type ModelMats } from "./bizmodels";
 import { roofProp } from "./bizcity";
+import { bizEmblem, districtShop } from "./districtbiz";
+import { kitVersion } from "./kitmodels";
 
 let gl: THREE.WebGLRenderer | null = null;
 let failed = false;
@@ -31,7 +33,7 @@ function materials(): ModelMats {
 
 /** A picture (data URL) of a business's building at a stage, or "" if it can't be drawn. */
 export function bizThumb(id: string, stage: number, c1: string, c2: string): string {
-  const key = `${id}|${stage}|${c1}|${c2}`;
+  const key = `${id}|${stage}|${c1}|${c2}|${kitVersion()}`;
   const hit = cache.get(key);
   if (hit !== undefined) return hit;
   if (failed) return "";
@@ -53,7 +55,14 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
     // (A district's business looks like the town business of its kind, in its own colors.)
     const modelId = ["coffee", "flowers", "bakery", "pizza", "cinema", "hotel", "mall", "airport", "casino", "spaceport"].includes(id) ? id
       : ({ dish: "pizza", fire: "pizza", sun: "bakery", coffee: "coffee", leaf: "flowers", balloon: "flowers", gift: "mall", flag: "airport", star: "casino", sparkle: "casino", gem: "casino", film: "cinema", home: "hotel", building: "hotel", cloud: "hotel", globe: "spaceport", rocket: "spaceport" } as Record<string, string>)[BUSINESSES.find(b => b.id === id)?.icon ?? ""] ?? "mall";
-    buildModel(g, modelId, stage, c1, c2, mats, () => roofProp(modelId, new THREE.Color(c1), new THREE.Color(c2)));
+    // (A district's business: its own shop from the model kit with its emblem, once the kit
+    // is loaded; before that, the town business of its kind.)
+    const land = BUSINESSES.find(b => b.id === id)?.land;
+    if (land && kitVersion() > 0) {
+      const top = districtShop(g, id, stage, c1, c2, mats, new THREE.CylinderGeometry(0.01, 0.01, 0.01), mats.c("#efe9df"), mats.c("#d9d2e6", 0.6), mats.leaf, mats.c("#4a4f7a", 0.5, 0.4));
+      // (The emblem, big, crowning the roof: what the business is, at a glance.)
+      const em = bizEmblem(id, c1, c2, mats); em.scale.setScalar(2.0); em.position.set(0, top - 0.05, -0.2); em.rotation.y = 0.35; g.add(em);
+    } else buildModel(g, modelId, stage, c1, c2, mats, () => roofProp(modelId, new THREE.Color(c1), new THREE.Color(c2)));
     // A little round plot of grass and paving under it.
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.7, 0.18, 40).translate(0, -0.09, 0), mats.c("#7fd36a", 0.95)));
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 0.03, 40).translate(0, 0.01, 0.2), mats.c("#efe9df", 0.8)));
@@ -83,3 +92,6 @@ export function bizThumb(id: string, stage: number, c1: string, c2: string): str
     return "";
   }
 }
+
+// (Test hook for the debug build: draws a business's picture on demand.)
+if (typeof location !== "undefined" && location.search.includes("debug")) (globalThis as unknown as { __thumb: unknown }).__thumb = bizThumb;

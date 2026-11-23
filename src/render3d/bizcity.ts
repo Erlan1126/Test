@@ -5,6 +5,7 @@
 // vans drive round, a limousine brings each VIP, a rush hour draws a crowd and a glow, and
 // at night the windows, signs and an empire's searchlight come on.
 import { BUSINESSES } from "../data/tycoon";
+import { districtShop } from "./districtbiz";
 import { kitInstancer, kitPlace, kitPlaceH, kitVersion } from "./kitmodels";
 import * as THREE from "three";
 import { lawnTexture, mergeStatic } from "./world";
@@ -2813,9 +2814,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const bizSpots: Record<number, { x: number; z: number; y: number; top: number }> = {};
   const districtBiz = (lg: THREE.Group, lot: BizLot, bid: string, c1: string, n: number): number => {
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
-    const col = mats.c(c1, 0.55), dark = mats.c(new THREE.Color(c1).multiplyScalar(0.7), 0.6);
-    K(roundSlab(4.2, 4.2, 1.6, 0.06), plazaM);
+    const col = mats.c(c1, 0.55);
     if (lot.state === "lease") {
+      K(roundSlab(4.2, 4.2, 1.6, 0.06), plazaM);
       // For lease: an empty lot, a little fence and a board in the business's color.
       K(new THREE.BoxGeometry(3.4, 0.03, 3.4).translate(0, 0.08, 0), grass2);
       for (const [fx, fz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) K(new THREE.BoxGeometry(0.1, 0.4, 0.1).translate(fx, 0.25, fz), wood);
@@ -2824,20 +2825,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       K(new THREE.BoxGeometry(1.0, 0.14, 0.09).translate(0, 1.32, 1.21), mats.c("#ffffff", 0.5));
       return 1.8;
     }
-    // Open: a shop at first, a bigger building as it grows.
-    const st5 = Math.max(0, Math.min(4, lot.s));
-    const POOLS = [["tt_shop", "tt_shop_2", "tt_shop_3", "tt_cafe", "tt_pub", "tt_pharmacy"], ["tt_supermarket", "tt_shop_2", "tt_bank", "tt_library"], ["tt_hotel", "building_a", "building_c", "tt_apartment_2"], ["building_e", "building_g", "tt_office", "building_b"], ["skyscraper_a", "skyscraper_b", "skyscraper_c", "tt_tower_block"]];
-    let hsh = 0; for (const ch of bid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
-    const pool = POOLS[st5], kp = kitPlace(pool[hsh % pool.length], st5 >= 3 ? 2.8 : 3.0, st5 >= 4 ? 1.2 : 1, hsh % 8);
-    let top = 2.4;
-    if (kp) { kp.obj.position.y = 0.06; lg.add(kp.obj); top = kp.h + 0.1; }
-    else K(new THREE.BoxGeometry(2.6, 1.6 + st5 * 0.8, 2.2).translate(0, 0.8 + st5 * 0.4, -0.2), col);
-    // The business's colors out front: an awning, a sign on a post, and planters.
-    K(new THREE.BoxGeometry(2.4, 0.06, 0.6).rotateX(0.25).translate(0, 0.95, 1.45), col);
-    for (let w = 0; w < 6; w++) K(new THREE.BoxGeometry(0.4, 0.065, 0.62).rotateX(0.25).translate(-1.0 + w * 0.4, 0.955, 1.45), w % 2 ? mats.c("#ffffff", 0.6) : dark);
-    K(new THREE.BoxGeometry(0.07, 1.5, 0.07).translate(1.75, 0.75, 1.75), metal);
-    K(new THREE.BoxGeometry(0.75, 0.5, 0.08).translate(1.75, 1.45, 1.75), col);
-    for (const px of [-1.75, -1.2]) { K(new THREE.CylinderGeometry(0.2, 0.17, 0.25, 10).translate(px, 0.13, 1.8), stone); K(new THREE.IcosahedronGeometry(0.22, 0).translate(px, 0.42, 1.8), leaf); }
+    // Open: a shop at first, a bigger building as it grows, with its emblem.
+    const bz = BUSINESSES.find(b => b.id === bid);
+    const top = districtShop(lg, bid, lot.s, c1, bz?.color[1] ?? c1, mats, roundSlab(4.2, 4.2, 1.6, 0.06), plazaM, stone, leaf, metal, true);
     void n;
     return top;
   };
