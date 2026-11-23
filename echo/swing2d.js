@@ -7,8 +7,10 @@
 
 const swingSmooth = () => {
   const st = save.settings || {};
+  // The 2D view is the full game everywhere now (homes, district mechanics, all the detail);
+  // the 3D view stays as an option in Settings.
   if (st.smooth != null) return !!st.smooth;
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (typeof modestPhone !== "undefined" && modestPhone);
+  return true;
 };
 
 const SW2D = (() => {
@@ -223,6 +225,7 @@ const SW2D = (() => {
       const x = X(a.x), y = Y(a.y + (a.broken ? -(a.fallY = (a.fallY || 0) + 0.3) : 0)); if (x < -40 || x > W + 40) continue;
       const col = a.tree ? [150, 255, 150] : a.type === "gold" ? [255, 210, 90] : a.type === "crumble" ? [255, 122, 61] : a.type === "drift" ? [127, 240, 255] : a.type === "spring" ? [141, 255, 106] : glowRGB, hot = a === best || a === R.teth;
       if (a.broken) { ctx.globalAlpha = 0.5; }
+      if (a.off) { ctx.globalAlpha = 0.25; ctx.strokeStyle = "#8aa0c0"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 0.6 * s, 0, Math.PI * 2); ctx.stroke(); if (Math.sin(t * 40 + a.id) > 0.85) { ctx.globalAlpha = 0.9; ctx.drawImage(glow([200, 230, 255]), x - 0.8 * s, y - 0.8 * s, 1.6 * s, 1.6 * s); } ctx.globalAlpha = 1; continue; }
       // A mast to the roof below, if there is one.
       if (a.sway) { const pvx = X(a.bx), pvy = Y(a.by + 4); ctx.strokeStyle = "rgba(200,170,120,0.55)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(pvx, 0); ctx.lineTo(pvx, pvy); ctx.lineTo(x, y); ctx.stroke(); ctx.fillStyle = "#c9a46a"; ctx.fillRect(pvx - 2, pvy - 2, 4, 4); ctx.fillStyle = "rgba(255,120,60,0.85)"; ctx.beginPath(); ctx.ellipse(x, y + 0.9 * s, 0.55 * s, 0.75 * s, 0, 0, Math.PI * 2); ctx.fill(); }
       const below = a.sway || a.tree ? null : R.blds.find(q => !q.tree && a.x >= q.x0 && a.x <= q.x1); if (below && a.y - below.h < 22) { ctx.strokeStyle = "#2b2f38"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, Y(below.h)); ctx.stroke(); }
@@ -349,12 +352,18 @@ const SW2D = (() => {
       // Their home, just past the finish: a dark window with someone waiting, which lights up warm when you arrive.
       const hx0 = X(R.stageLen + 3), hx1 = X(R.stageLen + 15);
       if (hx1 > -20 && hx0 < W + 20) {
-        const lit = R.cleared ? Math.min(1, (t - (R.clearAt ?? t)) * 2 + 0.25) : 0, top = Y(17), base = Y(0);
+        const lit = R.cleared ? Math.max(0, Math.min(1, (t - (R.clearAt ?? t) - 0.65) * 2.5)) : 0, top = Y(17), base = Y(0);
         ctx.fillStyle = "#151925"; ctx.fillRect(hx0, top, hx1 - hx0, base - top); ctx.fillStyle = "#1e2433"; ctx.fillRect(hx0 - 0.4 * s, top - 0.5 * s, hx1 - hx0 + 0.8 * s, 0.5 * s);
         const wx0 = X(R.stageLen + 6.5), wx1 = X(R.stageLen + 11.5), wy0 = Y(13.5), wy1 = Y(9);
         if (lit > 0) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = lit; ctx.drawImage(glow([255, 200, 120]), wx0 - 4 * s, wy0 - 4 * s, wx1 - wx0 + 8 * s, wy1 - wy0 + 8 * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
         ctx.fillStyle = lit > 0 ? `rgba(255,${190 + 30 * lit},${110 + 40 * lit},${0.35 + 0.65 * lit})` : "#0a0c12"; ctx.fillRect(wx0, wy0, wx1 - wx0, wy1 - wy0);
         ctx.strokeStyle = "#2a3040"; ctx.lineWidth = Math.max(1.5, 0.15 * s); ctx.strokeRect(wx0, wy0, wx1 - wx0, wy1 - wy0); ctx.beginPath(); ctx.moveTo((wx0 + wx1) / 2, wy0); ctx.lineTo((wx0 + wx1) / 2, wy1); ctx.stroke();
+        // Your light flies into their window: a comet along an arc, then a burst as it lands.
+        if (R.cleared && R.clearFrom) { const k = Math.min(1, (t - R.clearAt) / 0.65), e = k * k * (3 - 2 * k), tx2 = R.stageLen + 9, ty2 = 11.25, cx3 = R.clearFrom.x + (tx2 - R.clearFrom.x) * e, cy3 = R.clearFrom.y + (ty2 - R.clearFrom.y) * e + Math.sin(e * Math.PI) * 5;
+          ctx.globalCompositeOperation = "lighter";
+          if (k < 1) { for (let q = 0; q < 8; q++) { const kk = Math.max(0, e - q * 0.035), qx = R.clearFrom.x + (tx2 - R.clearFrom.x) * kk, qy = R.clearFrom.y + (ty2 - R.clearFrom.y) * kk + Math.sin(kk * Math.PI) * 5, z = (2.4 - q * 0.25) * s; ctx.globalAlpha = 1 - q / 8; ctx.drawImage(glow([255, 220, 150]), X(qx) - z / 2, Y(qy) - z / 2, z, z); } }
+          else { const bk = Math.min(1, (t - R.clearAt - 0.65) / 0.5); if (bk < 1) { ctx.globalAlpha = 1 - bk; const z = (3 + bk * 10) * s; ctx.drawImage(glow([255, 230, 170]), X(tx2) - z / 2, Y(ty2) - z / 2, z, z); } }
+          ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
         // The person at the window (waving once the light is back).
         const px2 = X(R.stageLen + 8.2), py2 = wy1; ctx.fillStyle = lit > 0 ? "#3a2a1c" : "rgba(120,130,160,0.35)";
         ctx.beginPath(); ctx.arc(px2, py2 - 2.6 * s, 0.55 * s, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(px2 - 0.6 * s, py2 - 2 * s, 1.2 * s, 2 * s);

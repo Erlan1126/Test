@@ -504,9 +504,9 @@ function renderTitle() {
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
   { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : typeof stagePerson === "function" ? `${stagePerson(0)[0]} waits` : "Today's stage"; }
-  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.best ? `Best ${rs.best.toLocaleString()}` : "All districts, no end"; }
+  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Night shift: light the city"; }
   const we = weekEvent(), sn = streakNow();
-  $("titleMeta").textContent = (typeof homesLit === "function" ? `${homesLit()}/${STAGES_N} homes relit · ` : `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · `) + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
+  $("titleMeta").textContent = (typeof outageDistrict === "function" ? `⚡ Outage week in ${STAGE_CHAPTERS[outageDistrict()]}: ×2 lights · ` : "") + (typeof homesLit === "function" ? `${homesLit()}/${STAGES_N} homes relit · ` : `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · `) + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
   $("playLabel").textContent = "Play";
   if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;

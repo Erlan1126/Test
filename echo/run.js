@@ -66,6 +66,8 @@ function startRun(opts = {}) {
   for (const m of r.missions) m.run = 0;
   mood = MOODS[0];
   musicStart(4242, 2);
+  // Each district has its own groove: key, chords and tempo; Endless keeps the classic.
+  { const dn = run.stageInfo && !run.stageInfo.daily ? Math.min(5, Math.floor((run.stageInfo.n - 1) / 10)) : -1; music.district = [{ base: 110, prog: [0, 5, 2, 6], bpm: 116 }, { base: 146.83, prog: [0, 3, 4, 0], bpm: 108 }, { base: 98, prog: [0, 5, 3, 4], bpm: 100 }, { base: 123.47, prog: [0, 6, 5, 4], bpm: 126 }, { base: 130.81, prog: [0, 4, 5, 3], bpm: 104 }, { base: 110, prog: [0, 2, 5, 6], bpm: 120 }][dn] || null; }
   show("run");
   $("runOver").hidden = true; $("runPause").hidden = true; if ($("stageCard")) $("stageCard").hidden = true;
   runHud();
@@ -127,7 +129,7 @@ function runHit() {
   if (run.hearts <= 0) { if (!run.hard && run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
 function runMission(kind, value) {
-  if (run.attract) return;
+  if (run.attract || run.cleared) return;
   const r = save.run;
   for (const m of r.missions) {
     const def = RUN.missions[m.k];
@@ -190,7 +192,13 @@ function runEnd() {
     $("runOverInfo").textContent = `${runMetres()} m · ✦ ${run.lights} lights · best combo ${run.comboBest}` + (run.friendFound ? ` · found ${run.friendFound}` : "");
     $("runOverTitle").textContent = run.challenge ? (score > run.challenge.score ? "Challenge won" : "Challenge lost") : run.daily ? "Daily run" : run.hard ? "Hard run" : "Run over";
     const dm = dailyMissions();
-    $("runOverDaily").textContent = `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}-day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
+    // Endless is the Night shift: how many windows you lit, and this week's best.
+    if (run.mode3 && !run.stageInfo) {
+      const wk = weekNumber(), ns = r.night && r.night.week === wk ? r.night : (r.night = { week: wk, best: 0 }), lit = run.lit || 0, nb = lit > ns.best; if (nb) ns.best = lit; persist();
+      $("runOverTitle").textContent = "Night shift over"; $("roCombo").textContent = lit; $("roCombo").nextElementSibling.textContent = "windows lit";
+      $("runOverBest").textContent = nb ? "Week's best" : best ? "New best" : `Best ${r.best.toLocaleString()}`;
+    } else if ($("roCombo").nextElementSibling) $("roCombo").nextElementSibling.textContent = "best combo";
+    $("runOverDaily").textContent = (run.mode3 && !run.stageInfo ? `This week's best: ${(r.night || {}).best || 0} windows · ` : "") + `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}-day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
     runMissions($("runOverMissions")); runShop();
     $("runOver").hidden = false;
   }, 900);
