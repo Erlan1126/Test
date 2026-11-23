@@ -117,7 +117,7 @@ function stageClear(R) {
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
   if (typeof seasonGain === "function") seasonGain(Math.round(stars * 15 + R.lights / 2));
   progressEvent("dist", Math.floor(R.px)); persist(); if (typeof checkAchievements === "function") checkAchievements();
-  R.wantShot = true;
+  R.wantShotAt = R.t + 1.3;   // the picture to share: their window lit, them waving
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
   else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
@@ -160,7 +160,8 @@ async function stageShare() {
       const gr = g.createLinearGradient(0, 860, 0, 1280); gr.addColorStop(0, "rgba(6,7,11,0)"); gr.addColorStop(1, "rgba(6,7,11,0.92)"); g.fillStyle = gr; g.fillRect(0, 860, 720, 420);
       g.fillStyle = "#fff"; g.font = "800 64px Inter, system-ui, sans-serif"; g.textAlign = "center"; g.fillText(info.daily ? "Daily stage" : `Stage ${info.n}`, 360, 1080);
       g.fillStyle = "#ffd98a"; g.font = "700 60px Inter, system-ui, sans-serif"; g.fillText(`${starText(R.stageStars || 0)}  ${(R.stageTime || 0).toFixed(1)} s`, 360, 1160);
-      g.fillStyle = "#ffffff"; g.font = "600 30px Inter, system-ui, sans-serif"; g.fillText(`Light brought home to ${stagePerson(info.n)[0]}`, 360, 1010);
+      g.fillStyle = "#ffffff"; g.font = "700 32px Inter, system-ui, sans-serif"; g.fillText(`Light brought home to ${stagePerson(info.n)[0]}`, 360, 990);
+      g.fillStyle = "rgba(255,255,255,0.75)"; g.font = "italic 500 26px Inter, system-ui, sans-serif"; g.fillText(`“${stagePerson(info.n)[1]}”`, 360, 1032, 660);
       g.fillStyle = "#8be9ff"; g.font = "800 34px Inter, system-ui, sans-serif"; g.fillText("LUMEN RUSH", 360, 1230);
       const blob = await new Promise(res => c.toBlob(res, "image/jpeg", 0.85)), file = new File([blob], "lumen-rush.jpg", { type: "image/jpeg" });
       if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: `${text} ${url}` }); return; }

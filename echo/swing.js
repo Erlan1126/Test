@@ -281,6 +281,7 @@ function runnerUpdate(dt) {
   if (R.snap) { R.snap.t += dt; if (R.snap.t > 0.2) R.snap = null; }
   if (R.dust) { R.dust.t += dt; if (R.dust.t > 0.5) R.dust = null; }
   if (R.splash) { R.splash.t += dt; if (R.splash.t > 0.9) R.splash = null; }
+  if (R.wantShotAt && R.t >= R.wantShotAt) { R.wantShotAt = 0; R.wantShot = true; }
   if (R.cleared && !R.chimed && R.clearAt != null && R.t - R.clearAt > 0.65) { R.chimed = true; if (!R.attract) { sfx.home(); buzz([10, 30, 10]); } }
   // Danger: falling toward the street with nothing to grab (it costs a heart from stage 5).
   { const streetHurts = R.stageInfo && (R.stageInfo.daily || R.stageInfo.n >= 5); const tHit = R.vy < 0 ? R.py / -R.vy : 9; R.danger = !R.teth && !R.roof && !R.aimOk && streetHurts && tHit < 0.9 && !swingBldAt(R, R.px + R.vx * tHit) ? Math.min(1, (R.danger || 0) + dt * 5) : Math.max(0, (R.danger || 0) - dt * 4); }
