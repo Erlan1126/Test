@@ -1,7 +1,7 @@
-// Offline support for Skyrise and Echo. Pages load from the network first so updates show up
+// Offline support for Skyrise and Lumen Rush. Pages load from the network first so updates show up
 // right away, and fall back to the saved copy when there is no connection. Both games' files
 // are saved when the service worker installs, so they work offline after the first visit.
-const CACHE = "games-v48";
+const CACHE = "games-v49";
 const CORE = [
   "./",
   "index.html",
@@ -16,19 +16,9 @@ const CORE = [
   "echo-icon-192.png",
   "echo-icon-512.png",
   "echo-apple-touch-icon.png",
-  "echo/levels.js",
+  "echo/core.js",
   "echo/save.js",
   "echo/audio.js",
-  "echo/render.js",
-  "echo/decor.js",
-  "echo/gl.js",
-  "echo/game.js",
-  "echo/mobs.js",
-  "echo/draw.js",
-  "echo/r3d.js",
-  "echo/story.js",
-  "echo/meta.js",
-  "echo/movie.js",
   "echo/city.js",
   "echo/run.js",
   "echo/swing.js",

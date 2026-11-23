@@ -79,9 +79,9 @@ function runnerStart(R) {
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
   // The run starts mid-swing from a first anchor overhead.
   if (R.stageInfo) {
-    R.outage = !R.stageInfo.daily && typeof outageDistrict === "function" && Math.floor((R.stageInfo.n - 1) / 10) === outageDistrict();
+    R.outage = !R.stageInfo.daily && Math.floor((R.stageInfo.n - 1) / 10) === outageDistrict();
     Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
-    const nw = !R.attract && typeof STAGE_NEW !== "undefined" && STAGE_NEW[R.stageInfo.n];
+    const nw = !R.attract && STAGE_NEW[R.stageInfo.n];
     R.banner = 2.6;
     if (nw && !R.tut) runMsg(nw[0], nw[1], 3, true);
     if (R.outage && !R.attract && !R.tut) runMsg("⚡ Outage week", "Some lights flicker out · every light counts double", 2.6, true);
@@ -246,7 +246,6 @@ function swingDash() {
   if (!R.attract) sfx.close();
 }
 // Keep the old swipe entry point harmless.
-function runnerSwipe() {}
 
 function swingHit(R, why) {
   if (R.inv > 0 || R.attract || R.cleared || R.over) { if (R.attract) R.inv = 1; return; }

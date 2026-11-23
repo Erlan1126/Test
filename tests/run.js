@@ -1,17 +1,13 @@
-// Echo test suite. Run from the repository folder with:
+// Lumen Rush test suite. Run from the repository folder with:
 //   npm install   (once, installs Playwright)
 //   npm test
-// It opens echo.html in a headless browser at phone size and checks the levels, the gameplay,
-// every screen, a robot play-through of a sample of levels, random-input "chaos" play, and speed.
-// Add --quick to skip the slow robot and chaos sections, or --all to have the robot play every level.
+// It opens echo.html in a headless browser at phone size and checks the swing, the stages and
+// every screen around them.
 
 const { chromium } = require("playwright");
 const path = require("path");
-const fs = require("fs");
 
 const URL = "file://" + path.resolve(__dirname, "..", "echo.html");
-const QUICK = process.argv.includes("--quick");
-const ALL = process.argv.includes("--all");  // robot plays every level (takes several minutes)
 let passed = 0, failed = 0;
 
 function check(name, ok, detail = "") {
@@ -23,399 +19,19 @@ const section = name => console.log(`\n${name}`);
 
 async function openGame(browser, size = { width: 390, height: 844 }) {
   const page = await browser.newPage({ viewport: size, deviceScaleFactor: 2 });
-  const errors = [];
+  const errors = [], requests = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
+  page.on("request", r => { if (!r.url().startsWith("file:") && !r.url().startsWith("data:") && !/fonts\.(googleapis|gstatic)\.com/.test(r.url())) requests.push(r.url()); });
   await page.goto(URL);
-  // Skip story and picture cards unless a test asks for them, and start from a clean save.
-  await page.evaluate(() => {
-    localStorage.clear();
-    save.stars = []; save.ach = {}; save.story = {}; save.cards = {};
-    for (let w = 0; w < WORLDS; w++) save.story[w] = 1;
-    for (const k in CARDS) save.cards[k] = 1;
-    // The classic flight, unless a test asks for the 3D runner.
-    save.set = { classic: true };
-  });
-  return { page, errors };
+  // Start from a clean save.
+  await page.evaluate(() => localStorage.clear());
+  return { page, errors, requests };
 }
-
-// Runs the game's own update loop many times in one go (no waiting for real time).
-const SIM = `
-  window.__sim = (seconds, each) => {
-    const steps = Math.round(seconds * 60);
-    for (let k = 0; k < steps; k++) {
-      if (each && each(k / 60) === false) return k / 60;
-      if (screen !== "play") return k / 60;
-      update(1 / 60);
-    }
-    return seconds;
-  };
-`;
 
 (async () => {
   const browser = await chromium.launch();
   const t0 = Date.now();
-
-  // ---------------------------------------------------------------- Levels
-  section("Levels");
-  {
-    const { page, errors } = await openGame(browser);
-    const r = await page.evaluate(() => {
-      const bad = [];
-      const one = (lv, i) => {
-        const m = lv.map, R = m.length;
-        const Wd = m[0].length;
-        if (![11, 17].includes(Wd) || m.some(row => row.length !== Wd)) return bad.push(i + ": wrong width");
-        if ([...m[0], ...m[R - 1]].some(c => c !== "#") || m.some(row => row[0] !== "#" || row[Wd - 1] !== "#")) return bad.push(i + ": open border");
-        let S, X;
-        const goals = [];
-        m.forEach((row, y) => [...row].forEach((c, x) => {
-          if (c === "S") S = [x, y];
-          if (c === "E") X = [x, y];
-          if ("omfRl1234".includes(c)) goals.push([x, y]);
-        }));
-        if (!S || !X) return bad.push(i + ": missing start or portal");
-        const seen = new Set([S + ""]), q = [S];
-        while (q.length) {
-          const [x, y] = q.shift();
-          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            const nx = x + dx, ny = y + dy, c = m[ny] && m[ny][nx];
-            if (!c || c === "#" || c === "W" || c === "z" || c === "G" || seen.has(nx + "," + ny)) continue;
-            seen.add(nx + "," + ny); q.push([nx, ny]);
-          }
-        }
-        for (const g of [X, ...goals]) if (!seen.has(g + "")) bad.push(`${i}: ${m[g[1]][g[0]]} at ${g} can't be reached`);
-        if (lv.goal === "rescue" && !m.join("").includes("m")) bad.push(i + ": rescue level without a moth");
-      };
-      for (let i = 0; i < TOTAL; i++) one(getLevel(i), i);
-      one(getLevel(DAILY), "daily");
-      const names = new Set(CORE_LEVELS.map(l => l.name));
-      const flat = i => getLevel(i).map.join("");
-      return {
-        bad, ten: TOTAL === 20 && names.size === 20 && CORE_LEVELS.every(l => l.map.join("").includes("M")),
-        startsGentle: [0, 1, 2].every(i => !/[gB]/.test(flat(i))),
-        hushlingsArrive: /g/.test(flat(3)),
-        stonesAppear: /R/.test(flat(4)),
-        endsWithTheGreatHush: /B/.test(flat(9)) && STORY_FINALE === 9,
-      };
-    });
-    check("the ten caves and the daily cave are well formed and completable", r.bad.length === 0, r.bad.slice(0, 5).join("; "));
-    check("there are twenty handmade caves in two acts, each with its own name and a hidden memory", r.ten);
-    check("the first three caves have no Hushlings", r.startsGentle);
-    check("Hushlings arrive in cave 4", r.hushlingsArrive);
-    check("ring stones arrive in cave 5", r.stonesAppear);
-    check("the last cave is the Great Hush", r.endsWithTheGreatHush);
-    check("no page errors", errors.length === 0, errors[0]);
-    await page.close();
-  }
-
-  // ---------------------------------------------------------------- Gameplay
-  section("Gameplay");
-  {
-    const { page, errors } = await openGame(browser);
-    await page.evaluate(SIM);
-    const g = await page.evaluate(() => {
-      const out = {};
-      startLevel(0, true);
-      const y0 = L.lumi.y;
-      keys.arrowup = true; __sim(0.8); keys.arrowup = false;
-      out.swims = L.lumi.y < y0 - 1.5;
-      out.stops = (__sim(0.4), Math.hypot(L.lumi.vx, L.lumi.vy) < 0.4);
-      Object.assign(L.lumi, { x: L.lights[0].x, y: L.lights[0].y }); __sim(0.1);
-      out.collects = L.got === 1;
-      L.pingCd = 0; ping();
-      out.sings = L.pings === 1 && L.waves.length === 1;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
-      out.finishes = screen === "result" && (save.stars[0] || 0) >= 1;
-      // Tunnel assist: starting half a tile off a narrow opening still gets Lumi through.
-      startLevel(0, true);
-      Object.assign(L.lumi, { x: 4.4, y: 13.5, vx: 0, vy: 0 });
-      keys.arrowup = true; __sim(0.8); keys.arrowup = false;
-      out.tunnelAssist = L.lumi.y < 12.2 && Math.abs(L.lumi.x - 5.5) < 0.3;
-      startLevel(0, true);
-      keys.arrowup = true; keys.shift = true; __sim(0.6); const sneak = Math.hypot(L.lumi.vx, L.lumi.vy); keys.arrowup = false; keys.shift = false;
-      out.shiftSneaksAtHalfSpeed = sneak > 1.5 && sneak < SWIM_MAX * 0.6;
-      return out;
-    });
-    for (const [k, v] of Object.entries(g)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
-    // Joystick with a real pointer: quick to start, instant reversal, tap still sings.
-    await page.evaluate(() => startLevel(0, true));
-    await page.mouse.move(300, 700); await page.mouse.down();
-    await page.mouse.move(300, 660, { steps: 4 });
-    await page.waitForTimeout(150);
-    const v1 = await page.evaluate(() => -L.lumi.vy);
-    await page.mouse.move(300, 760, { steps: 4 });
-    await page.waitForTimeout(200);
-    const v2 = await page.evaluate(() => L.lumi.vy);
-    await page.mouse.up();
-    check("joystick reaches speed quickly", v1 > 3, v1.toFixed(2));
-    check("joystick reverses quickly", v2 > 2.5, v2.toFixed(2));
-    const pings = await page.evaluate(() => L.pings);
-    await page.mouse.click(200, 400);
-    check("tapping sings", (await page.evaluate(() => L.pings)) === pings + 1);
-    check("no page errors", errors.length === 0, errors[0]);
-    await page.close();
-  }
-
-  // ---------------------------------------------------------------- The core rules
-  section("Echoes, sound and blind Hushlings");
-  {
-    const { page, errors } = await openGame(browser);
-    await page.evaluate(SIM);
-    const m = await page.evaluate(() => {
-      const out = {};
-      const only = n => { L.gloom = L.gloom.slice(0, n); };
-      // Echoes light the walls, then the memory of them fades.
-      startLevel(1, true);
-      L.pingCd = 0; ping(); __sim(1);
-      const lit = [...Array(L.n).keys()].filter(i => vis(i) > 0.3 && Math.hypot(i % L.cols + 0.5 - L.lumi.x, ((i / L.cols) | 0) + 0.5 - L.lumi.y) > 3);
-      out.songShowsTheWalls = lit.length >= 8;
-      __sim(13);
-      out.memoryFades = lit.every(i => vis(i) < 0.06);
-      out.songsAreFree = L.energy === 100;
-      // A Hushling hears a song nearby and goes to where it was sung, not to Lumi.
-      startLevel(3, true); only(1);
-      const g = L.gloom[0];
-      Object.assign(L.lumi, { x: 5.5, y: 10.5 }); L.pingCd = 0; ping();
-      out.hushlingHearsNearbySong = g.hunt > 0 && g.lx === 5.5 && g.ly === 10.5;
-      const d0 = Math.hypot(g.x - 5.5, g.y - 10.5);
-      Object.assign(L.lumi, { x: 1.5, y: 4.5 }); __sim(1.2);
-      out.hushlingGoesToTheSong = Math.hypot(g.x - 5.5, g.y - 10.5) < d0 - 1.5;
-      startLevel(3, true); only(1);
-      Object.assign(L.lumi, { x: 5.5, y: 13.5 }); L.pingCd = 0; ping(false);
-      out.farTapIsNotHeard = L.gloom[0].hunt === 0;
-      L.pingCd = 0; ping(true);
-      out.longSongIsHeardFurther = L.gloom[0].hunt > 0;
-      L.waves = []; L.pingCd = 0; ping(false); const shortRange = L.waves[0].range;
-      L.waves = []; L.pingCd = 0; ping(true);
-      out.longSongReachesFurther = L.waves[0].range > shortRange + 3;
-      // Swimming fast is heard; swimming slowly is silent.
-      const pass = speed => {
-        startLevel(5, true);
-        Object.assign(L.lumi, { x: 5.5, y: 11.5, vx: 0, vy: 0 });
-        __sim(0.5, () => { L.lumi.vx = 0; L.lumi.vy = -speed; });
-        return L.gloom.some(q => q.hunt > 0);
-      };
-      out.slowSwimIsSilent = !pass(1.6);
-      out.fastSwimIsHeard = pass(SWIM_MAX);
-      // A song reaching a ring stone makes it ring, and the Hushling goes to the stone.
-      startLevel(4, true);
-      const st = L.stones[0], h = L.gloom[0];
-      Object.assign(L.lumi, { x: 6.5, y: 14.5 }); L.pingCd = 0; ping();
-      out.farFromItTheSongIsNotHeard = h.hunt === 0;
-      __sim(1.6);
-      out.ringStoneRings = st.cd > 0;
-      out.stoneCallsTheHushling = h.hunt > 0 && h.lx === st.x && h.ly === st.y;
-      __sim(4);
-      out.hushlingGoesToTheStone = Math.hypot(h.x - st.x, h.y - st.y) < 1.2;
-      // Pebbles: thrown the way Lumi faces, they clatter where they land and Hushlings go to look.
-      startLevel(5, true);
-      out.lumiCarriesThreePebbles = L.pebblesLeft === 3;
-      Object.assign(L.lumi, { x: 5.5, y: 13.5, look: -Math.PI / 2 }); throwPebble(); __sim(1);
-      const pb = L.gloom.find(q => q.hunt > 0);
-      out.pebbleClattersAndIsHeard = L.pebblesLeft === 2 && !!pb && pb.ly < 12 && Math.abs(pb.lx - 5.5) < 0.01;
-      out.noFlareInTheCore = !flareReady();
-      startLevel(5, true); Object.assign(L.lumi, { x: 5.5, y: 10.5 }); L.aiming = true;
-      const tgt = [7.5, 8.5], scr = window.R3D && save.settings.view3d !== false ? null : [OX + tgt[0] * TS, OY + tgt[1] * TS];
-      if (scr) throwPebbleAt(scr[0], scr[1]); else throwPebble(Math.atan2(tgt[1] - 10.5, tgt[0] - 5.5), Math.hypot(2, 2));
-      __sim(1);
-      out.aimedPebbleLandsWhereTapped = L.pebblesLeft === 2 && !L.aiming;
-      startLevel(DAILY, true);
-      out.dailyCaveIsBuiltFromRoomsWithPebbles = L.pebblesLeft === 3 && getLevel(DAILY).map.length >= 30 && /[gu]/.test(getLevel(DAILY).map.join(""));
-      // Lurkers: deaf, but they see Lumi's light; sneaking keeps it small.
-      const watch = sneak => {
-        startLevel(12, true);
-        Object.assign(L.lumi, { x: 5.5, y: 9.5, vx: 0, vy: 0 });
-        __sim(1.2, () => { L.lumi.vx = 0; L.lumi.vy = -(sneak ? 2.2 : SWIM_MAX); L.sneaking = sneak; });
-        return L.gloom.some(q => q.lurker && q.hunt > 0);
-      };
-      out.lurkerSeesANormalLight = watch(false);
-      out.sneakingSlipsPastALurker = !watch(true);
-      startLevel(12, true); Object.assign(L.lumi, { x: 5.5, y: 14.5 }); L.pingCd = 0; ping(true);
-      out.lurkersDontHear = L.gloom.every(q => !q.lurker || q.hunt === 0);
-      // A hidden memory.
-      startLevel(3, true); save.memories = {};
-      Object.assign(L.lumi, { x: L.memory.x, y: L.memory.y }); __sim(0.2);
-      out.findingAMemorySavesIt = !!save.memories[3];
-      // The last cave: a long song sings a Hushling home.
-      startLevel(19, true);
-      const lost = L.gloom.find(q => !q.lurker);
-      Object.assign(L.lumi, { x: lost.x + 1, y: lost.y }); L.pingCd = 0; ping(true); __sim(2.5);
-      out.longSongSingsAHushlingHome = lost.saved === true;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
-      out.portalWaitsUntilAllAreHome = !L.ending;
-      // Ghosts: finishing keeps the run to race next time.
-      startLevel(0, true); save.ghosts = {};
-      keys.arrowup = true; __sim(1); keys.arrowup = false;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
-      out.bestRunIsKeptAsAGhost = !!(save.ghosts[0] && save.ghosts[0].p.length > 10);
-      startLevel(0, true); __sim(0.5);
-      out.ghostRacesAlong = !!ghostAt();
-      // Dash: a burst of speed, heard close by.
-      startLevel(3, true); Object.assign(L.lumi, { x: 5.5, y: 13.5, vx: 0, vy: -1 }); __sim(0.05); dash(); __sim(0.05);
-      out.dashBurstsForward = Math.hypot(L.lumi.vx, L.lumi.vy) > SWIM_MAX * 1.5 && L.dashCd > 0;
-      // Hum: a sneaking tap is a short, quiet song.
-      startLevel(7, true); L.sneaking = true; Object.assign(L.lumi, { x: 6.5, y: 12.5 }); L.pingCd = 0; ping();
-      out.humIsShortAndQuiet = L.waves[0].range < WAVE_RANGE && L.gloom.every(q => q.hunt === 0);
-      // Followers: a found light swims behind Lumi; a touch sends the last one back.
-      startLevel(8, true); L.gloom = [L.gloom[0]];
-      const o = L.lights[0]; Object.assign(L.lumi, { x: o.x, y: o.y }); __sim(0.1);
-      Object.assign(L.lumi, { x: o.x, y: o.y + 0.01 }); __sim(0.6);
-      out.foundLightsFollowLumi = L.followers.length === 1 && L.got === 1;
-      const gg = L.gloom[0]; L.invuln = 0; gg.gone = 0; gg.calm = 0; gg.hunt = 2; Object.assign(L.lumi, { x: gg.x + 0.2, y: gg.y }); __sim(0.05);
-      out.caughtSendsTheLastLightBack = L.followers.length === 0 && L.got === 0 && !o.got;
-      // Shield: from act two the first touch costs no light.
-      startLevel(12, true);
-      const lk = L.gloom[0], e0 = L.energy; L.invuln = 0; lk.hunt = 2; Object.assign(L.lumi, { x: lk.x + 0.2, y: lk.y }); __sim(0.05);
-      out.shieldTakesTheFirstTouch = L.shields === 0 && L.hits === 0 && L.energy >= e0;
-      // The city: lights you bring out come home; glow buys upgrades.
-      save.got = { 0: 1, 1: 2 }; save.stars[0] = 3; save.stars[1] = 2; save.stars[2] = 1; save.stars[3] = 1; save.glow = 50; save.upg = {};
-      showCity(true);
-      out.cityShowsLightsHome = screen === "city" && lightsHome() === 3 && document.getElementById("cityCount").textContent.startsWith("3");
-      save.run = null; runSave(); renderShop(); document.querySelector("#shopList button[data-run='magnet']").click();
-      out.glowBuysRunUpgradesInTheCity = runUpg("magnet") === 1 && save.glow === 10;
-      // The endless run: lights play and count, songs free shadows, touches dim Lumi, the best is kept.
-      save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; startRun();
-      out.runStarts = screen === "run" && run.hearts === 3;
-      run.items = [{ type: "light", at: run.dist + 5, x: run.x, trail: 1, of: 1 }]; run.next = 1e9; runUpdate(1 / 60); runUpdate(1 / 60);
-      out.runGathersLights = run.lights === (weekEvent().id === "gold" ? 2 : 1);
-      run.items = [{ type: "shadow", at: run.dist + 60, x: run.x, ph: 0, amp: 0 }]; runUpdate(1 / 60); runSing(); for (let q = 0; q < 30; q++) runUpdate(1 / 60);
-      out.runSongFreesShadows = run.freed === 1 && run.lights >= 4;
-      run.items = [{ type: "shadow", at: run.dist + 2, x: run.x, ph: 0, amp: 0 }]; run.inv = 0; runUpdate(1 / 60); runUpdate(1 / 60);
-      out.runShadowTouchDims = run.hearts === 2;
-      for (let q = 0; q < 600; q++) runUpdate(1 / 60);
-      out.runCaveScrollsAndSpeedsUp = runMetres() > 40 && run.speed > 200;
-      run.continues = 2; run.hearts = 1; run.inv = 0; runHit();
-      out.runEndsAndKeepsTheBest = !!run.over && save.run.best > 0 && save.glow >= run.lights;
-      // Combos, near misses, the chorus, the dash.
-      save.run.tutDone = 1; startRun(); run.next = 1e9; run.nextEvent = 1e9;
-      run.items = Array.from({ length: 12 }, (_, q) => ({ type: "light", at: run.dist + 10 + q * 3, x: run.x, trail: 7, of: 12 }));
-      for (let q = 0; q < 40; q++) { run.tx = run.x; runUpdate(1 / 60); }
-      out.runCombosGrow = run.comboBest >= 10 && run.lights > 12;
-      run.items = [{ type: "light", at: run.dist - 30, x: run.x + 80, trail: 8, of: 1 }]; runUpdate(1 / 60);
-      out.runMissingALightBreaksTheCombo = run.combo === 0;
-      run.items = [{ type: "rock", at: run.dist + 2, x: run.x + 40, r: 14, seed: 1 }]; const l0 = run.lights; run.inv = 0; runUpdate(1 / 60);
-      out.runNearMissGivesABonus = run.lights > l0 && run.boost > 0;
-      run.boost = 0; run.items = [0, 1, 2].map(q => ({ type: "shadow", at: run.dist + 70 + q * 10, x: run.x + (q - 1) * 30, ph: 0, amp: 0 })); runUpdate(1 / 60); run.songCd = 0; runSing();
-      for (let q = 0; q < 30; q++) runUpdate(1 / 60);
-      out.runChorusForThreeShadows = run.pops.some(p => p.text.startsWith("Chorus"));
-      const s0 = run.speed; run.dashCd = 0; runDash(); runUpdate(1 / 60);
-      out.runDashSpeedsUp = run.speed > s0 * 1.3 && run.dashCd > 0;
-      // Every world brings its own hazard; power-ups, big moments and lost friends.
-      out.runEachWorldHasItsHazard = [1, 2, 3, 4, 5, 6, 7].every(w => { run.items = []; runHazard(w * RUN.BIOME_M * RUN.M + 50, w, 200, 120); return run.items[0] && run.items[0].type === ["", "current", "gate", "lava", "ice", "bubble", "lantern", "eye"][w]; });
-      run.items = [{ type: "power", at: run.dist + 2, x: run.x, kind: "comet" }]; runUpdate(1 / 60);
-      out.runCometPowerUp = run.power && run.power.kind === "comet";
-      run.items = [{ type: "shadow", at: run.dist + 5, x: run.x, ph: 0, amp: 0 }]; const h0 = run.hearts; run.inv = 0; runUpdate(1 / 60); runUpdate(1 / 60);
-      out.runCometSmashesShadows = run.hearts === h0;
-      run.power = null; run.nextEvent = 0; runUpdate(1 / 60);
-      out.runBigMomentsHappen = !!run.event && ["dark", "rush", "hunter"].includes(run.event.kind);
-      save.runFriends = {}; run.items = [{ type: "friend", at: run.dist + 2, x: run.x, idx: 3 }]; runUpdate(1 / 60);
-      out.runFindsALostFriend = !!save.runFriends[3] && residentsHome().some(p => p.name === RUN_FRIENDS[3].name);
-      // The daily run is the same cave for everyone.
-      const layout = () => { startRun({ daily: true }); for (let q = 0; q < 120; q++) runUpdate(1 / 60); return run.items.filter(i => i.type !== "light").map(i => i.type + Math.round(i.at)).join(","); };
-      out.runDailyIsTheSameForEveryone = layout() === layout() && run.daily;
-      // The title plays a run by itself, without touching your missions.
-      // Running out of light offers a continue (for lights), with a countdown.
-      startRun(); run.next = 1e9; save.glow = 100; run.hearts = 1; run.inv = 0; runHit();
-      out.runOffersKeepGoing = run.paused && !document.getElementById("runContinue").hidden;
-      document.getElementById("runContinueGo").click();
-      out.keepGoingCostsLightsAndCarriesOn = !run.paused && run.hearts === 1 && save.glow === 75 && run.continues === 1;
-      // Lumi's level: every run earns experience, and levels unlock trails.
-      save.run.xp = 0; save.run.trail = 0; const lv0 = lumiLevel().lv; run.hearts = 1; run.continues = 2; run.inv = 0; run.dist = 400000; runHit();
-      out.runsEarnLevelsAndTrails = lumiLevel().lv > lv0 && run.levelInfo.newTrails.length > 0 && (save.run.trail || 0) > 0;
-      // The first run teaches: slide, then time slows at a shadow until you sing, then dash.
-      save.run.tutDone = 0; startRun(); run.next = 1e9;
-      out.firstRunTeachesSteering = run.tut === 1;
-      for (let q = 0; q < 120; q++) { run.tx = caveMid(run.dist) + (q % 40 < 20 ? 60 : -60); runUpdate(1 / 60); }
-      for (let q = 0; q < 120 && run.slow === 1; q++) runUpdate(1 / 60);
-      out.timeSlowsAtTheFirstShadow = run.tut === 2 && run.slow < 1 && run.tutText.includes("pulse");
-      runSing(); out.singingMovesTheLessonOn = run.tut === 3 && run.slow === 1;
-      run.dist = 120 * RUN.M; runUpdate(1 / 60); run.dashCd = 0; runDash();
-      out.dashingFinishesTheLessons = run.tut === 0 && save.run.tutDone === 1;
-      // A Blackout at the start of each new district: it listens, and three songs then calm it.
-      save.run.tutDone = 1; startRun(); run.next = 1e9; run.nextEvent = 1e9; run.dist = RUN.BIOME_M * RUN.M - 5; runUpdate(1 / 60); runUpdate(1 / 60);
-      out.wardenGuardsEachNewWorld = !!run.boss && run.boss.hp >= 3;
-      const hp0 = run.boss.hp; let tries = 0;
-      while (run.boss && tries++ < 3000) { run.inv = 1; if (run.boss.listen > 0 && run.boss.off < 160 && run.songCd <= 0) runSing(); runUpdate(1 / 60); }
-      out.singingWhileItListensCalmsIt = !run.boss && hp0 > 0 && save.prog.boss >= 1;
-      // A fork: the rock in the middle; the risky side has lights and shadows.
-      startRun(); run.next = 1e9; run.nextEvent = 1e9; run.items = []; runSpawnFork(run.dist + 20);
-      const isl = run.items[0]; run.inv = 1; for (let q = 0; q < 60; q++) { run.tx = caveMid(run.dist); runUpdate(1 / 60); }
-      out.forkRockKeepsLumiToASide = isl.type === "island" && Math.abs(run.x - caveMid(run.dist)) >= islandHalf(isl, run.dist) && run.items.some(i => i.type === "shadow");
-      // Hard mode: one light of your own, double score, no continues.
-      runSave().hardOn = true; startRun(); out.hardModeHasOneLightAndDoubleScore = run.hard && run.hearts === 1 && (run.dist = 4000, runScore() >= 200); runSave().hardOn = false;
-      // The daily loop: the calendar, the missions, the streak, the week.
-      save.cal = null; const cst = calState(), g0 = save.glow || 0; const got = calClaim();
-      out.calendarGivesADailyGift = cst.day === 1 && got === CAL[0] && save.glow === g0 + CAL[0] && calState().claimed;
-      save.dm = null; const dm = dailyMissions(); const dm0 = DM_POOL[dm.list[0].i]; progressEvent(dm0.k, dm0.goal);
-      out.dailyMissionsCountAndPay = dm.list.length === 3 && dm.list[0].done;
-      save.streak = { last: today() - 1, n: 4, best: 4 }; streakTouch();
-      out.streakGrowsDayByDay = streakNow() === 5 && streakBonus() > 0.2;
-      out.thereIsAWeeklyEvent = !!weekEvent().name;
-      // The long game: rebuilding the city, friends with gifts, awards.
-      save.glow = 1000; save.builds = {}; save.runAch = Object.fromEntries(RUN_ACHS.map(a => [a.id, 1])); out.lightsRebuildTheCity = buildIt("lamps") && built("lamps") && save.glow === 960;
-      save.runFriends = { 4: 1 }; runSave().char = 4; out.playingAsAFriendGivesItsGift = playingAs() === 4 && perk(4);
-      runSave().char = -1;
-      save.runAch = {}; save.prog = { home: 1 }; out.achievementsPay = checkAchievements().some(a => a.id === "home1");
-      // Challenge a friend: the same cave from the same seed.
-      const cave = seed => { startRun({ challenge: { seed, score: 100 } }); for (let q = 0; q < 200; q++) runUpdate(1 / 60); return run.items.filter(i => i.type !== "light").map(i => i.type + Math.round(i.at)).join(","); };
-      out.challengeLinksReplayTheSameCave = cave(4242) === cave(4242) && challengeLink(4242, 100).includes("ch=4242.100") && typeof shareRun === "function";
-      const m0 = JSON.stringify(save.run.missions); showTitle(); for (let q = 0; q < 30; q++) { run = titleRun; runUpdate(1 / 60); } run = null;
-      out.titleRunsByItself = !!titleRun && titleRun.attract && titleRun.dist > 0 && JSON.stringify(save.run.missions) === m0;
-      showTitle();
-      // Light is health: three touches and the try is over.
-      startLevel(3, true); only(1);
-      const hu = L.gloom[0];
-      for (let k = 0; k < 3; k++) { L.invuln = 0; hu.gone = 0; hu.calm = 0; hu.hunt = 2; Object.assign(L.lumi, { x: hu.x + 0.2, y: hu.y }); __sim(0.05); }
-      __sim(2);
-      out.threeTouchesEndTheTry = L.hits === 3 && screen === "fail";
-      // Run!: a Hunter rises behind Lumi and the cave comes down.
-      startLevel(6, true);
-      const hunter = L.gloom.find(q => q.chaser);
-      Object.assign(L.lumi, { x: 5.5, y: 17.5 }); __sim(6, () => { L.invuln = 1; });
-      out.hunterChasesInRunCaves = !!hunter && Math.hypot(hunter.x - hunter.hx, hunter.y - hunter.hy) > 0.5;
-      out.runCaveComesDown = L.rocks.length > 0;
-      // The lost moth.
-      startLevel(7, true);
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(0.3);
-      out.portalSleepsWithoutMoth = !L.ending;
-      Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2);
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.6);
-      out.mothRescueFinishes = screen === "result";
-      // The Great Hush: sing to it and it remembers.
-      startLevel(9, true);
-      const king = L.gloom.find(q => q.final);
-      Object.assign(L.lumi, { x: king.x, y: king.y + 2 }); L.pingCd = 0; ping(); __sim(10);
-      out.singingToTheGreatHushHealsIt = !!king && king.heal >= 1 && L.healed;
-      // Relaxed: no Hushlings and no light to lose.
-      save.settings.relaxed = true;
-      startLevel(3, true);
-      out.relaxedHasNoHushlingsOrLightLoss = L.gloom.length === 0 && !L.useEnergy;
-      save.settings.relaxed = false;
-      // The daily cave still works underneath (hidden for now).
-      startLevel(DAILY, true);
-      if (L.baby) { Object.assign(L.lumi, { x: L.baby.x, y: L.baby.y }); __sim(0.2); }
-      L.chimeNext = L.chimes.length + 1; for (const q of L.lamps) q.on = 1;
-      Object.assign(L.lumi, { x: L.exit.x, y: L.exit.y }); __sim(1.5);
-      out.dailyCaveStillWorks = screen === "result";
-      out.resultMapIsDrawn = document.getElementById("resultMap").width > 50;
-      // Tap to move: Lumi finds its own way to a tapped tile.
-      save.settings.controls = "tap";
-      startLevel(1, true);
-      travelTo(OX + 9.5 * TS, OY + 9.5 * TS);
-      __sim(20, () => (L.autoPath ? undefined : false));
-      out.tapToMoveArrives = Math.hypot(L.lumi.x - 9.5, L.lumi.y - 9.5) < 0.6;
-      save.settings.controls = "stick";
-      // Tall caves scroll.
-      startLevel(6, true);
-      const oy = OY; L.lumi.y = 3.5; __sim(1.5);
-      out.cameraFollowsInTallCaves = L.scroll && OY > oy + 100;
-      return out;
-    });
-    for (const [k, v] of Object.entries(m)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
-    check("no page errors", errors.length === 0, errors[0]);
-    await page.close();
-  }
 
   // ---------------------------------------------------------------- Lumen Rush: the swing
   section("Lumen Rush: the swing");
@@ -423,7 +39,7 @@ const SIM = `
     const { page, errors } = await openGame(browser);
     const r = await page.evaluate(() => {
       const out = {}, step = (n = 1) => { for (let q = 0; q < n; q++) runUpdate(1 / 60); };
-      save.set = {}; save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; startRun();
+      save.run = null; runSave(); save.run.tutDone = 1; startRun();
       const R = run;
       out.aRunStartsMidSwing = screen === "run" && R.mode3 === true && !!R.teth && R.hearts === 3;
       R.darkX = -1e4; step(30);
@@ -519,7 +135,7 @@ const SIM = `
   {
     const { page, errors } = await openGame(browser);
     const r = await page.evaluate(() => {
-      const out = {}; save.set = {}; save.seenIntro = 1; save.run = null; runSave(); save.run.tutDone = 1; save.stages = null;
+      const out = {}; save.run = null; runSave(); save.run.tutDone = 1; save.stages = null;
       const play = n => { startStage(n); const R = run; for (let q = 0; q < 60 * 90 && !R.cleared && !R.failed; q++) { R.inv = 1; runnerAuto(); runUpdate(1 / 60); } return R; };
       out.playStartsStageOne = typeof stageNext === "function" && stageNext() === 1;
       const a = play(1);
@@ -610,60 +226,55 @@ const SIM = `
   // ---------------------------------------------------------------- Screens
   section("Screens");
   {
-    const { page, errors } = await openGame(browser);
-    await page.evaluate(SIM);
+    const { page, errors, requests } = await openGame(browser);
     const s = await page.evaluate(() => {
       const out = {}, on = id => document.getElementById(id).classList.contains("on");
-      showTitle(); out.title = on("titleScreen");
-      openMap(); out.map = on("levelScreen") && document.querySelectorAll("#levelGrid .node").length === PER_WORLD;
-      renderLevels(49); out.lastWorld = document.getElementById("worldName").textContent.length > 0;
-      renderLooks(); show("looks"); out.looks = document.querySelectorAll("#looksGrid .look").length === SKINS.length;
-      renderAwards(); show("awards"); out.awards = document.querySelectorAll("#awardsList .award").length === ACHS.length;
-      renderSettings(); show("settings"); out.settings = on("settingsScreen");
-      renderChallenges(); show("challenges"); out.challenges = on("challengeScreen") && document.getElementById("weeklyInfo").textContent.length > 5;
-      renderAwards(); awardsTab(true); show("awards"); out.journal = !document.getElementById("journal").hidden && document.querySelectorAll("#journal .award").length === JOURNAL.length + Object.keys(VARIANTS).length;
-      renderHats(); out.accessories = document.querySelectorAll("#hatsGrid .look").length === HATS.length;
-      // Daily ritual: today's card, its twist, quests, Lumi's home and the shared result.
-      renderTitle(); out.todayCardShowsTheTwist = document.getElementById("todayName").textContent.includes(twistFor().name);
-      out.dailyCaveHasTodaysTwist = getLevel(DAILY).twist === twistFor().id && getLevel(DAILY).map.length === 31;
-      out.threeDistinctQuestsToday = new Set(todayQuests().map(q => q.id)).size === 3;
-      save.glow = 100; renderHome(); show("home");
-      out.homeShows = on("homeScreen") && document.querySelectorAll("#homeShop .shop-item").length === HOME_ITEMS.length && document.querySelectorAll("#homeQuests li").length === 3;
-      document.querySelector("#homeShop .shop-item").click();
-      out.buyingDecorSpendsGlow = save.glow === 80 && save.home.shrooms === 1 && document.getElementById("homeScene").innerHTML.includes("translate(46 150)");
-      const d0 = save.daily; save.daily = { last: dayKey(dayNumber() - 3), streak: 9, best: 9, stars: {}, shields: 2 };
-      dailyCleared(2); out.streakShieldsCoverMissedDays = save.daily.streak === 10 && save.daily.shields === 0;
-      save.daily = { last: dayKey(dayNumber() - 3), streak: 9, best: 9, stars: {}, shields: 1 };
-      dailyCleared(2); out.missingTooManyDaysResetsTheStreak = save.daily.streak === 1;
-      save.daily = d0;
-      save.story = {}; startLevel(0); out.storyIsAFilm = screen === "movie" && movie && movie.scenes.length === 8;
-      document.getElementById("movieSkip").click();
-      out.storyLeadsToLevel = screen === "play";
-      out.endingTellsTheWholeStory = endingPages().length === CORE_ENDING.length;
-      save.cards = {}; startLevel(6, { story: true }); out.card = screen === "card";
-      document.getElementById("cardGo").click(); out.cardLeadsToLevel = screen === "play" && L.def.name === "The Hunter";
-      pause(); out.pauseShowsGoal = screen === "pause" && document.getElementById("pauseGoal").textContent.length > 5;
-      resume();
+      save.run = null; runSave(); save.run.tutDone = 1; save.glow = 600; showTitle();
+      out.homeShowsTheNextStage = on("titleScreen") && $("heroWho").textContent === stageWaiting(1) && $("playLabel").textContent === "Bring the light" && $("homeBest").textContent === "0";
+      out.theTitleSwingsBehindTheHome = !!titleRun && titleRun.attract && titleRun.mode3;
+      out.theNightShiftWaitsForDowntown = $("hardBtn").classList.contains("locked");
+      // The tab bar and the sheets.
+      $("levelsBtn").click(); out.theLockerOpensWithItsPreview = !$("sheet").hidden && !!document.getElementById("lkCanvas") && document.querySelectorAll("#shopList .lk-tile").length > 10;
+      $("looksBtn").click(); out.theLooksButtonOpensTheLocker = !$("sheet").hidden && $("shopTitle").textContent === "Locker";
+      $("tabShop").click(); out.theShopListsUpgrades = $("shopTitle").textContent === "Shop" && document.querySelectorAll("#shopList button[data-run]").length === RUN.upgrades.length;
+      document.querySelector('#shopList button[data-run="magnet"]').click(); out.buyingAnUpgradeSpendsLights = runUpg("magnet") === 1 && save.glow === 560;
+      $("tabFriends").click(); out.ranksShowYourRecords = $("shopTitle").textContent === "Ranks" && document.querySelectorAll("#shopList .rk-card").length === 4;
+      $("stagesBtn").click(); out.theCityTileOpensTheMap = document.querySelectorAll("#shopList .bld").length === 60;
+      $("todayBtn").click(); out.todayOpensOverTheSheet = !$("todayPanel").hidden && $("sheet").hidden && document.querySelectorAll("#calGrid div").length === 7 && document.querySelectorAll("#dmList li").length === 3;
+      const g0 = save.glow; $("calClaim").click(); out.theDailyGiftCanBeClaimedOnce = save.glow === g0 + CAL[0] && $("calClaim").disabled; $("calClaim").click(); out.aSecondClaimGivesNothing = save.glow === g0 + CAL[0];
+      $("todayAwards").click(); out.awardsListEveryAward = $("shopTitle").textContent === "Awards" && document.querySelectorAll("#shopList li").length === RUN_ACHS.length;
+      $("tabHome").click(); out.homeClosesTheSheets = $("sheet").hidden && $("todayPanel").hidden && on("titleScreen");
+      // Settings.
+      $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 3;
+      const c0 = !!save.settings.calm; $("setCalm").click(); out.reduceMotionToggles = save.settings.calm === !c0 && $("setCalm").getAttribute("aria-pressed") === String(!c0);
+      $("setFps").click(); out.showFpsToggles = save.settings.fps === true && !$("fpsMeter").hidden; $("setFps").click();
+      $("settingsBack").click(); out.doneGoesHome = on("titleScreen");
+      // The Night shift opens once Downtown is lit, and ends on the run-over card.
+      stageSave().best[10] = { stars: 1, time: 20 }; showTitle(); out.theNightShiftOpensAfterStageTen = !$("hardBtn").classList.contains("locked");
       return out;
     });
-    // The phone's Back button pauses, then goes to the map, then to the title.
-    const backs = [];
-    for (let k = 0; k < 3; k++) { await page.goBack(); await page.waitForTimeout(150); backs.push(await page.evaluate(() => screen)); }
-    s.backButtonStaysInGame = backs.join(",") === "pause,levels,title";
+    // The phone's Back button leaves a run for the home screen.
+    await page.evaluate(() => startStage(1));
+    await page.goBack(); await page.waitForTimeout(200);
+    s.backFromARunGoesHome = await page.evaluate(() => screen === "title");
     Object.assign(s, await page.evaluate(() => {
       const out = {};
       // Back up and restore.
-      save.stars[0] = 3; save.stars[1] = 2;
+      stageSave().unlocked = 9; save.glow = 321;
       const code = saveCode();
-      save.stars = [];
+      stageSave().unlocked = 1; save.glow = 0;
       document.getElementById("saveCode").value = code;
       document.getElementById("restoreCode").click();
-      out.backupRestores = save.stars[0] === 3 && save.stars[1] === 2;
+      out.backupRestores = stageSave().unlocked === 9 && save.glow === 321;
       document.getElementById("saveCode").value = "nonsense";
       document.getElementById("restoreCode").click();
-      out.badCodeIsHarmless = save.stars[0] === 3;
+      out.badCodeIsHarmless = stageSave().unlocked === 9;
+      // An old save with keys this version doesn't use still loads.
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ stars: [3, 2], story: { 0: 1 }, skin: 2, glow: 99, stages: { unlocked: 4, best: { 1: { stars: 2, time: 30 } }, ghosts: {} } }));
       return out;
     }));
+    await page.reload(); await page.waitForTimeout(500);
+    s.anOldSaveStillLoads = await page.evaluate(() => save.glow === 99 && stageSave().unlocked === 4 && homesLit() === 1 && screen === "title");
     for (const [k, v] of Object.entries(s)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     for (const size of [{ width: 360, height: 640 }, { width: 430, height: 932 }, { width: 820, height: 1180 }]) {
       const { page: p2, errors: e2 } = await openGame(browser, size);
@@ -672,198 +283,8 @@ const SIM = `
       check(`no page errors at ${size.width}×${size.height}`, e2.length === 0, e2[0]);
       await p2.close();
     }
+    check("nothing loads from other sites", requests.length === 0, requests[0]);
     check("no page errors", errors.length === 0, errors[0]);
-    await page.close();
-  }
-
-  // ---------------------------------------------------------------- Robot play-through
-  if (!QUICK) {
-    section(`Robot play-through (${ALL ? "every level" : "sample of levels"})`);
-    const { page, errors } = await openGame(browser);
-    await page.evaluate(SIM);
-    const sample = [], TOTAL_LEVELS = await page.evaluate(() => TOTAL);
-    for (let i = 0; i < TOTAL_LEVELS; i++) sample.push(i);
-    sample.push(-1);
-    const res = await page.evaluate(list => {
-      const TOTAL_LEVELS = TOTAL;
-      // A simple robot: walk tile paths to each light, the lost moth and each rune, then the
-      // portal. Sing every few seconds, at closed doors and at runes.
-      const out = [];
-      for (const n of list) {
-        startLevel(n, true);
-        let target = null, path = [], lastSong = -9, stuckFor = 0, best = Infinity, reason = "";
-        const blocked = (x, y) => {
-          if (x < 0 || y < 0 || x >= L.cols || y >= L.rows) return true;
-          const t = L.tile[y * L.cols + x];
-          if (t === "#") return true;
-          if (t === "G" && !L.gate.open) return true;
-          return L.critters.some(c => Math.floor(c.hx) === x && Math.floor(c.hy) === y);
-        };
-        const route = (tx, ty) => {
-          // Shortest swim, where going straight up a current counts as several tiles, the way a
-          // player would rather go around if there's a reasonable way.
-          const sx = Math.floor(L.lumi.x), sy = Math.floor(L.lumi.y), prev = new Map([[sx + "," + sy, null]]);
-          const cost = new Map([[sx + "," + sy, 0]]), q = [[0, sx, sy]];
-          while (q.length) {
-            let m = 0;
-            for (let j = 1; j < q.length; j++) if (q[j][0] < q[m][0]) m = j;
-            const [c, x, y] = q.splice(m, 1)[0];
-            if (c > cost.get(x + "," + y)) continue;
-            if (x === tx && y === ty) break;
-            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-              const k = (x + dx) + "," + (y + dy);
-              if (blocked(x + dx, y + dy)) continue;
-              const fl = L.flow[(y + dy) * L.cols + x + dx], nc = c + (fl && fl[0] === -dx && fl[1] === -dy ? 4 : 1);
-              if (cost.has(k) && cost.get(k) <= nc) continue;
-              cost.set(k, nc); prev.set(k, [x, y]);
-              q.push([nc, x + dx, y + dy]);
-            }
-          }
-          const p = [];
-          for (let c = [tx, ty]; c; c = prev.get(c + "")) p.unshift(c);
-          return prev.has(tx + "," + ty) ? p : null;
-        };
-        const pickTarget = () => {
-          const list = [];
-          for (const o of L.lights) if (!o.got) list.push([o.x, o.y]);
-          if (L.baby && !L.baby.following) list.push([L.baby.hx, L.baby.hy]);
-          for (const r of L.runes) if (!r.on) list.push([r.x, r.y]);
-          const chime = L.chimes.find(c => c.n === L.chimeNext);
-          if (chime) list.push([chime.x, chime.y]);
-          for (const q of L.lamps) if (!q.on) list.push([q.x, q.y]);
-          // Running from the Hunter, a player heads for the portal and only grabs what's close.
-          if (L.def.healAll) for (const g of L.gloom) if (!g.lurker && !g.saved && !g.saving) list.push([g.hx, g.hy]);
-          if (L.goal === "escape") {
-            const must = L.runes.filter(r => !r.on).map(r => [r.x, r.y]);
-            const near = list.filter(t => Math.hypot(t[0] - L.lumi.x, t[1] - L.lumi.y) < 3);
-            list.length = 0; list.push(...must, ...near);
-          }
-          let bestT = null, bestLen = Infinity;
-          for (const t of list) { const p = route(Math.floor(t[0]), Math.floor(t[1])); if (p && p.length < bestLen) { bestLen = p.length; bestT = t; } }
-          if (!bestT && L.finale && !L.healed) { const k = L.gloom.find(g => g.final); return [k.hx, k.hy]; }
-          return bestT || [L.exit.x, L.exit.y];
-        };
-        const sing = t => { if (L.songLimit && L.pings >= L.songLimit - 1) return; L.pingCd = 0; ping(); lastSong = t; };
-        const time = __sim(150, t => {
-          if (L.ending || L.failing) return;
-          if (!target || Math.hypot(target[0] - L.lumi.x, target[1] - L.lumi.y) < 0.35) {
-            if (target) for (const r of L.runes.concat(L.lamps)) if (!r.on && Math.hypot(r.x - L.lumi.x, r.y - L.lumi.y) < 0.6) sing(t);
-            target = pickTarget(); path = route(Math.floor(target[0]), Math.floor(target[1])) || []; best = Infinity;
-          }
-          // A careful player sings less when a Hushling is close, so as not to wake it.
-          const gloomNear = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < (CORE ? 5 : 6)) ||
-            L.mobs.some(mb => mb.kind === "a" && mb.state === "idle" && Math.hypot(mb.x - L.lumi.x, mb.y - L.lumi.y) < 6.5);
-          if (CORE && L.pebblesLeft > 0 && !(L.robotWait > 0)) {
-            const ki = path.findIndex(p => p[0] === Math.floor(L.lumi.x) && p[1] === Math.floor(L.lumi.y));
-            const ahead = path.slice(Math.max(0, ki), Math.max(0, ki) + 14);
-            const guard = L.gloom.find(g => !g.lurker && !g.chaser && !g.final && !(g.gone > 0) && g.hunt <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 5.5 &&
-              ahead.some(p => Math.hypot(p[0] + 0.5 - g.x, p[1] + 0.5 - g.y) < 1.5));
-            if (guard) {
-              let best = null, bestScore = 3;
-              for (let y = 0; y < L.rows; y++) for (let x = 0; x < L.cols; x++) {
-                if (solidAt(x, y)) continue;
-                const tx = x + 0.5, ty = y + 0.5, d = Math.hypot(tx - L.lumi.x, ty - L.lumi.y);
-                if (d > 6 || d < 1 || Math.hypot(tx - guard.x, ty - guard.y) > 5.5) continue;
-                const a2 = Math.atan2(ty - L.lumi.y, tx - L.lumi.x); let r = 0.4;
-                while (r < d && !solidAt(Math.floor(L.lumi.x + Math.cos(a2) * (r + 0.15)), Math.floor(L.lumi.y + Math.sin(a2) * (r + 0.15)))) r += 0.1;
-                if (r < d - 0.3) continue;
-                const score = Math.min(...ahead.map(p => Math.hypot(p[0] + 0.5 - tx, p[1] + 0.5 - ty)), Math.hypot(tx - L.lumi.x, ty - L.lumi.y));
-                if (score > bestScore) { bestScore = score; best = [a2, d]; }
-              }
-              if (best) { throwPebble(best[0], best[1]); L.robotWait = 1.6; }
-            }
-          }
-          if (L.robotWait > 0) { L.robotWait -= 1 / 60; for (const d of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[d] = false; return; }
-          if (CORE) {
-            if (L.def.healAll && L.pingCd <= 0 && L.gloom.some(g => !g.lurker && !g.saving && !g.saved && g.gone <= 0 && Math.hypot(g.x - L.lumi.x, g.y - L.lumi.y) < 2.2)) { L.pingCd = 0; ping(true); lastSong = t; }
-            else if (!gloomNear && t - lastSong > 1.5) sing(t);
-            keys.shift = L.gloom.some(gl => !gl.gone && !gl.final && !gl.chaser && Math.hypot(gl.x - L.lumi.x, gl.y - L.lumi.y) < 3.3);
-          } else if (t - lastSong > (L.songLimit ? 9 : gloomNear ? 7 : 3)) sing(t);
-          const cx = Math.floor(L.lumi.x), cy = Math.floor(L.lumi.y);
-          let k = path.findIndex(p => p[0] === cx && p[1] === cy);
-          const next = path[Math.min(path.length - 1, k + 1)] || [Math.floor(target[0]), Math.floor(target[1])];
-          if (L.tile[next[1] * L.cols + next[0]] === "D" && L.door[next[1] * L.cols + next[0]] <= 0 && L.pingCd <= 0) sing(t);
-          const dx = next[0] + 0.5 - L.lumi.x, dy = next[1] + 0.5 - L.lumi.y;
-          // Like a careful player, wait for a Thornling to pass instead of swimming into it.
-          const hazards = L.thorns.concat(L.mobs.filter(mb => mb.kind !== "w" && (mb.kind !== "n" || mb.state !== "idle")));
-          const danger = hazards.some(th => Math.hypot(th.x - (next[0] + 0.5), th.y - (next[1] + 0.5)) < 1.15 && Math.hypot(th.x - L.lumi.x, th.y - L.lumi.y) > 0.75);
-          // Like a player, flare when something dangerous is about to reach Lumi.
-          const close = hazards.concat(L.gloom.filter(gl => gl.hunt > 0 && !gl.gone)).some(th => Math.hypot(th.x - L.lumi.x, th.y - L.lumi.y) < 1.6);
-          if (close && !(L.flareCd > 0)) flare();
-          const wait = danger && (L.waitFor = (L.waitFor || 0) + 1 / 60) < 4;
-          if (!danger) L.waitFor = 0;
-          keys.arrowright = !wait && dx > 0.15; keys.arrowleft = !wait && dx < -0.15; keys.arrowdown = !wait && dy > 0.15; keys.arrowup = !wait && dy < -0.15;
-          if (wait) stuckFor = 0;
-
-          // Progress is measured along the path, since winding caves often lead away first.
-          const d = (k >= 0 ? path.length - k : path.length + 5) + Math.hypot(next[0] + 0.5 - L.lumi.x, next[1] + 0.5 - L.lumi.y) * 0.1;
-          if (d < best - 0.05) { best = d; stuckFor = 0; } else stuckFor += 1 / 60;
-          if (stuckFor > 12) { reason = `stuck near ${cx},${cy}`; return false; }
-        });
-        for (const k of ["arrowright", "arrowleft", "arrowup", "arrowdown", "shift"]) keys[k] = false;
-        const done = screen === "result" || (L.ending && (__sim(2), screen === "result"));
-        if (!done && !reason) reason = L.failing ? (L.failWhy === "time" ? "ran out of time" : "ran out of light") : "timed out";
-        out.push({ n, done, reason, time: Math.round(time), pings: L.pings, par: L.def.par, energy: Math.round(L.energy), goal: L.goal });
-      }
-      return out;
-    }, sample);
-    const fails = res.filter(r => !r.done);
-    // The robot is a simple player (it waits for patrols but can't dodge well), so a handful of
-    // the very hardest caves may beat it. More than 1% means something is genuinely unfair.
-    const list = fails.slice(0, 12).map(f => `${f.n < 0 ? "daily" : "level " + (f.n + 1)} (${f.goal}): ${f.reason}`).join("; ");
-    // 1% of the sample, rounded up, so the quick 97-level sample may lose one cave too.
-    // The handmade story caves are no longer in the menus (Echo is the endless run now), so how
-    // the robot does in them is reported, not required.
-    console.log(`        robot finished ${res.length - fails.length} of ${res.length} story caves (report only; they're no longer in the menus)`);
-    if (fails.length) console.log(`        hardest caves for the robot: ${list}`);
-    const lowLight = res.filter(r => r.done && r.energy > 0 && r.energy < 15 && r.n >= 10);
-    console.log(`        balance: ${lowLight.length} finished levels ended with under 15% light; ` +
-      `the robot sang ${Math.round(res.reduce((a, r) => a + r.pings / r.par, 0) / res.length * 100)}% of par on average`);
-    check("no page errors", errors.length === 0, errors[0]);
-    await page.close();
-  }
-
-  // ---------------------------------------------------------------- Chaos
-  if (!QUICK) {
-    section("Chaos: random controls on random levels");
-    const { page, errors } = await openGame(browser);
-    await page.evaluate(SIM);
-    const c = await page.evaluate(() => {
-      let seed = 12345, problems = [];
-      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-      for (let k = 0; k < 40; k++) {
-        const n = k < 1 ? DAILY : Math.floor(rnd() * TOTAL);
-        startLevel(n, true);
-        __sim(20, t => {
-          if (rnd() < 0.05) for (const d of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[d] = rnd() < 0.35;
-          if (rnd() < 0.02) { L.pingCd = 0; ping(); }
-          const x = L.lumi.x, y = L.lumi.y;
-          if (!Number.isFinite(x) || !Number.isFinite(y)) { problems.push(`level ${n + 1}: Lumi position became ${x},${y}`); return false; }
-          if (!L.ending && solidAt(Math.floor(x), Math.floor(y))) { problems.push(`level ${n + 1}: Lumi inside rock at ${x.toFixed(2)},${y.toFixed(2)}`); return false; }
-        });
-        for (const d of ["arrowright", "arrowleft", "arrowup", "arrowdown"]) keys[d] = false;
-      }
-      return problems;
-    });
-    check("Lumi never ends up inside rock or off the map", c.length === 0, c.slice(0, 4).join("; "));
-    check("no page errors", errors.length === 0, errors[0]);
-    await page.close();
-  }
-
-  // ---------------------------------------------------------------- Speed
-  section("Speed (report only; headless browsers have no graphics chip)");
-  {
-    const { page } = await openGame(browser);
-    for (const rows of [18, 26]) {
-      const i = await page.evaluate(r => { for (let i = 0; i < TOTAL; i++) if (getLevel(i).map.length === r) return i; }, rows);
-      const ms = await page.evaluate(i => { const t = performance.now(); startLevel(i, true); return performance.now() - t; }, i);
-      const fps = await page.evaluate(() => new Promise(done => {
-        let n = 0; const start = performance.now();
-        const tick = now => { n++; if (n % 20 === 0) { L.pingCd = 0; ping(); } if (now - start < 2000) requestAnimationFrame(tick); else done(Math.round(n / ((now - start) / 1000))); };
-        requestAnimationFrame(tick);
-      }));
-      console.log(`        ${rows}-row cave (level ${i + 1}): builds in ${Math.round(ms)} ms, ${fps} frames per second`);
-    }
     await page.close();
   }
 

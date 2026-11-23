@@ -1,6 +1,5 @@
-// Echo: coming back. A seven-day reward calendar, three daily missions, a daily streak, a
-// weekly event, achievements, playable friends with perks, rebuilding the Singer's city with
-// lights, challenge links for friends and a score card to share.
+// Lumen Rush: coming back. A seven-day reward calendar, three daily missions, a daily streak, a
+// weekly event, awards, the monthly season, challenge links for friends and a score card to share.
 "use strict";
 
 const today = () => dayNumber();
@@ -83,41 +82,11 @@ const WEEK_EVENTS = [
 ];
 const weekEvent = () => WEEK_EVENTS[weekNumber() % WEEK_EVENTS.length];
 
-// ---------- Playable friends ----------
-// Friends you find in runs can be played as; each brings a small gift.
-const FRIEND_PERKS = [
-  "Starts each run with a Magnet", "Bubbles carry you twice as far", "Currents can't push you", "Crystal gates open wider",
-  "Lava can't hurt you", "Icicles fall slowly", "Pulses reach a quarter further", "Lanterns swing slower",
-  "Sees through power cuts", "Small: close calls are easier", "Glitches drift away from you", "One extra light of your own",
-];
-const playingAs = () => { const c = (save.run || {}).char; return c != null && c >= 0 && (save.runFriends || {})[c] ? c : -1; };
-const perk = i => playingAs() === i;
-
-// ---------- Rebuilding the city ----------
-const CITY_BUILDS = [
-  { id: "lamps", name: "Street lamps", cost: 40, text: "Light the street again" },
-  { id: "bakery", name: "The bakery", cost: 90, text: "Warm windows and the smell of bread" },
-  { id: "fountain", name: "The fountain", cost: 160, text: "Singing water in the square" },
-  { id: "houses", name: "The old houses", cost: 260, text: "Every window lit" },
-  { id: "garden", name: "The glow garden", cost: 380, text: "Glowing flowers along the street" },
-  { id: "bridge", name: "The stone bridge", cost: 520, text: "Lanterns across the river" },
-  { id: "hall", name: "The music hall", cost: 700, text: "A dome full of songs" },
-  { id: "tower", name: "The Singer's tower", cost: 1000, text: "The heart of the city, shining" },
-];
-const built = id => !!(save.builds || {})[id];
-function buildIt(id) {
-  const b = CITY_BUILDS.find(q => q.id === id);
-  if (!b || built(id) || (save.glow || 0) < b.cost) return false;
-  save.glow -= b.cost; save.builds = save.builds || {}; save.builds[id] = 1; persist();
-  sfx.gate(); buzz([20, 40, 20]); checkAchievements();
-  return true;
-}
-
 // ---------- Achievements ----------
 // Awards: the story of the city coming back, and the skills that get you there.
-const distLit = c => { const S = typeof stageSave === "function" ? stageSave() : { best: {} }; for (let n = c * 10 + 1; n <= c * 10 + 10; n++) if (!(S.best[n] && S.best[n].stars)) return false; return true; };
-const allStars = () => typeof stageSave === "function" ? Object.values(stageSave().best).reduce((a, b) => a + ((b && b.stars) || 0), 0) : 0;
-const threeStars = () => typeof stageSave === "function" ? Object.values(stageSave().best).filter(b => b && b.stars === 3).length : 0;
+const distLit = c => { const S = stageSave(); for (let n = c * 10 + 1; n <= c * 10 + 10; n++) if (!(S.best[n] && S.best[n].stars)) return false; return true; };
+const allStars = () => Object.values(stageSave().best).reduce((a, b) => a + ((b && b.stars) || 0), 0);
+const threeStars = () => Object.values(stageSave().best).filter(b => b && b.stars === 3).length;
 const RUN_ACHS = [
   { id: "home1", name: "First light", text: "Bring the light back to your first home", test: () => (save.prog || {}).home >= 1, r: 30 },
   { id: "d0", name: "Downtown glows", text: "Relight every home in Downtown", test: () => distLit(0), r: 80 },
@@ -159,12 +128,8 @@ function seasonGain(xp) {
   return paid;
 }
 
-// ---------- Friends' abilities ----------
-// Playing as a friend gives an ability button: a short power-up, ready again after 25 s.
-const FRIEND_ABILITY = ["magnet", "comet", "choir", "lantern", "comet", "lantern", "choir", "magnet", "lantern", "comet", "choir", "magnet"];
-
 // ---------- Challenge a friend; share a score card ----------
-// A link carries a seed and a score: your friend plays the very same cave and tries to beat you.
+// A link carries a seed and a score: your friend plays the very same Night shift and tries to beat you.
 const challengeFrom = (() => {
   try { const p = new URLSearchParams(location.search).get("ch"); if (!p) return null; const [seed, score] = p.split(".").map(Number); return seed > 0 ? { seed, score: score || 0 } : null; } catch (e) { return null; }
 })();

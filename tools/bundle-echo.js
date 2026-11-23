@@ -1,5 +1,6 @@
-// Builds a single self-contained copy of Echo with every script inlined, for sharing as one
-// file (for example as a preview page). The game itself runs from echo.html and echo/*.js.
+// Builds a single self-contained copy of Lumen Rush (echo.html) with every script inlined, for
+// sharing as one file (for example as a preview page). The game itself runs from echo.html and
+// echo/*.js.
 //   node tools/bundle-echo.js out.html
 const fs = require("fs");
 const path = require("path");

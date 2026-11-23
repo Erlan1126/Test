@@ -367,7 +367,7 @@ const SW2D = (() => {
         const px2 = X(R.stageLen + 8.2), py2 = wy1; ctx.fillStyle = lit > 0 ? "#3a2a1c" : "rgba(120,130,160,0.35)";
         ctx.beginPath(); ctx.arc(px2, py2 - 2.6 * s, 0.55 * s, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(px2 - 0.6 * s, py2 - 2 * s, 1.2 * s, 2 * s);
         if (lit > 0) { const wv = Math.sin(t * 9) * 0.5; ctx.strokeStyle = "#3a2a1c"; ctx.lineWidth = 0.28 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px2 + 0.5 * s, py2 - 1.8 * s); ctx.lineTo(px2 + (1.2 + wv * 0.3) * s, py2 - (3 + wv) * s); ctx.stroke(); }
-        if (typeof stagePerson === "function") { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
+        { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
       }
     }
     // A ghost: your best run (or a friend's) on this stage, see-through.
