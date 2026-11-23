@@ -91,6 +91,7 @@ function runnerStart(R) {
   swingGen(R, 220);
   R.teth = a0; R.L = Math.hypot(R.px - a0.x, R.py - a0.y); R.hold = true;
   if (R.tut) R.tut = 1;
+  if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
 }
 
 // ---------- Making the skyline ahead ----------
