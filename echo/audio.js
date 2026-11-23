@@ -161,11 +161,11 @@ function musicTick() {
 // four, shuffling hats, a pumping bass and syncopated chord stabs; a lead joins on long combos.
 // It gets a little faster and fuller the faster you run.
 const BEAT_SCALE = [0, 2, 3, 5, 7, 8, 10], BEAT_PROG = [0, 5, 2, 6];
-const beatHz = (deg, oct) => 110 * Math.pow(2, (BEAT_SCALE[((deg % 7) + 7) % 7] + 12 * (oct + Math.floor(deg / 7))) / 12);
+const beatHz = (deg, oct) => ((music.district && music.district.base) || 110) * Math.pow(2, (BEAT_SCALE[((deg % 7) + 7) % 7] + 12 * (oct + Math.floor(deg / 7))) / 12);
 function beatTick() {
-  const bpm = 116 + (music.intensity || 0) * 14, step = 60 / bpm / 4;
+  const D = music.district || {}, bpm = (D.bpm || 116) + (music.intensity || 0) * 14, step = 60 / bpm / 4, PROG = D.prog || BEAT_PROG;
   while (music.next < AC.currentTime + 0.3) {
-    const k = music.step, t = music.next, bar = Math.floor(k / 16), root = BEAT_PROG[bar % 4], s = k % 16, full = music.layers >= 2;
+    const k = music.step, t = music.next, bar = Math.floor(k / 16), root = PROG[bar % 4], s = k % 16, full = music.layers >= 2;
     if (s % 4 === 0) note(150, { time: t, dur: 0.28, vol: 0.32, glide: 42, echo: 0, attack: 0.003, music: true });
     if (s === 4 || s === 12) noise({ time: t, filter: "bandpass", freq: 1700, q: 0.7, dur: 0.16, attack: 0.002, vol: 0.16, music: true });
     if (full && s % 2 === 0) noise({ time: t, filter: "highpass", freq: 8500, q: 0.5, dur: s % 4 === 2 ? 0.12 : 0.04, attack: 0.001, vol: s % 4 === 2 ? 0.05 : 0.03, music: true });
@@ -292,6 +292,8 @@ sfx.caught = () => {
 // A pebble: a soft toss, then a bright clatter where it lands.
 // Reeling in: a soft tick that climbs as the rope gets shorter.
 sfx.reel = (k = 0) => note(520 + k * 520, { dur: 0.045, vol: 0.022, type: "triangle", attack: 0.004 });
+// A window lights up: a warm rising chord with a bell on top.
+sfx.home = () => { [0, 4, 7, 12, 16].forEach((d, i) => note(261.63 * Math.pow(2, d / 12), { at: i * 0.07, dur: 1.4, vol: 0.05, type: "triangle", attack: 0.01, echo: 0.9 })); note(1046.5, { at: 0.38, dur: 2, vol: 0.035, fm: 3.5, fmDepth: 0.6, echo: 1 }); };
 sfx.toss = () => noise({ freq: 1800, glide: 900, q: 1, dur: 0.18, attack: 0.02, vol: 0.03 });
 sfx.clatter = (dx = 0) => { for (let k = 0; k < 4; k++) note(1700 + Math.random() * 900, { at: k * 0.06 + Math.random() * 0.03, dur: 0.06, vol: 0.06 - k * 0.012, type: "square", lowpass: 4200, echo: 0.8, pan: dx / 4 }); };
 // A Lurker's eye opening on you: a low, wet creak.
