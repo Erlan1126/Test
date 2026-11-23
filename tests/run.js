@@ -590,6 +590,22 @@ const SIM = `
       });
       for (const [k, v] of Object.entries(pr)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     }
+    // The halfway lantern on long stages.
+    {
+      const cp = await page.evaluate(async () => {
+        const o = {}; stageSave().unlocked = 60; delete stageSave().best[25]; delete stageSave().ghosts[25]; startStage(25); let R = run;
+        for (let q = 0; q < 60 * 90 && !R.cp; q++) { runnerAuto(); R.inv = 1; R.hearts = 3; runUpdate(1 / 60); }
+        o.passingHalfwaySetsACheckpoint = !!R.cp;
+        R.inv = 0; R.hearts = 1; swingHit(R, "test"); await new Promise(r => setTimeout(r, 1300));
+        o.theFailCardOffersHalfway = !$("stFromCp").hidden;
+        $("stFromCp").click(); R = run;
+        o.startingFromHalfwayIsPastTheMiddle = R.cpUsed === true && R.px > R.stageLen * 0.45 && !R.over;
+        for (let q = 0; q < 60 * 90 && !R.cleared; q++) { runnerAuto(); R.inv = 1; R.hearts = 3; runUpdate(1 / 60); }
+        o.aHalfwayClearIsOneStarAndNoGhost = R.cleared && R.stageStars === 1 && stageSave().best[25].stars === 1 && !stageSave().ghosts[25];
+        return o;
+      });
+      for (const [k, v] of Object.entries(cp)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    }
     // Progress survives a reload (the swing game's saves used to be dropped by the loader).
     await page.evaluate(() => { stageSave().unlocked = 7; save.city = { lit: 12 }; persist(); });
     await page.reload(); await page.waitForTimeout(800);

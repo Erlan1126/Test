@@ -92,12 +92,21 @@ function startStage(n, opts = {}) {
   const own = !info.daily && S.ghosts[n] ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
   $("stageCard").hidden = true;
-  startRun({ stage: n, ghost: race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
+  startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
+  // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
+  if (opts.cp && run && run.stage === n) {
+    const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
+    const a = R.anchors.filter(q => !q.type && !q.broken && q.x >= cp.x - 2).sort((p, q) => p.x - q.x)[0];
+    if (a) { R.px = a.x - 6; R.py = a.y - 8; R.vx = 12; R.vy = 0; R.teth = a; R.L = Math.hypot(6, 8); R.hold = true; }
+    R.darkX = R.px - 55; R.stageT = cp.t; R.cpUsed = true; R.cp = cp; R.tut = 0; R.banner = 0; R.msgs.length = 0;
+    for (const m of R.motes) if (m.x < R.px) m.skip = true;
+    runMsg("From halfway", "Reach their home (1 ★ from here)", 1.8, true);
+  }
 }
 function stageClear(R) {
   R.cleared = true; R.msgs.length = 0; R.clearAt = R.t; R.clearFrom = { x: R.px, y: R.py + 1.2 }; R.inv = 9; R.slowT = 0.6; R.fireworks.push({ t: 0, seed: Math.random() }, { t: -0.4, seed: Math.random() });
   const total = Math.max(1, R.motesTotal), share = R.motesGot / total, time = R.stageT;
-  const stars = 1 + (share >= 0.5 ? 1 : 0) + (share >= 0.8 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
+  const stars = R.cpUsed ? 1 : 1 + (share >= 0.5 ? 1 : 0) + (share >= 0.8 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
   R.stageStars = stars; R.stageTime = time;
   if (R.attract) return;
   const S = stageSave(), n = R.stage, info = R.stageInfo;
@@ -107,8 +116,10 @@ function stageClear(R) {
     if (!d.time || time < d.time) { d.time = time; d.g = ghostEncode(R.trace); newBest = true; } d.stars = Math.max(d.stars || 0, stars);
     if (typeof streakTouch === "function") streakTouch();
   } else {
-    const b = S.best[n] || {}; S.best[n] = { stars: Math.max(b.stars || 0, stars), time: b.time ? Math.min(b.time, time) : time };
-    if (!b.time || time < b.time) { S.ghosts[n] = { g: ghostEncode(R.trace), t: time }; newBest = true; }
+    const b = S.best[n] || {};
+    // A run from the halfway lantern relights the home, but doesn't set a best time or a ghost.
+    S.best[n] = { stars: Math.max(b.stars || 0, stars), time: R.cpUsed ? b.time || time : b.time ? Math.min(b.time, time) : time };
+    if (!R.cpUsed && (!b.time || time < b.time)) { S.ghosts[n] = { g: ghostEncode(R.trace), t: time }; newBest = true; }
     S.unlocked = Math.max(S.unlocked, Math.min(STAGES_N, n + 1));
   }
   R.newBest = newBest;
@@ -145,6 +156,7 @@ function showStageCard(won) {
   next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
   $("stShare").hidden = !won;
+  { const cb = $("stFromCp"); if (cb) cb.hidden = !!(won || !R.cp); }
   el.hidden = false; runHud();
 }
 // Share: the best moment of the run as a picture, plus a link to race your ghost.
@@ -207,6 +219,7 @@ document.getElementById("stNext").addEventListener("click", () => startStage(Num
 document.getElementById("stRetry").addEventListener("click", () => run && startStage(run.stage));
 document.getElementById("stStages").addEventListener("click", () => { $("stageCard").hidden = true; run = null; showTitle(); openSheet("stages"); });
 document.getElementById("stShare").addEventListener("click", stageShare);
+document.getElementById("stFromCp").addEventListener("click", () => { if (run && run.cp) startStage(run.stage, { cp: run.cp }); });
 
 // What's new on a stage: a short line the first time something appears.
 const STAGE_NEW = { 11: ["The Markets", "Lantern strings sway in the breeze: time your grab"], 21: ["The Harbour", "Fall in the water and you splash: it slows you down"], 31: ["The Arcade", "Neon pads on the rooftops bounce you sky-high"], 41: ["The Park", "Grab the glowing treetops for low, fast swings"], 51: ["The Tower", "Updrafts between the towers lift you up"], 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };

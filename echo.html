@@ -751,6 +751,7 @@
   .st-stars span.off { color: rgba(255,255,255,0.18); text-shadow: none; }
   @keyframes starPop { from { transform: scale(0) rotate(-40deg); opacity: 0; } 70% { transform: scale(1.25) rotate(8deg); opacity: 1; } }
   #stageCard { background: radial-gradient(120% 70% at 50% 0%, rgba(255,200,110,0.16), transparent 60%), rgba(14,16,24,0.96); border: 1px solid rgba(255,210,140,0.25); }
+  .cp-btn { width: 100%; margin-top: 10px; padding: 12px; border-radius: 14px; font-weight: 700; color: #8be9ff; }
   .pz-who { margin: 4px 0 10px; color: var(--gold); font-weight: 700; text-align: center; }
   .pz-goals { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
   .pz-goals li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); font-size: 14px; }
@@ -1032,6 +1033,7 @@
     <div class="ro-stats"><div><b id="stTime">0</b><span>seconds</span></div><div><b id="stLights">0/0</b><span>lights</span></div><div><b id="stPerf">0</b><span>perfects</span></div></div>
     <p class="ro-daily" id="stNote"></p>
     <div class="row2"><button class="ghost" id="stStages">City</button><button class="primary" id="stNext">Next stage</button><button class="ghost icon-only" id="stShare" aria-label="Share and race a friend"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>
+    <button class="ghost cp-btn" id="stFromCp" hidden>⟲ From halfway (1 ★)</button>
     <button class="link2" id="stRetry">Retry</button>
   </div>
   <div class="card2 bottom" id="runOver" hidden>

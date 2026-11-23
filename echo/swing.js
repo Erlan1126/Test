@@ -353,6 +353,8 @@ function runnerUpdate(dt) {
   if (R.stageLen) {
     if (!R.cleared) { R.stageT += dt; R.traceT += dt; while (R.traceT >= 0.1) { R.traceT -= 0.1; R.trace.push([R.px, R.py]); } }
     if (!R.cleared && !R.over && R.px >= R.stageLen) stageClear(R);
+    // The halfway lantern on long stages: fall after it and you can start again from here.
+    if (!R.cp && !R.attract && !R.stageInfo.daily && R.stageLen >= 800 && R.px > R.stageLen * 0.5 && !R.over) { R.cp = { x: R.stageLen * 0.5, t: R.stageT }; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0x8be9ff, big: true }); runMsg("Halfway!", "Fall now and you can start again from here", 1.6, true); sfx.clear(); }
     if (!R.cleared && !R.attract && R.pChain >= 3 && (!R.shotAt || R.t - R.shotAt > 4)) R.wantShot = true;
   }
   R.dist = Math.max(R.dist, Math.max(0, R.px) * RUN.M);
