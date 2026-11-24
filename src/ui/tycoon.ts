@@ -1390,48 +1390,50 @@ export class TycoonUI {
     const n = !owned ? 1 : Math.min(room, this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
     const price = costOf(b, lv, n), canBuy = price <= ty.coins && !noRoom;
     const ns = owned ? STAGE_AT[st + 1] : undefined;
-    const goal = !owned ? t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) })
-      : grow ? t("Ready to grow! HQ order: {order} for ×{m} earnings", { order: orderText(orderFor(i, grow)), m: ORDER_MULT })
-      : ns ? t("Grows into {name} at {n} floors", { name: t(stageName(b.id, st + 1)), n: ns }) : t("Fully grown!");
     const amountLabel = this.amount === "max" ? "MAX" : `×${this.amount}`;
     const perLv0 = owned ? payOf(s, b, now) / lv : 0;
-    const main = noRoom ? `<button type="button" class="card-main floors" data-card="build"><b>${esc(t("Build more floors"))}</b><small>${esc(t("Your offices are full"))}</small></button>`
-      : `<button type="button" class="card-main" data-card="buy"${canBuy ? "" : " disabled"}><b>${esc(owned ? t("Buy {n}", { n: amountLabel }) : t("Open it"))}</b><small>${COIN_SVG}${esc(coins(price))}${owned ? ` · ${esc(t("+{n} a sale", { n: coins(perLv0 * n) }))}` : ""}</small></button>`;
-    // Everything about the business at a glance: what it earns, its level, how fast it sells,
-    // and what's next (a speed boost, a new building), each with how far along it is.
     const pay = payOf(s, b, now), cyc = cycleOf(b, Math.max(1, lv));
     const secs = (x: number) => (x >= 60 ? t("{n} min", { n: fmt(Math.round(x / 6) / 10) }) : t("{n} s", { n: x >= 10 ? Math.round(x) : Math.round(x * 10) / 10 }));
     const nm = owned ? nextMilestone(lv) : undefined, prevM = owned ? [0, ...MILESTONES_AT].filter(m => m <= lv).pop() ?? 0 : 0;
     const stars = `<span class="card-stars" aria-label="${esc(t("Stage {n} of 8", { n: st + 1 }))}">${STAGE_AT.map((_, k) => `<i class="${k <= st ? "on" : ""}"></i>`).join("")}</span>`;
-    const stat = (label: string, value: string, tone = "") => `<span class="card-stat ${tone}"><small>${esc(label)}</small><b>${esc(value)}</b></span>`;
-    const nextRow = (ico: string, text: string, k: number) => `<div class="card-next"><span class="cn-ico">${ico}</span><span class="cn-txt">${esc(text)}<i class="cn-bar"><i style="width:${Math.round(Math.max(0, Math.min(1, k)) * 100)}%"></i></i></span></div>`;
-    const nextRows = !owned ? "" : [
-      nm ? nextRow("⚡", t("Level {n}: it sells twice as fast", { n: fmt(nm) }), (lv - prevM) / Math.max(1, nm - prevM)) : "",
-      !grow && ns ? nextRow("🏗️", t("Level {n}: it grows into {name}", { n: fmt(ns), name: t(stageName(b.id, st + 1)) }), (lv - (STAGE_AT[st] ?? 0)) / Math.max(1, ns - (STAGE_AT[st] ?? 0))) : "",
-    ].join("");
-    this.put(card, `<div class="card-head" style="--b1:${b.color[0]};--b2:${b.color[1]}">
-        <span class="card-ico">${iconSvg(b.icon)}</span>
-        <span class="card-name"><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b><small>${owned ? `${stars} ${esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 8", { n: st + 1 }) : t(b.name))}` : esc(t("For lease"))}</small></span>
-        <button type="button" class="card-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
+    const bar = (k: number) => `<i class="bc-bar"><i style="width:${Math.round(Math.max(0.03, Math.min(1, k)) * 100)}%"></i></i>`;
+    // The one thing coming next: the nearer of a speed-up and the next stage.
+    const toStage = !grow && ns ? ns - lv : Infinity, toSpeed = nm ? nm - lv : Infinity;
+    const next = !owned ? "" : grow ? "" : toStage <= toSpeed && ns
+      ? `<div class="bc-next"><span class="bc-next-ico">🏗️</span><span class="bc-next-txt"><b>${esc(t("Level {n}: it grows into {name}", { n: fmt(ns), name: t(stageName(b.id, st + 1)) }))}</b>${bar((lv - (STAGE_AT[st] ?? 0)) / Math.max(1, ns - (STAGE_AT[st] ?? 0)))}</span></div>`
+      : nm ? `<div class="bc-next"><span class="bc-next-ico">⚡</span><span class="bc-next-txt"><b>${esc(t("Level {n}: it sells twice as fast", { n: fmt(nm) }))}</b>${bar((lv - prevM) / Math.max(1, nm - prevM))}</span></div>` : "";
+    // Buying: how many (one tap each), and the big button with what it adds.
+    const amts = ([1, 10, 100, "max"] as const).map(a => `<button type="button" data-card="amt" data-n="${a}" aria-pressed="${this.amount === a}">${a === "max" ? "MAX" : "×" + a}</button>`).join("");
+    const main = noRoom ? `<button type="button" class="card-main floors" data-card="build"><b>${esc(t("Build more floors"))}</b><small>${esc(t("Your offices are full"))}</small></button>`
+      : `<button type="button" class="card-main${canBuy ? "" : " short"}" data-card="buy"><b>${esc(owned ? t("Buy {n}", { n: amountLabel }) : t("Open it"))}</b><small>${COIN_SVG}${esc(coins(price))}${owned ? ` · ${esc(t("+{n} a sale", { n: coins(perLv0 * n) }))}` : ""}</small></button>`;
+    // The big tiles: sell, the manager, growing, every business.
+    const tile = (card: string, ico: string, title: string, sub: string, cls = "", extra = "") => `<button type="button" class="bc-tile ${cls}" data-card="${card}"><span class="bc-tile-ico">${ico}</span><b>${esc(title)}</b><small>${esc(sub)}</small>${extra}</button>`;
+    const hqJob = HAS_CITY && grow ? buildOf(s, "hq", b.id) : null;
+    const tiles = !owned ? "" : [
+      managed ? tile("look", "👔", t("Managed"), t("Earns while you're away"), "done")
+        : tile("hire", "👔", t("Manager"), coins(b.manager), ty.coins >= b.manager ? "go" : "", ty.coins >= b.manager ? "" : bar(ty.coins / b.manager)),
+      !managed ? tile("run", "👆", t("Sell now"), t("+{n}", { n: coins(pay) }), "sell") : "",
+      grow ? (hqJob ? tile("hq", "🔨", t("Building"), fmtLeft(hqJob.end - now), "grow")
+        : tile("hq", "🏗️", t("Grow it!"), HAS_CITY ? coins(hqPrice(s, b.id)) : t("{n} floors", { n: hqFloors(grow) }), "grow", HAS_CITY ? `<small>⏱ ${esc(fmtLeft(buildTime(s, "hq", b.id, now)))}</small>` : "")) : "",
+      tile("look", "📋", t("All"), t("businesses"), "all"),
+    ].filter(Boolean).join("");
+    const lease = !owned ? `<p class="bc-lease">${esc(t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) }))}</p>` : "";
+    const growNote = grow ? `<p class="bc-grow">✨ ${esc(t("Ready to grow into {name}!", { name: t(stageName(b.id, grow)) }))}</p>` : !ns && owned ? `<p class="bc-grow done">🏆 ${esc(t("Fully grown!"))}</p>` : "";
+    this.put(card, `<div class="bc-hero" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+        <span class="bc-ico">${iconSvg(b.icon)}</span>
+        <span class="bc-title"><small>${owned ? esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 8", { n: st + 1 }) : t(b.name)) : esc(t("For lease"))}</small><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b>${owned ? stars : ""}</span>
+        ${owned ? `<span class="bc-lv"><small>${esc(t("Level"))}</small><b>${esc(fmt(lv))}</b></span>` : ""}
+        <button type="button" class="card-x bc-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
       </div>
-      ${owned ? `<div class="card-stats">
-        ${managed ? stat(t("Earns"), t("{n}/s", { n: coins(pay / cyc) }), "money") : stat(t("Each sale"), coins(pay), "money")}
-        ${stat(t("Level"), fmt(lv))}
-        ${stat(t("Sells every"), secs(cyc))}
-      </div>
-      <i class="card-prog"><i></i></i>
-      ${nextRows}` : ""}
-      ${!owned || grow || !ns ? `<p class="card-info">${esc(goal)}</p>` : ""}
-      <div class="card-acts">
-        ${main}
-        ${owned && !noRoom ? `<button type="button" class="card-amount" data-card="amount" aria-label="${esc(t("How many to buy"))}">${amountLabel}</button>` : ""}
-      </div>
-      ${grow ? `<button type="button" class="card-hq" data-card="hq"><span>🏗️</span><b>${esc(t("Build the HQ"))}</b><small>${esc(t("{n} floors", { n: hqFloors(grow) }))} · ×${ORDER_MULT}</small></button>` : ""}
-      <div class="card-row">
-        ${owned && !managed ? `<button type="button" class="card-small run" data-card="run">${esc(t("Sell now"))}</button>
-          <button type="button" class="card-small" data-card="hire"${ty.coins < b.manager ? " disabled" : ""}>${esc(t("Hire manager"))} · ${esc(coins(b.manager))}</button>` : owned ? `<span class="card-auto">${esc(t("👔 A manager runs it, even while you're away"))}</span>` : ""}
-        ${owned ? `<button type="button" class="card-small" data-card="look">${esc(t("All businesses"))}</button>` : ""}
-      </div>
+      ${owned ? `<div class="bc-earn">
+        <span class="bc-money">${COIN_SVG}<b>${esc(managed ? coins(pay / cyc) : coins(pay))}</b><small>${esc(managed ? t("a second") : t("a sale"))}</small></span>
+        <span class="bc-meta">⏱ ${esc(t("every {t}", { t: secs(cyc) }))}</span>
+        <i class="card-prog"><i></i></i>
+      </div>` : ""}
+      ${lease}${growNote}${next}
+      ${owned && !noRoom ? `<div class="bc-amt" role="group" aria-label="${esc(t("How many to buy"))}">${amts}</div>` : ""}
+      <div class="card-acts">${main}</div>
+      ${tiles ? `<div class="bc-tiles">${tiles}</div>` : ""}
       <span class="tag-pops card-pops"></span>`);
   }
 
@@ -1449,7 +1451,24 @@ export class TycoonUI {
       this.startCityBuild("home", key);
       return;
     }
-    if (what === "hire") { this.hireBuilderNow(); return; }
+    if (what === "amt") {
+      const v = el.dataset.n!;
+      this.amount = v === "max" ? "max" : (Number(v) as 1 | 10 | 100);
+      $("tycoon").querySelectorAll<HTMLElement>(".ty-amount button").forEach(x => x.setAttribute("aria-checked", String(x.dataset.n === String(this.amount))));
+      this.host.sound.click();
+      this.render();
+      return;
+    }
+    if ((what === "hire" || what === "buy") && id) {
+      // Short of cash: say how long until it's earned (and offer a time warp), not just nothing.
+      tick(this.save);
+      const b = BUSINESSES.find(x => x.id === id), ty = this.save.tycoon;
+      if (b) {
+        const lv = levelOf(this.save, id), n = lv === 0 ? 1 : Math.min(Math.max(1, freeFloors(this.save)), this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
+        const need = what === "hire" ? b.manager : costOf(b, lv, n);
+        if (ty.coins < need) { this.host.sound.click(); toast(t("You need {n} more", { n: coins(need - ty.coins) })); this.shortOffer(need - ty.coins); return; }
+      }
+    }
     if (what === "amount") {
       const order: (number | "max")[] = [1, 10, 100, "max"];
       this.amount = order[(order.indexOf(this.amount) + 1) % order.length];
