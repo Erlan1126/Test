@@ -89,10 +89,10 @@ const stageLink = (n, time, trace) => `${location.origin}${location.pathname}?st
 function startStage(n, opts = {}) {
   const S = stageSave(), info = stageInfo(n);
   if (!info.daily && n > S.unlocked && !opts.race) return;
-  const own = !info.daily && S.ghosts[n] && S.ghosts[n].v === 2 ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
+  const own = !info.daily && S.ghosts[n] && S.ghosts[n].v === 3 ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
   // Attempts, like a level counter in a rhythm game: every try counts.
-  if (!info.daily) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
+  if (!info.daily && !opts.race) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
   $("stageCard").hidden = true;
   const attempt = !info.daily && S.att ? S.att[n] : 0;
   startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
@@ -124,7 +124,8 @@ function stageClear(R) {
     const b = S.best[n] || {};
     // A run from the halfway lantern relights the home, but doesn't set a best time or a ghost.
     S.best[n] = { stars: Math.max(b.stars || 0, stars), time: R.cpUsed ? b.time || time : b.time ? Math.min(b.time, time) : time };
-    if (!R.cpUsed && (!b.time || time < b.time)) { S.ghosts[n] = { v: 2, g: ghostEncode(R.trace), t: time }; /* v2: stages built from sections */ newBest = true; }
+    // (v3: the course as built from sections; an older ghost or best time doesn't block saving a v3 ghost.)
+    if (!R.cpUsed && (!b.time || time < b.time || !(S.ghosts[n] && S.ghosts[n].v === 3))) { S.ghosts[n] = { v: 3, g: ghostEncode(R.trace), t: time }; newBest = true; }
     S.unlocked = Math.max(S.unlocked, Math.min(STAGES_N, n + 1));
   }
   R.newBest = newBest;
@@ -142,7 +143,7 @@ function stageClear(R) {
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
-  if (!R.stageInfo.daily) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(R.px / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
+  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(R.px / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
   setTimeout(() => showStageCard(false), 650);
 }
 function showStageCard(won) {

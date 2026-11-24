@@ -401,7 +401,7 @@ const SW2D = (() => {
     // Afterimages on a dash, a Perfect or a ring.
     if (R.dashT > 0 || R.perfT > 0.2 || R.ringT > 0) { ctx.globalCompositeOperation = "lighter"; for (let q = 3; q < 13 && q < hist.length; q += 3) { const e = hist[q]; ctx.globalAlpha = 0.35 * (1 - q / 13); const z = 2.4 * s; ctx.drawImage(glow(glowRGB), X(e[0]) - z / 2, Y(e[1] - 0.6) - z / 2, z, z); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
     // ---------- The being of light ----------
-    const blink = R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
+    const blink = !R.cleared && R.inv > 0.3 && Math.floor(R.inv * 12) % 2;
     if (R.shatter) { ctx.globalCompositeOperation = "lighter"; for (const q of R.shatter) { const z = 0.9 * s; ctx.drawImage(glow(glowRGB), X(q.x) - z / 2, Y(q.y) - z / 2, z, z); } ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff"; for (const q of R.shatter) ctx.fillRect(X(q.x) - 1.5, Y(q.y) - 1.5, 3, 3); }
     if (!blink && !R.shatter) {
       const auraC = R.pNow ? [255, 214, 90] : R.od > 0 ? [255, 194, 61] : R.power ? RUNNER_POWERS[R.power.kind].rgb.split(",").map(Number) : glowRGB, asz = (R.pNow ? 6.5 + Math.sin(t * 20) * 0.4 : R.od > 0 ? 6 : R.dashT > 0 ? 5.5 : 4.5) * s;

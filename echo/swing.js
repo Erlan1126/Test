@@ -112,9 +112,12 @@ function swingGen(R, toX) {
   while (R.genX < toX) {
     const m = Math.max(0, R.genX), th = runnerTheme(m), hard = R.stageInfo ? R.stageInfo.hard : Math.min(1, m / 3000);
     // Anchors: a chain ahead, always reachable from the one before.
-    while (R.lastA.x < R.genX + 70 && !(R.stageLen && R.lastA.x > R.stageLen + 40)) {
+    // (The generator reads anchors where they were placed, not where a drifting or swaying one is right now,
+    // and counts with its own counter, so the course is the same however you play it.)
+    const baseX = a => a.bx ?? a.x;
+    while (baseX(R.lastA) < R.genX + 70 && !(R.stageLen && baseX(R.lastA) > R.stageLen + 40)) {
       // Stages are built from short sections, each with its own shape (see swingSection).
-      const p = R.lastA, sec = swingSection(R, p.x + 10), gapK = sec === "gap" && (R.anchors.length % 2) ? 6 : 0;
+      const pl = R.lastA, p = { x: pl.bx ?? pl.x, y: pl.by ?? pl.y }; R.gN = (R.gN || 0) + 1; const sec = swingSection(R, p.x + 10), gapK = sec === "gap" && (R.gN % 2) ? 6 : 0;
       const ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3) + gapK, ath = runnerTheme(ax);
       let ay = Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8));
       if (sec === "climb") ay = Math.min(46, p.y + 2.5 + r() * 1.5); else if (sec === "dive") ay = 28 + r() * 2.5; else if (sec === "zigzag") ay = p.y > 37 ? 30 + r() * 1.5 : 43 + r() * 1.5;
@@ -210,6 +213,7 @@ function swingAttach(R) {
 function swingHold(down) {
   const R = run;
   if (!R || !R.mode3) return;
+  if (R.cleared) { R.hold = false; return; }   // home: nothing to grab any more
   if (!down && (R.over || R.paused)) { R.hold = false; R.grabBuf = 0; R.kHold = false; return; }
   if (R.over || R.paused) return;
   // Press: grab the target now; if it's not quite in reach, keep trying for a moment, then fizzle.
@@ -416,9 +420,9 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.2 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.2 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
-  if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
+  if (R.px < R.darkX + 1 && !R.attract && !R.cleared) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
   for (const b of R.blds) if (b.litT >= 0) b.litT += dt;
   for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.attract) { runMission("free", R.lit); progressEvent("free"); if (!b.tree) sfx.clear(); } }
