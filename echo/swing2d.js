@@ -323,7 +323,8 @@ const SW2D = (() => {
     // ---------- The scarf: a ribbon of light from the shoulders ----------
     const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N = Math.min(40, scf.len);
     { const e = hist.length >= 48 ? hist.pop() : [0, 0]; e[0] = R.px; e[1] = R.py + 1.75; hist.unshift(e); }
-    const scCol = R.od > 0 || scf.c === "prism" ? null : rgbOf(scf.c ?? glowHex);
+    // On a Perfect chain of 3 or more, the scarf burns gold.
+    const zone = (R.pChain || 0) >= 3, scCol = zone ? [255, 205, 90] : R.od > 0 || scf.c === "prism" ? null : rgbOf(scf.c ?? glowHex);
     ctx.globalCompositeOperation = "lighter";
     for (let q = 0; q < Math.min(N, hist.length) - 1; q++) {
       const a = hist[q], b = hist[q + 1], k = q / N, w = scf.w * s * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)), yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k * s;
@@ -433,6 +434,9 @@ const SW2D = (() => {
     // Screen positions for the overlay.
     // Danger: a red glow rising from the bottom when the street is coming and nothing is in reach.
     if (R.danger > 0.01 && !R.attract) { const g = ctx.createLinearGradient(0, H, 0, H * 0.7); g.addColorStop(0, `rgba(255,60,80,${0.45 * R.danger * (0.75 + 0.25 * Math.sin(t * 18))})`); g.addColorStop(1, "rgba(255,60,80,0)"); ctx.fillStyle = g; ctx.fillRect(0, H * 0.7, W, H * 0.3); }
+    // The chain count floats by you (x3, x4...), and from x5 the edges of the screen glow gold: in the zone.
+    if ((R.pChain || 0) >= 3 && !R.attract && !R.over) { const n = R.pChain, fx = X(R.px) + 1.6 * s, fy = Y(R.py + 3.2), pop = 1 + Math.max(0, (R.perfT || 0) - 0.2) * 1.2; ctx.font = `900 ${Math.round(1.05 * s * pop)}px Inter, system-ui, sans-serif`; ctx.textAlign = "left"; ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillText(`×${n}`, fx + 1.5, fy + 1.5); ctx.fillStyle = "#ffd25a"; ctx.fillText(`×${n}`, fx, fy);
+      if (n >= 5 && !(save.settings && save.settings.calm)) { const k = Math.min(1, (n - 4) / 4) * (0.75 + 0.25 * Math.sin(t * 5)); for (const [x0, x1] of [[0, W * 0.12], [W, W * 0.88]]) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, `rgba(255,200,80,${0.28 * k})`); g.addColorStop(1, "rgba(255,200,80,0)"); ctx.fillStyle = g; ctx.fillRect(Math.min(x0, x1), 0, W * 0.12, H); } } }
     R.scrAim = aim ? [X(aim.x), Y(aim.y)] : null; R.scrDark = dx;
     return (x, at) => [hx, Y(R.py + 2.6)];
   }
