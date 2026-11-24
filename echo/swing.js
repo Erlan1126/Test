@@ -128,7 +128,7 @@ function swingGen(R, toX) {
       if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS).filter(k => !(R.stageLen && k === "comet")); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
       else if (!R.attract && !R.tut && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
       // Drones patrol between some anchors later on.
-      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < 0.12 + hard * 0.26) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
+      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < 0.06 + hard * 0.12) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
     }
     // One building (or a tree in the park), never so tall that it blocks the anchors.
     const gap = (th.water ? 6 : 3) + r() * (th.water ? 10 : 7) + (r() < 0.12 ? 8 : 0), w = 9 + r() * 10, x0 = R.genX + gap, x1 = x0 + w;
@@ -185,7 +185,17 @@ function swingHold(down) {
   if (!down && (R.over || R.paused)) { R.hold = false; R.grabBuf = 0; R.kHold = false; return; }
   if (R.over || R.paused) return;
   // Press: grab the target now; if it's not quite in reach, keep trying for a moment, then fizzle.
-  if (down) { R.hold = true; if (!R.teth && !swingAttach(R)) R.grabBuf = 0.25; return; }
+  if (down) {
+    R.hold = true;
+    if (!R.teth && !swingAttach(R)) {
+      // On a rooftop with nothing in reach: jump. Keep holding and you grab the ringed light as soon as it's in reach.
+      if (R.roof) { R.roof = null; R.py += 0.1; R.vy = 16; R.vx = Math.max(R.vx, 12); R.dust = { x: R.px, y: R.py, t: 0, k: 0.8 }; R.jumpT = 0.3; if (!R.attract) { sfx.jump(); buzz(6); } }
+      // In the air with nothing in reach: an air dash, forward and up (one per grab). Keep holding to grab.
+      else if (R.dashes > 0) { R.dashes--; R.dashT = 0.35; R.vy = Math.max(R.vy, 13); R.vx = Math.min(SWING.MAXV, Math.max(R.vx, 10) + 3); R.spinV = 0; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: null }); if (!R.attract) { sfx.whoosh(18); buzz(6); if (!R.dashTip && !R.tut) { R.dashTip = true; runMsg("Air dash!", "Tap in the air when nothing's in reach", 1.6); } } }
+      else R.grabBuf = 0.25;
+    }
+    return;
+  }
   R.hold = false; R.grabBuf = 0;
   if (!R.teth) return;
   const was = R.teth; R.teth = null; R.lastLet = was; R.snap = { x: was.x, y: was.y, t: 0 };
@@ -271,6 +281,8 @@ function runnerUpdate(dt) {
   swingAim(R);
   // Holding grabs the highlighted anchor the moment it comes into reach. A press that finds it
   // still out of reach a moment later shows why ("Too far" / "Below you").
+  // Holding on a rooftop with nothing in reach: hop off after a beat, so holding always does something.
+  if (R.roof && R.hold && !R.teth && !R.aimOk) { R.roofHoldT = (R.roofHoldT || 0) + dt; if (R.roofHoldT > 0.18) { R.roofHoldT = 0; R.hold = false; swingHold(true); } } else R.roofHoldT = 0;
   if (R.hold && !R.teth) { if (swingAttach(R)) R.grabBuf = 0; else if (R.grabBuf > 0 && (R.grabBuf -= dt) <= 0) { R.grabBuf = 0; R.fizzle = 0.35; } }
   // Anchors that move, and anchors that crumble under you.
   for (const a of R.anchors) { if (a.flicker) a.off = a !== R.teth && Math.sin(R.t * 2.1 + a.ph * 3) < -0.35; if (a.type === "drift") a.x = a.bx + Math.sin(R.t * 0.9 + a.ph) * 3.2; else if (a.sway && a !== R.teth) { const w = Math.sin(R.t * 1.3 + a.ph) * 0.35; a.x = a.bx + Math.sin(w) * 4; a.y = a.by + (1 - Math.cos(w)) * 4; } }
@@ -320,8 +332,9 @@ function runnerUpdate(dt) {
     if (b && R.py < b.h) {
       if (oy >= b.h - 0.25 || R.roof === b) {
         if (!R.roof && R.vy < -6) R.dust = { x: R.px, y: b.h, t: 0, k: Math.min(1, -R.vy / 20) };
+        if (!R.roof && !R.attract && !R.roofTip && !R.tut) { R.roofTip = true; runMsg("Tap to jump", "Then hold to grab the ringed light", 1.6); }
         if (!R.roof && R.vy < -14) { R.kick = 0.4; if (!R.attract) sfx.land(); }
-        R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0;
+        R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0; R.dashes = 1;
         if (b.pad) { R.roof = null; R.vy = 24; R.vx = Math.max(R.vx, 14); R.padT = 0.5; b.padHit = R.t; R.bursts.push({ x: R.px, y: b.h, t: 0, c: 0xff5ad2, big: true }); if (!R.attract) { sfx.jump(); buzz(12); if (!R.padMsg) { R.padMsg = true; runBonus("Boing! Neon pad", 0, R.dist + 2, R.x); } } }
       } else if (ox < b.x0) {
         // Wall run: up the wall and over the top.
@@ -366,7 +379,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  R.darkX += (R.stageLen ? (4.5 + R.stageInfo.hard * 8) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.35 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.2 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
@@ -417,9 +430,15 @@ function runnerUpdate(dt) {
   // Hazards: live wires and drones.
   for (const z of R.haz) {
     if (z.kind === "wire") { if (R.px > z.x0 && R.px < z.x1 && R.py < z.y + 0.4 && R.py + 1.7 > z.y && !comet) { z.hit = true; swingHit(R, "Zap!"); } }
-    else if (z.kind === "drone") {
+    else if (z.kind === "drone" && !z.dead) {
       z.y = z.y0 + Math.sin(R.t * 1.4 + z.ph) * z.amp; const d = Math.hypot(z.x - R.px, z.y - R.py - 0.9);
-      if (d < 1.5 && !comet) swingHit(R, "Drone!");
+      // Warning: will you meet in the next 0.8 s? (where you'd be, flying straight; where it will be)
+      if (Math.abs(z.x - R.px) < 25) { let w = false; for (let k = 1; k <= 8 && !w; k++) { const tt = k * 0.1, zy = z.y0 + Math.sin((R.t + tt) * 1.4 + z.ph) * z.amp;
+        // Two guesses: flying free from here, and staying on the rope; either one meeting the drone warns.
+        const fx = R.px + R.vx * tt, fy = R.py + 0.9 + R.vy * tt - SWING.G * tt * tt / 2; if (Math.hypot(z.x - fx, zy - fy) < 2.2) w = true;
+        if (R.teth && !w) { const ax = R.teth.x, ay = R.teth.y, dx = R.px - ax, dy = R.py - ay, rr = Math.hypot(dx, dy) || 1, om = (dx * R.vy - dy * R.vx) / (rr * rr), th = Math.atan2(dy, dx) + om * tt; if (Math.hypot(z.x - (ax + Math.cos(th) * rr), zy - (ay + Math.sin(th) * rr + 0.9)) < 2.2) w = true; } } z.warn = w ? Math.min(1, (z.warn || 0) + dt * 8) : Math.max(0, (z.warn || 0) - dt * 4); }
+      // A drone that hits you breaks apart: one hit per drone, never the same one twice.
+      if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
       else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
     }
   }
@@ -474,4 +493,5 @@ function runnerAuto() {
     const ang = Math.atan2(R.vy, R.vx) * 180 / Math.PI, [lo, hi] = perfectWindow(R);
     if ((R.px > R.teth.x && R.vx > 4 && ang > lo + 4 && ang < hi - 10) || (R.px > R.teth.x + 2 && R.vy > 0 && R.vy > R.vx * 1.4) || (R.teth.type === "crumble" && R.tethT > 1.6) || (R.tethT > 0.8 && Math.hypot(R.vx, R.vy) < 5)) swingHold(false);
   } else if (!R.hold && R.aimOk && (R.vy < 1 || R.roof || R.py < 16)) swingHold(true);
+  else if (R.roof && !R.hold && R.px > R.roof.x1 - 5) swingHold(true);   // jump off the edge of a roof
 }

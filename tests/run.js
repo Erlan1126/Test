@@ -80,6 +80,8 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       // Landing on a roof: you run along it.
       R.inv = 1; R.teth = null; R.hold = false; R.power = null; R.ups.length = 0; R.haz.length = 0; R.boosts.length = 0; R.winds.length = 0; R.updrafts.length = 0; R.blds = R.blds.filter(q => q.x1 < R.px - 3 || q.x0 > R.px + 40); R.blds.push({ x0: R.px - 2, x1: R.px + 30, h: R.py - 0.5, style: 0, litT: -1, n: 998, seed: 0.3 }); R.vy = -3; step(10);
       out.youCanLandAndRunOnRooftops = !!R.roof && R.vx >= 9;
+      { const keepA = R.anchors; R.anchors = []; R.hold = false; swingHold(true); out.tappingOnARoofWithNothingInReachJumps = !R.roof && R.vy > 10; R.anchors = keepA; swingHold(false); }
+      { const keepA = R.anchors, keepB = R.blds; R.anchors = []; R.blds = []; R.roof = null; R.teth = null; R.hold = false; R.py = 25; R.vy = -5; R.dashes = 1; swingHold(true); const vy1 = R.vy; swingHold(false); R.vy = -5; swingHold(true); out.aTapInTheAirWithNothingInReachDashesOnce = vy1 >= 13 && R.vy === -5; swingHold(false); R.anchors = keepA; R.blds = keepB; }
       R.blds.pop(); R.roof = null;
       // Events.
       { const d0 = Math.floor(runnerM() / RUN.BIOME_M) * RUN.BIOME_M + 40; R.dist = d0 * RUN.M; R.px = d0; R.darkX = R.px - 50; } R.ev = null; R.nextEv = runnerM() - 1; R.tut = 0; step(1);
@@ -174,6 +176,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       startStage(25); { const R = run; R.blds.length = 0; R.teth = null; R.hold = false; R.roof = null; R.anchors = []; R.py = 6; R.vy = -12; R.inv = 1; let md = 0; for (let q = 0; q < 30; q++) { runUpdate(1 / 60); md = Math.max(md, R.danger || 0); } out.noDangerGlowOverHarbourWater = md === 0; }
       { save.dm = { v: 2, day: today(), list: DM_POOL.map((_, i) => ({ i, prog: 0, done: false })), all: true }; startStage(2); const R = run; for (let q = 0; q < 60 * 60 && !R.cleared; q++) { runnerAuto(); R.inv = 1; R.hearts = 3; runUpdate(1 / 60); }
         const pr = k => save.dm.list.find(m => DM_POOL[m.i].k === k).prog; out.missionsCountWhatYouDo = pr("home") === 1 && pr("perfect") > 0 && pr("pchain") > 0 && pr("lights") > 0 && pr("free") > 0 && pr("stars") >= 1; }
+      startStage(3); { const R = run; R.teth = null; R.hold = false; R.roof = null; R.blds.length = 0; R.inv = 2; R.px = 100; R.py = 30; R.vx = 10; R.vy = 0; const tt = 0.5; R.haz = [{ kind: "drone", x: 105, y0: 30 + 0.9 - SWING.G * tt * tt / 2, amp: 0, ph: 0 }]; runUpdate(1 / 60); runUpdate(1 / 60); out.aDroneOnYourPathWarnsYou = R.haz[0].warn > 0; }
       // Audit fixes: a cleared stage can't be failed; dying at the finish isn't a clear; one render loop; a release while paused counts.
       startStage(1); { const R = run; R.cleared = true; R.inv = 0; R.hearts = 1; swingHit(R, "test"); out.aClearedStageCantBeHit = R.hearts === 1 && !R.failed; }
       startStage(5); { const R = run; R.over = 0.001; R.px = R.stageLen + 1; R.inv = 1; runUpdate(1 / 60); out.dyingAtTheFinishIsNotAClear = !R.cleared; }
