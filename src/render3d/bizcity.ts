@@ -16,6 +16,7 @@ import { buildModelStaged, buildStreetFront, buildTerrace, type ModelMats } from
 import { LAND, type LandId } from "../data/land";
 import { genBuilding, type GenKit } from "./propgen";
 import { HAS_CITY } from "../edition";
+import { hydrant, mailbox, plazaPiece, roundCenter, seatPiece, type DecoKit } from "./streetdecor";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -754,7 +755,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let k = 0; k < 3; k++) add(new THREE.SphereGeometry(0.07, 6, 4).translate(x - 0.12 + k * 0.12, 0.72, z + 0.08), mats.c(c, 0.8));
   };
   const flowersOn = ["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"];
-  for (const [x, z] of roundabouts) tree(x, z, 0.7, 0.22);
+  // The decorations' kit (streetdecor.ts), and what stands in each roundabout.
+  const deco: DecoKit = { put: add, c: (c, r = 0.7, m = 0) => mats.c(c, r, m), leaf, wood, stone, metal, tree, flowers: flowersOn };
+  roundabouts.forEach(([x, z], i) => roundCenter(deco, x, z, 0.22, i));
   for (const [x, z] of medianTrees) tree(x, z, 0.42, 0.26);
   // The walking streets on joined blocks: a row of trees in planting beds down the middle,
   // benches between them and lamps either side.
@@ -807,16 +810,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // stand on the other two). Nothing sits on the curb or in the road.
   for (const [n, cell] of CELLS.entries()) {
     const { x, z } = cellXZ(cell), side = C / 2 - ROAD - 0.22, pc = C / 2 - ROAD - 0.73;
-    add(new THREE.CylinderGeometry(0.07, 0.08, 0.26, 8).translate(x - side, 0.33, z - 1.0), mats.c("#ff4f4f", 0.5));
-    add(new THREE.SphereGeometry(0.07, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(x - side, 0.46, z - 1.0), mats.c("#ff4f4f", 0.5));
-    if (n % 3 === 0) { add(new THREE.BoxGeometry(0.2, 0.26, 0.16).translate(x + 1.0, 0.48, z - side), mats.c("#3a6fe0", 0.5)); add(new THREE.BoxGeometry(0.06, 0.26, 0.06).translate(x + 1.0, 0.22, z - side), metal); }
-    // A round flower pot on the (-, +) plaza.
-    add(new THREE.CylinderGeometry(0.24, 0.19, 0.28, 12).translate(x - pc, 0.42, z + pc), mats.c("#d98a5a", 0.8));
-    add(new THREE.IcosahedronGeometry(0.22, 0).translate(x - pc, 0.64, z + pc), leaf);
-    for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + n; add(new THREE.SphereGeometry(0.06, 6, 4).translate(x - pc + Math.cos(a) * 0.14, 0.78, z + pc + Math.sin(a) * 0.14), mats.c(flowersOn[(n + k) % 4], 0.8)); }
-    // A bench facing out from the (+, -) plaza, and a bin beside it.
-    bench(x + pc - 0.08, z - pc + 0.08, Math.PI * 0.75);
-    add(new THREE.CylinderGeometry(0.1, 0.09, 0.3, 8).translate(x + pc + 0.3, 0.42, z - pc + 0.42), mats.c("#3fae6a", 0.6));
+    // (Each block gets its own mix of designs: see streetdecor.ts.)
+    const v = Math.abs(cell[0] * 5 + cell[1] * 3 + n);
+    hydrant(deco, x - side, z - 1.0, 0.2, v);
+    if (n % 3 === 0) mailbox(deco, x + 1.0, z - side, 0.2);
+    // A piece on the (-, +) plaza: a flower pot, a topiary box, an urn, bikes, a café table or a flower cart.
+    plazaPiece(deco, x - pc, z + pc, 0.28, v);
+    // Seating facing out from the (+, -) plaza: a bench and bin, a modern bench and recycling, a tree and bench, or a picnic table.
+    seatPiece(deco, x + pc - 0.08, z - pc + 0.08, 0.2, Math.PI * 0.75, v + 1);
   }
   /** Where the beach starts: just behind the back row of streets. */
   const beachZ = cellXZ([0, 0]).z - C / 2;
