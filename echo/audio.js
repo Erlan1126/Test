@@ -158,6 +158,8 @@ const sfx = {
   crash() { noise({ filter: "lowpass", freq: 1800, glide: 120, dur: 0.6, attack: 0.002, vol: 0.3 }); note(90, { dur: 0.45, vol: 0.3, glide: 35, echo: 0.2, attack: 0.002 }); note(220, { at: 0.02, dur: 0.25, vol: 0.08, type: "square", lowpass: 900, glide: 80, echo: 0 }); },
   power() { [0, 4, 7, 12, 16].forEach((d, i) => note(523 * Math.pow(2, d / 12), { at: i * 0.05, dur: 0.3, vol: 0.06, type: "square", lowpass: 3000, echo: 0.3 })); },
   close() { noise({ filter: "bandpass", freq: 600, glide: 2400, q: 1.2, dur: 0.3, attack: 0.02, vol: 0.12 }); },
+  // A star landing on the end card: each one a step higher; the third rings longer.
+  star(i = 0) { const d = [0, 4, 7][i] || 0; note(659.25 * Math.pow(2, d / 12), { dur: i === 2 ? 0.9 : 0.35, vol: 0.07, type: "triangle", echo: 0.6 }); note(1318.5 * Math.pow(2, d / 12), { at: 0.02, dur: 0.25, vol: 0.03, fm: 3, fmDepth: 0.5, echo: 0.6 }); if (i === 2) [12, 16, 19].forEach((x, k) => note(659.25 * Math.pow(2, x / 12), { at: 0.18 + k * 0.07, dur: 0.8, vol: 0.04, type: "triangle", echo: 0.8 })); },
   clear() { note(784, { dur: 0.12, vol: 0.05, type: "triangle", echo: 0.2 }); note(1175, { at: 0.06, dur: 0.16, vol: 0.05, type: "triangle", echo: 0.2 }); },
   // Letting go: a soft whoosh (the number moves it a little to one side).
   whoosh: (dx = 0) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.06, pan: dx / 3, echo: 0.5 }),
