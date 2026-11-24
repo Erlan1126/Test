@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.bigbrucestudios.skyrise"
+    namespace = "com.bigbrucestudios.buildaroo"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.bigbrucestudios.skyrise"
+        applicationId "com.bigbrucestudios.buildaroo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Each cloud build gets a higher number (Google Play needs that); local builds use 1.

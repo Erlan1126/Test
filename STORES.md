@@ -83,7 +83,7 @@ store's own testing tracks.
       (Individual, $99 a year).
 - [ ] Register the app id: https://developer.apple.com/account/resources/identifiers →
       **+** → App IDs → App → description "Skyrise", Bundle ID **Explicit**:
-      `com.bigbrucestudios.skyrise`. Leave capabilities as they are; in-app purchase is on by default.
+      `com.bigbrucestudios.buildaroo`. Leave capabilities as they are; in-app purchase is on by default.
 - [ ] Create the app in App Store Connect (My Apps → **+** → New App) using
       `launch/stores/app-store.md`.
 - [ ] **Let GitHub sign and upload builds:** in App Store Connect → **Users and Access**
@@ -111,5 +111,5 @@ Every push to the branch makes new builds with a higher build number. For an upd
 upload the new `.aab` to Google Play, and pick the new TestFlight build for a new App
 Store version.
 
-The app id `com.bigbrucestudios.skyrise` can't change once the first build is uploaded to
+The app id `com.bigbrucestudios.buildaroo` can't change once the first build is uploaded to
 either store.

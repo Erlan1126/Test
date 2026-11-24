@@ -1,6 +1,6 @@
 {
-  "appId": "com.bigbrucestudios.skyrise",
-  "appName": "Skyrise",
+  "appId": "com.bigbrucestudios.buildaroo",
+  "appName": "Buildaroo",
   "webDir": "dist",
   "backgroundColor": "#d6f0fc",
   "loggingBehavior": "debug",

@@ -5,6 +5,14 @@ import { App } from "./app";
 import { initDiag } from "./diag";
 import { startTabNav } from "./ui/tabnav";
 import { startIcons } from "./ui/icons";
+import { EDITION } from "./edition";
+
+// The tower game on its own keeps the Skyrise name; the city game is Buildaroo.
+if (EDITION === "skyrise") {
+  document.title = "Skyrise";
+  const logo = document.querySelector(".splash-logo");
+  if (logo) logo.textContent = "SKYRISE";
+}
 
 // Catch errors from the very start, so a crash while loading is reported too.
 initDiag();

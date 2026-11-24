@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Skyrise</string>
-    <string name="title_activity_main">Skyrise</string>
-    <string name="package_name">com.bigbrucestudios.skyrise</string>
-    <string name="custom_url_scheme">com.bigbrucestudios.skyrise</string>
+    <string name="app_name">Buildaroo</string>
+    <string name="title_activity_main">Buildaroo</string>
+    <string name="package_name">com.bigbrucestudios.buildaroo</string>
+    <string name="custom_url_scheme">com.bigbrucestudios.buildaroo</string>
 </resources>
