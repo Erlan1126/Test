@@ -432,6 +432,11 @@ function runnerUpdate(dt) {
     if (z.kind === "wire") { if (R.px > z.x0 && R.px < z.x1 && R.py < z.y + 0.4 && R.py + 1.7 > z.y && !comet) { z.hit = true; swingHit(R, "Zap!"); } }
     else if (z.kind === "drone" && !z.dead) {
       z.y = z.y0 + Math.sin(R.t * 1.4 + z.ph) * z.amp; const d = Math.hypot(z.x - R.px, z.y - R.py - 0.9);
+      // Warning: will you meet in the next 0.8 s? (where you'd be, flying straight; where it will be)
+      if (Math.abs(z.x - R.px) < 25) { let w = false; for (let k = 1; k <= 8 && !w; k++) { const tt = k * 0.1, zy = z.y0 + Math.sin((R.t + tt) * 1.4 + z.ph) * z.amp;
+        // Two guesses: flying free from here, and staying on the rope; either one meeting the drone warns.
+        const fx = R.px + R.vx * tt, fy = R.py + 0.9 + R.vy * tt - SWING.G * tt * tt / 2; if (Math.hypot(z.x - fx, zy - fy) < 2.2) w = true;
+        if (R.teth && !w) { const ax = R.teth.x, ay = R.teth.y, dx = R.px - ax, dy = R.py - ay, rr = Math.hypot(dx, dy) || 1, om = (dx * R.vy - dy * R.vx) / (rr * rr), th = Math.atan2(dy, dx) + om * tt; if (Math.hypot(z.x - (ax + Math.cos(th) * rr), zy - (ay + Math.sin(th) * rr + 0.9)) < 2.2) w = true; } } z.warn = w ? Math.min(1, (z.warn || 0) + dt * 8) : Math.max(0, (z.warn || 0) - dt * 4); }
       // A drone that hits you breaks apart: one hit per drone, never the same one twice.
       if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
       else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
