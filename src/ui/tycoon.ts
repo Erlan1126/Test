@@ -1676,8 +1676,8 @@ export class TycoonUI {
     el.hidden = !show;
     if (!show) return;
     const html = jobs.length
-      ? `<span class="bc-ico">🔨</span><b>${esc(fmtLeft(jobs[0].end - now))}</b><small>${busyBuilders(s, now)}/${builderCount(s, now)}</small>`
-      : `<span class="bc-ico">👷</span><b>${builderCount(s, now)}</b><small>${esc(t("free"))}</small>`;
+      ? `<span class="bc-ico">${iconSvg("brick")}</span><b>${esc(fmtLeft(jobs[0].end - now))}</b><small>${busyBuilders(s, now)}/${builderCount(s, now)}</small>`
+      : `<span class="bc-ico">${iconSvg("building")}</span><b>${builderCount(s, now)}</b><small>${esc(t("free"))}</small>`;
     if (el.innerHTML !== html) el.innerHTML = html;
   }
 
@@ -1706,7 +1706,7 @@ export class TycoonUI {
     const jobs = (ty.builds ?? []).filter(j => j.end > now);
     const hired = ty.builders ?? 0;
     if (jobs.length) { head(t("Builders: {busy} of {n} at work", { busy: jobs.length, n: builderCount(s, now) })); for (const j of jobs) rows.push(this.jobRow(j, now)); }
-    const hireRow = hired < MAX_HIRED ? `<button type="button" class="tcy-mode city hire small" data-build="hire"><span class="mode-ico">👷</span><span><b>${esc(t("Hire a builder"))}</b><small>${esc(t("Build two things at once. Yours for good."))}</small></span><span class="mode-price gem">💎${BUILDER_PRICES[hired]}</span></button>` : "";
+    const hireRow = hired < MAX_HIRED ? `<button type="button" class="tcy-mode city hire small" data-build="hire"><span class="mode-ico">${iconSvg("brick")}</span><span><b>${esc(t("Hire a builder"))}</b><small>${esc(t("Build two things at once. Yours for good."))}</small></span><span class="mode-price gem">💎${BUILDER_PRICES[hired]}</span></button>` : "";
     // (While every builder is busy, hiring one comes first.)
     if (hireRow && jobs.length >= builderCount(s, now)) rows.push(hireRow);
     head(t("Build"));

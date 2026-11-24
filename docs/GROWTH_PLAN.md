@@ -65,3 +65,20 @@ drop in the first-session steps first. Only pay for ads once day 1 is near the "
   stores' own A/B tests.
 - Ask for a rating only after a good moment (the game already does this).
 - Later languages with big casual audiences: Japanese, Korean, Turkish.
+
+## Added for the city game (builders round)
+- **Start in the city:** new players land in Skyhaven with a first apartment building. The
+  café terrace is their first build (20 seconds), no tower needed.
+- **Builders and build time:** office blocks, districts, home upgrades and the terrace take
+  real time and a free builder. Finish now with crystals (about 1 per 2 minutes left), hire
+  up to two more builders (250 and 600 crystals), VIP adds a builder and builds 25% faster.
+- **Reminders:** a phone notification when a build finishes, and on the city event's last evening.
+- **Weekly city event:** points for growing the city, crystals at each milestone, a decoration
+  that is free only that week, and an optional event pass (120 crystals, double points).
+- **City album:** tap every kind of building to collect it (2 crystals each, 50 for all).
+- **Two currencies:** in the city game, rewards that were stars now pay cash.
+- **One guide:** Pip no longer pops up on his own; the bottom card is the guide.
+- **Offers at the right moment:** a time warp offer when a little short of cash (at most every 3 minutes).
+
+New stats to watch: `build_started`, `build_finished_now` (crystal spend), `builder_hired`,
+`event_step`, `event_pass`, `album_add`, `offer_shown` / `offer_taken`.

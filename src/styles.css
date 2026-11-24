@@ -4169,7 +4169,8 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 /* Builders: the chip under the top bar, jobs in the Build menu. */
 .tcy-builds { position: absolute; z-index: 6; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 96px); display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border: 0; border-radius: 16px; color: #2a1f3e; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(40, 20, 90, 0.18); font: 400 14px var(--display); cursor: pointer; }
 .tcy-builds[hidden] { display: none; }
-.tcy-builds .bc-ico { font-size: 16px; }
+.tcy-builds .bc-ico { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 8px; background: #ffd36b; }
+.tcy-builds .bc-ico svg { width: 16px; height: 16px; }
 .tcy-builds b { font: 800 14px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .tcy-builds small { font: 700 11px system-ui, sans-serif; color: #7a6fa8; }
 .tcy-mode .mode-price.gem { background: linear-gradient(180deg, #7ad7ff, #3d8cff); box-shadow: 0 3px 0 #2a64c8; }
