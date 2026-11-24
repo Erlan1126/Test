@@ -315,7 +315,7 @@ const SW2D = (() => {
       ctx.globalAlpha = 1;
     }
     // ---------- The aim line: exactly the anchor a press will grab ----------
-    if (R.aim && !R.attract) {
+    if (R.aim && !R.attract && !R.cleared) {
       const a = R.aim, ax = X(a.x), ay = Y(a.y), fx = X(R.px), fy = Y(R.py + 1.2);
       if (!R.teth) {
         ctx.save(); ctx.lineCap = "round";
@@ -433,6 +433,16 @@ const SW2D = (() => {
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(0xffffff), head[0] - 0.5 * u, head[1] - 0.5 * u, u, u); ctx.globalCompositeOperation = "source-over";
       if (R.power && R.power.kind === "shield") { ctx.strokeStyle = "rgba(90,210,255,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 1.5 * u, 0, Math.PI * 2); ctx.stroke(); }
     }
+    // Sparks and shockwaves (moved and faded by real time); lights you catch fly into the orb you carry.
+    if (R.parts && R.parts.length) { const P = R.parts, ox3 = R.px - 1, oy3 = R.py + 1.6; ctx.globalCompositeOperation = "lighter";
+      for (let q = P.length - 1; q >= 0; q--) { const p = P[q]; p.t += fdt; if (p.t >= p.life) { P.splice(q, 1); continue; } const k = p.t / p.life;
+        if (p.ring) { const rr = (0.6 + k * p.size) * s; ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = `rgb(${p.c})`; ctx.lineWidth = Math.max(1.5, 0.22 * s * (1 - k)); ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), rr, 0, Math.PI * 2); ctx.stroke(); continue; }
+        if (p.home) { const e = Math.min(1, k * k * 1.6); p.x += (ox3 - p.x) * e * 0.35; p.y += (oy3 - p.y) * e * 0.35; } else { p.x += p.vx * fdt; p.y += p.vy * fdt; p.vx *= 0.9; p.vy *= 0.9; if (p.grav) p.vy -= 20 * fdt; }
+        const z = p.size * s * (1 - k * 0.6); ctx.globalAlpha = 1 - k; ctx.drawImage(glow(p.c), X(p.x) - z, Y(p.y) - z, z * 2, z * 2); }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+    // Speed lines streaming off you when you're flying fast.
+    if (R.v > 21 && !R.teth && !R.attract && !R.cleared && !(save.settings && save.settings.calm)) { const k = Math.min(1, (R.v - 21) / 10), ang = Math.atan2(-R.vy, R.vx); ctx.strokeStyle = `rgba(220,240,255,${0.35 * k})`; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let q = 0; q < 6; q++) { const r = seeded(q * 13 + Math.floor(t * 20))(), off = (r - 0.5) * 2.4 * s, len = (2 + r * 3) * s * k, sx = hx - Math.cos(ang) * 1.2 * s - Math.sin(ang) * off, sy = hy - Math.sin(ang) * 1.2 * s + Math.cos(ang) * off; ctx.moveTo(sx, sy); ctx.lineTo(sx - Math.cos(ang) * len, sy - Math.sin(ang) * len); } ctx.stroke(); }
     // The light you carry: an orb by your hand that grows with every light you catch; it's what you bring them.
     if (R.stageLen && !R.attract && !R.over && !(R.cleared && R.t - (R.clearAt || 0) > 0.05)) { const share = Math.min(1, (R.motesGot || 0) / Math.max(1, R.motesTotal || 1)), ox2 = hx - (1 + Math.sin(t * 2) * 0.2) * s, oy2 = hy + (0.6 + Math.sin(t * 3) * 0.25) * s, rr2 = (0.35 + share * 1.1) * s;
       ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55 + share * 0.45; ctx.drawImage(glow([255, 214, 140]), ox2 - rr2 * 1.6, oy2 - rr2 * 1.6, rr2 * 3.2, rr2 * 3.2); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff4dc"; ctx.beginPath(); ctx.arc(ox2, oy2, Math.max(1.5, rr2 * 0.3), 0, Math.PI * 2); ctx.fill(); }

@@ -335,7 +335,8 @@ function runLoop(now) {
   const c0 = $("runCanvas"), c = smoothCanvas(c0, true), d = canvasD(), W = c0.clientWidth, H = c0.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
-  if (!run.paused) runUpdate(dt * (run.slow || 1));
+  // A split-second freeze on a grab or a Perfect makes it land (the picture still draws).
+  if (run.hitstop > 0 && !run.paused) run.hitstop -= dt; else if (!run.paused) runUpdate(dt * (run.slow || 1));
   const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
   if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }

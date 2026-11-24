@@ -188,11 +188,20 @@ function swingAim(R) {
   return best;
 }
 function swingFindAnchor(R) { swingAim(R); return R.aimOk ? R.aim : null; }
+// ---------- Feel: sparks, shockwaves and a split-second freeze on the moments that matter ----------
+function swingFx(R, kind, x, y) {
+  if (R.attract) return; const P = R.parts || (R.parts = []), add = (n, sp, col, life, size, extra) => { for (let q = 0; q < n; q++) { const a = Math.random() * Math.PI * 2, v = sp * (0.4 + Math.random() * 0.8); P.push(Object.assign({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: life * (0.7 + Math.random() * 0.6), c: col, size }, extra || {})); } };
+  if (kind === "grab") { add(10, 9, [190, 240, 255], 0.35, 0.35); P.push({ x, y, ring: true, t: 0, life: 0.3, c: [190, 240, 255], size: 2.2 }); R.hitstop = Math.max(R.hitstop || 0, 0.035); }
+  else if (kind === "perfect") { add(22, 15, [255, 214, 90], 0.6, 0.45); P.push({ x, y, ring: true, t: 0, life: 0.45, c: [255, 214, 90], size: 5 }); R.hitstop = Math.max(R.hitstop || 0, 0.06); }
+  else if (kind === "light") add(4, 5, [255, 220, 140], 0.45, 0.25, { home: true });
+  else if (kind === "land") add(8, 6, [220, 225, 235], 0.4, 0.3, { grav: true });
+  if (P.length > 180) P.splice(0, P.length - 180);
+}
 function swingAttach(R) {
   const a = swingFindAnchor(R);
   if (!a) return false;
   R.teth = a; R.L = Math.max(4, Math.hypot(R.px - a.x, R.py - a.y)); R.roof = null; R.spinV = 0; R.tethT = 0; R.dashes = 1; R.grabBuf = 0; R.lastLet = null;
-  R.bursts.push({ x: a.x, y: a.y, t: 0, c: a.type === "gold" ? 0xffd25a : null });
+  R.bursts.push({ x: a.x, y: a.y, t: 0, c: a.type === "gold" ? 0xffd25a : null }); swingFx(R, "grab", a.x, a.y);
   if (a.type === "gold" && !a.paid) { a.paid = true; R.lights += 5; swingFlow(R, 0.15); if (!R.attract) { runBonus("Gold! +5 ✦", 0, R.dist + 2, R.x); sfx.unlock(); } }
   if (!R.attract) { sfx.jump(); buzz(8); }
   if (R.tut === 2) runnerTutStep();
@@ -226,7 +235,7 @@ function swingHold(down) {
   if (R.vx > 2.5 && ang > pwLo && ang < pwHi && spd > pwV) {
     // The boost tapers off at high speed, so a Perfect chain feels fast without getting out of hand.
     const k0 = runnerPerk("Volt") ? 1.2 : 1.1, k = 1 + (k0 - 1) * Math.max(0, Math.min(1, (SWING.CRUISE - spd) / 8)); R.vx *= k; R.vy *= k; R.perfects++; R.spinV = 9; R.flipT = 0.5;
-    R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
+    swingFx(R, "perfect", R.px, R.py + 1); R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
     R.pChain = (R.pChain || 0) + 1; if (!R.attract) { progressEvent("perfect"); progressEvent("pchain", R.pChain); }
@@ -353,6 +362,7 @@ function runnerUpdate(dt) {
         if (!R.roof && R.vy < -6) R.dust = { x: R.px, y: b.h, t: 0, k: Math.min(1, -R.vy / 20) };
         if (!R.roof && !R.attract && !R.roofTip && !R.tut) { R.roofTip = true; runMsg("Tap to jump", "Then hold to grab the ringed light", 1.6); }
         if (!R.roof && R.vy < -14) { R.kick = 0.4; if (!R.attract) sfx.land(); }
+        if (!R.roof && R.vy < -8) swingFx(R, "land", R.px, b.h + 0.2);
         R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0; R.dashes = 1;
         if (b.pad) { R.roof = null; R.vy = 24; R.vx = Math.max(R.vx, 14); R.padT = 0.5; b.padHit = R.t; R.bursts.push({ x: R.px, y: b.h, t: 0, c: 0xff5ad2, big: true }); if (!R.attract) { sfx.jump(); buzz(12); if (!R.padMsg) { R.padMsg = true; runBonus("Boing! Neon pad", 0, R.dist + 2, R.x); } } }
       } else if (ox < b.x0) {
@@ -419,7 +429,7 @@ function runnerUpdate(dt) {
     const d = Math.hypot(c.x - R.px, c.y - R.py - 0.9);
     if ((mag || R.od > 0) && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
     if (d < 1.5 || comet && d < 3) {
-      c.got = true; c.t = 0; if (R.stageLen) R.motesGot++; { const w = (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1); R.lights += w; if (!R.attract) progressEvent("lights", w); } swingFlow(R, 0.022);
+      c.got = true; c.t = 0; swingFx(R, "light", c.x, c.y); if (R.stageLen) R.motesGot++; { const w = (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1); R.lights += w; if (!R.attract) progressEvent("lights", w); } swingFlow(R, 0.022);
       R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
       if (runnerPerk("Nova") && R.combo % 10 === 0) { R.lights += 5; runBonus("+5 ✦", 0, R.dist + 2, R.x); }
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }
