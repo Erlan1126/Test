@@ -908,7 +908,11 @@ export class Renderer3D {
       const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, hl: cafe.hall, ax: cafe.annex, ld: cafe.land, pp: cafe.props, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
-        if (this.biz) { this.scene.remove(this.biz.group); disposeTree(this.biz.group); }
+        // (The old town is let go only after the new one is in the scene: its materials keep
+        // their compiled shaders alive meanwhile, so the new town reuses them instead of
+        // compiling every shader again, which was most of the hitch when a business grew.)
+        const old = this.biz;
+        if (old) this.scene.remove(old.group);
         this.biz = null;
         // Businesses that just grew (or opened) rise out of the ground.
         const grown = this.bizPrev.size ? lots.filter(l => l.state === "open" && (this.bizPrev.get(l.id) ?? -1) < l.s).map(l => l.id) : [];
@@ -919,6 +923,7 @@ export class Renderer3D {
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
         }
+        if (old) { const g0 = old.group; requestAnimationFrame(() => requestAnimationFrame(() => disposeTree(g0))); }
       }
     }
     if (!this.biz) return;
