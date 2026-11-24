@@ -115,7 +115,7 @@ function note(freq, o = {}) {
 
 // Background music: an electronic groove (below) whose key, chords and tempo come from the
 // district you're in.
-const music = { on: false, layers: 0, step: 0, next: 0, intensity: 0, district: null };
+const music = { kicks: [], root: 0, on: false, layers: 0, step: 0, next: 0, intensity: 0, district: null };
 function musicStart(seed, layers) {
   music.layers = layers; music.intensity = 0;
   if (!music.on && AC) { music.step = 0; music.next = AC.currentTime + 0.15; }
@@ -132,15 +132,20 @@ function musicTick() {
 // It gets a little faster and fuller the faster you run.
 const BEAT_SCALE = [0, 2, 3, 5, 7, 8, 10], BEAT_PROG = [0, 5, 2, 6];
 const beatHz = (deg, oct) => ((music.district && music.district.base) || 110) * Math.pow(2, (BEAT_SCALE[((deg % 7) + 7) % 7] + 12 * (oct + Math.floor(deg / 7))) / 12);
+// How hard the beat is hitting right now: 1 on a kick, fading over about a tenth of a second.
+function beatPulse() { if (!AC || !music.on || !music.kicks.length) return 0; const now = AC.currentTime; let last = -1; for (const k of music.kicks) if (k <= now) last = k; return last < 0 ? 0 : Math.exp(-(now - last) * 9); }
 function beatTick() {
   const D = music.district || {}, bpm = (D.bpm || 116) + (music.intensity || 0) * 14, step = 60 / bpm / 4, PROG = D.prog || BEAT_PROG;
   while (music.next < AC.currentTime + 0.3) {
     const k = music.step, t = music.next, bar = Math.floor(k / 16), root = PROG[bar % 4], s = k % 16, full = music.layers >= 2;
-    if (s % 4 === 0) note(150, { time: t, dur: 0.28, vol: 0.32, glide: 42, echo: 0, attack: 0.003, music: true });
+    if (s % 4 === 0) { note(150, { time: t, dur: 0.28, vol: 0.32, glide: 42, echo: 0, attack: 0.003, music: true }); music.kicks.push(t); if (music.kicks.length > 8) music.kicks.shift(); }
+    music.root = root;
     if (s === 4 || s === 12) noise({ time: t, filter: "bandpass", freq: 1700, q: 0.7, dur: 0.16, attack: 0.002, vol: 0.16, music: true });
     if (full && s % 2 === 0) noise({ time: t, filter: "highpass", freq: 8500, q: 0.5, dur: s % 4 === 2 ? 0.12 : 0.04, attack: 0.001, vol: s % 4 === 2 ? 0.05 : 0.03, music: true });
     if (s % 2 === 0) note(beatHz(root, -1) * (s % 8 === 6 ? 2 : 1), { time: t, dur: step * 1.7, vol: 0.09, type: "sawtooth", lowpass: 380 + (music.intensity || 0) * 500, attack: 0.004, echo: 0, music: true });
     if (full && (s === 0 || s === 6 || s === 10)) [0, 2, 4].forEach(d => note(beatHz(root + d, 1), { time: t, dur: step * 2.2, vol: 0.022, type: "sawtooth", chorus: 8, lowpass: 1800, attack: 0.005, echo: 0.25, music: true }));
+    // A lead melody joins on long Perfect chains: a little phrase in the district's key.
+    if (music.layers >= 4 && (s === 0 || s === 3 || s === 6 || s === 8 || s === 11 || s === 14)) { const mel = [4, 2, 4, 7, 6, 4][[0, 3, 6, 8, 11, 14].indexOf(s)] + (bar % 2 ? 2 : 0); note(beatHz(root + mel, 2), { time: t, dur: step * 2.6, vol: 0.026, type: "triangle", lowpass: 3200, attack: 0.01, echo: 0.5, music: true }); }
     if (music.layers >= 3 && s % 2 === 0) { const arp = [0, 2, 4, 7, 4, 2, 7, 9][(s / 2) % 8]; note(beatHz(root + arp, 2), { time: t, dur: step * 1.6, vol: 0.02, type: "square", lowpass: 2600, attack: 0.003, echo: 0.4, music: true }); }
     music.step++; music.next += step;
   }
@@ -156,7 +161,8 @@ const sfx = {
   clear() { note(784, { dur: 0.12, vol: 0.05, type: "triangle", echo: 0.2 }); note(1175, { at: 0.06, dur: 0.16, vol: 0.05, type: "triangle", echo: 0.2 }); },
   // Letting go: a soft whoosh (the number moves it a little to one side).
   whoosh: (dx = 0) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.06, pan: dx / 3, echo: 0.5 }),
-  perfect(n = 1) { const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.06, type: "triangle", echo: 0.35 })); },
+  // A Perfect rings the current chord of the music, a step higher with each one in a chain.
+  perfect(n = 1) { if (music.on && music.style === "beat") { const up = Math.min(6, n - 1); [0, 2, 4].forEach((d, i) => note(beatHz(music.root + d + up, 2), { at: i * 0.045, dur: 0.26, vol: 0.06, type: "triangle", echo: 0.4 })); return; } const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.06, type: "triangle", echo: 0.35 })); },
   flip() { [0, 7, 12].forEach((d, i) => note(659 * Math.pow(2, d / 12), { at: i * 0.06, dur: 0.18, vol: 0.06, type: "square", lowpass: 3200, echo: 0.3 })); },
   bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
   light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.9, vol: 0.09, fm: 3.5, fmDepth: 0.8, echo: 0.8 })); },

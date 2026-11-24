@@ -141,6 +141,8 @@ function swingGen(R, toX) {
     if (R.stageLen && b.x1 > R.stageLen + 1 && b.x0 < R.stageLen + 17) { R.genX = Math.max(R.genX + 1, R.stageLen + 18); continue; }
     if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: R.anchors.length + 9000, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
     if (pad && !tree) b.pad = true;
+    // What the district builds (decided without a random draw, so courses stay the same).
+    { const dk = R.stageInfo && !R.stageInfo.daily ? Math.min(5, Math.floor((R.stageInfo.n - 1) / 10)) : Math.max(0, RUNNER_THEMES.indexOf(th)), mix = (b.n * 7) % 10; b.kind = ["office", "shop", "warehouse", "neon", "shop", "glass"][dk]; if (mix < 2 && dk !== 5) b.kind = "office"; b.dist = dk; }
     if (R.stageInfo && R.stageInfo.tower && b.x0 > 40 && b.x0 < R.stageLen && r() < 0.35) R.updrafts.push({ x0: b.x1 + 0.5, x1: b.x1 + 6, f: 34 });
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
@@ -488,7 +490,7 @@ function runnerUpdate(dt) {
   if (!R.attract) runMission("dist", Math.floor(m));
   if (!R.stageLen && m >= R.nextMile) { R.nextMile += 500; R.fireworks.push({ t: 0, seed: Math.random() }); if (!R.attract) { runMsg(`${Math.floor(m)} m!`, "The city glows for you", 1.8, true); sfx.unlock(); } }
   for (const f of R.fireworks) f.t += dt; R.fireworks = R.fireworks.filter(f => f.t < 3);
-  if (!R.attract) { const boss = R.stageInfo && R.stageInfo.boss || (R.ev && R.ev.kind === "heart"); music.intensity = boss ? 1 : Math.min(1, (R.v - 10) / 22); music.layers = R.combo >= 12 || R.od > 0 || boss ? 3 : 2; }
+  if (!R.attract) { const boss = R.stageInfo && R.stageInfo.boss || (R.ev && R.ev.kind === "heart"); music.intensity = boss ? 1 : Math.min(1, (R.v - 10) / 22); music.layers = (R.pChain || 0) >= 6 ? 4 : (R.pChain || 0) >= 3 || R.combo >= 12 || R.od > 0 || boss ? 3 : 2; }
   if (!R.attract) swingFlowHud(R);
   if (!R.attract && Math.floor(R.t * 4) !== Math.floor((R.t - dt) * 4)) runHud();
 }
