@@ -1,6 +1,6 @@
 # Política de privacidad de Skyrise
 
-Skyrise es un juego de Erlan Studios (contacto: erlanstudios1@gmail.com).
+Skyrise es un juego de Big Bruce Studios (contacto: support@bigbrucestudios.com).
 Última actualización: 14 de noviembre de 2026.
 
 En resumen: Skyrise no tiene cuentas, ni anuncios, ni rastreo. Tu progreso se guarda en
@@ -37,7 +37,7 @@ que pueda aparecer en el ranking mundial:
 El ranking muestra tu nombre, tu nivel y tus mejores puntajes a otros jugadores. El
 servidor funciona en Cloudflare. No vendemos ni compartimos estos datos, y no se usan
 para anuncios ni para rastreo. Para que borremos tus entradas del ranking, escribe a
-erlanstudios1@gmail.com con tu nombre en el ranking.
+support@bigbrucestudios.com con tu nombre en el ranking.
 
 ## Respaldo en la nube
 
@@ -47,7 +47,7 @@ monedas, estrellas, Cristales Celestes, aspectos, ajustes y apodo, vinculados a 
 jugador aleatorio. En Ajustes → Respaldo en la nube verás un **código de recuperación**;
 al escribirlo en otro dispositivo, se restaura la copia ahí. Mantén el código en
 privado, porque cualquiera que lo tenga puede restaurar tu progreso. Para que borremos
-tu copia, escribe a erlanstudios1@gmail.com con tu código de recuperación.
+tu copia, escribe a support@bigbrucestudios.com con tu código de recuperación.
 
 ## Reportar nombres
 
@@ -129,4 +129,4 @@ apodo opcional del ranking, y los jugadores pueden reportar nombres que no sean 
 ## Contacto
 
 ¿Preguntas sobre privacidad, o quieres que borremos tus datos? Escribe a
-erlanstudios1@gmail.com e incluye tu apodo o tu código de recuperación.
+support@bigbrucestudios.com e incluye tu apodo o tu código de recuperación.

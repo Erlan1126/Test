@@ -11,7 +11,7 @@ Copy each part into the matching field in the Play Console (play.google.com/cons
 | App or game | **Game** |
 | Free or paid | **Free** |
 
-The package name is set by the first upload: **com.erlanstudios.skyrise**. It can never be
+The package name is set by the first upload: **com.bigbrucestudios.skyrise**. It can never be
 changed after that.
 
 ## Store listing (Grow → Store presence → Main store listing)
@@ -44,7 +44,7 @@ Use these in sequence on both stores when the screenshot artwork is next regener
 
 ## App content (Policy → App content)
 
-- **Privacy policy:** https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
+- **Privacy policy:** https://www.bigbrucestudios.com/privacy/
 - **Ads:** "No, my app does not contain ads."
 - **App access:** "All functionality is available without special access."
 - **Content rating:** start the questionnaire. Category: **Game**. Answer **No** to
@@ -62,7 +62,7 @@ Use these in sequence on both stores when the screenshot artwork is next regener
     purpose **Analytics**, not linked to a person
   For each: collected **Yes**, shared **No**, processed ephemerally **No**, collection
   **Required** (Classic and Daily towers are posted automatically), purpose **App functionality**. Encrypted in transit → **Yes**. Users can request deletion →
-  **Yes** (by emailing erlanstudios1@gmail.com). Google Play handles purchases. No ads or analytics.
+  **Yes** (by emailing support@bigbrucestudios.com). Google Play handles purchases. No ads or analytics.
 - **Government app:** No. **Financial features:** None. **Health:** None.
 - **News app:** No.
 

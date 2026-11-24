@@ -9,7 +9,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 | Platform | iOS |
 | Name | Skyrise: Tower Stack (30 characters max. If it's taken, try "Skyrise: Build the Sky") |
 | Primary language | English (U.S.) |
-| Bundle ID | com.erlanstudios.skyrise (register it first under Certificates, Identifiers & Profiles → Identifiers) |
+| Bundle ID | com.bigbrucestudios.skyrise (register it first under Certificates, Identifiers & Profiles → Identifiers) |
 | SKU | skyrise-ios-1 |
 | User access | Full access |
 
@@ -28,7 +28,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 ## App privacy
 
-- Privacy policy URL: https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
+- Privacy policy URL: https://www.bigbrucestudios.com/privacy/
 - Data collection: **"Yes, we collect data from this app"**, only for the worldwide
   leaderboard. Declare these three, each **Linked to the user: No**, **Used for tracking:
   No**, purpose **App Functionality**:
@@ -76,7 +76,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 
 - **Support URL:** your itch.io page, or any page with your contact email.
 - **Marketing URL:** your itch.io page (optional).
-- **Copyright:** `2026 Erlan Studios`
+- **Copyright:** `2026 Big Bruce Studios LLC`
 
 ## Five screenshot captions (English)
 

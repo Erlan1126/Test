@@ -1,6 +1,6 @@
 # Skyrise privacy policy
 
-Skyrise is made by Erlan Studios (contact: erlanstudios1@gmail.com).
+Skyrise is made by Big Bruce Studios (contact: support@bigbrucestudios.com).
 Last updated: November 14, 2026.
 
 Short version: Skyrise has no accounts, no ads and no tracking. Your progress is saved on
@@ -31,7 +31,7 @@ can appear on the worldwide leaderboard:
 
 The leaderboard shows your nickname, level and best scores to other players. The server
 runs on Cloudflare. We don't sell or share this data, and it isn't used for ads or
-tracking. To have your leaderboard entries deleted, email erlanstudios1@gmail.com with
+tracking. To have your leaderboard entries deleted, email support@bigbrucestudios.com with
 your nickname.
 
 ## Cloud backup
@@ -41,7 +41,7 @@ game backs up your save to the Skyrise server: your towers, levels, coins, stars
 Crystals, skins, settings and nickname, linked to your random player id. Settings →
 Cloud backup shows a **recovery code**; typing it on another device restores the backup
 there. Keep the code private, since anyone with it can restore your progress. To have
-your backup deleted, email erlanstudios1@gmail.com with your recovery code.
+your backup deleted, email support@bigbrucestudios.com with your recovery code.
 
 ## Reporting names
 
@@ -117,5 +117,5 @@ optional leaderboard nickname, and players can report names that aren't appropri
 
 ## Contact
 
-Questions about privacy, or want your data deleted? Contact erlanstudios1@gmail.com
+Questions about privacy, or want your data deleted? Contact support@bigbrucestudios.com
 and include your nickname or recovery code.

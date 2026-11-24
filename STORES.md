@@ -27,10 +27,14 @@ Mac minute counts as 10). A Skyrise iPhone build takes about 10–15 minutes.
 
 ## Step 0: things both stores ask for
 
-- [x] **A contact email** (erlanstudios1@gmail.com) that you check. Put it in `launch/privacy.md` and
-      `launch/support-and-refunds.md` in place of `[your contact email]`.
-- [x] **A public privacy policy link:** https://gist.github.com/Erlan1126/264df0444c9e353f3af95cccba90a61d
-      (To change it, edit that gist; the link stays the same.)
+- [x] **Domain:** bigbrucestudios.com (Porkbun, WHOIS privacy on).
+- [x] **Studio contact email:** support@bigbrucestudios.com, forwarded to your Gmail with
+      Porkbun's free email forwarding. Already filled in across `launch/`.
+- [ ] **Privacy policy link:** https://www.bigbrucestudios.com/privacy/ (already filled in
+      across `launch/stores/`). It works once the studio site is live on Cloudflare Pages.
+
+The publisher is **Big Bruce Studios LLC** (Florida). Enroll both store accounts as an
+**Organization** under the LLC (D-U-N-S number required), not as an individual.
 
 ## Step 0b: switch on the worldwide rankings (free, about 10 minutes)
 
@@ -79,7 +83,7 @@ store's own testing tracks.
       (Individual, $99 a year).
 - [ ] Register the app id: https://developer.apple.com/account/resources/identifiers →
       **+** → App IDs → App → description "Skyrise", Bundle ID **Explicit**:
-      `com.erlanstudios.skyrise`. Leave capabilities as they are; in-app purchase is on by default.
+      `com.bigbrucestudios.skyrise`. Leave capabilities as they are; in-app purchase is on by default.
 - [ ] Create the app in App Store Connect (My Apps → **+** → New App) using
       `launch/stores/app-store.md`.
 - [ ] **Let GitHub sign and upload builds:** in App Store Connect → **Users and Access**
@@ -107,6 +111,5 @@ Every push to the branch makes new builds with a higher build number. For an upd
 upload the new `.aab` to Google Play, and pick the new TestFlight build for a new App
 Store version.
 
-The app id `com.erlanstudios.skyrise` can't change once the first build is uploaded to
-either store. If you want a different one (for example `com.yourstudio.skyrise`), say
-so before that first upload.
+The app id `com.bigbrucestudios.skyrise` can't change once the first build is uploaded to
+either store.

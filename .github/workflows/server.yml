@@ -48,7 +48,7 @@ jobs:
           CF="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
           HAVE=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$CF" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).result?.subdomain??"")}catch{}})')
           if [ -z "$HAVE" ]; then
-            for NAME in erlanstudios erlan-studios skyrise-erlan "skyrise-$(date +%s)"; do
+            for NAME in bigbrucestudios big-bruce-studios skyrise-bigbruce "skyrise-$(date +%s)"; do
               OK=$(curl -s -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "content-type: application/json" --data "{\"subdomain\":\"$NAME\"}" "$CF" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).success))}catch{}})')
               if [ "$OK" = "true" ]; then echo "Registered $NAME.workers.dev"; break; fi
             done

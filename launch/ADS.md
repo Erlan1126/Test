@@ -7,8 +7,8 @@ hidden, so players see nothing.
 
 ## What you do (your accounts)
 
-1. Create an AdMob account at admob.google.com (free) with the Erlan Studios details.
-2. In AdMob, add two apps: "Skyrise: Tower Stack" for Android (com.erlanstudios.skyrise)
+1. Create an AdMob account at admob.google.com (free) with the Big Bruce Studios LLC details.
+2. In AdMob, add two apps: "Skyrise: Tower Stack" for Android (com.bigbrucestudios.skyrise)
    and for iOS.
 3. In each app, create one **Rewarded** ad unit. Write down:
    - the Android App ID and Rewarded ad unit ID

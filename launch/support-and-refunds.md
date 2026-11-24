@@ -1,10 +1,10 @@
 # Skyrise support and refunds
 
-Skyrise is made by Erlan Studios.
+Skyrise is made by Big Bruce Studios.
 
 ## Getting help
 
-Something not working, or a purchase that didn't unlock? Email erlanstudios1@gmail.com.
+Something not working, or a purchase that didn't unlock? Email support@bigbrucestudios.com.
 It helps to include:
 
 - what happened and what you expected,
@@ -25,7 +25,7 @@ track, and Skyhaven Inc. business boosts; nothing bought with them is random.
   https://reportaproblem.apple.com. In the app, **Shop → Premium → Restore purchases**
   brings back items you already own on a new phone.
 - **Bought on the website:** ask for a refund within 14 days by emailing
-  erlanstudios1@gmail.com with the email on your receipt. We'll refund the full price
+  support@bigbrucestudios.com with the email on your receipt. We'll refund the full price
   through Stripe. Refunds usually show up on your statement within 5 to 10 business days.
 
 <!-- Note for the owner: refunds are issued by hand in the Stripe dashboard

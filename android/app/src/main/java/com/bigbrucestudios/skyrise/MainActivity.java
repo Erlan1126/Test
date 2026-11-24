@@ -1,4 +1,4 @@
-package com.erlanstudios.skyrise;
+package com.bigbrucestudios.skyrise;
 
 import com.getcapacitor.BridgeActivity;
 

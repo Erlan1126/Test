@@ -610,7 +610,7 @@ function cleanChallengePace(v) {
 const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 // Store pages. The App Store link becomes the app's own page once it's live (set APP_STORE_URL).
-const PLAY_URL = "https://play.google.com/store/apps/details?id=com.erlanstudios.skyrise";
+const PLAY_URL = "https://play.google.com/store/apps/details?id=com.bigbrucestudios.skyrise";
 const APP_STORE_URL = "https://apps.apple.com/search?term=Skyrise%20Tower%20Stack";
 
 function challengePage(id, row) {
