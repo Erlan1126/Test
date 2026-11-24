@@ -7,10 +7,16 @@ import { PROP_MAX } from "../data/props";
 import type { SaveData } from "./save";
 import { propLevel, propPrice, propsOpen } from "./props";
 import { landOnSale, landPrice } from "./land";
-import { buildOffice, officePrice } from "./tycoon";
+import { buildOffice, costOf, levelOf, officePrice, readyStage } from "./tycoon";
+import { BUSINESSES } from "../data/tycoon";
+import { projectsOpen, type ProjectId } from "./cafe";
 import { vipActive } from "./vip";
 
-export type BuildKind = "office" | "terrace" | "land" | "home";
+/** "hq": a business's new headquarters (it grows a stage); "project": the block's flower
+ *  market or playground. */
+export type BuildKind = "office" | "terrace" | "land" | "home" | "hq" | "project";
+/** How long a headquarters takes, by the stage it grows into. */
+const HQ_TIME = [0, 2 * 60e3, 10 * 60e3, 30 * 60e3, 3600e3, 2 * 3600e3, 3 * 3600e3, 4 * 3600e3];
 export interface BuildJob { kind: BuildKind; id: string; start: number; end: number }
 
 /** Builders hired with crystals, at most. */
@@ -33,9 +39,17 @@ export function buildTime(s: SaveData, kind: BuildKind, id = "", now = Date.now(
   let ms: number;
   if (kind === "terrace") ms = 20e3;
   else if (kind === "office") ms = Math.min(4 * HOUR, MIN * Math.pow(1.6, Math.max(0, s.tycoon.offices ?? 0)));
+  else if (kind === "hq") ms = HQ_TIME[Math.min(HQ_TIME.length - 1, Math.max(1, readyStage(s, id)))];
+  else if (kind === "project") ms = 3 * MIN;
   else if (kind === "land") ms = [10 * MIN, 30 * MIN, HOUR, 2 * HOUR, 4 * HOUR, 8 * HOUR][Math.max(0, LAND.findIndex(l => l.id === id))] ?? 8 * HOUR;
   else ms = [30e3, 30e3, 2 * MIN, 10 * MIN, 30 * MIN, HOUR][propLevel(s, id)] ?? HOUR;
   return Math.round(ms * (vipActive(s, now) ? VIP_SPEED : 1));
+}
+
+/** A business's new headquarters: about ten of its next levels' worth of cash. */
+export function hqPrice(s: SaveData, id: string): number {
+  const b = BUSINESSES.find(x => x.id === id);
+  return b ? Math.max(100, Math.round(costOf(b, levelOf(s, id), 1) * 10)) : Infinity;
 }
 
 /** Crystals to finish a build now: about one for every two minutes left (at least one). */
@@ -48,6 +62,8 @@ export const buildOf = (s: SaveData, kind: BuildKind, id = ""): BuildJob | null 
 export function buildPrice(s: SaveData, kind: BuildKind, id = "", now = Date.now()): number {
   if (kind === "terrace") return TERRACE_PRICE;
   if (kind === "office") return officePrice(s);
+  if (kind === "hq") return hqPrice(s, id);
+  if (kind === "project") return Math.max(200, Math.round(officePrice(s) * 1.5));
   if (kind === "land") { const l = LAND.find(x => x.id === id); return l ? landPrice(s, l, now) : Infinity; }
   return propPrice(s, id, now);
 }
@@ -60,6 +76,8 @@ export function startBuild(s: SaveData, kind: BuildKind, id = "", now = Date.now
   if (buildOf(s, kind, id)) return "building";
   if (kind === "terrace" && s.cafe.terrace !== 0) return "locked";
   if (kind === "land" && (landOnSale(s)?.id !== id)) return "locked";
+  if (kind === "hq" && !readyStage(s, id)) return "locked";
+  if (kind === "project" && (!projectsOpen(s.cafe) || s.cafe.done.includes(id as ProjectId))) return "locked";
   if (kind === "home" && (!propsOpen(s) || propLevel(s, id) >= PROP_MAX)) return "locked";
   if (freeBuilders(s, now) < 1) return "busy";
   const price = buildPrice(s, kind, id, now);
@@ -80,6 +98,8 @@ export function completeBuilds(s: SaveData, now = Date.now()): BuildJob[] {
     if (b.kind === "office") { s.tycoon.offices = (s.tycoon.offices ?? 0) + 1; }
     else if (b.kind === "terrace") { if (s.cafe.terrace === 0) s.cafe.terrace = 1; }
     else if (b.kind === "land") { if (!s.land.includes(b.id as LandId)) s.land.push(b.id as LandId); }
+    else if (b.kind === "hq") { const st = readyStage(s, b.id); if (st) s.tycoon.evolved[b.id] = st; }
+    else if (b.kind === "project") { if (!s.cafe.done.includes(b.id as ProjectId)) s.cafe.done.push(b.id as ProjectId); }
     else if (b.kind === "home") { s.props[b.id] = Math.min(PROP_MAX, propLevel(s, b.id) + 1); }
   }
   return done;

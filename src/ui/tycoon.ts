@@ -30,7 +30,7 @@ import { adsReady, showRewarded } from "../ads";
 import { ALBUM_CRYSTALS, ALBUM_DONE_CRYSTALS, ALBUM_KINDS, sightInfo, SIGHT_PEOPLE } from "../data/sights";
 import { HAS_CITY, playerStarted } from "../edition";
 import { buyEventPass, cityEvent, cityEventEndsAt, claimEventStep, eventPoints, eventPrize, eventReady, eventTheme, EVENT_PASS_CRYSTALS, EVENT_STEPS, type EventAction } from "../logic/cityevent";
-import { buildOf, buildPrice, builderCount, BUILDER_PRICES, busyBuilders, completeBuilds, finishNow, finishPrice, hireBuilder, MAX_HIRED, startBuild, TERRACE_PRICE, buildTime, type BuildJob, type BuildKind } from "../logic/builds";
+import { buildOf, buildPrice, builderCount, BUILDER_PRICES, busyBuilders, completeBuilds, finishNow, finishPrice, hireBuilder, hqPrice, MAX_HIRED, startBuild, TERRACE_PRICE, buildTime, type BuildJob, type BuildKind } from "../logic/builds";
 import { claimTerrace, FLOWER_WIDE, PLAY_FLOORS, projectsOpen, seatingNeed, WIDE_SHARE, type ProjectId } from "../logic/cafe";
 import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
@@ -876,7 +876,7 @@ export class TycoonUI {
         const b = BUSINESSES.find(x => readyStage(s, x.id));
         if (!b) return null;
         const st = readyStage(s, b.id);
-        return { text: t("Build the {name} HQ", { name: t(stageName(b.id, st)) }), sub: this.hqSub(b.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(b.id); } };
+        return { text: t("Build the {name} HQ", { name: t(stageName(b.id, st)) }), sub: this.hqSub(b.id, st), tone: "grow", act: () => this.goHQ(b.id) };
       }
       case "managers": {
         const b = BUSINESSES.find(x => levelOf(s, x.id) > 0 && !ty.managers.includes(x.id));
@@ -914,7 +914,7 @@ export class TycoonUI {
     const firstHq = !s.seenFeatures.includes("try-hq") ? BUSINESSES.find(b => readyStage(s, b.id)) : undefined;
     if (firstHq) {
       const st = readyStage(s, firstHq.id);
-      return { text: t("Build the {name} HQ", { name: t(stageName(firstHq.id, st)) }), sub: this.hqSub(firstHq.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(firstHq.id); } };
+      return { text: t("Build the {name} HQ", { name: t(stageName(firstHq.id, st)) }), sub: this.hqSub(firstHq.id, st), tone: "grow", act: () => this.goHQ(firstHq.id) };
     }
     // Rewards waiting and a finished chapter.
     if (!$("collect-chip").hidden) return { text: $("collect-chip").textContent ?? "", sub: t("Tap to collect"), tone: "gift", act: () => $("collect-chip").click() };
@@ -940,7 +940,7 @@ export class TycoonUI {
     const grow = BUSINESSES.find(b => readyStage(s, b.id));
     if (grow) {
       const st = readyStage(s, grow.id);
-      return { text: t("Build the {name} HQ", { name: t(stageName(grow.id, st)) }), sub: this.hqSub(grow.id, st), tone: "grow", act: () => { this.leave(); this.host.buildHQ(grow.id); } };
+      return { text: t("Build the {name} HQ", { name: t(stageName(grow.id, st)) }), sub: this.hqSub(grow.id, st), tone: "grow", act: () => this.goHQ(grow.id) };
     }
     // The floating island next to the town (Big City): waiting for its landmark.
     if (annexOpen(s) && !annexBuilt(s)) {
@@ -1467,8 +1467,22 @@ export class TycoonUI {
 
   // ---------- Build and More ----------
 
-  /** An HQ's ask: its height, and its building order (filled, the business earns more for good). */
+  /** Builds a business's next headquarters: in the city game the builders do it (cash and a
+   *  timer); in the tower game it's a tower to stack. */
+  private goHQ(id: string): void {
+    if (!HAS_CITY) { this.leave(); this.host.buildHQ(id); return; }
+    if (!this.save.seenFeatures.includes("try-hq")) this.save.seenFeatures.push("try-hq");
+    this.startCityBuild("hq", id);
+  }
+
+  /** An HQ's ask: its height, and its building order (filled, the business earns more for good).
+   *  In the city game: its price and how long it takes to build. */
   private hqSub(id: string, stage: number): string {
+    if (HAS_CITY) {
+      const job = buildOf(this.save, "hq", id);
+      if (job) return t("Building · {t} left", { t: fmtLeft(job.end - Date.now()) });
+      return t("{n} · ⏱ {t} · the business grows", { n: coins(hqPrice(this.save, id)), t: fmtLeft(buildTime(this.save, "hq", id)) });
+    }
     const o = orderFor(BUSINESSES.findIndex(b => b.id === id), stage);
     return t("{n} floors · order: {order} for ×{m} earnings", { n: hqFloors(stage), order: orderText(o), m: ORDER_MULT });
   }
@@ -1565,6 +1579,7 @@ export class TycoonUI {
     if (r !== "ok") return false;
     const job = buildOf(s, kind, id)!;
     track("build_started", { kind }, false);
+    if (kind === "project" && !s.seenFeatures.includes("try-contract")) s.seenFeatures.push("try-contract");
     this.host.sound.unlock();
     vibrate(s.settings.vibrate, 12);
     toast(t("🏗️ Building started! Done in {t}", { t: fmtLeft(job.end - Date.now()) }));
@@ -1652,6 +1667,16 @@ export class TycoonUI {
       if (j.kind === "office") { this.host.sound.unlock(); toast(t("🏢 Office block finished! +{n} office floors", { n: OFFICE_BLOCK_FLOORS })); }
       else if (j.kind === "terrace") { if (this.inCity) this.openTerrace(); }
       else if (j.kind === "land") this.landDone(j.id);
+      else if (j.kind === "hq") {
+        const to = s.tycoon.evolved[j.id] ?? 0;
+        track("hq_built", { biz: j.id, stage: to }, false);
+        if (to > 0) this.evolve(j.id, to - 1, to);
+      }
+      else if (j.kind === "project") {
+        track("project_done", { project: j.id });
+        this.host.sound.unlock();
+        toast(j.id === "play" ? t("🛝 The playground opens in your block!") : t("🌷 The flower market opens in your block!"));
+      }
       else if (j.kind === "home") {
         const lv = propLevel(s, j.id);
         track("prop_upgrade");
@@ -1683,8 +1708,8 @@ export class TycoonUI {
 
   /** A build's line in the Build menu (under way: time left and the finish-now price). */
   private jobRow(j: BuildJob, now: number): string {
-    const names: Record<BuildKind, string> = { office: t("Office block"), terrace: t("Café terrace"), land: t("New district"), home: t("Home upgrade") };
-    const icons: Record<BuildKind, string> = { office: "🏢", terrace: "☕", land: "🏝️", home: "🏠" };
+    const names: Record<BuildKind, string> = { office: t("Office block"), terrace: t("Café terrace"), land: t("New district"), home: t("Home upgrade"), hq: t("New headquarters"), project: j.id === "play" ? t("Playground") : t("Flower market") };
+    const icons: Record<BuildKind, string> = { office: "🏢", terrace: "☕", land: "🏝️", home: "🏠", hq: "🏗️", project: j.id === "play" ? "🛝" : "🌷" };
     const left = j.end - now, pct = Math.min(100, Math.max(0, ((now - j.start) / Math.max(1, j.end - j.start)) * 100));
     return `<button type="button" class="tcy-mode city job" data-finish="${j.kind}" data-id="${esc(j.id)}"><span class="mode-ico">${icons[j.kind]}</span><span><b>${esc(names[j.kind])}</b><small>${esc(t("Building · {t} left", { t: fmtLeft(left) }))}</small><i class="job-bar"><i style="width:${pct.toFixed(0)}%"></i></i></span><span class="mode-price gem">${esc(t("Finish"))} 💎${finishPrice(left)}</span></button>`;
   }
@@ -1693,8 +1718,8 @@ export class TycoonUI {
    *  then the headquarters waiting to be built and the tower mini-game. */
   private openBuild(): void {
     const s = this.save, ty = s.tycoon, rows: string[] = [];
-    // (A brand-new player's first tower comes before the city.)
-    if (!playerStarted(s)) { this.leave(); this.host.play("classic"); return; }
+    // (A brand-new player's first tower comes before the city; the city game has no towers.)
+    if (!HAS_CITY && !playerStarted(s)) { this.leave(); this.host.play("classic"); return; }
     tick(s);
     const head = (title: string) => rows.push(`<h3 class="tcy-build-head">${esc(title)}</h3>`);
     const item = (attrs: string, ico: string, title: string, sub: string, price: number | null, extra = "") => {
@@ -1733,7 +1758,22 @@ export class TycoonUI {
       const best = this.host.bizHomes().filter(key => !buildOf(s, "home", key)).map(key => ({ key, lv: propLevel(s, key), price: propPrice(s, key) })).filter(h => h.lv < PROP_MAX).sort((a, b) => a.price - b.price)[0];
       if (best) item(`data-build="home" data-id="${esc(best.key)}"`, "🏠", t("Upgrade a home"), t("A bigger building: more people, more rent, +{pct}% to every business", { pct: Math.round(PROP_BONUS * 100) }) + time("home", best.key), best.price);
     }
+    // The city game: headquarters and the block's projects are built by builders, like the rest.
+    if (HAS_CITY) {
+      let n = 0;
+      for (const b of BUSINESSES) {
+        const st = readyStage(s, b.id);
+        if (!st || n >= 2 || buildOf(s, "hq", b.id)) continue;
+        n++;
+        item(`data-build="hq" data-id="${b.id}"`, "🏗️", t("Build the {name} HQ", { name: t(stageName(b.id, st)) }), t("The business grows: bigger building, more cash a sale") + time("hq", b.id), hqPrice(s, b.id));
+      }
+      if (projectsOpen(s.cafe)) {
+        if (!s.cafe.done.includes("flowers") && !buildOf(s, "project", "flowers")) item(`data-build="project" data-id="flowers"`, "🌷", t("Flower market"), t("A flower stall for your block: shoppers carry flowers home") + time("project", "flowers"), buildPrice(s, "project", "flowers"));
+        if (!s.cafe.done.includes("play") && !buildOf(s, "project", "play")) item(`data-build="project" data-id="play"`, "🛝", t("Playground"), t("A slide and swings: families come to play on your block") + time("project", "play"), buildPrice(s, "project", "play"));
+      }
+    }
     if (hireRow && jobs.length < builderCount(s, now) && (ty.offices ?? 0) + s.land.length > 0) rows.push(hireRow);
+    if (HAS_CITY) { $("tcy-modes").innerHTML = rows.join(""); openModal($("tcy-buildsheet")); return; }
     // Headquarters are built floor by floor in the tower mini-game.
     const hqs: string[] = [];
     let hqRows = 0;
@@ -1766,7 +1806,7 @@ export class TycoonUI {
   private onBuildTap(el: HTMLElement): void {
     const what = el.dataset.build!, id = el.dataset.id ?? "";
     if (what === "hire") { this.hireBuilderNow(); return; }
-    if (what === "office" || what === "terrace" || what === "land" || what === "home") {
+    if (what === "office" || what === "terrace" || what === "land" || what === "home" || what === "hq" || what === "project") {
       if (this.startCityBuild(what, what === "land" ? landOnSale(this.save)?.id ?? "" : id)) {
         if (what === "land" || what === "home") { closeModal($("tcy-buildsheet")); if (what === "home") this.selectProp(id); }
         else this.openBuild();
@@ -2315,8 +2355,7 @@ export class TycoonUI {
       }
       case "hq":
         this.host.sound.click();
-        this.leave();
-        this.host.buildHQ(b.id);
+        this.goHQ(b.id);
         return;
       case "golden": {
         this.catchGolden(popBox, flyFrom);

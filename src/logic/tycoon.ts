@@ -63,7 +63,7 @@ export interface TycoonState {
   /** Office blocks built in the city with cash (each adds OFFICE_BLOCK_FLOORS office floors). */
   offices: number;
   /** Builds under way (see logic/builds.ts). */
-  builds: { kind: "office" | "terrace" | "land" | "home"; id: string; start: number; end: number }[];
+  builds: { kind: "office" | "terrace" | "land" | "home" | "hq" | "project"; id: string; start: number; end: number }[];
   /** Builders hired with crystals. */
   builders: number;
   /** Builds finished, all time (the City Plan counts them). */

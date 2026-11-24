@@ -579,7 +579,7 @@ function normalizeGoals(v: unknown): TycoonState["goals"] {
 
 function normalizeBuilds(v: unknown): TycoonState["builds"] {
   if (!Array.isArray(v)) return [];
-  const kinds = ["office", "terrace", "land", "home"] as const;
+  const kinds = ["office", "terrace", "land", "home", "hq", "project"] as const;
   return v.filter((b): b is Record<string, unknown> => !!b && typeof b === "object")
     .filter(b => kinds.includes(b.kind as (typeof kinds)[number]) && typeof b.id === "string" && Number.isFinite(b.start) && Number.isFinite(b.end))
     .slice(0, 6)

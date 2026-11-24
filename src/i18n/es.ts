@@ -2021,4 +2021,9 @@ export const ES: Record<string, string> = {
   "{n} of {total} office blocks for this chapter": "{n} de {total} bloques de oficinas para este capítulo",
   "Finish {n} builds": "Termina {n} obras",
   "Build {n} office blocks": "Construye {n} bloques de oficinas",
+  "{n} · ⏱ {t} · the business grows": "{n} · ⏱ {t} · el negocio crece",
+  "New headquarters": "Nueva sede",
+  "The business grows: bigger building, more cash a sale": "El negocio crece: edificio más grande, más dinero por venta",
+  "A flower stall for your block: shoppers carry flowers home": "Un puesto de flores para tu manzana: la gente se lleva flores a casa",
+  "A slide and swings: families come to play on your block": "Un tobogán y columpios: las familias vienen a jugar a tu manzana",
 };
