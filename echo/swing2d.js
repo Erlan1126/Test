@@ -209,6 +209,13 @@ const SW2D = (() => {
       const seg = (img, xa, xb) => { xa = Math.max(0, xa); xb = Math.min(W, xb); if (xb - xa < 1) return; ctx.drawImage(img, xa - dx0, srcY, xb - xa, hh, xa, Math.max(0, dy0), xb - xa, hh); };
       seg(S.cl, 0, splitX); seg(S.c, splitX, W);
     });
+    // ---------- Their window, far ahead: a warm shaft of light on the horizon that comes closer as you go ----------
+    if (R.stageLen && !R.cleared && !R.attract && typeof stagePerson === "function") {
+      const left = R.stageLen - R.px, fade = Math.min(1, Math.max(0, (left - 30) / 40));
+      if (fade > 0) { const bx = W * 0.5 + W * 0.42 * Math.min(1, left / Math.max(120, R.stageLen * 0.6)), by = H * 0.58, pulse = 0.75 + 0.25 * Math.sin(t * 2.4);
+        ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.35 * fade * pulse; ctx.drawImage(glow([255, 200, 120]), bx - 0.9 * s, -H * 0.1, 1.8 * s, by + H * 0.1); ctx.globalAlpha = 0.8 * fade; ctx.drawImage(glow([255, 210, 140]), bx - 1.4 * s, by - 1.4 * s, 2.8 * s, 2.8 * s); ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = fade; ctx.fillStyle = "#ffe2b0"; ctx.fillRect(bx - 0.25 * s, by - 0.3 * s, 0.5 * s, 0.6 * s); ctx.font = `700 ${Math.round(0.62 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,226,176,0.85)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], bx, by + 1.5 * s); ctx.globalAlpha = 1; }
+    }
     // ---------- District atmosphere (behind the play line) ----------
     // (Atmosphere is an extra: it switches off by itself as soon as the phone needs to drop quality.)
     const atmo = typeof pace === "undefined" || pace.d2 > 1.3;
@@ -426,6 +433,9 @@ const SW2D = (() => {
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(0xffffff), head[0] - 0.5 * u, head[1] - 0.5 * u, u, u); ctx.globalCompositeOperation = "source-over";
       if (R.power && R.power.kind === "shield") { ctx.strokeStyle = "rgba(90,210,255,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 1.5 * u, 0, Math.PI * 2); ctx.stroke(); }
     }
+    // The light you carry: an orb by your hand that grows with every light you catch; it's what you bring them.
+    if (R.stageLen && !R.attract && !R.over && !(R.cleared && R.t - (R.clearAt || 0) > 0.05)) { const share = Math.min(1, (R.motesGot || 0) / Math.max(1, R.motesTotal || 1)), ox2 = hx - (1 + Math.sin(t * 2) * 0.2) * s, oy2 = hy + (0.6 + Math.sin(t * 3) * 0.25) * s, rr2 = (0.35 + share * 1.1) * s;
+      ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55 + share * 0.45; ctx.drawImage(glow([255, 214, 140]), ox2 - rr2 * 1.6, oy2 - rr2 * 1.6, rr2 * 3.2, rr2 * 3.2); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff4dc"; ctx.beginPath(); ctx.arc(ox2, oy2, Math.max(1.5, rr2 * 0.3), 0, Math.PI * 2); ctx.fill(); }
     // The finish: a soft column of gold light where their street begins (no sign, no line).
     if (R.stageLen) { const fx = X(R.stageLen); if (fx > -60 && fx < W + 60 && !R.cleared) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.25 + Math.sin(t * 3) * 0.08; ctx.drawImage(glow([255, 210, 90]), fx - 2 * s, -H * 0.2, 4 * s, H * 1.4); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
       // Their home, just past the finish: a dark window with someone waiting, which lights up warm when you arrive.
@@ -440,7 +450,7 @@ const SW2D = (() => {
         // Your light flies into their window: a comet along an arc, then a burst as it lands.
         if (R.cleared && R.clearFrom) { const k = Math.min(1, (t - R.clearAt) / 0.65), e = k * k * (3 - 2 * k), tx2 = R.stageLen + 9, ty2 = 11.25, cx3 = R.clearFrom.x + (tx2 - R.clearFrom.x) * e, cy3 = R.clearFrom.y + (ty2 - R.clearFrom.y) * e + Math.sin(e * Math.PI) * 5;
           ctx.globalCompositeOperation = "lighter";
-          if (k < 1) { for (let q = 0; q < 8; q++) { const kk = Math.max(0, e - q * 0.035), qx = R.clearFrom.x + (tx2 - R.clearFrom.x) * kk, qy = R.clearFrom.y + (ty2 - R.clearFrom.y) * kk + Math.sin(kk * Math.PI) * 5, z = (2.4 - q * 0.25) * s; ctx.globalAlpha = 1 - q / 8; ctx.drawImage(glow([255, 220, 150]), X(qx) - z / 2, Y(qy) - z / 2, z, z); } }
+          if (k < 1) { for (let q = 0; q < 8; q++) { const kk = Math.max(0, e - q * 0.035), qx = R.clearFrom.x + (tx2 - R.clearFrom.x) * kk, qy = R.clearFrom.y + (ty2 - R.clearFrom.y) * kk + Math.sin(kk * Math.PI) * 5, z = (2.4 - q * 0.25) * s * (0.7 + Math.min(1, (R.motesGot || 0) / Math.max(1, R.motesTotal || 1)) * 0.9); ctx.globalAlpha = 1 - q / 8; ctx.drawImage(glow([255, 220, 150]), X(qx) - z / 2, Y(qy) - z / 2, z, z); } }
           else { const bk = Math.min(1, (t - R.clearAt - 0.65) / 0.5); if (bk < 1) { ctx.globalAlpha = 1 - bk; const z = (3 + bk * 10) * s; ctx.drawImage(glow([255, 230, 170]), X(tx2) - z / 2, Y(ty2) - z / 2, z, z); } }
           ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
         // The person at the window (waving once the light is back).
