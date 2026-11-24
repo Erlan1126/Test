@@ -566,6 +566,13 @@ export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
     let geo = m.geometry.clone().applyMatrix4(rel.multiplyMatrices(toLocal, m.matrixWorld));
     if (geo.index) geo = geo.toNonIndexed();
     for (const name of Object.keys(geo.attributes)) if (!["position", "normal", "uv"].includes(name)) geo.deleteAttribute(name);
+    // (Paving laid out in world units, so the slabs are the same size everywhere and line up.)
+    if (mat.userData.planar) {
+      const sc = mat.userData.planar as number, pos = geo.attributes.position, uv = new Float32Array(pos.count * 2);
+      const w = new THREE.Vector3(), mw = root.matrixWorld;
+      for (let i = 0; i < pos.count; i++) { w.fromBufferAttribute(pos, i).applyMatrix4(mw); uv[i * 2] = w.x * sc; uv[i * 2 + 1] = w.z * sc; }
+      geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    }
     const n = geo.attributes.position.count;
     if (!geo.attributes.uv) geo.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
     if (tint) {

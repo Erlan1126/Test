@@ -309,6 +309,63 @@ function paverTex(): THREE.CanvasTexture {
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (paverTexture = t);
 }
+/** Squares and lot paving: big granite slabs in staggered rows, each a slightly different
+ *  warm grey, with darker joints, a soft bevel, speckles and the odd weathered stain. */
+let plazaTexture: THREE.CanvasTexture | null = null;
+function plazaTex(): THREE.CanvasTexture {
+  if (plazaTexture) return plazaTexture;
+  const N = 512, c = document.createElement("canvas"); c.width = c.height = N;
+  const x = c.getContext("2d")!;
+  x.fillStyle = "#8f8a82"; x.fillRect(0, 0, N, N);
+  let sd = 29;
+  const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const TONES = [[214, 208, 198], [204, 198, 188], [222, 216, 206], [196, 190, 181], [210, 203, 191], [226, 221, 212]];
+  const rows = 4, h = N / rows, g = 3;
+  for (let r = 0; r < rows; r++) {
+    const off = r % 2 ? h * 0.75 : 0;
+    for (let k = -1; k < 4; k++) {
+      const w = N / 3, X = k * w + off, Y = r * h;
+      const [r0, g0, b0] = TONES[Math.floor(rnd() * TONES.length)], d = Math.floor(rnd() * 8) - 4;
+      for (const ox of [-N, 0, N]) {
+        const X0 = X + ox + g / 2, Y0 = Y + g / 2, W = w - g, H = h - g;
+        if (X0 > N || X0 + W < 0) continue;
+        x.fillStyle = `rgb(${r0 + d},${g0 + d},${b0 + d})`; x.fillRect(X0, Y0, W, H);
+        x.fillStyle = "rgba(255,255,255,0.14)"; x.fillRect(X0, Y0, W, 2); x.fillRect(X0, Y0, 2, H);
+        x.fillStyle = "rgba(0,0,0,0.10)"; x.fillRect(X0, Y0 + H - 2, W, 2); x.fillRect(X0 + W - 2, Y0, 2, H);
+        for (let q = 0; q < (W * H) / 26; q++) { x.fillStyle = `rgba(${rnd() < 0.5 ? "40,36,30" : "255,255,255"},${0.05 + rnd() * 0.07})`; x.fillRect(X0 + rnd() * W, Y0 + rnd() * H, 1.5, 1.5); }
+        if (rnd() < 0.25) { const sx = X0 + rnd() * W, sy = Y0 + rnd() * H, rr = 10 + rnd() * 26, gr = x.createRadialGradient(sx, sy, 0, sx, sy, rr); gr.addColorStop(0, "rgba(90,80,64,0.10)"); gr.addColorStop(1, "rgba(90,80,64,0)"); x.fillStyle = gr; x.fillRect(sx - rr, sy - rr, rr * 2, rr * 2); }
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return (plazaTexture = t);
+}
+/** Sidewalks: poured concrete in square slabs with sawn joints, a light broom texture and
+ *  the odd darker patch, like a real city pavement. */
+let concreteTexture: THREE.CanvasTexture | null = null;
+function concreteTex(): THREE.CanvasTexture {
+  if (concreteTexture) return concreteTexture;
+  const N = 256, c = document.createElement("canvas"); c.width = c.height = N;
+  const x = c.getContext("2d")!;
+  let sd = 5;
+  const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const n = 2, w = N / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const v = 196 + Math.floor(rnd() * 14) - 7;
+    x.fillStyle = `rgb(${v},${v - 2},${v - 6})`; x.fillRect(i * w, j * w, w, w);
+    // Broom marks across each slab.
+    for (let k = 0; k < 60; k++) { x.fillStyle = `rgba(${rnd() < 0.5 ? "60,56,50" : "255,255,255"},${0.03 + rnd() * 0.04})`; x.fillRect(i * w + 2, j * w + rnd() * w, w - 4, 1); }
+    for (let k = 0; k < 500; k++) { x.fillStyle = `rgba(${rnd() < 0.5 ? "50,46,40" : "255,255,255"},${0.05 + rnd() * 0.06})`; x.fillRect(i * w + rnd() * w, j * w + rnd() * w, 1.3, 1.3); }
+    if (rnd() < 0.5) { const sx = i * w + rnd() * w, sy = j * w + rnd() * w, rr = 12 + rnd() * 30, gr = x.createRadialGradient(sx, sy, 0, sx, sy, rr); gr.addColorStop(0, "rgba(70,64,56,0.12)"); gr.addColorStop(1, "rgba(70,64,56,0)"); x.fillStyle = gr; x.fillRect(sx - rr, sy - rr, rr * 2, rr * 2); }
+  }
+  // Sawn joints between the slabs.
+  x.fillStyle = "rgba(70,66,60,0.55)";
+  for (let i = 0; i <= n; i++) { x.fillRect(i * w - 1, 0, 2, N); x.fillRect(0, i * w - 1, N, 2); }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return (concreteTexture = t);
+}
 function softBlob(): THREE.Texture {
   if (blobTexture) return blobTexture;
   const c = document.createElement("canvas"); c.width = c.height = 64;
@@ -524,13 +581,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // (Real asphalt: one texture tile every 2.5 units of street.)
   const roadTex = asphaltTex().clone(); roadTex.needsUpdate = true; roadTex.repeat.set(1, 1);
   const road = own(std("#ffffff", { roughness: 0.92, map: roadTex }));
-  const plazaM = own(std("#f7efe2", { roughness: 0.8 }));
-  // (Paving slabs half a unit across; the sidewalk shapes are measured in world units.)
-  const walkTex = paverTex().clone(); walkTex.needsUpdate = true; walkTex.repeat.set(1, 1);
-  const walk = own(std("#ffffff", { roughness: 0.85, map: walkTex }));
+  // Squares and lot paving: granite slabs (tiles laid out in world units, see planarUV).
+  const plazaM = own(std("#ffffff", { roughness: 0.82, map: plazaTex() }));
+  plazaM.userData.planar = 1 / 3.2;
+  // Sidewalks: concrete slabs about 0.6 across.
+  const walkTex = concreteTex();
+  const walk = own(std("#ffffff", { roughness: 0.88, map: walkTex }));
   const cobbleTex = paverTex().clone(); cobbleTex.needsUpdate = true;
   const cobbleM = own(std("#d9b48c", { roughness: 0.9, map: cobbleTex }));
-  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1.0], [cobbleM, 1.5]]);
+  const streetUV = new Map<THREE.Material, number>([[road, 1 / 3], [walk, 1 / 1.2], [cobbleM, 1.5], [plazaM, 1 / 3.2]]);
   // (Grey concrete curbs, like a real street's.)
   const curb = own(std("#cfccc6", { roughness: 0.8 }));
   // The gutter along every curb: a darker band of road where the water and grit collect.
@@ -542,10 +601,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const lawnTex = lawnTexture({ id: "meadow", lawn: st.lawn } as unknown as Parameters<typeof lawnTexture>[0]);
   lawnTex.wrapS = lawnTex.wrapT = THREE.RepeatWrapping; lawnTex.userData.own = true;
   const verge = own(std("#ffffff", { roughness: 0.95, map: lawnTex }));
-  const grass = own(std("#f2fff0", { roughness: 0.95, map: lawnTex }));
-  const grass2 = own(std("#e2f2df", { roughness: 0.95, map: lawnTex }));
+  // (A touch deeper and less saturated than the lawn's own colour: a real, kept lawn.)
+  const grass = own(std("#cadcbb", { roughness: 0.95, map: lawnTex }));
+  const grass2 = own(std("#bccfae", { roughness: 0.95, map: lawnTex }));
   streetUV.set(verge, 1 / 30).set(grass, 1 / 30).set(grass2, 1 / 30);
-  const pave = own(std("#efe9df", { roughness: 0.7 }));
+  // Garden paths and yards: the same stone, a little warmer.
+  const pave = own(std("#f4ece0", { roughness: 0.78, map: plazaTex() }));
+  pave.userData.planar = 1 / 2.4;
+  streetUV.set(pave, 1 / 2.4);
   const water = own(std("#5fc2ff", { roughness: 0.14, metalness: 0.0, emissive: 0x2a6fbf, emissiveIntensity: 0.06 }));
   fx.ground(verge); fx.ground(grass); fx.ground(grass2); fx.ground(earth, 0.6); fx.water(water);
   fx.street(road); fx.street(walk); fx.street(pave); fx.street(curb);
