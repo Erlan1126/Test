@@ -307,7 +307,16 @@ export const cityGrow = (s: SaveData): number => 4 * Math.floor(usedFloors(s) / 
 /** How many of the town's own home blocks are built: a few at the start, one more for every
  *  6 business levels, nearest the middle first. */
 export const townHomes = (s: SaveData): number => 2 + Math.floor(usedFloors(s) / 6);
-export const townRank = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return Math.max(r, Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)); };
+/** In the city game the town's rank follows the Town Hall: the rank each Town Hall level
+ *  brings (level 2 a Village, 3 a Town, 4 a City, 5 a Big City, 6 a Metropolis, 8 the Sky
+ *  Capital). The tower game's company ranks up by business levels. */
+export const HALL_RANK = [0, 0, 1, 2, 3, 4, 5, 5, 6, 6, 6, 6];
+/** The Town Hall level that makes the town this rank. */
+export const rankHall = (rank: number): number => Math.max(1, HALL_RANK.indexOf(rank));
+export const townRank = (s: SaveData): number => HAS_CITY
+  ? Math.max(HALL_RANK[Math.min(HALL_RANK.length - 1, hallLevel(s))], Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0))
+  : rankByLevels(s);
+const rankByLevels = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return Math.max(r, Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)); };
 /** Office floors only limit the tower game's company (towers add them). The city game has no
  *  such limit: its main path is the Town Hall's level instead (see hallLevel). */
 export const FLOOR_LIMIT = !HAS_CITY;

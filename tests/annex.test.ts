@@ -2,16 +2,17 @@ import { describe, expect, it } from "vitest";
 import { ANNEX_BONUS, RANKS, ANNEX_RANK } from "../src/data/ranks";
 import { annexOpen, annexPrice, buildAnnex } from "../src/logic/annex";
 import { defaultSave, normalize } from "../src/logic/save";
-import { multiplier, newEra } from "../src/logic/tycoon";
+import { multiplier, newEra, rankHall } from "../src/logic/tycoon";
 
 describe("the island next to the town", () => {
   it("opens at Big City, costs cash once, and starts over with a New Era", () => {
     const s = defaultSave(), now = 1e12;
     s.tycoon.opening = 0;
-    s.tycoon.levels = { coffee: RANKS[ANNEX_RANK].at - 1 };
+    s.tycoon.levels = { coffee: RANKS[ANNEX_RANK].at };
+    s.chapters.done = rankHall(ANNEX_RANK) - 2; // one Town Hall level short
     expect(annexOpen(s)).toBe(false);
     expect(buildAnnex(s, "lookout", now)).toBe("locked");
-    s.tycoon.levels = { coffee: RANKS[ANNEX_RANK].at };
+    s.chapters.done = rankHall(ANNEX_RANK) - 1;
     const price = annexPrice(s, now);
     s.tycoon.coins = price - 1;
     expect(buildAnnex(s, "lookout", now)).toBe("short");

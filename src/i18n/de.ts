@@ -2052,4 +2052,7 @@ export const DE: Record<string, string> = {
   "Town Hall level {n}": "Rathaus Stufe {n}",
   "Town Hall Lv {n}": "Rathaus St. {n}",
   "Grow the Town Hall to open it": "Baue das Rathaus aus, um es zu öffnen",
+  "Town Hall goals {n}/{total}": "Rathaus-Ziele {n}/{total}",
+  "Next: a {name} when the Town Hall reaches level {n}.": "Als Nächstes: {name}, wenn das Rathaus Stufe {n} erreicht.",
+  "Skyhaven is a {rank}. At Town Hall level {n} it becomes a {next}: {unlock}.": "Skyhaven ist ein(e) {rank}. Mit Rathaus Stufe {n} wird es ein(e) {next}: {unlock}.",
 };

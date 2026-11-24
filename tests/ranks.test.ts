@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { RANK_BONUS, RANKS } from "../src/data/ranks";
 import { defaultSave } from "../src/logic/save";
-import { multiplier, townRank } from "../src/logic/tycoon";
+import { multiplier, rankHall, townRank } from "../src/logic/tycoon";
 
 describe("town ranks", () => {
-  it("climb with all business levels together, in order", () => {
+  it("climb with the Town Hall in the city game, in order", () => {
     for (let i = 1; i < RANKS.length; i++) expect(RANKS[i].at).toBeGreaterThan(RANKS[i - 1].at);
     const s = defaultSave();
     expect(townRank(s)).toBe(0);
-    s.tycoon.levels = { coffee: 30, flowers: 19 };
+    s.tycoon.levels = { coffee: 2000 }; // business levels alone don't rank the town up
     expect(townRank(s)).toBe(0);
-    s.tycoon.levels.flowers = 20;
+    s.chapters.done = 1; // Town Hall level 2: a Village
     expect(townRank(s)).toBe(1);
-    s.tycoon.levels = { coffee: 2000 };
+    for (let r = 1; r < RANKS.length; r++) { s.chapters.done = rankHall(r) - 1; expect(townRank(s)).toBe(r); }
+    s.chapters.done = 10;
     expect(townRank(s)).toBe(RANKS.length - 1);
   });
 
@@ -21,20 +22,21 @@ describe("town ranks", () => {
     s.tycoon.opening = 0;
     s.tycoon.levels = { coffee: 1 };
     const base = multiplier(s, now);
-    s.tycoon.levels = { coffee: RANKS[3].at };
+    s.chapters.done = rankHall(3) - 1;
     expect(multiplier(s, now) / base).toBeCloseTo(1 + 3 * RANK_BONUS);
   });
 });
 
 describe("town rank after a New Era", () => {
-  it("starts over with the city", async () => {
+  it("keeps the Town Hall's rank: the story isn't undone", async () => {
     const { newEra } = await import("../src/logic/tycoon");
     const s = defaultSave();
     s.tycoon.levels = { coffee: 60 };
+    s.chapters.done = 1;
     s.tycoon.lifetime = 1e12;
     expect(townRank(s)).toBe(1);
     expect(newEra(s)).toBeGreaterThan(0);
     expect(s.tycoon.levels).toEqual({ coffee: 1 });
-    expect(townRank(s)).toBe(0);
+    expect(townRank(s)).toBe(1);
   });
 });
