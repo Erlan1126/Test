@@ -63,6 +63,8 @@ export interface BizLive {
   vip: string;
   critic: string;
   power: string;
+  /** A message in a bottle is floating in at the beach (tap it for a gift). */
+  bottle?: boolean;
 }
 
 /** The district is a little town of city blocks on a grid (streets along the world axes, so
@@ -464,7 +466,7 @@ export interface BizCity {
   /** Where a town rank's landmark is (the camera visits it when the rank is reached). */
   landmark(rank: number): { x: number; z: number; zoom?: number } | null;
   /** The flower market's and the playground's spots. */
-  spot(id: "flowers" | "play" | "hall"): { x: number; z: number };
+  spot(id: "flowers" | "play" | "hall" | "bottle"): { x: number; z: number };
   /** Where piece of land k stands now (for its "for sale" bubble), or null if it isn't shown. */
   landAt(k: number): { x: number; z: number; y: number } | null;
   /** The town's properties (and the districts'): where each stands, how tall, its key. */
@@ -1361,8 +1363,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const shallowM = own(std("#8fd6f5", { roughness: 0.12, metalness: 0.05, emissive: 0x1a5a9a, emissiveIntensity: 0.05 }));
   shallowM.userData.dynamic = true;
   fx.water(seaM, true); fx.water(shallowM, true); fx.ground(sandM, 0.5); fx.ground(wetSandM, 0.4);
-  let beachLive = (_t: number, _night: number) => {};
+  let beachLive = (_t: number, _night: number, _live?: BizLive) => {};
   let beachSpot: { x: number; z: number } | null = null;
+  let bottleSpot: { x: number; z: number } | null = null;
   if (sandPoly.length >= 3 && seaPoly.length >= 3) {
     slab(sandPoly, 0.08, 0.06, sandM);
     slab(clipZ(sandPoly, zShore + 0.35, true), 0.02, 0.065, wetSandM);
@@ -1394,26 +1397,37 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const xs = sandPoly.map(p => p[0]), x0 = Math.min(...xs) + 0.9, x1 = Math.max(...xs) - 0.9;
     const seaXs = (z: number) => { const c = clipZ(clipZ(seaPoly, z + 0.05, true), z - 0.05, false).map(p => p[0]); return c.length ? [Math.min(...c), Math.max(...c)] : [x0, x1]; };
     const zs = (beachZ + zShore) / 2;
+    // The seaside promenade between the beach road and the sand: a curb, a paved walk with a
+    // white railing on the beach side, lamps and benches facing the sea, and a dashed line
+    // down the beach road, so the street along the beach is finished like the others.
+    {
+      const pz0 = beachZ - 0.05, pz1 = beachZ - 0.78, pzm = (pz0 + pz1) / 2;
+      const sx = clipZ(clipZ(sandPoly, pz0, true), pz1, false).map(p2 => p2[0]);
+      if (sx.length) {
+        const ax = Math.min(...sx) + 0.15, bx = Math.max(...sx) - 0.15, L = bx - ax, mx = (ax + bx) / 2;
+        add(new THREE.BoxGeometry(L, 0.18, 0.12).translate(mx, 0.09, pz0 - 0.06), curb);
+        add(new THREE.BoxGeometry(L, 0.16, pz0 - pz1 - 0.12).translate(mx, 0.08, pzm - 0.06), walk);
+        add(new THREE.BoxGeometry(L, 0.06, 0.05).translate(mx, 0.52, pz1 + 0.04), mats.c("#ffffff", 0.5));
+        add(new THREE.BoxGeometry(L, 0.03, 0.03).translate(mx, 0.34, pz1 + 0.04), mats.c("#ffffff", 0.5));
+        for (let x = ax + 0.2; x < bx; x += 0.55) add(new THREE.BoxGeometry(0.04, 0.38, 0.04).translate(x, 0.33, pz1 + 0.04), mats.c("#ffffff", 0.5));
+        for (let x = ax + 1.6, n = 0; x < bx - 0.8; x += 3.2, n++) {
+          add(new THREE.CylinderGeometry(0.035, 0.05, 1.3, 8).translate(x, 0.81, pzm), metal);
+          add(new THREE.SphereGeometry(0.1, 10, 8).translate(x, 1.5, pzm), lampMat);
+          lampAt.push(new THREE.Vector3(x, 1.5, pzm));
+          if (n % 2 === 0) bench(x + 1.6, pzm + 0.05, Math.PI);
+        }
+        // The beach road's dashes.
+        const dz = beachZ + ROAD * 0.5, dashes: THREE.BufferGeometry[] = [];
+        for (let x = ax + 0.4; x < bx - 0.4; x += 0.9) dashes.push(new THREE.PlaneGeometry(0.45, 0.06).rotateX(-Math.PI / 2).translate(x, 0.062, dz));
+        if (dashes.length) { const dm = mergeGeometries(dashes); dashes.forEach(q => q.dispose()); if (dm) add(dm, paintM); }
+      }
+    }
     // Palms: a leaning, ringed trunk, drooping fronds and coconuts.
     const palmLeaf = own(std("#3fae5a", { roughness: 0.9, flatShading: true }));
     fx.sway(palmLeaf, 0.9, 0.06);
-    const palm = (x: number, z: number, h: number, lean: number) => {
-      const top = new THREE.Vector3(x + lean, 0.1 + h, z);
-      for (let k = 0; k < 4; k++) {
-        const f0 = k / 4, f1 = (k + 1) / 4, y0 = 0.1 + h * f0, y1 = 0.1 + h * f1;
-        const seg = new THREE.CylinderGeometry(0.07 - k * 0.008, 0.09 - k * 0.008, h / 4 + 0.02, 6);
-        const m = new THREE.Mesh(seg, trunk);
-        m.position.set(x + lean * (f0 + f1) / 2 * ((f0 + f1) / 2), (y0 + y1) / 2, z);
-        m.rotation.z = -lean * 0.35 * (k + 1) / 4;
-        g.add(m);
-      }
-      for (let k = 0; k < 7; k++) {
-        const a = (k / 7) * Math.PI * 2;
-        const fr = new THREE.BoxGeometry(0.9, 0.04, 0.22).translate(0.42, 0, 0).rotateZ(-0.45).rotateY(a);
-        add(fr.translate(top.x, top.y, top.z), palmLeaf);
-      }
-      for (let k = 0; k < 3; k++) add(new THREE.SphereGeometry(0.06, 6, 4).translate(top.x + Math.cos(k * 2.1) * 0.1, top.y - 0.08, top.z + Math.sin(k * 2.1) * 0.1), mats.c("#7a5230", 0.8));
-    };
+    // Palms: the hand-drawn palm (trees.ts), a little taller or shorter each.
+    const palm = (x: number, z: number, h: number, lean: number) => { blob(x, z, 0.5, 0.08); nature.tree("palm", x, 0.08, z, h / 2.1, Math.round(x * 13 + z * 7 + lean * 10)); };
+    void palmLeaf;
     // Umbrellas with towels and loungers under them.
     const stripes = ["#ff5f6d", "#ffd23f", "#4fc3ff", "#b48cff", "#3fd18a"];
     const umbrella = (x: number, z: number, n: number) => {
@@ -1439,7 +1453,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     umbrella(x0 + span * 0.84, zs - 0.1, 2);
     // A beach hut with a striped awning, a lifeguard chair, a sandcastle and a beach ball.
     {
-      const hx = x0 + span * 0.28, hz = beachZ - 0.55;
+      const hx = x0 + span * 0.28, hz = beachZ - 1.2;
       add(new THREE.BoxGeometry(1.0, 0.7, 0.7).translate(hx, 0.45, hz), mats.c("#fff6e0", 0.7));
       add(new THREE.CylinderGeometry(0.01, 0.72, 0.4, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.75).translate(hx, 1.0, hz), mats.c("#4fc3ff", 0.6));
       add(new THREE.BoxGeometry(0.4, 0.45, 0.03).translate(hx, 0.33, hz - 0.36), mats.c("#c86a4a", 0.7));
@@ -1786,7 +1800,111 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       decorLive = (t, night) => { for (const f of parts) f(t, night); };
     }
-    beachLive = (t, night) => {
+    // ---- Beach life: swimmers, sunbathers, a volleyball game, dolphins and a bottle ----
+    const skinC = ["#f2c7a0", "#c98d5e", "#8a5a3a", "#f5d6b8", "#a86e48"], suitC = ["#ff5f6d", "#2f6fff", "#ffd23f", "#3fd18a", "#b48cff", "#ff8a3d"];
+    const lifeG = new THREE.Group(); lifeG.userData.dynamic = true; g.add(lifeG);
+    /** A little person standing (the town's crowd scale): legs, a swimsuit body, arms, a head. */
+    const person = (n: number): THREE.Group => {
+      const pg = new THREE.Group(), sk = mats.c(skinC[n % skinC.length], 0.7), su = mats.c(suitC[n % suitC.length], 0.6);
+      for (const dx of [-0.035, 0.035]) pg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.022, 0.2, 6).translate(dx, 0.1, 0), sk));
+      pg.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.12, 3, 8).translate(0, 0.28, 0), su));
+      for (const dx of [-1, 1]) { const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.016, 0.17, 5).translate(0, -0.085, 0), sk); arm.position.set(dx * 0.08, 0.36, 0); arm.name = dx < 0 ? "armL" : "armR"; pg.add(arm); }
+      pg.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8).translate(0, 0.47, 0), sk));
+      pg.add(new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.48, -0.005), mats.c(["#3a2418", "#d8b060", "#1a1410", "#8a4a20"][n % 4], 0.8)));
+      return pg;
+    };
+    // Swimmers in the shallows: heads and shoulders above the water, arms paddling; one on a ring.
+    const swimmers: { o: THREE.Group; x: number; z: number; k: number }[] = [];
+    for (let k = 0; k < 5; k++) {
+      const z = zShore - 0.55 - (k % 3) * 0.45, [sa, sb] = seaXs(z), x = sa + 0.8 + ((k * 0.37 + 0.15) % 1) * Math.max(0.5, sb - sa - 1.6);
+      const o = person(k + 2);
+      if (k === 1) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.05, 8, 16).rotateX(Math.PI / 2).translate(0, 0.3, 0), mats.c("#ff6fa0", 0.4)); o.add(ring); }
+      o.position.set(x, -0.26, z); o.rotation.y = k;
+      lifeG.add(o); swimmers.push({ o, x, z, k });
+    }
+    // Sunbathers lying on towels.
+    for (let k = 0; k < 3; k++) {
+      const tx = x0 + span * (0.12 + k * 0.33) + 0.55, tz = zs + 0.35;
+      add(new THREE.BoxGeometry(0.3, 0.012, 0.62).translate(tx, 0.085, tz), mats.c(stripes[(k + 3) % stripes.length], 0.85));
+      const o = person(k);
+      o.rotation.x = -Math.PI / 2; o.position.set(tx, 0.13, tz + 0.22);
+      lifeG.add(o);
+    }
+    // Beach volleyball: a net, two players and a ball flying back and forth.
+    const vx = x0 + span * 0.78, vz = zs + 0.05;
+    for (const dz of [-0.75, 0.75]) add(new THREE.CylinderGeometry(0.025, 0.025, 0.85, 6).translate(vx, 0.5, vz + dz), mats.c("#f4f4f4", 0.5));
+    { const netM = own(new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, side: THREE.DoubleSide, roughness: 0.8 })); const net = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.28).rotateY(Math.PI / 2).translate(vx, 0.76, vz), netM); net.userData.dynamic = true; lifeG.add(net); }
+    const vp1 = person(1), vp2 = person(4);
+    vp1.position.set(vx - 0.9, 0.08, vz + 0.1); vp1.rotation.y = Math.PI / 2;
+    vp2.position.set(vx + 0.9, 0.08, vz - 0.15); vp2.rotation.y = -Math.PI / 2;
+    lifeG.add(vp1, vp2);
+    const vball = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), mats.c("#fff6d0", 0.5));
+    lifeG.add(vball);
+    // Dolphins leaping out at sea, now and then.
+    const dolphinM = mats.c("#7d93b2", 0.35, 0.1), dolphins: THREE.Group[] = [];
+    for (let k = 0; k < 2; k++) {
+      const d = new THREE.Group();
+      d.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8).scale(2.4, 0.8, 0.8), dolphinM));
+      d.add(new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 6).translate(0.02, 0.17, 0), dolphinM));
+      d.add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.14, 6).rotateZ(Math.PI / 2).translate(0.46, 0, 0), dolphinM));
+      d.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.26).translate(-0.4, 0, 0), dolphinM));
+      d.visible = false; lifeG.add(d); dolphins.push(d);
+    }
+    const dz0 = zShore - 3.0, [dx0, dx1] = seaXs(dz0);
+    const splashM = own(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+    const splash = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.3, 20).rotateX(-Math.PI / 2), splashM);
+    splash.position.y = 0.06; lifeG.add(splash);
+    // The message in a bottle: it floats in to the waterline and bobs there until it's tapped.
+    const bottle = new THREE.Group();
+    bottle.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.26, 12).rotateZ(Math.PI / 2), own(new THREE.MeshStandardMaterial({ color: 0x7fe0b0, transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 }))));
+    bottle.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.1, 10).rotateZ(Math.PI / 2).translate(0.17, 0, 0), own(new THREE.MeshStandardMaterial({ color: 0x7fe0b0, transparent: true, opacity: 0.7, roughness: 0.1 }))));
+    bottle.add(new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.05, 8).rotateZ(Math.PI / 2).translate(0.24, 0, 0), mats.c("#a06a3a", 0.8)));
+    bottle.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.16, 8).rotateZ(Math.PI / 2), mats.c("#f6ecd0", 0.9)));
+    const bgx = x0 + span * 0.35, bgz = zShore - 0.15;
+    bottleSpot = { x: bgx, z: bgz };
+    bottle.position.set(bgx, 0.05, bgz); bottle.visible = false; bottle.userData.dynamic = true;
+    lifeG.add(bottle);
+    let bottleIn = 0;
+    const beachLife = (t: number, live?: BizLive) => {
+      for (const sw of swimmers) {
+        sw.o.position.set(sw.x + Math.sin(t * 0.15 + sw.k) * 0.5, -0.26 + Math.sin(t * 1.6 + sw.k * 1.3) * 0.03, sw.z + Math.cos(t * 0.12 + sw.k) * 0.2);
+        sw.o.rotation.y = sw.k + Math.sin(t * 0.15 + sw.k) * 0.6;
+        const aL = sw.o.getObjectByName("armL"), aR = sw.o.getObjectByName("armR");
+        if (aL && aR) { aL.rotation.x = Math.sin(t * 3 + sw.k) * 1.2 - 1.2; aR.rotation.x = Math.sin(t * 3 + sw.k + Math.PI) * 1.2 - 1.2; }
+      }
+      // Volleyball: the ball arcs over the net; the hitter's arms go up as it comes.
+      const vp = (t * 0.55) % 2, fwd = vp < 1, k = fwd ? vp : 2 - vp;
+      vball.position.set(vx - 0.85 + 1.7 * k, 0.62 + Math.sin(k * Math.PI) * 0.85, vz - 0.02 + Math.sin(k * Math.PI) * 0.05);
+      for (const [pp, near] of [[vp1, !fwd && k < 0.25], [vp2, fwd && k > 0.75]] as [THREE.Group, boolean][]) {
+        const aL = pp.getObjectByName("armL"), aR = pp.getObjectByName("armR");
+        if (aL && aR) { const up = near ? Math.PI * 0.9 : 0.2; aL.rotation.z = up * -1; aR.rotation.z = up; }
+        pp.position.y = 0.08 + (near ? Math.abs(Math.sin(t * 8)) * 0.06 : 0);
+      }
+      // Dolphins: a pair leaps in an arc every 11 seconds, a splash where they land.
+      const cyc = t % 11, jumping = cyc < 1.6;
+      dolphins.forEach((d, i) => {
+        const p2 = (cyc - i * 0.25) / 1.3;
+        d.visible = jumping && p2 > 0 && p2 < 1;
+        if (!d.visible) return;
+        const seed = Math.floor(t / 11), bx = dx0 + 0.8 + ((seed * 0.618) % 1) * Math.max(0.5, dx1 - dx0 - 2.4);
+        d.position.set(bx + p2 * 1.4 + i * 0.3, -0.1 + Math.sin(p2 * Math.PI) * 0.7, dz0 + i * 0.35);
+        d.rotation.z = Math.cos(p2 * Math.PI) * 0.9;
+        if (i === 0) { splash.position.x = bx + 1.4; splash.position.z = dz0; }
+      });
+      const sp2 = Math.max(0, Math.min(1, (cyc - 1.3) / 0.8));
+      splashM.opacity = cyc > 1.3 && cyc < 2.1 ? (1 - sp2) * 0.7 : 0;
+      splash.scale.setScalar(0.6 + sp2 * 1.6);
+      // The bottle floats in from further out, then bobs at the waterline.
+      if (live?.bottle) {
+        bottleIn = Math.min(1, bottleIn + 0.006);
+        const e = 1 - Math.pow(1 - bottleIn, 3);
+        bottle.visible = true;
+        bottle.position.set(bgx + Math.sin(t * 0.7) * 0.06, 0.06 + Math.sin(t * 2.2) * 0.03, bgz - (1 - e) * 2.2);
+        bottle.rotation.set(Math.sin(t * 1.7) * 0.25, 0.6 + Math.sin(t * 0.5) * 0.3, Math.sin(t * 2.1) * 0.15);
+      } else { bottle.visible = false; bottleIn = 0; }
+    };
+    beachLive = (t, night, live) => {
+      beachLife(t, live);
       decorLive(t, night);
       seaLife(t);
       boat.position.y = 0.02 + Math.sin(t * 1.4) * 0.06;
@@ -3839,7 +3957,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     top: i => (i === -1 ? plotTop : i === -4 ? hallTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),
     resident: () => block.resident(),
     landmark: r => (landmarks[r] ? landmarks[r]() : null),
-    spot: id => (id === "hall" ? hallAt ?? { x: 0, z: 0 } : block.spot(id)),
+    spot: id => (id === "hall" ? hallAt ?? { x: 0, z: 0 } : id === "bottle" ? bottleSpot ?? { x: 0, z: 0 } : block.spot(id)),
     landAt: k => landShown[k] ?? null,
     homes: () => homeSpots,
     sights: () => {
@@ -3881,7 +3999,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         b.rotation.x = Math.cos(t * 0.4) * 0.25;
       }
       jet.scale.y = 1 + Math.sin(t * 4) * 0.08;
-      beachLive(t, night);
+      beachLive(t, night, live);
       coffeeSale = Math.max(coffeeSale, live.block?.sold ?? 0);
       block.update(Date.now(), dt, t, live.block, coffeeSale);
       const cd = cafe.terrace === 2 ? doors.get("coffee") : undefined;

@@ -669,9 +669,44 @@ export class TycoonUI {
   }
 
   /** What's happening right now, for the 3D district. */
-  liveState(): { frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; selSight: string; building: { kind: string; id: string }[]; pulse: string; pulseAt: number; block: BizBlock } {
+  /** When the next message in a bottle washes up at the beach (saved, so it can't be farmed by
+   *  reopening the game). One comes every 4 to 7 minutes while you play. */
+  private bottleNext(): number {
+    try {
+      const v = Number(localStorage.getItem("skyrise.bottle.v1"));
+      if (v > 0) return v;
+      const first = Date.now() + 3 * 60e3;
+      localStorage.setItem("skyrise.bottle.v1", String(first));
+      return first;
+    } catch { return Number.MAX_SAFE_INTEGER; }
+  }
+  private bottleTold = false;
+  /** A bottle is floating at the beach right now (only once the first steps are done). */
+  private bottleOn(): boolean {
+    const s = this.save;
+    return this.inCity && !!s.cafe.starter && s.tycoon.tips >= 3 && Date.now() >= this.bottleNext();
+  }
+  /** Tapping the bottle: a note from someone out at sea, and a gift. */
+  private collectBottle(): void {
+    if (!this.bottleOn()) return;
+    const s = this.save, ps = perSecond(s, Date.now());
+    const cash = Math.max(50, Math.round(ps * 90)), gems = Math.random() < 0.2 ? 2 : 0;
+    s.tycoon.coins += cash; s.tycoon.lifetime += cash;
+    if (gems) s.crystals += gems;
+    try { localStorage.setItem("skyrise.bottle.v1", String(Date.now() + (4 + Math.random() * 3) * 60e3)); } catch { /* private mode */ }
+    this.host.persist();
+    this.host.sound.unlock();
+    confetti();
+    const notes = ["Greetings from the Cloud Isles! Keep building!", "Whoever finds this: Skyhaven is the best town in the sky.", "Lost my hat at sea. If you find it, it's yours!", "A treasure for the mayor's town. Spend it well!"];
+    toast(t("🍾 A message in a bottle: \"{note}\"", { note: t(notes[Math.floor(Math.random() * notes.length)]) }) + " " + (gems ? t("+{cash} and +{n} 💎", { cash: coins(cash), n: gems }) : t("+{cash}", { cash: coins(cash) })));
+    this.labelsDirty = true;
+    this.render();
+  }
+
+  liveState(): { bottle: boolean; frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; selSight: string; building: { kind: string; id: string }[]; pulse: string; pulseAt: number; block: BizBlock } {
     const now = Date.now(), s = this.save;
     return {
+      bottle: this.bottleOn(),
       pulse: this.pulse.id,
       pulseAt: this.pulse.at,
       sel: this.inCity ? this.selected : "",
@@ -1050,7 +1085,10 @@ export class TycoonUI {
     let nextOpen = "", nextPrice = Infinity;
     BUSINESSES.forEach((b, i) => { if (levelOf(s, b.id) === 0 && unlockedBusiness(s, i) && costOf(b, 0, 1) < nextPrice) { nextPrice = costOf(b, 0, 1); nextOpen = b.id; } });
     if (this.selected && levelOf(s, this.selected) === 0) nextOpen = this.selected;
-    this.put($("tcy-labels"), hallTag + starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    if (this.bottleOn() && !this.bottleTold) { this.bottleTold = true; toast(t("🍾 Something washed up on the beach!")); }
+    if (!this.bottleOn()) this.bottleTold = false;
+    const bottleTag = !closeUp && this.bottleOn() ? `<button type="button" class="tag bub bottle" data-tag="bottle" data-i="-5" data-h="0.55" aria-label="${esc(t("A message in a bottle"))}"><span class="tag-ico"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><g transform="rotate(-35 16 16)"><rect x="13" y="2" width="6" height="5" rx="1.5" fill="#a0683a"/><path d="M13.5 7h5v3.5c3 1.4 4.5 3.6 4.5 6.5v10.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 9 27.5V17c0-2.9 1.5-5.1 4.5-6.5z" fill="#5fd0a0" stroke="#1f7a5a" stroke-width="1.4"/><rect x="11.5" y="16" width="9" height="9" rx="1" fill="#f6ecd0" stroke="#c8a870" stroke-width="0.8"/><path d="M13 19h6M13 21.5h5" stroke="#b08850" stroke-width="0.9"/><path d="M11.5 13.5c1-1.2 2-1.8 3-2" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g></svg></span></button>` : "";
+    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       // (The next business waiting for the City Hall: a lock with the level it needs.)
@@ -1250,6 +1288,7 @@ export class TycoonUI {
     }
     if (id.startsWith("land-")) { this.openLand(); return; }
     if (id === "hall") { this.host.openStory(); return; }
+    if (id === "bottle") { this.collectBottle(); return; }
     if (id.startsWith("prop-")) { this.selectProp(id.slice(5)); return; }
     if (id === "starter") {
       const st = this.save.cafe.starter;

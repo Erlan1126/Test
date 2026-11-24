@@ -2055,4 +2055,13 @@ export const DE: Record<string, string> = {
   "City Hall goals {n}/{total}": "Rathaus-Ziele {n}/{total}",
   "Next: a {name} when the City Hall reaches level {n}.": "Als Nächstes: {name}, wenn das Rathaus Stufe {n} erreicht.",
   "Skyhaven is a {rank}. At City Hall level {n} it becomes a {next}: {unlock}.": "Skyhaven ist ein(e) {rank}. Mit Rathaus Stufe {n} wird es ein(e) {next}: {unlock}.",
+  "🍾 A message in a bottle: \"{note}\"": "🍾 Eine Flaschenpost: „{note}“",
+  "+{cash} and +{n} 💎": "+{cash} und +{n} 💎",
+  "+{cash}": "+{cash}",
+  "🍾 Something washed up on the beach!": "🍾 Am Strand ist etwas angespült worden!",
+  "A message in a bottle": "Eine Flaschenpost",
+  "Greetings from the Cloud Isles! Keep building!": "Grüße von den Wolkeninseln! Bau weiter!",
+  "Whoever finds this: Skyhaven is the best town in the sky.": "Wer das findet: Skyhaven ist die schönste Stadt am Himmel.",
+  "Lost my hat at sea. If you find it, it's yours!": "Hab meinen Hut auf See verloren. Wer ihn findet, darf ihn behalten!",
+  "A treasure for the mayor's town. Spend it well!": "Ein Schatz für die Stadt des Bürgermeisters. Gib ihn gut aus!",
 };

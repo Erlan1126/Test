@@ -1120,7 +1120,7 @@ export class Renderer3D {
     const db = i >= CITY_LOTS ? this.biz.bizAt(i) : null;
     if (i >= CITY_LOTS && !db) return null;
     if (db && height < 0) height = db.top + 0.5;
-    const { x, z } = db ?? home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
+    const { x, z } = db ?? home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : i === -5 ? this.biz.spot("bottle") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     // (Things on a higher island stand that much higher.)
