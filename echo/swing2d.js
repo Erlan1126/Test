@@ -87,6 +87,9 @@ const SW2D = (() => {
   const stars = Array.from({ length: 90 }, (_, q) => { const r = seeded(q * 7 + 3); return [r(), r() * 0.6, 0.5 + r() * 1.2, r() * 6]; });
   const hist = [];
   let cam = null, sCur = 24, skyC = null;
+  // A searchlight beam, drawn once per colour: a narrow cone fading upward.
+  const beams = [];
+  const beam = q => beams[q] || (beams[q] = mk(64, 256, (x) => { const c = q ? "255,90,210" : "90,220,255"; const g = x.createLinearGradient(0, 256, 0, 0); g.addColorStop(0, `rgba(${c},0.24)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.beginPath(); x.moveTo(30, 256); x.lineTo(34, 256); x.lineTo(64, 0); x.lineTo(0, 0); x.closePath(); x.fill(); }));
   const strips = [null, null];
 
   function draw(ctx, W, H, P) {
@@ -157,6 +160,22 @@ const SW2D = (() => {
       const seg = (img, xa, xb) => { xa = Math.max(0, xa); xb = Math.min(W, xb); if (xb - xa < 1) return; ctx.drawImage(img, xa - dx0, srcY, xb - xa, hh, xa, Math.max(0, dy0), xb - xa, hh); };
       seg(S.cl, 0, splitX); seg(S.c, splitX, W);
     });
+    // ---------- District atmosphere (behind the play line) ----------
+    // (Atmosphere is an extra: it switches off by itself as soon as the phone needs to drop quality.)
+    const atmo = typeof pace === "undefined" || pace.d2 > 1.3;
+    if (atmo) { const th = runnerTheme(R.px), tower = R.stageInfo && R.stageInfo.tower, calm = save.settings && save.settings.calm;
+      if (th.neon > 0.8 && !calm) {
+        // The Arcade: two searchlights sweeping the sky from below.
+        ctx.globalCompositeOperation = "lighter";
+        for (let q = 0; q < 2; q++) { const bx = W * (0.25 + q * 0.5), a = Math.sin(t * 0.5 + q * 2.2) * 0.55, len = H * 0.75, im = beam(q);
+          ctx.save(); ctx.translate(bx, H); ctx.rotate(a); ctx.drawImage(im, -len * 0.07, -len, len * 0.14, len); ctx.restore(); }
+        ctx.globalCompositeOperation = "source-over";
+      }
+      if (tower) {
+        // The Tower: cloud wisps rushing past at height.
+        ctx.globalAlpha = 0.2; for (let q = 0; q < 3; q++) { const r = seeded(q * 53 + 11), w = W * (0.5 + r() * 0.4), y = H * (0.1 + r() * 0.5), x = ((r() * W * 3 - (cam.x * s * (0.6 + r() * 0.3)) % (W * 3)) + W * 3) % (W * 3) - W; ctx.drawImage(glow([210, 220, 255]), x, y, w, H * 0.05); } ctx.globalAlpha = 1;
+      }
+    }
     // ---------- The street (and the harbour) ----------
     const gy = Y(0); if (gy < H + 6 * s) { const th = runnerTheme(R.px);
       if (th.water) { ctx.fillStyle = "#0f2d45"; ctx.fillRect(0, gy, W, H - gy); ctx.fillStyle = "rgba(160,210,255,0.14)"; for (let q = 0; q < 7; q++) { const off = ((t * 18 + q * 37) % W); ctx.fillRect(off - W, gy + 5 + q * 8, W * 0.6, 1); ctx.fillRect(off, gy + 5 + q * 8, W * 0.4, 1); } }
@@ -384,6 +403,28 @@ const SW2D = (() => {
       for (let q = 0; q < 7; q++) { const a = t * (0.4 + q * 0.05) + q, sz = (6 + Math.sin(a * 2) * 2) * s; ctx.drawImage(smoke, dx + Math.sin(a) * 2 * s - sz / 2, (q / 7) * H + Math.cos(a * 1.3) * 2 * s - sz / 2, sz, sz); }
       if (Math.random() < 0.04) { ctx.strokeStyle = "rgba(201,168,255,0.9)"; ctx.lineWidth = 2; ctx.beginPath(); let bx = dx, by = 0; ctx.moveTo(bx, by); for (let q = 0; q < 8; q++) { bx += (Math.random() - 0.3) * 30; by += H / 8; ctx.lineTo(bx, by); } ctx.stroke(); }
       if (R.ev && R.ev.kind === "heart") { const hx2 = dx + 2 * s, hy2 = Y(R.py + 2 + Math.sin(t * 1.3) * 1.5), r2 = (4.5 * (1 - R.ev.hits * 0.18)) * s * 0.6; ctx.drawImage(glow([138, 61, 255]), hx2 - r2 * 2, hy2 - r2 * 2, r2 * 4, r2 * 4); ctx.fillStyle = "#07030f"; ctx.beginPath(); ctx.arc(hx2, hy2, r2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#d9b8ff"; ctx.beginPath(); ctx.arc(hx2 + r2 * 0.4, hy2 - r2 * 0.1, r2 * 0.2, 0, Math.PI * 2); ctx.fill(); }
+    }
+    // ---------- District atmosphere (in front) ----------
+    if (atmo) { const th = runnerTheme(R.px), view0 = cam.x - W / 2 / s;
+      if (th.park) {
+        // The Park: fireflies drifting and blinking.
+        ctx.globalCompositeOperation = "lighter";
+        for (let q = 0; q < 16; q++) { const r = seeded(q * 31 + 7), wx = view0 + ((r() * 120 + q * 9) % (W / s + 10)), wy = 3 + r() * 22 + Math.sin(t * (0.6 + r()) + q) * 1.5, k = Math.max(0, Math.sin(t * (1.5 + r() * 2) + q * 1.7)); if (k < 0.1) continue; const sz = (0.6 + k * 0.6) * s; ctx.globalAlpha = k; ctx.drawImage(glow([200, 255, 120]), X(wx + Math.sin(t * 0.7 + q) * 1.2) - sz / 2, Y(wy) - sz / 2, sz, sz); }
+        ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      } else if (th.anchor === "lantern") {
+        // The Markets: warm embers rising from the stalls.
+        ctx.globalCompositeOperation = "lighter";
+        for (let q = 0; q < 22; q++) { const r = seeded(q * 17 + 3), life = 4 + r() * 3, ph = ((t + r() * life) % life) / life, wx = view0 + r() * (W / s), wy = ph * 30, sz = (0.35 + r() * 0.25) * s * (1 - ph * 0.6); ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.8; ctx.drawImage(glow([255, 160, 70]), X(wx + Math.sin(t * 1.3 + q) * 0.8) - sz / 2, Y(wy) - sz / 2, sz, sz); }
+        ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      } else if (th.water) {
+        // The Harbour: low sea fog rolling over the water.
+        const gy2 = Y(0); if (gy2 < H + 4 * s) { ctx.globalAlpha = 0.28; for (let q = 0; q < 2; q++) { const r = seeded(q * 71 + 5), w = W * (0.8 + r() * 0.4), x = ((r() * W * 2 + t * (12 + r() * 10)) % (W * 2)) - W * 0.5; ctx.drawImage(glow([190, 210, 235]), x, gy2 - 2.5 * s, w, 3.5 * s); } ctx.globalAlpha = 1; }
+      } else if (!R.stageInfo || !R.stageInfo.tower) {
+        // Downtown: steam curling up from rooftop vents.
+        for (const b of R.blds) { if (b.tree || (b.n % 3)) continue; const x0 = X(b.x0), x1 = X(b.x1); if (x1 < -20 || x0 > W + 20) continue; const vx = b.x0 + (b.x1 - b.x0) * 0.7;
+          for (let q = 0; q < 4; q++) { const ph = ((t * 0.35 + q / 4 + b.n * 0.13) % 1), sz = (1 + ph * 3) * s; ctx.globalAlpha = 0.16 * (1 - ph); ctx.drawImage(glow([220, 225, 235]), X(vx + Math.sin(t + q) * 0.6 * ph) - sz / 2, Y(b.h + 1 + ph * 7) - sz / 2, sz, sz); } }
+        ctx.globalAlpha = 1;
+      }
     }
     // ---------- Weather and celebrations ----------
     if (P.rain) { ctx.strokeStyle = "rgba(200,225,255,0.35)"; ctx.lineWidth = 1; ctx.beginPath(); for (let q = 0; q < 70; q++) { const r = seeded(q * 31), x = (r() * W + t * 40) % W, y = (r() * H + t * 700) % H; ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 14); } ctx.stroke(); }

@@ -80,6 +80,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       // Landing on a roof: you run along it.
       R.inv = 1; R.teth = null; R.hold = false; R.power = null; R.ups.length = 0; R.haz.length = 0; R.boosts.length = 0; R.winds.length = 0; R.updrafts.length = 0; R.blds = R.blds.filter(q => q.x1 < R.px - 3 || q.x0 > R.px + 40); R.blds.push({ x0: R.px - 2, x1: R.px + 30, h: R.py - 0.5, style: 0, litT: -1, n: 998, seed: 0.3 }); R.vy = -3; step(10);
       out.youCanLandAndRunOnRooftops = !!R.roof && R.vx >= 9;
+      { const keepA = R.anchors; R.anchors = []; R.hold = false; swingHold(true); out.tappingOnARoofWithNothingInReachJumps = !R.roof && R.vy > 10; R.anchors = keepA; swingHold(false); }
       R.blds.pop(); R.roof = null;
       // Events.
       { const d0 = Math.floor(runnerM() / RUN.BIOME_M) * RUN.BIOME_M + 40; R.dist = d0 * RUN.M; R.px = d0; R.darkX = R.px - 50; } R.ev = null; R.nextEv = runnerM() - 1; R.tut = 0; step(1);
