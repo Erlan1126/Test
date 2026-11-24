@@ -241,18 +241,19 @@ describe("tycoon economy reset", () => {
 import { basePay, dealGoals, goalStep } from "../src/logic/tycoon";
 
 describe("company goals and first steps", () => {
-  it("deals three different goals a day and pays stars, then a crystal bonus for all three", () => {
+  it("deals three different goals a day and pays cash (the city's stars), then a bonus for all three", () => {
     const s = defaultSave();
     dealGoals(s, T0, () => 0.1);
     const g = s.tycoon.goals.list;
     expect(g).toHaveLength(3);
     expect(new Set(g.map(x => x.t)).size).toBe(3);
-    const stars0 = s.stars, crystals0 = s.crystals;
+    const coins0 = s.tycoon.coins, crystals0 = s.crystals;
     for (const x of [...g]) {
       const r = goalStep(s, x.t, x.n, T0);
       expect(r.stars).toBeGreaterThan(0);
+      expect(r.cash).toBeGreaterThan(0);
     }
-    expect(s.stars).toBeGreaterThan(stars0);
+    expect(s.tycoon.coins).toBeGreaterThan(coins0);
     expect(s.tycoon.picks).toBe(1); // the bonus: a free advisor pick while any are left
     expect(s.tycoon.advisors).toHaveLength(0); // the player chooses who joins
     expect(s.crystals).toBe(crystals0);

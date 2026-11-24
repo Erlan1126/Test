@@ -12,6 +12,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { clamp, lerp, mixRgb, rand, rgb, type RGB } from "../core/util";
 import { BLOCK_SIZE, ISLAND, MILESTONES, UI_FONT } from "../data/constants";
+import { LAND } from "../data/land";
 import type { Look } from "../data/skins";
 import { shapeById, type Shape } from "../data/shapes";
 import { skinById } from "../data/skins";
@@ -208,6 +209,30 @@ export class Renderer3D {
   /** The first-visit close-up of the starter tower (allowed closer than the island's width). */
   private bizFraming = false;
   private bizLook = { x: 0, z: 0, zoom: 1, tx: 0, tz: 0, tzoom: 1 };
+  /** The glowing ring under the selected building. */
+  private selRing: THREE.Mesh | null = null;
+  /** Cranes over buildings under construction, by job. */
+  private craneMap = new Map<string, THREE.Group>();
+  private cranes(list: { kind: string; id: string }[]): void {
+    if (!this.biz) return;
+    const want = new Set<string>(), t = performance.now() / 1000;
+    for (const j of list) {
+      let at: { x: number; z: number; y: number } | null = null;
+      if (j.kind === "home") { const h = this.biz.homes().find(x => x.key === j.id); if (h) at = { x: h.x, z: h.z, y: h.y }; }
+      else if (j.kind === "land") { const k = LAND.findIndex(l => l.id === j.id); at = k >= 0 ? this.biz.landAt(k) : null; }
+      else if (j.kind === "terrace") { const p = plotPos(); at = { x: p.x + 2.4, z: p.z, y: 0 }; }
+      if (!at) continue;
+      const key = `${j.kind}:${j.id}`;
+      want.add(key);
+      let c = this.craneMap.get(key);
+      if (!c) { c = makeCrane(); this.scene.add(c); this.craneMap.set(key, c); }
+      c.position.set(BIZ_SLOT.x + at.x + 1.3, BIZ_SLOT.y + at.y + 0.2, BIZ_SLOT.z + at.z - 1.3);
+      c.visible = this.bizK > 0.5;
+      const jib = c.userData.jib as THREE.Object3D;
+      jib.rotation.y = Math.sin(t * 0.4 + at.x) * 1.1;
+    }
+    for (const [k, c] of this.craneMap) if (!want.has(k)) { this.scene.remove(c); disposeTree(c); this.craneMap.delete(k); }
+  }
   private bizIn: unknown = null;
   private bizStyleKey = "";
   /** 0 = looking at the home island, 1 = over the business district. */
@@ -915,6 +940,25 @@ export class Renderer3D {
     // something (a close-up, a landmark, a tapped building). Along the town it never slides
     // off; across, it can move only as far as the zoom leaves room.
     const picked = si >= 0 || !!home || !!sight;
+    // A crane over everything being built (a home upgrade, a new district).
+    this.cranes(f.bizLive?.building ?? []);
+    // The selected building glows: a pulsing ring on the ground under it.
+    {
+      const at = si >= 0 ? (() => { const db = this.biz!.bizAt(si); return db ? { x: db.x, z: db.z, y: db.y } : { ...lotPos(si), y: 0 }; })() : home ?? sight ?? null;
+      if (at) {
+        if (!this.selRing) {
+          const m = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.85, depthWrite: false });
+          this.selRing = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.25, 40).rotateX(-Math.PI / 2), m);
+          this.selRing.renderOrder = 5;
+          this.scene.add(this.selRing);
+        }
+        const k = 1 + Math.sin(performance.now() / 260) * 0.05;
+        this.selRing.visible = this.bizK > 0.5;
+        this.selRing.position.set(BIZ_SLOT.x + at.x, BIZ_SLOT.y + (at.y ?? 0) + 0.28, BIZ_SLOT.z + at.z);
+        this.selRing.scale.setScalar(k);
+        (this.selRing.material as THREE.MeshBasicMaterial).opacity = 0.6 + Math.sin(performance.now() / 260) * 0.25;
+      } else if (this.selRing) this.selRing.visible = false;
+    }
     const cu = this.camUser, mine = cu.on && !framing && !lm && !picked;
     this.bizBase.zoom = fo.zoom;
     // Momentum: after a flick the town keeps gliding and slows to a stop.
@@ -1580,3 +1624,19 @@ function disposeTree(o: THREE.Object3D, materials = true): void {
   });
 }
 
+
+/** A little yellow tower crane with a swinging jib (the jib turns: userData.jib). */
+function makeCrane(): THREE.Group {
+  const g = new THREE.Group(), yellow = new THREE.MeshStandardMaterial({ color: 0xffc21a, roughness: 0.6 }), dark = new THREE.MeshStandardMaterial({ color: 0x333744, roughness: 0.7 });
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.5).translate(0, 0.06, 0), dark));
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 3.4, 0.16).translate(0, 1.8, 0), yellow));
+  const jib = new THREE.Group();
+  jib.position.y = 3.5;
+  jib.add(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 0.14).translate(0.7, 0, 0), yellow));
+  jib.add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.3).translate(-0.55, -0.05, 0), dark));
+  jib.add(new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.4, 4).translate(1.6, -0.7, 0), dark));
+  jib.add(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.22).translate(1.6, -1.45, 0), new THREE.MeshStandardMaterial({ color: 0xc06a3a, roughness: 0.8 })));
+  g.add(jib);
+  g.userData.jib = jib;
+  return g;
+}

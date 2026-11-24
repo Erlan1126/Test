@@ -2,6 +2,8 @@
 // from things the player does anyway (towers, height, people, city buildings...); finishing
 // all three pays a reward and opens the next chapter. It gives the game a beginning, a
 // middle and an end: from an empty meadow to the capital of the sky.
+import { payStars } from "../logic/tycoon";
+import { HAS_CITY } from "../edition";
 import { townRank, usedFloors } from "../logic/tycoon";
 import { RANKS } from "./ranks";
 import { BUSINESSES } from "./tycoon";
@@ -14,7 +16,7 @@ export interface ChapterGoal {
   need: number;
   have: (s: SaveData) => number;
   /** What kind of step it is (what the Next step card sends the player to do). */
-  kind?: "towers" | "height" | "terrace" | "levels" | "projects" | "managers" | "grown" | "open" | "land" | "landOpen";
+  kind?: "towers" | "height" | "terrace" | "levels" | "projects" | "managers" | "grown" | "open" | "land" | "landOpen" | "builds" | "offices";
   /** The district a "land" or "landOpen" goal is about. */
   land?: LandId;
 }
@@ -40,8 +42,14 @@ const grown = (s: SaveData) => Object.values(s.tycoon.evolved).filter(v => v >= 
  *  the next one counts real levels only, so Pip and the town's goal bar always agree. */
 const levelsFor = (need: number) => (s: SaveData) => (need <= RANKS[townRank(s)].at ? need : usedFloors(s));
 const lv = (need: number): ChapterGoal => ({ text: "Reach {n} business levels", need, have: levelsFor(need), kind: "levels" });
-const tw = (need: number): ChapterGoal => ({ text: "Build {n} towers", need, have: towers, kind: "towers" });
-const ht = (need: number): ChapterGoal => ({ text: "Build a tower {n} m tall", need, have: best, kind: "height" });
+// (The city game starts in the city: its chapters ask for city builds, not towers.)
+const tw = (need: number): ChapterGoal => HAS_CITY
+  // (Towers built before count too, so no one who played the tower way is held back.)
+  ? { text: "Finish {n} builds", need, have: s => (s.tycoon.built ?? 0) + s.profile.towers, kind: "builds" }
+  : { text: "Build {n} towers", need, have: towers, kind: "towers" };
+const ht = (need: number): ChapterGoal => HAS_CITY
+  ? { text: "Build {n} office blocks", need: Math.max(2, Math.round(need / 25)), have: s => Math.max(s.tycoon.offices ?? 0, Math.floor(s.bestMeters / 25)), kind: "offices" }
+  : { text: "Build a tower {n} m tall", need, have: best, kind: "height" };
 const open = (need: number, text = "Open {n} businesses"): ChapterGoal => ({ text, need, have: businesses, kind: "open" });
 const townOpen = (s: SaveData) => BUSINESSES.filter(b => !b.land && (s.tycoon.levels[b.id] ?? 0) > 0).length;
 /** Owning a district. */
@@ -162,12 +170,12 @@ export const chapterReady = (s: SaveData): boolean => {
 };
 
 /** Pays the finished chapter and moves on. Returns its reward, or null if not ready. */
-export function claimChapter(s: SaveData): Chapter["reward"] | null {
+export function claimChapter(s: SaveData): (Chapter["reward"] & { cash: number }) | null {
   if (!chapterReady(s)) return null;
   const c = CHAPTERS[chapterIndex(s)];
   s.chapters.done++;
-  s.stars += c.reward.stars;
-  s.starsEarned += c.reward.stars;
+  // (In the city game the stars come as cash: see payStars.)
+  const cash = payStars(s, c.reward.stars);
   s.crystals += c.reward.crystals;
-  return c.reward;
+  return { ...c.reward, cash };
 }

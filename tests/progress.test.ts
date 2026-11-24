@@ -180,9 +180,13 @@ describe("Mayor Pip's chapters", () => {
     const s = freshSave();
     expect(claimChapter(s)).toBeNull();
     s.profile.towers = 3; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 50 };
-    const stars = s.stars;
-    expect(claimChapter(s)).toEqual(CHAPTERS[0].reward);
-    expect(s.stars).toBe(stars + CHAPTERS[0].reward.stars);
+    const coins = s.tycoon.coins, crystals = s.crystals;
+    // (The city game pays the chapter's stars as cash: two currencies only.)
+    const r = claimChapter(s)!;
+    expect(r.crystals).toBe(CHAPTERS[0].reward.crystals);
+    expect(r.cash).toBeGreaterThan(0);
+    expect(s.tycoon.coins).toBe(coins + r.cash);
+    expect(s.crystals).toBe(crystals + CHAPTERS[0].reward.crystals);
     expect(claimChapter(s)).toBeNull();
   });
   it("follow the town ranks: each chapter ends at the next rank", async () => {

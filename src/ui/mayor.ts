@@ -1,5 +1,6 @@
 // Mayor Pip: the friendly face of Skyhaven. A strip on the home screen shows the current
 // chapter's next goal; Pip pops up to start each chapter and to celebrate finishing one.
+import { playerStarted } from "../edition";
 import { CHAPTERS, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter } from "../data/chapters";
 import { CITY_NAME } from "../logic/city";
 import { fmt } from "../core/util";
@@ -60,7 +61,7 @@ const say = (line: string) => t(line, { city: t(CITY_NAME) });
 export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   const el = $("mayor-strip"), i = chapterIndex(save), c = CHAPTERS[i];
   // New players meet the mayor after their first tower; after the last chapter Pip retires.
-  el.hidden = save.profile.towers < 1 || !c;
+  el.hidden = !playerStarted(save) || !c;
   if (el.hidden) return;
   const ready = chapterReady(save);
   const next = c.goals.find(g => !goalDone(save, g)) ?? c.goals[0];
@@ -90,7 +91,11 @@ function goalsHtml(save: SaveData, c: Chapter): string {
   }).join("");
 }
 
-function show(chapter: string, text: string, goals: string, reward: string, button: string, onOk: () => void): void {
+function show(chapter: string, text: string, goals: string, reward: string, button: string, onOk: () => void, cancel = ""): void {
+  const no = $<HTMLButtonElement>("mayor-no");
+  no.hidden = !cancel;
+  no.textContent = cancel;
+  no.onclick = () => { $("mayor").hidden = true; };
   $("mayor-face").innerHTML = mayorSvg(reward ? "happy" : "talk");
   $("mayor-chapter").textContent = chapter;
   $("mayor-text").textContent = text;
@@ -117,7 +122,7 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     fireworks(4);
     const next = CHAPTERS[i + 1];
     show(t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), "",
-      `<span>+${r.stars} ★</span><span>+${r.crystals} 💎</span>`,
+      `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? t("On to chapter {n}!", { n: i + 2 }) : t("Thanks, Mayor!"),
       () => { if (next) { introduce(save, persist); } after(); });
     return;
@@ -149,6 +154,6 @@ export function mayorList(title: string, text: string, items: { done: boolean; t
   show(title, text, items.map(x => `<li class="${x.done ? "done" : ""}"><span>${x.done ? "✓" : ""}</span>${esc(x.text)}<em>${esc(x.note)}</em></li>`).join(""), "", button, onOk);
 }
 
-export function mayorNote(title: string, text: string, button: string, onOk: () => void = () => {}): void {
-  show(title, text, "", "", button, onOk);
+export function mayorNote(title: string, text: string, button: string, onOk: () => void = () => {}, cancel = ""): void {
+  show(title, text, "", "", button, onOk, cancel);
 }

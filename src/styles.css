@@ -4165,3 +4165,43 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-labels .tag.bub.lease.later { background: rgba(120, 114, 160, 0.8) !important; padding: 3px !important; animation: none; opacity: 0.8; }
 #tcy-labels .tag.bub.lease.later::after { border-top-color: rgba(120, 114, 160, 0.8) !important; background: rgba(120, 114, 160, 0.8) !important; }
 #tcy-labels .tag.bub.lease.later .tag-ico { width: 20px; height: 20px; font-size: 16px; color: #6e6896; }
+
+/* Builders: the chip under the top bar, jobs in the Build menu. */
+.tcy-builds { position: absolute; z-index: 6; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 96px); display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border: 0; border-radius: 16px; color: #2a1f3e; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(40, 20, 90, 0.18); font: 400 14px var(--display); cursor: pointer; }
+.tcy-builds[hidden] { display: none; }
+.tcy-builds .bc-ico { font-size: 16px; }
+.tcy-builds b { font: 800 14px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.tcy-builds small { font: 700 11px system-ui, sans-serif; color: #7a6fa8; }
+.tcy-mode .mode-price.gem { background: linear-gradient(180deg, #7ad7ff, #3d8cff); box-shadow: 0 3px 0 #2a64c8; }
+.tcy-mode.job { background: #fff8e8; }
+.tcy-mode .job-bar { display: block; height: 6px; margin-top: 6px; border-radius: 3px; background: #efe6d2; overflow: hidden; }
+.tcy-mode .job-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffb13b, #ff7a3b); border-radius: 3px; }
+#tcy-labels .tag.bub.land-sale.building { background: #ffb13b !important; }
+.card-main.building { background: linear-gradient(180deg, #ffd36b, #ffb13b) !important; color: #4a2a00 !important; }
+
+/* The weekly city event and the city album (in Goals). */
+.ev-card, .alb-card { margin: 4px 0 12px; padding: 14px; border-radius: 20px; background: linear-gradient(160deg, #fff7e2, #ffe9f2); box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1); }
+.alb-card { background: linear-gradient(160deg, #eef7ff, #f2ecff); }
+.ev-head { display: flex; align-items: center; gap: 10px; }
+.ev-ico { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 24px; background: #fff; }
+.ev-head b { display: block; font: 400 16px var(--display); color: #2a1f3e; }
+.ev-head small { font-size: 12px; font-weight: 700; color: #7a6fa8; }
+.ev-how { margin: 8px 0; font-size: 12.5px; color: #5a5480; }
+.ev-bar { display: block; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.8); overflow: hidden; }
+.ev-bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #ff9a3b, #ff4f8b); }
+.ev-pts { margin: 6px 0; font-size: 12px; font-weight: 800; color: #4a3f78; }
+.ev-pts em { font-style: normal; color: #ff4f8b; }
+.ev-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ev-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, 0.85); color: #2a1f3e; }
+.ev-step b { font: 400 14px var(--display); }
+.ev-step small { font-size: 10.5px; font-weight: 700; color: #6a6f99; text-align: center; line-height: 1.15; }
+.ev-step.ready { background: linear-gradient(180deg, #ffd36b, #ffb13b); box-shadow: 0 3px 0 #e0901b; animation: ready-bob 1.4s ease-in-out infinite; }
+.ev-step.got { opacity: 0.55; }
+.ev-pass { width: 100%; margin-top: 10px; padding: 10px; border: 0; border-radius: 14px; font: 400 13px var(--display); color: #fff; background: linear-gradient(180deg, #8a6cff, #5a3fe0); box-shadow: 0 3px 0 #4024b8; }
+.alb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 10px; }
+.alb-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border-radius: 12px; background: rgba(255, 255, 255, 0.6); text-align: center; }
+.alb-cell i { font-style: normal; font-size: 22px; filter: grayscale(1); opacity: 0.4; }
+.alb-cell small { font-size: 9.5px; font-weight: 700; color: #9a94bb; line-height: 1.1; }
+.alb-cell.got { background: #fff; }
+.alb-cell.got i { filter: none; opacity: 1; }
+.alb-cell.got small { color: #4a3f78; }

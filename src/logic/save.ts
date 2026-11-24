@@ -2,6 +2,7 @@
 // older per-key format and transfer codes for moving progress to another device.
 import { LAND, type LandId } from "../data/land";
 import { normalizeDecor } from "./decor";
+import { newCityEvent, normalizeCityEvent, type CityEventState } from "./cityevent";
 import { OLD_FEATURE_TOWERS } from "./features";
 import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
 import { ADVISORS, BUSINESSES, UPGRADES, VAULT_COST } from "../data/tycoon";
@@ -74,6 +75,10 @@ export interface SaveData {
   ownedShapes: string[];
   /** Island decorations bought with Sky Crystals (see data/decor.ts). */
   decor: string[];
+  /** This week's city event (see logic/cityevent.ts). */
+  cityEvent: CityEventState;
+  /** The city album: kinds of buildings and places found by tapping them (data/sights.ts). */
+  album: string[];
   /** The floating island next to the town (opens at Big City): what was built there. */
   annex: { pick: "" | "greenhouse" | "lookout" };
   /** Land bought next to the island (data/land.ts), in the order it was bought. */
@@ -199,6 +204,8 @@ export function defaultSave(): SaveData {
     shape: "square",
     ownedShapes: [],
     decor: [],
+    cityEvent: newCityEvent(),
+    album: [],
     annex: { pick: "" },
     land: [],
     props: {},
@@ -324,6 +331,8 @@ export function normalize(raw: unknown): SaveData {
     shape: shapeIds.includes(r.shape as string) ? (r.shape as string) : d.shape,
     ownedShapes: strList(r.ownedShapes, shapeIds),
     decor: normalizeDecor(r.decor),
+    cityEvent: normalizeCityEvent(r.cityEvent),
+    album: Array.isArray(r.album) ? [...new Set((r.album as unknown[]).filter((x): x is string => typeof x === "string" && x.length < 30))].slice(0, 200) : [],
     scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
     props: Object.fromEntries(Object.entries((r.props && typeof r.props === "object" ? r.props : {}) as Record<string, unknown>).filter(([k, v]) => /^[a-z0-9]{1,4}:-?\d{1,2},-?\d{1,2}$/.test(k) && Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5).slice(0, 400)) as Record<string, number>,
     land: (Array.isArray(r.land) ? r.land : []).filter((x, i, a): x is LandId => LAND.some(l => l.id === x) && a.indexOf(x) === i),
@@ -568,6 +577,15 @@ function normalizeGoals(v: unknown): TycoonState["goals"] {
   return { day: typeof o.day === "string" ? o.day.slice(0, 12) : "", list, bonus: o.bonus === true };
 }
 
+function normalizeBuilds(v: unknown): TycoonState["builds"] {
+  if (!Array.isArray(v)) return [];
+  const kinds = ["office", "terrace", "land", "home"] as const;
+  return v.filter((b): b is Record<string, unknown> => !!b && typeof b === "object")
+    .filter(b => kinds.includes(b.kind as (typeof kinds)[number]) && typeof b.id === "string" && Number.isFinite(b.start) && Number.isFinite(b.end))
+    .slice(0, 6)
+    .map(b => ({ kind: b.kind as (typeof kinds)[number], id: String(b.id).slice(0, 40), start: Number(b.start), end: Number(b.end) }));
+}
+
 function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const big = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : 0);
@@ -615,6 +633,9 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     // Grown companies from before grand openings count as having had theirs.
     opening: typeof o.opening === "number" ? big(o.opening) : big(o.lifetime) > 2000 ? 1 : 0,
     offices: Math.min(100000, Math.floor(big(o.offices))),
+    builds: normalizeBuilds(o.builds),
+    builders: Math.min(2, Math.floor(big(o.builders))),
+    built: Math.min(1e6, Math.floor(big(o.built))),
     golden: { day: typeof (o.golden as { day?: unknown })?.day === "string" ? String((o.golden as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.golden as { n?: unknown })?.n)) },
     tips: managers0.length ? 3 : Math.min(3, Math.floor(big(o.tips))),
     goals: normalizeGoals(o.goals),

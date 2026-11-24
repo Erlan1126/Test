@@ -117,9 +117,15 @@ export interface ReminderInfo {
   vaultFullAt?: number;
   /** A holiday event's last day: its name and skin, if the skin isn't earned yet. */
   holidayEnds?: { at: number; name: string; skin: string };
+  /** When the next city build finishes (ms). */
+  buildDoneAt?: number;
+  /** The weekly city event's end (ms), while its reward isn't won yet. */
+  eventEndsAt?: number;
+  /** The city game (not the tower game): city wording for the daily reminder. */
+  city?: boolean;
 }
 
-const EXTRA_IDS = [104, 105, 106];
+const EXTRA_IDS = [104, 105, 106, 107, 108];
 
 /**
  * Plans the next three reminders. Today's is skipped once today's tower is built, so a
@@ -144,8 +150,9 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       const first = n === 0;
       notifications.push({
         id: REMINDER_IDS[n++],
-        title: first && info.streak > 0 ? t("🔥 Keep your {n}-day streak going", { n: info.streak }) : t("🏙️ Your skyline is waiting"),
-        body: first && info.rentFull ? t("Your rent is ready to collect, and today's tower is waiting.")
+        title: info.city ? t("🏙️ Skyhaven is waiting") : first && info.streak > 0 ? t("🔥 Keep your {n}-day streak going", { n: info.streak }) : t("🏙️ Your skyline is waiting"),
+        body: info.city ? t("Your daily gift is ready, and your businesses have been busy. Come and collect!")
+          : first && info.rentFull ? t("Your rent is ready to collect, and today's tower is waiting.")
           : t("Today's daily tower and missions are ready. One quick tower?"),
         schedule: { at, allowWhileIdle: true },
       });
@@ -161,6 +168,17 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       const at = new Date(info.vaultFullAt), h = at.getHours();
       if (h < 9) at.setHours(9, 0, 0, 0); else if (h >= 22) { at.setDate(at.getDate() + 1); at.setHours(9, 0, 0, 0); }
       notifications.push({ id: 106, title: t("💰 Your managers' vault is full"), body: t("Skyhaven Inc. stopped earning. Collect your cash and keep growing!"), schedule: { at, allowWhileIdle: true } });
+    }
+    // A build finished (never at night).
+    if (info.buildDoneAt && info.buildDoneAt > now + 30_000) {
+      const at = new Date(info.buildDoneAt), h = at.getHours();
+      if (h < 8) at.setHours(8, 30, 0, 0); else if (h >= 23) { at.setDate(at.getDate() + 1); at.setHours(8, 30, 0, 0); }
+      notifications.push({ id: 107, title: t("🏗️ Your builders are done!"), body: t("A new building is finished in Skyhaven. Come and see it, and start the next one."), schedule: { at, allowWhileIdle: true } });
+    }
+    // The city event's last evening.
+    if (info.eventEndsAt) {
+      const at = new Date(info.eventEndsAt - 6 * 3600e3);
+      if (at.getTime() > now + 60_000) notifications.push({ id: 108, title: t("⏳ The city event ends tonight"), body: t("A few hours left to win this week's special building."), schedule: { at, allowWhileIdle: true } });
     }
     // The day before a holiday event ends, if its skin isn't earned yet.
     if (info.holidayEnds) {

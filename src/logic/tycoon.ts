@@ -1,5 +1,6 @@
 // The Tycoon economy: earning, buying levels, managers, offline earnings, boosts and the
 // New Era reset. All pure functions over the save, so they're easy to test.
+import { HAS_CITY } from "../edition";
 import { ANNEX_BONUS, RANK_BONUS, RANKS } from "../data/ranks";
 import { LAND_BONUS } from "../data/land";
 import { PROP_BONUS } from "../data/props";
@@ -61,6 +62,12 @@ export interface TycoonState {
   golden: { day: string; n: number };
   /** Office blocks built in the city with cash (each adds OFFICE_BLOCK_FLOORS office floors). */
   offices: number;
+  /** Builds under way (see logic/builds.ts). */
+  builds: { kind: "office" | "terrace" | "land" | "home"; id: string; start: number; end: number }[];
+  /** Builders hired with crystals. */
+  builders: number;
+  /** Builds finished, all time (the City Plan counts them). */
+  built: number;
 }
 
 export type GoalType = "vip" | "buy" | "taps" | "rush";
@@ -70,7 +77,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 }, offices: 0 });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 }, offices: 0, builds: [], builders: 0, built: 0 });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -493,6 +500,7 @@ export function newEra(s: SaveData, now = Date.now()): number {
   s.land = [];
   s.annex = { pick: "" };
   t.offices = 0;
+  t.builds = [];
   t.eras++;
   t.last = now;
   return g;
@@ -547,6 +555,20 @@ export function doubleAway(s: SaveData, earned: number, awayMs: number, now = Da
   return true;
 }
 
+/** In the city game, rewards that were stars pay cash instead (two currencies only: cash
+ *  and crystals). One star's worth is about a minute of the company's earnings. */
+export function starCash(s: SaveData, n: number, now = Date.now()): number {
+  return Math.round(n * Math.max(25, perSecond(s, now, false) * 60));
+}
+/** Pays a reward of `n` stars: cash in the city game, stars in the tower game. Returns the
+ *  cash paid (0 when it paid stars). */
+export function payStars(s: SaveData, n: number, now = Date.now()): number {
+  if (!(n > 0)) return 0;
+  if (HAS_CITY) { const c = starCash(s, n, now); earn(s, c); return c; }
+  s.stars += n; s.starsEarned += n;
+  return 0;
+}
+
 /** Doubles the welcome-back coins after a rewarded ad (free; the ad's daily limit applies). */
 export function adDoubleAway(s: SaveData, earned: number): boolean {
   if (!(earned > 0)) return false;
@@ -574,15 +596,15 @@ export function dealGoals(s: SaveData, now = Date.now(), rnd = Math.random): voi
 
 /** Counts progress toward today's goals. Returns the stars paid (and the crystals, if the
  *  last of the three was finished). */
-export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()): { stars: number; crystals: number; pick?: boolean; done: CompanyGoal[] } {
+export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()): { stars: number; cash?: number; crystals: number; pick?: boolean; done: CompanyGoal[] } {
   dealGoals(s, now);
-  const out: { stars: number; crystals: number; pick?: boolean; done: CompanyGoal[] } = { stars: 0, crystals: 0, done: [] };
+  const out: { stars: number; cash?: number; crystals: number; pick?: boolean; done: CompanyGoal[] } = { stars: 0, crystals: 0, done: [] };
   for (const g of s.tycoon.goals.list) {
     if (g.t !== kind || g.p >= g.n) continue;
     g.p = Math.min(g.n, g.p + by);
     if (g.p >= g.n) {
       const stars = GOAL_STARS[Math.max(0, GOAL_TIERS[kind].indexOf(g.n))];
-      s.stars += stars; s.starsEarned += stars; out.stars += stars; out.done.push(g);
+      out.cash = (out.cash ?? 0) + payStars(s, stars, now); out.stars += stars; out.done.push(g);
     }
   }
   if (!s.tycoon.goals.bonus && s.tycoon.goals.list.every(g => g.p >= g.n)) {

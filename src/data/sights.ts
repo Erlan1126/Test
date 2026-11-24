@@ -50,3 +50,12 @@ export function sightInfo(kind: string): SightInfo | null {
 
 /** About how many people live or work in a city block of each level. */
 export const SIGHT_PEOPLE = [0, 12, 30, 90, 240, 600];
+
+/** The city album: every kind of building and place there is to find (by tapping it). */
+export const ALBUM_KINDS: string[] = ["block1", "block2", "block3", "block4", "block5", "park", "lighthouse", "home",
+  "rank1", "rank2", "rank3", "rank5", "rank6", "rank7",
+  "th-marina", "th-market", "th-lighthouse", "th-park", "th-lake", "th-wheel", "th-fountain", "th-plaza",
+  "th-palace", "th-skygarden", "th-spire", "th-rocket", "th-dish"];
+/** Crystals for each new find, and for the whole album. */
+export const ALBUM_CRYSTALS = 2;
+export const ALBUM_DONE_CRYSTALS = 50;

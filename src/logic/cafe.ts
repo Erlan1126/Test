@@ -101,6 +101,11 @@ export function normalizeCafe(raw: unknown, before: { floors: number; towers: nu
   };
 }
 
+/** The first building a new player finds in town (the city game starts in the city): a
+ *  neat little apartment block, five floors, straight up. */
+export const startingBuilding = (skin = "glass"): StarterTower =>
+  ({ f: 5, s: skin, h: "square", b: [0, 1, 2, 3, 4].map(() => [0, 0, 1, 1] as [number, number, number, number]) });
+
 /** The tower's floors relative to its lobby, for the starter building. */
 export function towerShape(stack: (Box & { lobby?: boolean })[]): [number, number, number, number][] {
   const base = stack[0], hw = (base.x1 - base.x0) / 2 || 1, hd = (base.z1 - base.z0) / 2 || 1;

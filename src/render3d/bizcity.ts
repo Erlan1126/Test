@@ -44,6 +44,8 @@ export interface BizLive {
   selHome?: string;
   /** A tapped sight's key (a city block, park or landmark): the camera visits it. */
   selSight?: string;
+  /** What's being built (a crane stands over each): homes by key, districts by id. */
+  building?: { kind: string; id: string }[];
   /** A building that just sold or grew (it bounces), and when. */
   pulse?: string;
   pulseAt?: number;

@@ -1,4 +1,6 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
+import { HAS_CITY, playerStarted } from "../edition";
+import { VIP_SPEED } from "../logic/builds";
 import { track } from "../stats";
 import { GUIDE } from "../data/guide";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
@@ -382,7 +384,7 @@ export class Sheets {
     const price = pay?.vipPrice?.() ?? formatPrice(VIP_CENTS);
     const ready = vipClaimReady(save, day);
     box.innerHTML = `<div class="vip-head"><b>👑 Skyrise VIP</b>${on ? `<span class="vip-on">${esc(t("Active"))}</span>` : ""}</div>
-      <ul><li>${esc(t("{n} 💎 every day", { n: VIP_DAILY_CRYSTALS }))}</li><li>${esc(t("A free Extra rewind every day"))}</li><li>${esc(t("The Platinum tower skin"))}</li></ul>
+      <ul><li>${esc(t("{n} 💎 every day", { n: VIP_DAILY_CRYSTALS }))}</li>${HAS_CITY ? `<li>${esc(t("An extra builder: build one more thing at once"))}</li><li>${esc(t("Everything builds {pct}% faster", { pct: Math.round((1 - VIP_SPEED) * 100) }))}</li>` : `<li>${esc(t("A free Extra rewind every day"))}</li>`}<li>${esc(t("The Platinum tower skin"))}</li></ul>
       <button type="button" class="btn btn-primary wide" id="vip-btn"${on && !ready ? " disabled" : ""}>${on ? (ready ? esc(t("Collect today's VIP gift")) : esc(t("✓ Collected today"))) : esc(t("Join for {price} a month", { price }))}</button>
       <small>${on ? esc(t("Manage or cancel it any time in your store's subscriptions.")) : esc(t("Renews every month until you cancel. Cancel any time in your store's subscriptions."))}</small>`;
     $("vip-btn").addEventListener("click", () => {
@@ -907,7 +909,7 @@ export class Sheets {
   /** Claims today's gift, if it's ready. The main menu's "collect" button shows it. */
   claimGift(): { stars: number; day: number; trophies: string[] } | null {
     const save = this.save, g = giftState(save.profile.gift);
-    if (!g.ready || save.profile.towers < 1) return null;
+    if (!g.ready || !playerStarted(save)) return null;
     const n = giftAmount(g.streak);
     save.profile.gift = { last: dayKey(0), streak: g.streak };
     addStars(save, n);

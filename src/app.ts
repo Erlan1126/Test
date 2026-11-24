@@ -41,13 +41,14 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
-import { HAS_CITY } from "./edition";
+import { HAS_CITY, playerStarted } from "./edition";
+import { cityEventEndsAt } from "./logic/cityevent";
 import { bestRun, dropGrid, type Drop } from "./logic/dailycard";
 import type { SpireNow } from "./logic/spire";
 import { orderFor, orderProgress, recordHq, ORDER_MULT, type Order, type OrderRun } from "./logic/orders";
 import { orderText, orderUnit } from "./ui/orders";
 import type { StarterTower } from "./logic/cafe";
-import { cafeRun, claimTerrace, FLOWER_WIDE, isWide, PLAY_FLOORS, projectGoal, projectProgress, projectsOpen, TERRACE_FLOORS, TERRACE_MULT, WIDE_SHARE, type ProjectId } from "./logic/cafe";
+import { cafeRun, claimTerrace, startingBuilding, FLOWER_WIDE, isWide, PLAY_FLOORS, projectGoal, projectProgress, projectsOpen, TERRACE_FLOORS, TERRACE_MULT, WIDE_SHARE, type ProjectId } from "./logic/cafe";
 import type { BizCafe } from "./render3d/bizcity";
 import { adsReady, showRewarded } from "./ads";
 import { gameCenterAvailable, gameCenterSignIn, gameCenterSync, showGameCenter } from "./gamecenter";
@@ -290,6 +291,12 @@ export class App implements DailyHost {
     this.sheets = new Sheets(this);
     wireTabs();
     this.daily = new DailySheets(this);
+    // The city comes first: a new player starts in Skyhaven with a first little apartment
+    // building already standing (the tower game is for headquarters, later).
+    if (HAS_CITY && !this.save.cafe.starter && this.save.profile.towers === 0) {
+      this.save.cafe.starter = startingBuilding(this.save.skin);
+      this.persist();
+    }
     this.tycoon = new TycoonUI(this);
     // What the managers earned while the game was closed, shown once the island is up.
     {
@@ -299,7 +306,7 @@ export class App implements DailyHost {
       const show = () => {
         if (document.getElementById("splash")) { setTimeout(show, 400); return; }
         // The Tycoon is the front door: the app opens on Skyhaven Inc.
-        if (HAS_CITY && this.state === "menu" && this.save.profile.towers >= 1 && !this.visiting) this.tycoon.open();
+        if (HAS_CITY && this.state === "menu" && playerStarted(this.save) && !this.visiting) this.tycoon.open();
         if (HAS_CITY && this.state === "menu") this.tycoon.welcome(earned, away);
         if (HAS_CITY && this.state === "menu") this.tycoon.freshStart();
         this.startupShown = true;
@@ -412,9 +419,16 @@ export class App implements DailyHost {
       rentFullAt: city && left > 0 && this.save.rent.last ? Date.now() + left * 36e5 : undefined,
       // The managers' vault fills up after the offline limit.
       vaultFullAt: this.save.tycoon.managers.length ? Date.now() + offlineHours(this.save) * 36e5 : undefined,
-      holidayEnds: hp && !hp.done ? { at: Date.now() + holidayDaysLeft(hp.h) * 864e5, name: t(hp.h.name), skin: t(skinById(hp.h.skin).name) } : undefined,
+      holidayEnds: !HAS_CITY && hp && !hp.done ? { at: Date.now() + holidayDaysLeft(hp.h) * 864e5, name: t(hp.h.name), skin: t(skinById(hp.h.skin).name) } : undefined,
+      buildDoneAt: HAS_CITY ? (this.save.tycoon.builds ?? []).map(b => b.end).filter(e => e > Date.now()).sort((a, b) => a - b)[0] : undefined,
+      eventEndsAt: HAS_CITY ? cityEventEndsAt(this.save) : undefined,
+      city: HAS_CITY,
     };
   }
+
+  /** Plans the reminders again (a build started or finished). */
+  reschedule(): void { void scheduleReminders(this.reminderInfo()); }
+  openShop(tab: "town" | "towers" | "crystals" | "boosts"): void { this.sheets.openShop(tab); }
 
   /** The Android back button: closes what's open, pauses, or steps back to the menu.
    *  Returns false on the main menu, where the app goes to the background. */
@@ -1632,10 +1646,10 @@ export class App implements DailyHost {
     const save = this.save, p = save.profile, now = Date.now();
     this.renderCorners();
     // The Tycoon: the business card on the home screen and its dock tile.
-    this.tycoon.renderHome(HAS_CITY && p.towers >= 1);
+    this.tycoon.renderHome(HAS_CITY && playerStarted(save));
     // The business district is the game's home (once the first tower is built). The old
     // home screen stays hidden underneath, so it never flashes up between screens.
-    const cityHome = p.towers >= 1 && this.canCity();
+    const cityHome = playerStarted(save) && this.canCity();
     document.body.classList.toggle("city-home", cityHome);
     if (cityHome && this.state === "menu" && !this.moving && !this.visiting) this.tycoon.enterCity();
     // The first visit of the day opens the rewards calendar (once the first-day welcome is done).
@@ -1650,7 +1664,9 @@ export class App implements DailyHost {
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     // (In the town, Pip's chapter waits until the first steps there are done.)
-    if (HAS_CITY && p.towers >= 1 && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
+    // (In the city game the bottom card is the one guide: it shows the City Plan, and the
+    // Town Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
+    if (!HAS_CITY && playerStarted(save) && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");
@@ -1974,7 +1990,7 @@ export class App implements DailyHost {
    *  (The weekly league was folded into the weekly tournament: one weekly competition.) */
   private waitingRewards(now: number): string[] {
     const save = this.save, out: string[] = [];
-    if (save.profile.towers >= 1 && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
+    if (playerStarted(save) && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
     const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0;
     if (rent >= 1) out.push(t("🏦 Collect {n} ★ of rent", { n: fmt(rent) }));
     if (chestReady(save, now)) out.push(t("🧰 Open today's chest"));
@@ -1987,7 +2003,7 @@ export class App implements DailyHost {
   private dailyAuto = "";
   showDaily(): void {
     const save = this.save, g = giftState(save.profile.gift);
-    if (!g.ready || save.profile.towers < 1) return;
+    if (!g.ready || !playerStarted(save)) return;
     const slot = (g.streak - 1) % DAILY_REWARDS.length, first = g.streak - slot;
     const tile = (i: number, state: string) => {
       const r = dailyReward(save, first + i), big = i === DAILY_REWARDS.length - 1;
@@ -2028,7 +2044,7 @@ export class App implements DailyHost {
   private collectAll(): void {
     this.sound.ensure();
     // Today's gift opens the calendar (the rest is collected after it).
-    if (giftState(this.save.profile.gift).ready && this.save.profile.towers >= 1) { this.showDaily(); return; }
+    if (giftState(this.save.profile.gift).ready && playerStarted(this.save)) { this.showDaily(); return; }
     const save = this.save, lines: string[] = [];
     const gift = this.sheets.claimGift();
     if (gift) {
