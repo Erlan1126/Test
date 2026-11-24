@@ -282,9 +282,20 @@
   .pz-goals li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); font-size: 14px; }
   .pz-goals li b { color: var(--gold); font-weight: 800; min-width: 3em; } .pz-goals li span { flex: 1; } .pz-goals li em { font-style: normal; color: var(--mut); font-variant-numeric: tabular-nums; }
   .pz-goals li.ok em { color: #8dff9a; } .pz-goals li.no { opacity: 0.55; }
-  .stage-prog { position: fixed; top: calc(4px + var(--top)); left: 16px; right: 16px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.1); z-index: 3; }
+  .stage-prog { position: fixed; top: calc(24px + var(--top)); left: 66px; right: 72px; height: 6px; border-radius: 4px; background: rgba(255,255,255,0.1); z-index: 3; }
   .stage-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #8be9ff, #ffd98a); box-shadow: 0 0 10px rgba(255,217,138,0.6); }
-  .stage-prog b { position: absolute; right: -4px; top: -4px; width: 12px; height: 12px; border-radius: 3px 3px 1px 1px; background: #ffd98a; box-shadow: 0 0 10px #ffb84d; }
+  .stage-prog .jfig { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: radial-gradient(circle, #fff 30%, #8be9ff 60%, rgba(139,233,255,0) 72%); box-shadow: 0 0 12px #8be9ff; }
+  .stage-prog .jbest { position: absolute; top: -15px; transform: translateX(-50%); font: 800 8px Inter, system-ui, sans-serif; letter-spacing: 0.08em; color: #ff9ac8; font-style: normal; }
+  .stage-prog .jbest::after { content: ""; position: absolute; left: 50%; top: 11px; width: 2px; height: 12px; margin-left: -1px; background: #ff9ac8; box-shadow: 0 0 6px #ff9ac8; }
+  .stage-prog .jname { position: absolute; right: -6px; top: 12px; font: 700 10px Inter, system-ui, sans-serif; color: #ffd98a; white-space: nowrap; text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
+  .hud-stars { display: inline-flex; gap: 2px; padding: 2px 8px !important; } .hud-stars i { width: 13px; height: 13px; display: inline-block; background: rgba(255,255,255,0.18); clip-path: polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%); transition: background 0.3s, transform 0.3s; }
+  .hud-stars i.on { background: #ffd25a; transform: scale(1.15); filter: drop-shadow(0 0 4px #ffb84d); } .hud-stars i.lost { background: rgba(255,255,255,0.06); }
+  .run-hud .score.under { color: #b8ffcf; } .run-hud .score.over { color: rgba(255,255,255,0.55); }
+  .run-hud .score small { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; margin-left: 6px; color: rgba(255,255,255,0.55); vertical-align: middle; }
+  #runLights.pop { animation: lightPop 0.25s ease-out; } @keyframes lightPop { 40% { transform: scale(1.25); color: #fff; } }
+  .hearts i { width: 16px !important; height: 15px !important; border-radius: 0 !important; background: rgba(255,255,255,0.15) !important; clip-path: path("M8 15 L1.5 8.5 A4 4 0 0 1 8 3 A4 4 0 0 1 14.5 8.5 Z"); }
+  .hearts i.on { background: #ff7aa8 !important; box-shadow: none !important; filter: drop-shadow(0 0 5px #ff7aa8); animation: heartBeat 1.2s ease-in-out infinite; } @keyframes heartBeat { 10% { transform: scale(1.15); } 20% { transform: scale(1); } }
+  .stage-prog b { position: absolute; right: -8px; top: -7px; width: 16px; height: 16px; border-radius: 3px 3px 1px 1px; background: #ffd98a; box-shadow: 0 0 10px #ffb84d; }
   #shopList li.rk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0; background: none; border: 0; }
   .rk-card { display: flex; flex-direction: column; padding: 14px; border-radius: 16px; background: linear-gradient(160deg, rgba(255,200,110,0.14), rgba(255,255,255,0.03)); border: 1px solid rgba(255,210,140,0.18); }
   .rk-card b { font-size: 28px; font-weight: 800; color: var(--gold); line-height: 1.05; } .rk-card b i { font-style: normal; font-size: 15px; color: var(--mut); font-weight: 600; }
@@ -385,7 +396,8 @@
   .run-hud .sub { justify-content: center; gap: 8px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--gold2); }
   .run-hud .sub span { padding: 2px 8px; border-radius: 99px; background: rgba(0, 0, 0, 0.3); }
   .run-hud .sub span:empty { display: none; }
-  .run-hud .sub span:nth-child(2) { color: var(--acc); } .run-hud .sub span:nth-child(3) { color: #ffb3d6; }
+  #runLights { color: var(--gold2); } #runMult { color: var(--acc); } #runPower { color: #ffb3d6; }
+  body.inrun .run-hud { padding-top: calc(40px + var(--top)); }
   .hearts { display: flex; gap: 6px; margin-top: 10px; font-size: 0; }
   .hearts i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
   .hearts i.on { background: #fff; box-shadow: 0 0 10px rgba(139, 233, 255, 0.8); }
@@ -454,7 +466,7 @@
   <canvas id="runCanvas" aria-label="Swinging across the city on a tether of light"></canvas>
   <div class="run-hud">
     <div class="hud-side"><div class="hearts" id="runHearts"></div></div>
-    <div class="stage-prog" id="stageProg" hidden><i id="stageProgFill"></i><b></b></div><div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div><div class="flow" id="flowBar" hidden><i id="flowFill"></i><b id="flowDash"></b><span id="flowText">FLOW</span></div></div>
+    <div class="stage-prog" id="stageProg" hidden><i id="stageProgFill"></i><em class="jbest" id="jBest" hidden>BEST</em><span class="jfig" id="jFig"></span><b class="jhome"></b><small class="jname" id="jName"></small></div><div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span class="hud-stars" id="runStars" hidden><i></i><i></i><i></i></span><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div><div class="flow" id="flowBar" hidden><i id="flowFill"></i><b id="flowDash"></b><span id="flowText">FLOW</span></div></div>
     <div class="hud-side right"><button class="icon2" id="runPauseBtn" aria-label="Pause"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></div>
   </div>
   <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="pz-who" id="pzWho"></p><ul class="pz-goals" id="pzGoals"></ul><p class="info">Hold to grab the ringed light · keep holding to reel in · let go to fly</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
