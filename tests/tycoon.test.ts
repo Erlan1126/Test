@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
 import { BUSINESSES, coins, ERA_SCALE } from "../src/data/tycoon";
-import { adDoubleAway, buildOffice, doubleAway, doublePrice, officeFloors, officePrice, OFFICE_BLOCK_FLOORS, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
-import { affordable, buyLevels, freeFloors, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
+import { FLOOR_LIMIT, hallLevel, hallLocked, shownBusiness, unlockedBusiness, adDoubleAway, buildOffice, doubleAway, doublePrice, officeFloors, officePrice, OFFICE_BLOCK_FLOORS, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
+import { affordable, buyLevels, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
 
 const T0 = 1_800_000_000_000;
 
@@ -32,16 +32,26 @@ describe("Skyhaven Tycoon", () => {
     expect(s.tycoon.levels.coffee).toBe(1 + n);
   });
 
-  it("needs an empty office floor for every level: towers add floors", () => {
+  it("has no office-floor limit in the city game: its Town Hall level leads instead", () => {
     const s = defaultSave();
     s.tycoon.coins = 1e12;
-    expect(freeFloors(s)).toBe(FREE_FLOORS - 1); // the free floors, one used by the coffee cart
-    expect(buyLevels(s, "coffee", FREE_FLOORS + 5)).toBe(FREE_FLOORS - 1); // buys what fits
-    expect(buyLevels(s, "coffee", "max")).toBe(0);
-    expect(freeFloors(s)).toBe(0);
-    towerBonus(s, 20); // a 20-floor tower: two office floors each
-    expect(freeFloors(s)).toBe(40);
-    expect(buyLevels(s, "coffee", 10)).toBe(10);
+    expect(FLOOR_LIMIT).toBe(false);
+    expect(buyLevels(s, "coffee", FREE_FLOORS + 5)).toBe(FREE_FLOORS + 5); // no cap
+    // The Town Hall opens businesses: the bakery waits for level 2.
+    s.tycoon.levels.flowers = 1;
+    const bakery = BUSINESSES.findIndex(b => b.id === "bakery");
+    expect(hallLevel(s)).toBe(1);
+    expect(unlockedBusiness(s, bakery)).toBe(false);
+    expect(hallLocked(s, "bakery")).toBe(true);
+    expect(shownBusiness(s, bakery)).toBe(true); // shown, with its lock
+    s.chapters.done = 1;
+    expect(hallLevel(s)).toBe(2);
+    expect(unlockedBusiness(s, bakery)).toBe(true);
+    // A business already open never locks again.
+    s.chapters.done = 0;
+    s.tycoon.levels.bakery = 1;
+    expect(unlockedBusiness(s, bakery)).toBe(true);
+    void towerBonus;
   });
 
   it("doubles speed at milestones", () => {

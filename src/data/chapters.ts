@@ -47,8 +47,9 @@ const tw = (need: number): ChapterGoal => HAS_CITY
   // (Towers built before count too, so no one who played the tower way is held back.)
   ? { text: "Finish {n} builds", need, have: s => (s.tycoon.built ?? 0) + s.profile.towers, kind: "builds" }
   : { text: "Build {n} towers", need, have: towers, kind: "towers" };
+// (The city game has no office floors to build: managers stand in for height.)
 const ht = (need: number): ChapterGoal => HAS_CITY
-  ? { text: "Build {n} office blocks", need: Math.max(2, Math.round(need / 25)), have: s => Math.max(s.tycoon.offices ?? 0, Math.floor(s.bestMeters / 25)), kind: "offices" }
+  ? { text: "Hire {n} managers", need: Math.max(4, Math.round(need / 10)), have: managers, kind: "managers" }
   : { text: "Build a tower {n} m tall", need, have: best, kind: "height" };
 const open = (need: number, text = "Open {n} businesses"): ChapterGoal => ({ text, need, have: businesses, kind: "open" });
 const townOpen = (s: SaveData) => BUSINESSES.filter(b => !b.land && (s.tycoon.levels[b.id] ?? 0) > 0).length;

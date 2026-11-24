@@ -431,6 +431,8 @@ export interface BizCafe {
   decor?: string[];
   /** The town's rank (data/ranks.ts): each one adds something new to the town. */
   rank?: number;
+  /** The Town Hall's level (logic/tycoon.ts hallLevel): the hall grows with it. */
+  hall?: number;
   /** How many of the city grid's blocks are built so far (the city spreads as it grows). */
   grow?: number;
   /** How many of the town's own home blocks are built so far (nearest the middle first). */
@@ -1031,11 +1033,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (i % 9 === 0) { add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(a[0] - (dz / L) * 1.75, 0.7, a[1] + (dx / L) * 1.75), metal); add(new THREE.SphereGeometry(0.12, 8, 6).translate(a[0] - (dz / L) * 1.75, 1.45, a[1] + (dx / L) * 1.75), bulb); }
     }
   }
-  // The Town Hall: the city's main building on its own square, growing with the town's rank
+  // The Town Hall: the city's main building on its own square, growing with its own level
   // (a wooden hall, then a clock tower, a stone hall with columns, wings, a dome, a golden
   // dome and statue, and at last a grand capitol with a beacon). Tap it for Mayor Pip's story.
   if (hallAt) {
-    const { x: hx, z: hz } = hallAt, rk = cafe.rank ?? 0, H = new THREE.Group();
+    const { x: hx, z: hz } = hallAt, rk = cafe.hall ? Math.min(6, Math.round((cafe.hall - 1) * 0.6)) : cafe.rank ?? 0, H = new THREE.Group();
     const T = (geo: THREE.BufferGeometry, m: THREE.Material) => H.add(new THREE.Mesh(geo, m));
     const stoneW = mats.c(rk >= 2 ? "#f4efe4" : "#e9d9bf", 0.7), roofC = mats.c(rk >= 2 ? "#5a6fa8" : "#b8553f", 0.7), trim = mats.c(rk >= 5 ? "#e8b020" : "#ffffff", rk >= 5 ? 0.35 : 0.6, rk >= 5 ? 0.6 : 0), goldM = mats.gold;
     // The square: paving, steps and planters.

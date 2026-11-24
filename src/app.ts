@@ -78,7 +78,7 @@ import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { COIN_SVG, TycoonUI } from "./ui/tycoon";
-import { claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness, cityGrow, townHomes } from "./logic/tycoon";
+import { hallLevel, claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness, cityGrow, townHomes } from "./logic/tycoon";
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
 import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, DAILY_REWARDS, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
@@ -1843,6 +1843,7 @@ export class App implements DailyHost {
           ghostTerrace: c.terrace === 0 && c.asked,
           decor: [...this.save.decor],
           rank: townRank(this.save),
+          hall: hallLevel(this.save),
           grow: cityGrow(this.save),
           homes: townHomes(this.save),
           annex: this.save.annex.pick || (townRank(this.save) >= ANNEX_RANK ? "ghost" : ""),

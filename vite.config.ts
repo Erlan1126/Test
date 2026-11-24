@@ -27,10 +27,28 @@ function singleFile(): Plugin {
   };
 }
 
+/** The Skyrise build keeps Skyrise's own pictures (public/skyrise/): its icons, manifest and
+ *  link preview. The default build is Buildaroo, with the kangaroo. */
+function skyrisePictures(): Plugin {
+  let skyrise = false;
+  return {
+    name: "skyrise-pictures",
+    configResolved(c) { skyrise = c.env.VITE_EDITION === "skyrise" || c.mode === "skyrise"; },
+    transformIndexHtml(html) {
+      if (!skyrise) return html;
+      return html
+        .replace(/(href|src|content)="(icon\.svg|icon-192\.png|icon-512\.png|apple-touch-icon\.png|manifest\.webmanifest|og\.jpg)"/g, '$1="skyrise/$2"')
+        .replace(/content="Buildaroo: build your own city"/, 'content="Skyrise: build the tallest tower"')
+        .replace(/(apple-mobile-web-app-title|og:site_name)" content="Buildaroo"/g, '$1" content="Skyrise"')
+        .replace(/<title>[^<]*<\/title>/, "<title>Skyrise</title>");
+    },
+  };
+}
+
 export default defineConfig({
   // Relative paths so the built game works from any folder or host.
   base: "./",
   // One script: the app plugins' small web fallbacks are bundled in rather than split out.
   build: { target: "es2020", assetsInlineLimit: 100000, modulePreload: false, rollupOptions: { output: { inlineDynamicImports: true } } },
-  plugins: [singleFile()],
+  plugins: [skyrisePictures(), singleFile()],
 });

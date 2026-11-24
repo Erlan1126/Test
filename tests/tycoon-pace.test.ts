@@ -8,7 +8,11 @@ import { buyUpgrade, evolve, readyStage, upgradesOnOffer, buyLevels, costOf, cyc
 it("the Tycoon takes its time", () => {
   const s = defaultSave();
   let now = 1_800_000_000_000, towers = 0;
+  // The player follows Mayor Pip's story: the Town Hall goes up a level as the company grows.
+  const HALL_AT = [50, 150, 300, 500, 800, 1000, 1200, 1500, 2000, 3000];
   const shop = () => {
+    const used = Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
+    while (s.chapters.done < HALL_AT.length && used >= HALL_AT[s.chapters.done]) s.chapters.done++;
     for (let guard = 0; guard < 2000; guard++) {
       // Cheap upgrades first (a player buys one as soon as it costs less than a few levels).
       const up = upgradesOnOffer(s).find(u => u.cost <= s.tycoon.coins);
