@@ -2781,6 +2781,7 @@ export class App implements DailyHost {
     try { await navigator.clipboard.writeText(full); toast(t("Picture saved, and the link is copied")); } catch { toast(t("Your picture was saved")); }
   }
   bizHomes(): string[] { return this.renderer instanceof Renderer3D ? this.renderer.bizHomes() : []; }
+  bizSights(): { kind: string; key: string }[] { return this.renderer instanceof Renderer3D ? this.renderer.bizSights() : []; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }

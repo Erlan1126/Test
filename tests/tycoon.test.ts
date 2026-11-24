@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
 import { BUSINESSES, coins, ERA_SCALE } from "../src/data/tycoon";
-import { adDoubleAway, doubleAway, doublePrice, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
+import { adDoubleAway, buildOffice, doubleAway, doublePrice, officeFloors, officePrice, OFFICE_BLOCK_FLOORS, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
 import { affordable, buyLevels, freeFloors, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
 
 const T0 = 1_800_000_000_000;
@@ -105,6 +105,23 @@ describe("Skyhaven Tycoon", () => {
     expect(speedupsLeft(s, T0)).toBe(0);
     expect(speedupsLeft(s, T0 + 86400e3)).toBe(3);
     expect(timeWarp(s, 1, T0 + 86400e3)).toBeGreaterThan(0);
+  });
+
+  it("office blocks are built with cash: more office floors, a little dearer each time, gone in a New Era", () => {
+    const s = defaultSave();
+    const before = officeFloors(s), p1 = officePrice(s);
+    expect(p1).toBeGreaterThanOrEqual(60);
+    expect(buildOffice(s)).toBe(false); // no coins yet
+    s.tycoon.coins = 1e6;
+    expect(buildOffice(s)).toBe(true);
+    expect(s.tycoon.coins).toBe(1e6 - p1);
+    expect(officeFloors(s)).toBe(before + OFFICE_BLOCK_FLOORS);
+    expect(officePrice(s)).toBeGreaterThan(p1);
+    // A save keeps them; a New Era starts the city over without them.
+    expect(normalize(JSON.parse(JSON.stringify(s))).tycoon.offices).toBe(1);
+    s.tycoon.lifetime = 1e12;
+    newEra(s, T0);
+    expect(s.tycoon.offices).toBe(0);
   });
 
   it("a rewarded ad doubles the welcome-back coins for free, without using a speed-up", () => {

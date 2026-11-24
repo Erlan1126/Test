@@ -16,7 +16,7 @@ import { orderText } from "./orders";
 import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
-  affordable, buyBoost, buyLevels, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
+  affordable, buyBoost, buyLevels, buildOffice, officePrice, OFFICE_BLOCK_FLOORS, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
   payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow, adDoubleAway,
   bizMult, workerBonus, reactionTip,
 } from "../logic/tycoon";
@@ -27,6 +27,7 @@ import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
 import { track } from "../stats";
 import { adsReady, showRewarded } from "../ads";
+import { sightInfo, SIGHT_PEOPLE } from "../data/sights";
 import { claimTerrace, FLOWER_WIDE, PLAY_FLOORS, projectsOpen, seatingNeed, WIDE_SHARE, type ProjectId } from "../logic/cafe";
 import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
@@ -65,6 +66,7 @@ export interface TycoonHost {
   /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
   bizHomes(): string[];
+  bizSights(): { kind: string; key: string }[];
   /** Set when the results card sent the player here, to see their tower or the café. */
   townDest: "" | "tower" | "terrace" | "cafe" | "project";
   /** Starts a café-contract tower (the flower market now). */
@@ -132,6 +134,9 @@ export class TycoonUI {
   private golden = { id: "", until: 0 };
   /** The property whose card is open (data/props.ts), by key. */
   private selectedProp = "";
+  /** A tapped sight (a city block, park, landmark): its key and what it is. */
+  private selectedSight = "";
+  private sightKind = "";
   /** When the player last tapped in town (big moments wait until they're not busy). */
   private lastTapAt = 0;
   private labelsDirty = false;
@@ -183,7 +188,7 @@ export class TycoonUI {
       this.host.sound.click();
       this.showTab(b.dataset.tab!);
     }));
-    $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.host.buildFloors(); });
+    $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.openBuild(); });
     this.wireTownCamera();
     $("tycity").addEventListener("click", e => this.onCityTap(e));
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
@@ -557,7 +562,7 @@ export class TycoonUI {
    *  Next step guide is back in view, unless the player picked something else meanwhile. */
   private glance(id: string): void {
     this.selected = id;
-    this.selectedProp = "";
+    this.selectedProp = ""; this.selectedSight = "";
     this.render();
     setTimeout(() => { if (this.inCity && this.selected === id) { this.selected = ""; this.render(); } }, 4500);
   }
@@ -646,13 +651,15 @@ export class TycoonUI {
   }
 
   /** What's happening right now, for the 3D district. */
-  liveState(): { frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; pulse: string; pulseAt: number; block: BizBlock } {
+  liveState(): { frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; selSight: string; pulse: string; pulseAt: number; block: BizBlock } {
     const now = Date.now(), s = this.save;
     return {
       pulse: this.pulse.id,
       pulseAt: this.pulse.at,
       sel: this.inCity ? this.selected : "",
-      selHome: this.inCity ? this.selectedProp : "",
+      // (A home tapped before homes can be upgraded shows as a sight: "h:" and its key.)
+      selHome: this.inCity ? this.selectedProp || (this.selectedSight.startsWith("h:") ? this.selectedSight.slice(2) : "") : "",
+      selSight: this.inCity && !this.selectedSight.startsWith("h:") ? this.selectedSight : "",
       rush: rushOn(s, s.tycoon.rush.id, now) ? s.tycoon.rush.id : "",
       vip: this.vip.until > now ? this.vip.id : "",
       golden: this.golden.until > now ? this.golden.id : "",
@@ -862,7 +869,7 @@ export class TycoonUI {
   private nextStep(): { text: string; sub: string; pct?: number; tone: string; act: () => void } {
     const s = this.save, ty = s.tycoon, live = this.liveState();
     const nameOf = (id: string) => t(stageName(id, stageNow(s, id)));
-    const select = (id: string) => () => { this.selected = id; this.selectedProp = ""; this.render(); };
+    const select = (id: string) => () => { this.selected = id; this.selectedProp = ""; this.selectedSight = ""; this.render(); };
     // First steps come before anything else: the first sale, then (if ready) the café
     // terrace, then a level, then a manager.
     const cart = BUSINESSES[0];
@@ -936,10 +943,10 @@ export class TycoonUI {
     // A manager to hire, an upgrade to buy.
     const mgr = BUSINESSES.find(b => levelOf(s, b.id) > 0 && !ty.managers.includes(b.id) && ty.coins >= b.manager);
     if (mgr) return { text: t("Hire a manager for {name}", { name: nameOf(mgr.id) }), sub: t("It keeps earning while you're away"), tone: "go", act: select(mgr.id) };
-    if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: nx ? t("Build a tower: more offices, more business levels, closer to {rank}", { rank: t(nx.name) }) : t("Build a tower to add office floors"), tone: "grow", act: () => this.openBuild() };
+    if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: nx ? t("Build an office block: more business levels, closer to {rank}", { rank: t(nx.name) }) : t("Build an office block for more office floors"), tone: "grow", act: () => this.openBuild() };
     const up = upgradesOnOffer(s).find(u => u.cost <= ty.coins);
     if (up) return { text: t("Buy the {name} upgrade", { name: t(up.name) }), sub: up.biz === "all" ? t("Every business earns ×{n}", { n: up.mult }) : t("{name} earns ×{n}", { name: nameOf(up.biz), n: up.mult }), tone: "go", act: () => this.openSheet("upgrades") };
-    if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: t("Build a tower to add office floors"), tone: "grow", act: () => this.openBuild() };
+    if (freeFloors(s) < 1) return { text: t("Your offices are full"), sub: t("Build an office block for more office floors"), tone: "grow", act: () => this.openBuild() };
     // A building the company can grow right now (the cheapest), now and then: every level
     // makes every business earn more. Shown once the company has a few businesses going.
     if (propsOpen(s) && BUSINESSES.filter(b => levelOf(s, b.id) > 0).length >= 2) {
@@ -1022,7 +1029,7 @@ export class TycoonUI {
       <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : this.planLabel()}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
     $("tcy-next").className = `tcy-next tone-${n.tone}`;
     // (Hidden while the neighbor arrives: the Skip button sits there.)
-    $("tcy-next").hidden = !!this.selected || !!this.selectedProp || this.story.stage === "arrive";
+    $("tcy-next").hidden = !!this.selected || !!this.selectedProp || !!this.selectedSight || this.story.stage === "arrive";
     this.renderCard(now);
     // Dots on the bar: only for something you can act on.
     const dot = (k: string, on: boolean) => { $("tcy-bar").querySelector<HTMLElement>(`[data-open="${k}"] .dot`)!.hidden = !on; };
@@ -1122,7 +1129,7 @@ export class TycoonUI {
       // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
       // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
       { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
-      if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp ? "none" : ""; }
+      if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";
       if (it.tag.style.transform !== tr) it.tag.style.transform = tr;
@@ -1218,15 +1225,34 @@ export class TycoonUI {
       });
       if (key) { this.selectProp(key); return; }
     }
+    // Anything else: a city block, a park, a landmark, a home (before homes can be
+    // upgraded). Its card says what it is.
+    if (!id) {
+      let best = 44, pick: { key: string; kind: string } | null = null;
+      this.host.bizSights().forEach((sg, k) => {
+        const p = this.host.bizScreen(-1000 - k, -1);
+        if (!p) return;
+        const d = distToSeg(e.clientX, e.clientY, p.base, p.top);
+        if (d < best) { best = d; pick = sg; }
+      });
+      if (!propsOpen(this.save)) this.host.bizHomes().forEach((k, idx) => {
+        const p = this.host.bizScreen(-100 - idx, -1);
+        if (!p) return;
+        const d = distToSeg(e.clientX, e.clientY, p.base, p.top);
+        if (d < best) { best = d; pick = { key: "h:" + k, kind: "home" }; }
+      });
+      const got = pick as { key: string; kind: string } | null;
+      if (got) { this.selectSight(got.key, got.kind); return; }
+    }
     // Tapping empty sky or grass closes the card.
-    if (!id) { if (this.selectedProp) { this.selectedProp = ""; this.render(); } if (this.selected) { this.selected = ""; this.render(); } return; }
+    if (!id) { if (this.selectedSight) { this.selectedSight = ""; this.render(); } if (this.selectedProp) { this.selectedProp = ""; this.selectedSight = ""; this.render(); } if (this.selected) { this.selected = ""; this.render(); } return; }
     const s = this.save, owned = levelOf(s, id) > 0, pop = tag?.querySelector(".tag-pops") ?? $("tcy-labels");
     // The very first sale: one tap on the cart sells (no card in the way of the guide).
     if (owned && !act && s.tycoon.tips === 0 && id === BUSINESSES[0].id) { this.doAct("run", id, tag ?? $("tcy-labels"), e, pop, tag ?? $("tcy-labels")); return; }
     if (act && owned) this.doAct(act.dataset.act!, id, act, e, pop, tag ?? $("tcy-labels"));
     // Tapping the selected building (with no manager yet) sells.
     else if (owned && this.selected === id && !s.tycoon.managers.includes(id)) this.doAct("run", id, tag ?? $("tcy-labels"), null, pop, tag ?? $("tcy-labels"));
-    this.selectedProp = "";
+    this.selectedProp = ""; this.selectedSight = "";
     if (this.selected !== id) { this.selected = id; this.host.sound.click(); vibrate(s.settings.vibrate, 6); }
     this.render();
   }
@@ -1239,6 +1265,41 @@ export class TycoonUI {
     this.selectedProp = key;
     this.host.sound.click();
     this.render();
+  }
+
+  /** Opens a sight's card: what this building or place is. */
+  private selectSight(key: string, kind: string): void {
+    this.selected = "";
+    this.selectedProp = "";
+    this.selectedSight = key;
+    this.sightKind = kind;
+    this.host.sound.click();
+    vibrate(this.save.settings.vibrate, 6);
+    track("sight_tapped", { kind }, false);
+    this.render();
+  }
+
+  /** A sight's card, like the big city builders: a name, what it is, and a fact or two. */
+  private renderSightCard(): void {
+    const card = $("tcy-card"), info = sightInfo(this.sightKind);
+    if (!info) { card.hidden = true; return; }
+    const stat = (label: string, value: string) => `<span class="card-stat"><small>${esc(label)}</small><b>${esc(value)}</b></span>`;
+    const lv = info.level ?? 0;
+    const stars = lv ? `<span class="card-stars">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= lv ? "on" : ""}"></i>`).join("")}</span>` : "";
+    const rank = t(RANKS[townRank(this.save)].name);
+    const stats = lv
+      ? stat(t("Level"), `${lv}/5`) + stat(t("People"), fmt(SIGHT_PEOPLE[lv]))
+      : stat(t("City"), rank);
+    const where = this.sightKind.startsWith("th-") ? t("A district sight") : this.sightKind.startsWith("rank") ? t("A landmark of Skyhaven") : t("Part of Skyhaven");
+    card.hidden = false;
+    this.put(card, `<div class="card-head" style="--b1:#9be7c4;--b2:#4fb38b">
+        <span class="card-ico">${info.icon}</span>
+        <span class="card-name"><b>${esc(t(info.name))}</b><small>${stars} ${esc(where)}</small></span>
+        <button type="button" class="card-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
+      </div>
+      <div class="card-stats">${stats}</div>
+      <p class="card-info">${esc(t(info.text))}</p>
+      ${lv ? `<p class="card-perk">📈 ${esc(t("Buildings grow taller as Skyhaven's rank rises."))}</p>` : ""}`);
   }
 
   /** A property's card: what it is, who lives there, what it pays, and the upgrade. */
@@ -1281,6 +1342,7 @@ export class TycoonUI {
 
   private renderCard(now: number): void {
     if (this.holdingCard) return;
+    if (this.selectedSight && !this.selected) { this.renderSightCard(); this.cardFor("s:" + this.selectedSight); return; }
     if (this.selectedProp && !this.selected) { this.renderPropCard(now); this.cardFor("p:" + this.selectedProp); return; }
     if (this.selected) this.cardFor("b:" + this.selected); else $("tcy-card").dataset.for = "";
     const card = $("tcy-card"), s = this.save, ty = s.tycoon;
@@ -1343,7 +1405,7 @@ export class TycoonUI {
     if (!el) return;
     e.stopPropagation();
     const id = this.selected, card = $("tcy-card"), what = el.dataset.card!;
-    if (what === "close") { this.selected = ""; this.selectedProp = ""; this.host.sound.click(); this.render(); return; }
+    if (what === "close") { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.host.sound.click(); this.render(); return; }
     if (what === "pup") {
       const key = this.selectedProp;
       tick(this.save);
@@ -1370,7 +1432,7 @@ export class TycoonUI {
       return;
     }
     if (what === "look") { this.openSheet("company", id); return; }
-    if (what === "build") { this.host.sound.click(); toast(t("Every office floor is full. Build a tower to add more!")); this.selected = ""; this.leave(); this.host.buildFloors(); return; }
+    if (what === "build") { this.host.sound.click(); toast(t("Every office floor is full. Build an office block for more!")); this.selected = ""; this.openBuild(); return; }
     const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`) ?? card;
     this.doAct(what === "buy" && freeFloors(this.save) < 1 ? "buy" : what, id, el, e, card.querySelector(".card-pops")!, tag);
     this.render();
@@ -1384,31 +1446,59 @@ export class TycoonUI {
     return t("{n} floors · order: {order} for ×{m} earnings", { n: hqFloors(stage), order: orderText(o), m: ORDER_MULT });
   }
 
-  /** Build: the tower modes in one place (and any headquarters waiting to be built). */
+  /** Build: what to build in the city (office blocks, new businesses, a district, homes),
+   *  then the headquarters waiting to be built and the tower mini-game. */
   private openBuild(): void {
-    const s = this.save, rows: string[] = [];
-    // No choice to make (no HQ waiting, no other modes yet): straight into a tower.
-    const choice = projectsOpen(s.cafe) || BUSINESSES.some(b => readyStage(s, b.id)) || ["daily-btn", "challenges-btn", "zen-btn"].some(id => !$(id).hidden);
-    if (!choice) { this.leave(); this.host.play("classic"); return; }
-    // The block's next project: two choices, each previewed (what to build, what opens),
-    // and each also waiting as a see-through preview on its spot in the block.
-    if (projectsOpen(s.cafe)) {
-      const c = s.cafe, pct = Math.round(WIDE_SHARE * 100);
-      if (!c.done.includes("flowers")) rows.push(`<button type="button" class="tcy-mode project" data-mode="flowers"><span class="mode-ico">🌷</span><span><b>${esc(t("Flower market: land {n} wide floors", { n: FLOWER_WIDE }))}</b><small>${esc(t("A wide floor keeps {pct}% of the first floor's width. A flower stall opens by your tower, and shoppers carry flowers home", { pct }))}${c.wideBest ? esc(" · " + t("best: {n}", { n: c.wideBest })) : ""}</small></span></button>`);
-      if (!c.done.includes("play")) rows.push(`<button type="button" class="tcy-mode project" data-mode="play"><span class="mode-ico">🛝</span><span><b>${esc(t("Playground: build {n} floors in one tower", { n: PLAY_FLOORS }))}</b><small>${esc(t("Go tall. A slide opens by your tower, and a family from your tower comes to play"))}${c.playBest ? esc(" · " + t("best: {n}", { n: c.playBest })) : ""}</small></span></button>`);
+    const s = this.save, ty = s.tycoon, rows: string[] = [];
+    // (A brand-new player's first tower comes before the city.)
+    if (s.profile.towers < 1) { this.leave(); this.host.play("classic"); return; }
+    tick(s);
+    const head = (title: string) => rows.push(`<h3 class="tcy-build-head">${esc(title)}</h3>`);
+    const item = (attrs: string, ico: string, title: string, sub: string, price: number | null, extra = "") => {
+      const short = price !== null && ty.coins < price;
+      rows.push(`<button type="button" class="tcy-mode city${short ? " short" : ""}" ${attrs}><span class="mode-ico">${ico}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span>${price !== null ? `<span class="mode-price">${COIN_SVG}${esc(coins(price))}</span>` : ""}${extra}</button>`);
+    };
+    // Office blocks: room for more business levels.
+    const free = freeFloors(s), op = officePrice(s);
+    item(`data-build="office"`, "🏢", t("Office block"), free < 1
+      ? t("Every office floor is full! +{n} office floors for business levels", { n: OFFICE_BLOCK_FLOORS })
+      : t("+{n} office floors for business levels ({free} free now)", { n: OFFICE_BLOCK_FLOORS, free: fmt(free) }), op);
+    // New businesses ready to open (the first two).
+    let opened = 0;
+    BUSINESSES.forEach((b, i) => {
+      if (opened >= 2 || levelOf(s, b.id) > 0 || !unlockedBusiness(s, i)) return;
+      opened++;
+      item(`data-build="biz" data-id="${b.id}"`, iconSvg(b.icon), t("Open the {name}", { name: t(b.name) }), t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, Date.now())) }), costOf(b, 0, 1));
+    });
+    // The next district for sale.
+    const sale = landOnSale(s);
+    if (sale) item(`data-build="land"`, "🏝️", t("New district: {name}", { name: t(sale.name) }), t(sale.what), landPrice(s, sale));
+    // Homes: the cheapest upgrade.
+    if (propsOpen(s)) {
+      const best = this.host.bizHomes().map(key => ({ key, lv: propLevel(s, key), price: propPrice(s, key) })).filter(h => h.lv < PROP_MAX).sort((a, b) => a.price - b.price)[0];
+      if (best) item(`data-build="home" data-id="${esc(best.key)}"`, "🏠", t("Upgrade a home"), t("A bigger building: more people, more rent, +{pct}% to every business", { pct: Math.round(PROP_BONUS * 100) }), best.price);
     }
-    // (At most two HQs at a time here, so the tower modes stay in view; the rest wait.)
+    // Headquarters are built floor by floor in the tower mini-game.
+    const hqs: string[] = [];
     let hqRows = 0;
     for (const b of BUSINESSES) {
       const st = readyStage(s, b.id);
-      if (st && hqRows++ < 2) rows.push(`<button type="button" class="tcy-mode hq" data-mode="hq" data-id="${b.id}"><span class="mode-ico">🏗️</span><span><b>${esc(t("Build the {name} HQ", { name: t(stageName(b.id, st)) }))}</b><small>${esc(this.hqSub(b.id, st))}</small></span></button>`);
+      if (st && hqRows++ < 2) hqs.push(`<button type="button" class="tcy-mode hq" data-mode="hq" data-id="${b.id}"><span class="mode-ico">🏗️</span><span><b>${esc(t("Build the {name} HQ", { name: t(stageName(b.id, st)) }))}</b><small>${esc(this.hqSub(b.id, st))}</small></span></button>`);
     }
+    if (projectsOpen(s.cafe)) {
+      const c = s.cafe, pct = Math.round(WIDE_SHARE * 100);
+      if (!c.done.includes("flowers")) hqs.push(`<button type="button" class="tcy-mode project" data-mode="flowers"><span class="mode-ico">🌷</span><span><b>${esc(t("Flower market: land {n} wide floors", { n: FLOWER_WIDE }))}</b><small>${esc(t("A wide floor keeps {pct}% of the first floor's width. A flower stall opens by your tower, and shoppers carry flowers home", { pct }))}</small></span></button>`);
+      if (!c.done.includes("play")) hqs.push(`<button type="button" class="tcy-mode project" data-mode="play"><span class="mode-ico">🛝</span><span><b>${esc(t("Playground: build {n} floors in one tower", { n: PLAY_FLOORS }))}</b><small>${esc(t("Go tall. A slide opens by your tower, and a family from your tower comes to play"))}</small></span></button>`);
+    }
+    if (hqs.length) { head(t("Headquarters")); rows.push(...hqs); }
+    // The tower mini-game: stack floors by hand for extra office floors and cash.
+    head(t("Tower mini-game"));
     const mode = (k: string, ico: string, title: string, sub: string, src?: string) => {
       if (src && $(src).hidden) return;
       const dot = src && $(src).querySelector(".dot:not([hidden])") ? `<i class="dot"></i>` : "";
-      rows.push(`<button type="button" class="tcy-mode" data-mode="${k}"><span class="mode-ico">${ico}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span>${dot}</button>`);
+      rows.push(`<button type="button" class="tcy-mode small" data-mode="${k}"><span class="mode-ico">${ico}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span>${dot}</button>`);
     };
-    mode("classic", "🏢", t("Classic tower"), t("Earn office floors and cash for your company"));
+    mode("classic", "🏗️", t("Stack a tower"), t("Every floor adds two office floors, plus cash"));
     mode("daily", "📅", t("Daily tower"), t("The same tower for everyone today"), "daily-btn");
     mode("journey", "🗺️", t("Journey"), t("Landmark challenges, one by one"), "challenges-btn");
     mode("zen", "🍃", t("Zen"), t("Relax and build, no pressure"), "zen-btn");
@@ -1416,7 +1506,31 @@ export class TycoonUI {
     openModal($("tcy-buildsheet"));
   }
 
+  /** A tap on something to build in the city. */
+  private onBuildTap(el: HTMLElement): void {
+    const s = this.save, what = el.dataset.build!, id = el.dataset.id ?? "";
+    tick(s);
+    if (what === "office") {
+      const price = officePrice(s);
+      if (!buildOffice(s)) { this.host.sound.click(); toast(t("Save {n} for the office block", { n: coins(price) })); return; }
+      track("office_built", { n: s.tycoon.offices }, false);
+      this.host.sound.purchase(); confetti();
+      toast(t("Office block built! +{n} office floors", { n: OFFICE_BLOCK_FLOORS }));
+      this.host.persist();
+      this.openBuild();
+      this.render();
+      return;
+    }
+    this.host.sound.click();
+    closeModal($("tcy-buildsheet"));
+    if (what === "biz") { this.selected = id; this.selectedProp = ""; this.selectedSight = ""; this.render(); return; }
+    if (what === "land") { this.openLand(); return; }
+    if (what === "home") { this.selectProp(id); return; }
+  }
+
   private onModeTap(e: Event): void {
+    const b = (e.target as Element).closest<HTMLElement>("[data-build]");
+    if (b) { this.onBuildTap(b); return; }
     const el = (e.target as Element).closest<HTMLElement>("[data-mode]");
     if (!el) return;
     this.host.sound.click();
@@ -2008,7 +2122,7 @@ export class TycoonUI {
         return;
       }
       case "buy": {
-        if (el.classList.contains("need-floors")) { toast(t("Every office floor is full. Build a tower to add more!")); this.leave(); this.host.buildFloors(); return; }
+        if (el.classList.contains("need-floors")) { toast(t("Every office floor is full. Build an office block for more!")); closeModal($("tycoon")); this.openBuild(); return; }
         tick(s);
         const lv = levelOf(s, b.id), owned = lv > 0, wasReady = !!readyStage(s, b.id);
         const got = buyLevels(s, b.id, owned ? this.amount : 1);
@@ -2490,7 +2604,7 @@ export class TycoonUI {
     const g = cityGrow(this.save);
     if (this.grewSeen < 0 || g < this.grewSeen) { this.grewSeen = g; return; }
     if (g === this.grewSeen) return;
-    if (!this.inCity || openModalEl() || !$("mayor").hidden || this.selected || this.selectedProp || document.body.classList.contains("tabs-open")) return;
+    if (!this.inCity || openModalEl() || !$("mayor").hidden || this.selected || this.selectedProp || this.selectedSight || document.body.classList.contains("tabs-open")) return;
     this.grewSeen = g;
     // (The town rebuilds on the next frame; the new blocks start rising then.)
     window.setTimeout(() => {
@@ -2516,7 +2630,7 @@ export class TycoonUI {
     toast(t("Skyhaven is now a {name}!", { name: t(r.name) }));
     fireworks(4, () => this.host.sound.firework());
     const note = () => {
-      if (openModalEl() || !$("mayor").hidden || !$("welcome").hidden || document.body.classList.contains("tabs-open") || this.selected || this.selectedProp || Date.now() - this.lastTapAt < 4000) { window.setTimeout(note, 1500); return; }
+      if (openModalEl() || !$("mayor").hidden || !$("welcome").hidden || document.body.classList.contains("tabs-open") || this.selected || this.selectedProp || this.selectedSight || Date.now() - this.lastTapAt < 4000) { window.setTimeout(note, 1500); return; }
       // The neighbor's moment first: the camera visits their block and they react to what
       // the new rank brought. Pip's note follows.
       const c = this.save.cafe;

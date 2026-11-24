@@ -614,6 +614,7 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     fresh: o.fresh === true,
     // Grown companies from before grand openings count as having had theirs.
     opening: typeof o.opening === "number" ? big(o.opening) : big(o.lifetime) > 2000 ? 1 : 0,
+    offices: Math.min(100000, Math.floor(big(o.offices))),
     golden: { day: typeof (o.golden as { day?: unknown })?.day === "string" ? String((o.golden as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.golden as { n?: unknown })?.n)) },
     tips: managers0.length ? 3 : Math.min(3, Math.floor(big(o.tips))),
     goals: normalizeGoals(o.goals),

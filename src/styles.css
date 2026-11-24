@@ -4149,3 +4149,14 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 .modal-ghost { pointer-events: none; animation: modal-out 0.24s ease-in forwards; z-index: 6; }
 .modal-ghost .sheet { animation: sheet-out 0.24s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; }
 @media (prefers-reduced-motion: reduce) { .modal:not([hidden]), .modal .sheet, .modal.modal-swap .sheet { animation: none; } }
+
+/* The Build menu: what to build in the city, then headquarters and the tower mini-game. */
+.tcy-build-head { margin: 10px 4px 2px; font: 400 13px var(--display); letter-spacing: 0.04em; text-transform: uppercase; color: #8a7fb8; }
+.tcy-build-head:first-child { margin-top: 0; }
+.tcy-mode.city .mode-ico svg { width: 28px; height: 28px; }
+.tcy-mode .mode-price { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 7px 11px; border-radius: 14px; font: 400 14px var(--display); color: #fff; background: linear-gradient(180deg, #4fd18b, #22a565); box-shadow: 0 3px 0 #178a50; }
+.tcy-mode .mode-price svg { width: 16px; height: 16px; }
+.tcy-mode.short .mode-price { background: linear-gradient(180deg, #c9c4dc, #a9a3c4); box-shadow: 0 3px 0 #8f89ad; }
+.tcy-mode.small { padding: 10px 14px; }
+.tcy-mode.small .mode-ico { width: 38px; height: 38px; font-size: 20px; border-radius: 12px; }
+.tcy-mode.small b { font-size: 14px; }

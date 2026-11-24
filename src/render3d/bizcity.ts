@@ -42,6 +42,8 @@ export interface BizLive {
   sel?: string;
   /** The property whose card is open (the camera glides to it). */
   selHome?: string;
+  /** A tapped sight's key (a city block, park or landmark): the camera visits it. */
+  selSight?: string;
   /** A building that just sold or grew (it bounces), and when. */
   pulse?: string;
   pulseAt?: number;
@@ -443,11 +445,19 @@ export interface BizCity {
   homes(): { x: number; z: number; top: number; key: string; y: number }[];
   /** Where a district business stands (its building or its lot for lease), or null. */
   bizAt(i: number): { x: number; z: number; y: number; top: number } | null;
+  /** Everything else worth a tap: city blocks, parks, landmarks, district sights. */
+  sights(): Sight[];
 }
+
+/** A building or place in the city the player can tap to see what it is. `kind` says what
+ *  it is (see data/sights.ts); `key` tells it apart from the others. */
+export interface Sight { x: number; z: number; y: number; top: number; kind: string; key: string }
 
 export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown: string[] = [], cafe: BizCafe = { starter: null, terrace: 0, contract: 0 }): BizCity {
   setLand((cafe.land ?? []).filter(l => l.bought).map(l => LAND.findIndex(x => x.id === l.id)).filter(k => k >= 0), cafe.grow ?? 0);
   const g = new THREE.Group();
+  const sightSpots: Sight[] = [];
+  const sightAt = (x: number, z: number, top: number, kind: string, key: string, y = 0) => { sightSpots.push({ x, z, y, top, kind, key }); };
   const own = <T extends THREE.Material>(m: T): T => { m.userData.own = true; return m; };
   const kitReady = kitVersion() > 0;
   let yachtAt: { x: number; z: number } | null = null;
@@ -1566,6 +1576,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // A lighthouse on the back corner, its lamp glowing at night.
     // (It stands on the islet, where it's always in view.)
     const lx = islet.x - 0.35, lz = islet.z - 0.2;
+    sightAt(lx, lz, 3.2, "lighthouse", "town-lighthouse");
     add(new THREE.CylinderGeometry(0.55, 0.65, 0.3, 10).translate(lx, 0.3, lz), rockDark);
     for (let k = 0; k < 5; k++) add(new THREE.CylinderGeometry(0.42 - k * 0.04, 0.46 - k * 0.04, 0.5, 14).translate(lx, 0.7 + k * 0.5, lz), mats.c(k % 2 ? "#ff4f4f" : "#ffffff", 0.5));
     add(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 14).translate(lx, 3.2, lz), metal);
@@ -2189,11 +2200,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         }
         P(new THREE.BoxGeometry(0.7, 0.06, 0.22).translate(-0.4, 0.42, 0.4), wood);
         for (let f = 0; f < 6; f++) P(new THREE.SphereGeometry(0.08, 6, 4).translate(0.4 + f * 0.2, 0.12, 1.6), mats.c(flowersOn[(f + k) % 4], 0.8));
+        sightAt(x, z, 1.4, "park", `g${cell[0]},${cell[1]}`);
         return;
       }
       const d = Math.hypot(x - tcx, z - tcz);
       const level = Math.max(1, Math.min(5, rkG - 1 - Math.floor(d / 20) + (h % 3 === 0 ? 1 : 0)));
-      if (kitReady) kitBuilding(lg, h, level);
+      const btop = kitReady ? kitBuilding(lg, h, level) : null;
+      sightAt(x, z, btop ?? 1.6 + level * 0.8, `block${level}`, `g${cell[0]},${cell[1]}`);
+      if (kitReady) { /* built above */ }
       else { P(roundSlab(4.2, 4.2, 0.6, 0.06), grass2); P(new THREE.BoxGeometry(2.6, 1.6 + level * 0.8, 2.6).translate(0, 0.8 + level * 0.4, 0), mats.c(["#f2e6d0", "#e8d8f0", "#d8ecf6", "#f6dcd0"][h % 4], 0.7)); }
       // Street life on its sidewalks: trees along the curb, lamps on two corners, a bench
       // and a bin, and now and then a bus stop or a phone box.
@@ -3295,6 +3309,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         if (n % 3 === 0) { P(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 6).translate(-1, 0.3, 0.8), trunk); P(new THREE.IcosahedronGeometry(0.5, 0).translate(-1, 0.95, 0.8), leaf); }
         continue;
       }
+      if (th !== "home" && th !== "tower" && th !== "villa" && th !== "crystal" && th !== "dome") sightAt(sp.x + x, sp.z + z, tc ? 3 : 1.8, `th-${th}`, `d${k}:${i},${j}`, sp.y);
       if (th === "tower") {
         // Downtown in artist-made models (once they're loaded): an office block or a
         // skyscraper from the city kit on a paved plaza with a strip of lawn.
@@ -3808,6 +3823,19 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     spot: id => (id === "hall" ? hallAt ?? { x: 0, z: 0 } : block.spot(id)),
     landAt: k => landShown[k] ?? null,
     homes: () => homeSpots,
+    sights: () => {
+      // (The rank landmarks that stay put: the market, the tram stop, the billboards, the
+      // yacht, the golden tower and the floating island.)
+      const out = [...sightSpots];
+      const iy = (n: number) => islets[n]?.o.position.y ?? 0;
+      for (const r of [1, 2, 3, 5, 6, 7]) {
+        const lm = landmarks[r]?.();
+        if (!lm) continue;
+        const y = r === 6 ? iy(0) : r === 7 ? iy(1) : r === 5 && !yachtAt ? iy(1) : 0;
+        out.push({ x: lm.x, z: lm.z, y, top: r === 6 ? 6 : 2, kind: `rank${r}`, key: `rank${r}` });
+      }
+      return out;
+    },
     bizAt: i => bizSpots[i] ?? null,
     look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,

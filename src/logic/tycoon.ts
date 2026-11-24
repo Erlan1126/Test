@@ -59,6 +59,8 @@ export interface TycoonState {
   opening: number;
   /** Golden customers seen today. */
   golden: { day: string; n: number };
+  /** Office blocks built in the city with cash (each adds OFFICE_BLOCK_FLOORS office floors). */
+  offices: number;
 }
 
 export type GoalType = "vip" | "buy" | "taps" | "rush";
@@ -68,7 +70,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 } });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 }, offices: 0 });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -268,7 +270,27 @@ export function affordable(b: Business, level: number, coinsHave: number): numbe
  *  first office building), and each business level fills one. More floors come from
  *  building towers, so the tower game is how the company grows. */
 export const FREE_FLOORS = 25;
-export const officeFloors = (s: SaveData): number => FREE_FLOORS + 2 * Math.max(0, s.tycoon.floors);
+/** Office floors an office block adds (built from the Build menu, with cash). */
+export const OFFICE_BLOCK_FLOORS = 10;
+export const officeFloors = (s: SaveData): number => FREE_FLOORS + 2 * Math.max(0, s.tycoon.floors) + OFFICE_BLOCK_FLOORS * Math.max(0, s.tycoon.offices ?? 0);
+
+/** What the next office block costs: about three of the company's typical next levels
+ *  (the middle one of its businesses', so it keeps pace with the city), and 8% more for
+ *  each one built. */
+export function officePrice(s: SaveData): number {
+  const next = BUSINESSES.filter(b => levelOf(s, b.id) > 0).map(b => costOf(b, levelOf(s, b.id), 1)).sort((a, b) => a - b);
+  const mid = next.length ? next[Math.floor((next.length - 1) / 2)] : 0;
+  return Math.ceil(Math.max(60, mid * 3) * Math.pow(1.08, Math.max(0, s.tycoon.offices ?? 0)));
+}
+
+/** Builds an office block with cash. Returns false if the coins aren't there. */
+export function buildOffice(s: SaveData): boolean {
+  const price = officePrice(s);
+  if (!(s.tycoon.coins >= price)) return false;
+  s.tycoon.coins -= price;
+  s.tycoon.offices = (s.tycoon.offices ?? 0) + 1;
+  return true;
+}
 export const usedFloors = (s: SaveData): number => Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);
 
 /** The town's rank (0 = Hamlet), from all its business levels together. */
@@ -470,6 +492,7 @@ export function newEra(s: SaveData, now = Date.now()): number {
   s.props = {};
   s.land = [];
   s.annex = { pick: "" };
+  t.offices = 0;
   t.eras++;
   t.last = now;
   return g;

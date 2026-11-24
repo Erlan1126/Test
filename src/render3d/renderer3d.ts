@@ -908,10 +908,14 @@ export class Renderer3D {
     // A tapped property: the camera glides to it too (a higher island's shows further back).
     const hk = f.bizLive?.selHome, home = hk ? this.biz.homes().find(h => h.key === hk) : undefined;
     if (home && si < 0) { this.bizLook.tx = home.x - home.y + 1.2; this.bizLook.tz = home.z - home.y + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
+    // A tapped sight (a city block, a park, a landmark): the camera glides there as well.
+    const sk = f.bizLive?.selSight, sight = sk && si < 0 && !home ? this.biz.sights().find(s => s.key === sk) : undefined;
+    if (sight) { this.bizLook.tx = sight.x - sight.y + 1.2; this.bizLook.tz = sight.z - sight.y + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
     // The player's own view (drag to look around, pinch to zoom), unless the game is showing
     // something (a close-up, a landmark, a tapped building). Along the town it never slides
     // off; across, it can move only as far as the zoom leaves room.
-    const cu = this.camUser, mine = cu.on && !framing && !lm && si < 0 && !home;
+    const picked = si >= 0 || !!home || !!sight;
+    const cu = this.camUser, mine = cu.on && !framing && !lm && !picked;
     this.bizBase.zoom = fo.zoom;
     // Momentum: after a flick the town keeps gliding and slows to a stop.
     if (mine && !cu.drag && (cu.vs || cu.vt)) {
@@ -921,7 +925,9 @@ export class Renderer3D {
       if (Math.abs(cu.vs) + Math.abs(cu.vt) < 0.05) cu.vs = cu.vt = 0;
     }
     if (mine) this.bizLook.tzoom = Math.min(2.6, Math.max(1.0, fo.zoom * cu.zoom));
-    if (!framing && !lm) {
+    // (A tapped building keeps the camera on it: only the player's own view and the overview
+    // are held to the town's middle.)
+    if (!framing && !lm && !picked) {
       const tb = townBounds(), tc = (tb.tMin + tb.tMax) / 2;
       let sv = (this.bizLook.tx + this.bizLook.tz) * Math.SQRT1_2;
       let tv = tc;
@@ -1053,10 +1059,15 @@ export class Renderer3D {
   /** Where a lot's building shows on screen: its base and its top (page px). */
   /** How many homes there are round town (they pay rent). */
   bizHomes(): string[] { return this.biz && this.bizK >= 0.5 ? this.biz.homes().map(h => h.key) : []; }
+  /** Everything else in the city worth a tap (index k is bizScreen(-1000 - k)). */
+  bizSights(): { kind: string; key: string }[] { return this.biz && this.bizK >= 0.5 ? this.biz.sights().map(s => ({ kind: s.kind, key: s.key })) : []; }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
     // (-100 and below: the town's properties.)
-    const home = i <= -100 ? this.biz.homes()[-100 - i] : null;
+    // (-1000 and below: the city's other sights.)
+    const sight = i <= -1000 ? this.biz.sights()[-1000 - i] : null;
+    if (i <= -1000 && !sight) return null;
+    const home = i <= -100 && i > -1000 ? this.biz.homes()[-100 - i] : sight;
     if (i <= -100 && !home) return null;
     if (home && height < 0) height = home.top + 0.4;
     const land = i <= -10 && i > -100 ? this.biz.landAt(-10 - i) : null;
