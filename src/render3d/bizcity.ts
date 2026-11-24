@@ -137,9 +137,10 @@ const blockRound = (gx: number, gz: number): number => {
   // (Tight city corners: a block with a curb, not a rounded pill.)
   return [0.85, 0.85, 0.7][Math.abs(gx * 7 + gz * 13) % 3];
 };
-/** Curving avenues: two streets each way across town swing in gentle S-curves (each stretch
- *  between two crossings bows out one way, the next the other way). */
-const CURVE_A = 0.85, CURVE_LINES = [1, 3];
+/** Curving avenues (off): streets could swing in S-curves between crossings, but bent
+ *  crosswalks and pinched blocks looked wobbly, so every street is straight. List street
+ *  lines here to bring the curves back. */
+const CURVE_A = 0.85, CURVE_LINES: number[] = [];
 const ALL_KEYS = new Set(ALL.map(c => `${c[0]},${c[1]}`));
 /** How far the middle of one stretch of street bows out (signed; 0 = straight). `vertical`:
  *  the street between columns `line` and `line + 1`, beside block row `seg`. */
