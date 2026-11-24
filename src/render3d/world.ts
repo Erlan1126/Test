@@ -491,6 +491,20 @@ function groundShade(m: THREE.Material, base: number): void {
   m.customProgramCacheKey = () => "gs" + base.toFixed(3);
 }
 
+/** Every mesh that stands up off the ground casts a shadow (flat paving and lawns don't, and
+ *  see-through glass doesn't either). */
+export function castShadows(root: THREE.Object3D): void {
+  root.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || m.castShadow || m.userData.noShadow) return;
+    const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.Material;
+    if (!mat || mat.transparent) return;
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    const bb = m.geometry.boundingBox!;
+    if (bb.max.y - bb.min.y > 0.14) m.castShadow = true;
+  });
+}
+
 export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
   root.updateMatrixWorld(true);
   const toLocal = root.matrixWorld.clone().invert(), rel = new THREE.Matrix4();
@@ -503,7 +517,26 @@ export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
     const m = o as THREE.Mesh;
     if (!m.isMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh || Array.isArray(m.material)) return;
     const mat = m.material as THREE.MeshStandardMaterial;
+    // Trees and garden pieces (trees.ts) keep their own painted colours and leaf atlas: they
+    // merge with each other, all into one mesh.
+    if (mat.userData.nature) {
+      const key = `nature|${mat.uuid}|${m.castShadow}`;
+      let gr = groups.get(key);
+      if (!gr) { gr = { mat, geos: [], cast: m.castShadow, tint: false, rough: mat.roughness, metal: 0 }; groups.set(key, gr); }
+      let geo = m.geometry.clone().applyMatrix4(rel.multiplyMatrices(toLocal, m.matrixWorld));
+      if (geo.index) geo = geo.toNonIndexed();
+      gr.geos.push(geo);
+      remove.push(m);
+      return;
+    }
     if (!mat.isMeshStandardMaterial || mat.transparent || mat.vertexColors) return;
+    // Anything that stands up off the ground casts a real shadow (buildings, walls, lamps,
+    // benches...); flat things (paving, lawns, paint) only receive one.
+    if (!m.castShadow && !m.userData.noShadow) {
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      const bb = m.geometry.boundingBox!;
+      if (bb.max.y - bb.min.y > 0.14) m.castShadow = true;
+    }
     // Materials that animate keep their identity; the rest group by surface, not color.
     const tint = !mat.userData.dynamic;
     // Near-identical surfaces count as one (roughness in quarters, metal or not), so more
