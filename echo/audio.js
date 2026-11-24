@@ -162,7 +162,7 @@ const sfx = {
   // Letting go: a soft whoosh (the number moves it a little to one side).
   whoosh: (dx = 0) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.06, pan: dx / 3, echo: 0.5 }),
   // A Perfect rings the current chord of the music, a step higher with each one in a chain.
-  perfect(n = 1) { if (music.on && music.style === "beat") { const up = Math.min(6, n - 1); [0, 2, 4].forEach((d, i) => note(beatHz(music.root + d + up, 2), { at: i * 0.045, dur: 0.26, vol: 0.06, type: "triangle", echo: 0.4 })); return; } const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.06, type: "triangle", echo: 0.35 })); },
+  perfect(n = 1) { if (music.on) { const up = Math.min(6, n - 1); [0, 2, 4].forEach((d, i) => note(beatHz(music.root + d + up, 2), { at: i * 0.045, dur: 0.26, vol: 0.06, type: "triangle", echo: 0.4 })); return; } const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.06, type: "triangle", echo: 0.35 })); },
   flip() { [0, 7, 12].forEach((d, i) => note(659 * Math.pow(2, d / 12), { at: i * 0.06, dur: 0.18, vol: 0.06, type: "square", lowpass: 3200, echo: 0.3 })); },
   bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
   light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.9, vol: 0.09, fm: 3.5, fmDepth: 0.8, echo: 0.8 })); },
