@@ -9,7 +9,7 @@ describe("the island next to the town", () => {
     const s = defaultSave(), now = 1e12;
     s.tycoon.opening = 0;
     s.tycoon.levels = { coffee: RANKS[ANNEX_RANK].at };
-    s.chapters.done = rankHall(ANNEX_RANK) - 2; // one Town Hall level short
+    s.chapters.done = rankHall(ANNEX_RANK) - 2; // one City Hall level short
     expect(annexOpen(s)).toBe(false);
     expect(buildAnnex(s, "lookout", now)).toBe("locked");
     s.chapters.done = rankHall(ANNEX_RANK) - 1;

@@ -4123,7 +4123,7 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tycity .card-hq small { font: 700 11px sans-serif; opacity: 0.9; }
 #tycity .card-perk { margin: -2px 0 8px; font-size: 12px; font-weight: 800; color: #13924f; }
 #tycity .card-main.short { filter: grayscale(0.5); opacity: 0.75; }
-/* The Town Hall's bubble: Mayor Pip's story; it pulses when a chapter is ready to finish. */
+/* The City Hall's bubble: Mayor Pip's story; it pulses when a chapter is ready to finish. */
 #tycity .tag.hall { flex-direction: row; gap: 6px; padding: 6px 12px; background: linear-gradient(180deg, #8a6cff, #5b3fd6) !important; color: #fff; box-shadow: 0 6px 16px rgba(40, 20, 120, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
 #tycity .tag.hall b { font-size: 12px; letter-spacing: 0.02em; }
 #tycity .tag.hall .tag-ico { background: none; box-shadow: none; width: auto; height: auto; font-size: 16px; }
@@ -4267,7 +4267,7 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 /* While a card is open at the bottom, messages show up high, clear of its title. */
 body:has(#tcy-card:not([hidden])) #toast { top: calc(env(safe-area-inset-top, 0px) + 150px) !important; bottom: auto !important; }
 
-/* ---- Town Hall levels: what the next level opens, and businesses waiting for it ---- */
+/* ---- City Hall levels: what the next level opens, and businesses waiting for it ---- */
 .mayor-goals li.plan-to { display: block; background: none; padding: 2px 4px 0; font: 400 13px var(--display); color: #2a1f6e; }
 .mayor-goals li.plan-opens { grid-template-columns: 22px 1fr; background: linear-gradient(90deg, rgba(255, 210, 63, 0.35), rgba(255, 210, 63, 0.12)); color: #6a4a00; }
 .mayor-goals li.plan-opens span { background: #ffd23f; box-shadow: none; }

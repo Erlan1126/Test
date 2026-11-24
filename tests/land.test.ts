@@ -11,7 +11,7 @@ describe("land next to the island", () => {
     expect(landOnSale(s)).toBeNull();
     s.tycoon.levels = { [BUSINESSES[0].id]: 3, [BUSINESSES[1].id]: 1 };
     s.tycoon.tips = 3;
-    // (In the city game a district waits for its Town Hall level: the Harbor at level 5.)
+    // (In the city game a district waits for its City Hall level: the Harbor at level 5.)
     expect(landOnSale(s)).toBeNull();
     s.chapters.done = 9;
     expect(landOnSale(s)?.id).toBe(LAND[0].id);

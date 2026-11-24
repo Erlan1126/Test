@@ -307,32 +307,32 @@ export const cityGrow = (s: SaveData): number => 4 * Math.floor(usedFloors(s) / 
 /** How many of the town's own home blocks are built: a few at the start, one more for every
  *  6 business levels, nearest the middle first. */
 export const townHomes = (s: SaveData): number => 2 + Math.floor(usedFloors(s) / 6);
-/** In the city game the town's rank follows the Town Hall: the rank each Town Hall level
+/** In the city game the town's rank follows the City Hall: the rank each City Hall level
  *  brings (level 2 a Village, 3 a Town, 4 a City, 5 a Big City, 6 a Metropolis, 8 the Sky
  *  Capital). The tower game's company ranks up by business levels. */
 export const HALL_RANK = [0, 0, 1, 2, 3, 4, 5, 5, 6, 6, 6, 6];
-/** The Town Hall level that makes the town this rank. */
+/** The City Hall level that makes the town this rank. */
 export const rankHall = (rank: number): number => Math.max(1, HALL_RANK.indexOf(rank));
 export const townRank = (s: SaveData): number => HAS_CITY
   ? Math.max(HALL_RANK[Math.min(HALL_RANK.length - 1, hallLevel(s))], Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0))
   : rankByLevels(s);
 const rankByLevels = (s: SaveData): number => { const n = usedFloors(s); let r = 0; RANKS.forEach((x, i) => { if (n >= x.at) r = i; }); return Math.max(r, Math.min(RANKS.length - 1, s.tycoon.rankBest ?? 0)); };
 /** Office floors only limit the tower game's company (towers add them). The city game has no
- *  such limit: its main path is the Town Hall's level instead (see hallLevel). */
+ *  such limit: its main path is the City Hall's level instead (see hallLevel). */
 export const FLOOR_LIMIT = !HAS_CITY;
 export const freeFloors = (s: SaveData): number => FLOOR_LIMIT ? Math.max(0, officeFloors(s) - usedFloors(s)) : 1e9;
 
-/** The Town Hall, the city's main building: its level goes up by one for every chapter of
+/** The City Hall, the city's main building: its level goes up by one for every chapter of
  *  Mayor Pip's story finished (level 1 at the start), and each level opens new businesses. */
 export const hallLevel = (s: SaveData): number => 1 + Math.max(0, s.chapters?.done ?? 0);
-/** The Town Hall level each town business opens at (the city game only). */
+/** The City Hall level each town business opens at (the city game only). */
 export const HALL_UNLOCK: Record<string, number> = { coffee: 1, flowers: 1, bakery: 2, pizza: 2, cinema: 3, hotel: 3, mall: 4, airport: 4, casino: 5, spaceport: 6 };
-/** The Town Hall level each district goes on sale at, in the order of data/land.ts. */
+/** The City Hall level each district goes on sale at, in the order of data/land.ts. */
 export const LAND_HALL = [5, 6, 7, 8, 9, 10];
 export const hallNeed = (id: string): number => (HAS_CITY ? HALL_UNLOCK[id] ?? 1 : 1);
-/** Waiting for a higher Town Hall (it would open otherwise). */
+/** Waiting for a higher City Hall (it would open otherwise). */
 export const hallLocked = (s: SaveData, id: string): boolean => levelOf(s, id) === 0 && hallLevel(s) < hallNeed(id);
-/** The town businesses a Town Hall level opens. */
+/** The town businesses a City Hall level opens. */
 export const hallOpens = (level: number): Business[] => (HAS_CITY ? BUSINESSES.filter(b => !b.land && HALL_UNLOCK[b.id] === level) : []);
 
 /** A business is offered once the one before it has been bought. */
@@ -356,7 +356,7 @@ export const unlockedBusiness = (s: SaveData, i: number): boolean => {
 export const shownBusiness = (s: SaveData, i: number): boolean => {
   if (unlockedBusiness(s, i)) return true;
   const b = BUSINESSES[i], p = prevBusiness(i);
-  // (One waiting for the Town Hall shows once the one before it is open, with its lock.)
+  // (One waiting for the City Hall shows once the one before it is open, with its lock.)
   if (hallLocked(s, b.id) && !b.land) return p < 0 || levelOf(s, BUSINESSES[p].id) > 0;
   if (b.land) return p >= 0 ? unlockedBusiness(s, p) : false;
   return p >= 0 && unlockedBusiness(s, p);

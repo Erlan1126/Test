@@ -431,7 +431,7 @@ export interface BizCafe {
   decor?: string[];
   /** The town's rank (data/ranks.ts): each one adds something new to the town. */
   rank?: number;
-  /** The Town Hall's level (logic/tycoon.ts hallLevel): the hall grows with it. */
+  /** The City Hall's level (logic/tycoon.ts hallLevel): the hall grows with it. */
   hall?: number;
   /** How many of the city grid's blocks are built so far (the city spreads as it grows). */
   grow?: number;
@@ -954,7 +954,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (let m = 1; m < d && m < 14; m += 1) if (!insidePoly(hull, x, z, m)) { d = Math.min(d, m - 1); break; }
       return d;
     };
-    // The Town Hall's square: on the grid, the block nearest the middle of town; otherwise
+    // The City Hall's square: on the grid, the block nearest the middle of town; otherwise
     // the open spot nearest the middle of town with room round it.
     if (outer.length) {
       const tcx = ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, tcz = ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length;
@@ -1015,7 +1015,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   // The ring boulevard: a curving avenue all round the town (once the city spreads past it),
   // between the town and its neighbourhoods; it stops at the shore, the districts, the
-  // parks and the Town Hall's square, and everything else keeps clear of it.
+  // parks and the City Hall's square, and everything else keeps clear of it.
   if (false as boolean) {
     let ringR = grow(coreHull, 5.2);
     for (let r6 = 0; r6 < 2; r6++) { const nx: [number, number][] = []; for (let i = 0; i < ringR.length; i++) { const a = ringR[i], b = ringR[(i + 1) % ringR.length]; nx.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); } ringR = nx; }
@@ -1033,7 +1033,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (i % 9 === 0) { add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6).translate(a[0] - (dz / L) * 1.75, 0.7, a[1] + (dx / L) * 1.75), metal); add(new THREE.SphereGeometry(0.12, 8, 6).translate(a[0] - (dz / L) * 1.75, 1.45, a[1] + (dx / L) * 1.75), bulb); }
     }
   }
-  // The Town Hall: the city's main building on its own square, growing with its own level
+  // The City Hall: the city's main building on its own square, growing with its own level
   // (a wooden hall, then a clock tower, a stone hall with columns, wings, a dome, a golden
   // dome and statue, and at last a grand capitol with a beacon). Tap it for Mayor Pip's story.
   if (hallAt) {
@@ -2212,7 +2212,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   let growSpot: { x: number; z: number; zoom: number } | null = null;
   // The city grid's blocks: a building on each (rising with the city's rank, tallest nearest
-  // the middle), a little park now and then, and the Town Hall's square.
+  // the middle), a little park now and then, and the City Hall's square.
   if (outer.length) {
     const og = new THREE.Group();
     g.add(og);

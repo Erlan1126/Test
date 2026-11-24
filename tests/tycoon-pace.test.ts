@@ -8,7 +8,7 @@ import { buyUpgrade, evolve, readyStage, upgradesOnOffer, buyLevels, costOf, cyc
 it("the Tycoon takes its time", () => {
   const s = defaultSave();
   let now = 1_800_000_000_000, towers = 0;
-  // The player follows Mayor Pip's story: the Town Hall goes up a level as the company grows.
+  // The player follows Mayor Pip's story: the City Hall goes up a level as the company grows.
   const HALL_AT = [50, 150, 300, 500, 800, 1000, 1200, 1500, 2000, 3000];
   const shop = () => {
     const used = Object.values(s.tycoon.levels).reduce((a, b) => a + b, 0);

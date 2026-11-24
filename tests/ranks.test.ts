@@ -4,13 +4,13 @@ import { defaultSave } from "../src/logic/save";
 import { multiplier, rankHall, townRank } from "../src/logic/tycoon";
 
 describe("town ranks", () => {
-  it("climb with the Town Hall in the city game, in order", () => {
+  it("climb with the City Hall in the city game, in order", () => {
     for (let i = 1; i < RANKS.length; i++) expect(RANKS[i].at).toBeGreaterThan(RANKS[i - 1].at);
     const s = defaultSave();
     expect(townRank(s)).toBe(0);
     s.tycoon.levels = { coffee: 2000 }; // business levels alone don't rank the town up
     expect(townRank(s)).toBe(0);
-    s.chapters.done = 1; // Town Hall level 2: a Village
+    s.chapters.done = 1; // City Hall level 2: a Village
     expect(townRank(s)).toBe(1);
     for (let r = 1; r < RANKS.length; r++) { s.chapters.done = rankHall(r) - 1; expect(townRank(s)).toBe(r); }
     s.chapters.done = 10;
@@ -28,7 +28,7 @@ describe("town ranks", () => {
 });
 
 describe("town rank after a New Era", () => {
-  it("keeps the Town Hall's rank: the story isn't undone", async () => {
+  it("keeps the City Hall's rank: the story isn't undone", async () => {
     const { newEra } = await import("../src/logic/tycoon");
     const s = defaultSave();
     s.tycoon.levels = { coffee: 60 };

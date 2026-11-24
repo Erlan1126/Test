@@ -73,16 +73,16 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   el.classList.toggle("ready", ready);
   el.innerHTML = `<span class="mayor-mini">${MAYOR_SVG}</span>
     <span class="mayor-goal"><small>${esc(head(i, c.title))}</small>
-    <b>${esc(ready ? (HAS_CITY ? t("Upgrade the Town Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next.text, next.need))}</b>
+    <b>${esc(ready ? (HAS_CITY ? t("Upgrade the City Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next.text, next.need))}</b>
     <i class="mayor-bar"><i style="width:${pct}%"></i></i></span>`;
   el.onclick = onTap;
 }
 
-/** In the city game the story is the Town Hall's levels: chapter i takes it to level i + 2. */
+/** In the city game the story is the City Hall's levels: chapter i takes it to level i + 2. */
 const head = (i: number, title: string) => HAS_CITY
-  ? t("Town Hall level {n} · {title}", { n: i + 1, title: t(title) })
+  ? t("City Hall level {n} · {title}", { n: i + 1, title: t(title) })
   : t("Chapter {n}: {title}", { n: i + 1, title: t(title) });
-/** What the Town Hall's next level opens, as a line for the goal list ("" if nothing). */
+/** What the City Hall's next level opens, as a line for the goal list ("" if nothing). */
 function opensHtml(level: number): string {
   if (!HAS_CITY) return "";
   const names = hallOpens(level).map(b => t(b.name));
@@ -97,11 +97,11 @@ const num = (n: number) => (n >= 1e6 ? coins(n) : fmt(n));
 function planRoad(save: SaveData): string {
   const i = chapterIndex(save), next = CHAPTERS[i + 1];
   return `<li class="plan-road"><div>${CHAPTERS.map((c, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}" title="${esc(t(c.title))}"></i>`).join("")}</div>
-    <small>${esc(next ? (HAS_CITY ? t("Town Hall level {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length + 1, title: t(next.title) }) : t("City Plan: chapter {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length, title: t(next.title) })) : t("City Plan: the last chapter!"))}</small></li>`;
+    <small>${esc(next ? (HAS_CITY ? t("City Hall level {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length + 1, title: t(next.title) }) : t("City Plan: chapter {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length, title: t(next.title) })) : t("City Plan: the last chapter!"))}</small></li>`;
 }
 
 function goalsHtml(save: SaveData, c: Chapter): string {
-  return planRoad(save) + (HAS_CITY ? `<li class="plan-to"><b>${esc(t("To reach Town Hall level {n}:", { n: chapterIndex(save) + 2 }))}</b></li>` : "") + opensHtml(chapterIndex(save) + 2) + c.goals.map(g => {
+  return planRoad(save) + (HAS_CITY ? `<li class="plan-to"><b>${esc(t("To reach City Hall level {n}:", { n: chapterIndex(save) + 2 }))}</b></li>` : "") + opensHtml(chapterIndex(save) + 2) + c.goals.map(g => {
     const done = goalDone(save, g);
     return `<li class="${done ? "done" : ""}"><span>${done ? "✓" : ""}</span>${esc(goalText(g.text, g.need))}
       <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}</em></li>`;
@@ -138,7 +138,7 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     confetti();
     fireworks(4);
     const next = CHAPTERS[i + 1];
-    show(HAS_CITY ? t("Town Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
+    show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
       () => { if (next) { introduce(save, persist); } after(); });

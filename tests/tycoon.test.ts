@@ -32,12 +32,12 @@ describe("Skyhaven Tycoon", () => {
     expect(s.tycoon.levels.coffee).toBe(1 + n);
   });
 
-  it("has no office-floor limit in the city game: its Town Hall level leads instead", () => {
+  it("has no office-floor limit in the city game: its City Hall level leads instead", () => {
     const s = defaultSave();
     s.tycoon.coins = 1e12;
     expect(FLOOR_LIMIT).toBe(false);
     expect(buyLevels(s, "coffee", FREE_FLOORS + 5)).toBe(FREE_FLOORS + 5); // no cap
-    // The Town Hall opens businesses: the bakery waits for level 2.
+    // The City Hall opens businesses: the bakery waits for level 2.
     s.tycoon.levels.flowers = 1;
     const bakery = BUSINESSES.findIndex(b => b.id === "bakery");
     expect(hallLevel(s)).toBe(1);

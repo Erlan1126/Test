@@ -1665,7 +1665,7 @@ export class App implements DailyHost {
     if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     // (In the town, Pip's chapter waits until the first steps there are done.)
     // (In the city game the bottom card is the one guide: it shows the City Plan, and the
-    // Town Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
+    // City Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
     if (!HAS_CITY && playerStarted(save) && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
     $("rules").hidden = p.towers >= 3;
     $("menu").classList.toggle("returning", p.towers >= 1);

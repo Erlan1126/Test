@@ -16,9 +16,9 @@ export function landOnSale(s: SaveData): LandPlot | null {
   if (!l || (HAS_CITY && hallLevel(s) < landHall(l.id))) return null;
   return l;
 }
-/** The Town Hall level a district goes on sale at (the city game). */
+/** The City Hall level a district goes on sale at (the city game). */
 export const landHall = (id: LandId): number => LAND_HALL[LAND.findIndex(l => l.id === id)] ?? 1;
-/** The next district, waiting for a higher Town Hall (null when none is waiting). */
+/** The next district, waiting for a higher City Hall (null when none is waiting). */
 export function landWaiting(s: SaveData): LandPlot | null {
   if (!HAS_CITY) return null;
   const l = LAND.find(x => !s.land.includes(x.id));

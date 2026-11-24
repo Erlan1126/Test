@@ -67,7 +67,7 @@ export interface TycoonHost {
   canCity(): boolean;
   /** Flies the camera over the business district (or back). */
   setBizFocus(on: boolean): void;
-  /** Opens Mayor Pip's story (the Town Hall). */
+  /** Opens Mayor Pip's story (the City Hall). */
   openStory(): void;
   /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
@@ -772,7 +772,7 @@ export class TycoonUI {
       if (!unlockedBusiness(s, i)) {
         const b0 = BUSINESSES[i], land = b0.land ? LAND.find(l => l.id === b0.land) : null, p = prevBusiness(i);
         if (land && !s.land.includes(land.id)) return t("Why? It's in the {land}: buy the {land} first.", { land: t(land.name) });
-        if (hallLocked(s, b0.id)) return t("Why? It opens when the Town Hall reaches level {n}. Tap the Town Hall to see what it needs.", { n: hallNeed(b0.id) });
+        if (hallLocked(s, b0.id)) return t("Why? It opens when the City Hall reaches level {n}. Tap the City Hall to see what it needs.", { n: hallNeed(b0.id) });
         return t("Why? Open the {prev} first: businesses open one after another.", { prev: t(BUSINESSES[Math.max(0, p)].name) });
       }
       const lv = levelOf(s, id), room = Math.max(1, freeFloors(s));
@@ -836,7 +836,7 @@ export class TycoonUI {
     return { steps, done };
   }
 
-  /** What a Town Hall level opens, in one line ("" if nothing new). */
+  /** What a City Hall level opens, in one line ("" if nothing new). */
   opensLine(level: number): string {
     const names = hallOpens(level).map(b => t(b.name));
     const land = LAND.find(l => landHall(l.id) === level);
@@ -848,7 +848,7 @@ export class TycoonUI {
   private planLabel(): string {
     const s = this.save, ci = chapterIndex(s), ch = CHAPTERS[ci];
     if (!ch) return esc(t("Next step"));
-    return `${esc(t("Town Hall Lv {n} → {next} · {title}", { n: ci + 1, next: ci + 2, title: t(ch.title) }))}<span class="first-dots">${ch.goals.map(g => `<i class="${goalDone(s, g) ? "ok" : ""}"></i>`).join("")}</span>`;
+    return `${esc(t("City Hall Lv {n} → {next} · {title}", { n: ci + 1, next: ci + 2, title: t(ch.title) }))}<span class="first-dots">${ch.goals.map(g => `<i class="${goalDone(s, g) ? "ok" : ""}"></i>`).join("")}</span>`;
   }
 
   /** The step toward the current chapter's first unfinished goal, when there's one to take. */
@@ -927,7 +927,7 @@ export class TycoonUI {
     }
     // Rewards waiting and a finished chapter.
     if (!$("collect-chip").hidden) return { text: $("collect-chip").textContent ?? "", sub: t("Tap to collect"), tone: "gift", act: () => $("collect-chip").click() };
-    if ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden) return { text: t("Upgrade the Town Hall to level {n}!", { n: hallLevel(s) + 1 }), sub: this.opensLine(hallLevel(s) + 1) || t("Tap to celebrate with Mayor Pip"), tone: "gift", act: () => $("mayor-strip").click() };
+    if ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden) return { text: t("Upgrade the City Hall to level {n}!", { n: hallLevel(s) + 1 }), sub: this.opensLine(hallLevel(s) + 1) || t("Tap to celebrate with Mayor Pip"), tone: "gift", act: () => $("mayor-strip").click() };
     // Live moments: a golden customer beats everything.
     if (live.golden) return { text: t("✨ A golden customer is at {name}!", { name: nameOf(live.golden) }), sub: t("Catch them before they leave: {n}s", { n: Math.max(0, Math.ceil((this.golden.until - Date.now()) / 1000)) }), tone: "gold", act: () => this.catchGolden() };
     if (live.vip) return { text: t("A VIP is at {name}!", { name: nameOf(live.vip) }), sub: t("Tap them for a big tip"), tone: "hot", act: select(live.vip) };
@@ -988,14 +988,14 @@ export class TycoonUI {
         .filter(h => h.lv < PROP_MAX && h.price <= ty.coins).sort((a, b) => a.price - b.price)[0];
       if (best) return { text: t("Grow a building in town"), sub: t("{tier} → {next} · {n}", { tier: t(PROP_TIERS[best.lv]), next: t(PROP_TIERS[best.lv + 1]), n: coins(best.price) }), tone: "grow", act: () => this.selectProp(best.key) };
     }
-    // The next business waits for the Town Hall: the story's next level is the step.
+    // The next business waits for the City Hall: the story's next level is the step.
     const hi = BUSINESSES.findIndex(b => !b.land && hallLocked(s, b.id));
     if (ni < 0 && hi >= 0) {
       const hb = BUSINESSES[hi];
-      return { text: t("Town Hall level {n} opens the {name}", { n: hallNeed(hb.id), name: t(hb.name) }), sub: t("Finish Mayor Pip's goals to grow the Town Hall"), tone: "grow", act: () => this.host.openStory() };
+      return { text: t("City Hall level {n} opens the {name}", { n: hallNeed(hb.id), name: t(hb.name) }), sub: t("Finish Mayor Pip's goals to grow the City Hall"), tone: "grow", act: () => this.host.openStory() };
     }
     const lw = ni < 0 ? landWaiting(s) : null;
-    if (lw) return { text: t("Town Hall level {n} opens the {name}", { n: landHall(lw.id), name: t(lw.name) }), sub: t("Finish Mayor Pip's goals to grow the Town Hall"), tone: "grow", act: () => this.host.openStory() };
+    if (lw) return { text: t("City Hall level {n} opens the {name}", { n: landHall(lw.id), name: t(lw.name) }), sub: t("Finish Mayor Pip's goals to grow the City Hall"), tone: "grow", act: () => this.host.openStory() };
     // Saving up: what for, and how far along.
     if (ni >= 0) {
       const b = BUSINESSES[ni], price = costOf(b, 0, 1);
@@ -1040,10 +1040,10 @@ export class TycoonUI {
       .sort((a, b) => (a.key === this.selectedProp ? -1 : b.key === this.selectedProp ? 1 : a.price - b.price)).slice(0, 3)
       .map(h => `<button type="button" class="tag bub prop-up${h.key === this.selectedProp ? " sel" : ""}" data-tag="prop-${h.key}" data-i="${-100 - h.idx}" data-h="-1" aria-label="${esc(t("Upgrade this building"))}"><span class="tag-ico">${h.key === this.selectedProp ? "🏠" : "⬆"}</span>${h.key === this.selectedProp ? `<b>${esc(t("Lv {n}", { n: h.lv }))}</b>` : ""}</button>`).join("");
     this.labelsDirty = true;
-    // The Town Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
+    // The City Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
     // is ready to finish).
     const ci = chapterIndex(s), ch = CHAPTERS[ci], ready = !!ch && chapterReady(s);
-    const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(t("Town Hall"))}"><span class="tag-ico">${ready ? "⬆️" : "🏛️"}</span><b>${esc(ready ? t("Upgrade ready!") : t("Town Hall · Lv {n}", { n: hallLevel(s) }))}</b></button>` : "";
+    const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(t("City Hall"))}"><span class="tag-ico">${ready ? "⬆️" : "🏛️"}</span><b>${esc(ready ? t("Upgrade ready!") : t("City Hall · Lv {n}", { n: hallLevel(s) }))}</b></button>` : "";
     // Only one business says "Open" in red at a time: the one to open next (the cheapest
     // waiting; the tapped one if the player picked another). The rest wait as small grey "+",
     // so a new player knows where to begin.
@@ -1053,8 +1053,8 @@ export class TycoonUI {
     this.put($("tcy-labels"), hallTag + starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
-      // (The next business waiting for the Town Hall: a lock with the level it needs.)
-      if (!owned && !open && !b.land && hallLocked(s, b.id) && shownBusiness(s, i)) return `<button type="button" class="tag bub lease hall-lock" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("Town Hall level {n}", { n: hallNeed(b.id) }))}"><span class="tag-ico">🔒</span><b>${esc(t("Town Hall Lv {n}", { n: hallNeed(b.id) }))}</b></button>`;
+      // (The next business waiting for the City Hall: a lock with the level it needs.)
+      if (!owned && !open && !b.land && hallLocked(s, b.id) && shownBusiness(s, i)) return `<button type="button" class="tag bub lease hall-lock" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("City Hall level {n}", { n: hallNeed(b.id) }))}"><span class="tag-ico">🔒</span><b>${esc(t("City Hall Lv {n}", { n: hallNeed(b.id) }))}</b></button>`;
       if (!owned && !open) return "";
       if (!owned && b.id !== nextOpen) return `<button type="button" class="tag bub lease later" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("For lease"))}"><span class="tag-ico">+</span></button>`;
       if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))} · ${esc(coins(costOf(b, 0, 1)))}</b></button>`;
@@ -1425,7 +1425,7 @@ export class TycoonUI {
     // Buying: how many (one tap each), and the big button with what it adds.
     const amts = ([1, 10, 100, "max"] as const).map(a => `<button type="button" data-card="amt" data-n="${a}" aria-pressed="${this.amount === a}">${a === "max" ? "MAX" : "×" + a}</button>`).join("");
     const lockedHall = !owned && hallLocked(s, b.id);
-    const main = lockedHall ? `<button type="button" class="card-main hall-lock" data-card="hall"><b>🔒 ${esc(t("Town Hall level {n}", { n: hallNeed(b.id) }))}</b><small>${esc(t("Grow the Town Hall to open it"))}</small></button>`
+    const main = lockedHall ? `<button type="button" class="card-main hall-lock" data-card="hall"><b>🔒 ${esc(t("City Hall level {n}", { n: hallNeed(b.id) }))}</b><small>${esc(t("Grow the City Hall to open it"))}</small></button>`
       : noRoom ? `<button type="button" class="card-main floors" data-card="build"><b>${esc(t("Build more floors"))}</b><small>${esc(t("Your offices are full"))}</small></button>`
       : `<button type="button" class="card-main${canBuy ? "" : " short"}" data-card="buy"><b>${esc(owned ? t("Buy {n}", { n: amountLabel }) : t("Open it"))}</b><small>${COIN_SVG}${esc(coins(price))}${owned ? ` · ${esc(t("+{n} a sale", { n: coins(perLv0 * n) }))}` : ""}</small></button>`;
     // The big tiles: sell, the manager, growing, every business.
@@ -2644,7 +2644,7 @@ export class TycoonUI {
   /** Office floors in use, and the button to build more. */
   private renderOffice(): void {
     const s = this.save, total = officeFloors(s), used = usedFloors(s);
-    // (The city game has no office floors: its Town Hall level leads instead.)
+    // (The city game has no office floors: its City Hall level leads instead.)
     ($("ty-floors").closest(".ty-office") as HTMLElement).hidden = !FLOOR_LIMIT;
     if (!FLOOR_LIMIT) return;
     $("ty-floors").textContent = t("{used} of {total} used", { used: fmt(used), total: fmt(total) });
@@ -2802,16 +2802,16 @@ export class TycoonUI {
     el.hidden = !this.inCity || this.story.stage === "arrive" || (!s.cafe.starter && usedFloors(s) < 2);
     if (el.hidden) return;
     if (HAS_CITY) {
-      // The city game: the Town Hall badge, its level in the middle and a ring that fills
-      // with the goals of the next level (the town's rank comes with the Town Hall).
+      // The city game: the City Hall badge, its level in the middle and a ring that fills
+      // with the goals of the next level (the town's rank comes with the City Hall).
       const ci = chapterIndex(s), ch = CHAPTERS[ci], got = ch ? ch.goals.filter(g => goalDone(s, g)).length : 0, all = ch ? ch.goals.length : 1;
       const hv = `h${hallLevel(s)}|${got}|${rk}|${getLang()}`;
       if (el.dataset.v === hv) return;
       el.dataset.v = hv;
       el.innerHTML = `<span class="tg-ring" style="--k:${((ch ? got / all : 1) * 360).toFixed(1)}deg"><span class="tg-ico">${iconSvg("building")}</span><b class="tg-lv">${hallLevel(s)}</b></span>`
         + `<span class="tg-main"><b>${esc(t(RANKS[rk].name))}</b>`
-        + (ch ? `<em class="tg-next">${esc(t("Town Hall goals {n}/{total}", { n: got, total: all }))}</em>` : `<em class="tg-next">★ ${esc(t("Top rank"))}</em>`) + `</span>`;
-      el.setAttribute("aria-label", t("Town Hall level {n}", { n: hallLevel(s) }));
+        + (ch ? `<em class="tg-next">${esc(t("City Hall goals {n}/{total}", { n: got, total: all }))}</em>` : `<em class="tg-next">★ ${esc(t("Top rank"))}</em>`) + `</span>`;
+      el.setAttribute("aria-label", t("City Hall level {n}", { n: hallLevel(s) }));
       return;
     }
     const used = usedFloors(s), from = RANKS[rk].at;
@@ -3021,7 +3021,7 @@ export class TycoonUI {
       mayorNote(t("Skyhaven is now a {name}!", { name: t(r.name) }),
         t("{unlock}. And every business earns {pct}% more for good. Go take a look!", { unlock: t(r.unlock), pct: Math.round(RANK_BONUS * 100) })
         + (rk === ANNEX_RANK ? " " + t("And the little island next door has floated up: it's ready for you to build on!") : "")
-        + (RANKS[rk + 1] ? " " + (HAS_CITY ? t("Next: a {name} when the Town Hall reaches level {n}.", { name: t(RANKS[rk + 1].name), n: rankHall(rk + 1) }) : t("Next rank: {name} at {n} business levels.", { name: t(RANKS[rk + 1].name), n: fmt(RANKS[rk + 1].at) })) : ""),
+        + (RANKS[rk + 1] ? " " + (HAS_CITY ? t("Next: a {name} when the City Hall reaches level {n}.", { name: t(RANKS[rk + 1].name), n: rankHall(rk + 1) }) : t("Next rank: {name} at {n} business levels.", { name: t(RANKS[rk + 1].name), n: fmt(RANKS[rk + 1].at) })) : ""),
         t("Let's see!"));
     };
     window.setTimeout(note, 2500);
@@ -3069,7 +3069,7 @@ export class TycoonUI {
     {
       // The town first: where Skyhaven stands, and what it's growing toward.
       const rk = townRank(this.save), nx = RANKS[rk + 1], used = usedFloors(this.save);
-      $("welcome-town").textContent = nx && HAS_CITY ? t("Skyhaven is a {rank}. At Town Hall level {n} it becomes a {next}: {unlock}.", { rank: t(RANKS[rk].name), n: rankHall(rk + 1), next: t(nx.name), unlock: t(nx.unlock) })
+      $("welcome-town").textContent = nx && HAS_CITY ? t("Skyhaven is a {rank}. At City Hall level {n} it becomes a {next}: {unlock}.", { rank: t(RANKS[rk].name), n: rankHall(rk + 1), next: t(nx.name), unlock: t(nx.unlock) })
         : nx ? t("Skyhaven is a {rank}. {left} more business levels and it becomes a {next}: {unlock}.", { rank: t(RANKS[rk].name), left: fmt(Math.max(1, nx.at - used)), next: t(nx.name), unlock: t(nx.unlock) })
         : t("Skyhaven is the capital of the sky. Keep it growing!");
     }
