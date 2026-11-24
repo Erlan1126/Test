@@ -190,6 +190,8 @@ function swingHold(down) {
     if (!R.teth && !swingAttach(R)) {
       // On a rooftop with nothing in reach: jump. Keep holding and you grab the ringed light as soon as it's in reach.
       if (R.roof) { R.roof = null; R.py += 0.1; R.vy = 16; R.vx = Math.max(R.vx, 12); R.dust = { x: R.px, y: R.py, t: 0, k: 0.8 }; R.jumpT = 0.3; if (!R.attract) { sfx.jump(); buzz(6); } }
+      // In the air with nothing in reach: an air dash, forward and up (one per grab). Keep holding to grab.
+      else if (R.dashes > 0) { R.dashes--; R.dashT = 0.35; R.vy = Math.max(R.vy, 13); R.vx = Math.min(SWING.MAXV, Math.max(R.vx, 10) + 3); R.spinV = 0; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: null }); if (!R.attract) { sfx.whoosh(18); buzz(6); if (!R.dashTip && !R.tut) { R.dashTip = true; runMsg("Air dash!", "Tap in the air when nothing's in reach", 1.6); } } }
       else R.grabBuf = 0.25;
     }
     return;
@@ -332,7 +334,7 @@ function runnerUpdate(dt) {
         if (!R.roof && R.vy < -6) R.dust = { x: R.px, y: b.h, t: 0, k: Math.min(1, -R.vy / 20) };
         if (!R.roof && !R.attract && !R.roofTip && !R.tut) { R.roofTip = true; runMsg("Tap to jump", "Then hold to grab the ringed light", 1.6); }
         if (!R.roof && R.vy < -14) { R.kick = 0.4; if (!R.attract) sfx.land(); }
-        R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0;
+        R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0; R.dashes = 1;
         if (b.pad) { R.roof = null; R.vy = 24; R.vx = Math.max(R.vx, 14); R.padT = 0.5; b.padHit = R.t; R.bursts.push({ x: R.px, y: b.h, t: 0, c: 0xff5ad2, big: true }); if (!R.attract) { sfx.jump(); buzz(12); if (!R.padMsg) { R.padMsg = true; runBonus("Boing! Neon pad", 0, R.dist + 2, R.x); } } }
       } else if (ox < b.x0) {
         // Wall run: up the wall and over the top.
