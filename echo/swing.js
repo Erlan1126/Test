@@ -128,7 +128,7 @@ function swingGen(R, toX) {
       if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS).filter(k => !(R.stageLen && k === "comet")); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
       else if (!R.attract && !R.tut && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
       // Drones patrol between some anchors later on.
-      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < 0.12 + hard * 0.26) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
+      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < 0.06 + hard * 0.12) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
     }
     // One building (or a tree in the park), never so tall that it blocks the anchors.
     const gap = (th.water ? 6 : 3) + r() * (th.water ? 10 : 7) + (r() < 0.12 ? 8 : 0), w = 9 + r() * 10, x0 = R.genX + gap, x1 = x0 + w;
@@ -379,7 +379,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  R.darkX += (R.stageLen ? (4.5 + R.stageInfo.hard * 8) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.35 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.2 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
@@ -430,9 +430,10 @@ function runnerUpdate(dt) {
   // Hazards: live wires and drones.
   for (const z of R.haz) {
     if (z.kind === "wire") { if (R.px > z.x0 && R.px < z.x1 && R.py < z.y + 0.4 && R.py + 1.7 > z.y && !comet) { z.hit = true; swingHit(R, "Zap!"); } }
-    else if (z.kind === "drone") {
+    else if (z.kind === "drone" && !z.dead) {
       z.y = z.y0 + Math.sin(R.t * 1.4 + z.ph) * z.amp; const d = Math.hypot(z.x - R.px, z.y - R.py - 0.9);
-      if (d < 1.5 && !comet) swingHit(R, "Drone!");
+      // A drone that hits you breaks apart: one hit per drone, never the same one twice.
+      if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
       else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
     }
   }
