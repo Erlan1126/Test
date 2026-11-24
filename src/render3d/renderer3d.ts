@@ -954,7 +954,25 @@ export class Renderer3D {
     // The player's own view (drag to look around, pinch to zoom), unless the game is showing
     // something (a close-up, a landmark, a tapped building). Along the town it never slides
     // off; across, it can move only as far as the zoom leaves room.
-    const picked = si >= 0 || !!home || !!sight;
+    let picked = si >= 0 || !!home || !!sight;
+    // A tap on a building no longer swings the camera away: if the building is already in
+    // view above the card, the camera stays put; only one hidden under the card or off the
+    // screen brings the camera over. Closing the card leaves the camera where it is.
+    {
+      const key = si >= 0 ? `b${si}` : home ? `h${hk}` : sight ? `s${sk}` : "";
+      if (key !== this.selKey) {
+        if (key) {
+          const at = si >= 0 ? (() => { const db = this.biz!.bizAt(si); return db ? { x: db.x, z: db.z, y: db.y } : { ...lotPos(si), y: 0 }; })() : (home ?? sight)!;
+          const v = new THREE.Vector3(BIZ_SLOT.x + at.x, BIZ_SLOT.y + (at.y ?? 0) + 0.8, BIZ_SLOT.z + at.z).project(this.cam);
+          const sx = (v.x + 1) / 2, sy = (1 - v.y) / 2;
+          this.selStay = sx > 0.08 && sx < 0.92 && sy > 0.16 && sy < 0.56;
+        } else this.selStay = false;
+        // (Whatever the camera shows right now becomes the player's own view: no jump back.)
+        if (this.bizK > 0.5) { const held = this.camUser.drag; this.grabTown(); this.camUser.drag = held; this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom; }
+        this.selKey = key;
+      }
+      if (picked && this.selStay) { picked = false; this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom; }
+    }
     // A crane over everything being built (a home upgrade, a new district).
     this.cranes(f.bizLive?.building ?? []);
     // The selected building glows: a pulsing ring on the ground under it.
@@ -975,6 +993,7 @@ export class Renderer3D {
       } else if (this.selRing) this.selRing.visible = false;
     }
     const cu = this.camUser, mine = cu.on && !framing && !lm && !picked;
+    // (Staying put on a tapped building: the targets set above are replaced by the view.)
     this.bizBase.zoom = fo.zoom;
     // Momentum: after a flick the town keeps gliding and slows to a stop.
     if (mine && !cu.drag && (cu.vs || cu.vt)) {
@@ -1037,6 +1056,10 @@ export class Renderer3D {
   /** The player's own look at the town: an offset along (s) and across (t) the island from
    *  where the game would look, and a zoom on top of the game's. */
   private camUser = { on: false, drag: false, ds: 0, dt: 0, zoom: 1, vs: 0, vt: 0, at: 0 };
+  /** The tapped building (or home, or sight) the camera last reacted to, and whether it chose
+   *  to stay put for it. */
+  private selKey = "";
+  private selStay = false;
   /** Where the game itself would look (along/across the island) and its zoom, so the
    *  player's own view starts exactly where the camera is (no jump on the first touch). */
   private bizBase = { s: 0, t: 0, zoom: 1 };
@@ -1120,6 +1143,14 @@ export class Renderer3D {
   bizHomes(): string[] { return this.biz && this.bizK >= 0.5 ? this.biz.homes().map(h => h.key) : []; }
   /** Everything else in the city worth a tap (index k is bizScreen(-1000 - k)). */
   bizSights(): { kind: string; key: string }[] { return this.biz && this.bizK >= 0.5 ? this.biz.sights().map(s => ({ kind: s.kind, key: s.key })) : []; }
+  /** The canvas's place on the page, measured once a frame (not once per bubble). */
+  private rectAt = -1;
+  private rect: DOMRect | null = null;
+  private canvasRect(): DOMRect {
+    const now = performance.now();
+    if (!this.rect || now - this.rectAt > 250) { this.rect = this.gl.domElement.getBoundingClientRect(); this.rectAt = now; }
+    return this.rect;
+  }
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     if (!this.biz || this.bizK < 0.5) return null;
     // (-100 and below: the town's properties.)
@@ -1135,7 +1166,7 @@ export class Renderer3D {
     const db = i >= CITY_LOTS ? this.biz.bizAt(i) : null;
     if (i >= CITY_LOTS && !db) return null;
     if (db && height < 0) height = db.top + 0.5;
-    const { x, z } = db ?? home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : i === -5 ? this.biz.spot("bottle") : lotPos(i)), r = this.gl.domElement.getBoundingClientRect();
+    const { x, z } = db ?? home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : i === -5 ? this.biz.spot("bottle") : lotPos(i)), r = this.canvasRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;
     // (Things on a higher island stand that much higher.)

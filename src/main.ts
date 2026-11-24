@@ -40,10 +40,18 @@ if (new URLSearchParams(location.search).has("debug")) (window as unknown as { _
   if (!document.body.classList.contains("webgl")) setTimeout(done, 600); // the flat graphics draw at once
   setTimeout(done, 4500);
 }
+let vibrateAt = 0, vibrateOn = true;
 // A light haptic tap on every button, so the whole app feels the same under your finger.
 document.addEventListener("pointerdown", e => {
   // (Only when vibration is on in Settings: the setting is read from the save each time.)
   if (!(e.target as Element).closest?.("button:not(:disabled)")) return;
-  try { if (JSON.parse(localStorage.getItem("skyrise.save.v2") ?? "{}")?.settings?.vibrate === false) return; } catch { /* no save */ }
+  // (The setting is checked at most every few seconds: reading the whole save on every press
+  // made taps feel slow on phones.)
+  const now = Date.now();
+  if (now - vibrateAt > 3000) {
+    vibrateAt = now;
+    try { vibrateOn = JSON.parse(localStorage.getItem("skyrise.save.v2") ?? "{}")?.settings?.vibrate !== false; } catch { vibrateOn = true; }
+  }
+  if (!vibrateOn) return;
   haptic("tap");
 }, { passive: true });

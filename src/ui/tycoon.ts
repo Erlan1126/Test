@@ -1194,6 +1194,7 @@ export class TycoonUI {
   }
 
   /** Keeps each tag floating over its building as the camera moves. */
+  private tagSize = new WeakMap<HTMLElement, { w: number; h: number }>();
   private placeTags(): void {
     // (All reads first, then all writes: reading a size after moving a tag would make the
     // browser lay the page out again for every tag, every frame, which is what made dragging
@@ -1202,7 +1203,11 @@ export class TycoonUI {
     for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) {
       const p = this.host.bizScreen(Number(tag.dataset.i), Number(tag.dataset.h));
       if (!p) { hide.push(tag); continue; }
-      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: tag.offsetWidth || 44, h: (tag.offsetHeight || 40) + 6 });
+      // (A bubble's size is measured once, when it's made or changes, not every frame.)
+      let sz = this.tagSize.get(tag);
+      // (New content means new bubble elements, so the cache can't go stale.)
+      if (!sz || !sz.w) { sz = { w: tag.offsetWidth, h: tag.offsetHeight + 6 }; if (sz.w) this.tagSize.set(tag, sz); else sz = { w: 44, h: 46 }; }
+      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: sz.w, h: sz.h });
     }
     for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
     // Front buildings keep their spot; a bubble that would sit on another moves up a little.
