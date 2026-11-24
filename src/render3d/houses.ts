@@ -26,11 +26,15 @@ function rng(seed: number): () => number {
   return next;
 }
 /** Which design a lot gets, spread evenly over `n` designs. */
-const design = (seed: number, level: number, n: number) => (Math.imul((Math.floor(seed) | 0) ^ (level * 7919), 2246822519) >>> 16) % n;
+const designOf = (seed: number, level: number, n: number) => (Math.imul((Math.floor(seed) | 0) ^ (level * 7919), 2246822519) >>> 16) % n;
 
 /** Builds a building for a lot into `G` (front facing +z, standing on y = y0). Levels: 1 houses,
  *  2 shops and terraces, 3 apartment blocks, 4 offices, 5 skyscrapers. Returns its height. */
-export function buildHouse(G: THREE.Group, seed: number, level: number, k: HouseKit, y0 = 0.06): number {
+export function buildHouse(G: THREE.Group, seed: number, level: number, k: HouseKit, y0 = 0.06, at?: [number, number]): number {
+  // (Lots on a grid pick their design from where they stand, so the buildings next door,
+  // in front and behind are never the same design: one step along a row moves one design
+  // on, one step across moves two.)
+  const design = (sd: number, lvl: number, n: number) => (at ? (((at[0] + 2 * at[1] + lvl * 5) % n) + n) % n : designOf(sd, lvl, n));
   const r = rng(seed + level * 101), pick = <T,>(a: T[]) => a[Math.floor(r() * a.length) % a.length];
   const T = (geo: THREE.BufferGeometry, m: THREE.Material) => { G.add(new THREE.Mesh(geo, m)); };
   const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material) => T(new THREE.BoxGeometry(w, h, d).translate(x, y0 + y + h / 2, z), m);
@@ -355,7 +359,25 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
   }
 
   if (lv === 3) {
-    const v3 = design(seed, 3, 3);
+    const v3 = design(seed, 3, 4);
+    if (v3 === 3) {
+      // A colourful block: a facade of coloured panels round deep loggias, a glazed corner.
+      const W = 2.9, D = 2.3, floors = 5 + Math.floor(r() * 2), fh = 0.5, gh = 0.55;
+      const cols = [pick(["#e86a4a", "#f2a62a", "#4a9ad8", "#5ab87a", "#d85a8a", "#8a6ad8"]), pick(["#f6e2a0", "#cfe0ee", "#f2cfc4", "#d6e6c8"])].map(c => k.c(c, 0.75));
+      box(W, gh, D, 0, 0, 0, k.c("#2e333c", 0.5));
+      box(W - 0.4, gh - 0.1, 0.03, 0, 0.04, D / 2 + 0.01, k.win);
+      box(W, floors * fh, D, 0, gh, 0, k.c("#f2f0ea", 0.85));
+      for (let f = 0; f < floors; f++) for (let b = 0; b < 4; b++) {
+        const x = -W / 2 + (b + 0.5) * (W / 4), y = gh + f * fh;
+        if ((b + f) % 2 === 0) { box(W / 4 - 0.04, fh - 0.06, 0.04, x, y + 0.03, D / 2 + 0.02, cols[(b + f) % 4 === 0 ? 0 : 1]); windowAt(x, y + 0.12, D / 2 + 0.04, 0.3, 0.28, "z", 1, { bars: false, sill: false }); }
+        else { box(W / 4 - 0.1, fh - 0.12, 0.2, x, y + 0.06, D / 2 - 0.1, k.win); box(W / 4 - 0.06, 0.18, 0.02, x, y + 0.03, D / 2 + 0.01, k.c("#bfe0f0", 0.1, 0.3)); }
+      }
+      for (let f = 0; f < floors; f++) { box(0.04, fh - 0.1, D - 0.5, W / 2 + 0.005, gh + f * fh + 0.05, 0, k.win); box(0.04, fh - 0.1, D - 0.5, -W / 2 - 0.005, gh + f * fh + 0.05, 0, k.win); }
+      const top = gh + floors * fh;
+      box(W + 0.1, 0.1, D + 0.1, 0, top, 0, cols[0]);
+      flatTop(W, D, top + 0.1);
+      return top + 0.45 + y0;
+    }
     if (v3 === 1) {
       // A modern block: white bands of floor slabs, ribbon windows, wrap-round glass balconies
       // on one corner, a coloured feature strip and a roof garden.
@@ -441,7 +463,22 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
     return yb + floors * fh;
   };
   if (lv === 4) {
-    const v4 = design(seed, 4, 3);
+    const v4 = design(seed, 4, 4);
+    if (v4 === 3) {
+      // A terraced office: two glass volumes, the upper one set back, with green roof terraces.
+      const W = 2.8, D = 2.6, f1 = 4 + Math.floor(r() * 2), f2 = 4 + Math.floor(r() * 3), fh = 0.44;
+      box(W + 0.1, 0.6, D + 0.1, 0, 0, 0, k.c("#cfc8bc", 0.75));
+      box(W - 0.3, 0.45, 0.03, 0, 0.08, D / 2 + 0.06, k.win);
+      let top = tower(W, D, 0.6, f1, fh);
+      box(W + 0.06, 0.08, D + 0.06, 0, top, 0, k.c("#e8e4da", 0.6));
+      box(W - 0.2, 0.06, D * 0.4, 0, top + 0.08, D * 0.28, k.c("#6aa84a", 0.95));
+      for (let i = 0; i < 5; i++) T(new THREE.SphereGeometry(0.12, 8, 6).scale(1, 0.8, 1).translate(-1.0 + i * 0.5, y0 + top + 0.2, D * 0.33), k.c("#3a8a3a", 0.9));
+      box(W - 0.1, 0.25, 0.02, 0, top + 0.08, D / 2 + 0.02, k.c("#bfe0f0", 0.1, 0.3));
+      const t2 = tower(W * 0.72, D * 0.55, top + 0.08, f2, fh);
+      box(W * 0.72 + 0.06, 0.1, D * 0.55 + 0.06, 0, t2, 0, k.c("#e8e4da", 0.6));
+      flatTop(W * 0.72, D * 0.55, t2 + 0.1, 0, 0, true);
+      return t2 + 0.5 + y0;
+    }
     if (v4 === 1) {
       // A concrete office with deep vertical fins and a grid of windows, on a dark glass base.
       const W = 2.7, D = 2.5, floors = 7 + Math.floor(r() * 4), fh = 0.42, con = k.c(pick(["#e4e0d8", "#d8d4cc", "#ece8e0"]), 0.8);
@@ -487,7 +524,24 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
     flatTop(W, D, top + 0.1, 0, 0, true);
     return top + 0.5 + y0;
   }
-  const v5 = design(seed, 5, 3);
+  const v5 = design(seed, 5, 4);
+  if (v5 === 3) {
+    // A twisting tower: stacked floor plates, each turned a little more, with a golden crown.
+    const floors = 22 + Math.floor(r() * 6), fh = 0.4, gold = k.c("#e8b020", 0.3, 0.8);
+    box(2.9, 0.8, 2.9, 0, 0, 0, k.c("#d8d2c6", 0.75));
+    box(2.4, 0.6, 0.03, 0, 0.06, 1.46, k.win);
+    for (let f = 0; f < floors; f++) {
+      const y = 0.8 + f * fh, a = f * 0.035;
+      const slab = new THREE.BoxGeometry(2.2, 0.06, 2.2).rotateY(a).translate(0, y0 + y, 0);
+      T(slab, k.c("#e8ecf0", 0.4, 0.3));
+      T(new THREE.BoxGeometry(2.12, fh - 0.06, 2.12).rotateY(a).translate(0, y0 + y + fh / 2 + 0.01, 0), glass);
+      T(new THREE.BoxGeometry(2.13, fh * 0.45, 2.13).rotateY(a).translate(0, y0 + y + fh * 0.55, 0), k.win);
+    }
+    const top = 0.8 + floors * fh;
+    T(new THREE.CylinderGeometry(0.6, 1.0, 0.6, 8).rotateY(floors * 0.035).translate(0, y0 + top + 0.3, 0), gold);
+    T(new THREE.ConeGeometry(0.1, 1.6, 8).translate(0, y0 + top + 1.4, 0), gold);
+    return top + 2.2 + y0;
+  }
   if (v5 === 1) {
     // A round glass tower: rings of floor bands, a crown ring and a spire.
     const R = 1.25, floors = 18 + Math.floor(r() * 8), fh = 0.4;

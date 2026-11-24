@@ -2052,7 +2052,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const houseKit: HouseKit = { c: (c, r = 0.7, m = 0) => mats.c(c, r, m), win: winMat };
   /** A building on a lot, drawn in code (houses.ts), sized by level: a house at first, then a
    *  shop or terrace, flats, an office block, then a skyscraper. Its height. */
-  const kitBuilding = (lg: THREE.Group, seed: number, level: number): number | null => {
+  const kitBuilding = (lg: THREE.Group, seed: number, level: number, at?: [number, number]): number | null => {
     const sv = Math.abs(seed) >>> 0;
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
     K(lotSlab(), level <= 2 ? grass2 : plazaM);
@@ -2068,7 +2068,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     } else for (const tx of [-1.75, 1.75]) nb.garden("topiary", tx, 0.06, 1.75, 1.3, sv);
     const nm = nb.mesh(); if (nm) lg.add(nm);
     const hg = new THREE.Group();
-    const h = buildHouse(hg, sv, level, houseKit, 0.06);
+    const h = buildHouse(hg, sv, level, houseKit, 0.06, at);
     hg.rotation.y = level <= 2 ? 0 : ((sv >> 3) % 4) * (Math.PI / 2);
     lg.add(hg);
     return h + 0.1;
@@ -2076,7 +2076,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const propBuilding = (lg: THREE.Group, seed: number, level: number, key: string): number => {
     // (Every property has a design of its own for every size: see propgen.ts.)
     let hsh = 0; for (const ch of key) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
-    const top = kitBuilding(lg, hsh + seed, level) ?? genBuilding(lg, hsh + seed, level, genKit);
+    const m = /(-?\d+),(-?\d+)$/.exec(key), at: [number, number] | undefined = m ? [Number(m[1]), Number(m[2])] : undefined;
+    const top = kitBuilding(lg, hsh + seed, level, at) ?? genBuilding(lg, hsh + seed, level, genKit);
     if (landBuiltOnce && (propsSeen[key] ?? 1) < level) {
       lg.userData.dynamic = true;
       const t0 = performance.now() + 250;
@@ -2109,7 +2110,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const ROOF = ["#d9534a", "#5a6fd0", "#e07a9a", "#4f9a5a", "#b8683a", "#7a5ad0"];
   const BRICK = ["#c9775a", "#d89a6a", "#b5655a", "#e0b48a", "#9a7ad0", "#6a9ad0"];
   const neighborhood = (G: THREE.Group, i: number, tall = 0): number => {
-    const kb = kitBuilding(G, i * 31 + 7, tall ? 3 : 1 + (i % 3 === 2 ? 2 : 0));
+    const kb = kitBuilding(G, i * 31 + 7, tall ? 3 : 1 + (i % 3 === 2 ? 2 : 0), [i, 0]);
     if (kb !== null) return kb;
     const K = (geo: THREE.BufferGeometry, m: THREE.Material) => G.add(new THREE.Mesh(geo, m));
     const r = (k: number) => ((i * 7 + k * 13) % 6);
@@ -2329,7 +2330,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       const d = Math.hypot(x - tcx, z - tcz);
       const level = Math.max(1, Math.min(5, rkG - 1 - Math.floor(d / 20) + (h % 3 === 0 ? 1 : 0)));
-      const btop = kitBuilding(lg, h, level);
+      const btop = kitBuilding(lg, h, level, [cell[0], cell[1]]);
       sightAt(x, z, btop ?? 1.6 + level * 0.8, `block${level}`, `g${cell[0]},${cell[1]}`);
       if (btop !== null) { /* built above */ }
       else { P(lotSlab(), grass2); P(new THREE.BoxGeometry(2.6, 1.6 + level * 0.8, 2.6).translate(0, 0.8 + level * 0.4, 0), mats.c(["#f2e6d0", "#e8d8f0", "#d8ecf6", "#f6dcd0"][h % 4], 0.7)); }
