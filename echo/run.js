@@ -300,7 +300,7 @@ function runDraw(ctx, W, H) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
     ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (!R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : runWorld(7 - (R.biome % 8)).name.toUpperCase()).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
     ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : runnerTheme(R.biome * RUN.BIOME_M).name, W / 2, H * 0.26 + W * 0.08);
-    if (R.stageInfo) { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); }
+    if (R.stageInfo) { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); if (R.attempt > 1) { ctx.font = `700 ${Math.round(W * 0.036)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(`Attempt ${R.attempt}`, W / 2, H * 0.26 + W * 0.22); } }
     ctx.globalAlpha = 1;
   }
 

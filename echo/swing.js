@@ -358,6 +358,14 @@ function runnerUpdate(dt) {
       R.streetT = 4;
     }
   }
+  // Arrived: glide in and land on their roof (the physics hands over to a short, gentle flight).
+  if (R.cleared && R.stageLen && R.clearAt != null) {
+    if (!R.glide) R.glide = { x: R.px, y: R.py };
+    const k = Math.min(1, (R.t - R.clearAt) / 0.9), e = k * k * (3 - 2 * k), tx = R.stageLen + 6.5, ty = 17;
+    R.teth = null; R.hold = false; R.px = R.glide.x + (tx - R.glide.x) * e; R.py = R.glide.y + (ty - R.glide.y) * e + Math.sin(e * Math.PI) * 4;
+    R.vx = k < 1 ? 8 : 0; R.vy = 0; R.roof = k >= 1 ? (R.homeRoof || (R.homeRoof = { x0: R.stageLen + 3, x1: R.stageLen + 15, h: 17, home: true })) : null;
+    if (k >= 1 && !R.landedHome) { R.landedHome = true; R.dust = { x: R.px, y: ty, t: 0, k: 0.6 }; }
+  }
   R.spinV *= R.teth || R.roof ? 0.8 : 0.995; R.spin += R.spinV * dt; R.flipT = Math.max(0, (R.flipT || 0) - dt);
   R.phase += dt * Math.max(4, R.vx) * 0.8;
   R.v = Math.hypot(R.vx, R.vy); R.speed = R.v * RUN.M;

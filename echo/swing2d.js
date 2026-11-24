@@ -107,7 +107,7 @@ const SW2D = (() => {
     let tx = R.px + halfW * 0.3 + Math.max(0, Math.min(25, R.vx)) * 0.08, ty = R.py + 3;
     if (aim) ty = ty * 0.8 + (aim.y - 3) * 0.2;
     // Arrived: the camera drifts over to their window.
-    if (R.cleared && R.stageLen) { const k = Math.min(1, (t - (R.clearAt ?? t)) * 0.9); tx = tx + (R.stageLen + 9 - tx) * k; ty = ty + (11 - halfH * 0.38 - ty) * k; }
+    if (R.cleared && R.stageLen) { const k = Math.min(1, (t - (R.clearAt ?? t)) * 0.9); tx = tx + (R.stageLen + 9 - tx) * k; ty = ty + (17 - halfH * 0.4 - ty) * k; /* their roof (you) near the top, their window below it */ }
     if (!R.cleared) ty = Math.max(9, Math.min(60, ty));
     if (!cam || Math.abs(cam.x - tx) > 80) cam = { x: tx, y: ty };
     cam.x += (tx - cam.x) * ease(4); cam.y += (ty - cam.y) * ease(2.6);
@@ -324,7 +324,7 @@ const SW2D = (() => {
     const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N = Math.min(40, scf.len);
     { const e = hist.length >= 48 ? hist.pop() : [0, 0]; e[0] = R.px; e[1] = R.py + 1.75; hist.unshift(e); }
     // On a Perfect chain of 3 or more, the scarf burns gold.
-    const zone = (R.pChain || 0) >= 3, scCol = zone ? [255, 205, 90] : R.od > 0 || scf.c === "prism" ? null : rgbOf(scf.c ?? glowHex);
+    const zone = (R.pChain || 0) >= 3 && !R.cleared, scCol = zone ? [255, 205, 90] : R.od > 0 || scf.c === "prism" ? null : rgbOf(scf.c ?? glowHex);
     ctx.globalCompositeOperation = "lighter";
     for (let q = 0; q < Math.min(N, hist.length) - 1; q++) {
       const a = hist[q], b = hist[q + 1], k = q / N, w = scf.w * s * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)), yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k * s;
@@ -345,6 +345,7 @@ const SW2D = (() => {
       // Pose: hips, chest, head, hands, feet (metres around the figure's centre), then rotated.
       let rot = 0, armA = [-0.5, -0.3], armB = [0.5, -0.3], legA = [-0.25, -0.95], legB = [0.25, -0.95];
       if (R.teth) { const ang = Math.atan2(R.teth.y - R.py - 1.4, R.teth.x - R.px); rot = (ang - Math.PI / 2) * 0.6; armB = [0.1, 1.15]; armA = [-0.45, 0.1]; legA = [-0.35, -0.95]; legB = [0.05, -1]; }
+      else if (R.roof && R.roof.home) { const w = Math.sin(t * 6) * 0.15; armA = [-0.55, 0.75 + w]; armB = [0.55, 0.75 - w]; legA = [-0.25, -0.95]; legB = [0.25, -0.95]; rot = 0; }
       else if (R.roof) { armA = [-0.4 * sn - 0.1, -0.2]; armB = [0.4 * sn + 0.1, -0.2]; legA = [-0.45 * sn, -0.95 + Math.max(0, sn) * 0.2]; legB = [0.45 * sn, -0.95 + Math.max(0, -sn) * 0.2]; rot = -0.2; }
       // In the air: lean into the flight; a Perfect is one clean front flip, not a tumble.
       else { const fk = R.flipT > 0 ? 1 - R.flipT / 0.5 : 1, flip = R.flipT > 0 ? Math.PI * 2 * (fk * fk * (3 - 2 * fk)) : 0; rot = -0.55 * Math.max(-0.4, Math.min(1, R.vx / 24)) + 0.25 * Math.max(-1, Math.min(1, R.vy / 20)) - flip; const tk = R.flipT > 0 ? Math.sin(fk * Math.PI) : 0; armA = [-0.55, 0.35 * (1 - tk)]; armB = [0.55, 0.35 * (1 - tk)]; legA = [-0.3, -0.95 + tk * 0.45]; legB = [0.3, -0.95 + tk * 0.45]; }
@@ -367,8 +368,8 @@ const SW2D = (() => {
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(0xffffff), head[0] - 0.5 * u, head[1] - 0.5 * u, u, u); ctx.globalCompositeOperation = "source-over";
       if (R.power && R.power.kind === "shield") { ctx.strokeStyle = "rgba(90,210,255,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 1.5 * u, 0, Math.PI * 2); ctx.stroke(); }
     }
-    // The finish gate: a pillar of gold light.
-    if (R.stageLen) { const fx = X(R.stageLen); if (fx > -60 && fx < W + 60) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.35 + Math.sin(t * 4) * 0.1; ctx.drawImage(glow([255, 210, 90]), fx - 2.5 * s, -H * 0.2, 5 * s, H * 1.4); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#fff"; ctx.fillRect(fx - 1.5, 0, 3, H); ctx.font = `800 ${Math.round(0.9 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#ffd98a"; ctx.fillText("FINISH", fx, Y(R.py + 8)); }
+    // The finish: a soft column of gold light where their street begins (no sign, no line).
+    if (R.stageLen) { const fx = X(R.stageLen); if (fx > -60 && fx < W + 60 && !R.cleared) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.25 + Math.sin(t * 3) * 0.08; ctx.drawImage(glow([255, 210, 90]), fx - 2 * s, -H * 0.2, 4 * s, H * 1.4); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
       // Their home, just past the finish: a dark window with someone waiting, which lights up warm when you arrive.
       const hx0 = X(R.stageLen + 3), hx1 = X(R.stageLen + 15);
       if (hx1 > -20 && hx0 < W + 20) {
@@ -435,7 +436,7 @@ const SW2D = (() => {
     // Danger: a red glow rising from the bottom when the street is coming and nothing is in reach.
     if (R.danger > 0.01 && !R.attract) { const g = ctx.createLinearGradient(0, H, 0, H * 0.7); g.addColorStop(0, `rgba(255,60,80,${0.45 * R.danger * (0.75 + 0.25 * Math.sin(t * 18))})`); g.addColorStop(1, "rgba(255,60,80,0)"); ctx.fillStyle = g; ctx.fillRect(0, H * 0.7, W, H * 0.3); }
     // The chain count floats by you (x3, x4...), and from x5 the edges of the screen glow gold: in the zone.
-    if ((R.pChain || 0) >= 3 && !R.attract && !R.over) { const n = R.pChain, fx = X(R.px) + 1.6 * s, fy = Y(R.py + 3.2), pop = 1 + Math.max(0, (R.perfT || 0) - 0.2) * 1.2; ctx.font = `900 ${Math.round(1.05 * s * pop)}px Inter, system-ui, sans-serif`; ctx.textAlign = "left"; ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillText(`×${n}`, fx + 1.5, fy + 1.5); ctx.fillStyle = "#ffd25a"; ctx.fillText(`×${n}`, fx, fy);
+    if ((R.pChain || 0) >= 3 && !R.attract && !R.over && !R.cleared) { const n = R.pChain, fx = X(R.px) + 1.6 * s, fy = Y(R.py + 3.2), pop = 1 + Math.max(0, (R.perfT || 0) - 0.2) * 1.2; ctx.font = `900 ${Math.round(1.05 * s * pop)}px Inter, system-ui, sans-serif`; ctx.textAlign = "left"; ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillText(`×${n}`, fx + 1.5, fy + 1.5); ctx.fillStyle = "#ffd25a"; ctx.fillText(`×${n}`, fx, fy);
       if (n >= 5 && !(save.settings && save.settings.calm)) { const k = Math.min(1, (n - 4) / 4) * (0.75 + 0.25 * Math.sin(t * 5)); for (const [x0, x1] of [[0, W * 0.12], [W, W * 0.88]]) { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, `rgba(255,200,80,${0.28 * k})`); g.addColorStop(1, "rgba(255,200,80,0)"); ctx.fillStyle = g; ctx.fillRect(Math.min(x0, x1), 0, W * 0.12, H); } } }
     R.scrAim = aim ? [X(aim.x), Y(aim.y)] : null; R.scrDark = dx;
     return (x, at) => [hx, Y(R.py + 2.6)];

@@ -91,8 +91,12 @@ function startStage(n, opts = {}) {
   if (!info.daily && n > S.unlocked && !opts.race) return;
   const own = !info.daily && S.ghosts[n] ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
+  // Attempts, like a level counter in a rhythm game: every try counts.
+  if (!info.daily) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
   $("stageCard").hidden = true;
+  const attempt = !info.daily && S.att ? S.att[n] : 0;
   startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
+  if (run && run.stage === n) run.attempt = attempt;
   // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
   if (opts.cp && run && run.stage === n) {
     const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
@@ -110,6 +114,7 @@ function stageClear(R) {
   R.stageStars = stars; R.stageTime = time;
   if (R.attract) return;
   const S = stageSave(), n = R.stage, info = R.stageInfo;
+  R.hadStars = !!(S.best[n] && S.best[n].stars);
   let newBest = false;
   if (info.daily) {
     const d = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : (save.dailyStage = { day: dayNumber() });
@@ -136,7 +141,9 @@ function stageClear(R) {
 }
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
-  setTimeout(() => showStageCard(false), 900);
+  // How far you got, and your best on this stage.
+  if (!R.stageInfo.daily) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(R.px / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
+  setTimeout(() => showStageCard(false), 650);
 }
 function showStageCard(won) {
   const R = run; if (!R || !R.stage && R.stage !== 0) return;
@@ -144,14 +151,15 @@ function showStageCard(won) {
   $("stTitle").textContent = info.daily ? "Daily stage" : `Stage ${info.n}`;
   // Who you brought the light to (or who is still waiting).
   { const [who, line] = stagePerson(info.n), pe = $("stPerson"); if (pe) { pe.hidden = false; pe.innerHTML = won ? `<b>You brought light to ${who}.</b><span>“${line}”</span><small>${info.daily ? "Back tomorrow: someone new will be waiting" : `${homesLit()} of ${STAGES_N} homes relit`}</small>` : `<b>${stageWaiting(info.n).replace("waiting", "still waiting")} in the dark.</b><span>Try again. They're counting on you.</span>`; } }
-  $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : "Out of light";
+  $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : R.failPct != null ? `${R.failPct}%${R.newBestPct ? " · New best!" : ""}` : "Out of light";
   $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);
   $("stTime").textContent = won ? R.stageTime.toFixed(1) : "–";
   $("stLights").textContent = `${R.motesGot}/${R.motesTotal}`;
   $("stPerf").textContent = R.perfects;
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
-  $("stNote").textContent = raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch half the lights for ★★" : `★★★: 80% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc.");
+  const attNote = won && R.attempt && !R.hadStars ? `Cleared on attempt ${R.attempt}${R.attempt === 1 ? ". First try!" : ""} · ` : !won && R.bestPct != null && !R.newBestPct ? `Your best: ${R.bestPct}% · ` : "";
+  $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch half the lights for ★★" : `★★★: 80% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
   const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
   next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
