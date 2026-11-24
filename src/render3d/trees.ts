@@ -5,6 +5,7 @@
 // texture from one shared atlas, so a street of trees is one material and merges into one draw.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { slimGeometry } from "./world";
 
 export type TreeKind = "oak" | "pine" | "cypress" | "birch" | "cherry" | "maple" | "palm" | "apple";
 export type GardenKind = "bush" | "flowerbush" | "hedge" | "bed" | "topiary" | "lamp" | "bench" | "pot";
@@ -123,7 +124,7 @@ function finish(geo: THREE.BufferGeometry, region: Region, low: string, high: st
 /** A tapering limb from `a` to `b`, bark-textured. */
 function limb(a: THREE.Vector3, b: THREE.Vector3, r0: number, r1: number, col: [string, string], r: () => number): THREE.BufferGeometry {
   const d = new THREE.Vector3().subVectors(b, a), L = d.length();
-  const g = new THREE.CylinderGeometry(r1, r0, L, 7, 1, true).translate(0, L / 2, 0);
+  const g = new THREE.CylinderGeometry(r1, r0, L, 5, 1, true).translate(0, L / 2, 0);
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, d.normalize())).translate(a.x, a.y, a.z);
   return finish(g, R_BARK, col[0], col[1], r, 0.04);
 }
@@ -161,14 +162,14 @@ function clump(out: THREE.BufferGeometry[], at: THREE.Vector3, crown: THREE.Vect
 
 /** Branches: from the top of the trunk, `n` limbs reach up and out, each splitting once; the
  *  tips are where the leaf clumps go. */
-function branches(out: THREE.BufferGeometry[], base: THREE.Vector3, n: number, len: number, rad: number, spread: number, r: () => number, bark: [string, string]): THREE.Vector3[] {
+function branches(out: THREE.BufferGeometry[], base: THREE.Vector3, n: number, len: number, rad: number, spread: number, r: () => number, bark: [string, string], splits = 2): THREE.Vector3[] {
   const tips: THREE.Vector3[] = [];
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + r() * 0.9, tilt = spread * (0.7 + r() * 0.5);
     const dir = new THREE.Vector3(Math.cos(a) * Math.sin(tilt), Math.cos(tilt), Math.sin(a) * Math.sin(tilt));
     const end = base.clone().addScaledVector(dir, len * (0.8 + r() * 0.4));
     out.push(limb(base, end, rad, rad * 0.6, bark, r));
-    for (let j = 0; j < 2; j++) {
+    for (let j = 0; j < splits; j++) {
       const a2 = a + (j ? 0.7 : -0.7) + (r() - 0.5) * 0.5, t2 = tilt * (0.6 + r() * 0.6);
       const d2 = new THREE.Vector3(Math.cos(a2) * Math.sin(t2), Math.cos(t2), Math.sin(a2) * Math.sin(t2));
       const e2 = end.clone().addScaledVector(d2, len * (0.45 + r() * 0.3));
@@ -188,7 +189,9 @@ const merge = (parts: THREE.BufferGeometry[]): THREE.BufferGeometry => {
 
 /** A tree of the given kind, about 2 units tall at s = 1, standing at the origin. `seed`
  *  picks its shape, so no two trees in a row are the same. */
-export function treeGeometry(kind: TreeKind, seed = 1, s = 1): THREE.BufferGeometry {
+/** `lite`: the lighter build for street and park trees (fewer branches and leaf clumps): they
+ *  are small on screen and there are hundreds of them. */
+export function treeGeometry(kind: TreeKind, seed = 1, s = 1, lite = false): THREE.BufferGeometry {
   const r = rng(seed), parts: THREE.BufferGeometry[] = [];
   const bark: [string, string] = ["#5a3a24", "#8a6448"];
   /** A broadleaf tree: trunk, branches, a leafy crown of clumps on the branch tips. */
@@ -197,16 +200,17 @@ export function treeGeometry(kind: TreeKind, seed = 1, s = 1): THREE.BufferGeome
     parts.push(limb(new THREE.Vector3(0, 0, 0), top, trunkR, trunkR * 0.7, barkC, r));
     // Root flare.
     parts.push(finish(new THREE.CylinderGeometry(trunkR * 1.05, trunkR * 1.6, trunkR * 1.2, 7, 1, true).translate(0, trunkR * 0.6, 0), R_BARK, barkC[0], barkC[1], r));
-    const tips = branches(parts, top, nb, blen, trunkR * 0.7, spread, r, barkC);
+    const tips = branches(parts, top, lite ? Math.max(3, nb - 1) : nb, blen, trunkR * 0.7, spread, r, barkC, lite ? 1 : 2);
+    if (lite) { cards = Math.round(cards * 0.8); clumpR *= 1.15; leafSize *= 1.15; }
     const crown = new THREE.Vector3(0, top.y + blen * 0.8, 0);
     // A solid core inside each clump, so the crown is full and never see-through.
     const lo = new THREE.Color(dark).lerp(new THREE.Color(light), 0.15).getStyle(), hi = new THREE.Color(dark).lerp(new THREE.Color(light), 0.5).getStyle();
     for (const tp of tips) {
-      parts.push(finish(new THREE.SphereGeometry(clumpR * 0.58, 10, 8).translate(tp.x, tp.y, tp.z), R_PLAIN, lo, hi, r, 0.02));
-      clump(parts, tp, crown, clumpR, cards + 6, leafSize * 1.15, R_LEAF, dark, light, r, crownR);
+      parts.push(finish(new THREE.IcosahedronGeometry(clumpR * 0.6, 0).translate(tp.x, tp.y, tp.z), R_PLAIN, lo, hi, r, 0.02));
+      clump(parts, tp, crown, clumpR, Math.round(cards * 0.75), leafSize * 1.3, R_LEAF, dark, light, r, crownR);
     }
     // A few clumps filling the middle, so the crown reads as full.
-    for (let k = 0; k < 3; k++) clump(parts, crown.clone().add(new THREE.Vector3((r() - 0.5) * crownR * 0.6, (r() - 0.3) * crownR * 0.5, (r() - 0.5) * crownR * 0.6)), crown, clumpR * 1.1, cards, leafSize, R_LEAF, dark, light, r, crownR);
+    for (let k = 0; k < (lite ? 0 : 1); k++) clump(parts, crown.clone().add(new THREE.Vector3((r() - 0.5) * crownR * 0.6, (r() - 0.3) * crownR * 0.5, (r() - 0.5) * crownR * 0.6)), crown, clumpR * 1.1, cards, leafSize, R_LEAF, dark, light, r, crownR);
     return crown;
   };
   switch (kind) {
@@ -220,9 +224,9 @@ export function treeGeometry(kind: TreeKind, seed = 1, s = 1): THREE.BufferGeome
     }
     case "apple": {
       const crown = broadleaf(0.6, 0.09, 4, 0.45, 0.85, 0.75, 0.32, 15, 0.38, "#2a6024", "#a2d462");
-      for (let k = 0; k < 14; k++) {
+      for (let k = 0; k < 10; k++) {
         const a = r() * Math.PI * 2, e = (r() - 0.25) * 1.3, R = 0.78;
-        parts.push(finish(new THREE.SphereGeometry(0.05, 8, 6).translate(crown.x + Math.cos(a) * Math.cos(e) * R, crown.y - 0.1 + Math.sin(e) * R * 0.7, crown.z + Math.sin(a) * Math.cos(e) * R), R_PLAIN, "#a8141e", "#ff4a3a", r, 0.03));
+        parts.push(finish(new THREE.IcosahedronGeometry(0.055, 0).translate(crown.x + Math.cos(a) * Math.cos(e) * R, crown.y - 0.1 + Math.sin(e) * R * 0.7, crown.z + Math.sin(a) * Math.cos(e) * R), R_PLAIN, "#a8141e", "#ff4a3a", r, 0.03));
       }
       break;
     }
@@ -267,7 +271,7 @@ export function treeGeometry(kind: TreeKind, seed = 1, s = 1): THREE.BufferGeome
     case "cypress": {
       parts.push(limb(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.5, 0), 0.06, 0.05, bark, r));
       // A tall flame of dense foliage round a solid dark core.
-      const core = new THREE.SphereGeometry(0.2, 12, 10).scale(1, 3.6, 1).translate(0, 1.35, 0);
+      const core = new THREE.SphereGeometry(0.2, 8, 6).scale(1, 3.6, 1).translate(0, 1.35, 0);
       parts.push(finish(core, R_PLAIN, "#123420", "#2a5e34", r, 0.04));
       const crown = new THREE.Vector3(0, 1.35, 0);
       for (let k = 0; k < 10; k++) {
@@ -283,18 +287,18 @@ export function treeGeometry(kind: TreeKind, seed = 1, s = 1): THREE.BufferGeome
         const h = 0.17, rad = 0.085 - k * 0.0035, nx = x + 0.012 + k * 0.005;
         parts.push(limb(new THREE.Vector3(x, y, 0), new THREE.Vector3(nx, y + h, 0), rad, rad * 0.86, k % 2 ? ["#8a6a48", "#b39672"] : ["#6e5236", "#9a7c58"], r));
         // A ring where each old frond fell.
-        parts.push(finish(new THREE.TorusGeometry(rad * 0.98, 0.012, 4, 10).rotateX(Math.PI / 2).translate(nx, y + h, 0), R_PLAIN, "#5a4028", "#6a4e30", r, 0.03));
+        if (k % 2) parts.push(finish(new THREE.TorusGeometry(rad * 0.98, 0.012, 3, 7).rotateX(Math.PI / 2).translate(nx, y + h, 0), R_PLAIN, "#5a4028", "#6a4e30", r, 0.03));
         x = nx; y += h * 0.98;
       }
       // The crown shaft: a green swelling where the fronds grow from.
-      parts.push(finish(new THREE.SphereGeometry(0.09, 10, 8).scale(1, 1.4, 1).translate(x, y + 0.03, 0), R_PLAIN, "#4a6a2a", "#7a9a3a", r, 0.03));
+      parts.push(finish(new THREE.SphereGeometry(0.09, 6, 4).scale(1, 1.4, 1).translate(x, y + 0.03, 0), R_PLAIN, "#4a6a2a", "#7a9a3a", r, 0.03));
       // Fronds all the way round: each rises from the crown, arches and droops, its leaflets
       // folded down either side of the stem (a V, like a real palm's).
       const fronds = 12;
       for (let k = 0; k < fronds; k++) {
         const upper = k % 2 === 0, a = (k / fronds) * Math.PI * 2 + r() * 0.25;
         const L = (upper ? 0.85 : 1.05) + r() * 0.15, rise = upper ? 0.55 : 0.32, drop = upper ? 0.85 : 1.05;
-        const q = new THREE.PlaneGeometry(L, 0.46, 14, 2), p = q.getAttribute("position");
+        const q = new THREE.PlaneGeometry(L, 0.46, 8, 2), p = q.getAttribute("position");
         for (let i = 0; i < p.count; i++) {
           const u = (p.getX(i) + L / 2) / L, v = p.getY(i) / 0.23; // u: 0 at the crown → 1 at the tip; v: -1..1 across
           const arc = u * L * rise - u * u * L * drop;
@@ -306,10 +310,10 @@ export function treeGeometry(kind: TreeKind, seed = 1, s = 1): THREE.BufferGeome
         // The stem along the frond's middle.
         const pts: THREE.Vector3[] = [];
         for (let j = 0; j <= 8; j++) { const u = j / 8; pts.push(new THREE.Vector3(u * L, u * L * rise - u * u * L * drop + 0.004, 0).applyAxisAngle(up, a).add(new THREE.Vector3(x, y + 0.06, 0))); }
-        parts.push(finish(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 8, 0.008, 4, false), R_PLAIN, "#6a7a2a", "#9aa64a", r, 0.03));
+        parts.push(finish(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 5, 0.008, 3, false), R_PLAIN, "#6a7a2a", "#9aa64a", r, 0.03));
       }
       // Coconuts under the crown.
-      for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + 0.4; parts.push(finish(new THREE.SphereGeometry(0.05, 10, 8).translate(x + Math.cos(a) * 0.075, y - 0.05, Math.sin(a) * 0.075), R_PLAIN, "#3a2410", "#6a4a22", r, 0.03)); }
+      for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2 + 0.4; parts.push(finish(new THREE.IcosahedronGeometry(0.05, 0).translate(x + Math.cos(a) * 0.075, y - 0.05, Math.sin(a) * 0.075), R_PLAIN, "#3a2410", "#6a4a22", r, 0.03)); }
       break;
     }
   }
@@ -339,7 +343,7 @@ export function gardenGeometry(kind: GardenKind, seed = 1, s = 1): THREE.BufferG
       break;
     case "flowerbush":
       leafy(new THREE.Vector3(0, 0.2, 0), 0.22, 22, 0.26, "#24521f", "#7ab84a");
-      blooms(26, 0, 0.2, 0, 0.24, 0.2, 0.24, seed % 4);
+      blooms(14, 0, 0.2, 0, 0.24, 0.2, 0.24, seed % 4);
       break;
     case "hedge":
       // A clipped hedge: a green core with leaf cards over every side.
@@ -350,13 +354,13 @@ export function gardenGeometry(kind: GardenKind, seed = 1, s = 1): THREE.BufferG
       plain(new THREE.BoxGeometry(1.0, 0.14, 0.5).translate(0, 0.07, 0), "#6a4428", "#9a6a40");
       plain(new THREE.BoxGeometry(0.92, 0.03, 0.42).translate(0, 0.15, 0), "#3a2618", "#4a3020");
       for (let k = 0; k < 6; k++) leafy(new THREE.Vector3(-0.38 + k * 0.15, 0.22, (r() - 0.5) * 0.15), 0.1, 6, 0.14, "#2a5a22", "#7ab84a");
-      for (let k = 0; k < 30; k++) { const fc = flowerCols[Math.floor(r() * flowerCols.length)]; plain(new THREE.IcosahedronGeometry(0.035, 0).translate(-0.42 + r() * 0.84, 0.25 + r() * 0.08, (r() - 0.5) * 0.34), fc[0], fc[1], 0.02); }
+      for (let k = 0; k < 18; k++) { const fc = flowerCols[Math.floor(r() * flowerCols.length)]; plain(new THREE.IcosahedronGeometry(0.035, 0).translate(-0.42 + r() * 0.84, 0.25 + r() * 0.08, (r() - 0.5) * 0.34), fc[0], fc[1], 0.02); }
       break;
     case "topiary":
       plain(new THREE.CylinderGeometry(0.2, 0.15, 0.3, 14).translate(0, 0.15, 0), "#a05030", "#d8805a");
       plain(new THREE.TorusGeometry(0.2, 0.02, 6, 16).rotateX(Math.PI / 2).translate(0, 0.3, 0), "#b86440", "#c87048");
       parts.push(limb(new THREE.Vector3(0, 0.28, 0), new THREE.Vector3(0, 0.55, 0), 0.02, 0.018, ["#5a3a24", "#7a5a3a"], r));
-      leafy(new THREE.Vector3(0, 0.7, 0), 0.2, 30, 0.2, "#1e4a1c", "#7ab84a");
+      leafy(new THREE.Vector3(0, 0.7, 0), 0.2, 18, 0.26, "#1e4a1c", "#7ab84a");
       break;
     case "pot":
       plain(new THREE.CylinderGeometry(0.16, 0.11, 0.24, 14).translate(0, 0.12, 0), "#8a4a2a", "#d0845a");
@@ -397,9 +401,9 @@ const shapeCache = new Map<string, THREE.BufferGeometry>();
 
 /** One tree's geometry, placed (for code that adds meshes its own way). */
 export function treeGeo(kind: TreeKind, x: number, y: number, z: number, s: number, seed: number): THREE.BufferGeometry {
-  const v = Math.abs(Math.round(seed)) % 4, key = `t|${kind}|${v}`;
+  const v = Math.abs(Math.round(seed)) % 4, key = `tl|${kind}|${v}`;
   let base = shapeCache.get(key);
-  if (!base) { base = treeGeometry(kind, 3 + v * 11); shapeCache.set(key, base); }
+  if (!base) { base = treeGeometry(kind, 3 + v * 11, 1, true); shapeCache.set(key, base); }
   const k = s * (0.92 + (Math.abs(seed * 0.37) % 0.16));
   return base.clone().rotateY(seed * 1.7).scale(k, k, k).translate(x, y, z);
 }
@@ -423,10 +427,10 @@ export class NatureBatch {
   private place(base: THREE.BufferGeometry, x: number, y: number, z: number, s: number, ry: number): void {
     this.geos.push(base.clone().rotateY(ry).scale(s, s, s).translate(x, y, z));
   }
-  tree(kind: TreeKind, x: number, y: number, z: number, s: number, seed: number): void {
-    const v = Math.abs(Math.round(seed)) % 4, key = `t|${kind}|${v}`;
+  tree(kind: TreeKind, x: number, y: number, z: number, s: number, seed: number, lite = true): void {
+    const v = Math.abs(Math.round(seed)) % 4, key = `${lite ? "tl" : "t"}|${kind}|${v}`;
     let base = shapeCache.get(key);
-    if (!base) { base = treeGeometry(kind, 3 + v * 11); shapeCache.set(key, base); }
+    if (!base) { base = treeGeometry(kind, 3 + v * 11, 1, lite); shapeCache.set(key, base); }
     this.place(base, x, y, z, s * (0.92 + (Math.abs(seed * 0.37) % 0.16)), seed * 1.7);
   }
   garden(kind: GardenKind, x: number, y: number, z: number, s: number, seed: number, ry = seed * 1.7): void {
@@ -445,6 +449,7 @@ export class NatureBatch {
     if (!m) return null;
     const mat = natureMaterial();
     mat.userData.own = true;
+    slimGeometry(m, true);
     const mesh = new THREE.Mesh(m, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
     return mesh;

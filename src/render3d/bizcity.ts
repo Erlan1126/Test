@@ -670,6 +670,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const paintM = own(new THREE.MeshBasicMaterial({ color: 0xe9e8e2, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   const yellowM = own(new THREE.MeshBasicMaterial({ color: 0xf2c230, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   bendPts.add(paintM); bendPts.add(yellowM);
+  const paintAll: THREE.BufferGeometry[] = [], yellowAll: THREE.BufferGeometry[] = [];
   /** The markings on one street: centred at (cx, cz), running along x or z, `run` long. */
   const markStreet = (par: (geo: THREE.BufferGeometry, m: THREE.Material) => unknown, cx: number, cz: number, along: "x" | "z", run: number, y = 0.062) => {
     // (All of one street's paint is one mesh: a few hundred streets, not thousands of bars.)
@@ -684,6 +685,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (const end of [-1, 1]) { const side = along === "z" ? -end : end; P(0.98, 0.08, side * 0.55, end * (cw - 0.45)); }
     const len = 2 * (cw - 0.5);
     if (len > 0) for (const o of [-0.05, 0.05]) P(0.035, len, o, 0, yparts);
+    // (Gathered for the whole town and drawn as two meshes at the end: white and yellow.)
+    if (par === add) { paintAll.push(...parts); yellowAll.push(...yparts); return; }
     const merged = mergeGeometries(parts); parts.forEach(q => q.dispose());
     if (merged) par(merged, paintM);
     const ym = yparts.length ? mergeGeometries(yparts) : null; yparts.forEach(q => q.dispose());
@@ -1805,15 +1808,26 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const skinC = ["#f2c7a0", "#c98d5e", "#8a5a3a", "#f5d6b8", "#a86e48"], suitC = ["#ff5f6d", "#2f6fff", "#ffd23f", "#3fd18a", "#b48cff", "#ff8a3d"];
     const lifeG = new THREE.Group(); lifeG.userData.dynamic = true; g.add(lifeG);
     /** A little person standing (the town's crowd scale): legs, a swimsuit body, arms, a head. */
-    const person = (n: number): THREE.Group => {
-      const pg = new THREE.Group(), sk = mats.c(skinC[n % skinC.length], 0.7), su = mats.c(suitC[n % suitC.length], 0.6);
-      for (const dx of [-0.035, 0.035]) pg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.022, 0.2, 6).translate(dx, 0.1, 0), sk));
-      pg.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.12, 3, 8).translate(0, 0.28, 0), su));
-      for (const dx of [-1, 1]) { const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.016, 0.17, 5).translate(0, -0.085, 0), sk); arm.position.set(dx * 0.08, 0.36, 0); arm.name = dx < 0 ? "armL" : "armR"; pg.add(arm); }
-      pg.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8).translate(0, 0.47, 0), sk));
-      pg.add(new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.48, -0.005), mats.c(["#3a2418", "#d8b060", "#1a1410", "#8a4a20"][n % 4], 0.8)));
+    // (Each person is one mesh with painted colours, plus two arms when they move: a handful
+    // of draws for the whole beach.)
+    const pplM = own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }));
+    const person = (n: number, arms = true): THREE.Group => {
+      const pg = new THREE.Group(), skC = skinC[n % skinC.length], suC = suitC[n % suitC.length], hairC = ["#3a2418", "#d8b060", "#1a1410", "#8a4a20"][n % 4];
+      const parts = [
+        paintGeo(new THREE.CylinderGeometry(0.025, 0.022, 0.2, 5).translate(-0.035, 0.1, 0), skC),
+        paintGeo(new THREE.CylinderGeometry(0.025, 0.022, 0.2, 5).translate(0.035, 0.1, 0), skC),
+        paintGeo(new THREE.CapsuleGeometry(0.06, 0.12, 2, 6).translate(0, 0.28, 0), suC),
+        paintGeo(new THREE.SphereGeometry(0.06, 8, 6).translate(0, 0.47, 0), skC),
+        paintGeo(new THREE.SphereGeometry(0.062, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.48, -0.005), hairC),
+      ];
+      if (!arms) for (const dx of [-1, 1]) parts.push(paintGeo(new THREE.CylinderGeometry(0.018, 0.016, 0.17, 5).translate(dx * 0.08, 0.275, 0), skC));
+      const body = mergeGeometries(parts.map(q => (q.index ? q.toNonIndexed() : q)));
+      parts.forEach(q => q.dispose());
+      if (body) pg.add(new THREE.Mesh(body, pplM));
+      if (arms) for (const dx of [-1, 1]) { const arm = new THREE.Mesh(paintGeo(new THREE.CylinderGeometry(0.018, 0.016, 0.17, 5).translate(0, -0.085, 0), skC), pplM); arm.position.set(dx * 0.08, 0.36, 0); arm.name = dx < 0 ? "armL" : "armR"; pg.add(arm); }
       return pg;
     };
+
     // Swimmers in the shallows: heads and shoulders above the water, arms paddling; one on a ring.
     const swimmers: { o: THREE.Group; x: number; z: number; k: number }[] = [];
     for (let k = 0; k < 5; k++) {
@@ -1827,7 +1841,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     for (let k = 0; k < 3; k++) {
       const tx = x0 + span * (0.12 + k * 0.33) + 0.55, tz = zs + 0.35;
       add(new THREE.BoxGeometry(0.3, 0.012, 0.62).translate(tx, 0.085, tz), mats.c(stripes[(k + 3) % stripes.length], 0.85));
-      const o = person(k);
+      const o = person(k, false);
       o.rotation.x = -Math.PI / 2; o.position.set(tx, 0.13, tz + 0.22);
       lifeG.add(o);
     }
@@ -2061,7 +2075,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     if (level <= 2) {
       // A garden: a tree at the back, bushes and a flower bed (drawn in code, one mesh).
       const tk = (["oak", "maple", "cherry", "apple"] as TreeKind[])[sv % 4];
-      nb.tree(tk, sv % 2 ? -1.55 : 1.55, 0.06, -1.5, 0.66, sv);
+      nb.tree(tk, sv % 2 ? -1.55 : 1.55, 0.06, -1.5, 0.66, sv, false);
       nb.garden(sv % 3 ? "bush" : "flowerbush", sv % 2 ? 1.6 : -1.6, 0.06, -1.25, 1.3, sv);
       nb.garden("bush", sv % 2 ? 1.6 : -1.6, 0.06, 0.95, 1.4, sv + 1);
       nb.garden("hedge", 0, 0.06, 1.85, 1.0, sv, 0);
@@ -2278,7 +2292,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         ng.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.012, 12).translate(x + C / 2, 0.056, z + 1.1), mats.c("#3a3a44", 0.6, 0.4)));
       }
       // Street trees along the sidewalks, two per side.
-      for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (const o of [-1.1, 1.1]) {
+      for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (const o of [sx + sz > 0 ? 1.1 : -1.1]) {
         const tx = x + sx * 2.33 + (sz ? o : 0), tz = z + sz * 2.33 + (sx ? o : 0);
         ng.add(new THREE.Mesh(parkTree(tx, tz, 0.55, tx * 3 + tz * 7, 0.2), natureM));
       }
@@ -2336,7 +2350,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       else { P(lotSlab(), grass2); P(new THREE.BoxGeometry(2.6, 1.6 + level * 0.8, 2.6).translate(0, 0.8 + level * 0.4, 0), mats.c(["#f2e6d0", "#e8d8f0", "#d8ecf6", "#f6dcd0"][h % 4], 0.7)); }
       // Street life on its sidewalks: trees along the curb, lamps on two corners, a bench
       // and a bin, and now and then a bus stop or a phone box.
-      for (const [sx, sz] of [[1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      for (const [sx, sz] of [[1, 1], [-1, -1]]) {
         const tx = sx * 2.33, tz = sz * 1.2;
         P(parkTree(tx, tz, 0.55, sx * 3 + sz * 5 + h, 0.05), natureM);
       }
@@ -3925,6 +3939,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   for (const l of cafe.land ?? []) if (l.bought) landSeen.add(l.id);
   landBuiltOnce = true;
   { const nm = nature.mesh(); if (nm) g.add(nm); }
+  for (const [list, m] of [[paintAll, paintM], [yellowAll, yellowM]] as [THREE.BufferGeometry[], THREE.Material][]) {
+    if (!list.length) continue;
+    const mg = mergeGeometries(list.map(q => (q.index ? q.toNonIndexed() : q))); list.forEach(q => q.dispose());
+    if (mg) { mg.deleteAttribute("uv"); add(mg, m); }
+  }
   if (blobGeos.length) { const bg = mergeGeometries(blobGeos); blobGeos.forEach(q => q.dispose()); if (bg) add(bg, blobM); }
   bendTown(g, bendPts);
   planarUV(g, streetUV);

@@ -501,8 +501,21 @@ export function castShadows(root: THREE.Object3D): void {
     if (!mat || mat.transparent) return;
     if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
     const bb = m.geometry.boundingBox!;
-    if (bb.max.y - bb.min.y > 0.14) m.castShadow = true;
+    if (bb.max.y - bb.min.y > 0.45) m.castShadow = true;
   });
+}
+
+/** Less graphics memory per vertex: colours as bytes instead of floats, and no texture
+ *  coordinates on surfaces without a texture (about 40% less for the town, which matters on
+ *  phones, where running out of graphics memory makes parts of the scene vanish). */
+export function slimGeometry(geo: THREE.BufferGeometry, keepUv: boolean): void {
+  if (!keepUv && geo.getAttribute("uv")) geo.deleteAttribute("uv");
+  const col = geo.getAttribute("color") as THREE.BufferAttribute | undefined;
+  if (col && col.array instanceof Float32Array) {
+    const n = col.count, out = new Uint8Array(n * 3);
+    for (let i = 0; i < n; i++) { out[i * 3] = Math.round(Math.min(1, Math.max(0, col.getX(i))) * 255); out[i * 3 + 1] = Math.round(Math.min(1, Math.max(0, col.getY(i))) * 255); out[i * 3 + 2] = Math.round(Math.min(1, Math.max(0, col.getZ(i))) * 255); }
+    geo.setAttribute("color", new THREE.BufferAttribute(out, 3, true));
+  }
 }
 
 export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
@@ -517,14 +530,17 @@ export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
     const m = o as THREE.Mesh;
     if (!m.isMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh || Array.isArray(m.material)) return;
     const mat = m.material as THREE.MeshStandardMaterial;
-    // Trees and garden pieces (trees.ts) keep their own painted colours and leaf atlas: they
-    // merge with each other, all into one mesh.
-    if (mat.userData.nature) {
-      const key = `nature|${mat.uuid}|${m.castShadow}`;
+    // Trees and garden pieces (trees.ts) keep their own painted colours and leaf atlas, and
+    // meshes an earlier merge made (a lot's, a block's) keep theirs: they merge again with
+    // their own kind, so the whole town ends up as a few dozen draws.
+    if (mat.userData.nature || mat.userData.mergedKey) {
+      const key = mat.userData.nature ? `nature|${mat.uuid}|${m.castShadow}` : `merged|${mat.userData.mergedKey}`;
       let gr = groups.get(key);
       if (!gr) { gr = { mat, geos: [], cast: m.castShadow, tint: false, rough: mat.roughness, metal: 0 }; groups.set(key, gr); }
       let geo = m.geometry.clone().applyMatrix4(rel.multiplyMatrices(toLocal, m.matrixWorld));
       if (geo.index) geo = geo.toNonIndexed();
+      // (The same attributes in the same form on every piece, so they can be merged.)
+      slimGeometry(geo, !!(mat.map || mat.userData.nature));
       gr.geos.push(geo);
       remove.push(m);
       return;
@@ -535,7 +551,7 @@ export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
     if (!m.castShadow && !m.userData.noShadow) {
       if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
       const bb = m.geometry.boundingBox!;
-      if (bb.max.y - bb.min.y > 0.14) m.castShadow = true;
+      if (bb.max.y - bb.min.y > 0.45) m.castShadow = true;
     }
     // Materials that animate keep their identity; the rest group by surface, not color.
     const tint = !mat.userData.dynamic;
@@ -563,23 +579,30 @@ export function mergeStatic(root: THREE.Object3D, groundAt?: number): void {
   };
   visit(root);
   for (const m of remove) { m.removeFromParent(); m.geometry.dispose(); }
-  for (const { mat, geos, cast, tint, rough, metal } of groups.values()) {
-    const merged = mergeGeometries(geos);
-    geos.forEach(x => x.dispose());
-    if (!merged) continue;
+  for (const [gkey, { mat, geos, cast, tint, rough, metal }] of groups.entries()) {
     let use: THREE.Material = mat;
     if (tint) {
       const v = mat.clone();
       v.vertexColors = true;
       v.color.set(0xffffff);
       v.roughness = rough; v.metalness = metal;
+      v.userData.mergedKey = gkey + (groundAt !== undefined ? `|g${groundAt}` : "");
       if (groundAt !== undefined) groundShade(v, groundAt);
       use = v;
     }
-    const mesh = new THREE.Mesh(merged, use);
-    mesh.castShadow = cast;
-    mesh.receiveShadow = true;
-    root.add(mesh);
+    const keepUv = !!(mat.map || mat.userData.nature || mat.userData.keepUv);
+    const put = (geo: THREE.BufferGeometry) => {
+      slimGeometry(geo, keepUv);
+      const mesh = new THREE.Mesh(geo, use);
+      mesh.castShadow = cast;
+      mesh.receiveShadow = true;
+      root.add(mesh);
+    };
+    const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos);
+    // (Pieces that can't be merged stay as they are rather than vanish.)
+    if (!merged) { geos.forEach(put); continue; }
+    if (merged !== geos[0]) geos.forEach(x => x.dispose());
+    put(merged);
   }
 }
 

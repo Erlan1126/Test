@@ -257,6 +257,16 @@ export class Renderer3D {
     this.gl.toneMappingExposure = 1;
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFShadowMap; // soft enough with a small radius, and cheaper
+    // If the phone takes the graphics away (low on memory, or the app went to the background)
+    // and then gives them back, everything is rebuilt fresh: shaders, the town and the shadow
+    // map, instead of carrying on half-drawn.
+    this.gl.domElement.addEventListener("webglcontextrestored", () => {
+      this.scene.traverse(o => { const m = (o as THREE.Mesh).material; for (const x of Array.isArray(m) ? m : m ? [m] : []) x.needsUpdate = true; });
+      this.bizKey = "";
+      this.bizIn = null as unknown as typeof this.bizIn;
+      this.shadowAt.set(1e9, 0, 0);
+      this.gl.shadowMap.needsUpdate = true;
+    });
     // Reflections start from a soft studio light; once the sky is known, the glass
     // reflects the real sky instead (see updateEnvironment).
     this.pmrem = new THREE.PMREMGenerator(this.gl);

@@ -46,7 +46,7 @@ function prep(root: THREE.Object3D): void {
     mat.name = src.name;
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
     m.material = mat;
-    m.castShadow = true; m.receiveShadow = true;
+    m.castShadow = false; m.receiveShadow = true;
   });
 }
 
