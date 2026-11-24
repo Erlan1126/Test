@@ -5,7 +5,7 @@
 import { LAND, type LandId } from "../data/land";
 import { PROP_MAX } from "../data/props";
 import type { SaveData } from "./save";
-import { propLevel, propPrice, propsOpen } from "./props";
+import { isLot, propBlock, propLevel, propPrice } from "./props";
 import { landOnSale, landPrice } from "./land";
 import { buildOffice, costOf, levelOf, officePrice, readyStage } from "./tycoon";
 import { BUSINESSES } from "../data/tycoon";
@@ -42,7 +42,7 @@ export function buildTime(s: SaveData, kind: BuildKind, id = "", now = Date.now(
   else if (kind === "hq") ms = HQ_TIME[Math.min(HQ_TIME.length - 1, Math.max(1, readyStage(s, id)))];
   else if (kind === "project") ms = 3 * MIN;
   else if (kind === "land") ms = [10 * MIN, 30 * MIN, HOUR, 2 * HOUR, 4 * HOUR, 8 * HOUR][Math.max(0, LAND.findIndex(l => l.id === id))] ?? 8 * HOUR;
-  else ms = [30e3, 30e3, 2 * MIN, 10 * MIN, 30 * MIN, HOUR][propLevel(s, id)] ?? HOUR;
+  else ms = [MIN, 2 * MIN, 10 * MIN, 30 * MIN, HOUR, HOUR][propLevel(s, id)] ?? HOUR;
   return Math.round(ms * (vipActive(s, now) ? VIP_SPEED : 1));
 }
 
@@ -78,7 +78,7 @@ export function startBuild(s: SaveData, kind: BuildKind, id = "", now = Date.now
   if (kind === "land" && (landOnSale(s)?.id !== id)) return "locked";
   if (kind === "hq" && !readyStage(s, id)) return "locked";
   if (kind === "project" && (!projectsOpen(s.cafe) || s.cafe.done.includes(id as ProjectId))) return "locked";
-  if (kind === "home" && (!propsOpen(s) || propLevel(s, id) >= PROP_MAX)) return "locked";
+  if (kind === "home" && propBlock(s, id, isLot(id) && propLevel(s, id) === 0 ? (s.tycoon.builds ?? []).filter(b => b.kind === "home" && isLot(b.id) && propLevel(s, b.id) === 0).length : 0)) return "locked";
   if (freeBuilders(s, now) < 1) return "busy";
   const price = buildPrice(s, kind, id, now);
   if (!(s.tycoon.coins >= price)) return "short";

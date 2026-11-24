@@ -551,6 +551,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const signs: THREE.MeshStandardMaterial[] = [];
   const winMat = own(std(st.glass, { roughness: 0.15, metalness: 0.3, emissive: new THREE.Color(st.lit), emissiveIntensity: 0.05 }));
   winMat.userData.dynamic = true;
+  // (Pulled a hair toward the camera so panes never flicker against the wall behind them.)
+  winMat.polygonOffset = true; winMat.polygonOffsetFactor = -1; winMat.polygonOffsetUnits = -4;
   const bulb = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 0.6 }));
   bulb.userData.dynamic = true;
   // Ripples on the water, patchy lawns with cloud shadows, leaves in the breeze.
@@ -2369,8 +2371,6 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   if (outer.length) {
     const og = new THREE.Group();
     g.add(og);
-    const tcx = ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, tcz = ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length;
-    const rkG = cafe.rank ?? 0;
     const fresh = gridShown > 0 && outer.length > gridShown ? gridShown : outer.length, t0g = performance.now();
     outer.forEach((cell, k) => {
       const { x, z } = cellXZ(cell), lg = new THREE.Group();
@@ -2405,11 +2405,22 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         sightAt(x, z, 1.4, "park", `g${cell[0]},${cell[1]}`);
         return;
       }
-      const d = Math.hypot(x - tcx, z - tcz);
-      const level = Math.max(1, Math.min(5, rkG - 1 - Math.floor(d / 20) + (h % 3 === 0 ? 1 : 0)));
-      const btop = kitBuilding(lg, h, level, [cell[0], cell[1]]);
-      sightAt(x, z, btop ?? 1.6 + level * 0.8, `block${level}`, `g${cell[0]},${cell[1]}`);
-      if (btop !== null) { /* built above */ }
+      // Every block is a lot you build on: an empty, mown lot with a sold sign at first, then
+      // whatever you've built there (little homes up to a glass skyscraper).
+      const gkey = `g:${cell[0]},${cell[1]}`;
+      const level = Math.max(0, Math.min(5, cafe.props?.[gkey] ?? 0));
+      if (level === 0) {
+        P(lotSlab(), grass2);
+        P(new THREE.BoxGeometry(1.6, 0.03, 1.6).translate(0, 0.07, 0), mats.c("#c9b48e", 0.95));
+        P(new THREE.BoxGeometry(0.05, 0.55, 0.05).translate(-0.9, 0.33, 0.9), wood);
+        P(new THREE.BoxGeometry(0.42, 0.26, 0.03).translate(-0.9, 0.62, 0.92), mats.c("#ffffff", 0.7));
+        P(new THREE.BoxGeometry(0.36, 0.06, 0.035).translate(-0.9, 0.66, 0.925), mats.c("#3fae6a", 0.7));
+        P(parkTree(1.3, -1.2, 0.45, h), natureM);
+        homeAt(x, z, 0.5, gkey);
+      }
+      const btop = level ? kitBuilding(lg, h, level, [cell[0], cell[1]]) : null;
+      if (level) homeAt(x, z, btop ?? 1.6 + level * 0.8, gkey);
+      if (btop !== null || !level) { /* built above */ }
       else { P(lotSlab(), grass2); P(new THREE.BoxGeometry(2.6, 1.6 + level * 0.8, 2.6).translate(0, 0.8 + level * 0.4, 0), mats.c(["#f2e6d0", "#e8d8f0", "#d8ecf6", "#f6dcd0"][h % 4], 0.7)); }
       // Street life on its sidewalks: trees along the curb, lamps on two corners, a bench
       // and a bin, and now and then a bus stop or a phone box.
@@ -2468,6 +2479,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         for (const [bx, bz] of [[-1.2, -0.8], [1.1, -1.1]]) K(new THREE.ConeGeometry(0.18, 0.45, 10).translate(bx, 0.25, bz), mats.c("#ff8a3b"));
         K(new THREE.BoxGeometry(0.9, 0.3, 0.5).translate(0.9, 0.15, 0.4), mats.c("#c86a4a"));
         tops[i] = 1.9;
+      } else if (HAS_CITY) {
+        // Buildaroo: the city starts from almost nothing. A business's lot waits as a mown,
+        // empty lot with a little sign until City Hall opens that business.
+        K(lotSlab(), grass2);
+        K(new THREE.BoxGeometry(2.2, 0.03, 2.2).translate(0, 0.07, -0.2), mats.c("#c9b48e", 0.95));
+        K(new THREE.BoxGeometry(0.06, 0.7, 0.06).translate(-1.2, 0.4, 1.3), wood);
+        K(new THREE.BoxGeometry(0.6, 0.34, 0.04).translate(-1.2, 0.78, 1.32), mats.c("#ffffff", 0.7));
+        K(new THREE.BoxGeometry(0.5, 0.08, 0.045).translate(-1.2, 0.82, 1.33), mats.c("#ff8a3b", 0.7));
+        for (const [tx, tz] of [[1.3, -1.3], [1.4, 1.2]]) K(parkTree(tx, tz, 0.45, tx * 5 + tz * 11 + i), natureM);
+        tops[i] = 0.9;
       } else if (i % 4 !== 3) {
         // Until the business comes, ordinary neighbors live here: town houses, a block of
         // flats or a corner shop with flats above, so the town looks lived in, like a real city.

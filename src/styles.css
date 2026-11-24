@@ -4282,3 +4282,15 @@ body:has(#tcy-card:not([hidden])) #toast { top: calc(env(safe-area-inset-top, 0p
 @keyframes bottle-bob { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-4px) rotate(8deg); } }
 #tcy-labels .tag.bub.bottle .tag-ico::before { display: none !important; }
 #tcy-labels .tag.bub.bottle .tag-ico svg { position: relative; z-index: 1; }
+
+/* The next step as a slim pill: one short line above the Build button, out of the city's way.
+   (The details are one tap away in Goals.) It fades while you move the town. */
+#tycity .tcy-next { left: 50% !important; right: auto !important; transform: translateX(-50%); width: max-content; max-width: min(340px, calc(100vw - 32px)); gap: 8px !important; padding: 6px 12px 6px 6px !important; border-radius: 999px !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 116px) !important; animation: next-pill-in 0.3s cubic-bezier(.2, 1.3, .4, 1) both !important; transition: opacity 0.2s; }
+#tycity .tcy-next:active { transform: translateX(-50%) scale(0.97); }
+#tycity .tcy-next .next-ico { width: 30px !important; height: 30px !important; border-radius: 50% !important; font-size: 16px !important; }
+#tycity .tcy-next small, #tycity .tcy-next em, #tycity .tcy-next .next-bar { display: none !important; }
+#tycity .tcy-next b { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tycity .tcy-next .next-go { font-size: 20px !important; }
+body.town-panning #tycity .tcy-next { opacity: 0; pointer-events: none; }
+@keyframes next-pill-in { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.9); } to { opacity: 1; transform: translateX(-50%); } }

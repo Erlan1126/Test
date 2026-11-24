@@ -34,6 +34,7 @@ const PLACES: Record<string, [string, string, string]> = {
   rank5: ["🛥️", "Superyacht", "Anchored in the bay since Skyhaven became a Metropolis."],
   rank6: ["👑", "Skyhaven Tower", "The golden tower over everything: Skyhaven is a Sky Capital."],
   rank7: ["🏝️", "Floating island", "The island beside the town, joined by a rope bridge."],
+  lot: ["🏡", "Empty lot", "Room for new homes. Sell a few coffees first, then you can build here."],
   home: ["🏠", "Family home", "A neighbour's home. Soon you can upgrade homes for rent."],
 };
 
