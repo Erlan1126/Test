@@ -300,7 +300,7 @@ function runDraw(ctx, W, H) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
     ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (!R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : runWorld(7 - (R.biome % 8)).name.toUpperCase()).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
     ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : runnerTheme(R.biome * RUN.BIOME_M).name, W / 2, H * 0.26 + W * 0.08);
-    if (R.stageInfo) { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); }
+    if (R.stageInfo) { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); if (R.attempt > 1) { ctx.font = `700 ${Math.round(W * 0.036)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(`Attempt ${R.attempt}`, W / 2, H * 0.26 + W * 0.22); } }
     ctx.globalAlpha = 1;
   }
 
@@ -360,8 +360,8 @@ function runPauseInfo() {
   const tot = Math.max(1, R.motesTotal), share = R.motesGot / tot, par = R.stageInfo.par, pct = Math.max(0, Math.min(100, Math.floor(R.px / R.stageLen * 100)));
   who.textContent = `${stageWaiting(R.stageInfo.n)} · ${pct}% of the way`;
   const g = (stars, text, now, ok, alive = true) => `<li class="${ok ? "ok" : alive ? "" : "no"}"><b>${stars}</b><span>${text}</span><em>${now}</em></li>`;
-  ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch half the lights", `${Math.round(share * 100)}%`, share >= 0.5) +
-    g("★★★", `80% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
+  ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +
+    g("★★★", `70% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
 }
 document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });

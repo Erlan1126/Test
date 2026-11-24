@@ -94,6 +94,18 @@ function runnerStart(R) {
   if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
 }
 
+// ---------- Sections: what each stretch of a stage is like ----------
+// Every 110 m a new section: flow (the classic), a climb, a low fast dive, a zigzag, a big gap (with a
+// boost ring; a good release or the air dash), a run of springs, or a course of boost rings. Fixed per
+// stage (from its seed); the first stretch is always calm.
+const SECTIONS = ["flow", "climb", "dive", "zigzag", "gap", "springs", "rings"];
+function swingSection(R, x) {
+  if (!R.stageLen) return x > 200 ? SECTIONS[Math.floor(x / 110) % SECTIONS.length] : "flow";
+  const i = Math.floor(x / 110); if (i < 1 || x > R.stageLen - 30) return "flow";
+  const r = seeded(R.stageInfo.seed * 31 + i * 977)(), early = R.stageInfo.n < 4 && !R.stageInfo.daily;
+  const pool = early ? ["flow", "climb", "rings", "dive"] : SECTIONS;
+  return pool[Math.floor(r * pool.length)];
+}
 // ---------- Making the skyline ahead ----------
 function swingGen(R, toX) {
   const r = runR;
@@ -101,19 +113,24 @@ function swingGen(R, toX) {
     const m = Math.max(0, R.genX), th = runnerTheme(m), hard = R.stageInfo ? R.stageInfo.hard : Math.min(1, m / 3000);
     // Anchors: a chain ahead, always reachable from the one before.
     while (R.lastA.x < R.genX + 70 && !(R.stageLen && R.lastA.x > R.stageLen + 40)) {
-      const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3), ath = runnerTheme(ax);
-      const a = { x: ax, y: Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
+      // Stages are built from short sections, each with its own shape (see swingSection).
+      const p = R.lastA, sec = swingSection(R, p.x + 10), gapK = sec === "gap" && (R.anchors.length % 2) ? 6 : 0;
+      const ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3) + gapK, ath = runnerTheme(ax);
+      let ay = Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8));
+      if (sec === "climb") ay = Math.min(46, p.y + 2.5 + r() * 1.5); else if (sec === "dive") ay = 28 + r() * 2.5; else if (sec === "zigzag") ay = p.y > 37 ? 30 + r() * 1.5 : 43 + r() * 1.5;
+      const a = { x: ax, y: ay, kind: ath.anchor, id: R.anchors.length, ph: r() * 6, sec };
       // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
       const roll = r();
       const wk = R.stageLen ? "" : weekEvent().id, goldK = wk === "frost" ? 3 : 1;   // stages keep the same course every week (ghosts must match); weekly anchor events are for the Night shift
       const dK = R.stageLen ? hard : null;
       a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.27 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
+      if (sec === "springs" && ax > 60) a.type = "spring"; else if ((sec === "zigzag" || sec === "climb") && a.type === "crumble") a.type = "";
       if (a.type === "drift") a.bx = ax;
       if (ath.anchor === "lantern" && !a.type) { a.sway = true; a.bx = ax; a.by = a.y; }
       if (R.outage && !a.type && ax > 40 && a.id % 3 === 0) a.flicker = true;   // (no random draw: the course stays the same)
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
-      if (ax > 50 && r() < (R.stageLen ? 0.22 : 0.16) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
+      if (ax > 50 && (r() < (R.stageLen ? 0.22 : 0.16) || sec === "rings" || gapK) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
       // Wind stages: gusts that push you sideways.
       if (R.stageInfo && R.stageInfo.wind && ax > 60 && ax < R.stageLen && r() < 0.3) { const dir = r() < 0.5 ? -1 : 1; R.winds.push({ x0: p.x, x1: ax, f: dir * (5 + R.stageInfo.hard * 6) }); }
       // Lights along the arc you'd swing between them.
@@ -141,6 +158,8 @@ function swingGen(R, toX) {
     if (R.stageLen && b.x1 > R.stageLen + 1 && b.x0 < R.stageLen + 17) { R.genX = Math.max(R.genX + 1, R.stageLen + 18); continue; }
     if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: R.anchors.length + 9000, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
     if (pad && !tree) b.pad = true;
+    // What the district builds (decided without a random draw, so courses stay the same).
+    { const dk = R.stageInfo && !R.stageInfo.daily ? Math.min(5, Math.floor((R.stageInfo.n - 1) / 10)) : Math.max(0, RUNNER_THEMES.indexOf(th)), mix = (b.n * 7) % 10; b.kind = ["office", "shop", "warehouse", "neon", "shop", "glass"][dk]; if (mix < 2 && dk !== 5) b.kind = "office"; b.dist = dk; }
     if (R.stageInfo && R.stageInfo.tower && b.x0 > 40 && b.x0 < R.stageLen && r() < 0.35) R.updrafts.push({ x0: b.x1 + 0.5, x1: b.x1 + 6, f: 34 });
     // A live wire between two rooftops of a similar height.
     const prev = R.blds[R.blds.length - 1];
@@ -358,6 +377,14 @@ function runnerUpdate(dt) {
       R.streetT = 4;
     }
   }
+  // Arrived: glide in and land on their roof (the physics hands over to a short, gentle flight).
+  if (R.cleared && R.stageLen && R.clearAt != null) {
+    if (!R.glide) R.glide = { x: R.px, y: R.py };
+    const k = Math.min(1, (R.t - R.clearAt) / 0.9), e = k * k * (3 - 2 * k), tx = R.stageLen + 6.5, ty = 17;
+    R.teth = null; R.hold = false; R.px = R.glide.x + (tx - R.glide.x) * e; R.py = R.glide.y + (ty - R.glide.y) * e + Math.sin(e * Math.PI) * 4;
+    R.vx = k < 1 ? 8 : 0; R.vy = 0; R.roof = k >= 1 ? (R.homeRoof || (R.homeRoof = { x0: R.stageLen + 3, x1: R.stageLen + 15, h: 17, home: true })) : null;
+    if (k >= 1 && !R.landedHome) { R.landedHome = true; R.dust = { x: R.px, y: ty, t: 0, k: 0.6 }; }
+  }
   R.spinV *= R.teth || R.roof ? 0.8 : 0.995; R.spin += R.spinV * dt; R.flipT = Math.max(0, (R.flipT || 0) - dt);
   R.phase += dt * Math.max(4, R.vx) * 0.8;
   R.v = Math.hypot(R.vx, R.vy); R.speed = R.v * RUN.M;
@@ -480,7 +507,7 @@ function runnerUpdate(dt) {
   if (!R.attract) runMission("dist", Math.floor(m));
   if (!R.stageLen && m >= R.nextMile) { R.nextMile += 500; R.fireworks.push({ t: 0, seed: Math.random() }); if (!R.attract) { runMsg(`${Math.floor(m)} m!`, "The city glows for you", 1.8, true); sfx.unlock(); } }
   for (const f of R.fireworks) f.t += dt; R.fireworks = R.fireworks.filter(f => f.t < 3);
-  if (!R.attract) { const boss = R.stageInfo && R.stageInfo.boss || (R.ev && R.ev.kind === "heart"); music.intensity = boss ? 1 : Math.min(1, (R.v - 10) / 22); music.layers = R.combo >= 12 || R.od > 0 || boss ? 3 : 2; }
+  if (!R.attract) { const boss = R.stageInfo && R.stageInfo.boss || (R.ev && R.ev.kind === "heart"); music.intensity = boss ? 1 : Math.min(1, (R.v - 10) / 22); music.layers = (R.pChain || 0) >= 6 ? 4 : (R.pChain || 0) >= 3 || R.combo >= 12 || R.od > 0 || boss ? 3 : 2; }
   if (!R.attract) swingFlowHud(R);
   if (!R.attract && Math.floor(R.t * 4) !== Math.floor((R.t - dt) * 4)) runHud();
 }
