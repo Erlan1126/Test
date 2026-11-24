@@ -1001,11 +1001,18 @@ export class TycoonUI {
     // is ready to finish).
     const ci = chapterIndex(s), ch = CHAPTERS[ci], ready = !!ch && chapterReady(s);
     const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(t("Town Hall"))}"><span class="tag-ico">${ready ? "❗" : "🏛️"}</span><b>${esc(ready ? t("Chapter done!") : t(ch.title))}</b></button>` : "";
+    // Only one business says "Open" in red at a time: the one to open next (the cheapest
+    // waiting; the tapped one if the player picked another). The rest wait as small grey "+",
+    // so a new player knows where to begin.
+    let nextOpen = "", nextPrice = Infinity;
+    BUSINESSES.forEach((b, i) => { if (levelOf(s, b.id) === 0 && unlockedBusiness(s, i) && costOf(b, 0, 1) < nextPrice) { nextPrice = costOf(b, 0, 1); nextOpen = b.id; } });
+    if (this.selected && levelOf(s, this.selected) === 0) nextOpen = this.selected;
     this.put($("tcy-labels"), hallTag + starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       if (!owned && !open) return "";
-      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))}</b></button>`;
+      if (!owned && b.id !== nextOpen) return `<button type="button" class="tag bub lease later" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("For lease"))}"><span class="tag-ico">+</span></button>`;
+      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))} · ${esc(coins(costOf(b, 0, 1)))}</b></button>`;
       const st = stageNow(s, b.id), grow = readyStage(s, b.id), sel = this.selected === b.id;
       // At most one badge: what needs you most.
       const badge = live.golden === b.id ? `<span class="badge golden" data-act="golden">✨</span>`

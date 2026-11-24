@@ -4160,3 +4160,8 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 .tcy-mode.small { padding: 10px 14px; }
 .tcy-mode.small .mode-ico { width: 38px; height: 38px; font-size: 20px; border-radius: 12px; }
 .tcy-mode.small b { font-size: 14px; }
+
+/* Lots waiting their turn: a small grey "+" (only the next one to open is red). */
+#tcy-labels .tag.bub.lease.later { background: rgba(120, 114, 160, 0.8) !important; padding: 3px !important; animation: none; opacity: 0.8; }
+#tcy-labels .tag.bub.lease.later::after { border-top-color: rgba(120, 114, 160, 0.8) !important; background: rgba(120, 114, 160, 0.8) !important; }
+#tcy-labels .tag.bub.lease.later .tag-ico { width: 20px; height: 20px; font-size: 16px; color: #6e6896; }
