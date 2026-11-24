@@ -360,8 +360,8 @@ function runPauseInfo() {
   const tot = Math.max(1, R.motesTotal), share = R.motesGot / tot, par = R.stageInfo.par, pct = Math.max(0, Math.min(100, Math.floor(R.px / R.stageLen * 100)));
   who.textContent = `${stageWaiting(R.stageInfo.n)} · ${pct}% of the way`;
   const g = (stars, text, now, ok, alive = true) => `<li class="${ok ? "ok" : alive ? "" : "no"}"><b>${stars}</b><span>${text}</span><em>${now}</em></li>`;
-  ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch half the lights", `${Math.round(share * 100)}%`, share >= 0.5) +
-    g("★★★", `80% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
+  ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +
+    g("★★★", `70% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
 }
 document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });

@@ -2,7 +2,7 @@
 // retry. Every stage is the same course every time (a fixed seed), so you can learn it, race the
 // ghost of your best run, and send a friend a link to race yours. A daily stage, the same for
 // everyone each day. Endless stays as its own mode.
-// Stars: ★ finish · ★★ catch half the lights · ★★★ catch 80% without a hit, under par time.
+// Stars: ★ finish · ★★ catch 40% of the lights · ★★★ catch 70% without a hit, under par time.
 "use strict";
 
 const STAGES_N = 60;
@@ -89,7 +89,7 @@ const stageLink = (n, time, trace) => `${location.origin}${location.pathname}?st
 function startStage(n, opts = {}) {
   const S = stageSave(), info = stageInfo(n);
   if (!info.daily && n > S.unlocked && !opts.race) return;
-  const own = !info.daily && S.ghosts[n] ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
+  const own = !info.daily && S.ghosts[n] && S.ghosts[n].v === 2 ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
   // Attempts, like a level counter in a rhythm game: every try counts.
   if (!info.daily) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
@@ -110,7 +110,7 @@ function startStage(n, opts = {}) {
 function stageClear(R) {
   R.cleared = true; R.msgs.length = 0; R.clearAt = R.t; R.clearFrom = { x: R.px, y: R.py + 1.2 }; R.inv = 9; R.slowT = 0.6; R.fireworks.push({ t: 0, seed: Math.random() }, { t: -0.4, seed: Math.random() });
   const total = Math.max(1, R.motesTotal), share = R.motesGot / total, time = R.stageT;
-  const stars = R.cpUsed ? 1 : 1 + (share >= 0.5 ? 1 : 0) + (share >= 0.8 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
+  const stars = R.cpUsed ? 1 : 1 + (share >= 0.4 ? 1 : 0) + (share >= 0.7 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
   R.stageStars = stars; R.stageTime = time;
   if (R.attract) return;
   const S = stageSave(), n = R.stage, info = R.stageInfo;
@@ -124,7 +124,7 @@ function stageClear(R) {
     const b = S.best[n] || {};
     // A run from the halfway lantern relights the home, but doesn't set a best time or a ghost.
     S.best[n] = { stars: Math.max(b.stars || 0, stars), time: R.cpUsed ? b.time || time : b.time ? Math.min(b.time, time) : time };
-    if (!R.cpUsed && (!b.time || time < b.time)) { S.ghosts[n] = { g: ghostEncode(R.trace), t: time }; newBest = true; }
+    if (!R.cpUsed && (!b.time || time < b.time)) { S.ghosts[n] = { v: 2, g: ghostEncode(R.trace), t: time }; /* v2: stages built from sections */ newBest = true; }
     S.unlocked = Math.max(S.unlocked, Math.min(STAGES_N, n + 1));
   }
   R.newBest = newBest;
@@ -159,7 +159,7 @@ function showStageCard(won) {
   $("stPerf").textContent = R.perfects;
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   const attNote = won && R.attempt && !R.hadStars ? `Cleared on attempt ${R.attempt}${R.attempt === 1 ? ". First try!" : ""} · ` : !won && R.bestPct != null && !R.newBestPct ? `Your best: ${R.bestPct}% · ` : "";
-  $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch half the lights for ★★" : `★★★: 80% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
+  $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch 40% of the lights for ★★" : `★★★: 70% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
   const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
   next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);

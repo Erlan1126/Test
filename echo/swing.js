@@ -94,6 +94,18 @@ function runnerStart(R) {
   if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
 }
 
+// ---------- Sections: what each stretch of a stage is like ----------
+// Every 110 m a new section: flow (the classic), a climb, a low fast dive, a zigzag, a big gap (with a
+// boost ring; a good release or the air dash), a run of springs, or a course of boost rings. Fixed per
+// stage (from its seed); the first stretch is always calm.
+const SECTIONS = ["flow", "climb", "dive", "zigzag", "gap", "springs", "rings"];
+function swingSection(R, x) {
+  if (!R.stageLen) return x > 200 ? SECTIONS[Math.floor(x / 110) % SECTIONS.length] : "flow";
+  const i = Math.floor(x / 110); if (i < 1 || x > R.stageLen - 30) return "flow";
+  const r = seeded(R.stageInfo.seed * 31 + i * 977)(), early = R.stageInfo.n < 4 && !R.stageInfo.daily;
+  const pool = early ? ["flow", "climb", "rings", "dive"] : SECTIONS;
+  return pool[Math.floor(r * pool.length)];
+}
 // ---------- Making the skyline ahead ----------
 function swingGen(R, toX) {
   const r = runR;
@@ -101,19 +113,24 @@ function swingGen(R, toX) {
     const m = Math.max(0, R.genX), th = runnerTheme(m), hard = R.stageInfo ? R.stageInfo.hard : Math.min(1, m / 3000);
     // Anchors: a chain ahead, always reachable from the one before.
     while (R.lastA.x < R.genX + 70 && !(R.stageLen && R.lastA.x > R.stageLen + 40)) {
-      const p = R.lastA, ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3), ath = runnerTheme(ax);
-      const a = { x: ax, y: Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8)), kind: ath.anchor, id: R.anchors.length, ph: r() * 6 };
+      // Stages are built from short sections, each with its own shape (see swingSection).
+      const p = R.lastA, sec = swingSection(R, p.x + 10), gapK = sec === "gap" && (R.anchors.length % 2) ? 6 : 0;
+      const ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3) + gapK, ath = runnerTheme(ax);
+      let ay = Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8));
+      if (sec === "climb") ay = Math.min(46, p.y + 2.5 + r() * 1.5); else if (sec === "dive") ay = 28 + r() * 2.5; else if (sec === "zigzag") ay = p.y > 37 ? 30 + r() * 1.5 : 43 + r() * 1.5;
+      const a = { x: ax, y: ay, kind: ath.anchor, id: R.anchors.length, ph: r() * 6, sec };
       // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
       const roll = r();
       const wk = R.stageLen ? "" : weekEvent().id, goldK = wk === "frost" ? 3 : 1;   // stages keep the same course every week (ghosts must match); weekly anchor events are for the Night shift
       const dK = R.stageLen ? hard : null;
       a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.27 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
+      if (sec === "springs" && ax > 60) a.type = "spring"; else if ((sec === "zigzag" || sec === "climb") && a.type === "crumble") a.type = "";
       if (a.type === "drift") a.bx = ax;
       if (ath.anchor === "lantern" && !a.type) { a.sway = true; a.bx = ax; a.by = a.y; }
       if (R.outage && !a.type && ax > 40 && a.id % 3 === 0) a.flicker = true;   // (no random draw: the course stays the same)
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
-      if (ax > 50 && r() < (R.stageLen ? 0.22 : 0.16) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
+      if (ax > 50 && (r() < (R.stageLen ? 0.22 : 0.16) || sec === "rings" || gapK) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
       // Wind stages: gusts that push you sideways.
       if (R.stageInfo && R.stageInfo.wind && ax > 60 && ax < R.stageLen && r() < 0.3) { const dir = r() < 0.5 ? -1 : 1; R.winds.push({ x0: p.x, x1: ax, f: dir * (5 + R.stageInfo.hard * 6) }); }
       // Lights along the arc you'd swing between them.
