@@ -152,12 +152,20 @@ function runMissions(el) {
 }
 function runHud() {
   if (run.attract) return;
-  if (run.stageInfo) { $("runScore").textContent = (run.stageT || 0).toFixed(1); } else $("runScore").textContent = runScore().toLocaleString();
-  $("runLights").textContent = `✦ ${run.lights}`;
-  { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; } } } }
+  const H = runHud.c || (runHud.c = {}), set = (k, v, f) => { if (H[k] !== v) { H[k] = v; f(v); } };
+  if (run.stageInfo) {
+    // The clock, green while you're under par.
+    const tm = (run.stageT || 0).toFixed(1), par = run.stageInfo.par, cls = run.stageT <= par ? "under" : "over";
+    set("tm", tm, v => { $("runScore").textContent = v; }); set("tcls", cls, v => { $("runScore").className = "score " + v; });
+    // Stars as you earn them: 40% of the lights, then 70% with no hits under par (dims once it's out of reach).
+    const sh = (run.motesGot || 0) / Math.max(1, run.motesTotal || 1), s2 = sh >= 0.4, s3ok = !run.hitsTaken && run.stageT <= par, s3 = sh >= 0.7 && s3ok;
+    set("stars", `${s2}${s3}${s3ok}${!!run.cleared}`, () => { const st = $("runStars"); st.hidden = false; const is = st.children; is[0].className = run.cleared ? "on" : ""; is[1].className = s2 ? "on" : ""; is[2].className = s3 ? "on" : s3ok ? "" : "lost"; });
+  } else { set("tm", runScore().toLocaleString(), v => { $("runScore").textContent = v; }); set("tcls", "", () => { $("runScore").className = "score"; $("runStars").hidden = true; }); }
+  set("li", run.lights, v => { const el = $("runLights"); el.textContent = `✦ ${v}`; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); });
+  { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; $("jFig").style.left = w; } if (sp.dataset.n !== String(run.stage)) { sp.dataset.n = String(run.stage); $("jName").textContent = typeof stagePerson === "function" ? stagePerson(run.stage)[0] : ""; const bp = run.stageInfo.daily ? 0 : ((stageSave().pct || {})[run.stage] || 0); $("jBest").hidden = !(bp > 0); $("jBest").style.left = bp + "%"; } } } }
   const maxH = Math.max(run.hearts, run.hard ? 1 : 3 + runUpg("heart"));
-  $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join("");
-  $("runMult").textContent = run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`;
+  set("hearts", `${run.hearts}/${maxH}`, () => { $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join(""); });
+  set("mult", run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`, v => { $("runMult").textContent = v; });
   $("runPower").textContent = run.power ? `${RUNNER_POWERS[run.power.kind].name} ${Math.ceil(run.power.t)}` : "";
 }
 
