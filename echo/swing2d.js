@@ -1,17 +1,8 @@
-// Smooth mode: the swing drawn in fast 2D on the run canvas, no WebGL at all. Everything that
-// would be expensive is drawn once into small images (buildings, glows, smoke) and then only
-// copied each frame, so phones keep a steady 60 fps. It reads the same game state as the 3D view
-// (swing.js) and gives the overlay the same screen positions. Default on phones; Settings can
-// switch to the full 3D view.
+// The swing drawn in fast 2D on the run canvas, no WebGL at all. Everything that would be
+// expensive is drawn once into small images (buildings, glows, smoke) and then only copied each
+// frame, so phones keep a steady 60 fps. It reads the game state (swing.js) and gives the
+// overlay in run.js the screen positions it needs.
 "use strict";
-
-const swingSmooth = () => {
-  const st = save.settings || {};
-  // The 2D view is the full game everywhere now (homes, district mechanics, all the detail);
-  // the 3D view stays as an option in Settings.
-  if (st.smooth != null) return !!st.smooth;
-  return true;
-};
 
 const SW2D = (() => {
   const mk = (w, h, paint) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); paint(c.getContext("2d"), c.width, c.height); return c; };
@@ -103,7 +94,7 @@ const SW2D = (() => {
     // A new run: forget the last run's scarf trail and camera.
     if (draw.lastR !== R) { hist.length = 0; cam = null; draw.lastR = R; draw.lt = null; }
     // ---------- Camera: frames you and your next anchor, zooms out a little with speed ----------
-    const spd = R.v || 10, punch = 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (33 + Math.min(4, Math.max(0, spd - 18) * 0.25)) * punch;
+    const spd = R.v || 10, punch = save.settings && save.settings.calm ? 1 : 1 + 0.07 * Math.min(1, (R.ringT || 0) / 0.35) + 0.06 * Math.min(1, (R.perfT || 0) / 0.45), sTarget = H / (33 + Math.min(4, Math.max(0, spd - 18) * 0.25)) * punch;
     // Smoothing by time, not by frame, so it feels the same at 30 or 60 frames per second.
     const fdt = Math.min(0.1, Math.max(0, t - (draw.lt ?? t))); draw.lt = t; const ease = k => 1 - Math.exp(-k * fdt);
     sCur += (sTarget - sCur) * ease(punch > 1.01 ? 7 : 2.5); const s = sCur;
@@ -118,7 +109,7 @@ const SW2D = (() => {
     if (!cam || Math.abs(cam.x - tx) > 80) cam = { x: tx, y: ty };
     cam.x += (tx - cam.x) * ease(4); cam.y += (ty - cam.y) * ease(2.6);
     if (!R.cleared) { cam.x = Math.max(R.px + halfW * 0.1, Math.min(R.px + halfW * 0.6, cam.x)); cam.y = Math.max(R.py - halfH * 0.5, Math.min(R.py + halfH * 0.55, cam.y)); }
-    const sh = R.shake > 0 ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (R.kick || 0) * 8;
+    const calm = !!(save.settings && save.settings.calm), sh = R.shake > 0 && !calm ? R.shake * 6 : 0, ox = W / 2 + (Math.random() - 0.5) * sh, oy = H / 2 + (Math.random() - 0.5) * sh + (calm ? 0 : (R.kick || 0) * 8);
     const X = x => ox + (x - cam.x) * s, Y = y => oy - (y - cam.y) * s;
     // ---------- Sky (baked into the far skyline strip below) ----------
     let sk = null; const skyCss = () => sk || (sk = P.sky.map(c => `rgb(${c.map(v => Math.round(v)).join(",")})`));
@@ -339,11 +330,19 @@ const SW2D = (() => {
       if (R.over) rot += t * 6;
       const cx = hx, cy = Y(R.py + 1.1), cr = Math.cos(rot), sr = Math.sin(rot), P2 = (dx, dy) => [cx + (dx * cr - dy * sr) * u, cy - (dx * sr + dy * cr) * u];
       const hip = P2(0, -0.15), chest = P2(0, 0.45), head = P2(0, 0.85), sh = P2(0, 0.38);
-      ctx.strokeStyle = core; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.lineWidth = 0.2 * u; for (const [ex, ey] of [legA, legB]) { const k2 = P2(ex * 0.6, (ey - 0.15) * 0.5 - 0.1), f = P2(ex, ey - 0.15); ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(k2[0], k2[1]); ctx.lineTo(f[0], f[1]); ctx.stroke(); }
-      ctx.lineWidth = 0.32 * u; ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(chest[0], chest[1]); ctx.stroke();
-      ctx.lineWidth = 0.15 * u; for (const [ex, ey] of [armA, armB]) { const e = P2(ex * 0.5, 0.38 + ey * 0.45), hnd = P2(ex, 0.38 + ey); ctx.beginPath(); ctx.moveTo(sh[0], sh[1]); ctx.lineTo(e[0], e[1]); ctx.lineTo(hnd[0], hnd[1]); ctx.stroke(); }
+      // A body of light, in three passes: a soft coloured halo, the bright body, a white-hot inner line.
+      const limbs = (k) => {
+        ctx.lineWidth = 0.2 * u * k; for (const [ex, ey] of [legA, legB]) { const k2 = P2(ex * 0.6, (ey - 0.15) * 0.5 - 0.1), f = P2(ex, ey - 0.15); ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(k2[0], k2[1]); ctx.lineTo(f[0], f[1]); ctx.stroke(); }
+        ctx.lineWidth = 0.32 * u * k; ctx.beginPath(); ctx.moveTo(hip[0], hip[1]); ctx.lineTo(chest[0], chest[1]); ctx.stroke();
+        ctx.lineWidth = 0.15 * u * k; for (const [ex, ey] of [armA, armB]) { const e = P2(ex * 0.5, 0.38 + ey * 0.45), hnd = P2(ex, 0.38 + ey); ctx.beginPath(); ctx.moveTo(sh[0], sh[1]); ctx.lineTo(e[0], e[1]); ctx.lineTo(hnd[0], hnd[1]); ctx.stroke(); }
+      };
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = `rgba(${auraC.join(",")},0.28)`; limbs(2.6); ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = core; limbs(1);
+      ctx.strokeStyle = "rgba(255,255,255,0.85)"; limbs(0.35);
       ctx.fillStyle = core; ctx.beginPath(); ctx.arc(head[0], head[1], 0.2 * u, 0, Math.PI * 2); ctx.fill();
+      // A small heart of light in the chest, beating.
+      { const hb = P2(0, 0.22), beat = 0.5 + 0.5 * Math.pow(Math.max(0, Math.sin(t * 7)), 6), hz = (0.35 + beat * 0.25) * u; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(auraC), hb[0] - hz, hb[1] - hz, hz * 2, hz * 2); ctx.globalCompositeOperation = "source-over"; }
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(0xffffff), head[0] - 0.5 * u, head[1] - 0.5 * u, u, u); ctx.globalCompositeOperation = "source-over";
       if (R.power && R.power.kind === "shield") { ctx.strokeStyle = "rgba(90,210,255,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 1.5 * u, 0, Math.PI * 2); ctx.stroke(); }
     }
@@ -368,7 +367,7 @@ const SW2D = (() => {
         const px2 = X(R.stageLen + 8.2), py2 = wy1; ctx.fillStyle = lit > 0 ? "#3a2a1c" : "rgba(120,130,160,0.35)";
         ctx.beginPath(); ctx.arc(px2, py2 - 2.6 * s, 0.55 * s, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(px2 - 0.6 * s, py2 - 2 * s, 1.2 * s, 2 * s);
         if (lit > 0) { const wv = Math.sin(t * 9) * 0.5; ctx.strokeStyle = "#3a2a1c"; ctx.lineWidth = 0.28 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px2 + 0.5 * s, py2 - 1.8 * s); ctx.lineTo(px2 + (1.2 + wv * 0.3) * s, py2 - (3 + wv) * s); ctx.stroke(); }
-        if (typeof stagePerson === "function") { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
+        { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
       }
     }
     // A ghost: your best run (or a friend's) on this stage, see-through.

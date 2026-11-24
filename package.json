@@ -1,13 +1,11 @@
 {
   "name": "skyrise-and-echo",
   "private": true,
-  "description": "Browser games for phones: Skyrise and Echo.",
+  "description": "Browser games for phones: Skyrise and Lumen Rush.",
   "scripts": {
-    "test": "node tests/run.js",
-    "test:quick": "node tests/run.js --quick"
+    "test": "node tests/run.js"
   },
   "devDependencies": {
-    "playwright": "1.48.2",
-    "three": "0.128.0"
+    "playwright": "1.48.2"
   }
 }

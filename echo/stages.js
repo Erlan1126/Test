@@ -92,12 +92,21 @@ function startStage(n, opts = {}) {
   const own = !info.daily && S.ghosts[n] ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
   $("stageCard").hidden = true;
-  startRun({ stage: n, ghost: race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
+  startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
+  // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
+  if (opts.cp && run && run.stage === n) {
+    const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
+    const a = R.anchors.filter(q => !q.type && !q.broken && q.x >= cp.x - 2).sort((p, q) => p.x - q.x)[0];
+    if (a) { R.px = a.x - 6; R.py = a.y - 8; R.vx = 12; R.vy = 0; R.teth = a; R.L = Math.hypot(6, 8); R.hold = true; }
+    R.darkX = R.px - 55; R.stageT = cp.t; R.cpUsed = true; R.cp = cp; R.tut = 0; R.banner = 0; R.msgs.length = 0;
+    for (const m of R.motes) if (m.x < R.px) m.skip = true;
+    runMsg("From halfway", "Reach their home (1 ★ from here)", 1.8, true);
+  }
 }
 function stageClear(R) {
   R.cleared = true; R.msgs.length = 0; R.clearAt = R.t; R.clearFrom = { x: R.px, y: R.py + 1.2 }; R.inv = 9; R.slowT = 0.6; R.fireworks.push({ t: 0, seed: Math.random() }, { t: -0.4, seed: Math.random() });
   const total = Math.max(1, R.motesTotal), share = R.motesGot / total, time = R.stageT;
-  const stars = 1 + (share >= 0.5 ? 1 : 0) + (share >= 0.8 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
+  const stars = R.cpUsed ? 1 : 1 + (share >= 0.5 ? 1 : 0) + (share >= 0.8 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
   R.stageStars = stars; R.stageTime = time;
   if (R.attract) return;
   const S = stageSave(), n = R.stage, info = R.stageInfo;
@@ -105,19 +114,21 @@ function stageClear(R) {
   if (info.daily) {
     const d = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : (save.dailyStage = { day: dayNumber() });
     if (!d.time || time < d.time) { d.time = time; d.g = ghostEncode(R.trace); newBest = true; } d.stars = Math.max(d.stars || 0, stars);
-    if (typeof streakTouch === "function") streakTouch();
+    streakTouch();
   } else {
-    const b = S.best[n] || {}; S.best[n] = { stars: Math.max(b.stars || 0, stars), time: b.time ? Math.min(b.time, time) : time };
-    if (!b.time || time < b.time) { S.ghosts[n] = { g: ghostEncode(R.trace), t: time }; newBest = true; }
+    const b = S.best[n] || {};
+    // A run from the halfway lantern relights the home, but doesn't set a best time or a ghost.
+    S.best[n] = { stars: Math.max(b.stars || 0, stars), time: R.cpUsed ? b.time || time : b.time ? Math.min(b.time, time) : time };
+    if (!R.cpUsed && (!b.time || time < b.time)) { S.ghosts[n] = { g: ghostEncode(R.trace), t: time }; newBest = true; }
     S.unlocked = Math.max(S.unlocked, Math.min(STAGES_N, n + 1));
   }
   R.newBest = newBest;
   starRewards();
   save.glow = (save.glow || 0) + R.lights + stars * 10;
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
-  if (typeof seasonGain === "function") seasonGain(Math.round(stars * 15 + R.lights / 2));
-  progressEvent("dist", Math.floor(R.px)); persist(); if (typeof checkAchievements === "function") checkAchievements();
-  R.wantShot = true;
+  seasonGain(Math.round(stars * 15 + R.lights / 2));
+  progressEvent("dist", Math.floor(R.px)); progressEvent("home"); progressEvent("stars", stars); if (info.daily) progressEvent("daily"); persist(); checkAchievements();
+  R.wantShotAt = R.t + 1.3;   // the picture to share: their window lit, them waving
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
   else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
@@ -141,10 +152,11 @@ function showStageCard(won) {
   $("stPerf").textContent = R.perfects;
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   $("stNote").textContent = raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch half the lights for ★★" : `★★★: 80% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc.");
-  const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? "Next stage" : "Retry";
+  const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
   next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
   $("stShare").hidden = !won;
+  { const cb = $("stFromCp"); if (cb) cb.hidden = !!(won || !R.cp); }
   el.hidden = false; runHud();
 }
 // Share: the best moment of the run as a picture, plus a link to race your ghost.
@@ -160,7 +172,8 @@ async function stageShare() {
       const gr = g.createLinearGradient(0, 860, 0, 1280); gr.addColorStop(0, "rgba(6,7,11,0)"); gr.addColorStop(1, "rgba(6,7,11,0.92)"); g.fillStyle = gr; g.fillRect(0, 860, 720, 420);
       g.fillStyle = "#fff"; g.font = "800 64px Inter, system-ui, sans-serif"; g.textAlign = "center"; g.fillText(info.daily ? "Daily stage" : `Stage ${info.n}`, 360, 1080);
       g.fillStyle = "#ffd98a"; g.font = "700 60px Inter, system-ui, sans-serif"; g.fillText(`${starText(R.stageStars || 0)}  ${(R.stageTime || 0).toFixed(1)} s`, 360, 1160);
-      g.fillStyle = "#ffffff"; g.font = "600 30px Inter, system-ui, sans-serif"; g.fillText(`Light brought home to ${stagePerson(info.n)[0]}`, 360, 1010);
+      g.fillStyle = "#ffffff"; g.font = "700 32px Inter, system-ui, sans-serif"; g.fillText(`Light brought home to ${stagePerson(info.n)[0]}`, 360, 990);
+      g.fillStyle = "rgba(255,255,255,0.75)"; g.font = "italic 500 26px Inter, system-ui, sans-serif"; g.fillText(`“${stagePerson(info.n)[1]}”`, 360, 1032, 660);
       g.fillStyle = "#8be9ff"; g.font = "800 34px Inter, system-ui, sans-serif"; g.fillText("LUMEN RUSH", 360, 1230);
       const blob = await new Promise(res => c.toBlob(res, "image/jpeg", 0.85)), file = new File([blob], "lumen-rush.jpg", { type: "image/jpeg" });
       if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: `${text} ${url}` }); return; }
@@ -206,6 +219,7 @@ document.getElementById("stNext").addEventListener("click", () => startStage(Num
 document.getElementById("stRetry").addEventListener("click", () => run && startStage(run.stage));
 document.getElementById("stStages").addEventListener("click", () => { $("stageCard").hidden = true; run = null; showTitle(); openSheet("stages"); });
 document.getElementById("stShare").addEventListener("click", stageShare);
+document.getElementById("stFromCp").addEventListener("click", () => { if (run && run.cp) startStage(run.stage, { cp: run.cp }); });
 
 // What's new on a stage: a short line the first time something appears.
 const STAGE_NEW = { 11: ["The Markets", "Lantern strings sway in the breeze: time your grab"], 21: ["The Harbour", "Fall in the water and you splash: it slows you down"], 31: ["The Arcade", "Neon pads on the rooftops bounce you sky-high"], 41: ["The Park", "Grab the glowing treetops for low, fast swings"], 51: ["The Tower", "Updrafts between the towers lift you up"], 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };
@@ -225,6 +239,8 @@ const nextStarReward = () => STAR_REWARDS.find(rw => !runnerLook().own[rw[1] + r
 function playOpening(done) {
   const el = $("opening"), c = $("openingCanvas"), cap = $("opCap"), go = $("opGo"), skip = $("opSkip");
   if (!el || !c) { done(); return; }
+  if (!el.hidden) return;   // already playing (a second Play press)
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   el.hidden = false; go.hidden = true; let t0 = performance.now(), ended = false, lastCap = -1;
   const caps = ["Every night, the city glowed.", "Then the <b>Hush</b> came,<br>and put out every light.", "But one light was left.<br><b>You.</b>", `<b>${stagePerson(1)[0]}</b> is waiting in the dark.<br>Bring the light back.`];
   const finish = () => { if (ended) return; ended = true; el.hidden = true; save.opening = 1; persist(); done(); };

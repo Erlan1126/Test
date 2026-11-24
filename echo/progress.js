@@ -1,6 +1,5 @@
-// Echo: coming back. A seven-day reward calendar, three daily missions, a daily streak, a
-// weekly event, achievements, playable friends with perks, rebuilding the Singer's city with
-// lights, challenge links for friends and a score card to share.
+// Lumen Rush: coming back. A seven-day reward calendar, three daily missions, a daily streak, a
+// weekly event, awards, the monthly season, challenge links for friends and a score card to share.
 "use strict";
 
 const today = () => dayNumber();
@@ -35,23 +34,25 @@ const streakNow = () => { const s = save.streak; return s && (s.last === today()
 const streakBonus = () => Math.min(0.5, streakNow() * 0.05);
 
 // ---------- Daily missions: three a day, the same for everyone ----------
+// Today's three missions, all things you do in the swing game.
 const DM_POOL = [
-  { k: "lights", goal: 150, text: n => `Gather ${n} lights today` },
-  { k: "free", goal: 20, text: n => `Light up ${n} buildings today` },
-  { k: "dist", goal: 800, text: n => `Reach ${n} m in one run`, max: true },
-  { k: "boss", goal: 1, text: () => "Clear a Blackout" },
-  { k: "runs", goal: 3, text: n => `Play ${n} runs` },
-  { k: "combo", goal: 25, text: n => `Reach a ${n} combo`, max: true },
-  { k: "near", goal: 12, text: n => `Get ${n} close calls today` },
-  { k: "fork", goal: 2, text: n => `Take the risky way at ${n} forks` },
+  { k: "home", goal: 3, text: n => `Bring light to ${n} homes today` },
+  { k: "perfect", goal: 30, text: n => `Land ${n} Perfects today` },
+  { k: "pchain", goal: 5, text: n => `Chain ${n} Perfects in a row`, max: true },
+  { k: "lights", goal: 250, text: n => `Catch ${n} lights today` },
+  { k: "free", goal: 40, text: n => `Light up ${n} buildings today` },
+  { k: "stars", goal: 3, text: () => "Earn 3 stars on any stage", max: true },
+  { k: "daily", goal: 1, text: () => "Bring light to today's neighbour" },
+  { k: "nightlit", goal: 15, text: n => `Light ${n} windows in one Night shift`, max: true },
+  { k: "near", goal: 8, text: n => `Get ${n} close calls with drones today` },
 ];
 const DM_REWARD = 30, DM_ALL = 50;
 function dailyMissions() {
   const t = today();
-  if (!save.dm || save.dm.day !== t) {
+  if (!save.dm || save.dm.day !== t || save.dm.v !== 2 || save.dm.list.some(m => !DM_POOL[m.i])) {
     const r = seeded(t * 31 + 5), pool = DM_POOL.map((_, i) => i), list = [];
     while (list.length < 3) list.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-    save.dm = { day: t, list: list.map(i => ({ i, prog: 0, done: false })), all: false };
+    save.dm = { v: 2, day: t, list: list.map(i => ({ i, prog: 0, done: false })), all: false };
   }
   return save.dm;
 }
@@ -67,8 +68,8 @@ function progressEvent(k, v = 1) {
   }
   if (!dm.all && dm.list.every(m => m.done)) { dm.all = true; gain(DM_ALL); if (run && !run.over) runMsg("All daily missions!", `+${DM_ALL} ✦`, 2.4, true); }
   save.prog = save.prog || {};
-  if (["free", "boss", "near", "fork", "runs"].includes(k)) save.prog[k] = (save.prog[k] || 0) + v;
-  if (k === "combo" || k === "dist") save.prog[k] = Math.max(save.prog[k] || 0, v);
+  if (["free", "boss", "near", "fork", "runs", "home", "perfect", "daily", "lights"].includes(k)) save.prog[k] = (save.prog[k] || 0) + v;
+  if (["combo", "dist", "pchain", "nightlit", "stars"].includes(k)) save.prog[k] = Math.max(save.prog[k] || 0, v);
 }
 
 // ---------- The weekly event ----------
@@ -81,52 +82,27 @@ const WEEK_EVENTS = [
 ];
 const weekEvent = () => WEEK_EVENTS[weekNumber() % WEEK_EVENTS.length];
 
-// ---------- Playable friends ----------
-// Friends you find in runs can be played as; each brings a small gift.
-const FRIEND_PERKS = [
-  "Starts each run with a Magnet", "Bubbles carry you twice as far", "Currents can't push you", "Crystal gates open wider",
-  "Lava can't hurt you", "Icicles fall slowly", "Pulses reach a quarter further", "Lanterns swing slower",
-  "Sees through power cuts", "Small: close calls are easier", "Glitches drift away from you", "One extra light of your own",
-];
-const playingAs = () => { const c = (save.run || {}).char; return c != null && c >= 0 && (save.runFriends || {})[c] ? c : -1; };
-const perk = i => playingAs() === i;
-
-// ---------- Rebuilding the city ----------
-const CITY_BUILDS = [
-  { id: "lamps", name: "Street lamps", cost: 40, text: "Light the street again" },
-  { id: "bakery", name: "The bakery", cost: 90, text: "Warm windows and the smell of bread" },
-  { id: "fountain", name: "The fountain", cost: 160, text: "Singing water in the square" },
-  { id: "houses", name: "The old houses", cost: 260, text: "Every window lit" },
-  { id: "garden", name: "The glow garden", cost: 380, text: "Glowing flowers along the street" },
-  { id: "bridge", name: "The stone bridge", cost: 520, text: "Lanterns across the river" },
-  { id: "hall", name: "The music hall", cost: 700, text: "A dome full of songs" },
-  { id: "tower", name: "The Singer's tower", cost: 1000, text: "The heart of the city, shining" },
-];
-const built = id => !!(save.builds || {})[id];
-function buildIt(id) {
-  const b = CITY_BUILDS.find(q => q.id === id);
-  if (!b || built(id) || (save.glow || 0) < b.cost) return false;
-  save.glow -= b.cost; save.builds = save.builds || {}; save.builds[id] = 1; persist();
-  sfx.gate(); buzz([20, 40, 20]); checkAchievements();
-  return true;
-}
-
 // ---------- Achievements ----------
+// Awards: the story of the city coming back, and the skills that get you there.
+const distLit = c => { const S = stageSave(); for (let n = c * 10 + 1; n <= c * 10 + 10; n++) if (!(S.best[n] && S.best[n].stars)) return false; return true; };
+const allStars = () => Object.values(stageSave().best).reduce((a, b) => a + ((b && b.stars) || 0), 0);
+const threeStars = () => Object.values(stageSave().best).filter(b => b && b.stars === 3).length;
 const RUN_ACHS = [
-  { id: "m500", name: "Deep breath", text: "Reach 500 m", test: () => (save.prog || {}).dist >= 500, r: 30 },
-  { id: "m1500", name: "Long way home", text: "Reach 1,500 m", test: () => (save.prog || {}).dist >= 1500, r: 80 },
-  { id: "m3000", name: "Almost the sky", text: "Reach 3,000 m", test: () => (save.prog || {}).dist >= 3000, r: 200 },
-  { id: "c30", name: "In tune", text: "Reach a 30 combo", test: () => (save.prog || {}).combo >= 30, r: 40 },
-  { id: "c80", name: "Perfect flow", text: "Reach an 80 combo", test: () => (save.prog || {}).combo >= 80, r: 120 },
-  { id: "f50", name: "Lamplighter", text: "Light up 50 buildings", test: () => (save.prog || {}).free >= 50, r: 50 },
-  { id: "b1", name: "Peacemaker", text: "Clear a Blackout", test: () => (save.prog || {}).boss >= 1, r: 40 },
-  { id: "b5", name: "Storm chaser", text: "Clear 5 Blackouts", test: () => (save.prog || {}).boss >= 5, r: 120 },
-  { id: "fr3", name: "Not alone", text: "Find 3 lost friends", test: () => Object.keys(save.runFriends || {}).length >= 3, r: 50 },
-  { id: "fr12", name: "Everyone home", text: "Find all 12 lost friends", test: () => Object.keys(save.runFriends || {}).length >= 12, r: 300 },
+  { id: "home1", name: "First light", text: "Bring the light back to your first home", test: () => (save.prog || {}).home >= 1, r: 30 },
+  { id: "d0", name: "Downtown glows", text: "Relight every home in Downtown", test: () => distLit(0), r: 80 },
+  { id: "d1", name: "Market lanterns", text: "Relight every home in the Markets", test: () => distLit(1), r: 100 },
+  { id: "d2", name: "Lighthouse keeper", text: "Relight every home in the Harbour", test: () => distLit(2), r: 120 },
+  { id: "d3", name: "Insert coin", text: "Relight every home in the Arcade", test: () => distLit(3), r: 140 },
+  { id: "d4", name: "Firefly", text: "Relight every home in the Park", test: () => distLit(4), r: 160 },
+  { id: "dawn", name: "Dawn", text: "Relight all 60 homes", test: () => distLit(5) && [0, 1, 2, 3, 4].every(distLit), r: 500 },
+  { id: "boss1", name: "Heartbreaker", text: "Break the Heart of the Dark", test: () => (save.prog || {}).boss >= 1, r: 60 },
+  { id: "t5", name: "Flawless", text: "Earn 3 stars on 5 stages", test: () => threeStars() >= 5, r: 80 },
+  { id: "t90", name: "Starlight", text: "Collect 90 stars", test: () => allStars() >= 90, r: 200 },
+  { id: "pc10", name: "In tune", text: "Chain 10 Perfects in a row", test: () => (save.prog || {}).pchain >= 10, r: 80 },
+  { id: "p500", name: "Perfectionist", text: "Land 500 Perfects", test: () => (save.prog || {}).perfect >= 500, r: 150 },
+  { id: "n30", name: "Night owl", text: "Light 30 windows in one Night shift", test: () => (save.prog || {}).nightlit >= 30, r: 100 },
+  { id: "dy7", name: "Good neighbour", text: "Reach 7 daily neighbours", test: () => (save.prog || {}).daily >= 7, r: 120 },
   { id: "s7", name: "Every day", text: "Play 7 days in a row", test: () => (save.streak || {}).best >= 7, r: 100 },
-  { id: "build4", name: "Rebuilder", text: "Rebuild 4 places in the city", test: () => Object.keys(save.builds || {}).length >= 4, r: 80 },
-  { id: "tower", name: "The heart shines", text: "Rebuild the Singer's tower", test: () => built("tower"), r: 300 },
-  { id: "hard", name: "Fearless", text: "Reach 500 m in Hard mode", test: () => (save.prog || {}).hardDist >= 500, r: 100 },
 ];
 function checkAchievements() {
   save.runAch = save.runAch || {};
@@ -152,12 +128,8 @@ function seasonGain(xp) {
   return paid;
 }
 
-// ---------- Friends' abilities ----------
-// Playing as a friend gives an ability button: a short power-up, ready again after 25 s.
-const FRIEND_ABILITY = ["magnet", "comet", "choir", "lantern", "comet", "lantern", "choir", "magnet", "lantern", "comet", "choir", "magnet"];
-
 // ---------- Challenge a friend; share a score card ----------
-// A link carries a seed and a score: your friend plays the very same cave and tries to beat you.
+// A link carries a seed and a score: your friend plays the very same Night shift and tries to beat you.
 const challengeFrom = (() => {
   try { const p = new URLSearchParams(location.search).get("ch"); if (!p) return null; const [seed, score] = p.split(".").map(Number); return seed > 0 ? { seed, score: score || 0 } : null; } catch (e) { return null; }
 })();

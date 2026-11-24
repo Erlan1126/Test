@@ -1,80 +1,36 @@
-// Echo: menus and screens, rewards, settings, and startup.
+// Lumen Rush: the home screen, the Today panel, settings, backup and startup.
 "use strict";
 
-// ---------- UI ----------
-const screens = {
-  title: $("titleScreen"), levels: $("levelScreen"), pause: $("pauseScreen"), result: $("resultScreen"),
-  challenges: $("challengeScreen"), city: $("cityScreen"), movie: $("movieScreen"), run: $("runScreen"), home: $("homeScreen"), install: $("installScreen"), fail: $("failScreen"), story: $("storyScreen"), card: $("cardScreen"), looks: $("looksScreen"), awards: $("awardsScreen"), settings: $("settingsScreen"),
-};
-let backTo = "title";
-function applyLayoutPrefs() {
-  document.body.classList.toggle("big-text", !!save.settings.bigText);
-  document.body.classList.toggle("left-hand", save.settings.hand === "left");
-}
+// ---------- Screens ----------
+const screens = { title: $("titleScreen"), run: $("runScreen"), settings: $("settingsScreen") };
 function show(name) {
   screen = name;
-  // The tab bar sits under Home and the City; sheets close when the screen changes.
-  document.body.classList.toggle("tabs", name === "title" || name === "city");
+  // The tab bar sits under Home; sheets close when the screen changes.
+  document.body.classList.toggle("tabs", name === "title");
   document.body.classList.toggle("inrun", name === "run");
-  for (const [id, scr] of [["tabHome", "title"], ["levelsBtn", "city"]]) { const b = $(id); if (b) b.classList.toggle("on", name === scr); }
-  for (const id of ["todayPanel", "sheet"]) { const el = $(id); if (el) el.hidden = true; }
-  if (name === "title") { const t = $("titleScreen"); if (t) t.classList.remove("launch"); }
-  if (name !== "play") { const d = $("dashBtn"); if (d) d.hidden = true; }
-  if (name !== "city") { const sp = $("shopPanel"); if (sp) sp.hidden = true; }
-  $("singBtn").hidden = name !== "play" || controlMode() === "stick";
-  if (name !== "play") $("flareBtn").hidden = true;
-  document.body.classList.toggle("sing-on", !$("singBtn").hidden);
+  $("tabHome").classList.toggle("on", name === "title");
+  for (const id of ["todayPanel", "sheet"]) $(id).hidden = true;
+  if (name === "title") $("titleScreen").classList.remove("launch");
   for (const k in screens) screens[k].classList.toggle("on", k === name);
-  $("hud").classList.toggle("on", name === "play" || name === "pause");
-  $("chimeBar").classList.toggle("on", name === "play" || name === "pause");
-  if (name !== "play") { pointers.clear(); steer = null; }
-  if (name !== "play" && name !== "pause") { setHint("", 0); $("levelCard").classList.remove("on"); }
   // Away from the title, keep one history entry so the phone's Back button stays in the game.
   if (name !== "title" && !backArmed) {
     try { history.pushState({ echo: 1 }, ""); backArmed = true; } catch (e) {}
   }
 }
 
-// The phone's Back button: pause a level, leave the pause menu for the map, and go from any
-// other screen back to the title. Only on the title does Back leave the game.
+// The phone's Back button goes from any other screen back to the title. Only on the title does
+// Back leave the game.
 let backArmed = false;
 window.addEventListener("popstate", () => {
   backArmed = false;
-  if (screen === "play") pause();
-  else if (screen === "pause") (isChallenge(levelIndex) ? showTitle() : openMap());
-  else if (screen === "settings" && backTo === "pause") show("pause");
-  else if (screen !== "title") showTitle();
-  if (screen !== "title" && !backArmed) {
-    try { history.pushState({ echo: 1 }, ""); backArmed = true; } catch (e) {}
-  }
+  if (screen !== "title") showTitle();
 });
 function showTitle() {
-  // The cave behind the title is the next one you'll play, in your current world's colours.
-  // Lumi floats near the middle of it and sings now and then.
-  loadLevel(nextUnplayed(), true);
-  let best = null, bd = Infinity;
-  for (let y = 1; y < L.rows - 1; y++) for (let x = 1; x < L.cols - 1; x++) {
-    if (L.def.map[y][x] !== ".") continue;
-    const d = Math.hypot(x - (L.cols - 1) / 2, (y - L.rows * 0.6) * 1.2);
-    if (d < bd) { bd = d; best = [x + 0.5, y + 0.5]; }
-  }
-  if (best) { L.lumi.x = best[0]; L.lumi.y = best[1]; }
-  L.seen.fill(1);
+  if (typeof music !== "undefined") music.district = null;   // the next game picks its own music
   renderTitle();
   show("title");
-  maybeAskInstall();
 }
 
-let hintTimer = 0;
-function setHint(text, seconds) {
-  const el = $("hint");
-  if (text) { el.textContent = text; el.classList.add("on"); }
-  else el.classList.remove("on");
-  hintTimer = seconds || 0;
-}
-function updateHint(dt) {
-  if (hintTimer > 0) { hintTimer -= dt; if (hintTimer <= 0) $("hint").classList.remove("on"); }
-}
 // Messages show one at a time so several unlocks never pile up over the screen.
 const toastQueue = [];
 let toastBusy = false;
@@ -96,626 +52,37 @@ function nextToast() {
   setTimeout(() => { el.remove(); nextToast(); }, 2650);
 }
 
-const levelLabel = i => (i === DAILY ? "Daily Cave" : i === WEEKLY ? "Weekly Cave" : `Level ${i + 1}`);
-function updateHud() {
-  if (!L) return;
-  $("lightsPill").textContent = `✦ ${L.got}/${L.lights.length}`;
-  // The chimes to ring, in order: rung ones bright, the next one pulsing.
-  const bar = $("chimeBar");
-  bar.hidden = !L.chimes.length && !L.lamps.length;
-  bar.innerHTML = L.lamps.map(q => `<i class="${q.on ? "rung" : "next"}" style="--c:#ffd27a">✹</i>`).join("") + L.chimes.map((c, k) => `<i class="${k + 1 < L.chimeNext ? "rung" : k + 1 === L.chimeNext ? "next" : ""}" style="--c:${CHIMES[k].color}">${CHIMES[k].mark}</i>`).join("");
-  const pill = $("pingsPill");
-  pill.hidden = levelIndex >= 0 && levelIndex < 10;
-  if (L.songLimit) {
-    const left = Math.max(0, L.songLimit - L.pings);
-    pill.innerHTML = `♪ ${left} <small>left</small>`;
-    pill.style.color = left <= 1 ? "#ff9fb8" : "";
-  } else {
-    pill.innerHTML = `♪ ${L.pings} <small>/ ${L.def.par}</small>`;
-    pill.style.color = L.pings > L.def.par ? "#ff9fb8" : "";
-  }
-  const name = isChallenge(levelIndex) ? `<b>${levelLabel(levelIndex)}</b>` : `<b>${levelIndex + 1}.</b> ${L.def.name}`;
-  if (L.timeLeft > 0 || L.failWhy === "time") {
-    const t = Math.ceil(L.timeLeft);
-    $("levelName").innerHTML = `<b style="color:${t <= 10 ? "#ff9fb8" : "inherit"}">⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}</b>`;
-  } else $("levelName").innerHTML = name;
-}
-function updateMute() {
-  $("muteBtn").textContent = muted ? "🔇" : "🔊";
-  applyVolumes();
-}
-
-// Picture cards that explain a new idea the first time a cave uses it.
-const LUMI_SVG = '<g><circle r="17" fill="url(#cardGlow)"/><circle r="9" fill="#dff8ff"/><circle cx="-3" cy="-1.5" r="1.4" fill="#123049"/><circle cx="3" cy="-1.5" r="1.4" fill="#123049"/><path d="M-2.5 2.5q2.5 2 5 0" stroke="#123049" stroke-width="1.2" fill="none" stroke-linecap="round"/></g>';
-const CARD_DEFS = '<defs><radialGradient id="cardGlow"><stop offset="0" stop-color="#7ee8ff" stop-opacity=".7"/><stop offset="1" stop-color="#7ee8ff" stop-opacity="0"/></radialGradient><radialGradient id="cardGold"><stop offset="0" stop-color="#ffd36e"/><stop offset="1" stop-color="#ffd36e" stop-opacity="0"/></radialGradient></defs>';
-const CARDS = {
-  energy: { title: "Light energy", text: "Lumi's glow slowly fades as you explore. Lost lights, crystals and glow-moths fill it back up.",
-    art: `<g transform="translate(80 44)">${LUMI_SVG}</g><rect x="40" y="80" width="80" height="8" rx="4" fill="rgba(255,255,255,.12)"/><rect x="40" y="80" width="52" height="8" rx="4" fill="#7ee8ff"/><circle cx="132" cy="40" r="12" fill="url(#cardGold)"/><path d="M28 34l6 10-6 10-6-10z" fill="#d2b4ff"/>` },
-  rescue: { title: "Lost baby moths", text: "Some caves hide a little lost moth. Find it, and it follows you. The portal only wakes up once you bring it home.",
-    art: `<g transform="translate(50 60)">${LUMI_SVG}</g><g fill="#ffd1ea"><ellipse cx="80" cy="56" rx="4" ry="6" transform="rotate(-25 80 56)"/><ellipse cx="88" cy="56" rx="4" ry="6" transform="rotate(25 88 56)"/></g><path d="M100 58h22" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 5" stroke-linecap="round"/><g fill="none" stroke="#b48cff" stroke-width="2.5"><circle cx="136" cy="58" r="12" stroke-dasharray="20 10"/><circle cx="136" cy="58" r="6"/></g>` },
-  runes: { title: "Rune stones", text: "A stone gate blocks the way. Sing close to every rune stone, inside its dotted ring, and the gate opens for good.",
-    art: `<circle cx="56" cy="56" r="34" fill="none" stroke="#96ffbe" stroke-opacity=".5" stroke-dasharray="3 6"/><circle cx="56" cy="56" r="13" fill="#283a46"/><g stroke="#96ffbe" stroke-width="2" fill="none"><circle cx="56" cy="56" r="2" fill="#96ffbe"/><path d="M49 51a8 8 0 0 0 0 10M63 51a8 8 0 0 1 0 10"/></g><g transform="translate(36 72)">${LUMI_SVG}</g><rect x="112" y="34" width="34" height="44" rx="3" fill="#3a4656"/><rect x="117" y="39" width="24" height="34" fill="none" stroke="#96ffbe" stroke-width="1.5"/>` },
-  gloom: { title: "Hushlings", text: "The Hush wants the caves silent forever, and Hushlings are its shadows. They drift through rock, hear every song nearby and notice you if you swim close, then chase you almost as fast as you swim. Run, or hide behind rock until it gives up. A touch steals light. They're in every cave from now on.",
-    art: `<g transform="translate(44 56)">${LUMI_SVG}</g><g fill="none" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2"><path d="M66 44a16 16 0 0 1 0 24"/><path d="M74 38a24 24 0 0 1 0 36"/></g><g transform="translate(122 58) scale(1.3)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g>` },
-  relight: { title: "Relight the city", text: "The old street lamps have been dark since the Hush came. Sing close to each one and it burns again. Light them all, and this part of the city wakes up.",
-    art: `<g transform="translate(46 62)">${LUMI_SVG}</g><path d="M64 54a14 14 0 0 1 0 18" stroke="#7ee8ff" stroke-opacity=".6" fill="none" stroke-width="2"/><g transform="translate(104 92)"><circle cy="-50" r="18" fill="url(#cardGold)" opacity=".7"/><path d="M0 0V-46q0-6 6-6h4" stroke="#1c2026" stroke-width="3" fill="none"/><path d="M6-54h10l-2 12H8z" fill="#ffd27a"/></g><g transform="translate(140 92)"><path d="M0 0V-46q0-6 6-6h4" stroke="#1c2026" stroke-width="3" fill="none"/><path d="M6-54h10l-2 12H8z" fill="#5a6476"/></g>` },
-  escape: { title: "Run!", text: "In some caves a Hunter rises out of the dark behind you, a piece of the Hush that never gives up. It's a little slower than you. Don't stop, flare it back if it gets close, and reach the portal.",
-    art: `<g transform="translate(112 58)">${LUMI_SVG}</g><path d="M90 50h-14M92 60h-20M90 70h-14" stroke="#7ee8ff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/><g transform="translate(46 60) scale(1.5)"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".6"/><ellipse cx="-6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/><ellipse cx="6" cy="-4" rx="3.4" ry="1.6" fill="#ff9ad0"/></g>` },
-  chimes: { title: "Chimes", text: "Every cave from now on hides chime stones. The marks at the top show the order: ring them by swimming into them, one after another, and the sealed portal opens.",
-    art: `<g transform="translate(40 58)">${LUMI_SVG}</g><g font-size="16" text-anchor="middle"><text x="84" y="40" fill="#7ee8ff">●</text><text x="106" y="40" fill="#c9a8ff">◆</text><text x="128" y="40" fill="#ffd36e">▲</text></g><g transform="translate(84 76)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#7ee8ff"/></g><g transform="translate(118 80)"><path d="M-6 10h12l-2-14h-8z" fill="#3a4656"/><path d="M-7-4q7-14 14 0z" fill="#c9a8ff" opacity=".6"/></g><path d="M54 62q14-10 26 6" stroke="#8ea3c8" stroke-dasharray="2 4" fill="none"/>` },
-  dash: { title: "Dash", text: "Lumi has learned to dash. Tap the ➶ button for a quick burst of speed the way you're swimming. It makes a little noise, so save it for escapes. It recharges in a few seconds.",
-    art: `<g transform="translate(96 60)">${LUMI_SVG}</g><g stroke="#bfe8ff" stroke-width="2" stroke-linecap="round" opacity=".8"><path d="M30 52h36M22 62h40M30 72h36"/></g>` },
-  hum: { title: "Hum", text: "Lumi has learned to hum. While sneaking (a short push), a tap is a hum instead of a song: it shows only the walls close by, but it's so quiet that only a Hushling right next to you hears it.",
-    art: `<g transform="translate(80 60)">${LUMI_SVG}</g><circle cx="80" cy="60" r="26" fill="none" stroke="#bfe8ff" stroke-width="1.5" stroke-dasharray="3 4" opacity=".7"/><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/></g>` },
-  shield: { title: "Shield", text: "Lumi carries a shield of light now. The first time anything catches you in a cave, the shield breaks instead of your light. You can see it as a ring around Lumi.",
-    art: `<g transform="translate(80 60)">${LUMI_SVG}</g><circle cx="80" cy="60" r="24" fill="none" stroke="#9fe8ff" stroke-width="3" opacity=".8"/>` },
-  pebbles: { title: "Pebbles", text: "From now on Lumi carries three pebbles. Tap the pebble button, then tap where it should land. It clatters where it lands, and every Hushling that hears it goes to look. Use them to clear the way.",
-    art: `<g transform="translate(32 70)">${LUMI_SVG}</g><path d="M44 58Q80 8 116 62" fill="none" stroke="#bfe8ff" stroke-width="1.6" stroke-dasharray="3 4" opacity=".8"/><circle cx="118" cy="66" r="4" fill="#dff2ff"/><g stroke="#bfe8ff" stroke-width="1.4" opacity=".8"><path d="M108 58l-5-4M128 58l5-4M118 54v-6"/></g><g transform="translate(140 40)"><ellipse cx="-4" rx="2.6" ry="1.4" fill="#d2beff"/><ellipse cx="4" rx="2.6" ry="1.4" fill="#d2beff"/><text x="0" y="-8" font-size="12" text-anchor="middle" fill="#d2beff" font-weight="700">?</text></g>` },
-  flare: { title: "Flare", text: "Tap the ✦ button to burst your light. Creatures close by are dazzled, and Hushlings shrink back and stop chasing. It needs a few seconds to recharge.",
-    art: `<g transform="translate(70 58)"><circle r="40" fill="url(#cardGold)" opacity=".55"/><circle r="30" fill="none" stroke="#fff6d6" stroke-width="2"/>${LUMI_SVG}</g><g transform="translate(132 50) scale(.9)" opacity=".8"><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><path d="M-9-5l6 2M9-5l-6 2" stroke="#c9a8ff" stroke-width="1.6" stroke-linecap="round"/></g><path d="M112 36l-6-6M116 70l-7 5" stroke="#fff6d6" stroke-width="2" stroke-linecap="round"/>` },
-  quiet: { title: "Quiet caves", text: "These caves only let you sing a few times. Watch the counter, sing where it matters, and remember the way.",
-    art: `<g transform="translate(52 56)">${LUMI_SVG}</g><g fill="#e9f3ff"><path d="M98 30v34a8 6 0 1 1-4-5V34l26-6v30a8 6 0 1 1-4-5V36z"/></g><text x="128" y="92" fill="#ff9fb8" font-size="18" font-family="Fredoka, sans-serif" font-weight="600">3 left</text>` },
-  dark: { title: "Dark caves", text: "Nothing glows here, not even the lights or the portal, until your song finds them. If it's too hard, turn on Guiding glow in Settings.",
-    art: `<rect x="10" y="10" width="140" height="90" rx="14" fill="#03040b"/><g fill="none" stroke="#7ee8ff" stroke-width="1.5"><circle cx="80" cy="56" r="22" stroke-opacity=".5"/><circle cx="80" cy="56" r="36" stroke-opacity=".25"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
-  tall: { title: "Big caves", text: "Some caves are bigger than your screen. The view follows Lumi, so sing often to see what's ahead.",
-    art: `<rect x="56" y="8" width="48" height="94" rx="8" fill="none" stroke="#8ea3c8" stroke-width="2"/><rect x="62" y="40" width="36" height="40" rx="4" fill="rgba(126,232,255,.12)" stroke="#7ee8ff"/><g transform="translate(80 64)">${LUMI_SVG}</g><path d="M124 80V30m-8 8 8-8 8 8" stroke="#e9f3ff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
-  thorns: { title: "Thornlings", text: "Spiky creatures patrol the tunnels. They hide in the dark, so sing to see them, or listen for their rattle. Touching one costs light.",
-    art: `<path d="M20 60h120" stroke="#3a4656" stroke-width="22" stroke-linecap="round"/><g transform="translate(92 60)"><circle r="9" fill="#5a1d2a"/><g stroke="#ff7a6a" stroke-width="2.5" stroke-linecap="round">${[0, 1, 2, 3, 4, 5, 6, 7].map(k => `<path d="M${(Math.cos(k * 0.785) * 9).toFixed(1)} ${(Math.sin(k * 0.785) * 9).toFixed(1)}L${(Math.cos(k * 0.785) * 15).toFixed(1)} ${(Math.sin(k * 0.785) * 15).toFixed(1)}"/>`).join("")}</g></g><path d="M74 60h-14M110 60h14" stroke="#8ea3c8" stroke-width="2" stroke-dasharray="3 4"/><g transform="translate(36 60) scale(.8)">${LUMI_SVG}</g>` },
-  mobn: { title: "Snapvines", text: "Hungry plants grow from the walls of Mossy Hollow. Swim close and one shivers, then lunges. Watch for the shiver and dart past.",
-    art: `<path d="M24 20v70" stroke="#3a4656" stroke-width="16"/><path d="M32 56q20-6 40 0" stroke="#3f8f4f" stroke-width="5" fill="none"/><ellipse cx="82" cy="56" rx="16" ry="10" fill="#4caf5c"/><ellipse cx="86" cy="56" rx="9" ry="5" fill="#ff6f9a"/><g transform="translate(130 60) scale(.8)">${LUMI_SVG}</g>` },
-  moba: { title: "Shardbats", text: "Crystal bats roost on the ceilings of Amethyst Deep. A song nearby wakes one, and it swoops at where it heard you. Sing, then move.",
-    art: `<g transform="translate(80 40)"><path d="M-8 0L-44 -14L-30 10Z" fill="#a77bff"/><path d="M8 0L44 -14L30 10Z" fill="#a77bff"/><circle r="12" fill="#2e1f52"/><circle cx="-4" r="3.5" fill="#fff"/><circle cx="4" r="3.5" fill="#fff"/><circle cx="-4" cy="1" r="2" fill="#ff4fa0"/><circle cx="4" cy="1" r="2" fill="#ff4fa0"/></g><path d="M80 56q0 16 -30 30" stroke="#b48cff" stroke-dasharray="3 5" stroke-width="2" fill="none"/><g transform="translate(46 86) scale(.7)">${LUMI_SVG}</g>` },
-  mobk: { title: "Cinder Crabs", text: "Fiery crabs scuttle along the floors of Ember Caverns, pausing at each end. Cross while they pause.",
-    art: `<path d="M16 82h128" stroke="#3a2a28" stroke-width="10"/><g transform="translate(80 66)"><ellipse rx="22" ry="14" fill="#e0502c"/><circle cx="-28" cy="-8" r="8" fill="#ff6a3d"/><circle cx="28" cy="-8" r="8" fill="#ff6a3d"/><circle cx="-6" cy="-24" r="4" fill="#fff"/><circle cx="6" cy="-24" r="4" fill="#fff"/><circle cx="-6" cy="-23" r="2" fill="#1b1030"/><circle cx="6" cy="-23" r="2" fill="#1b1030"/></g><path d="M118 66h18m-6-5 6 5-6 5" stroke="#ffd36e" stroke-width="2" fill="none"/>` },
-  mobw: { title: "Frostwisps", text: "Little ghosts of ice drift toward Lumi whenever they can see it. A touch costs light and leaves Lumi half frozen for a moment. Break their line of sight.",
-    art: `<g transform="translate(96 54)"><circle r="26" fill="url(#cardGlow)"/><path d="M0-26C14-10 14 12 0 12S-14-10 0-26Z" fill="#bfeaff"/><path d="M-6 0h4M-4-2v4M4 0h4M6-2v4" stroke="#1d4a7a" stroke-width="1.5"/></g><g transform="translate(44 64) scale(.8)">${LUMI_SVG}</g><path d="M70 60h-8" stroke="#bfeaff" stroke-dasharray="2 3" stroke-width="2"/>` },
-  mobj: { title: "Jellyglows", text: "Glowing jellies bob up and down the shafts of Coral Depths. Their sting costs light. Time your way past.",
-    art: `<path d="M80 10v92" stroke="#ff9fcf" stroke-dasharray="3 6" stroke-width="2"/><g transform="translate(80 48)"><path d="M-18 0A18 18 0 0 1 18 0Q0 8 -18 0" fill="#ffb3dc"/><path d="M-10 4v18M0 6v20M10 4v18" stroke="#ffb3dc" stroke-width="2.5"/><circle cx="-5" cy="-6" r="3" fill="#fff"/><circle cx="5" cy="-6" r="3" fill="#fff"/></g><g transform="translate(36 80) scale(.7)">${LUMI_SVG}</g>` },
-  long: { title: "Long songs", text: "Hold your finger still to charge a long, low song. It travels much further, but uses more of Lumi's light. Tap for a quick song as before.",
-    art: `<g fill="none" stroke-linecap="round"><circle cx="80" cy="56" r="20" stroke="rgba(255,255,255,.15)" stroke-width="4"/><path d="M80 36a20 20 0 1 1-19 26" stroke="#ffe6a0" stroke-width="4"/><circle cx="80" cy="56" r="40" stroke="#7ee8ff" stroke-opacity=".35" stroke-width="2"/><circle cx="80" cy="56" r="52" stroke="#7ee8ff" stroke-opacity=".18" stroke-width="2"/></g><g transform="translate(80 56)">${LUMI_SVG}</g>` },
-  echo: { title: "Echo crystals", text: "Violet crystals in the rock catch your song and sing it onward, carrying it around corners and into far tunnels.",
-    art: `<path d="M20 30h70v50" fill="none" stroke="#3a4656" stroke-width="18"/><g fill="#d6beff"><path d="M98 66l6 10-6 12-6-12z"/><path d="M110 60l5 9-5 10-5-10z"/></g><g transform="translate(40 56)">${LUMI_SVG}</g><g fill="none" stroke-width="2" stroke-linecap="round"><path d="M58 50a12 12 0 0 1 0 14" stroke="#7ee8ff"/><path d="M120 70a14 14 0 0 1 10 14" stroke="#b48cff"/><path d="M124 62a22 22 0 0 1 16 24" stroke="#b48cff" stroke-opacity=".6"/></g>` },
-  boss: { title: "The Great Hush", text: "The king of the Hushlings guards the end of some worlds, crowned in shadow. It hunts anything that sings nearby, and a touch costs a lot of light. Sing far from it.",
-    art: `<g transform="translate(104 58) scale(2.2)"><path d="M-14 6Q-18 22-8 30Q-4 20 0 30Q4 20 8 30Q18 22 14 6z" fill="#140a22" opacity=".7"/><path d="M-16 6C-17-6-12-13-9-14L-12-23L-4-16Q0-17 4-16L12-23L9-14C12-13 17-6 16 6Q0 13-16 6z" fill="#160c26" stroke="#6a4a9a" stroke-width=".7"/><ellipse cx="-6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(12 -6 -4)"/><ellipse cx="6" cy="-4" rx="3.6" ry="2.4" fill="#ff9ad0" transform="rotate(-12 6 -4)"/><circle cx="-5.2" cy="-4" r="1" fill="#fff"/><circle cx="6.8" cy="-4" r="1" fill="#fff"/></g><g fill="#0c0616"><path d="M90 30l4-14 4 14z"/><path d="M99 28l5-18 5 18z"/><path d="M110 30l4-14 4 14z"/></g><g transform="translate(32 76) scale(.8)">${LUMI_SVG}</g>` },
-  family: { title: "Lumi's family", text: "Somewhere in this world, one of Lumi's little lights is hiding. Find it and it joins Lumi's journal for good.",
-    art: `<g transform="translate(64 56)">${LUMI_SVG}</g><g transform="translate(104 60) scale(.6)"><circle r="17" fill="url(#cardGlow)"/><circle r="9" fill="#ffd1ea"/><circle cx="-3" cy="-1.5" r="1.4" fill="#123049"/><circle cx="3" cy="-1.5" r="1.4" fill="#123049"/></g><path d="M80 40c6-10 18-10 22 0" stroke="#ff9fb8" stroke-width="2" fill="none"/>` },
-  race: { title: "Races", text: "Reach the portal before the clock runs out. Currents can help you, and in Relaxed mode there's no timer at all.",
-    art: `<circle cx="64" cy="56" r="30" fill="none" stroke="#e9f3ff" stroke-width="3"/><path d="M64 56V36M64 56l13 8" stroke="#ffd36e" stroke-width="3" stroke-linecap="round"/><rect x="57" y="20" width="14" height="6" rx="2" fill="#e9f3ff"/><g stroke="#7ee8ff" stroke-width="2.5" fill="none" stroke-linecap="round"><path d="M108 44h30m-8-6 8 6-8 6"/><path d="M108 62h22m-8-6 8 6-8 6"/></g>` },
-};
-
-// The picture card a level should show first: its own, or one for the first new thing in it.
-// Creatures are never announced: the first time Lumi comes face to face with one, its name
-// flashes up mid-cave (meetCreatures), and from then on it's in the journal.
-const CREATURES = { t: "thorns", g: "gloom", B: "boss", n: "mobn", a: "moba", k: "mobk", w: "mobw", j: "mobj" };
-const CREATURE_MEET = {  // name and a one-line tip
-  thorns: ["Thornling", "It patrols back and forth. Wait for a gap."],
-  gloom: ["Hushling", "It hears your songs and chases fast. Run, or hide behind rock!"],
-  boss: ["The Great Hush", "King of the Hushlings. Don't let it hear you."],
-  hunter: ["The Hunter", "A piece of the Hush that never stops. Run, or flare it back!"],
-  mobn: ["Snapvine", "It shivers before it snaps. Keep your distance."],
-  moba: ["Shardbat", "It swoops at songs it hears. Then it rests."],
-  mobk: ["Cinder Crab", "It dashes along the floor. Cross when it pauses."],
-  mobw: ["Frostwisp", "It drifts toward you. A touch freezes you."],
-  mobj: ["Jellyglow", "It bobs up and down its shaft. Time your swim."],
-};
-const CREATURE_CARDS = new Set(Object.values(CREATURES));
-
-function cardFor(i) {
-  const def = getLevel(i), m = def.map.join(""), seen = save.cards || {};
-  const wants = [i >= DASH_FROM && "dash", i >= PEBBLE_FROM && "pebbles", i >= HUM_FROM && "hum", i >= SHIELD_FROM && "shield", i >= 8 && "long"];
-  return wants.find(k => k && CARDS[k] && !seen[k] && !CREATURE_CARDS.has(k)) || null;
-}
-
-let encounterTimer = 0;
-function meetCreatures(dt) {
-  if (encounterTimer > 0 && (encounterTimer -= dt) <= 0) $("encounter").classList.remove("on");
-  if (L.demo || L.ending || L.failing || screen !== "play") return;
-  save.cards = save.cards || {};
-  // Met means close by and actually seen (in a dark cave, lit by a song or a light).
-  const near = (x, y) => {
-    const d = Math.hypot(x - L.lumi.x, y - L.lumi.y), i = Math.floor(y) * L.cols + Math.floor(x);
-    return d < 1.6 || (d < 3.4 && vis(i) > 0.3);
-  };
-  const met = [];
-  for (const t of L.thorns) if (near(t.x, t.y)) met.push("thorns");
-  for (const g of L.gloom) if (!g.gone && !(g.delay > 0) && near(g.x, g.y)) met.push(g.chaser ? "hunter" : g.big ? "boss" : "gloom");
-  for (const m of L.mobs) if (!(m.kind === "w" && m.cd > 0) && near(m.x, m.y)) met.push("mob" + m.kind);
-  if (encounterTimer > 0.5) return;
-  const rare = L.gloom.find(g => g.variant && !g.gone && near(g.x, g.y) && !(save.variants || {})[g.variant]);
-  if (rare && spotVariant(rare)) { encounterTimer = 3.6; return; }
-  const key = met.find(k => !save.cards[k]);
-  if (!key) return;
-  $("encounter").querySelector("small").textContent = "Something's here…";
-  save.cards[key] = 1;
-  persist();
-  $("encounterName").textContent = CREATURE_MEET[key][0];
-  $("encounterTip").textContent = CREATURE_MEET[key][1];
-  $("encounter").classList.add("on");
-  encounterTimer = 3.6;
-  sfx.gloomWake(0, key === "boss");
-  buzz([40, 60, 40]);
-}
-
-let pendingLevel = 0;
-function startLevel(i, skip = false) {
-  audio();
-  const skipStory = skip === true || skip.story, skipCard = skip === true || skip.card;
-  const w = worldOf(i);
-  save.story = save.story || {};
-  save.cards = save.cards || {};
-  const card = i >= 0 && cardFor(i);
-  if (!skipStory && i >= 0 && i % PER_WORLD === 0 && !save.story[w]) {
-    save.story[w] = 1;
-    persist();
-    // In the core, each act opens with a short film.
-    if (CORE && w < 2) { playMovie(w === 0 ? "intro" : "act2", () => startLevel(i, { story: true })); return; }
-    const ch = worldChapter(w);
-    const pages = ch ? ch.pages : [{ text: "The caves twist and change, but Lumi keeps singing. " + STORY[w % STORY.length], lumi: 1, notes: 1 }];
-    playStory(pages, { num: `World ${w + 1} · ${worldName(w)}`, name: ch ? ch.name : worldName(w), world: w, last: w === 0 ? "Begin" : "Continue",
-      done: () => startLevel(i, { story: true }) });
-    return;
-  }
-  if (!skipCard && card && CARDS[card] && !save.cards[card]) {
-    save.cards[card] = 1;
-    persist();
-    pendingLevel = i;
-    const c = CARDS[card];
-    $("cardArt").innerHTML = `<svg viewBox="0 0 160 110" aria-hidden="true">${CARD_DEFS}${c.art}</svg>`;
-    $("cardTitle").textContent = c.title;
-    $("cardText").textContent = c.text;
-    show("card");
-    return;
-  }
-  loadLevel(i);
-  energyShown = -1;
-  L.fade = 1;
-  show("play");
-  showLevelCard(i);
-}
-function showLevelCard(i) {
-  const card = $("levelCard"), th = themeOf(i);
-  card.style.setProperty("--world", `rgb(${th.rim.join(",")})`);
-  $("lcNum").textContent = isChallenge(i) ? levelLabel(i) : `Level ${i + 1}`;
-  $("lcName").textContent = i === DAILY ? dayKey() : i === WEEKLY ? `Week of ${dayKey(weekNumber() * 7 - 3)}` : L.def.name;
-  card.classList.remove("on");
-  void card.offsetWidth;  // restart the animation
-  card.classList.add("on");
-}
-
-function pause() {
-  if (screen !== "play") return;
-  $("pauseSub").textContent = isChallenge(levelIndex) ? levelLabel(levelIndex) : `Level ${levelIndex + 1} · ${L.def.name}`;
-  $("pauseGoal").textContent = goalLine() || "Find every light, then swim into the portal";
-  show("pause");
-}
-function resume() { audio(); show("play"); last = performance.now(); }
-
-// ---------- Rewards ----------
-const levelsDone = () => save.stars.filter(x => x > 0).length;
-const perfects = () => save.stars.filter(x => x === 3).length;
-function worldsDone() {
-  let n = 0;
-  for (let w = 0; w < WORLDS; w++) {
-    let all = true;
-    for (let k = 0; k < PER_WORLD; k++) if (!save.stars[w * PER_WORLD + k]) { all = false; break; }
-    if (all) n++; else if (w * PER_WORLD > save.stars.length) break;
-  }
-  return n;
-}
-const ACHS = [
-  { id: "first",   ico: "🎵", name: "First Song",         desc: "Finish your first cave",                     goal: 1,   val: levelsDone },
-  { id: "explore", ico: "🧭", name: "Explorer",           desc: "Finish 20 levels",                           goal: 20,  val: levelsDone },
-  { id: "diver",   ico: "🌊", name: "Cave Diver",         desc: "Finish 100 levels",                          goal: 100, val: levelsDone },
-  { id: "world",   ico: "🗺️", name: "World Traveller",    desc: "Finish every level in a world",              goal: 1,   val: worldsDone },
-  { id: "lights",  ico: "✨", name: "Light Collector",    desc: "Find 100 lost lights",                       goal: 100, val: () => save.stats.lights },
-  { id: "perfect", ico: "⭐", name: "Perfect Echo",       desc: "Get 3 stars on 10 levels",                   goal: 10,  val: perfects },
-  { id: "stars",   ico: "🌟", name: "Star Gazer",         desc: "Collect 100 stars",                          goal: 100, val: totalStars },
-  { id: "quiet",   ico: "🤫", name: "Quiet Voice",        desc: "Finish a cave singing 2 times or fewer",     goal: 1,   val: () => save.stats.quiet },
-  { id: "smooth",  ico: "🫧", name: "Smooth Swimmer",     desc: "Finish 5 caves without bumping a wall",      goal: 5,   val: () => save.stats.clean },
-  { id: "moths",   ico: "🦋", name: "Moth Whisperer",     desc: "Make friends with 10 glow-moths",            goal: 10,  val: () => save.stats.moths },
-  { id: "brave",   ico: "🛡️", name: "Brave Little Light", desc: "Finish 5 caves that have Hushlings",        goal: 5,   val: () => save.stats.gloom },
-  { id: "rescue",  ico: "🪽", name: "Moth Rescuer",       desc: "Bring 5 lost baby moths home",               goal: 5,   val: () => save.stats.rescues || 0 },
-  { id: "runes",   ico: "🗝️", name: "Gatekeeper",         desc: "Open 5 rune gates",                          goal: 5,   val: () => save.stats.gates || 0 },
-  { id: "daily",   ico: "📅", name: "Daily Habit",        desc: "Play the daily cave 3 days in a row",        goal: 3,   val: () => save.daily.best },
-];
-function checkRewards() {
-  const news = [];
-  for (const a of ACHS) {
-    if (save.ach[a.id] || a.val() < a.goal) continue;
-    save.ach[a.id] = Date.now();
-    news.push(`🏆 Award: <b>${a.name}</b>`);
-  }
-  // Looks unlock by stars or by daily streaks, so remember each one that's been announced.
-  if (!save.lookSeen) { save.lookSeen = {}; SKINS.slice(0, save.skinsSeen || 1).forEach(k => (save.lookSeen[k.name] = 1)); }
-  let look = "";
-  SKINS.forEach((k, i) => {
-    if (!skinUnlocked(i) || save.lookSeen[k.name]) return;
-    save.lookSeen[k.name] = 1;
-    news.push(`✨ New look for Lumi: <b>${k.name}</b>`);
-    look = k.name;
-  });
-  save.skinsSeen = SKINS.filter((k, i) => skinUnlocked(i)).length;
-  persist();
-  if (news.length) setTimeout(() => news.forEach(h => toast(h, true)), 900);
-  return look;
-}
-
-let lastStars = 0;
-function finish() {
-  const allLights = L.got === L.lights.length;
-  // In the core, the third star in a cave with Hushlings is for never being heard.
-  const stealth = CORE && levelIndex >= 0 && L.gloom.some(g => !g.final && !g.chaser);
-  const underPar = stealth ? L.heard === 0 : L.pings <= L.def.par;
-  const stars = 1 + (allLights ? 1 : 0) + (underPar ? 1 : 0);
-  const st = save.stats;
-  st.lights += L.got;
-  st.moths += L.mothsMet || 0;
-  st.songs += L.pings;
-  if (L.bumps === 0 && levelIndex !== 0) st.clean++;
-  if (L.pings <= 2 && levelIndex >= 1) st.quiet++;
-  if (L.gloom.length) st.gloom++;
-  if (L.goal === "rescue") st.rescues = (st.rescues || 0) + 1;
-  if (L.gate && L.gate.open) st.gates = (st.gates || 0) + 1;
-  // Remember what's been met, for the journal.
-  save.found = save.found || {};
-  const flat = L.def.map.join("");
-  for (const [k, ch] of Object.entries(FIND)) if (ch.some(c => flat.includes(c))) save.found[k] = 1;
-
-  let newBest = "", streakMsg = "", hadBest = false;
-  if (levelIndex === WEEKLY) {
-    save.weekly = save.weekly || {};
-    const wk = weekNumber(), prev = save.weekly[wk] || 0;
-    save.weekly[wk] = Math.max(prev, stars);
-    streakMsg = prev ? `Best this week: ${"★".repeat(save.weekly[wk])}` : "This week's cave, cleared!";
-  } else if (levelIndex === DAILY) {
-    streakMsg = [dailyCleared(stars), friendVerdict()].filter(Boolean).join(" · ");
-  } else {
-    save.stars[levelIndex] = Math.max(save.stars[levelIndex] || 0, stars);
-    const best = save.best[levelIndex];
-    hadBest = !!best;
-    if (!best || L.pings < best.pings || (L.pings === best.pings && L.time < best.time)) {
-      if (best) newBest = "New personal best!";
-      save.best[levelIndex] = { pings: L.pings, time: Math.round(L.time * 10) / 10 };
-    }
-  }
-  earnGlow(L.got + stars);
-  // The lights you brought out of this cave go home to the city.
-  if (levelIndex >= 0) { save.got = save.got || {}; save.got[levelIndex] = Math.max(save.got[levelIndex] || 0, L.got); }
-  // Keep the best run as a ghost to race: more stars wins, then a faster time.
-  L.newGhost = false;
-  if (CORE && levelIndex >= 0 && L.track.length) {
-    save.ghosts = save.ghosts || {};
-    const g = save.ghosts[levelIndex];
-    if (!g || stars > g.s || (stars === g.s && L.time < g.t)) { save.ghosts[levelIndex] = { s: stars, t: Math.round(L.time * 10) / 10, p: L.track }; L.newGhost = !!g; }
-  }
-  if (CORE && levelIndex === TOTAL - 1 && !save.act2Done) save.act2Due = 1;
-  // The ending plays the first time, and again once the whole lullaby can bring Flick home.
-  if (levelIndex === STORY_FINALE && L.healed && (!save.ended || (flickCanReturn() && !save.flick))) save.endingDue = 1;
-  persist();
-  questsOnFinish(stars);
-  lastStars = stars;
-  $("shareResultBtn").hidden = levelIndex !== DAILY;
-  const look = checkRewards();
-
-  const t = L.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
-  $("resultTitle").textContent = ["", "Cave cleared!", "Lovely singing!", "Perfect echo!"][stars];
-  const caveName = levelIndex === DAILY ? `Daily #${dailyNumber()} · ${twistFor().name}` : `${levelLabel(levelIndex)} · ${L.def.name}`;
-  $("resultSub").textContent = `${caveName} · ${mm}:${String(ss).padStart(2, "0")}`;
-  $("newBest").textContent = streakMsg || newBest;
-  const worldDone = levelIndex >= 0 && isFinale(levelIndex);
-  const memo = L.memNew ? "✧ A memory found" : "", ghost = L.newGhost ? "👻 New best run saved to race" : "";
-  const close = L.closest < 1.3 ? `😱 Closest call: ${L.closest < 0.6 ? "a whisker" : L.closest.toFixed(1) + " tiles"} from a Hushling` : "";
-  $("unlockMsg").textContent = [worldDone ? `World ${worldOf(levelIndex) + 1} complete! A new cave opens ahead` : "", look ? `New look unlocked: ${look}` : "", memo, ghost, close].filter(Boolean).join(" · ");
-  $("g1v").textContent = "✓";
-  $("g2v").textContent = `${L.got}/${L.lights.length}`;
-  $("g3v").textContent = stealth ? (L.heard ? `heard ${L.heard}×` : "✓") : `${L.pings} / ${L.def.par}`;
-  $("goal1").firstElementChild.textContent = L.goal === "rescue" ? "Bring the lost moth home" : L.goal === "race" ? "Beat the clock" : "Reach the portal";
-  $("goal3").firstElementChild.textContent = stealth ? "Never heard by a Hushling" : `Sing ${L.def.par} times or fewer`;
-  $("goal1").className = "ok";
-  $("goal2").className = allLights ? "ok" : "";
-  $("goal3").className = underPar ? "ok" : "";
-  $("nextBtn").textContent = isChallenge(levelIndex) ? "Done" : levelIndex === TOTAL - 1 ? "Level map" : "Next level";
-  const best = levelIndex >= 0 && save.best[levelIndex];
-  if (best && hadBest && !newBest && !streakMsg) $("newBest").textContent = `Best: ${best.pings} songs · ${Math.floor(best.time / 60)}:${String(Math.floor(best.time % 60)).padStart(2, "0")}`;
-  const spans = $("resultStars").children;
-  for (let k = 0; k < 3; k++) spans[k].className = "";
-  show("result");
-  drawResultMap();
-  for (let k = 0; k < 3; k++) {
-    setTimeout(() => {
-      spans[k].className = "show" + (k < stars ? " got" : "");
-      if (k < stars) sfx.star(k);
-    }, 250 + k * 280);
-  }
-}
-function failLevel() {
-  $("failTitle").textContent = L.failWhy === "time" ? "Out of time" : "Lumi's light faded";
-  $("failSub").textContent = L.failWhy === "time"
-    ? "The cave closed before Lumi reached the portal. Sing early to plan your route."
-    : L.hits
-    ? "Hushlings took some of Lumi's light. Sing less near them, or swim away fast."
-    : "Lost lights, crystals and glow-moths all help Lumi stay bright.";
-  show("fail");
-}
-
-// ---------- Level map ----------
-let mapWorld = 0;
-function renderLevels(world) {
-  if (world != null) mapWorld = Math.max(0, Math.min(WORLDS - 1, world));
-  const th = THEMES[mapWorld % THEMES.length];
-  $("levelScreen").style.setProperty("--world", `rgb(${th.rim.join(",")})`);
-  $("worldNum").textContent = `World ${mapWorld + 1} of ${WORLDS}`;
-  $("worldName").textContent = worldName(mapWorld);
-  $("worldPrev").disabled = mapWorld === 0;
-  $("worldNext").disabled = mapWorld === WORLDS - 1;
-  const grid = $("levelGrid");
-  grid.innerHTML = "";
-  const cur = nextUnplayed();
-  // Levels wind upward from the bottom, snaking left and right like a trail.
-  for (let k = 0; k < PER_WORLD; k++) {
-    const i = mapWorld * PER_WORLD + k, row = Math.floor(k / 4), col = k % 4;
-    const b = document.createElement("button");
-    const open = unlocked(i), st = save.stars[i] || 0;
-    b.className = "node" + (open ? "" : " locked") + (i === cur && !st ? " current" : "");
-    b.style.gridRow = String(5 - row);
-    b.style.gridColumn = String(row % 2 ? 4 - col : col + 1);
-    b.innerHTML = open ? `${i + 1}<span class="st">${"<i>★</i>".repeat(st)}${"★".repeat(3 - st)}</span>` : `<span class="lock">🔒</span>`;
-    b.setAttribute("aria-label", `Level ${i + 1}${open ? `, ${st} stars` : ", locked"}`);
-    b.addEventListener("click", () => { if (open) startLevel(i); else note(220, { dur: 0.2, vol: 0.08 }); });
-    grid.appendChild(b);
-  }
-  $("levelsTotal").textContent = `★ ${totalStars()} stars` + (CORE ? ` · ✧ ${Object.keys(save.memories || {}).length}/${TOTAL} memories` : " collected");
-  requestAnimationFrame(drawMapPath);
-}
-function drawMapPath() {
-  const svg = $("mapPath"), box = $("levelMap").getBoundingClientRect();
-  const pts = [...$("levelGrid").children]
-    .map(n => ({ k: [...n.parentNode.children].indexOf(n), r: n.getBoundingClientRect() }))
-    .sort((a, b) => a.k - b.k)
-    .map(({ r }) => [r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top]);
-  if (!pts.length) return;
-  let d = `M${pts[0][0]},${pts[0][1]}`;
-  for (let k = 1; k < pts.length; k++) {
-    const [x0, y0] = pts[k - 1], [x1, y1] = pts[k];
-    d += y0 === y1 ? ` L${x1},${y1}` : ` C${x0 + (x0 > box.width / 2 ? 40 : -40)},${y0} ${x1 + (x1 > box.width / 2 ? 40 : -40)},${y1} ${x1},${y1}`;
-  }
-  svg.innerHTML = `<path d="${d}" fill="none" stroke="var(--world)" stroke-opacity="0.35" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>`;
-}
-const openMap = () => {
-  renderLevels(worldOf(screen === "title" || levelIndex < 0 ? nextUnplayed() : levelIndex));
-  show("levels");
-  requestAnimationFrame(drawMapPath);
-};
-function nextUnplayed() {
-  for (let i = 0; i < TOTAL; i++) if (!save.stars[i]) return unlocked(i) ? i : Math.max(0, i - 1);
-  return TOTAL - 1;
-}
-
-// ---------- Title, looks, awards, settings ----------
+// ---------- Home ----------
 function renderTitle() {
-  // The daily cave comes back once the story is finished.
-  document.body.classList.toggle("core-done", !CORE);
-  const t = totalStars(), next = nextUnplayed(), started = save.stars.some(x => x);
-  $("starCount").textContent = t;
-  $("playLabel").textContent = "Play";
-  const rs = runSave(), best = rs.best || 0, daily = rs.dailyDay === dayNumber() ? rs.dailyBest || 0 : 0;
-  if (typeof homesLit === "function") { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; } else $("homeBest").textContent = best.toLocaleString();
+  const rs = runSave();
+  { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; }
   $("playSub").textContent = "Hold to swing, let go to fly";
   $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
-  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : typeof stagePerson === "function" ? `${stagePerson(0)[0]} waits` : "Today's stage"; }
+  { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : `${stagePerson(0)[0]} waits`; }
   { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Night shift: light the city"; }
-  const we = weekEvent(), sn = streakNow();
-  $("titleMeta").textContent = (typeof outageDistrict === "function" ? `⚡ Outage week in ${STAGE_CHAPTERS[outageDistrict()]}: ×2 lights · ` : "") + (typeof homesLit === "function" ? `${homesLit()}/${STAGES_N} homes relit · ` : `City restored ${typeof cityPct === "function" ? cityPct() : 0}% · `) + (sn ? `${sn}-day streak · ` : "") + `${we.name} · ${we.text}` + (challengeFrom ? ` · Beat a friend's ${challengeFrom.score.toLocaleString()}` : "");
   $("todayDot").hidden = calState().claimed;
-  $("playLabel").textContent = "Play";
-  if (typeof stageNext === "function") { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;
+  { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;
     const [who, line] = stagePerson(n); $("heroWhere").textContent = `${stageChapter(n)} · Stage ${n}${n % 10 === 0 ? " · Boss" : ""}`; $("heroWho").textContent = stageWaiting(n); $("heroLine").textContent = st ? `“${line}”` : "Their window is still dark. Bring the light home."; }
-  if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
+  if (stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
   else if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()}`; }
   // The daily gift waits on the Today tab (its dot); nothing pops up over Play.
-
-  startTitleRun();
-  $("looksDot").hidden = SKINS.filter((k, i) => skinUnlocked(i)).length <= (save.looksViewed || 1);
   $("titleMeta").textContent = "";
-  renderToday();
-  $("homeDot").hidden = !HOME_ITEMS.some(it => !(save.home || {})[it.id] && glowNow() >= it.cost);
-}
-function renderChallenges() {
-  const d = save.daily, today = save.daily.last === dayKey(), wk = (save.weekly || {})[weekNumber()] || 0;
-  const daysLeft = 7 - ((dayNumber() + 3) % 7);
-  $("dailyInfo").textContent = today ? `Done today · ${d.streak} day streak` : d.streak && d.last === dayKey(dayNumber() - 1) ? `Keep your ${d.streak} day streak going` : "A new cave every day";
-  $("weeklyInfo").textContent = (wk ? `Best: ${"★".repeat(wk)} · ` : "Harder, with more to find · ") + `new cave in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
-}
-
-function renderLooks() {
-  const grid = $("looksGrid");
-  grid.innerHTML = "";
-  SKINS.forEach((k, i) => {
-    const open = skinUnlocked(i), b = document.createElement("button");
-    b.className = "look" + (save.skin === i ? " on" : "") + (open ? "" : " locked");
-    const ball = document.createElement("span");
-    ball.className = "ball";
-    if (k.body) {
-      ball.style.background = `radial-gradient(circle at 38% 34%, ${k.body[0]}, ${k.body[1]} 55%, ${k.body[2]})`;
-      ball.style.setProperty("--glow", `rgba(${k.c.join(",")},0.7)`);
-    } else {
-      ball.style.background = "conic-gradient(from 30deg, #ff7aa0, #ffc86e, #96ffa0, #6edcff, #aa8cff, #ff8ce6, #ff7aa0)";
-      ball.style.setProperty("--glow", "rgba(255,255,255,0.6)");
-    }
-    b.appendChild(ball);
-    b.appendChild(document.createTextNode(open ? k.name : k.streak ? `🔥 ${k.streak}` : CORE ? `✦ ${k.need * 8}` : `★ ${k.need}`));
-    b.setAttribute("aria-label", open ? `${k.name}${save.skin === i ? ", wearing" : ""}` : k.streak ? `${k.name}, needs a ${k.streak} day daily streak` : (CORE ? `${k.name}, needs ${k.need * 8} lights gathered in runs` : `${k.name}, needs ${k.need} stars`));
-    b.addEventListener("click", () => {
-      if (!open) { toast(k.streak ? `Play the daily cave <b>${k.streak} days in a row</b> to unlock ${k.name}` : (CORE ? `Gather <b>${k.need * 8 - ((save.run || {}).lights || 0)}</b> more lights in runs to unlock ${k.name}` : `Collect <b>${k.need - totalStars()}</b> more stars to unlock ${k.name}`)); return; }
-      save.skin = i;
-      persist();
-      sfx.moth();
-      renderLooks();
-    });
-    grid.appendChild(b);
-  });
-}
-// What the journal lists, and which map letters mean you've met it.
-const FIND = { crystals: ["c"], curtains: ["D"], currents: [">", "<", "^", "v"], moths: ["b"], snoozles: ["z"], runes: ["r"],
-  echo: ["W"], babies: ["m"], gloom: ["g"], boss: ["B"], thorns: ["t"], snapvines: ["n"], bats: ["a"], crabs: ["k"], wisps: ["w"], jellies: ["j"] };
-const JOURNAL = [
-  ["crystals", "💎", "Crystals", "Keep glowing once your song touches them, and refill Lumi's light."],
-  ["curtains", "🎐", "Sound curtains", "Part for a few seconds when a song reaches them."],
-  ["currents", "🌊", "Currents", "Underground rivers that carry Lumi along."],
-  ["moths", "🦋", "Glow-moths", "Follow Lumi and make its light bigger."],
-  ["snoozles", "😴", "Snoozles", "Sleepy blobs. Their snores light up the walls nearby."],
-  ["runes", "🪨", "Rune stones", "Open stone gates when they hear a song from close by."],
-  ["echo", "🔮", "Echo crystals", "Catch a song and sing it onward around corners."],
-  ["babies", "🪽", "Baby moths", "Lost little moths that need help finding the portal."],
-  ["thorns", "🌰", "Thornlings", "Spiky patrollers that hide in the dark and rattle when near."],
-  ["snapvines", "🌿", "Snapvines", "Wall plants that shiver, then lunge at anything close."],
-  ["bats", "🦇", "Shardbats", "Crystal bats that swoop at songs they hear."],
-  ["crabs", "🦀", "Cinder Crabs", "Fiery crabs that dash along floors and pause at the ends."],
-  ["wisps", "❄️", "Frostwisps", "Ice ghosts that drift toward Lumi and freeze it on touch."],
-  ["jellies", "🪼", "Jellyglows", "Glowing jellies that bob through shafts and sting."],
-  ["gloom", "👀", "Hushlings", "The Hush's shadows. They drift through rock, chase songs and steal light."],
-  ["boss", "🌑", "The Great Hush", "King of the Hushlings, crowned in shadow, guarding the end of some worlds."],
-];
-function renderJournal() {
-  const fam = save.family || {}, got = Object.keys(fam).length;
-  let html = `<h3 class="journal-h">Lumi's family</h3><div class="family">`;
-  for (let w = 0; w < 8; w++) html += `<span class="${fam[w] ? "got" : ""}" title="World ${w + 1}"></span>`;
-  html += `</div><p class="journal-note">${got} of ${WORLDS} little lights found. One hides in every world, often off the main path.</p><h3 class="journal-h">Discoveries</h3><ul class="awards">`;
-  for (const [k, ico, name, desc] of JOURNAL) {
-    const seen = save.found && save.found[k];
-    html += `<li class="award${seen ? " done" : ""}"><span class="ico">${seen ? ico : "❔"}</span><span><span class="nm">${seen ? name : "Not found yet"}</span><br><span class="ds">${seen ? desc : "Keep exploring"}</span></span></li>`;
-  }
-  const verses = versesFound();
-  html += `</ul><h3 class="journal-h">The lullaby</h3><p class="journal-note">Each of Lumi's family remembers one line.</p><div class="lullaby">${LULLABY.map((l, w) => verses[w] ? `<p><b>${FAMILY[w].name}</b> ${l}</p>` : `<p class="missing">· · · (someone is hiding in World ${w + 1})</p>`).join("")}</div><ul class="awards">`;
-  const vs = save.variants || {};
-  html += `</ul><h3 class="journal-h">Rare Hushlings</h3><ul class="awards">`;
-  for (const [k, v] of Object.entries(VARIANTS))
-    html += `<li class="award${vs[k] ? " done" : ""}"><span class="ico">${vs[k] ? "👀" : "❔"}</span><span><span class="nm">${vs[k] ? v.name : "Not spotted yet"}</span><br><span class="ds">${vs[k] ? v.tip : "About one cave in twenty hides a rare one"}</span></span></li>`;
-  $("journal").innerHTML = html + "</ul>";
-}
-function awardsTab(journal) {
-  $("tabAwards").setAttribute("aria-selected", String(!journal));
-  $("tabJournal").setAttribute("aria-selected", String(journal));
-  $("awardsList").hidden = journal;
-  $("journal").hidden = !journal;
-  $("awardsCount").hidden = journal;
-  if (journal) renderJournal();
-}
-function renderHats() {
-  const grid = $("hatsGrid");
-  grid.innerHTML = "";
-  HATS.forEach((h, k) => {
-    const open = hatUnlocked(k), b = document.createElement("button");
-    b.className = "look" + ((save.hat || 0) === k ? " on" : "") + (open ? "" : " locked");
-    const c = document.createElement("canvas");
-    c.width = c.height = 92; c.style.width = c.style.height = "46px";
-    const cx = c.getContext("2d");
-    cx.translate(46, 54); cx.scale(2, 2);
-    cx.fillStyle = "#c9f6ff"; cx.beginPath(); cx.arc(0, 0, 12, 0, Math.PI * 2); cx.fill();
-    if (open) drawHat(k, 12, cx);
-    b.appendChild(c);
-    b.appendChild(document.createTextNode(open ? h.name : h.streak ? `🔥 ${h.streak}` : `🏆 ${h.need}`));
-    b.addEventListener("click", () => {
-      if (!open) { toast(h.streak ? `Play the daily cave <b>${h.streak} days in a row</b> to unlock the ${h.name.toLowerCase()}` : `Earn <b>${h.need - awardsEarned()}</b> more awards to unlock the ${h.name.toLowerCase()}`); return; }
-      save.hat = k; persist(); sfx.moth(); renderHats();
-    });
-    grid.appendChild(b);
-  });
-}
-
-function renderAwards() {
-  const list = $("awardsList");
-  list.innerHTML = "";
-  let got = 0;
-  for (const a of ACHS) {
-    const done = !!save.ach[a.id], v = Math.min(a.goal, a.val());
-    if (done) got++;
-    const li = document.createElement("li");
-    li.className = "award" + (done ? " done" : "");
-    li.innerHTML = `<span class="ico">${a.ico}</span><span><span class="nm"></span><br><span class="ds"></span></span>` +
-      (a.goal > 1 && !done ? `<span class="bar"><i style="width:${(v / a.goal) * 100}%"></i></span>` : "");
-    li.querySelector(".nm").textContent = a.name + (a.goal > 1 && !done ? `  ${v}/${a.goal}` : done ? "  ✓" : "");
-    li.querySelector(".ds").textContent = a.desc;
-    list.appendChild(li);
-  }
-  $("awardsCount").textContent = `${got} of ${ACHS.length} earned`;
-}
-function renderSettings() {
-  const st = save.settings;
-  $("setMusic").value = st.music;
-  $("setSfx").value = st.sfx;
-  $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
-  $("setContrast").setAttribute("aria-pressed", String(!!st.contrast));
-  $("setLighting").setAttribute("aria-pressed", String(st.lighting !== false));
-  $("setFps").setAttribute("aria-pressed", String(!!st.fps));
-  $("setSmooth").setAttribute("aria-pressed", String(typeof swingSmooth === "function" ? swingSmooth() : true));
-  $("setView3d").setAttribute("aria-pressed", String(st.view3d !== false));
-  $("setView3d").disabled = !R3D;
-  $("setRelaxed").setAttribute("aria-pressed", String(!!st.relaxed));
-  $("setGlow").setAttribute("aria-pressed", String(!!st.glow));
-  $("setBigText").setAttribute("aria-pressed", String(!!st.bigText));
-  [...$("setControls").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === controlMode())));
-  [...$("setHand").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (st.hand || "right"))));
-  $("handRow").hidden = controlMode() === "stick";
-  applyLayoutPrefs();
-  $("setUnlockAll").setAttribute("aria-pressed", String(!!st.unlockAll));
-  $("testRow").hidden = !st.unlockAll && !testTaps.shown;
-  $("saveCode").value = "";
-  [...$("setStick").children].forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === st.stick)));
-  $("setReset").textContent = "Erase all progress";
-  resetArmed = false;
-}
-let resetArmed = false;
-const testTaps = { n: 0, t: 0, shown: false };
-const saveCode = () => "ECHO1:" + btoa(unescape(encodeURIComponent(JSON.stringify(save))));
-
-async function shareMap() {
-  const c = $("resultMap");
-  try {
-    const blob = await new Promise(res => c.toBlob(res, "image/png"));
-    const file = new File([blob], "echo-cave-map.png", { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "Lumen Rush", text: `${levelLabel(levelIndex)} · ${L.def.name} in Echo` });
-      return;
-    }
-    toast("Press and hold the map to save or share it");
-  } catch (e) {
-    if (e && e.name === "AbortError") return;
-    toast("Sharing pictures isn't available here");
-  }
-}
-
-async function shareGame() {
-  const url = "https://erlan1126.github.io/Test/echo.html";
-  const t = totalStars();
-  const text = "Lumen Rush: race through a living city, dodge trams and grab the lights. Can you beat my best?";
-  try {
-    if (navigator.share) { await navigator.share({ title: "Lumen Rush", text, url }); return; }
-  } catch (e) { if (e && e.name === "AbortError") return; }
-  try {
-    await navigator.clipboard.writeText(`${text} ${url}`);
-    toast("Link copied. Paste it to a friend!");
-  } catch (e) {
-    toast(`Share this link: <b>${url}</b>`);
-  }
+  startTitleRun();
 }
 
 const tap = (id, fn) => $(id).addEventListener("click", e => { e.stopPropagation(); audio(); fn(e); });
-// Play goes home to the city first; from there, into the next cave.
-// Play starts an endless run (after the opening film, the first time); Story is the city and its caves.
-// Play starts a run; Daily run is the same cave for everyone today.
+// Play starts the next stage (after the opening, the first time); a friend's link races them.
 function playNow(opts = {}) {
   if (screen !== "title") return startRun(opts);
   $("titleScreen").classList.add("launch");
   setTimeout(() => startRun(opts), 230);
 }
-tap("playBtn", () => { if (typeof stageRace !== "undefined" && stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageRace.n, { race: stageRace }); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } if (typeof startStage === "function") { if (!save.opening && !(stageSave().best[1] && stageSave().best[1].stars) && typeof playOpening === "function") { playOpening(() => { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(1), 200); }); return; } $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageNext()); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } playNow(challengeFrom ? { challenge: challengeFrom } : {}); });
+tap("playBtn", () => { if (stageRace && !stageRace.done) { stageRace.done = true; $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageRace.n, { race: stageRace }); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); return; } if (!save.opening && !(stageSave().best[1] && stageSave().best[1].stars)) { playOpening(() => { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(1), 200); }); return; } $("titleScreen").classList.add("launch"); setTimeout(() => { startStage(stageNext()); if (screen !== "run") $("titleScreen").classList.remove("launch"); }, 200); });
 tap("stagesBtn", () => openSheet("stages"));
-tap("dailyRunBtn", () => { if (typeof startStage === "function") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); } else playNow({ daily: true }); });
-// Hard mode: one touch and the run is over, but every point counts double.
-// Endless opens once Downtown is finished: the story comes first.
-function endlessOpen() { return typeof stageSave !== "function" || !!(stageSave().best[10] && stageSave().best[10].stars) || (runSave().best || 0) > 0; }
+tap("dailyRunBtn", () => { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); });
+// The Night shift (endless) opens once Downtown is finished: the story comes first.
+function endlessOpen() { return !!(stageSave().best[10] && stageSave().best[10].stars) || (runSave().best || 0) > 0; }
 tap("hardBtn", () => { if (!endlessOpen()) { toast("Endless opens when Downtown is lit: finish stage 10"); return; } playNow({}); });
 tap("todayBtn", openToday);
 tap("todayClose", () => { $("todayPanel").hidden = true; });
@@ -737,100 +104,36 @@ function renderToday2() {
   $("todayRunMissions").innerHTML = rr.missions.map(m => `<li><span>${RUN.missions[m.k].text(m.goal)}</span><em>+1×</em></li>`).join("");
   $("dmList").innerHTML = dm.list.map(m => { const d = DM_POOL[m.i], k = Math.min(1, m.prog / d.goal); return `<li class="${m.done ? "done" : ""}"><span style="flex:1">${d.text(d.goal)}<span class="dm-bar"><i style="width:${Math.round(k * 100)}%"></i></span></span><span>+${DM_REWARD} ✦</span></li>`; }).join("");
 }
-tap("cityGo", () => startRun());
-tap("cityBack", showTitle);
-
-for (const [id, kind] of [["cityShop", "upgrades"], ["cityBuild", "build"], ["cityFriends", "friends"], ["cityAwards", "awards"], ["tabShop", "upgrades"], ["tabFriends", "ranks"], ["todayAwards", "awards"]])
+for (const [id, kind] of [["tabShop", "upgrades"], ["tabFriends", "ranks"], ["todayAwards", "awards"], ["levelsBtn", "locker"], ["looksBtn", "locker"]])
   tap(id, () => openSheet(kind));
 tap("tabHome", () => showTitle());
 // Tapping the dimmed backdrop closes a sheet.
 for (const id of ["sheet", "todayPanel"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
-tap("levelsBtn", () => (CORE ? openSheet("locker") : openMap()));
-// A soft tick when a switch or option changes, so settings feel alive.
-document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle, .seg button")) sfx.tick(); });
-tap("weekLink", () => { renderChallenges(); show("challenges"); });
-tap("playDaily", () => startLevel(DAILY));
-tap("todayCard", () => startLevel(DAILY));
-tap("homeBtn", () => { renderHome(); show("home"); });
-tap("homeBack", () => showTitle());
-tap("shareResultBtn", () => shareDaily(lastStars));
-tap("installGo", () => { if (installEvent) { installEvent.prompt(); installEvent = null; } showTitle(); });
-tap("installLater", () => showTitle());
-tap("playWeekly", () => startLevel(WEEKLY));
-tap("challengesBack", showTitle);
-tap("tabAwards", () => awardsTab(false));
-tap("tabJournal", () => awardsTab(true));
-tap("shareMapBtn", shareMap);
-tap("looksBtn", () => { save.looksViewed = SKINS.filter((k, i) => skinUnlocked(i)).length; persist(); renderLooks(); renderHats(); show("looks"); });
-tap("awardsBtn", () => { renderAwards(); awardsTab(false); show("awards"); });
-tap("settingsBtn", () => { backTo = "title"; renderSettings(); show("settings"); });
-tap("pauseSettings", () => { backTo = "pause"; renderSettings(); show("settings"); });
-tap("shareBtn", shareGame);
-tap("looksBack", showTitle);
-tap("awardsBack", showTitle);
-tap("settingsBack", () => (backTo === "pause" ? show("pause") : showTitle()));
-tap("worldPrev", () => renderLevels(mapWorld - 1));
-tap("worldNext", () => renderLevels(mapWorld + 1));
-tap("levelsBack", showTitle);
-tap("pauseBtn", pause);
-tap("muteBtn", () => { muted = !muted; save.muted = muted; persist(); updateMute(); });
-tap("resumeBtn", resume);
-tap("restartBtn", () => startLevel(levelIndex));
-tap("quitBtn", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
-tap("retryBtn", () => startLevel(levelIndex));
-tap("resultLevels", openMap);
-tap("failRetry", () => startLevel(levelIndex));
-// The story: tap anywhere to see the rest of the words, then to go on; Skip jumps to the end.
-$("storyScreen").addEventListener("click", () => { audio(); storyNext(); });
-tap("storySkip", () => { if (!story) return; story.k = story.pages.length - 1; storyNext(true); });
-// The title: tap the dark and Lumi sings.
-$("titleScreen").addEventListener("click", e => {
-  if (e.target.closest("button")) return;
-  audio();
-  if (L && L.demo) { L.pingCd = 0; ping(); L.demoT = 4; }
-});
-tap("cardGo", () => startLevel(pendingLevel, { story: true, card: true }));
-tap("failMap", () => (isChallenge(levelIndex) ? showTitle() : openMap()));
-tap("nextBtn", () => {
-  if (save.act2Due) {
-    save.act2Due = 0; save.act2Done = 1; persist();
-    playMovie("end2", () => showCity(true));
-    return;
-  }
-  // Clearing the Starlight Abyss for the first time plays the ending first.
-  if (save.endingDue) {
-    save.endingDue = 0; save.ended = 1; if (flickCanReturn()) save.flick = 1; persist();
-    if (CORE) { playMovie("end1", () => showCity(true)); return; }
-    playStory(endingPages(), { num: "The End", name: "The Lullaby", world: 7, last: "Continue", done: () => (levelIndex + 1 < TOTAL ? startLevel(levelIndex + 1) : showTitle()) });
-    return;
-  }
-  if (isChallenge(levelIndex)) showTitle();
-  else if (CORE) showCity(true);
-  else if (levelIndex < TOTAL - 1) startLevel(levelIndex + 1);
-  else openMap();
-});
+// A soft tick when a switch changes, so settings feel alive.
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".toggle")) sfx.tick(); });
+
+// ---------- Settings ----------
+function renderSettings() {
+  const st = save.settings;
+  $("setMusic").value = st.music;
+  $("setSfx").value = st.sfx;
+  $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
+  $("setFps").setAttribute("aria-pressed", String(!!st.fps));
+  $("setCalm").setAttribute("aria-pressed", String(!!st.calm));
+  $("saveCode").value = "";
+  $("setReset").textContent = "Erase all progress";
+  resetArmed = false;
+}
+let resetArmed = false;
+const saveCode = () => "ECHO1:" + btoa(unescape(encodeURIComponent(JSON.stringify(save))));
+tap("settingsBtn", () => { renderSettings(); show("settings"); });
+tap("settingsBack", showTitle);
 $("setMusic").addEventListener("input", e => { save.settings.music = +e.target.value; applyVolumes(); persist(); });
 $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value; applyVolumes(); persist(); });
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
-tap("setView3d", () => { save.settings.view3d = save.settings.view3d === false; persist(); renderSettings(); });
+tap("setCalm", () => { save.settings.calm = !save.settings.calm; persist(); renderSettings(); });
 tap("setFps", () => { save.settings.fps = !save.settings.fps; persist(); renderSettings(); $("fpsMeter").hidden = !save.settings.fps; });
-tap("setSmooth", () => { save.settings.smooth = !(typeof swingSmooth === "function" && swingSmooth()); persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
-tap("setLighting", () => { save.settings.lighting = save.settings.lighting === false; persist(); renderSettings(); if (typeof runnerReset3D === "function") runnerReset3D(); });
-tap("setContrast", () => { save.settings.contrast = !save.settings.contrast; persist(); renderSettings(); });
-tap("setRelaxed", () => { save.settings.relaxed = !save.settings.relaxed; persist(); renderSettings(); toast(save.settings.relaxed ? "Relaxed mode on. It starts with your next cave" : "Relaxed mode off"); });
-[...$("setControls").children].forEach(b => b.addEventListener("click", () => { save.settings.controls = b.dataset.v; persist(); renderSettings(); }));
-[...$("setHand").children].forEach(b => b.addEventListener("click", () => { save.settings.hand = b.dataset.v; persist(); renderSettings(); }));
-tap("setBigText", () => { save.settings.bigText = !save.settings.bigText; persist(); renderSettings(); });
-tap("setGlow", () => { save.settings.glow = !save.settings.glow; persist(); renderSettings(); });
-tap("setUnlockAll", () => { save.settings.unlockAll = !save.settings.unlockAll; persist(); renderSettings(); });
-// Tapping the Settings title five times shows the testing switch.
-tap("settingsTitle", () => {
-  const now = performance.now();
-  testTaps.n = now - testTaps.t < 600 ? testTaps.n + 1 : 1;
-  testTaps.t = now;
-  if (testTaps.n >= 5 && !testTaps.shown) { testTaps.shown = true; renderSettings(); toast("Testing options shown"); }
-});
 tap("copyCode", async () => {
   const code = saveCode(), box = $("saveCode");
   box.value = code;
@@ -846,21 +149,15 @@ tap("restoreCode", () => {
     for (const k of ["settings", "stats", "daily"]) Object.assign(save[k], data[k] || {});
     for (const k in data) if (!["settings", "stats", "daily"].includes(k) && data[k] != null) save[k] = data[k];
     persist();
-    STICK_R = STICK_SIZES[save.settings.stick] || 46;
-    muted = !!save.muted;
-    updateMute();
+    muted = false;
+    applyVolumes();
     renderSettings();
-    toast(`Progress restored: <b>★ ${totalStars()}</b>`);
+    renderTitle();
+    toast(`Progress restored: <b>${homesLit()}/${STAGES_N} homes lit</b>`);
   } catch (e) {
     toast("That code didn't work. Paste the whole code, starting with ECHO1:");
   }
 });
-[...$("setStick").children].forEach(b => b.addEventListener("click", () => {
-  save.settings.stick = +b.dataset.v;
-  STICK_R = STICK_SIZES[save.settings.stick];
-  persist();
-  renderSettings();
-}));
 tap("setReset", () => {
   if (!resetArmed) {
     resetArmed = true;
@@ -868,30 +165,15 @@ tap("setReset", () => {
     setTimeout(() => { if (resetArmed) renderSettings(); }, 3500);
     return;
   }
-  save.stars = []; save.best = []; save.skin = 0; save.skinsSeen = 1; save.looksViewed = 1; save.ach = {}; save.story = {}; save.cards = {};
-  save.stats = { lights: 0, moths: 0, songs: 0, clean: 0, quiet: 0, gloom: 0 };
-  save.daily = { last: "", streak: 0, best: 0, stars: {} };
-  for (const k of ["found", "family", "hat", "weekly", "glow", "home", "quests", "variants", "vs", "lookSeen"]) delete save[k];
+  // Everything goes except your settings: stages, homes, stars, looks, lights, missions, awards.
+  for (const k of Object.keys(save)) if (k !== "settings") delete save[k];
+  Object.assign(save, { stars: [], best: [], ach: {}, stats: { lights: 0 }, daily: { last: "", streak: 0, best: 0, stars: {} } });
   persist();
-  toast("Progress erased");
-  renderSettings();
+  location.reload();
 });
-["pauseBtn", "muteBtn"].forEach(id => $(id).addEventListener("pointerdown", e => e.stopPropagation()));
-
-document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
-// Releasing keys or fingers outside the page shouldn't leave Lumi swimming on its own.
-window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; pointers.clear(); steer = null; });
-let resizeTimer = 0;
-window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { resize(); if (screen === "levels") drawMapPath(); }, 120); });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-window.__echo = { LEVELS: CORE_LEVELS, TOTAL, DAILY, WEEKLY, getLevel, get L() { return L; }, get screen() { return screen; }, save, startLevel, ping, finish };
-
-resize();
-applyLayoutPrefs();
-updateMute();
 showTitle();
-requestAnimationFrame(frame);
