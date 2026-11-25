@@ -297,9 +297,9 @@ export class Renderer3D {
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.grade = new ShaderPass({
-      uniforms: { tDiffuse: { value: null }, uVib: { value: 0.14 }, uVig: { value: 0.22 }, uT: { value: 0 }, uWarm: { value: 0 }, uShim: { value: new THREE.Vector4() }, uAspect: { value: 0.5 }, uRays: { value: 0 } },
+      uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2(1 / 1024, 1 / 1024) }, uSharp: { value: 0.32 }, uCon: { value: 0.07 }, uVib: { value: 0.14 }, uVig: { value: 0.22 }, uT: { value: 0 }, uWarm: { value: 0 }, uShim: { value: new THREE.Vector4() }, uAspect: { value: 0.5 }, uRays: { value: 0 } },
       vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVib; uniform float uVig; uniform float uT; uniform float uWarm; uniform vec4 uShim; uniform float uAspect; uniform float uRays; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uSharp; uniform float uCon; uniform float uVib; uniform float uVig; uniform float uT; uniform float uWarm; uniform vec4 uShim; uniform float uAspect; uniform float uRays; varying vec2 vUv;
         void main() {
           vec2 uv = vUv;
           // Heat shimmer: the air over the hot sand wobbles a little.
@@ -309,6 +309,12 @@ export class Renderer3D {
             uv += vec2(sin(uv.y * 140.0 + uT * 7.0), cos(uv.x * 110.0 + uT * 5.5)) * 0.0011 * m;
           }
           vec4 c = texture2D(tDiffuse, uv);
+          // Crisp edges: a light sharpen (the picture minus a blur of its four neighbours).
+          vec3 nb = texture2D(tDiffuse, uv + vec2(uTexel.x, 0.0)).rgb + texture2D(tDiffuse, uv - vec2(uTexel.x, 0.0)).rgb
+                  + texture2D(tDiffuse, uv + vec2(0.0, uTexel.y)).rgb + texture2D(tDiffuse, uv - vec2(0.0, uTexel.y)).rgb;
+          c.rgb = clamp(c.rgb + (c.rgb - nb * 0.25) * uSharp, 0.0, 1.0);
+          // A gentle S-curve: deeper shadows, brighter highlights, the middle left alone.
+          c.rgb = mix(c.rgb, c.rgb * c.rgb * (3.0 - 2.0 * c.rgb), uCon);
           // Vibrance: dull colors get a little richer, already-bright ones stay as they are.
           float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
           float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
@@ -402,6 +408,7 @@ export class Renderer3D {
     this.composer.setSize(v.W, v.H);
     // Bloom at a quarter of the pixels: it's blurry anyway, and much cheaper.
     this.bloom.resolution.set(Math.round(v.W * this.dpr / 2), Math.round(v.H * this.dpr / 2));
+    this.grade.uniforms.uTexel.value.set(1 / Math.max(1, v.W * this.dpr), 1 / Math.max(1, v.H * this.dpr));
     this.gl.shadowMap.enabled = !low;
     this.grade.enabled = !low;
     this.sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
@@ -922,6 +929,13 @@ export class Renderer3D {
           this.shadowAt.set(1e9, 0, 0);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
+          // Ground textures seen at a slant (lawns, paving, roads) stay sharp instead of
+          // smearing: anisotropic filtering, up to 8x (cheap on every phone GPU).
+          const aniso = Math.min(8, this.gl.capabilities.getMaxAnisotropy());
+          this.biz.group.traverse(o => {
+            const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+            if (m && !Array.isArray(m) && m.map && m.map.anisotropy !== aniso) { m.map.anisotropy = aniso; m.map.needsUpdate = true; }
+          });
         }
         if (old) { const g0 = old.group; requestAnimationFrame(() => requestAnimationFrame(() => disposeTree(g0))); }
       }

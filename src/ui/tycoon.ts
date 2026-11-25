@@ -1292,7 +1292,7 @@ export class TycoonUI {
       return;
     }
     if (id.startsWith("land-")) { this.openLand(); return; }
-    if (id === "hall") { this.host.openStory(); return; }
+    if (id === "hall") { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); this.host.openStory(); return; }
     if (id === "bottle") { this.collectBottle(); return; }
     if (id.startsWith("prop-")) { this.selectProp(id.slice(5)); return; }
     if (id === "starter") {
@@ -2008,7 +2008,7 @@ export class TycoonUI {
         { id: "profile", name: "Profile", open: () => $("level-btn").click() },
         { id: "ranks", name: "Leaders", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
         { id: "scrapbook", name: "Scrapbook", open: () => this.openScrapbook() },
-        { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !$("city-btn").hidden },
+        { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !HAS_CITY && !$("city-btn").hidden },
         { id: "settings", name: "Settings", open: () => $("settings-btn").click() },
       ],
     };
@@ -2056,8 +2056,11 @@ export class TycoonUI {
       let seg = sheet.querySelector<HTMLElement>(":scope > .tab-seg");
       if (pages.length < 2) { seg?.remove(); return; }
       if (!seg) { seg = document.createElement("div"); seg.className = "tab-seg"; sheet.prepend(seg); }
-      seg.innerHTML = pages.map(p => `<button type="button" data-page="${p.id}"${p.id === open.id ? ` class="on"` : ""}>${esc(t(p.name))}</button>`).join("");
+      seg.innerHTML = pages.map(p => `<button type="button" data-page="${p.id}"${p.id === open.id ? ` class="on"` : ""}>${esc(t(p.name))}</button>`).join("")
+        + `<button type="button" class="tab-x" aria-label="${esc(t("Close"))}">×</button>`;
       seg.onclick = e => {
+        // One close button for every page, always in the same place: top right.
+        if ((e.target as Element).closest(".tab-x")) { this.host.sound.click(); this.closeTabs(); return; }
         const id = (e.target as Element).closest<HTMLElement>("[data-page]")?.dataset.page;
         const to = pages.find(p => p.id === id);
         if (!to || to.id === open.id) return;

@@ -4294,3 +4294,29 @@ body:has(#tcy-card:not([hidden])) #toast { top: calc(env(safe-area-inset-top, 0p
 #tycity .tcy-next .next-go { font-size: 20px !important; }
 body.town-panning #tycity .tcy-next { opacity: 0; pointer-events: none; }
 @keyframes next-pill-in { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.9); } to { opacity: 1; transform: translateX(-50%); } }
+
+/* ---- Menus, tidied: one clear layout for every page ---- */
+/* Anything marked hidden stays hidden, whatever else styles it. */
+[hidden] { display: none !important; }
+/* The builders chip never sits on top of a menu. */
+body.tabs-open .tcy-builds, body:has(.modal:not([hidden])) .tcy-builds { display: none !important; }
+/* Pages with tabs: the tabs and one close button share the top row; the page's own
+   close buttons and sticky headers step aside so nothing overlaps. */
+body.tabs-open .tab-page .sheet:has(> .tab-seg) .close-btn { display: none !important; }
+body.tabs-open .tab-page .sheet:has(> .tab-seg) .sheet-top { position: static !important; box-shadow: none !important; }
+body.tabs-open .tab-page .tab-seg { display: flex; align-items: center; }
+.tab-seg .tab-x { flex: 0 0 34px !important; width: 34px; height: 34px; padding: 0 !important; margin-left: auto; border-radius: 50% !important; font: 400 20px/34px var(--display) !important; color: #6b5fa0 !important; background: #fff !important; box-shadow: 0 2px 6px rgba(60, 40, 140, 0.15) !important; }
+/* The city game hides the tower game's lists. */
+body.city-game [data-tab="towers"], body.city-game [data-tab="postcards"], body.city-game [data-panel="towers"], body.city-game [data-panel="postcards"] { display: none !important; }
+/* Every button in a menu answers a touch at once. */
+.sheet button, .tcy-card button, .tcy-bar button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform 0.08s ease-out, filter 0.08s; }
+.sheet button:active:not(:disabled), .tcy-card button:active:not(:disabled), .tcy-bar button:active { transform: scale(0.96); filter: brightness(0.96); }
+/* Menus scroll smoothly and stop at their edges (no bouncing the whole page). */
+.sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+/* Tabs always fit on one row next to the close button. */
+body.tabs-open .tab-page .tab-seg { overflow: visible !important; gap: 4px !important; }
+body.tabs-open .tab-page .tab-seg button:not(.tab-x) { flex: 1 1 0 !important; min-width: 0; padding: 9px 4px !important; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px !important; }
+/* The city album: places still to find are small "?" tiles, not a wall of text. */
+.alb-cell:not(.got) small { display: none !important; }
+.alb-cell:not(.got) { min-height: 0 !important; padding: 8px 0 !important; opacity: 0.7; }
+.alb-cell:not(.got) i { font-size: 16px !important; }

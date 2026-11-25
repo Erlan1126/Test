@@ -604,9 +604,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   lawnTex.wrapS = lawnTex.wrapT = THREE.RepeatWrapping; lawnTex.userData.own = true;
   const verge = own(std("#ffffff", { roughness: 0.95, map: lawnTex }));
   // (A touch deeper and less saturated than the lawn's own colour: a real, kept lawn.)
-  const grass = own(std("#cadcbb", { roughness: 0.95, map: lawnTex }));
-  const grass2 = own(std("#bccfae", { roughness: 0.95, map: lawnTex }));
-  streetUV.set(verge, 1 / 30).set(grass, 1 / 30).set(grass2, 1 / 30);
+  const grass = own(std("#c2d4b4", { roughness: 0.95, map: lawnTex }));
+  const grass2 = own(std("#b6c9a8", { roughness: 0.95, map: lawnTex }));
+  streetUV.set(verge, 1 / 14).set(grass, 1 / 14).set(grass2, 1 / 14);
   // Garden paths and yards: the same stone, a little warmer.
   const pave = own(std("#f4ece0", { roughness: 0.78, map: plazaTex() }));
   pave.userData.planar = 1 / 2.4;

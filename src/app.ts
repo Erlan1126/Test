@@ -263,6 +263,8 @@ export class App implements DailyHost {
   private stepTime = 0;
 
   constructor(logoSvg: string) {
+    // (The city game hides what belongs to the tower game only, like the best-towers list.)
+    document.body.classList.toggle("city-game", HAS_CITY);
     if (this.phone) document.documentElement.classList.add("phone");
     this.save = loadSave(this.storage);
     migrateChapters(this.save);
