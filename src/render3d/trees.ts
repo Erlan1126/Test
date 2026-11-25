@@ -392,6 +392,9 @@ export function gardenGeometry(kind: GardenKind, seed = 1, s = 1): THREE.BufferG
  *  end, tinted by the vertex colours. */
 export function natureMaterial(): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({ map: atlasTexture(), vertexColors: true, alphaTest: 0.38, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+  // Leaf edges blend smoothly with the picture's edge smoothing (multisampling) instead of
+  // cutting a hard, jagged line that sparkles when you zoom in close.
+  m.alphaToCoverage = true;
   // (world.ts mergeStatic merges every piece that uses it into one mesh.)
   m.userData.nature = true;
   return m;

@@ -616,12 +616,15 @@ export class Renderer3D {
     const focus = this.tmpA.set(lerp(0, BIZ_SLOT.x + this.bizLook.x, k), lerp(Math.max(0, v.level) * FH, BIZ_SLOT.y, k), lerp(0, BIZ_SLOT.z + this.bizLook.z, k));
     // (In the town the sun's aim moves in steps of a few meters, with a wider shadow area to
     // match, so dragging the view redraws the shadows only now and then, not every frame.)
-    if (k >= 1) { const STEP = 5; focus.x = Math.round(focus.x / STEP) * STEP; focus.z = Math.round(focus.z / STEP) * STEP; }
+    // The shadow map covers just what's on screen (plus a margin), so the closer you zoom the
+    // sharper shadows get: up close each shadow pixel is a few centimetres, not half a metre.
+    const view = (v.H / S) * 0.75;
+    const span = k >= 1 ? Math.max(10, (v.H / S) * 0.95) + 4 : Math.max(34, view);
+    if (k >= 1) { const STEP = Math.max(1, Math.min(5, span * 0.12)); focus.x = Math.round(focus.x / STEP) * STEP; focus.z = Math.round(focus.z / STEP) * STEP; }
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
-    const span = Math.max(34, (v.H / S) * 0.75) + (k >= 1 ? 5 : 0);
     const sc = this.sun.shadow.camera;
-    if (Math.abs(sc.top - span) > 2) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); this.shadowAt.set(1e9, 0, 0); }
+    if (Math.abs(sc.top - span) > Math.max(0.6, span * 0.08)) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); this.shadowAt.set(1e9, 0, 0); }
     // In the town almost nothing that casts a shadow moves, so the shadow map is redrawn only
     // when the view moves (or a few times a second for the odd growing building): about a
     // third less work per frame. Everywhere else it's redrawn every frame as before.
