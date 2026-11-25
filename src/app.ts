@@ -66,7 +66,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 
 /** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
 const EASY_TOWERS = 5;
-import { clockSky, nightAt } from "./render/scenery";
+import { clockSky, nightAt, setSkyMode } from "./render/scenery";
 import { Sound } from "./sound";
 import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
@@ -267,6 +267,7 @@ export class App implements DailyHost {
     document.body.classList.toggle("city-game", HAS_CITY);
     if (this.phone) document.documentElement.classList.add("phone");
     this.save = loadSave(this.storage);
+    setSkyMode(this.save.settings.sky);
     migrateChapters(this.save);
     setLang(resolveLang(this.save.settings.lang));
     translateDom();

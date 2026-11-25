@@ -2125,4 +2125,12 @@ export const DE: Record<string, string> = {
   "Tap Play to build a tower.": "Tippe auf Spielen, um einen Turm zu bauen.",
   "Tap Play and stack your tower higher.": "Tippe auf Spielen und stapel deinen Turm höher.",
   "Tap Build and add office floors.": "Tippe auf Bauen und füge Büroetagen hinzu.",
+  "Always sunny in your town": "Immer sonnig in deiner Stadt",
+  "Always night: city lights on": "Immer Nacht: die Lichter der Stadt leuchten",
+  "Follows your phone's clock: sunsets and city lights at night": "Folgt der Uhr deines Handys: Sonnenuntergänge und Lichter bei Nacht",
+  "A welcome gift, just this once!": "Ein Willkommensgeschenk, nur dieses eine Mal!",
+  "Short {n}? Your businesses earn it in about {t}. Or take my welcome deal: an hour of earnings ({gain}) right now, for 💎{p} instead of 💎{full}.": "Fehlen dir {n}? Deine Geschäfte verdienen es in etwa {t}. Oder nimm mein Willkommensangebot: eine Stunde Einnahmen ({gain}) sofort, für 💎{p} statt 💎{full}.",
+  "No thanks": "Nein, danke",
+  "Time of day": "Tageszeit",
+  "Night": "Nacht",
 };

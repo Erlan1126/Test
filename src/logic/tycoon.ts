@@ -557,8 +557,9 @@ export const warpPrice = (hours: 1 | 8): number => (hours === 1 ? WARP_1H_CRYSTA
  *  Every screen quotes this, so the quote is always what the player gets. */
 export const warpGain = (s: SaveData, hours: 1 | 8, now = Date.now()): number => perSecond(s, now, false) * hours * 3600;
 
-export function timeWarp(s: SaveData, hours: 1 | 8, now = Date.now()): number {
-  const price = warpPrice(hours);
+/** A first time warp's welcome price (a one-time deal for a new player). */
+export const WELCOME_WARP_CRYSTALS = 25;
+export function timeWarp(s: SaveData, hours: 1 | 8, now = Date.now(), price = warpPrice(hours)): number {
   const n = warpGain(s, hours, now);
   if (s.crystals < price || n <= 0 || speedupsLeft(s, now) <= 0) return 0;
   s.crystals -= price;

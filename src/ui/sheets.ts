@@ -1,4 +1,5 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
+import { setSkyMode } from "../render/scenery";
 import { HAS_CITY, playerStarted } from "../edition";
 import { VIP_SPEED } from "../logic/builds";
 import { track } from "../stats";
@@ -726,6 +727,8 @@ export class Sheets {
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
     $("vibrate-row").hidden = !("vibrate" in navigator);
     document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
+    document.querySelectorAll<HTMLButtonElement>("[data-sky]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.sky === st.sky)));
+    $("sky-note").textContent = st.sky === "day" ? t("Always sunny in your town") : st.sky === "night" ? t("Always night: city lights on") : t("Follows your phone's clock: sunsets and city lights at night");
     $("quality-note").textContent = st.quality === "auto" && st.autoLow ? t("Smooth mode was picked for this device")
       : st.quality === "low" ? t("Simpler graphics, easier on the battery")
       : st.quality === "high" ? t("Glow and light effects always on (uses more battery)")
@@ -803,6 +806,13 @@ export class Sheets {
       this.host.persist();
       this.renderSettings();
       this.host.applyQuality();
+    }));
+    document.querySelectorAll<HTMLButtonElement>("[data-sky]").forEach(b => b.addEventListener("click", () => {
+      st().sky = b.dataset.sky as "auto" | "day" | "night";
+      setSkyMode(st().sky);
+      this.host.persist();
+      this.click();
+      this.renderSettings();
     }));
     document.querySelectorAll<HTMLButtonElement>("[data-lang]").forEach(b => b.addEventListener("click", () => {
       st().lang = b.dataset.lang as LangSetting;

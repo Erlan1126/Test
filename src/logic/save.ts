@@ -42,6 +42,8 @@ export interface Settings {
   flat: boolean;
   /** Language: "auto" follows the device. */
   lang: LangSetting;
+  /** Time of day in the town: "auto" follows the real clock, or always day / night. */
+  sky: "auto" | "day" | "night";
 }
 
 export interface RunRecord {
@@ -246,7 +248,7 @@ export function defaultSave(): SaveData {
     orders: newOrders(),
     spire: newSpire(),
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto" },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto", sky: "auto" },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -391,6 +393,7 @@ export function normalize(raw: unknown): SaveData {
       gfx: GFX,
       flat: set.gfx === GFX ? bool(set.flat, false) : false,
       lang: (["auto", ...LANGS].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
+      sky: (["auto", "day", "night"].includes(set.sky as string) ? set.sky : "auto") as Settings["sky"],
     },
     tutorialDone: bool(r.tutorialDone, false),
     seenFeatures: strList(r.seenFeatures),

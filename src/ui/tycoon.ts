@@ -17,7 +17,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, officePrice, OFFICE_BLOCK_FLOORS, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow, adDoubleAway, payStars, starCash,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, WELCOME_WARP_CRYSTALS, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow, adDoubleAway, payStars, starCash,
   bizMult, workerBonus, reactionTip, rankHall, hallLevel, hallLocked, hallNeed, hallOpens, FLOOR_LIMIT,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -57,6 +57,7 @@ export interface TycoonHost {
   /** Plans the phone's reminders again (a build started or finished). */
   reschedule(): void;
   openShop(tab: "town" | "towers" | "crystals" | "boosts"): void;
+  openStarter(): void;
   /** Starts a tower (to build more office floors). */
   buildFloors(): void;
   /** Starts a tower that's a business's new headquarters. */
@@ -1729,6 +1730,20 @@ export class TycoonUI {
     const s = this.save, now = Date.now(), rate = perSecond(s, now, false);
     const wait = rate > 0 ? missing / rate : Infinity;
     const hours: 1 | 8 | 0 = warpGain(s, 1, now) >= missing ? 1 : warpGain(s, 8, now) >= missing ? 8 : 0;
+    // The first time cash runs short (and a wait of over a minute): a one-time welcome deal
+    // from Pip, an hour's time warp at a quarter of its price.
+    if (hours === 1 && wait > 60 && !s.seenFeatures.includes("welcome-warp") && speedupsLeft(s, now) > 0) {
+      s.seenFeatures.push("welcome-warp"); this.host.persist();
+      this.lastOffer = now;
+      const price = WELCOME_WARP_CRYSTALS, full = warpPrice(1), gain = warpGain(s, 1, now);
+      track("offer_shown", { kind: "welcome_warp" }, false);
+      mayorNote(t("A welcome gift, just this once!"), t("Short {n}? Your businesses earn it in about {t}. Or take my welcome deal: an hour of earnings ({gain}) right now, for 💎{p} instead of 💎{full}.", { n: coins(missing), t: fmtLeft(wait * 1000), gain: coins(gain), p: price, full }),
+        t("Time warp · 💎{n}", { n: price }), () => {
+          if (s.crystals < price) { toast(t("You need {n} more Sky Crystals", { n: price - s.crystals })); this.host.openStarter(); return; }
+          if (timeWarp(s, 1, Date.now(), price) > 0) { track("offer_taken", { kind: "welcome_warp" }, false); this.host.sound.purchase(); confetti(); toast(t("+{n}! Your businesses worked {h} in a blink.", { n: coins(gain), h: t("an hour") })); this.host.persist(); this.render(); }
+        }, t("No thanks"));
+      return;
+    }
     // (At most one offer every 3 minutes, and only when waiting would take a while.)
     if (hours && wait > 90 && speedupsLeft(s, now) > 0 && now - this.lastOffer > 180e3) {
       this.lastOffer = now;
@@ -2300,7 +2315,8 @@ export class TycoonUI {
     const s = this.save, ty = s.tycoon, list = $("ty-list");
     // Time of day outside the windows.
     const h = new Date(now).getHours();
-    $("ty-sky").className = `ty-sky ${h >= 20 || h < 6 ? "tod-night" : h >= 17 || h < 8 ? "tod-dusk" : "tod-day"}`;
+    const sky = s.settings.sky;
+    $("ty-sky").className = `ty-sky ${sky === "day" ? "tod-day" : sky === "night" ? "tod-night" : h >= 20 || h < 6 ? "tod-night" : h >= 17 || h < 8 ? "tod-dusk" : "tod-day"}`;
     const rows: string[] = [];
     BUSINESSES.forEach((b, i) => {
       if (!shownBusiness(s, i)) return;
