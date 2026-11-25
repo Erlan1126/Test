@@ -1,5 +1,5 @@
 // Upgrading the town's properties (data/props.ts).
-import { PROP_BONUS, PROP_MAX } from "../data/props";
+import { PROP_BONUS, PROP_MAX, PROP_PEOPLE } from "../data/props";
 import type { SaveData } from "./save";
 import { hallLevel, perSecond, levelOf } from "./tycoon";
 import { BUSINESSES } from "../data/tycoon";
@@ -63,3 +63,6 @@ export function upgradeProp(s: SaveData, key: string, now = Date.now()): "ok" | 
   s.props[key] = l + 1;
   return "ok";
 }
+
+/** Everyone living in the city's homes. */
+export const townPeople = (s: SaveData): number => Object.values(s.props).reduce((a, l) => a + (PROP_PEOPLE[Math.max(0, Math.min(5, l))] ?? 0), 0);

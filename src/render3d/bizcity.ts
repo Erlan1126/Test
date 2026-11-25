@@ -543,6 +543,8 @@ export interface BizCity {
   sights(): Sight[];
   /** The building designs standing in the town ("level:design"). */
   designs(): string[];
+  /** Where walker k is now (for a resident's speech bubble), or null. */
+  walker(k: number): THREE.Vector3 | null;
 }
 
 /** A building or place in the city the player can tap to see what it is. `kind` says what
@@ -4153,6 +4155,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     landAt: k => landShown[k] ?? null,
     homes: () => homeSpots,
     designs: () => [...designsSeen],
+    walker: k => (walkers.length ? walkers[((k % walkers.length) + walkers.length) % walkers.length].p.position : null),
     sights: () => {
       // (The rank landmarks that stay put: the market, the tram stop, the billboards, the
       // yacht, the golden tower and the floating island.)

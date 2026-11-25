@@ -69,6 +69,8 @@ const EASY_TOWERS = 5;
 import { clockSky, nightAt, setSkyMode } from "./render/scenery";
 import { citySeason, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { placedMap } from "./logic/placedecor";
+import type { FriendTown } from "./online";
+import { townPeople } from "./logic/props";
 import { Sound } from "./sound";
 import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
@@ -663,6 +665,7 @@ export class App implements DailyHost {
   /** A new day brings new missions; the menu's numbers move with the clock. */
   private tickMenu(): void {
     if (refreshMissions(this.save)) this.persist();
+    this.shareTownSoon();
     this.townWeather();
     if (this.state === "menu") this.renderMenu();
   }
@@ -1783,15 +1786,63 @@ export class App implements DailyHost {
       name: save.nickname, population: save.population, best: save.best, meters: save.bestMeters, level: p.level,
       theme: here, islandLevel: islandLevel(save), avatar: p.avatar, avatarColor: p.avatarColor, frame: p.frame,
       skyline: districtTowers(save, here).slice(0, 9), city: save.city, place: this.placement(),
+      ...(HAS_CITY ? { town: {
+        name: save.cityName || t("My city"), hall: hallLevel(save), people: townPeople(save),
+        levels: { ...save.tycoon.levels }, props: Object.fromEntries(Object.entries(save.props).filter(([k, v]) => k.startsWith("g:") && v > 0)),
+        placed: placedMap(save), decor: [...save.decor], land: [...save.land],
+      } } : {}),
     };
+  }
+  /** The city game shares its town now and then (friends and the city board see it). */
+  private townShared = 0;
+  private shareTownSoon(): void {
+    if (!HAS_CITY || !playerStarted(this.save) || this.online.kind !== "global" || Date.now() - this.townShared < 10 * 60e3) return;
+    this.townShared = Date.now();
+    void this.shareCity();
   }
 
   shareCity(): Promise<string> { return this.online.shareCity(this.save, () => this.persist(), this.myCity()); }
 
   /** A friend's city, shown on the home screen until "Back home". */
   private visiting: FriendCity | null = null;
+  /** A friend's Buildaroo town, worked out once when the visit starts. */
+  private visitTown: { lots: BizLot[]; cafe: BizCafe | null } | null = null;
+  /** What our town code draws for a friend's town: their levels, homes and decorations on a
+   *  copy of our own save (so the same code draws it). */
+  private townView(tw: FriendTown): { lots: BizLot[]; cafe: BizCafe | null } {
+    const real = this.save, ghost = structuredClone(real);
+    ghost.tycoon.levels = { ...tw.levels };
+    ghost.props = { ...tw.props };
+    ghost.placed = Object.fromEntries(Object.entries(tw.placed).map(([lot, id]) => [id, lot]));
+    ghost.decor = [...tw.decor];
+    ghost.land = [...tw.land] as typeof ghost.land;
+    ghost.chapters = { ...ghost.chapters, done: Math.max(0, tw.hall - 1) };
+    ghost.cityName = tw.name;
+    ghost.tycoon.builds = [];
+    this.save = ghost;
+    this.cafeCache = { key: "", val: null as unknown as BizCafe };
+    this.bizCache = { key: "", list: [] };
+    try { return { lots: [...this.bizView()], cafe: this.bizCafe() }; }
+    finally {
+      this.save = real;
+      this.cafeCache = { key: "", val: null as unknown as BizCafe };
+      this.bizCache = { key: "", list: [] };
+    }
+  }
   visit(city: FriendCity, code: string): void {
     if (this.state !== "menu") return;
+    // Buildaroo: a friend's town, drawn like ours, with the camera over it.
+    if (HAS_CITY && city.town) {
+      this.visiting = city;
+      this.visitTown = this.townView(city.town);
+      this.tycoon.closeTabs();
+      this.sound.whoosh();
+      document.body.classList.add("visiting", "visiting-town");
+      $("visit-who").innerHTML = `${avatarBadgeFor(city.avatar, city.avatarColor, city.frame, "mini")}<span><b>${esc(city.town.name || t("{name}'s city", { name: displayName(city.name) }))}</b><small>${esc(t("{name}'s city · City Hall Lv {n} · {p} people", { name: displayName(city.name), n: city.town.hall, p: fmt(city.town.people) }))}</small></span>`;
+      $("visit-bar").hidden = false;
+      track("visit_town", {}, false);
+      return;
+    }
     this.tycoon.exitCity();
     this.visiting = city;
     this.cityView = null;
@@ -1804,8 +1855,9 @@ export class App implements DailyHost {
   endVisit(): void {
     if (!this.visiting) return;
     this.visiting = null;
+    this.visitTown = null;
     this.cityView = null;
-    document.body.classList.remove("visiting");
+    document.body.classList.remove("visiting", "visiting-town");
     $("visit-bar").hidden = true;
     this.sound.whoosh();
     this.refresh(); // back to the business district
@@ -2719,6 +2771,7 @@ export class App implements DailyHost {
     this.sound.setSong(currentTheme(this.save).id);
     // Over the town: its own street life, livelier the more people live there.
     const inTown = this.state === "menu" && this.tycoon.inCity && !document.body.classList.contains("tabs-open");
+    if (inTown) this.sound.townMood(citySeason(), this.renderer.weather.kind);
     this.sound.townLife(inTown ? this.tycoon.townBusy() : 0, nightAt(Math.max(sim.stack.length, clockSky())), inTown);
     this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(Math.max(sim.stack.length, clockSky())), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
@@ -2801,6 +2854,8 @@ export class App implements DailyHost {
   bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
   bizHold(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizHold(); }
   visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
+  weatherNow(): string { return this.renderer.weather.kind; }
+  bizTalk(k: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizTalk(k); }
   bizDesigns(): string[] { return this.renderer instanceof Renderer3D ? this.renderer.bizDesigns() : []; }
   townShot(): HTMLCanvasElement | null { return this.renderer instanceof Renderer3D ? this.renderer.output : null; }
   /** A small picture of the town as it looks right now (for the scrapbook's memories). */
@@ -2866,8 +2921,8 @@ export class App implements DailyHost {
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       skyline: this.city().skyline,
       districts: this.city().districts,
-      bizLots: this.visiting ? NO_LOTS : this.bizView(),
-      bizCafe: this.visiting ? null : this.bizCafe(),
+      bizLots: this.visitTown ? this.visitTown.lots : this.visiting ? NO_LOTS : this.bizView(),
+      bizCafe: this.visitTown ? this.visitTown.cafe : this.visiting ? null : this.bizCafe(),
       bizLive: this.tycoon.liveState(),
       bizFocus: this.bizFocus && this.state === "menu",
       bizCard: this.tycoon.cardOpen,

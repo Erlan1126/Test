@@ -12,6 +12,9 @@ import { houseThumb } from "../render3d/housethumbs";
 import { checkCityTrophies, CITY_TROPHIES } from "../logic/cityach";
 import { gameCenterCity } from "../gamecenter";
 import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
+import { pickTalk } from "../data/talk";
+import { earn } from "../logic/tycoon";
+import { citySeason } from "../data/season";
 import { buyPlace, lotFree, movePlace, PLACE_ITEMS, placeItem, placedOn, storePlace } from "../logic/placedecor";
 import { addDesigns, bookCount, bookReady, BOOK_CRYSTALS, BOOK_SIZE, claimBook, DESIGN_LEVELS, DESIGNS_PER_LEVEL, hasDesign, LEVEL_NAMES, levelCount, ROW_CRYSTALS } from "../logic/collection";
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_AT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
@@ -98,6 +101,10 @@ export interface TycoonHost {
   sharePicture(blob: Blob, text: string): Promise<void>;
   /** The town as it looks right now, full size (for photo mode). */
   townShot(): HTMLCanvasElement | null;
+  /** Which walker in the street is talking (their bubble follows them). */
+  bizTalk(k: number): void;
+  /** The weather over the town now. */
+  weatherNow(): string;
   /** The building designs standing in the town now ("level:design"). */
   bizDesigns(): string[];
   bizPan(dx: number, dy: number): void;
@@ -1164,7 +1171,9 @@ export class TycoonUI {
       if (at === null || at === -1 && !s.cafe.starter && j.kind !== "terrace") return "";
       return `<button type="button" class="tag bub build-tm" data-tag="build-${esc(j.kind)}" data-i="${at}" data-h="-1" data-end="${j.end}" aria-label="${esc(t("Builders at work"))}"><span class="tag-ico">🔨</span><b class="tm-t">${esc(fmtLeft(j.end - now))}</b></button>`;
     }).join("");
-    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + buildTags + propTags + askTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    // A resident walking in the street, saying something (tap: a little tip).
+    const talkTag = !closeUp && this.talk && this.talk.until > now ? `<button type="button" class="tag bub talk" data-tag="talk" data-i="-6" data-h="0.75"><b>${esc(this.talk.text)}</b></button>` : "";
+    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + buildTags + talkTag + propTags + askTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       // (The next business waiting for the City Hall: a lock with the level it needs.)
@@ -1383,6 +1392,8 @@ export class TycoonUI {
 
   private onCityTap(e: MouseEvent): void {
     this.lastTapAt = Date.now();
+    // (Visiting a friend's town: just looking, nothing of ours to tap.)
+    if (document.body.classList.contains("visiting-town")) return;
     const target = e.target as Element;
     if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-next, .tcy-builds")) return;
     const act = target.closest<HTMLElement>("[data-act]"), tag = target.closest<HTMLElement>(".tag");
@@ -1394,6 +1405,15 @@ export class TycoonUI {
       return;
     }
     if (id.startsWith("land-")) { this.openLand(); return; }
+    if (id === "talk") {
+      const tip = Math.max(1, perSecond(this.save, Date.now(), false) * 3);
+      earn(this.save, tip);
+      this.talk = null;
+      this.host.sound.coins(); vibrate(this.save.settings.vibrate, 6);
+      toast(t("😊 They tipped you {n} for the lovely city!", { n: coins(tip) }));
+      this.host.persist(); this.render();
+      return;
+    }
     if (id.startsWith("build-")) { this.host.sound.click(); $("tcy-builds").click(); return; }
     if (id === "hall") { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); this.host.openStory(); return; }
     if (id === "bottle") { this.collectBottle(); return; }
@@ -3210,6 +3230,22 @@ export class TycoonUI {
     };
     requestAnimationFrame(step);
   }
+  /** Someone in the street says something now and then (not while a card or menu is open). */
+  private talk: { text: string; until: number } | null = null;
+  private talkNext = Date.now() + 15000;
+  private maybeTalk(now: number): void {
+    if (this.talk && this.talk.until <= now) { this.talk = null; this.render(); }
+    if (now < this.talkNext || this.talk) return;
+    this.talkNext = now + 25000 + Math.random() * 20000;
+    if (!this.inCity || this.selected || this.selectedProp || this.selectedSight || openModalEl() || document.body.classList.contains("tabs-open") || !$("mayor").hidden) return;
+    const s = this.save, opened = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
+    const newest = opened.length > 1 ? opened[opened.length - 1] : undefined;
+    const line = pickTalk({ season: citySeason(), weather: this.host.weatherNow(), placed: Object.entries(s.placed).filter(([, at]) => at).map(([id]) => id), newest: newest ? t(stageName(newest.id, stageNow(s, newest.id))) : undefined }, Math.random());
+    this.host.bizTalk(Math.floor(Math.random() * 1000));
+    this.talk = { text: t(line.text, { name: line.name ?? "" }), until: now + 7000 };
+    this.render();
+  }
+
   /** A friendly card when nothing new has opened for about a day and a New Era would pay:
    *  the gems it gives and what they do to earnings, a button to it, and "Not now". */
   private renderEraNudge(now = Date.now()): void {
@@ -3229,9 +3265,10 @@ export class TycoonUI {
   private collectAt = 0;
   private collectSeeded = false;
   private collectDesigns(now: number): void {
-    if (!HAS_CITY || now - this.collectAt < 4000) return;
+    if (!HAS_CITY || now - this.collectAt < 4000 || document.body.classList.contains("visiting-town")) return;
     this.collectAt = now;
     this.renderEraNudge(now);
+    this.maybeTalk(now);
     // Trophies (quietly the first time, when an existing city earns several at once).
     const won = checkCityTrophies(this.save);
     if (won.length) {

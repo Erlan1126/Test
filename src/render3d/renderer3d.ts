@@ -1190,6 +1190,9 @@ export class Renderer3D {
 
   /** Where a lot's building shows on screen: its base and its top (page px). */
   /** How many homes there are round town (they pay rent). */
+  /** Which walker is talking (their bubble follows them). */
+  private talkK = 0;
+  bizTalk(k: number): void { this.talkK = k; }
   bizDesigns(): string[] { return this.biz ? this.biz.designs() : []; }
   bizHomes(): string[] { return this.biz && this.bizK >= 0.5 ? this.biz.homes().map(h => h.key) : []; }
   /** Everything else in the city worth a tap (index k is bizScreen(-1000 - k)). */
@@ -1217,6 +1220,13 @@ export class Renderer3D {
     const db = i >= CITY_LOTS ? this.biz.bizAt(i) : null;
     if (i >= CITY_LOTS && !db) return null;
     if (db && height < 0) height = db.top + 0.5;
+    // (-6: a resident walking in the street who's saying something.)
+    if (i === -6) {
+      const w = this.biz.walker(this.talkK);
+      if (!w) return null;
+      const r6 = this.canvasRect(), at6 = (y: number): [number, number] => { const v = new THREE.Vector3(BIZ_SLOT.x + w.x, BIZ_SLOT.y + w.y + y, BIZ_SLOT.z + w.z).project(this.cam); return [r6.left + ((v.x + 1) / 2) * r6.width, r6.top + ((1 - v.y) / 2) * r6.height]; };
+      return { base: at6(0), top: at6(0.75) };
+    }
     const { x, z } = db ?? home ?? land ?? (i === -1 ? plotPos() : i === -2 ? this.biz.spot("flowers") : i === -3 ? this.biz.spot("play") : i === -4 ? this.biz.spot("hall") : i === -5 ? this.biz.spot("bottle") : lotPos(i)), r = this.canvasRect();
     // A negative height means "the top of whatever stands there", plus room for the bubble.
     if (height < 0) height = this.biz.top(i) + 0.5;

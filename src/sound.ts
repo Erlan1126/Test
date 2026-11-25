@@ -196,8 +196,38 @@ export class Sound {
     else if (r < 0.55 && busy > 0.2) { const f = 380 + Math.random() * 80; this.tone(f, 0.12, "square", 0.008, 0, 0, this.sfx, pan); this.tone(f * 1.26, 0.14, "square", 0.007, 0.13, 0, this.sfx, pan); }
     else if (r < 0.8 && busy > 0.1) this.noise(1.1, 0.008 + busy * 0.012, 1100, "bandpass", 3, 0, 0.3);
     else if (night < 0.5) { const f = 2600 + Math.random() * 900; for (let k = 0; k < 3; k++) this.tone(f + k * 140, 0.07, "sine", 0.012, k * 0.11, f * 1.15, this.sfx, pan); }
+    this.townMoodSounds(t, night);
   }
   private townBusy = -1;
+  /** The season and weather over the town, for its own sounds. */
+  private mood = { season: "", weather: "clear" };
+  private moodAt = 0;
+  private wavesAt = 0;
+  townMood(season: string, weather: string): void { this.mood.season = season; this.mood.weather = weather; }
+  /** The town's season and weather, heard: waves on the beach, gulls in summer, more birds in
+   *  spring, owls on Halloween nights, sleigh bells in winter, and rain on the streets. */
+  private townMoodSounds(t: number, night: number): void {
+    const m = this.mood, pan = Math.random() * 1.6 - 0.8;
+    // Waves rolling in on the beach, every few seconds.
+    if (t > this.wavesAt) { this.wavesAt = t + 5 + Math.random() * 4; this.noise(2.6, 0.01, 420, "lowpass", 0.8, 0, 1.2); }
+    if (m.weather === "rain") for (let k = 0; k < 3; k++) this.noise(0.5, 0.006, 3200, "highpass", 0.7, k * 0.17, 0.05);
+    if (t < this.moodAt) return;
+    this.moodAt = t + 4 + Math.random() * 7;
+    const r = Math.random();
+    if (m.season === "summer" && night < 0.5 && r < 0.6) {
+      // A seagull: two falling cries.
+      for (let k = 0; k < 2; k++) this.tone(1900 - k * 120, 0.22, "sine", 0.012, k * 0.28, 1250, this.sfx, pan);
+    } else if (m.season === "spring" && night < 0.5 && r < 0.7) {
+      const f = 3000 + Math.random() * 700;
+      for (let k = 0; k < 5; k++) this.tone(f + (k % 2) * 260, 0.06, "sine", 0.011, k * 0.09, f * 1.2, this.sfx, pan);
+    } else if (m.season === "halloween" && night > 0.5 && r < 0.6) {
+      // An owl: hoo... hoo-hoo.
+      [0, 0.55, 0.8].forEach(d => this.tone(410, 0.32, "sine", 0.02, d, 370, this.sfx, pan));
+    } else if (m.season === "winter" && r < 0.5) {
+      // Sleigh bells going by.
+      for (let k = 0; k < 8; k++) this.tone(2400 + (k % 3) * 380, 0.09, "triangle", 0.006, k * 0.07, 0, this.sfx, pan);
+    }
+  }
 
   ambience(altitude: number, night: number, wind: number, active: boolean): void {
     const ac = this.ac;

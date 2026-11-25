@@ -2,6 +2,7 @@
 // league, the city (rent and buildings), and the leaderboard.
 import { prizeFor, prizeText, tierName, TIERS } from "../logic/tournament";
 import { fmt } from "../core/util";
+import { HAS_CITY } from "../edition";
 import { t, tn } from "../i18n";
 import { MILESTONES } from "../data/constants";
 import { CHEST, CITY, LEAGUES, RENT_BONUS_PER_BUILD, RENT_CAP_HOURS, STREAK_REWARDS } from "../data/daily";
@@ -69,6 +70,40 @@ export class DailySheets {
       if (isNative() && reminderTime() && t) void setReminder(t, this.host.reminderInfo());
     });
     host.online.onChange = () => { if (!$("ranks").hidden) void this.renderRanks(); };
+    // The city game ranks cities, not towers: the biggest, and the highest City Hall.
+    if (HAS_CITY) {
+      const tb = (k: string) => document.querySelector<HTMLElement>(`#ranks .tabs [data-tab="${k}"]`)!;
+      tb("daily").textContent = t("Biggest cities");
+      tb("week").textContent = t("City Hall");
+      tb("best").hidden = true;
+      $("ranks-title").textContent = t("Top cities");
+    }
+  }
+
+  /** Buildaroo's city board: the biggest shared cities, each one a tap from a visit. */
+  private async renderCityBoard(by: "people" | "hall"): Promise<void> {
+    const el = $("rank-list");
+    $("ranks-sub2").textContent = t("Cities from all over the world");
+    for (const id of ["rank-podium", "rank-chase", "tourney"]) $(id).hidden = true;
+    if (!el.children.length) el.innerHTML = `<p class="history-empty">${esc(t("Loading…"))}</p>`;
+    const rows = await this.host.online.cityBoard(by);
+    if ((by === "hall") !== (this.tab === "week")) return;
+    if (rows === undefined) { el.innerHTML = `<p class="history-empty">${esc(t("Can't reach the server right now"))}</p>`; return; }
+    if (!rows.length) { el.innerHTML = `<p class="history-empty">${esc(t("No cities yet. Be the first!"))}</p>`; return; }
+    const mine = this.save.friendCode;
+    el.innerHTML = rows.map(r => `<div class="rank-row city-row${r.code === mine ? " me" : ""}">
+        <b class="rank-n">${r.rank}</b>${avatarBadgeFor(r.avatar, r.avatarColor, r.frame, "mini")}
+        <span class="rank-name"><b>${esc(r.city || t("{name}'s city", { name: displayName(r.name) }))}</b><small>${esc(displayName(r.name))} · ${esc(t("City Hall Lv {n}", { n: r.hall }))}</small></span>
+        <span class="rank-score">${esc(fmt(r.people))}<small>${esc(t("people"))}</small></span>
+        ${r.code === mine ? "" : `<button type="button" class="buy" data-code="${esc(r.code)}">${esc(t("Visit"))}</button>`}
+      </div>`).join("");
+    el.querySelectorAll<HTMLButtonElement>("[data-code]").forEach(b => b.addEventListener("click", async () => {
+      const c = await this.host.online.friendCity(b.dataset.code!);
+      if (!c) { toast(t("Can't reach the server right now")); return; }
+      closeModal($("ranks"));
+      this.host.visit(c, b.dataset.code!);
+    }));
+    $("ranks-note").textContent = t("Your city shows here once it's shared: it updates every few minutes while you play.");
   }
 
   private get save() { return this.host.save; }
@@ -458,6 +493,7 @@ export class DailySheets {
     $("rank-list").hidden = friends;
     $("ranks-note").hidden = friends;
     if (friends) { void this.renderFriends(); return; }
+    if (HAS_CITY) { void this.renderCityBoard(tab === "week" ? "hall" : "people"); return; }
     const global = on.kind === "global";
     $("ranks-sub2").textContent = global ? t("Builders all over the world") : t("Friends you share Skyrise with");
     const el = $("rank-list");

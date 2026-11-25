@@ -52,7 +52,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/spire"].includes(url.pathname)
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/cityboard", "/spire"].includes(url.pathname)
       || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
@@ -223,6 +223,18 @@ async function rankings(request, url, env, now) {
     const row = code ? await db.prepare("SELECT data, at FROM cities WHERE code = ?").bind(code).first() : null;
     if (!row) return json({ error: "not found" }, 404);
     return json({ code, at: row.at, city: JSON.parse(row.data) });
+  }
+
+  // Buildaroo's city board: the shared towns with the most residents (or the highest City Hall).
+  if (url.pathname === "/cityboard" && request.method === "GET") {
+    const by = url.searchParams.get("by") === "hall" ? "$.town.hall" : "$.town.people";
+    const { results } = await db.prepare(
+      `SELECT code, data FROM cities WHERE json_extract(data, '$.town') IS NOT NULL ORDER BY json_extract(data, '${by}') DESC, at ASC LIMIT 50`).all();
+    const rows = (results ?? []).map((r, i) => {
+      const c = JSON.parse(r.data);
+      return { rank: i + 1, code: r.code, name: c.name, city: c.town?.name ?? "", people: c.town?.people ?? 0, hall: c.town?.hall ?? 1, avatar: c.avatar, avatarColor: c.avatarColor, frame: c.frame };
+    });
+    return json({ rows });
   }
 
   if (url.pathname === "/recovery" && request.method === "POST") {
@@ -562,7 +574,25 @@ function cleanCity(c) {
   return {
     name: cleanName(c.name), population: n(c.population, 1e10), best: n(c.best, 1e9), meters: n(c.meters, 1e6),
     level: n(c.level, 999), theme: id(c.theme), islandLevel: n(c.islandLevel, 99), avatar: id(c.avatar),
-    avatarColor: n(c.avatarColor, 7), frame: id(c.frame), skyline, city, place,
+    avatarColor: n(c.avatarColor, 7), frame: id(c.frame), skyline, city, place, town: cleanTown(c.town),
+  };
+}
+
+/** Buildaroo: the town a friend sees when they visit, and what the city board ranks. */
+function cleanTown(t) {
+  if (!t || typeof t !== "object") return undefined;
+  const n = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.floor(Number(v)))) : 0);
+  const id = (v) => String(v ?? "").replace(/[^a-z0-9_]/g, "").slice(0, 24);
+  const lot = (v) => (/^g:-?\d{1,3},-?\d{1,3}$/.test(String(v)) ? String(v) : "");
+  const levels = {}, props = {}, placed = {};
+  for (const [k, v] of Object.entries(t.levels && typeof t.levels === "object" ? t.levels : {}).slice(0, 40)) if (id(k)) levels[id(k)] = n(v, 100000);
+  for (const [k, v] of Object.entries(t.props && typeof t.props === "object" ? t.props : {}).slice(0, 300)) if (lot(k)) props[lot(k)] = n(v, 5);
+  for (const [k, v] of Object.entries(t.placed && typeof t.placed === "object" ? t.placed : {}).slice(0, 20)) if (lot(k) && id(v)) placed[lot(k)] = id(v);
+  return {
+    name: cleanName(t.name), hall: n(t.hall, 99), people: n(t.people, 1e9),
+    levels, props, placed,
+    decor: (Array.isArray(t.decor) ? t.decor : []).slice(0, 30).map(id).filter(Boolean),
+    land: (Array.isArray(t.land) ? t.land : []).slice(0, 10).map(id).filter(Boolean),
   };
 }
 

@@ -4518,3 +4518,27 @@ body.photo-mode #tycity > *, body.photo-mode #tcy-bar, body.photo-mode #toast, b
 .arr::before { content: ""; position: absolute; left: 0; right: 0.12em; top: 50%; height: 0.13em; margin-top: -0.065em; border-radius: 1px; background: currentColor; }
 .arr::after { content: ""; position: absolute; right: 0.04em; top: 50%; width: 0.32em; height: 0.32em; border-top: 0.13em solid currentColor; border-right: 0.13em solid currentColor; transform: translateY(-50%) rotate(45deg); }
 #city-rename { flex: none; margin-left: auto; padding: 8px 16px !important; border: 0 !important; border-radius: 999px !important; font: 400 13px var(--display) !important; color: #5a34e0 !important; background: rgba(106, 60, 255, 0.12) !important; box-shadow: none !important; }
+
+/* A resident's speech bubble: white, rounded, a tail pointing at them. */
+#tcy-labels .tag.bub.talk { max-width: 190px; padding: 7px 11px !important; border-radius: 16px !important; background: #fff !important; color: #2a1f5c; box-shadow: 0 6px 16px rgba(40, 20, 100, 0.25); animation: talk-in 0.3s ease-out; }
+#tcy-labels .tag.bub.talk b { font: 700 12.5px/1.3 var(--ui); white-space: normal; text-align: left; }
+@keyframes talk-in { from { opacity: 0; transform-origin: bottom; scale: 0.7; } to { opacity: 1; scale: 1; } }
+
+/* Visiting a friend's town: only their city and the visit bar. */
+body.visiting-town #tycity > *, body.visiting-town #tcy-bar, body.visiting-town .era-nudge, body.visiting-town #toast { visibility: hidden !important; }
+/* Pick lists (Decorate): one full-width card per choice. */
+#mayor-goals li.mayor-pick { display: block !important; }
+#mayor-goals li.mayor-pick small { font: 700 12px/1.3 var(--ui); }
+/* The city board: rank, badge, city and owner, people, Visit. */
+#rank-list .city-row { display: grid !important; grid-template-columns: 22px 30px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 10px; }
+#rank-list .city-row .rank-name { min-width: 0; }
+#rank-list .city-row .rank-name b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 14px var(--display); }
+#rank-list .city-row .rank-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11.5px var(--ui); opacity: 0.75; }
+#rank-list .city-row .rank-score { text-align: right; font: 400 13px var(--display); }
+#rank-list .city-row .rank-score small { display: block; font: 600 10.5px var(--ui); opacity: 0.7; }
+#rank-list .city-row .buy { padding: 7px 10px; font-size: 12px; }
+/* The visit bar sits above the city's own layers while visiting a town. */
+body.visiting-town #visit-bar { z-index: 70; }
+#rank-list .city-row .buy { width: auto !important; margin: 0 !important; grid-column: auto !important; }
+/* Mayor Pip waits until you're home again. */
+body.visiting-town #mayor { display: none !important; }

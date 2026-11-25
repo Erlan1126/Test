@@ -61,7 +61,16 @@ export interface FriendCity {
   name: string; population: number; best: number; meters: number; level: number;
   theme: string; islandLevel: number; avatar: string; avatarColor: number; frame: string;
   skyline: { f: number; s: string; h: string; d: string }[]; city: string[]; place: Record<string, string>;
+  /** Buildaroo: the town itself (what a visit shows, and what the city board ranks). */
+  town?: FriendTown;
 }
+export interface FriendTown {
+  name: string; hall: number; people: number;
+  levels: Record<string, number>; props: Record<string, number>; placed: Record<string, string>;
+  decor: string[]; land: string[];
+}
+/** A line on Buildaroo's city board. */
+export interface CityRow { rank: number; code: string; name: string; city: string; people: number; hall: number; avatar: string; avatarColor: number; frame: string }
 
 const num = (v: unknown, max = 1e9) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.floor(v))) : 0);
 const API = SERVER_URL.replace(/\/$/, "");
@@ -188,6 +197,16 @@ export class Online {
       if (code && code !== save.friendCode) { save.friendCode = code; persist(); }
       return code;
     } catch { return ""; }
+  }
+
+  /** Buildaroo's city board: the biggest shared cities (undefined when offline). */
+  async cityBoard(by: "people" | "hall" = "people"): Promise<CityRow[] | undefined> {
+    if (this.kind !== "global") return undefined;
+    try {
+      const res = await fetch(`${API}/cityboard?by=${by}`);
+      if (!res.ok) return undefined;
+      return ((await res.json()) as { rows?: CityRow[] }).rows ?? [];
+    } catch { return undefined; }
   }
 
   /** A friend's city by their code: null if there's no such code, undefined if offline. */
