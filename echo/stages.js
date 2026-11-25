@@ -155,9 +155,11 @@ function showStageCard(won) {
   $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : R.failPct != null ? `${R.failPct}%${R.newBestPct ? " · New best!" : ""}` : "Out of light";
   $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);
-  $("stTime").textContent = won ? R.stageTime.toFixed(1) : "–";
-  $("stLights").textContent = `${R.motesGot}/${R.motesTotal}`;
-  $("stPerf").textContent = R.perfects;
+  // The numbers count up; each star lands with its own chime.
+  const count = (id, to, fmt, ms = 700) => { const el = $(id), t0 = performance.now(); const f = now => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * e); if (k < 1 && !$("stageCard").hidden) requestAnimationFrame(f); }; f(t0); };
+  if (won) count("stTime", R.stageTime, v => v.toFixed(1)); else $("stTime").textContent = "–";
+  count("stLights", R.motesGot, v => `${Math.round(v)}/${R.motesTotal}`); count("stPerf", R.perfects, v => String(Math.round(v)));
+  if (won) for (let q = 0; q < R.stageStars; q++) setTimeout(() => { if (!$("stageCard").hidden) { sfx.star(q); buzz(q === 2 ? [20, 30, 40] : 10); } }, 120 + q * 180);
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   const attNote = won && R.attempt && !R.hadStars ? `Cleared on attempt ${R.attempt}${R.attempt === 1 ? ". First try!" : ""} · ` : !won && R.bestPct != null && !R.newBestPct ? `Your best: ${R.bestPct}% · ` : "";
   $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch 40% of the lights for ★★" : `★★★: 70% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
