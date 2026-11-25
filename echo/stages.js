@@ -56,6 +56,24 @@ const stagePerson = n => n === 0 ? DAILY_PEOPLE[dayNumber() % DAILY_PEOPLE.lengt
 const stageChapter = n => STAGE_CHAPTERS[Math.min(STAGE_CHAPTERS.length - 1, Math.floor((n - 1) / 10))];
 const stageWaiting = n => { const w = stagePerson(n)[0]; return `${w} ${/^(The twins|The night nurses|The harbour crews|Mo and Ari)$/.test(w) ? "are" : "is"} waiting`; };
 // The weekly outage: one district a week flickers (some anchors go dark for moments) but every light there counts double.
+// Each district's chapter of the story, shown the first time you arrive there.
+const CHAPTER_STORY = [
+  "The Hush took every light in one night. Start where it began: Downtown.",
+  "The Markets were the last to go dark. Their lanterns are waiting.",
+  "The Harbour's lights guided every ship home. Something below the water is listening.",
+  "The Hush hates music and neon most. Make the Arcade loud again.",
+  "The Park's old trees still remember the light. Dawn is close.",
+  "The Tower holds the city's last lamp. Climb it, and bring back the dawn.",
+];
+// Your reward for lighting every home in a district: something to wear from that district.
+const CHAPTER_REWARD = [["t", "Lamplight glow"], ["s", "Lantern string scarf"], ["b", "Lighthouse tether"], ["t", "Neon glow"], ["s", "Firefly trail scarf"], ["b", "Dawn tether"]];
+function chapterRewardItem(c) { const k = CHAPTER_REWARD[c][0], list = { t: RUNNER_TOPS, s: RUNNER_SHOES, b: RUNNER_BOARDS }[k]; return [k, list.findIndex(it => it.reward === c)]; }
+function showChapterIntro(c, go) {
+  const el = $("chapIntro"); if (!el) { go(); return; }
+  $("ciName").textContent = STAGE_CHAPTERS[c]; $("ciLine").textContent = CHAPTER_STORY[c]; $("ciNum").textContent = `Chapter ${c + 1} of ${STAGE_CHAPTERS.length}`;
+  el.className = "chap-intro d" + c; el.hidden = false; sfx.unlock();
+  $("ciGo").onclick = e => { e.stopPropagation(); el.hidden = true; save.chapSeen = save.chapSeen || {}; save.chapSeen[c] = 1; persist(); go(); };
+}
 const outageDistrict = () => 1 + weekNumber() % (STAGE_CHAPTERS.length - 1);   // never Downtown: new players learn without it
 const homesLit = () => Object.values(stageSave().best).filter(b => b && b.stars).length;
 
@@ -91,6 +109,8 @@ function startStage(n, opts = {}) {
   if (!info.daily && n > S.unlocked && !opts.race) return;
   const own = !info.daily && S.ghosts[n] && S.ghosts[n].v === 3 ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
+  // Arriving in a new district: its chapter card first.
+  { const c = Math.floor((n - 1) / 10); if (!info.daily && !opts.cp && !opts.chapOk && n % 10 === 1 && n > 1 && !((save.chapSeen || {})[c])) { showChapterIntro(c, () => startStage(n, Object.assign({}, opts, { chapOk: true }))); return; } }
   // Attempts, like a level counter in a rhythm game: every try counts.
   if (!info.daily && !opts.race) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
   $("stageCard").hidden = true;
@@ -133,6 +153,8 @@ function stageClear(R) {
   save.glow = (save.glow || 0) + R.lights + stars * 10;
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
   seasonGain(Math.round(stars * 15 + R.lights / 2));
+  // The whole district lit: a reward to wear.
+  if (!info.daily) { const c = Math.floor((n - 1) / 10); save.chapDone = save.chapDone || {}; if (!save.chapDone[c] && distLit(c)) { save.chapDone[c] = 1; const [k, i] = chapterRewardItem(c); if (i >= 0) { runnerLook().own[k + i] = 1; setTimeout(() => toast(`<b>${STAGE_CHAPTERS[c]} is lit!</b> Unlocked: ${CHAPTER_REWARD[c][1]}`, true), 2600); } } }
   progressEvent("dist", Math.floor(R.px)); progressEvent("home"); progressEvent("stars", stars); if (info.daily) progressEvent("daily"); persist(); checkAchievements();
   R.wantShotAt = R.t + 1.3;   // the picture to share: their window lit, them waving
   sfx.unlock(); buzz([20, 40, 20]);

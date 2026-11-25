@@ -23,8 +23,8 @@ document.getElementById("shopList").addEventListener("click", e => {
 const hex = c => "#" + (c >>> 0).toString(16).padStart(6, "0");
 function lockerHtml() {
   const L = runnerLook(), glow = save.glow || 0, tile = (key, i, it, swatch, sub, cur) => {
-    const own = L.own[key + i], tag = cur ? "Wearing" : own ? "Owned · tap to wear" : `✦ ${it.cost.toLocaleString()}`;
-    return `<button class="lk-tile${cur ? " on" : ""}${own ? "" : " buy"}" data-lk="${key}:${i}" ${!own && glow < it.cost ? "disabled" : ""}><i style="--c:${swatch}"></i><b>${it.name}</b>${sub ? `<small>${sub}</small>` : ""}<em>${tag}</em></button>`;
+    const own = L.own[key + i], earn = it.reward != null && !own, tag = cur ? "Wearing" : own ? "Owned · tap to wear" : earn ? `🔒 Relight ${STAGE_CHAPTERS[it.reward]}` : `✦ ${it.cost.toLocaleString()}`;
+    return `<button class="lk-tile${cur ? " on" : ""}${own ? "" : " buy"}" data-lk="${key}:${i}" ${earn || (!own && glow < it.cost) ? "disabled" : ""}><i style="--c:${swatch}"></i><b>${it.name}</b>${sub ? `<small>${sub}</small>` : ""}<em>${tag}</em></button>`;
   };
   const caps = save.capsules || 0, ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";
   const grid = (title, html) => `<li class="sec">${title}</li><li class="lk-grid">${html}</li>`;
@@ -81,7 +81,7 @@ document.getElementById("shopList").addEventListener("click", e => {
   if (cb) { const got = openCapsule(); if (got) { sfx.unlock(); buzz(20); toast(`<b>Light capsule</b> ${got}`); } renderShop(); return; }
   const b = e.target.closest("button[data-lk]"); if (!b) return;
   const [k, i0] = b.dataset.lk.split(":"), i = +i0, L = runnerLook(), list = { c: RUNNER_CHARS, t: RUNNER_TOPS, s: RUNNER_SHOES, b: RUNNER_BOARDS }[k], it = list[i];
-  if (!L.own[k + i]) { if ((save.glow || 0) < it.cost) return; save.glow -= it.cost; L.own[k + i] = 1; sfx.unlock(); buzz(20); } else sfx.tick();
+  if (!L.own[k + i]) { if (it.reward != null || (save.glow || 0) < it.cost) return; save.glow -= it.cost; L.own[k + i] = 1; sfx.unlock(); buzz(20); } else sfx.tick();
   ({ c: () => (L.char = i), t: () => (L.top = i), s: () => (L.shoe = i), b: () => (L.board = i) })[k]();
   persist(); renderShop(); renderTitle();
 });

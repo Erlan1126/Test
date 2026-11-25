@@ -138,6 +138,9 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     const { page, errors } = await openGame(browser);
     const r = await page.evaluate(() => {
       const out = {}; save.run = null; runSave(); save.run.tutDone = 1; save.stages = null;
+      // Chapter cards: the first visit to a new district shows one, and a whole district lit unlocks something to wear.
+      { save.chapSeen = {}; stageSave().unlocked = 60; startStage(11); out.aNewDistrictShowsItsChapterCard = !$("chapIntro").hidden && $("ciName").textContent === "The Markets"; $("ciGo").click(); out.thenTheStageStarts = run && run.stage === 11 && $("chapIntro").hidden; save.chapSeen = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }; }
+      { const S = stageSave(); for (let n = 1; n <= 9; n++) S.best[n] = { stars: 1, time: 20 }; delete S.best[10]; save.chapDone = {}; startStage(10); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60); const [k, i] = chapterRewardItem(0); out.lightingADistrictUnlocksItsReward = i >= 0 && !!runnerLook().own[k + i]; save.stages = null; }
       const play = n => { startStage(n); const R = run; for (let q = 0; q < 60 * 90 && !R.cleared && !R.failed; q++) { R.inv = 1; runnerAuto(); runUpdate(1 / 60); } return R; };
       out.playStartsStageOne = typeof stageNext === "function" && stageNext() === 1;
       const a = play(1);
