@@ -11,6 +11,7 @@ import { bizThumb } from "../render3d/thumbs";
 import { houseThumb } from "../render3d/housethumbs";
 import { checkCityTrophies, CITY_TROPHIES } from "../logic/cityach";
 import { gameCenterCity } from "../gamecenter";
+import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
 import { addDesigns, bookCount, bookReady, BOOK_CRYSTALS, BOOK_SIZE, claimBook, DESIGN_LEVELS, DESIGNS_PER_LEVEL, hasDesign, LEVEL_NAMES, levelCount, ROW_CRYSTALS } from "../logic/collection";
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_AT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
 import { getLang, t, tn } from "../i18n";
@@ -249,6 +250,14 @@ export class TycoonUI {
     });
     for (const ev of ["pointerup", "pointercancel", "pointerleave", "blur"]) document.addEventListener(ev, stopHold, true);
     // Tapping your money opens what you earn, exactly.
+    $("era-nudge").addEventListener("click", e => {
+      const b = (e.target as Element).closest<HTMLElement>("[data-en]");
+      if (!b) return;
+      this.host.sound.click();
+      $("era-nudge").hidden = true;
+      if (b.dataset.en === "go") { track("era_nudge_open", {}, false); this.openSheet("boosts"); }
+      else { snoozeEraNudge(this.save); this.host.persist(); }
+    });
     $("photo-go").addEventListener("click", () => { this.host.sound.click(); this.photoMode(); });
     $("photo-x").addEventListener("click", () => { this.host.sound.click(); this.photoOff(); });
     $("photo-snap").addEventListener("click", () => { void this.photoSnap(); });
@@ -3105,12 +3114,28 @@ export class TycoonUI {
     };
     requestAnimationFrame(step);
   }
+  /** A friendly card when nothing new has opened for about a day and a New Era would pay:
+   *  the gems it gives and what they do to earnings, a button to it, and "Not now". */
+  private renderEraNudge(now = Date.now()): void {
+    const el = $("era-nudge"), s = this.save, n = eraNudge(s, now);
+    const busy = !this.inCity || !!(this.selected || this.selectedProp || this.selectedSight) || document.body.classList.contains("tabs-open") || !!openModalEl() || !$("mayor").hidden;
+    if (!n || busy) { if (!el.hidden) el.hidden = true; return; }
+    const mult = (x: number) => `×${x.toFixed(2).replace(/\.?0+$/, "")}`;
+    this.put(el, `<span class="en-ico">${iconSvg("sparkle")}</span>
+      <div class="en-text"><b>${esc(t("Ready for a New Era?"))}</b>
+      <p>${esc(t("Nothing new has opened for a while. A New Era gives you {g} Sky Gems: everything earns {pct}% more, for good ({a} → {b}).", { g: fmt(n.gems), pct: fmt(n.pct), a: mult(n.before), b: mult(n.after) }))}</p>
+      <small>${esc(t("Your city starts over from a hamlet, and grows back faster."))}</small>
+      <div class="en-btns"><button type="button" class="btn btn-primary" data-en="go">${esc(t("See New Era"))}</button><button type="button" class="btn btn-secondary" data-en="later">${esc(t("Not now"))}</button></div></div>`);
+    if (el.hidden) { el.hidden = false; track("era_nudge", { gems: n.gems }, false); }
+  }
+
   /** Adds the designs standing in the town to the collection (a note for a new one). */
   private collectAt = 0;
   private collectSeeded = false;
   private collectDesigns(now: number): void {
     if (!HAS_CITY || now - this.collectAt < 4000) return;
     this.collectAt = now;
+    this.renderEraNudge(now);
     // Trophies (quietly the first time, when an existing city earns several at once).
     const won = checkCityTrophies(this.save);
     if (won.length) {

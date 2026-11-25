@@ -5,6 +5,7 @@ import { LAND, type LandId } from "../data/land";
 import { normalizeDecor } from "./decor";
 import { newCollection, normalizeCollection, type CollectionState } from "./collection";
 import { normalizeCityTrophies } from "./cityach";
+import { newEraNudge, normalizeEraNudge, type EraNudgeState } from "./eranudge";
 import { newCityEvent, normalizeCityEvent, type CityEventState } from "./cityevent";
 import { OLD_FEATURE_TOWERS } from "./features";
 import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
@@ -100,6 +101,8 @@ export interface SaveData {
   collection: CollectionState;
   /** The city's trophies earned (logic/cityach.ts). */
   cityTrophies: string[];
+  /** When the player last unlocked something new (logic/eranudge.ts). */
+  eraNudge: EraNudgeState;
   /** The town scrapbook: when each town rank was first reached (ms, by rank). */
   scrapbook: Record<string, number>;
   /** Your tallest towers, standing on their district's island. */
@@ -228,6 +231,7 @@ export function defaultSave(): SaveData {
     cityName: "",
     collection: newCollection(),
     cityTrophies: [],
+    eraNudge: newEraNudge(),
     scrapbook: {},
     skyline: [],
     population: 0,
@@ -357,6 +361,7 @@ export function normalize(raw: unknown): SaveData {
     cityName: cleanCityName(r.cityName),
     collection: normalizeCollection(r.collection),
     cityTrophies: normalizeCityTrophies(r.cityTrophies),
+    eraNudge: normalizeEraNudge(r.eraNudge),
     props: Object.fromEntries(Object.entries((r.props && typeof r.props === "object" ? r.props : {}) as Record<string, unknown>).filter(([k, v]) => /^[a-z0-9]{1,4}:-?\d{1,2},-?\d{1,2}$/.test(k) && Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5).slice(0, 400)) as Record<string, number>,
     land: (Array.isArray(r.land) ? r.land : []).filter((x, i, a): x is LandId => LAND.some(l => l.id === x) && a.indexOf(x) === i),
     annex: { pick: ((p: unknown) => (p === "greenhouse" || p === "lookout" ? p : ""))((r.annex as { pick?: unknown } | undefined)?.pick) },

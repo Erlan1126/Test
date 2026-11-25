@@ -8,8 +8,11 @@ credit required; we credit anyway):
   records each pack's CC0 licence)
 - `tree_*`, `bush*`, `flower_*`, `rock_*`, `stump`, `fence`: Kenney Nature Kit / Quaternius, CC0 1.0,
   via `@netforge/asset-library-files`
-- `sedan`, `taxi`, `suv`, `van`, `police_car`, `hatchback_sports`, `delivery_van`: Kenney Car Kit, CC0 1.0,
-  via `@netforge/asset-library-files`
+- `sedan`, `taxi`, `suv`, `van`, `police_car`, `hatchback_sports`, `delivery_van`, `sedan_sports`,
+  `suv_luxury`, `truck`, `truck_flat`, `delivery_flat`, `garbage_truck`, `ambulance`, `firetruck`:
+  Kenney Car Kit, https://kenney.nl/assets/car-kit, CC0 1.0, via `@netforge/asset-library-files` 0.2.0
+  (that package holds no other City Kit (Commercial) models than the eight buildings and three
+  skyscrapers above, and no Suburban or Roads kit)
 - `tt_*`: the toytown-gl model kit (`@toytown/models` 0.2.0, https://github.com/bpowerie25/Toytown),
   CC0 1.0 (see its models/LICENSES.md)
 

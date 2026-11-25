@@ -2195,4 +2195,8 @@ export const PT: Record<string, string> = {
   "Find every design of one building level": "Encontre todos os modelos de um nível de prédio",
   "Find all 50 building designs": "Encontre os 50 modelos de prédios",
   "Win the giant holiday tree": "Ganhe a árvore de Natal gigante",
+  "Ready for a New Era?": "Pronto para uma Nova Era?",
+  "Nothing new has opened for a while. A New Era gives you {g} Sky Gems: everything earns {pct}% more, for good ({a} → {b}).": "Faz tempo que nada novo abre. Uma Nova Era te dá {g} Gemas do Céu: tudo rende {pct}% a mais, para sempre ({a} → {b}).",
+  "Your city starts over from a hamlet, and grows back faster.": "Sua cidade recomeça como um vilarejo e cresce mais rápido.",
+  "See New Era": "Ver Nova Era",
 };

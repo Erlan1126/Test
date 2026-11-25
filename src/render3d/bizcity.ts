@@ -2811,11 +2811,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     terrace: cafe.terrace, done: cafe.done ?? [], offered: !!cafe.offered,
   });
   let coffeeSale = 0;
-  const KIT_CARS = ["sedan", "taxi", "suv", "van", "hatchback_sports", "police_car", "delivery_van", "sedan", "taxi"];
+  // The town's traffic: everyday cars mostly, with taxis, vans, delivery trucks, a bin lorry,
+  // and now and then an ambulance or a fire engine (Kenney Car Kit, see kit/NOTICE.md).
+  const KIT_CARS = ["sedan", "taxi", "suv", "van", "sedan_sports", "delivery_flat", "hatchback_sports", "police_car", "suv_luxury", "garbage_truck",
+    "sedan", "taxi", "delivery_van", "truck", "suv", "ambulance", "sedan_sports", "truck_flat", "taxi", "firetruck"];
+  const BIG_CARS = new Set(["truck", "truck_flat", "garbage_truck", "firetruck", "delivery_flat", "ambulance"]);
   let carN = 0;
   const makeCar = (c: string, van: boolean) => {
     const v = new THREE.Group();
-    const kc = crowdKit.proxy(KIT_CARS[carN++ % KIT_CARS.length], van ? 1.0 : 0.92, false);
+    const kn = KIT_CARS[carN++ % KIT_CARS.length];
+    const kc = crowdKit.proxy(kn, BIG_CARS.has(kn) ? 1.12 : van ? 1.0 : 0.92, false);
     if (kc) { v.add(kc); life.add(v); return v; }
     v.add(new THREE.Mesh(carGeo(c, van), carM));
     life.add(v);
