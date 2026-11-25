@@ -616,9 +616,23 @@
 <div id="scrapbook" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="scrap-title">
   <div class="sheet">
     <div class="sheet-top"><div class="sheet-head"><div><h2 id="scrap-title">Town scrapbook</h2><p id="scrap-sub">A postcard for every rank Skyhaven reaches</p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <button type="button" class="photo-go" id="photo-go"><span aria-hidden="true">📷</span><b>Photo mode</b><small>Hide the buttons and take a picture of your city</small></button>
     <div class="scrap-grid" id="scrap-grid"></div>
   </div>
 </div>
+
+<div id="collection" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="coll-title">
+  <div class="sheet">
+    <div class="sheet-top"><div class="sheet-head"><div><h2 id="coll-title">Building collection</h2><p id="coll-sub">Every design you build is added here</p></div><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <div class="coll-list" id="coll-list"></div>
+  </div>
+</div>
+
+<div id="photo-bar" hidden>
+  <p class="pb-hint">Drag and pinch to frame your city</p>
+  <div class="pb-row"><button type="button" class="pb-x" id="photo-x" aria-label="Close photo mode">×</button><button type="button" class="pb-snap" id="photo-snap" aria-label="Take a photo"><i></i></button><span class="pb-gap"></span></div>
+</div>
+<div id="photo-flash" hidden></div>
 
 <div id="help" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
   <div class="sheet">
@@ -651,6 +665,7 @@
         </div>
         <small id="quality-note"></small>
       </div>
+      <label class="setting"><span class="set-ico" aria-hidden="true">🔋</span><b>Battery saver<small>Smoother on older phones, lasts longer</small></b><input type="checkbox" id="set-saver" class="switch"></label>
       <div class="setting stack">
         <span class="set-row"><span class="set-ico" aria-hidden="true">🌗</span><b>Time of day</b></span>
         <div class="seg" role="radiogroup" aria-label="Time of day">

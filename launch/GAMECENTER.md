@@ -53,3 +53,27 @@ title and description below. Each needs a 512×512 image (`launch/stores/gc-achi
 | skyrise.trophy.perfect1000 | Perfectionist | Land 1,000 perfect drops in all |
 | skyrise.trophy.level15 | Seasoned | Reach builder level 15 |
 | skyrise.trophy.metropolis | Metropolis | Grow Skyhaven to 100,000 people |
+
+## Buildaroo (the city game): 14 achievements
+
+Same steps, in the **Buildaroo** app's App Store Connect page (Game Center → Achievements →
+**+**). The game sends these IDs; they must match exactly. Points 10 each, Hidden **No**,
+Achievable more than once **No**. The same trophies also show inside the game (Me ▸
+Buildings), so Android players see them too.
+
+| Achievement ID | Title | Description |
+|---|---|---|
+| buildaroo.first_sale | Open for Business | Sell your first coffee |
+| buildaroo.manager | Delegator | Hire your first manager |
+| buildaroo.named | Name on the Map | Give your city a name |
+| buildaroo.hall3 | Town Hall | Reach City Hall level 3 |
+| buildaroo.hall6 | Proper City | Reach City Hall level 6 |
+| buildaroo.hall11 | Metropolis | Reach City Hall level 11 |
+| buildaroo.homes10 | Neighbourhood | Build 10 homes |
+| buildaroo.homes30 | Suburbia | Build 30 homes |
+| buildaroo.skyscraper | Skyline | Grow a building to a skyscraper |
+| buildaroo.million | Millionaire | Earn $1M in total |
+| buildaroo.helper | Good Neighbour | Finish 5 neighbour requests |
+| buildaroo.row | Collector | Find every design of one building level |
+| buildaroo.book | Master Builder | Find all 50 building designs |
+| buildaroo.holiday | Winter Lights | Win the giant holiday tree |

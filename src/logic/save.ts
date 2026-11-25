@@ -3,6 +3,8 @@
 import { newAsks, normalizeAsks, type AskState } from "./asks";
 import { LAND, type LandId } from "../data/land";
 import { normalizeDecor } from "./decor";
+import { newCollection, normalizeCollection, type CollectionState } from "./collection";
+import { normalizeCityTrophies } from "./cityach";
 import { newCityEvent, normalizeCityEvent, type CityEventState } from "./cityevent";
 import { OLD_FEATURE_TOWERS } from "./features";
 import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
@@ -44,6 +46,8 @@ export interface Settings {
   lang: LangSetting;
   /** Time of day in the town: "auto" follows the real clock, or always day / night. */
   sky: "auto" | "day" | "night";
+  /** Battery saver: 30 frames a second in the town, simpler graphics, no weather. */
+  saver: boolean;
 }
 
 export interface RunRecord {
@@ -92,6 +96,10 @@ export interface SaveData {
   asks: AskState;
   /** The name the player gave their city (empty: not named yet). */
   cityName: string;
+  /** The building collection book (logic/collection.ts). */
+  collection: CollectionState;
+  /** The city's trophies earned (logic/cityach.ts). */
+  cityTrophies: string[];
   /** The town scrapbook: when each town rank was first reached (ms, by rank). */
   scrapbook: Record<string, number>;
   /** Your tallest towers, standing on their district's island. */
@@ -218,6 +226,8 @@ export function defaultSave(): SaveData {
     props: {},
     asks: newAsks(),
     cityName: "",
+    collection: newCollection(),
+    cityTrophies: [],
     scrapbook: {},
     skyline: [],
     population: 0,
@@ -248,7 +258,7 @@ export function defaultSave(): SaveData {
     orders: newOrders(),
     spire: newSpire(),
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto", sky: "auto" },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto", sky: "auto", saver: false },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -345,6 +355,8 @@ export function normalize(raw: unknown): SaveData {
     scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
     asks: normalizeAsks(r.asks),
     cityName: cleanCityName(r.cityName),
+    collection: normalizeCollection(r.collection),
+    cityTrophies: normalizeCityTrophies(r.cityTrophies),
     props: Object.fromEntries(Object.entries((r.props && typeof r.props === "object" ? r.props : {}) as Record<string, unknown>).filter(([k, v]) => /^[a-z0-9]{1,4}:-?\d{1,2},-?\d{1,2}$/.test(k) && Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5).slice(0, 400)) as Record<string, number>,
     land: (Array.isArray(r.land) ? r.land : []).filter((x, i, a): x is LandId => LAND.some(l => l.id === x) && a.indexOf(x) === i),
     annex: { pick: ((p: unknown) => (p === "greenhouse" || p === "lookout" ? p : ""))((r.annex as { pick?: unknown } | undefined)?.pick) },
@@ -394,6 +406,7 @@ export function normalize(raw: unknown): SaveData {
       flat: set.gfx === GFX ? bool(set.flat, false) : false,
       lang: (["auto", ...LANGS].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
       sky: (["auto", "day", "night"].includes(set.sky as string) ? set.sky : "auto") as Settings["sky"],
+      saver: bool(set.saver, false),
     },
     tutorialDone: bool(r.tutorialDone, false),
     seenFeatures: strList(r.seenFeatures),

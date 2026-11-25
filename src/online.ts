@@ -298,9 +298,9 @@ export class Online {
   private lastBackup = "";
 
   /** Backs up the save to the server (only when it changed). */
-  async backup(save: SaveData, persist: () => void): Promise<void> {
-    // Nothing worth keeping before the first tower.
-    if (this.kind !== "global" || !save.playerId || (save.profile.towers === 0 && !save.crystals)) return;
+  async backup(save: SaveData, persist: () => void, worth = save.profile.towers > 0 || save.crystals > 0): Promise<void> {
+    // Nothing worth keeping before the player has started (a tower, crystals, or a city).
+    if (this.kind !== "global" || !save.playerId || !worth) return;
     try {
       if (!(await this.ensureAccount(save, persist))) return;
       await this.sendSave(save);

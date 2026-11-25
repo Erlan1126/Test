@@ -20,7 +20,8 @@ import { PROP_PEOPLE } from "../data/props";
 import { hydrant, mailbox, plazaPiece, roundCenter, seatPiece, type DecoKit } from "./streetdecor";
 import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } from "./trees";
 import { buildCityHall } from "./cityhall";
-import { buildHouse, type HouseKit } from "./houses";
+import { buildHouse, houseDesign, type HouseKit } from "./houses";
+import { holidayTree, lampLights } from "./winter";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -492,6 +493,8 @@ export interface BizCafe {
   ghostTerrace?: boolean;
   /** Island decorations the player bought (data/decor.ts). */
   decor?: string[];
+  /** The season's look (data/season.ts): "winter" adds snow, lights and a holiday tree. */
+  season?: "" | "winter";
   /** The town's rank (data/ranks.ts): each one adds something new to the town. */
   rank?: number;
   /** The City Hall's level (logic/tycoon.ts hallLevel): the hall grows with it. */
@@ -534,6 +537,8 @@ export interface BizCity {
   bizAt(i: number): { x: number; z: number; y: number; top: number } | null;
   /** Everything else worth a tap: city blocks, parks, landmarks, district sights. */
   sights(): Sight[];
+  /** The building designs standing in the town ("level:design"). */
+  designs(): string[];
 }
 
 /** A building or place in the city the player can tap to see what it is. `kind` says what
@@ -910,7 +915,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const inX = cx - fallAt[0], inZ = cz - fallAt[1], inL = Math.hypot(inX, inZ) || 1;
   const fx0 = fallAt[0] + (inX / inL) * 1.35, fz0 = fallAt[1] + (inZ / inL) * 1.35;
   // ---- The countryside ring past the town: a winding lane, farm fields, a windmill ----
-  const townTicksEarly: ((t: number) => void)[] = [];
+  const townTicksEarly: ((t: number, night: number) => void)[] = [];
   const coreHull = islandOutline(1.0);
   // The lane: a sandy cobbled road that wanders round the town, half way out to the edge
   // (not across the beach), with a low hedge of posts here and there.
@@ -1130,6 +1135,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       beacon: () => { const bm = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 1.2 })); bm.userData.dynamic = true; townTicksEarly.push(t => { bm.emissiveIntensity = 0.8 + Math.sin(t * 2.5) * 0.5; }); return bm; },
     });
     const top = built.top, D = built.D;
+    // Winter Lights: a holiday tree in the square, beside the steps.
+    if (cafe.season === "winter") townTicksEarly.push(holidayTree(H, 1.75, 0.08, Math.min(D / 2 + 1.45, 2.3), 2.1, own));
     // Clipped trees in stone planters at the square's corners.
     for (const [px, pz] of [[-2.5, D / 2 + 0.9], [2.5, D / 2 + 0.9], [-2.6, -1.4], [2.6, -1.4]]) H.add(new THREE.Mesh(gardenGeometry("topiary", 3).scale(1.5, 1.5, 1.5).translate(px, 0.08, pz), natureM));
     // Facing the town's middle.
@@ -1321,8 +1328,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   jet.userData.dynamic = true;
   g.add(jet);
   const decor = new Set(cafe.decor ?? []);
+  // The giant holiday tree (Winter Lights' prize): in the fountain each winter.
+  const bigTree = decor.has("bigtree") && cafe.season === "winter";
+  if (bigTree) { townTicksEarly.push(holidayTree(g, pz.x, 0.62, pz.z, 3.4, own)); jet.visible = false; }
   // The golden founder statue (a decoration): on top of the fountain, arm raised.
-  if (decor.has("statue")) {
+  if (decor.has("statue") && !bigTree) {
     const gold = mats.gold, sx = pz.x, sz = pz.z, y0 = 1.51;
     add(new THREE.CylinderGeometry(0.28, 0.32, 0.22, 12).translate(sx, y0 + 0.11, sz), stone);
     add(new THREE.CapsuleGeometry(0.13, 0.36, 4, 10).translate(sx, y0 + 0.52, sz), gold);
@@ -1334,7 +1344,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   }
   // Island upgrades bought with cash (data/decor.ts): each appears in the town for good.
   const townTicks: ((t: number, night: number) => void)[] = [];
-  townTicks.push(t => { for (const f of townTicksEarly) f(t); });
+  townTicks.push((t, night) => { for (const f of townTicksEarly) f(t, night); });
   const glowDecor = own(std("#fff2b0", { emissive: 0xffd27a, emissiveIntensity: 0.2 }));
   glowDecor.userData.dynamic = true;
   townTicks.push((_t, night) => { glowDecor.emissiveIntensity = 0.2 + night * 2.2; });
@@ -2129,6 +2139,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
    *  glass towers. One that was just upgraded grows up out of the ground. */
   /** A building from the model kit on a lot (once the kit is loaded), sized by level: a
    *  house at first, then an office block, then a skyscraper. Its height, or null. */
+  /** Every building design standing in the town ("level:design"), for the collection book. */
+  const designsSeen = new Set<string>();
   const houseKit: HouseKit = { c: (c, r = 0.7, m = 0) => mats.c(c, r, m), win: winMat };
   /** A building on a lot, drawn in code (houses.ts), sized by level: a house at first, then a
    *  shop or terrace, flats, an office block, then a skyscraper. Its height. */
@@ -2149,6 +2161,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const nm = nb.mesh(); if (nm) lg.add(nm);
     const hg = new THREE.Group();
     const h = buildHouse(hg, sv, level, houseKit, 0.06, at);
+    if (level >= 1 && level <= 5) designsSeen.add(`${level}:${houseDesign(sv, level, at)}`);
     hg.rotation.y = level <= 2 ? 0 : ((sv >> 3) % 4) * (Math.PI / 2);
     lg.add(hg);
     return h + 0.1;
@@ -2808,6 +2821,28 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     life.add(v);
     return v;
   };
+  /** A city bus: long and bright, windows all along, a lit route sign, and a roof unit. */
+  const signMat = own(std("#ffb13b", { emissive: 0xffa020, emissiveIntensity: 0.9 }));
+  signMat.userData.dynamic = true;
+  const makeBus = (k: number) => {
+    const v = new THREE.Group(), col = ["#e8423c", "#2f7fd8", "#f2a62a"][k % 3];
+    // (One mesh per material, so a bus is a handful of draws, not a dozen.)
+    const parts = new Map<THREE.Material, THREE.BufferGeometry[]>();
+    const put = (geo: THREE.BufferGeometry, m: THREE.Material) => { const a = parts.get(m) ?? []; a.push(geo.index ? geo.toNonIndexed() : geo); parts.set(m, a); };
+    const B = (w: number, h: number, d: number, y: number, z: number, m: THREE.Material) => put(new THREE.BoxGeometry(w, h, d).translate(0, y, z), m);
+    const dark = mats.c("#2a2f3a", 0.6);
+    B(0.46, 0.4, 1.5, 0.32, 0, mats.c(col, 0.45));
+    B(0.47, 0.16, 1.42, 0.4, 0, winMat);
+    B(0.47, 0.1, 1.51, 0.16, 0, dark);
+    B(0.44, 0.03, 1.46, 0.535, 0, mats.c("#f4efe6", 0.5));
+    B(0.3, 0.07, 0.5, 0.58, -0.2, mats.c("#d8dde6", 0.5, 0.3));
+    B(0.4, 0.2, 0.02, 0.39, 0.755, winMat);
+    B(0.3, 0.06, 0.02, 0.5, 0.765, signMat);
+    for (const z of [-0.48, 0.48]) for (const x of [-0.23, 0.23]) put(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 10).rotateZ(Math.PI / 2).translate(x, 0.1, z), dark);
+    for (const [m, geos] of parts) { const g = mergeGeometries(geos); geos.forEach(q => q.dispose()); if (g) v.add(new THREE.Mesh(g, m)); }
+    life.add(v);
+    return v;
+  };
   const cars = [["#ffffff", true], ["#ffc93c", false], ["#4f8bff", true], ["#ff4f8b", false], ["#5ee0a0", false]].map(([c, van], k) => ({ v: makeCar(c as string, van as boolean), u: k / 5, sp: 0.018 + (k % 3) * 0.004 }));
   // ---- Traffic: cars driving the town's own streets (on the right), turning at the
   // crossings, going round the roundabouts and waiting for the car in front ----
@@ -2849,8 +2884,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const traffic = starts.length ? Array.from({ length: nCars }, (_, k) => {
     const st0 = starts[Math.floor((k * starts.length) / nCars)];
     const v = makeCar(BODY[(k + 5) % BODY.length], k % 4 === 1);
-    return { v, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: (k % 3) * 0.3, sp: 1.15 + (k % 4) * 0.15, wait: 0, ahead: new THREE.Vector3(), lane: LANE };
+    return { v, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: (k % 3) * 0.3, sp: 1.15 + (k % 4) * 0.15, wait: 0, ahead: new THREE.Vector3(), lane: LANE, big: false };
   }) : [];
+  // City buses: the first once the town has a few hundred people, more as it fills up. They
+  // go slower than the cars, and the cars keep a longer gap behind them.
+  const nBus = !starts.length || !HAS_CITY ? 0 : busy > 0.9 ? 3 : busy > 0.6 ? 2 : busy > 0.25 ? 1 : 0;
+  for (let k = 0; k < nBus; k++) {
+    const st0 = starts[Math.floor(((k + 0.5) * starts.length) / nBus + 3) % starts.length];
+    traffic.push({ v: makeBus(k), i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: 0.5, sp: 0.85, wait: 0, ahead: new THREE.Vector3(), lane: LANE, big: true });
+  }
   const segAt = (sg: Seg, u: number, out: THREE.Vector3, dir: THREE.Vector3) => {
     const m = 1 - u;
     out.set(m * m * sg.a.x + 2 * m * u * sg.c.x + u * u * sg.b.x, 0.04, m * m * sg.a.z + 2 * m * u * sg.c.z + u * u * sg.b.z);
@@ -2893,7 +2935,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         if (o === c) continue;
         tGap.copy(o.v.position).sub(c.v.position);
         const ahead = tGap.x * c.ahead.x + tGap.z * c.ahead.z, side = Math.abs(tGap.x * c.ahead.z - tGap.z * c.ahead.x);
-        if (ahead > 0.05 && ahead < 0.95 && side < 0.32) { blocked = true; break; }
+        if (ahead > 0.05 && ahead < 0.95 + (o.big ? 0.45 : 0) + (c.big ? 0.45 : 0) && side < 0.32) { blocked = true; break; }
       }
       if (blocked && c.wait < 1.6) { c.wait += dt; continue; }
       c.wait = 0;
@@ -4063,6 +4105,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const look: Partial<TownLook> = {};
   const tmpV = new THREE.Vector3();
   const lampW = lampAt.map(() => new THREE.Vector3());
+  // Winter Lights: strings of bulbs on the street lamps.
+  if (cafe.season === "winter" && lampAt.length) townTicks.push(lampLights(g, lampAt));
   return {
     group: g,
     top: i => (i === -1 ? plotTop : i === -4 ? hallTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),
@@ -4071,6 +4115,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     spot: id => (id === "hall" ? hallAt ?? { x: 0, z: 0 } : id === "bottle" ? bottleSpot ?? { x: 0, z: 0 } : block.spot(id)),
     landAt: k => landShown[k] ?? null,
     homes: () => homeSpots,
+    designs: () => [...designsSeen],
     sights: () => {
       // (The rank landmarks that stay put: the market, the tram stop, the billboards, the
       // yacht, the golden tower and the floating island.)

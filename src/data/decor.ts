@@ -11,6 +11,8 @@ export interface Decor {
   cash?: number;
   /** A drawn icon (see ui/icons). */
   icon: string;
+  /** Only won in a seasonal event (never sold, never a weekly prize). */
+  seasonal?: boolean;
 }
 
 /** Each decoration makes every business earn this much more (they stack). */
@@ -27,7 +29,11 @@ export const DECOR: Decor[] = [
   { id: "marina", name: "Marina", text: "A second pier with little boats bobbing at their moorings", crystals: 110, icon: "boat" },
   { id: "garden", name: "Glass garden", text: "A greenhouse dome full of plants, glowing at night", crystals: 140, icon: "leaf" },
   { id: "skytram", name: "Sky tram", text: "A cable car gliding out to a little floating island", crystals: 200, icon: "airship" },
+  { id: "bigtree", name: "Giant holiday tree", text: "A giant tree in the plaza fountain every winter, lit with colored bulbs", crystals: 150, icon: "tree", seasonal: true },
 ];
+
+/** The decorations the weekly city event gives away in turn. */
+export const WEEKLY_DECOR = DECOR.filter(d => !d.seasonal);
 
 /** The one island upgrade bought with the company's cash (most are Sky Crystals). */
 export const UPGRADES_CASH: Decor[] = [

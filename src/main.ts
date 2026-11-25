@@ -8,12 +8,23 @@ import { startIcons } from "./ui/icons";
 import { EDITION } from "./edition";
 import { toast } from "./ui/dom";
 import { hallBanner } from "./ui/mayor";
+import { seasonDebug } from "./data/season";
 
 // The tower game on its own keeps the Skyrise name; the city game is Buildaroo.
 if (EDITION === "skyrise") {
   document.title = "Skyrise";
   const logo = document.querySelector(".splash-logo");
   if (logo) logo.textContent = "SKYRISE";
+}
+
+// Testing: ?debug&season=winter&weather=snow forces Winter Lights and the weather.
+{
+  const q = new URLSearchParams(location.search);
+  if (q.has("debug")) {
+    const sn = q.get("season"), w = q.get("weather");
+    if (sn !== null) seasonDebug.season = sn === "winter" ? "winter" : "";
+    if (w === "snow" || w === "rain" || w === "clear") seasonDebug.weather = w;
+  }
 }
 
 // Catch errors from the very start, so a crash while loading is reported too.

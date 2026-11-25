@@ -28,13 +28,17 @@ function rng(seed: number): () => number {
 /** Which design a lot gets, spread evenly over `n` designs. */
 const designOf = (seed: number, level: number, n: number) => (Math.imul((Math.floor(seed) | 0) ^ (level * 7919), 2246822519) >>> 16) % n;
 
+/** Which of a level's 10 designs a lot shows (the collection book counts these). */
+export const houseDesign = (seed: number, level: number, at?: [number, number], n = 10): number =>
+  at ? (((at[0] + 2 * at[1] + level * 5) % n) + n) % n : designOf(seed, level, n);
+
 /** Builds a building for a lot into `G` (front facing +z, standing on y = y0). Levels: 1 houses,
  *  2 shops and terraces, 3 apartment blocks, 4 offices, 5 skyscrapers. Returns its height. */
 export function buildHouse(G: THREE.Group, seed: number, level: number, k: HouseKit, y0 = 0.06, at?: [number, number]): number {
   // (Lots on a grid pick their design from where they stand, so the buildings next door,
   // in front and behind are never the same design: one step along a row moves one design
   // on, one step across moves two.)
-  const design = (sd: number, lvl: number, n: number) => (at ? (((at[0] + 2 * at[1] + lvl * 5) % n) + n) % n : designOf(sd, lvl, n));
+  const design = (sd: number, lvl: number, n: number) => houseDesign(sd, lvl, at, n);
   const r = rng(seed + level * 101), pick = <T,>(a: T[]) => a[Math.floor(r() * a.length) % a.length];
   const T = (geo: THREE.BufferGeometry, m: THREE.Material) => { G.add(new THREE.Mesh(geo, m)); };
   const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material) => T(new THREE.BoxGeometry(w, h, d).translate(x, y0 + y + h / 2, z), m);

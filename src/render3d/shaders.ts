@@ -19,6 +19,8 @@ export interface TownLook {
   dusk: number;
   /** 0 dry, 1 raining. */
   wet: number;
+  /** 0 no snow, 1 deep snow (the roads get slushy edges, the rest is done per material). */
+  snow: number;
   skyTop: THREE.Color;
   skyBot: THREE.Color;
   /** Toward the sun, in world space. */
@@ -60,7 +62,7 @@ float fxLamps(vec3 w) {
   return s;
 }`;
 
-const HEAD = /* glsl */ `uniform float uFxT; uniform float uFxM; uniform float uFxNight; uniform float uFxDusk; uniform float uFxWet;
+const HEAD = /* glsl */ `uniform float uFxT; uniform float uFxM; uniform float uFxNight; uniform float uFxDusk; uniform float uFxWet; uniform float uFxSnow;
 uniform vec3 uFxSkyTop; uniform vec3 uFxSkyBot; uniform vec3 uFxSun; uniform vec3 uFxLamps[${MAX_LAMPS}]; uniform int uFxLampN; uniform float uFxShore;
 varying vec3 vFxW;`;
 
@@ -70,7 +72,7 @@ export function townFx(calm: boolean): TownFx {
   const time = { value: 0 }, motion = { value: calm ? 0 : 1 };
   const U = {
     uFxT: time, uFxM: motion,
-    uFxNight: { value: 0 }, uFxDusk: { value: 0 }, uFxWet: { value: 0 },
+    uFxNight: { value: 0 }, uFxDusk: { value: 0 }, uFxWet: { value: 0 }, uFxSnow: { value: 0 },
     uFxSkyTop: { value: new THREE.Color(0.35, 0.6, 0.95) }, uFxSkyBot: { value: new THREE.Color(0.85, 0.9, 1) },
     uFxSun: { value: new THREE.Vector3(0.35, 0.6, -1).normalize() },
     uFxLamps: { value: Array.from({ length: MAX_LAMPS }, () => new THREE.Vector3()) }, uFxLampN: { value: 0 },
@@ -105,6 +107,7 @@ export function townFx(calm: boolean): TownFx {
       if (l.night !== undefined) U.uFxNight.value = l.night;
       if (l.dusk !== undefined) U.uFxDusk.value = l.dusk;
       if (l.wet !== undefined) U.uFxWet.value = l.wet;
+      if (l.snow !== undefined) U.uFxSnow.value = l.snow;
       if (l.skyTop) U.uFxSkyTop.value.copy(l.skyTop);
       if (l.skyBot) U.uFxSkyBot.value.copy(l.skyBot);
       if (l.sun) U.uFxSun.value.copy(l.sun).normalize();
@@ -141,13 +144,18 @@ export function townFx(calm: boolean): TownFx {
     },
 
     street(m) {
+      // (Roads aren't buried like the lawns: they get their own slushy edges below.)
+      m.userData.noSnow = true;
       hook(m, "fxstreet", s => {
         beforeMain(s, "float fxPud = 0.0;");
         frag(s, "#include <color_fragment>", `
     // Rain: darker asphalt, and puddles in the low spots.
     float pud = smoothstep(0.58, 0.72, fxNoise(vFxW.xz * 1.1) * 0.7 + fxNoise(vFxW.xz * 4.0) * 0.3) * uFxWet;
     diffuseColor.rgb *= 1.0 - uFxWet * 0.3 - pud * 0.25;
-    fxPud = pud;`);
+    fxPud = pud;
+    // Snow: drifts of slush in patches, the tire tracks staying dark.
+    float sl = smoothstep(0.45, 0.75, fxNoise(vFxW.xz * 0.8) * 0.6 + fxNoise(vFxW.xz * 3.3) * 0.4);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.96), uFxSnow * (0.18 + sl * 0.5));`);
         frag(s, "#include <roughnessmap_fragment>", `
     roughnessFactor = mix(roughnessFactor, 0.06, max(fxPud, uFxWet * 0.35));`);
         frag(s, "#include <emissivemap_fragment>", `
@@ -165,6 +173,7 @@ export function townFx(calm: boolean): TownFx {
     },
 
     water(m, sea = false) {
+      m.userData.noSnow = true;
       hook(m, sea ? "fxsea" : "fxpool", s => {
         beforeMain(s, `uniform float uFxSea;
 float fxH = 0.0;
@@ -235,6 +244,7 @@ float fxWave(vec2 p, float t) {
     },
 
     glass(m) {
+      m.userData.noSnow = true;
       hook(m, "fxglass", s => {
         frag(s, "#include <emissivemap_fragment>", `
     // Windows mirror the sky (strongest at a glancing angle) and catch a slow sweeping shine.

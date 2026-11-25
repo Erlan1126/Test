@@ -46,6 +46,19 @@ export async function gameCenterSync(save: SaveData, score: number, meters: numb
   } catch { /* Game Center unavailable: the game doesn't depend on it */ }
 }
 
+/** The city game: its trophies Game Center hasn't heard of yet. */
+export async function gameCenterCity(ids: string[]): Promise<void> {
+  if (!GC || !signedIn || !ids.length) return;
+  try {
+    let sent: string[] = [];
+    try { sent = JSON.parse(localStorage.getItem(SENT_KEY + ".city") ?? "[]"); } catch { /* none yet */ }
+    const fresh = ids.filter(id => !sent.includes(id));
+    if (fresh.length && (await GC.unlockAchievements({ ids: fresh.map(id => `buildaroo.${id}`) })).ok) {
+      try { localStorage.setItem(SENT_KEY + ".city", JSON.stringify([...sent, ...fresh])); } catch { /* private mode */ }
+    }
+  } catch { /* Game Center unavailable */ }
+}
+
 export async function showGameCenter(): Promise<boolean> {
   if (!GC) return false;
   if (!signedIn && !(await gameCenterSignIn())) return false;

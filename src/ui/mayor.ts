@@ -11,7 +11,7 @@ import { landHall } from "../logic/land";
 import { LAND } from "../data/land";
 import { t } from "../i18n";
 import type { SaveData } from "../logic/save";
-import { $, esc } from "./dom";
+import { $, esc, vibrate } from "./dom";
 import { confetti, fireworks } from "./fx";
 
 /** Mayor Pip, drawn: a round, kind face with shading, grey sideburns and a curled
@@ -149,7 +149,7 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     const next = CHAPTERS[i + 1];
     // The city game: a big banner over the City Hall first (the camera flies to it), then
     // Pip with the reward and what the new level opens.
-    if (HAS_CITY) hallBanner(i + 2, save.cityName);
+    if (HAS_CITY) { hallBanner(i + 2, save.cityName); vibrate(save.settings.vibrate, [20, 40, 20]); }
     window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),

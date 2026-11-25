@@ -67,6 +67,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 /** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
 const EASY_TOWERS = 5;
 import { clockSky, nightAt, setSkyMode } from "./render/scenery";
+import { citySeason, townWeather, winterDaysLeft, winterKey } from "./data/season";
 import { Sound } from "./sound";
 import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
 import { cityPlacement, moveBuilding, moveTargets } from "./logic/cityplace";
@@ -463,6 +464,7 @@ export class App implements DailyHost {
 
   private back(): boolean {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
+    if (document.body.classList.contains("photo-mode")) { $("photo-x").click(); return true; }
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
     if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
     if (!$("welcome").hidden) { $("welcome-ok").click(); return true; }
@@ -660,7 +662,23 @@ export class App implements DailyHost {
   /** A new day brings new missions; the menu's numbers move with the clock. */
   private tickMenu(): void {
     if (refreshMissions(this.save)) this.persist();
+    this.townWeather();
     if (this.state === "menu") this.renderMenu();
+  }
+
+  /** The city's weather (data/season.ts): it changes every couple of hours, and the battery
+   *  saver keeps the sky clear. */
+  townWeather(): void {
+    if (!HAS_CITY || this.state !== "menu") return;
+    const w = this.save.settings.saver ? "clear" : townWeather();
+    if (this.renderer.weather.kind !== w) this.renderer.weather.set(w);
+    // Winter Lights: said once a year, when the player is settled in the town.
+    const wk = winterKey();
+    if (citySeason() === "winter" && playerStarted(this.save) && !this.save.seenFeatures.includes(wk) && this.tycoon.inCity && !openModalEl()) {
+      this.save.seenFeatures.push(wk);
+      this.persist();
+      toast(t("❄️ Winter Lights is here! Snow, string lights, and a giant holiday tree to win in Goals ({n} days)", { n: winterDaysLeft() }));
+    }
   }
 
   startChallenge(id: string): void {
@@ -696,7 +714,7 @@ export class App implements DailyHost {
     if (this.cloudTimer && this.cloudAt <= at) return;
     clearTimeout(this.cloudTimer);
     this.cloudAt = at;
-    this.cloudTimer = window.setTimeout(() => { this.cloudTimer = 0; void this.online.backup(this.save, () => writeSave(this.storage, this.save)); }, delay);
+    this.cloudTimer = window.setTimeout(() => { this.cloudTimer = 0; void this.online.backup(this.save, () => writeSave(this.storage, this.save), this.save.profile.towers > 0 || this.save.crystals > 0 || (HAS_CITY && playerStarted(this.save))); }, delay);
   }
 
   replaceSave(save: SaveData): void {
@@ -715,6 +733,7 @@ export class App implements DailyHost {
 
   applyQuality(): void {
     this.resize();
+    this.townWeather();
   }
 
   replayTips(): void {
@@ -727,7 +746,7 @@ export class App implements DailyHost {
 
   private get low(): boolean {
     const q = this.save.settings;
-    return q.quality === "low" || (q.quality === "auto" && q.autoLow);
+    return q.saver || q.quality === "low" || (q.quality === "auto" && q.autoLow);
   }
 
   /** Phones (and the phone apps) skip the shader pass in Auto: copying every frame into
@@ -738,6 +757,7 @@ export class App implements DailyHost {
 
   private get shaders(): boolean {
     const q = this.save.settings;
+    if (q.saver) return false;
     if (q.quality === "high") return true;
     if (q.quality === "low") return false;
     return !this.phone && !q.autoLow && !this.autoNoShaders;
@@ -1125,6 +1145,7 @@ export class App implements DailyHost {
     this.sound.duck(false);
     for (const id of ["over", "hud", "pause", "pause-menu", "rescue", "unpeek", "powers", "banner", "levelup"]) $(id).hidden = true;
     this.renderer.weather.set("clear");
+    this.townWeather();
     this.peek = false;
     this.mode = "classic";
     this.challenge = null;
@@ -1831,7 +1852,7 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props, cityGrow(this.save), townHomes(this.save)]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props, cityGrow(this.save), townHomes(this.save), citySeason()]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -1845,6 +1866,7 @@ export class App implements DailyHost {
           offered: projectsOpen(c),
           ghostTerrace: c.terrace === 0 && c.asked,
           decor: [...this.save.decor],
+          season: citySeason(),
           rank: townRank(this.save),
           hall: hallLevel(this.save),
           grow: cityGrow(this.save),
@@ -2583,6 +2605,8 @@ export class App implements DailyHost {
   // ---------- Frame loop ----------
 
   private frame(now: number): void {
+    // Battery saver: the town draws at 30 frames a second (half the work for the phone).
+    if (this.save.settings.saver && this.state === "menu" && now - this.last < 1000 / 32 && now >= this.last) { requestAnimationFrame(t => this.frame(t)); return; }
     const raw = (now - this.last) / 1000;
     let dt = Math.min(0.05, Math.max(0, raw));
     this.last = now;
@@ -2775,6 +2799,8 @@ export class App implements DailyHost {
   bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
   bizHold(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizHold(); }
   visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
+  bizDesigns(): string[] { return this.renderer instanceof Renderer3D ? this.renderer.bizDesigns() : []; }
+  townShot(): HTMLCanvasElement | null { return this.renderer instanceof Renderer3D ? this.renderer.output : null; }
   /** A small picture of the town as it looks right now (for the scrapbook's memories). */
   townPicture(): string | null {
     if (!(this.renderer instanceof Renderer3D)) return null;

@@ -42,6 +42,7 @@ import { towerName } from "../data/towernames";
 import { AVATAR_COLORS, AVATARS, avatarBadge, FRAMES } from "../data/avatars";
 import type { FriendCity, Online } from "../online";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
+import { isNative } from "../native";
 
 export interface Host {
   readonly save: SaveData;
@@ -469,7 +470,7 @@ export class Sheets {
     const ul = $("upg-list"), dl = $("decor-list");
     ul.innerHTML = ""; dl.innerHTML = "";
     for (const d of UPGRADES_CASH) card(d, ul);
-    for (const d of DECOR) card(d, dl);
+    for (const d of DECOR) if (!d.seasonal || this.save.decor.includes(d.id)) card(d, dl);
     this.host.townBoosts($("shop-boosts"), () => this.renderShop());
   }
 
@@ -720,12 +721,13 @@ export class Sheets {
     const st = this.save.settings;
     const code = this.host.cloudCode();
     $("cloud").hidden = code === null;
-    $("recovery-code").textContent = code ? formatRecoveryCode(code) : t("Made after your first tower online");
+    $("recovery-code").textContent = code ? formatRecoveryCode(code) : HAS_CITY ? t("Being made: check back in a minute (it needs the internet)") : t("Made after your first tower online");
     $<HTMLButtonElement>("copy-recovery").disabled = !code;
     $<HTMLInputElement>("set-sound").checked = st.sound;
     $<HTMLInputElement>("set-music").checked = st.music;
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
-    $("vibrate-row").hidden = !("vibrate" in navigator);
+    $<HTMLInputElement>("set-saver").checked = st.saver;
+    $("vibrate-row").hidden = !("vibrate" in navigator) && !isNative();
     document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
     document.querySelectorAll<HTMLButtonElement>("[data-sky]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.sky === st.sky)));
     $("sky-note").textContent = st.sky === "day" ? t("Always sunny in your town") : st.sky === "night" ? t("Always night: city lights on") : t("Follows your phone's clock: sunsets and city lights at night");
@@ -799,6 +801,12 @@ export class Sheets {
       st().vibrate = (e.target as HTMLInputElement).checked;
       this.host.persist();
       vibrate(st().vibrate, 20);
+    });
+    $<HTMLInputElement>("set-saver").addEventListener("change", e => {
+      st().saver = (e.target as HTMLInputElement).checked;
+      this.host.persist();
+      this.click();
+      this.host.applyQuality();
     });
     document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.addEventListener("click", () => {
       st().quality = b.dataset.q as "auto" | "high" | "low";

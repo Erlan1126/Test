@@ -202,6 +202,9 @@ export class Renderer3D {
   private skylineIn: unknown = null;
   private biz: BizCity | null = null;
   private bizKey = "";
+  /** How much snow lies on the town (0 to 1): its roofs, lawns and squares turn white. */
+  private readonly townSnow = { value: 0 };
+  private snowShown = false;
   private bizCafeIn: unknown = null;
   /** Each business's stage at the last rebuild (-1 while not open). */
   private bizPrev = new Map<string, number>();
@@ -900,6 +903,27 @@ export class Renderer3D {
     return g;
   }
 
+  /** Lets snow settle on a town material: every surface facing up turns white as the
+   *  town's snow builds up (roads and water stay clear; the street shader does its own). */
+  private snowOn(m: THREE.Material): void {
+    const sm = m as THREE.MeshStandardMaterial;
+    if (!sm.isMeshStandardMaterial || sm.userData.snowP || sm.userData.noSnow || sm.transparent) return;
+    sm.userData.snowP = true;
+    const prev = sm.onBeforeCompile, U = this.townSnow;
+    sm.onBeforeCompile = (s, r) => {
+      prev.call(sm, s, r);
+      s.uniforms.uTownSnow = U;
+      s.fragmentShader = s.fragmentShader.replace("void main() {", "uniform float uTownSnow;\nvoid main() {").replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
+  if (uTownSnow > 0.001) {
+    float up = (vec4(normal, 0.0) * viewMatrix).y;
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.94, 1.0), uTownSnow * smoothstep(0.55, 0.85, up));
+  }`);
+    };
+    const pk = sm.customProgramCacheKey;
+    sm.customProgramCacheKey = () => pk.call(sm) + "|snow";
+    sm.needsUpdate = true;
+  }
+
   /** Skyhaven Inc.'s business district: rebuilt when a lot changes, alive every frame. */
   private updateBiz(f: Frame, dt: number): void {
     // The camera flies over when the Tycoon opens, and back after.
@@ -915,7 +939,7 @@ export class Renderer3D {
       this.bizCafeIn = f.bizCafe;
       this.bizStyleKey = styleKey;
       const cafe = f.bizCafe ?? null;
-      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, hl: cafe.hall, ax: cafe.annex, ld: cafe.land, pp: cafe.props, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
+      const key = JSON.stringify(lots) + styleKey + JSON.stringify(cafe ? { b: cafe.starter?.b, f: cafe.starter?.floors, t: cafe.terrace, c: cafe.contract, d: cafe.done, o: cafe.offered, gt: cafe.ghostTerrace, dc: cafe.decor, rk: cafe.rank, hl: cafe.hall, sn: cafe.season, ax: cafe.annex, ld: cafe.land, pp: cafe.props, h: cafe.hq ? Object.entries(cafe.hq).map(([k, v]) => [k, v.b.length, v.glass, v.b[0]]) : null } : null);
       if (key !== this.bizKey) {
         this.bizKey = key;
         // (The old town is let go only after the new one is in the scene: its materials keep
@@ -938,6 +962,7 @@ export class Renderer3D {
           this.biz.group.traverse(o => {
             const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
             if (m && !Array.isArray(m) && m.map && m.map.anisotropy !== aniso) { m.map.anisotropy = aniso; m.map.needsUpdate = true; }
+            if (m && !Array.isArray(m)) this.snowOn(m);
           });
         }
         if (old) { const g0 = old.group; requestAnimationFrame(() => requestAnimationFrame(() => disposeTree(g0))); }
@@ -1056,6 +1081,13 @@ export class Renderer3D {
       this.townDusk = clamp((clockSky() - 8) / 20, 0, 1) * (1 - nf);
       const L = this.townLook, st = this.env.skyTop, sb = this.env.skyBot;
       L.night = nf; L.dusk = this.townDusk; L.wet = wet;
+      // Snow builds up slowly while it snows, and a light cover stays all Winter Lights.
+      const snowTo = this.weather.kind === "snow" ? 1 : f.bizCafe?.season === "winter" ? 0.55 : 0;
+      // (Opening the game in winter: the snow is already there, it doesn't fall in first.)
+      if (!this.snowShown) { this.snowShown = true; this.townSnow.value = f.bizCafe?.season === "winter" ? 0.55 : 0; }
+      this.townSnow.value += (snowTo - this.townSnow.value) * Math.min(1, dt * 0.5);
+      if (Math.abs(snowTo - this.townSnow.value) < 0.002) this.townSnow.value = snowTo;
+      L.snow = this.townSnow.value;
       L.skyTop.setRGB(st[0] / 255, st[1] / 255, st[2] / 255).convertSRGBToLinear();
       L.skyBot.setRGB(sb[0] / 255, sb[1] / 255, sb[2] / 255).convertSRGBToLinear();
       L.sun.copy(this.sun.position).sub(this.sun.target.position);
@@ -1068,7 +1100,7 @@ export class Renderer3D {
   /** The final color pass: warmer at sunset in the town, and a heat shimmer over the beach
    *  on a clear sunny day. */
   private townDusk = 0;
-  private readonly townLook = { night: 0, dusk: 0, wet: 0, skyTop: new THREE.Color(), skyBot: new THREE.Color(), sun: new THREE.Vector3() };
+  private readonly townLook = { night: 0, dusk: 0, wet: 0, snow: 0, skyTop: new THREE.Color(), skyBot: new THREE.Color(), sun: new THREE.Vector3() };
   /** Testing only: where the town camera looks (null: the game decides). */
   debugLook: { x: number; z: number; zoom: number } | null = null;
   /** The player's own look at the town: an offset along (s) and across (t) the island from
@@ -1158,6 +1190,7 @@ export class Renderer3D {
 
   /** Where a lot's building shows on screen: its base and its top (page px). */
   /** How many homes there are round town (they pay rent). */
+  bizDesigns(): string[] { return this.biz ? this.biz.designs() : []; }
   bizHomes(): string[] { return this.biz && this.bizK >= 0.5 ? this.biz.homes().map(h => h.key) : []; }
   /** Everything else in the city worth a tap (index k is bizScreen(-1000 - k)). */
   bizSights(): { kind: string; key: string }[] { return this.biz && this.bizK >= 0.5 ? this.biz.sights().map(s => ({ kind: s.kind, key: s.key })) : []; }
