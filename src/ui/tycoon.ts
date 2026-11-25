@@ -1427,7 +1427,12 @@ export class TycoonUI {
     card.classList.remove("card-swap");
     void card.offsetWidth;
     card.classList.add("card-swap");
+    // (Only once: the card's numbers redraw it every moment, and new content must not
+    // replay the slide-in, or the card flickers.)
+    clearTimeout(this.swapTimer);
+    this.swapTimer = window.setTimeout(() => card.classList.remove("card-swap"), 320);
   }
+  private swapTimer = 0;
 
   private renderCard(now: number): void {
     if (this.holdingCard) return;

@@ -4343,3 +4343,12 @@ body.tabs-open .tab-page .tab-seg button:not(.tab-x) { flex: 1 1 0 !important; m
 @keyframes toast-time { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes toast-shine { to { left: 120%; } }
 @media (prefers-reduced-motion: reduce) { #toast, #toast .t-ico, #toast::after, #toast .t-time { animation: none !important; } }
+/* Business logos keep their own colours everywhere (plain icons in the same spots turn white). */
+svg.ic.logo { filter: drop-shadow(0 2px 3px rgba(30, 15, 80, 0.3)) !important; overflow: visible; }
+.card-ico svg.ic.logo, #tcy-card .bc-ico svg.ic.logo, .room-sign svg.ic.logo, .evo-icon svg.ic.logo, .ty-up-ico svg.ic.logo, .ty-icon svg.ic.logo { width: 1.35em !important; height: 1.35em !important; }
+.card-ico:has(svg.logo), #tcy-card .bc-ico:has(svg.logo) { background: rgba(255, 255, 255, 0.92) !important; }
+.card-ico svg.ic.logo, #tcy-card .bc-ico svg.ic.logo { width: 84% !important; height: 84% !important; vertical-align: middle; }
+.card-ico:has(svg.logo), #tcy-card .bc-ico:has(svg.logo) { display: grid !important; place-items: center; overflow: visible; }
+/* (A logo is a badge already: no tile behind it, just the logo with a soft shadow.) */
+.card-ico:has(svg.logo), #tcy-card .bc-ico:has(svg.logo) { background: none !important; box-shadow: none !important; }
+.card-ico svg.ic.logo, #tcy-card .bc-ico svg.ic.logo { width: 112% !important; height: 112% !important; filter: drop-shadow(0 3px 5px rgba(40, 10, 60, 0.35)) !important; }

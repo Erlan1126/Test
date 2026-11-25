@@ -26,16 +26,16 @@ export interface Business {
 }
 
 export const BUSINESSES: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 60 },
-  { id: "flowers", name: "Flower Kiosk", icon: "leaf", color: ["#ff9ac8", "#e8457a"], cost: 100, growth: 1.13, income: 12, cycle: 6, manager: 1200 },
-  { id: "bakery", name: "Cloud Bakery", icon: "sun", color: ["#ffe27a", "#ffb13b"], cost: 1200, growth: 1.12, income: 110, cycle: 12, manager: 15000 },
-  { id: "pizza", name: "Pizza Place", icon: "dish", color: ["#ff8a6b", "#e0433a"], cost: 14000, growth: 1.11, income: 1000, cycle: 24, manager: 180000 },
-  { id: "cinema", name: "Sky Cinema", icon: "film", color: ["#b48cff", "#6a3cff"], cost: 170000, growth: 1.1, income: 9000, cycle: 48, manager: 9e5 },
-  { id: "hotel", name: "Cloud Hotel", icon: "building", color: ["#7fd3ff", "#3a8dff"], cost: 4e6, growth: 1.11, income: 80000, cycle: 96, manager: 1.6e7 },
-  { id: "mall", name: "Sky Mall", icon: "gift", color: ["#5ee0a0", "#19a87a"], cost: 1.2e8, growth: 1.11, income: 700000, cycle: 192, manager: 5e8 },
-  { id: "airport", name: "Airship Port", icon: "airship", color: ["#9fe6ff", "#4f8bff"], cost: 4e9, growth: 1.1, income: 6e6, cycle: 384, manager: 1.6e10 },
-  { id: "casino", name: "Starlight Stage", icon: "star", color: ["#ffd23f", "#ff4f8b"], cost: 1.5e11, growth: 1.1, income: 5.2e7, cycle: 768, manager: 6e11 },
-  { id: "spaceport", name: "Space Port", icon: "rocket", color: ["#8a96ff", "#2a1f6e"], cost: 6e12, growth: 1.09, income: 4.5e8, cycle: 1536, manager: 2.4e13 },
+  { id: "coffee", name: "Coffee Cart", icon: "biz-coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 60 },
+  { id: "flowers", name: "Flower Kiosk", icon: "biz-flowers", color: ["#ff9ac8", "#e8457a"], cost: 100, growth: 1.13, income: 12, cycle: 6, manager: 1200 },
+  { id: "bakery", name: "Cloud Bakery", icon: "biz-bakery", color: ["#ffe27a", "#ffb13b"], cost: 1200, growth: 1.12, income: 110, cycle: 12, manager: 15000 },
+  { id: "pizza", name: "Pizza Place", icon: "biz-pizza", color: ["#ff8a6b", "#e0433a"], cost: 14000, growth: 1.11, income: 1000, cycle: 24, manager: 180000 },
+  { id: "cinema", name: "Sky Cinema", icon: "biz-cinema", color: ["#b48cff", "#6a3cff"], cost: 170000, growth: 1.1, income: 9000, cycle: 48, manager: 9e5 },
+  { id: "hotel", name: "Cloud Hotel", icon: "biz-hotel", color: ["#7fd3ff", "#3a8dff"], cost: 4e6, growth: 1.11, income: 80000, cycle: 96, manager: 1.6e7 },
+  { id: "mall", name: "Sky Mall", icon: "biz-mall", color: ["#5ee0a0", "#19a87a"], cost: 1.2e8, growth: 1.11, income: 700000, cycle: 192, manager: 5e8 },
+  { id: "airport", name: "Airship Port", icon: "biz-airport", color: ["#9fe6ff", "#4f8bff"], cost: 4e9, growth: 1.1, income: 6e6, cycle: 384, manager: 1.6e10 },
+  { id: "casino", name: "Starlight Stage", icon: "biz-casino", color: ["#ffd23f", "#ff4f8b"], cost: 1.5e11, growth: 1.1, income: 5.2e7, cycle: 768, manager: 6e11 },
+  { id: "spaceport", name: "Space Port", icon: "biz-spaceport", color: ["#8a96ff", "#2a1f6e"], cost: 6e12, growth: 1.09, income: 4.5e8, cycle: 1536, manager: 2.4e13 },
   ...districtBusinesses(),
 ];
 
