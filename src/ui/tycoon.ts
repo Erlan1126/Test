@@ -38,7 +38,7 @@ import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote } from "./mayor";
+import { MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote, setGoalTap } from "./mayor";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { landOnSale, landPrice, landWaiting, landHall } from "../logic/land";
 import { isLot, lotsAllowed, lotsBuilt, propBlock, propHallNeed, propLevel, propPrice, propRent, propsOpen } from "../logic/props";
@@ -239,6 +239,17 @@ export class TycoonUI {
     // Tapping your money opens what you earn, exactly.
     document.getElementById("city-rename")?.addEventListener("click", () => { this.host.sound.click(); closeModal($("settings")); this.nameCity(); });
     this.syncCityNameRow();
+    // Tapping one of Pip's goals goes straight to where it's done.
+    setGoalTap(kind => {
+      const s = this.save;
+      if (kind === "managers" || kind === "levels") {
+        // The business that most needs it (no manager yet / the cheapest level), selected in town.
+        const b = kind === "managers" ? BUSINESSES.find(x => levelOf(s, x.id) > 0 && !s.tycoon.managers.includes(x.id)) : BUSINESSES.filter(x => levelOf(s, x.id) > 0).sort((a, b2) => costOf(a, levelOf(s, a.id), 1) - costOf(b2, levelOf(s, b2.id), 1))[0];
+        if (b) { this.selected = b.id; this.selectedProp = ""; this.selectedSight = ""; this.render(); return; }
+      }
+      if (kind === "grown") { const b = BUSINESSES.find(x => readyStage(s, x.id)); if (b) { this.selected = b.id; this.selectedProp = ""; this.selectedSight = ""; this.render(); return; } }
+      this.openBuild();
+    });
     const wallet = $("tcy-top").querySelector<HTMLElement>(".tcy-wallet")!;
     wallet.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
     wallet.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.host.sound.click(); this.openEarnings(); } });

@@ -1,7 +1,7 @@
 // Mayor Pip: the friendly face of Skyhaven. A strip on the home screen shows the current
 // chapter's next goal; Pip pops up to start each chapter and to celebrate finishing one.
 import { playerStarted } from "../edition";
-import { CHAPTERS, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter } from "../data/chapters";
+import { CHAPTERS, GOAL_HOW, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter, type ChapterGoal } from "../data/chapters";
 import { CITY_NAME } from "../logic/city";
 import { fmt } from "../core/util";
 import { coins } from "../data/tycoon";
@@ -102,9 +102,9 @@ function planRoad(save: SaveData): string {
 
 function goalsHtml(save: SaveData, c: Chapter): string {
   return planRoad(save) + (HAS_CITY ? `<li class="plan-to"><b>${esc(t("To reach City Hall level {n}:", { n: chapterIndex(save) + 2 }))}</b></li>` : "") + opensHtml(chapterIndex(save) + 2) + c.goals.map(g => {
-    const done = goalDone(save, g);
-    return `<li class="${done ? "done" : ""}"><span>${done ? "✓" : ""}</span>${esc(goalText(g.text, g.need))}
-      <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}</em></li>`;
+    const done = goalDone(save, g), how = !done && g.kind ? GOAL_HOW[g.kind] : "";
+    return `<li class="${done ? "done" : "todo"}"${!done && g.kind ? ` data-goal="${g.kind}" role="button" tabindex="0"` : ""}><span>${done ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g.text, g.need))}${how ? `<small class="g-how">${esc(t(how))}</small>` : ""}</div>
+      <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}${!done && g.kind ? `<i class="g-go">›</i>` : ""}</em></li>`;
   }).join("");
 }
 
@@ -130,6 +130,10 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   ok.onclick = () => { $("mayor").hidden = true; onOk(); };
   $("mayor").hidden = false;
   ok.focus();
+  // A goal not done yet: tapping it closes the card and takes you where you do it.
+  $("mayor-goals").querySelectorAll<HTMLElement>("[data-goal]").forEach(li => {
+    li.onclick = () => { $("mayor").hidden = true; goalTap(li.dataset.goal as NonNullable<ChapterGoal["kind"]>); };
+  });
 }
 
 /** Opens Pip for the current chapter: a celebration if it's done, else its goals. */
@@ -227,3 +231,7 @@ export function mayorAsk(title: string, text: string, value: string, label: stri
   inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("mayor-ok").click(); } };
   window.setTimeout(() => { inp.focus(); inp.select(); }, 50);
 }
+
+let goalTap: (kind: NonNullable<ChapterGoal["kind"]>) => void = () => {};
+/** What tapping a goal does (set by the town: open Build, a business, the company...). */
+export function setGoalTap(f: (kind: NonNullable<ChapterGoal["kind"]>) => void): void { goalTap = f; }

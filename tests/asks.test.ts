@@ -80,6 +80,6 @@ describe("the city's name and building goals", () => {
     dealGoals(s, T0);
     s.tycoon.goals.list[0] = { t: "build", n: 1, p: 0 };
     const r = goalStep(s, "build", 1, T0);
-    expect(r.done.length).toBe(1);
+    expect(r.done.length).toBeGreaterThanOrEqual(1); // (another "build" goal of the day may finish too)
   });
 });

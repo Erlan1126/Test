@@ -77,7 +77,7 @@ export const CHAPTERS: Chapter[] = [
     intro: "A village needs a heart. Give the block its next project, put managers to work, and Skyhaven becomes a town: with its own little tram!",
     outro: "Ding ding! The tram is running. Your neighbor already has a favorite seat by the window.",
     goals: [
-      { text: "Finish a block project", need: 1, have: projects, kind: "projects" },
+      { text: HAS_CITY ? "Build the Flower market or the Playground" : "Finish a block project", need: 1, have: projects, kind: "projects" },
       { text: "Hire {n} managers", need: 3, have: managers, kind: "managers" },
       lv(150),
     ],
@@ -88,7 +88,7 @@ export const CHAPTERS: Chapter[] = [
     intro: "Shops are growing into stores. Build their headquarters, and Skyhaven turns into a real city, bright lights on every corner.",
     outro: "Look at those billboards glow! People come from the other islands just to see our streets.",
     goals: [
-      { text: "Grow {n} businesses with a new HQ", need: 2, have: grown, kind: "grown" },
+      { text: HAS_CITY ? "Build a new headquarters for {n} businesses" : "Grow {n} businesses with a new HQ", need: 2, have: grown, kind: "grown" },
       ht(60),
       lv(300),
     ],
@@ -100,7 +100,7 @@ export const CHAPTERS: Chapter[] = [
     outro: "Airships over Skyhaven! Visitors from every island. We're a big city now.",
     goals: [
       open(6),
-      { text: "Finish both block projects", need: 2, have: projects, kind: "projects" },
+      { text: HAS_CITY ? "Build both the Flower market and the Playground" : "Finish both block projects", need: 2, have: projects, kind: "projects" },
       lv(500),
     ],
     reward: { stars: 30, crystals: 60 },
@@ -180,3 +180,19 @@ export function claimChapter(s: SaveData): (Chapter["reward"] & { cash: number }
   s.crystals += c.reward.crystals;
   return { ...c.reward, cash };
 }
+
+/** How to do a goal, in one plain line (shown under it in Pip's card). */
+export const GOAL_HOW: Record<NonNullable<ChapterGoal["kind"]>, string> = {
+  projects: "Tap Build, then choose the Flower market or the Playground.",
+  managers: "Tap a business, then Hire manager. A manager sells for you, even while you're away.",
+  levels: "Every level you buy for any business counts. Tap a business and press Buy.",
+  grown: "When a business says it's ready to grow, tap it and press Grow it!",
+  terrace: "Tap Build and choose the café terrace.",
+  builds: "Everything you build counts: homes, headquarters, projects.",
+  open: "Tap Build to open a new business.",
+  land: "Tap Build and buy the new district.",
+  landOpen: "Tap Build to open businesses in the new district.",
+  towers: "Tap Play to build a tower.",
+  height: "Tap Play and stack your tower higher.",
+  offices: "Tap Build and add office floors.",
+};
