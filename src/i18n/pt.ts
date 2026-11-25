@@ -2199,4 +2199,5 @@ export const PT: Record<string, string> = {
   "Nothing new has opened for a while. A New Era gives you {g} Sky Gems: everything earns {pct}% more, for good ({a} → {b}).": "Faz tempo que nada novo abre. Uma Nova Era te dá {g} Gemas do Céu: tudo rende {pct}% a mais, para sempre ({a} → {b}).",
   "Your city starts over from a hamlet, and grows back faster.": "Sua cidade recomeça como um vilarejo e cresce mais rápido.",
   "See New Era": "Ver Nova Era",
+  "Builders at work": "Construtores trabalhando",
 };

@@ -42,6 +42,10 @@ const grown = (s: SaveData) => Object.values(s.tycoon.evolved).filter(v => v >= 
  *  the next one counts real levels only, so Pip and the town's goal bar always agree. */
 const levelsFor = (need: number) => (s: SaveData) => (need <= RANKS[townRank(s)].at ? need : usedFloors(s));
 const lv = (need: number): ChapterGoal => ({ text: "Reach {n} business levels", need, have: levelsFor(need), kind: "levels" });
+/** The city game asks for more (each City Hall level should take a few play sessions, not
+ *  minutes): `city` there, `need` in the tower game. */
+const pick = (need: number, city: number) => (HAS_CITY ? city : need);
+const lvC = (need: number, city: number): ChapterGoal => lv(pick(need, city));
 // (The city game starts in the city: its chapters ask for city builds, not towers.)
 const tw = (need: number): ChapterGoal => HAS_CITY
   // (Towers built before count too, so no one who played the tower way is held back.)
@@ -66,9 +70,9 @@ export const CHAPTERS: Chapter[] = [
     intro: "Welcome to Skyhaven! Your first neighbor needs a place to sit and a busier street. Grow the businesses and our hamlet becomes a village, with a street market!",
     outro: "We're a village! Hear that? Stalls, shoppers, music in the plaza. And it all started with one coffee.",
     goals: [
-      tw(3),
+      tw(pick(3, 5)),
       { text: "Open the café terrace", need: 1, have: terrace, kind: "terrace" },
-      lv(50),
+      lvC(50, 90),
     ],
     reward: { stars: 10, crystals: 20 },
   },
@@ -78,8 +82,8 @@ export const CHAPTERS: Chapter[] = [
     outro: "Ding ding! The tram is running. Your neighbor already has a favorite seat by the window.",
     goals: [
       { text: HAS_CITY ? "Build the Flower market or the Playground" : "Finish a block project", need: 1, have: projects, kind: "projects" },
-      { text: "Hire {n} managers", need: 3, have: managers, kind: "managers" },
-      lv(150),
+      { text: "Hire {n} managers", need: pick(3, 4), have: managers, kind: "managers" },
+      lvC(150, 280),
     ],
     reward: { stars: 15, crystals: 30 },
   },
@@ -88,9 +92,9 @@ export const CHAPTERS: Chapter[] = [
     intro: "Shops are growing into stores. Build their headquarters, and Skyhaven turns into a real city, bright lights on every corner.",
     outro: "Look at those billboards glow! People come from the other islands just to see our streets.",
     goals: [
-      { text: HAS_CITY ? "Build a new headquarters for {n} businesses" : "Grow {n} businesses with a new HQ", need: 2, have: grown, kind: "grown" },
-      ht(60),
-      lv(300),
+      { text: HAS_CITY ? "Build a new headquarters for {n} businesses" : "Grow {n} businesses with a new HQ", need: pick(2, 3), have: grown, kind: "grown" },
+      ht(pick(60, 70)),
+      lvC(300, 550),
     ],
     reward: { stars: 20, crystals: 40 },
   },
@@ -99,9 +103,9 @@ export const CHAPTERS: Chapter[] = [
     intro: "The whole sky is noticing us. Open more businesses and finish the block, and the airships will start coming to Skyhaven.",
     outro: "Airships over Skyhaven! Visitors from every island. We're a big city now.",
     goals: [
-      open(6),
+      open(pick(6, 7)),
       { text: HAS_CITY ? "Build both the Flower market and the Playground" : "Finish both block projects", need: 2, have: projects, kind: "projects" },
-      lv(500),
+      lvC(500, 900),
     ],
     reward: { stars: 30, crystals: 60 },
   },
@@ -109,35 +113,35 @@ export const CHAPTERS: Chapter[] = [
     title: "Harbor District",
     intro: "The town is full! West of the square there's room for a harbor: boats, a fish market, a lighthouse. Buy the land and open its first businesses.",
     outro: "Smell that sea air? Fishing boats in, tourists off the ferry. The harbor was the right call.",
-    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", 3), lv(800)],
+    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), lvC(800, 1400)],
     reward: { stars: 40, crystals: 80 },
   },
   {
     title: "Garden Hills",
     intro: "Families want to live here now. East of town, Garden Hills has room for parks, a lake and big homes. Let's make it ours.",
     outro: "A Ferris wheel over the lake! Every family in the sky wants to move to Garden Hills.",
-    goals: [own("lakeside", "Garden Hills"), inLand("lakeside", "Garden Hills", 3), open(10, "Open all {n} businesses in town")].map((g, i) => (i === 2 ? { ...g, have: townOpen } : g)),
+    goals: [own("lakeside", "Garden Hills"), inLand("lakeside", "Garden Hills", pick(3, 4)), open(10, "Open all {n} businesses in town")].map((g, i) => (i === 2 ? { ...g, have: townOpen } : g)),
     reward: { stars: 50, crystals: 100 },
   },
   {
     title: "Downtown",
     intro: "Big companies are calling. Downtown is where the towers go: offices, banks, a stock exchange. Build our business quarter!",
     outro: "Look at that skyline! Downtown makes us the business capital of the islands.",
-    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", 3), lv(1200)],
+    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), lvC(1200, 2100)],
     reward: { stars: 60, crystals: 120 },
   },
   {
     title: "Cloud Kingdom",
     intro: "There's no more ground left, so we build up: a whole city on the clouds above Skyhaven, with marble villas and a golden palace.",
     outro: "A kingdom in the clouds! I had to hold on to my hat on the way up.",
-    goals: [own("cloud", "Cloud Kingdom"), inLand("cloud", "Cloud Kingdom", 3), ht(150)],
+    goals: [own("cloud", "Cloud Kingdom"), inLand("cloud", "Cloud Kingdom", pick(3, 4)), ht(pick(150, 160))],
     reward: { stars: 70, crystals: 150 },
   },
   {
     title: "Crystal Spire",
     intro: "Higher still: glowing crystal towers round a giant spire. It will light up the whole sky at night.",
     outro: "The spire shines all the way to the horizon. Ships steer by it now!",
-    goals: [own("crystal", "Crystal Spire"), inLand("crystal", "Crystal Spire", 3), open(30)],
+    goals: [own("crystal", "Crystal Spire"), inLand("crystal", "Crystal Spire", pick(3, 4)), open(30)],
     reward: { stars: 80, crystals: 180 },
   },
   {

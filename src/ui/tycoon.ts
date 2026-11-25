@@ -1152,7 +1152,15 @@ export class TycoonUI {
     if (this.bottleOn() && !this.bottleTold) { this.bottleTold = true; toast(t("🍾 Something washed up on the beach!")); }
     if (!this.bottleOn()) this.bottleTold = false;
     const bottleTag = !closeUp && this.bottleOn() ? `<button type="button" class="tag bub bottle" data-tag="bottle" data-i="-5" data-h="0.55" aria-label="${esc(t("A message in a bottle"))}"><span class="tag-ico"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><g transform="rotate(-35 16 16)"><rect x="13" y="2" width="6" height="5" rx="1.5" fill="#a0683a"/><path d="M13.5 7h5v3.5c3 1.4 4.5 3.6 4.5 6.5v10.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 9 27.5V17c0-2.9 1.5-5.1 4.5-6.5z" fill="#5fd0a0" stroke="#1f7a5a" stroke-width="1.4"/><rect x="11.5" y="16" width="9" height="9" rx="1" fill="#f6ecd0" stroke="#c8a870" stroke-width="0.8"/><path d="M13 19h6M13 21.5h5" stroke="#b08850" stroke-width="0.9"/><path d="M11.5 13.5c1-1.2 2-1.8 3-2" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g></svg></span></button>` : "";
-    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + propTags + askTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    // A little timer over everything being built (the time counts down in placeTags).
+    const buildTags = closeUp ? "" : (s.tycoon.builds ?? []).filter(j => j.end > now && j.kind !== "land").map(j => {
+      const at = j.kind === "home" ? (homes.indexOf(j.id) >= 0 ? -100 - homes.indexOf(j.id) : null)
+        : j.kind === "hq" ? BUSINESSES.findIndex(b => b.id === j.id)
+        : j.kind === "project" ? (j.id === "flowers" ? -2 : -3) : -1;
+      if (at === null || at === -1 && !s.cafe.starter && j.kind !== "terrace") return "";
+      return `<button type="button" class="tag bub build-tm" data-tag="build-${esc(j.kind)}" data-i="${at}" data-h="-1" data-end="${j.end}" aria-label="${esc(t("Builders at work"))}"><span class="tag-ico">🔨</span><b class="tm-t">${esc(fmtLeft(j.end - now))}</b></button>`;
+    }).join("");
+    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + buildTags + propTags + askTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       // (The next business waiting for the City Hall: a lock with the level it needs.)
@@ -1276,6 +1284,13 @@ export class TycoonUI {
       items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: sz.w, h: sz.h });
     }
     for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
+    const nowMs = Date.now();
+    for (const it of items) {
+      const end = it.tag.dataset.end;
+      if (!end) continue;
+      const tx = it.tag.querySelector<HTMLElement>(".tm-t"), v = fmtLeft(Math.max(0, Number(end) - nowMs));
+      if (tx && tx.textContent !== v) tx.textContent = v;
+    }
     // With a building's card open, only its own bubble stays: the rest step aside, so
     // nothing piles up round the building the camera is looking at.
     const focus = !!(this.selected || this.selectedProp || this.selectedSight);
@@ -1375,6 +1390,7 @@ export class TycoonUI {
       return;
     }
     if (id.startsWith("land-")) { this.openLand(); return; }
+    if (id.startsWith("build-")) { this.host.sound.click(); $("tcy-builds").click(); return; }
     if (id === "hall") { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); this.host.openStory(); return; }
     if (id === "bottle") { this.collectBottle(); return; }
     if (id.startsWith("prop-")) { this.selectProp(id.slice(5)); return; }
