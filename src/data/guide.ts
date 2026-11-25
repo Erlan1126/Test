@@ -27,7 +27,7 @@ export const GUIDE: GuideSection[] = [
       { icon: "star", title: "Business levels", text: "Each level makes a business earn more. All levels together raise your town level." },
       { icon: "bolt", title: "Speed milestones", text: "At 10, 25, 50, 100 levels and more, a business works twice as fast." },
       { icon: "building", title: "Office floors", text: "Every business level needs one. Each tower floor you build adds two." },
-      { icon: "medal", title: "Managers", text: "A manager sells for you all the time, even while the game is closed (up to 8 hours, 24 with VIP)." },
+      { icon: "medal", title: "Managers", text: "A manager sells for you all the time, even while the game is closed (up to 4 hours, 12 with VIP)." },
       { icon: "tower", title: "HQ", text: "When a business has enough levels, build its new headquarters as a tower to grow it." },
       { icon: "bolt", title: "Rush hour, VIPs and golden customers", text: "Short events in town. Tap them quickly for extra cash." },
       { icon: "bank", title: "Big numbers", text: "K is a thousand, M a million, B a billion, T a trillion. Qa, Qi and Sx are even bigger." },

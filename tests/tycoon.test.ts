@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
-import { BUSINESSES, coins, ERA_SCALE } from "../src/data/tycoon";
+import { BUSINESSES, coins, COST_K, ERA_SCALE, PAY_K } from "../src/data/tycoon";
 import { FLOOR_LIMIT, hallLevel, hallLocked, shownBusiness, unlockedBusiness, adDoubleAway, buildOffice, doubleAway, doublePrice, officeFloors, officePrice, OFFICE_BLOCK_FLOORS, FREE_FLOORS, speedupsLeft } from "../src/logic/tycoon";
 import { affordable, buyLevels, costOf, cycleOf, eraGems, hireManager, multiplier, newEra, perSecond, runOnce, tick, timeWarp, towerBonus } from "../src/logic/tycoon";
 
@@ -15,13 +15,13 @@ describe("Skyhaven Tycoon", () => {
     expect(tick(s, T0 + 500)).toBe(0);
     expect(BUSINESSES[0].income).toBe(1); // a whole coin per tap from the start
     const got = tick(s, T0 + BUSINESSES[0].cycle * 1000 + 100);
-    expect(got).toBeCloseTo(multiplier(s, T0));
+    expect(got).toBeCloseTo(multiplier(s, T0) * PAY_K);
     expect(tick(s, T0 + 20000)).toBe(0); // no manager: it waits for the next tap
   });
 
   it("prices levels on a growing curve and buys the most it can afford", () => {
     const b = BUSINESSES[0];
-    expect(costOf(b, 1, 1)).toBeCloseTo(b.cost * b.growth);
+    expect(costOf(b, 1, 1)).toBeCloseTo(b.cost * COST_K * b.growth);
     const s = defaultSave();
     s.tycoon.floors = 500; // plenty of office floors
     s.tycoon.coins = 1000;
@@ -149,7 +149,7 @@ describe("Skyhaven Tycoon", () => {
     const s = defaultSave();
     expect(doublePrice(s, 60e3, T0)).toBe(10);
     expect(doublePrice(s, 2 * 3600e3, T0)).toBe(80);
-    expect(doublePrice(s, 30 * 3600e3, T0)).toBe(320); // capped at 8 hours
+    expect(doublePrice(s, 30 * 3600e3, T0)).toBe(160); // capped at 4 hours
   });
 
   it("survives a save round trip and shortens huge numbers", () => {
@@ -354,7 +354,7 @@ describe("grand openings, upgrades, advisors and the vault", () => {
     s.crystals = 1000;
     expect(hireAdvisor(s, "otto")).toBeUndefined(); // already on the team: no crystals taken
     expect(s.crystals).toBe(1000);
-    expect(offlineHours(s, T0)).toBe(8 + 4); // Otto
+    expect(offlineHours(s, T0)).toBe(4 + 4); // Otto
   });
 
   it("crystals hire the advisor you choose, once, with nothing random", () => {
@@ -376,7 +376,7 @@ describe("grand openings, upgrades, advisors and the vault", () => {
     const s = defaultSave();
     s.tycoon.coins = VAULT_COST[0];
     expect(buyVault(s)).toBe(true);
-    expect(offlineHours(s, T0)).toBe(10);
+    expect(offlineHours(s, T0)).toBe(6);
     const b = BUSINESSES[0], base = basePay(s, b, T0);
     startBoom(s, T0);
     review(s, "coffee", T0);

@@ -5,7 +5,7 @@ import { ANNEX_BONUS, RANK_BONUS, RANKS } from "../data/ranks";
 import { LAND_BONUS } from "../data/land";
 import { PROP_BONUS } from "../data/props";
 import { decorMult } from "./decor";
-import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, ERA_SCALE, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
+import { ADVISORS, BOOM_MINUTES, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, HQ_FLOORS, STAGE_MULT, UPGRADES, VAULT_COST, VAULT_HOURS, type Advisor, BUSINESSES, RUSH_MULT, RUSH_SECONDS, STAGE_AT, STAGE_NAMES, COIN_BOOST_CRYSTALS, COST_K, ERA_SCALE, PAY_K, GEM_BONUS, MILESTONES_AT, OFFLINE_HOURS, OFFLINE_HOURS_VIP, SPEEDUPS_PER_DAY, DOUBLE_CRYSTALS_PER_HOUR, WARP_1H_CRYSTALS, WARP_8H_CRYSTALS, type Business, DAILY_REWARDS } from "../data/tycoon";
 import type { SaveData } from "./save";
 import { cafeMult } from "./cafe";
 import { orderMult } from "./orders";
@@ -133,7 +133,7 @@ export const cycleOf = (b: Business, level: number): number => b.cycle / Math.po
 export const payOf = (s: SaveData, b: Business, now = Date.now()): number => basePay(s, b, now) * (rushOn(s, b.id, now) ? RUSH_MULT : 1);
 /** What one cycle pays without a rush hour (and, unless `live`, without other short boosts). */
 export const basePay = (s: SaveData, b: Business, now = Date.now(), live = true): number =>
-  b.income * levelOf(s, b.id) * multiplier(s, now, live) * bizMult(s, b, now, live);
+  b.income * PAY_K * levelOf(s, b.id) * multiplier(s, now, live) * bizMult(s, b, now, live);
 
 /** How long a rush hour lasts (an advisor makes it longer). */
 export const rushSeconds = (s: SaveData): number => RUSH_SECONDS * perkOf(s, "rush").reduce((m, a) => m * a.n, 1);
@@ -260,7 +260,7 @@ export function perSecond(s: SaveData, now = Date.now(), rush = true): number {
 /** The price of the next `n` levels. */
 export function costOf(b: Business, level: number, n: number): number {
   const g = b.growth;
-  return b.cost * Math.pow(g, level) * (Math.pow(g, n) - 1) / (g - 1);
+  return b.cost * COST_K * Math.pow(g, level) * (Math.pow(g, n) - 1) / (g - 1);
 }
 
 /** How many levels the coins can buy right now (at least 0). */
@@ -681,7 +681,7 @@ export function reactionTip(s: SaveData, now = Date.now()): number {
   const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
   if (!owned.length) return 0;
   const cheapest = Math.min(...owned.map(x => costOf(x, levelOf(s, x.id), 1)));
-  const n = Math.max(perSecond(s, now, false) * 5, cheapest * 0.1, 1) * tipMult(s);
+  const n = Math.max(perSecond(s, now, false) * 3, cheapest * 0.08, 1) * tipMult(s);
   earn(s, n);
   return n;
 }
@@ -690,7 +690,7 @@ export function goldenTip(s: SaveData, now = Date.now()): number {
   const owned = BUSINESSES.filter(x => levelOf(s, x.id) > 0);
   if (!owned.length) return 0;
   const cheapest = Math.min(...owned.map(x => costOf(x, levelOf(s, x.id), 1)));
-  const n = Math.max(perSecond(s, now, false) * 600, cheapest * 0.6, 250) * tipMult(s);
+  const n = Math.max(perSecond(s, now, false) * 300, cheapest * 0.4, 250) * tipMult(s);
   earn(s, n);
   return n;
 }

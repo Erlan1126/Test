@@ -16,7 +16,7 @@ import { vipActive } from "./vip";
  *  market or playground. */
 export type BuildKind = "office" | "terrace" | "land" | "home" | "hq" | "project";
 /** How long a headquarters takes, by the stage it grows into. */
-const HQ_TIME = [0, 2 * 60e3, 10 * 60e3, 30 * 60e3, 3600e3, 2 * 3600e3, 3 * 3600e3, 4 * 3600e3];
+const HQ_TIME = [0, 3 * 60e3, 15 * 60e3, 45 * 60e3, 1.5 * 3600e3, 3 * 3600e3, 4.5 * 3600e3, 6 * 3600e3];
 export interface BuildJob { kind: BuildKind; id: string; start: number; end: number }
 
 /** Builders hired with crystals, at most. */
@@ -41,8 +41,8 @@ export function buildTime(s: SaveData, kind: BuildKind, id = "", now = Date.now(
   else if (kind === "office") ms = Math.min(4 * HOUR, MIN * Math.pow(1.6, Math.max(0, s.tycoon.offices ?? 0)));
   else if (kind === "hq") ms = HQ_TIME[Math.min(HQ_TIME.length - 1, Math.max(1, readyStage(s, id)))];
   else if (kind === "project") ms = 3 * MIN;
-  else if (kind === "land") ms = [10 * MIN, 30 * MIN, HOUR, 2 * HOUR, 4 * HOUR, 8 * HOUR][Math.max(0, LAND.findIndex(l => l.id === id))] ?? 8 * HOUR;
-  else ms = [MIN, 2 * MIN, 10 * MIN, 30 * MIN, HOUR, HOUR][propLevel(s, id)] ?? HOUR;
+  else if (kind === "land") ms = [15 * MIN, 45 * MIN, 1.5 * HOUR, 3 * HOUR, 6 * HOUR, 12 * HOUR][Math.max(0, LAND.findIndex(l => l.id === id))] ?? 8 * HOUR;
+  else ms = [1.5 * MIN, 3 * MIN, 15 * MIN, 45 * MIN, 1.5 * HOUR, 1.5 * HOUR][propLevel(s, id)] ?? 1.5 * HOUR;
   return Math.round(ms * (vipActive(s, now) ? VIP_SPEED : 1));
 }
 

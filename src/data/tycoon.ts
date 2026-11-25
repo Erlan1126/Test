@@ -25,7 +25,12 @@ export interface Business {
   land?: LandId;
 }
 
-export const BUSINESSES: Business[] = [
+/** The economy's two big dials: what every sale pays, and what every level and manager
+ *  costs. A tougher economy pays less and charges more, so growing takes time (and
+ *  crystals let a player hurry). */
+export const PAY_K = 0.7, COST_K = 1.6, MANAGER_K = 1.5;
+
+const BUSINESSES_BASE: Business[] = [
   { id: "coffee", name: "Coffee Cart", icon: "biz-coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 60 },
   { id: "flowers", name: "Flower Kiosk", icon: "biz-flowers", color: ["#ff9ac8", "#e8457a"], cost: 100, growth: 1.13, income: 12, cycle: 6, manager: 1200 },
   { id: "bakery", name: "Cloud Bakery", icon: "biz-bakery", color: ["#ffe27a", "#ffb13b"], cost: 1200, growth: 1.12, income: 110, cycle: 12, manager: 15000 },
@@ -38,6 +43,7 @@ export const BUSINESSES: Business[] = [
   { id: "spaceport", name: "Space Port", icon: "biz-spaceport", color: ["#8a96ff", "#2a1f6e"], cost: 6e12, growth: 1.09, income: 4.5e8, cycle: 1536, manager: 2.4e13 },
   ...districtBusinesses(),
 ];
+export const BUSINESSES: Business[] = BUSINESSES_BASE.map(b => ({ ...b, manager: Math.round(b.manager * MANAGER_K) }));
 
 /** Each district's own six businesses, opened one after another once the district is bought:
  *  priced from the district's price, each about 14 times the one before, earning like a town
@@ -77,7 +83,7 @@ export const MILESTONES_AT = [10, 25, 50, 100, 150, 200, 300, 400, 500, 600, 800
 /** Every Sky Gem adds this much to all earnings. */
 export const GEM_BONUS = 0.02;
 /** Offline earnings stop piling up after this long (longer with VIP). */
-export const OFFLINE_HOURS = 8, OFFLINE_HOURS_VIP = 24;
+export const OFFLINE_HOURS = 4, OFFLINE_HOURS_VIP = 12;
 /** Crystal prices for the boosts. */
 export const COIN_BOOST_CRYSTALS = 1200;
 export const WARP_1H_CRYSTALS = 100, WARP_8H_CRYSTALS = 500;
