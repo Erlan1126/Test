@@ -4411,3 +4411,10 @@ svg.ic.logo { filter: drop-shadow(0 2px 3px rgba(30, 15, 80, 0.3)) !important; o
 .mayor-goals li.todo[data-goal] { cursor: pointer; transition: transform 0.08s; }
 .mayor-goals li.todo[data-goal]:active { transform: scale(0.98); }
 .mayor-goals li .g-go { margin-left: 6px; font: 400 18px/1 var(--display); font-style: normal; color: #6a3cff; }
+/* Business logos fit exactly in their spot, everywhere (no oversized logo spilling over the
+   text): the logo fills its tile, and the tile behind it steps aside. */
+:is(.ty-up-ico, .evo-icon, .ty-icon, .card-ico, #tcy-card .bc-ico, #earnings .eb-ico, .earn-goal .eg-ico):has(> svg.logo) { background: none !important; box-shadow: none !important; overflow: visible !important; }
+:is(.ty-up-ico, .evo-icon, .ty-icon, .card-ico, #tcy-card .bc-ico, #earnings .eb-ico, .earn-goal .eg-ico) > svg.ic.logo { width: 100% !important; height: 100% !important; max-width: none; padding: 0 !important; }
+.room-sign svg.ic.logo, body.tabs-open #tycoon .room-sign svg.ic.logo { width: 40px !important; height: 40px !important; padding: 0 !important; background: none !important; }
+/* With a menu open, messages pop up at the bottom (over the menu bar), not on its tabs. */
+body.tabs-open #toast, body:has(.modal:not([hidden])) #toast { top: auto !important; bottom: calc(env(safe-area-inset-bottom, 0px) + 112px) !important; }
