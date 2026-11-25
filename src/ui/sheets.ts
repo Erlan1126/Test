@@ -1,6 +1,7 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
 import { setSkyMode } from "../render/scenery";
 import { HAS_CITY, playerStarted } from "../edition";
+import { townPeople } from "../logic/props";
 import { VIP_SPEED } from "../logic/builds";
 import { track } from "../stats";
 import { GUIDE } from "../data/guide";
@@ -298,7 +299,7 @@ export class Sheets {
     const save = this.save, pay = this.host.payments;
     $("crystal-balance").textContent = fmt(save.crystals);
     const note = $("premium-note");
-    note.textContent = !pay ? t("Crystal packs are coming soon. You can still earn crystals from levels and the Sky Pass.")
+    note.textContent = !pay ? (HAS_CITY ? t("Crystal packs are coming soon. You can still earn crystals from goals, milestones and events.") : t("Crystal packs are coming soon. You can still earn crystals from levels and the Sky Pass."))
       : pay.live ? t("Everything here is cosmetic: it never helps you score.")
       : t("Test mode: packs are added instantly and nothing is charged.");
     note.classList.toggle("test", !!pay && !pay.live);
@@ -386,12 +387,12 @@ export class Sheets {
     const price = pay?.vipPrice?.() ?? formatPrice(VIP_CENTS);
     const ready = vipClaimReady(save, day);
     box.innerHTML = `<div class="vip-head"><b>👑 Skyrise VIP</b>${on ? `<span class="vip-on">${esc(t("Active"))}</span>` : ""}</div>
-      <ul><li>${esc(t("{n} 💎 every day", { n: VIP_DAILY_CRYSTALS }))}</li>${HAS_CITY ? `<li>${esc(t("An extra builder: build one more thing at once"))}</li><li>${esc(t("Everything builds {pct}% faster", { pct: Math.round((1 - VIP_SPEED) * 100) }))}</li>` : `<li>${esc(t("A free Extra rewind every day"))}</li>`}<li>${esc(t("The Platinum tower skin"))}</li></ul>
+      <ul><li>${esc(t("{n} 💎 every day", { n: VIP_DAILY_CRYSTALS }))}</li>${HAS_CITY ? `<li>${esc(t("An extra builder: build one more thing at once"))}</li><li>${esc(t("Everything builds {pct}% faster", { pct: Math.round((1 - VIP_SPEED) * 100) }))}</li>` : `<li>${esc(t("A free Extra rewind every day"))}</li>`}${HAS_CITY ? "" : `<li>${esc(t("The Platinum tower skin"))}</li>`}</ul>
       <button type="button" class="btn btn-primary wide" id="vip-btn"${on && !ready ? " disabled" : ""}>${on ? (ready ? esc(t("Collect today's VIP gift")) : esc(t("✓ Collected today"))) : esc(t("Join for {price} a month", { price }))}</button>
       <small>${on ? esc(t("Manage or cancel it any time in your store's subscriptions.")) : esc(t("Renews every month until you cancel. Cancel any time in your store's subscriptions."))}</small>`;
     $("vip-btn").addEventListener("click", () => {
       if (on) {
-        if (claimVip(save, day)) this.bought(t("+{n} 💎 and an Extra rewind. See you tomorrow!", { n: VIP_DAILY_CRYSTALS }));
+        if (claimVip(save, day)) this.bought(HAS_CITY ? t("+{n} 💎. See you tomorrow!", { n: VIP_DAILY_CRYSTALS }) : t("+{n} 💎 and an Extra rewind. See you tomorrow!", { n: VIP_DAILY_CRYSTALS }));
         return;
       }
       this.click();
@@ -605,8 +606,9 @@ export class Sheets {
   openHelp(): void {
     this.click();
     // Everything in the game, by topic: the goal, money, crystals and gems, towers.
-    $("help-list").innerHTML = GUIDE.map(sec => `<h3 class="sheet-sub help-sec">${esc(t(sec.title))}</h3>`
-      + sec.rows.map(r => `<div class="help-row"><span class="help-ico">${iconSvg(r.icon)}</span><span><b>${esc(t(r.title))}</b><small>${esc(t(r.text))}</small></span></div>`).join("")).join("");
+    // (The city game leaves out the tower game's rows and uses its own words.)
+    $("help-list").innerHTML = GUIDE.filter(sec => !(HAS_CITY && sec.tower)).map(sec => `<h3 class="sheet-sub help-sec">${esc(t((HAS_CITY && sec.cityTitle) || sec.title))}</h3>`
+      + sec.rows.filter(r => !(HAS_CITY && r.tower)).map(r => `<div class="help-row"><span class="help-ico">${iconSvg(r.icon)}</span><span><b>${esc(t((HAS_CITY && r.cityTitle) || r.title))}</b><small>${esc(t((HAS_CITY && r.city) || r.text))}</small></span></div>`).join("")).join("");
     closeModal($("settings"));
     openModal($("help"));
   }
@@ -692,6 +694,15 @@ export class Sheets {
       [fmt(save.best), t("best people")], [`${fmt(save.bestMeters)} m`, t("tallest")], [fmt(p.towers), t("towers")],
       [p.bestStreak, t("best streak")], [fmt(p.perfects), t("perfects")], [`${save.challenges.length}/${CHALLENGES.length}`, t("landmarks")],
     ];
+    if (HAS_CITY) {
+      // The city game's own numbers (its trophies are on the Buildings page).
+      stats.length = 0;
+      const opened = Object.values(save.tycoon.levels).filter(l => l > 0).length;
+      stats.push([fmt(townPeople(save)), t("people")], [1 + Math.max(0, save.chapters.done), t("City Hall level")], [opened, t("businesses")],
+        [Object.values(save.placed).filter(Boolean).length, t("decorations")], [save.cityTrophies.length, t("trophies")], [p.bestStreak, t("best streak")]);
+      const sel = document.querySelector<HTMLElement>('#profile [data-tab="journey"][aria-selected="true"], #profile [data-tab="trophies"][aria-selected="true"]');
+      if (sel) document.querySelector<HTMLElement>('#profile [data-tab="stats"]')?.click();
+    }
     $("profile-stats").innerHTML = stats.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
     const modeName = { classic: t("Classic"), daily: t("Daily"), challenge: t("Challenge"), zen: t("Zen") };
     $("history").innerHTML = save.history.length

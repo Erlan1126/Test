@@ -68,6 +68,8 @@ export interface FriendTown {
   name: string; hall: number; people: number;
   levels: Record<string, number>; props: Record<string, number>; placed: Record<string, string>;
   decor: string[]; land: string[];
+  /** Each business's paint (logic/paint.ts); missing from towns shared before paints. */
+  paint?: Record<string, string>;
 }
 /** A line on Buildaroo's city board. */
 export interface CityRow { rank: number; code: string; name: string; city: string; people: number; hall: number; avatar: string; avatarColor: number; frame: string }
@@ -218,6 +220,35 @@ export class Online {
       if (!res.ok) return undefined;
       return (await res.json() as { city: FriendCity }).city;
     } catch { return undefined; }
+  }
+
+  /** Leaves a gift in a friend's city (one a day per friend). Needs our own city shared. */
+  async sendGift(save: SaveData, persist: () => void, to: string): Promise<"ok" | "already" | "offline" | "error"> {
+    if (this.kind !== "global" || !save.playerId) return "offline";
+    try {
+      if (!(await this.ensureAccount(save, persist))) return "offline";
+      const post = () => fetch(`${API}/gift`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, to }) });
+      let res = await post();
+      // (Our city isn't shared yet: the caller shares it, then we try once more.)
+      if (res.status === 409) {
+        const why = String(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "");
+        if (why.startsWith("already")) return "already";
+        return "error";
+      }
+      if (!res.ok) { res = await post(); if (!res.ok) return "error"; }
+      return "ok";
+    } catch { return "offline"; }
+  }
+
+  /** Collects the gifts friends left (each is removed from the server once collected). */
+  async collectGifts(save: SaveData): Promise<{ from: string }[]> {
+    if (this.kind !== "global" || !save.playerId || !save.onlineToken) return [];
+    try {
+      const res = await fetch(`${API}/gifts`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken }) });
+      if (!res.ok) return [];
+      const list = ((await res.json()) as { gifts?: { from?: unknown }[] }).gifts ?? [];
+      return list.slice(0, 50).map(g => ({ from: String(g.from ?? "").slice(0, 24) }));
+    } catch { return []; }
   }
 
   /** Registers this player with the server the first time (and sets a recovery code).

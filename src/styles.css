@@ -4542,3 +4542,55 @@ body.visiting-town #visit-bar { z-index: 70; }
 #rank-list .city-row .buy { width: auto !important; margin: 0 !important; grid-column: auto !important; }
 /* Mayor Pip waits until you're home again. */
 body.visiting-town #mayor { display: none !important; }
+
+/* The gift button while visiting a friend's town. */
+#visit-gift { flex: none; width: 46px; height: 46px; padding: 0; font-size: 22px !important; line-height: 46px; border-radius: 50%; background: linear-gradient(180deg, #ffd86b, #ffb21f); color: #5a3300; font: 400 13px var(--display); box-shadow: 0 3px 0 #d48a00; }
+#visit-gift:disabled { background: #e9ebf5; color: #7b80a8; box-shadow: none; }
+#visit-gift[hidden] { display: none; }
+
+/* ---------- Building paint ---------- */
+#tcy-card .bc-paint { position: relative; z-index: 1; flex: none; width: 32px; height: 32px; margin-left: auto; margin-right: 6px; border: 0; border-radius: 50%; font-size: 16px; line-height: 32px; background: rgba(255, 255, 255, 0.28); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45); }
+#tcy-card .bc-paint:active { transform: scale(0.92); }
+#mayor-goals li.mayor-pick:has(.pick-sw) button { display: grid; grid-template-columns: 34px 1fr; column-gap: 12px; align-items: center; }
+#mayor-goals li.mayor-pick .pick-sw { grid-row: span 2; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--p1) 0 55%, var(--p2) 55%); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12); }
+#mayor-goals li.mayor-pick.on button { border-color: #5a3fe0; box-shadow: 0 0 0 3px rgba(90, 63, 224, 0.18); }
+
+/* ---------- Season Pass ---------- */
+.sp-card { margin: 4px 0 12px; padding: 14px; border-radius: 20px; color: #2a1f3e; background: linear-gradient(160deg, color-mix(in srgb, var(--se) 30%, #fff), color-mix(in srgb, var(--se2) 30%, #fff)); box-shadow: 0 6px 16px rgba(60, 40, 140, 0.12); }
+.sp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.sp-ico { font-size: 28px; }
+.sp-head b { display: block; font: 400 16px var(--display); }
+.sp-head small { font-size: 12px; font-weight: 700; color: #6a5f98; }
+.sp-tracks { display: flex; gap: 6px; margin-top: 10px; }
+.sp-labels { flex: none; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding-top: 18px; padding-bottom: 16px; }
+.sp-labels span { height: 52px; display: flex; align-items: center; font: 400 10px var(--display); color: #6a5f98; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; }
+.sp-row { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.sp-col { flex: none; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 6px; scroll-snap-align: start; }
+.sp-col > b { font: 400 12px var(--display); color: #6a5f98; }
+.sp-col.on > b { color: #5a3fe0; }
+.sp-col > em { font-style: normal; font-size: 10px; font-weight: 800; color: #8a80b0; }
+.sp-cell { position: relative; width: 64px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; border: 0; border-radius: 12px; background: rgba(255, 255, 255, 0.85); color: #2a1f3e; }
+.sp-cell small { font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.sp-cell.lock { background: rgba(255, 255, 255, 0.5); }
+.sp-cell.lock::after { content: "🔒"; position: absolute; top: 2px; right: 4px; font-size: 10px; }
+.sp-cell.ready { background: linear-gradient(180deg, #ffe46b, #ffb21f); box-shadow: 0 3px 0 #d48a00; animation: sp-glow 1.4s ease-in-out infinite; }
+.sp-cell.got { background: #d9f7e4; color: #19a87a; }
+.sp-cell:disabled { opacity: 1; }
+.sp-sw { width: 22px; height: 16px; border-radius: 5px; background: linear-gradient(135deg, var(--p1) 0 55%, var(--p2) 55%); }
+@keyframes sp-glow { 50% { transform: translateY(-2px); } }
+.sp-note { margin: 8px 0 0; font-size: 12px; font-weight: 800; color: #5a3fe0; text-align: center; }
+
+/* ---------- Next population milestone ---------- */
+.ms-card { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(160deg, #e8f4ff, #eef0ff); color: #2a1f3e; }
+.ms-ico { font-size: 28px; }
+.ms-card > span:last-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ms-card b { font: 400 13px var(--display); }
+.ms-card small { font-size: 12px; font-weight: 700; color: #6a5f98; }
+.ms-card .ev-bar i { background: linear-gradient(90deg, #3fa4ff, #5a3fe0); }
+
+/* The city game leaves out the tower game's shop shelves (tower skins, tower boosts). */
+body.city-game .tower-only, body.city-game #shop [data-tab="boosts"], body.city-game #shop [data-panel="boosts"] { display: none !important; }
+body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab="trophies"], body.city-game #profile [data-panel="trophies"], body.city-game #history { display: none !important; }
+.sp-legend { display: flex; justify-content: space-between; margin: 8px 2px 0; font: 400 10px var(--display); color: #6a5f98; }
+#visit-who small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#visit-who > span:last-child { min-width: 0; }

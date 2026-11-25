@@ -153,3 +153,28 @@ export function pumpkins(g: THREE.Object3D, x: number, y: number, z: number, h: 
   }
   return (t, night) => { glow.emissiveIntensity = 0.3 + night * (1.4 + 0.3 * Math.sin(t * 6)); };
 }
+
+/** The night market: little stalls with striped awnings and glowing lanterns that open in
+ *  the square after dark (hidden by day). Returns its tick. */
+export function nightMarket(g: THREE.Object3D, x: number, y: number, z: number, h: number, own: Own): (t: number, night: number) => void {
+  const M = new THREE.Group();
+  M.userData.dynamic = true;
+  const wood = std(own, "#9a6a3e", { roughness: 0.8 }), cloth = ["#ff5f6b", "#ffd23a", "#5ee0a0"].map(c => std(own, c)), white = std(own, "#ffffff");
+  const lamp = own(new THREE.MeshStandardMaterial({ color: "#ffd99a", emissive: 0xffa640, emissiveIntensity: 1.5 }));
+  lamp.userData.dynamic = true;
+  const goods = ["#ff8a3c", "#ff4d6a", "#ffe066", "#8ad46a"].map(c => std(own, c, { roughness: 0.6 }));
+  [[-0.55, 0], [0.05, -0.5], [0.55, 0.2]].forEach(([px, pz], i) => {
+    const sx = x + px * h, sz = z + pz * h, w = h * 0.42, d = h * 0.28;
+    M.add(new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.22, d).translate(sx, y + h * 0.11, sz), wood));
+    for (const ox of [-1, 1]) M.add(new THREE.Mesh(new THREE.CylinderGeometry(h * 0.015, h * 0.015, h * 0.42, 5).translate(sx + ox * w * 0.45, y + h * 0.43, sz - d * 0.4), white));
+    for (let st = 0; st < 4; st++) M.add(new THREE.Mesh(new THREE.BoxGeometry(w / 4, h * 0.03, d * 1.2).rotateX(-0.25).translate(sx - w * 0.375 + st * (w / 4), y + h * 0.6, sz), st % 2 ? white : cloth[i]));
+    for (let k = 0; k < 3; k++) M.add(new THREE.Mesh(new THREE.SphereGeometry(h * 0.04, 6, 4).translate(sx - w * 0.25 + k * w * 0.25, y + h * 0.25, sz + d * 0.2), goods[(i + k) % goods.length]));
+    // Lanterns hanging from the awning's front edge.
+    for (let k = 0; k < 3; k++) M.add(new THREE.Mesh(new THREE.SphereGeometry(h * 0.035, 8, 6).translate(sx - w * 0.35 + k * w * 0.35, y + h * 0.5, sz + d * 0.62), lamp));
+  });
+  g.add(M);
+  return (t, night) => {
+    M.visible = night > 0.45;
+    if (M.visible) lamp.emissiveIntensity = 0.8 + night * 1.4 + Math.sin(t * 3) * 0.15;
+  };
+}

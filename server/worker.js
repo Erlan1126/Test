@@ -52,7 +52,7 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/cityboard", "/spire"].includes(url.pathname)
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/cityboard", "/gift", "/gifts", "/spire"].includes(url.pathname)
       || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
@@ -235,6 +235,38 @@ async function rankings(request, url, env, now) {
       return { rank: i + 1, code: r.code, name: c.name, city: c.town?.name ?? "", people: c.town?.people ?? 0, hall: c.town?.hall ?? 1, avatar: c.avatar, avatarColor: c.avatarColor, frame: c.frame };
     });
     return json({ rows });
+  }
+
+  // Buildaroo gifts: leave one for a friend whose city you visit (once a day per friend), and
+  // collect the ones left for you.
+  if (url.pathname === "/gift" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const me = await auth(body);
+    if (!me) return json({ error: "not allowed" }, 403);
+    const to = String(body?.to ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    const mine = await db.prepare("SELECT code, data FROM cities WHERE player = ?").bind(me.id).first();
+    if (!mine) return json({ error: "share your city first" }, 409);
+    if (!to || to === mine.code) return json({ error: "bad friend" }, 400);
+    if (!(await db.prepare("SELECT 1 FROM cities WHERE code = ?").bind(to).first())) return json({ error: "not found" }, 404);
+    const waiting = await db.prepare("SELECT COUNT(*) AS n FROM gifts WHERE to_code = ?").bind(to).first();
+    if ((waiting?.n ?? 0) >= 50) return json({ error: "full" }, 429);
+    let name = "";
+    try { name = String(JSON.parse(mine.data).name ?? "").slice(0, 24); } catch { /* (no name) */ }
+    const r = await db.prepare("INSERT OR IGNORE INTO gifts (to_code, from_code, from_name, day, at) VALUES (?, ?, ?, ?, ?)")
+      .bind(to, mine.code, name || "A friend", Math.floor(now / 864e5), now).run();
+    if (!r.meta?.changes) return json({ error: "already sent today" }, 409);
+    return json({ ok: true });
+  }
+  if (url.pathname === "/gifts" && request.method === "POST") {
+    const body = await request.json().catch(() => null);
+    const me = await auth(body);
+    if (!me) return json({ error: "not allowed" }, 403);
+    const mine = await db.prepare("SELECT code FROM cities WHERE player = ?").bind(me.id).first();
+    if (!mine) return json({ gifts: [] });
+    const { results } = await db.prepare("SELECT id, from_code, from_name, at FROM gifts WHERE to_code = ? ORDER BY at LIMIT 50").bind(mine.code).all();
+    const list = results ?? [];
+    if (list.length) await db.prepare(`DELETE FROM gifts WHERE id IN (${list.map(() => "?").join(",")})`).bind(...list.map(g => g.id)).run();
+    return json({ gifts: list.map(g => ({ from: g.from_name, code: g.from_code, at: g.at })) });
   }
 
   if (url.pathname === "/recovery" && request.method === "POST") {
@@ -584,13 +616,14 @@ function cleanTown(t) {
   const n = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.floor(Number(v)))) : 0);
   const id = (v) => String(v ?? "").replace(/[^a-z0-9_]/g, "").slice(0, 24);
   const lot = (v) => (/^g:-?\d{1,3},-?\d{1,3}$/.test(String(v)) ? String(v) : "");
-  const levels = {}, props = {}, placed = {};
+  const levels = {}, props = {}, placed = {}, paint = {};
   for (const [k, v] of Object.entries(t.levels && typeof t.levels === "object" ? t.levels : {}).slice(0, 40)) if (id(k)) levels[id(k)] = n(v, 100000);
   for (const [k, v] of Object.entries(t.props && typeof t.props === "object" ? t.props : {}).slice(0, 300)) if (lot(k)) props[lot(k)] = n(v, 5);
   for (const [k, v] of Object.entries(t.placed && typeof t.placed === "object" ? t.placed : {}).slice(0, 20)) if (lot(k) && id(v)) placed[lot(k)] = id(v);
+  for (const [k, v] of Object.entries(t.paint && typeof t.paint === "object" ? t.paint : {}).slice(0, 40)) if (id(k) && id(v)) paint[id(k)] = id(v);
   return {
     name: cleanName(t.name), hall: n(t.hall, 99), people: n(t.people, 1e9),
-    levels, props, placed,
+    levels, props, placed, paint,
     decor: (Array.isArray(t.decor) ? t.decor : []).slice(0, 30).map(id).filter(Boolean),
     land: (Array.isArray(t.land) ? t.land : []).slice(0, 10).map(id).filter(Boolean),
   };

@@ -12,7 +12,7 @@ let version = 0, started = false;
 
 /** Plain float vertices (the files are compressed), and lit materials throughout, so the
  *  models merge into the town's batched meshes and take its sun and shadows. */
-function prep(root: THREE.Object3D): void {
+function prep(root: THREE.Object3D, blender = false): void {
   root.traverse(o => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
@@ -27,6 +27,18 @@ function prep(root: THREE.Object3D): void {
     // (Some files carry no normals: give them crisp, flat-shaded ones.)
     if (!m.geometry.attributes.normal) { const flat = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry; flat.computeVertexNormals(); m.geometry = flat; }
     const src = m.material as THREE.Material & { color?: THREE.Color; map?: THREE.Texture | null };
+    // Models made in Blender (launch/blender, "bl_" names) keep their colours per vertex (the
+    // baked shading is in them) and their glowing parts (lamps, clock faces) keep the glow.
+    if (blender) {
+      const sm = src as THREE.MeshStandardMaterial;
+      const glow = !!sm.emissive && (sm.emissive.r + sm.emissive.g + sm.emissive.b) > 0;
+      const mat = new THREE.MeshStandardMaterial({ color: sm.color?.clone() ?? new THREE.Color(0xffffff), vertexColors: !!geo.attributes.color && !glow, roughness: 0.75, metalness: 0,
+        emissive: glow ? sm.emissive.clone() : new THREE.Color(0), emissiveIntensity: glow ? Math.min(2, sm.emissiveIntensity ?? 1) : 0 });
+      mat.name = src.name;
+      m.material = mat;
+      m.castShadow = false; m.receiveShadow = true;
+      return;
+    }
     // (Colours painted per vertex become the material's own colour, their average: the town's
     // batching keeps one colour per material.)
     const col = (src.color ?? new THREE.Color(0xffffff)).clone(), vc = geo.attributes.color;
@@ -94,7 +106,7 @@ function start(): void {
       const bin = atob(b64), buf = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
       loader.parse(buf.buffer, "", gl => {
-        prep(gl.scene);
+        prep(gl.scene, name.startsWith("bl_"));
         if (gl.animations.length) bakePose(gl.scene, gl.animations);
         gl.scene.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(gl.scene);

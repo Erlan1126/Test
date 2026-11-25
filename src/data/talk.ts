@@ -32,17 +32,27 @@ export const TALK_DECOR: Record<string, string> = {
   statue: "Who's the statue of? The founder? Fancy!",
   market: "Fresh fruit at the market this morning!",
   stadium: "Big game at the stadium tonight!",
+  clocktower: "Meet me under the clock tower at noon!",
+  lighthouse: "The lighthouse looks magical at night.",
+  ferris: "You can see the whole city from the ferris wheel!",
+  airport: "Just flew in. What a view on the way down!",
 };
+export const TALK_NIGHT = ["The night market has the best snacks!", "I love the lanterns in the square at night."];
+export const TALK_WEEKEND = ["Fireworks over the sea tonight! Don't miss it."];
+export const TALK_RUSH = ["Rush hour! The streets are packed.", "Stuck in traffic again... worth it for this city."];
 /** Said about the business just opened: {name} is the business. */
 export const TALK_NEW = "Have you tried the new {name} yet?";
 
 /** Picks a line for this moment. `r` is a random number 0-1. */
-export function pickTalk(o: { season: CitySeason; weather: string; placed: string[]; newest?: string }, r: number): { text: string; name?: string } {
+export function pickTalk(o: { season: CitySeason; weather: string; placed: string[]; newest?: string; night?: boolean; weekend?: boolean; rush?: boolean }, r: number): { text: string; name?: string } {
   const pool: { text: string; name?: string }[] = TALK_ANY.map(text => ({ text }));
   if (o.season) for (const text of TALK_SEASON[o.season]) pool.push({ text }, { text });
   if (o.weather === "rain") for (const text of TALK_RAIN) pool.push({ text }, { text });
   if (o.weather === "snow") for (const text of TALK_SNOW) pool.push({ text }, { text });
   for (const id of o.placed) if (TALK_DECOR[id]) pool.push({ text: TALK_DECOR[id] }, { text: TALK_DECOR[id] });
+  if (o.night) for (const text of TALK_NIGHT) pool.push({ text }, { text });
+  if (o.weekend) for (const text of TALK_WEEKEND) pool.push({ text }, { text }, { text });
+  if (o.rush) for (const text of TALK_RUSH) pool.push({ text }, { text });
   if (o.newest) pool.push({ text: TALK_NEW, name: o.newest }, { text: TALK_NEW, name: o.newest });
   return pool[Math.min(pool.length - 1, Math.floor(r * pool.length))];
 }

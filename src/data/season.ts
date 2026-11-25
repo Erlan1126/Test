@@ -83,3 +83,14 @@ export function townWeather(now = Date.now()): WeatherKind {
   const wetMonth = m === 4 || m === 10 || m === 11;
   return r < (wetMonth ? 0.22 : 0.12) ? "rain" : "clear";
 }
+
+/** Friday and Saturday nights (and the small hours after): the weekend fireworks show. */
+export function isWeekendNight(d = new Date()): boolean {
+  const day = d.getDay(), h = d.getHours();
+  return ((day === 5 || day === 6) && h >= 18) || ((day === 6 || day === 0) && h < 2);
+}
+/** Rush hour on weekdays (7:30-9:30 and 17:00-19:00): more cars on the streets. */
+export function isRushHour(d = new Date()): boolean {
+  const day = d.getDay(), m = d.getHours() * 60 + d.getMinutes();
+  return day >= 1 && day <= 5 && ((m >= 450 && m < 570) || (m >= 1020 && m < 1140));
+}

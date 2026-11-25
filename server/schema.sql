@@ -126,6 +126,19 @@ CREATE TABLE IF NOT EXISTS cities (
   data TEXT NOT NULL
 );
 
+-- Buildaroo gifts: a player visiting a friend's city leaves a small gift (one per friend a
+-- day); it waits here until the friend opens the game and collects it.
+CREATE TABLE IF NOT EXISTS gifts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  to_code TEXT NOT NULL,
+  from_code TEXT NOT NULL,
+  from_name TEXT NOT NULL,
+  day INTEGER NOT NULL,
+  at INTEGER NOT NULL,
+  UNIQUE (from_code, to_code, day)
+);
+CREATE INDEX IF NOT EXISTS gifts_to ON gifts (to_code);
+
 -- The Community Spire: each player's perfect floors (from checked ranked towers) per week;
 -- the week's shared tower is their sum.
 CREATE TABLE IF NOT EXISTS spire (

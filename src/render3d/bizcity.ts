@@ -21,7 +21,8 @@ import { hydrant, mailbox, plazaPiece, roundCenter, seatPiece, type DecoKit } fr
 import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } from "./trees";
 import { buildCityHall } from "./cityhall";
 import { buildHouse, houseDesign, type HouseKit } from "./houses";
-import { bandstand, blossomArch, blossomTree, festivalUmbrellas, holidayTree, lampLights, pumpkins } from "./winter";
+import { isRushHour, isWeekendNight } from "../data/season";
+import { bandstand, blossomArch, blossomTree, festivalUmbrellas, holidayTree, lampLights, nightMarket, pumpkins } from "./winter";
 import { seasonInfo } from "../data/season";
 import { buildPlaced, type PlaceKit } from "./placemodels";
 
@@ -1148,6 +1149,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     else if (cafe.season === "spring") blossomTree(H, sqx, 0.08, sqz, 2.0, own);
     else if (cafe.season === "summer") festivalUmbrellas(H, sqx, 0.08, sqz, 1.6, own);
     else if (cafe.season === "halloween") { const tk = pumpkins(H, sqx, 0.08, sqz, 1.4, own); townTicksEarly.push(tk); }
+    // The night market opens on the other side of the steps after dark.
+    if (HAS_CITY && (cafe.hall ?? 0) >= 2) townTicksEarly.push(nightMarket(H, -sqx - 0.1, 0.08, sqz, 1.5, own));
     // Clipped trees in stone planters at the square's corners.
     for (const [px, pz] of [[-2.5, D / 2 + 0.9], [2.5, D / 2 + 0.9], [-2.6, -1.4], [2.6, -1.4]]) H.add(new THREE.Mesh(gardenGeometry("topiary", 3).scale(1.5, 1.5, 1.5).translate(px, 0.08, pz), natureM));
     // Facing the town's middle.
@@ -1839,7 +1842,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
           prop.rotation.x = t * 40;
         });
       }
-      if (decor.has("fireworks")) {
+      // Fireworks: every night with the Fireworks decoration, and on Friday and Saturday
+      // nights for everyone (the weekend show).
+      if (HAS_CITY || decor.has("fireworks")) {
+        const always = decor.has("fireworks");
         // Bursts over the sea after dark.
         const N = 48, bursts = [0, 1, 2].map(k => {
           const geo = new THREE.BufferGeometry();
@@ -1856,7 +1862,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         parts.push((t, night) => {
           for (const q of bursts) {
             const per = 3.2, ph = ((t + q.k * 1.1) % per) / per, lap = Math.floor((t + q.k * 1.1) / per);
-            q.pts.visible = night > 0.5 && ph < 0.75;
+            q.pts.visible = night > 0.5 && ph < 0.75 && (always || isWeekendNight());
             if (!q.pts.visible) continue;
             const cx3 = fa + (fb - fa) * (0.25 + ((lap * 37 + q.k * 13) % 50) / 100), cy = 4 + (lap % 3) * 0.6, r = 1.4 * Math.sqrt(ph / 0.75);
             const pos = q.geo.getAttribute("position") as THREE.BufferAttribute;
@@ -2168,6 +2174,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // (Kept whole, not merged with the town: the Blender model's baked shading is in its
     // vertex colours, which a merge would drop.)
     kit: (name, w) => { const m = kitPlace(name, w); if (m) m.obj.userData.dynamic = true; return m; },
+    tick: f => { townTicks.push(f); },
   };
   const houseKit: HouseKit = { c: (c, r = 0.7, m = 0) => mats.c(c, r, m), win: winMat };
   /** A building on a lot, drawn in code (houses.ts), sized by level: a house at first, then a
@@ -2918,17 +2925,19 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const starts: { i: number; j: number; d: [number, number] }[] = [];
   for (const [i, j] of nodes) for (const d of exits(i, j)) starts.push({ i, j, d });
   const nCars = Math.min(Math.round(5 + busy * 11), starts.length);
-  const traffic = starts.length ? Array.from({ length: nCars }, (_, k) => {
-    const st0 = starts[Math.floor((k * starts.length) / nCars)];
+  // (At rush hour a few more cars join in: they wait, hidden, the rest of the day.)
+  const nRush = HAS_CITY ? Math.min(Math.round(3 + busy * 5), Math.max(0, starts.length - nCars)) : 0;
+  const traffic = starts.length ? Array.from({ length: nCars + nRush }, (_, k) => {
+    const rush = k >= nCars, st0 = starts[rush ? Math.floor(((k - nCars + 0.5) * starts.length) / Math.max(1, nRush) + 1) % starts.length : Math.floor((k * starts.length) / nCars)];
     const v = makeCar(BODY[(k + 5) % BODY.length], k % 4 === 1);
-    return { v, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: (k % 3) * 0.3, sp: 1.15 + (k % 4) * 0.15, wait: 0, ahead: new THREE.Vector3(), lane: LANE, big: false };
+    return { v, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: (k % 3) * 0.3, sp: 1.15 + (k % 4) * 0.15, wait: 0, ahead: new THREE.Vector3(), lane: LANE, big: false, rush };
   }) : [];
   // City buses: the first once the town has a few hundred people, more as it fills up. They
   // go slower than the cars, and the cars keep a longer gap behind them.
   const nBus = !starts.length || !HAS_CITY ? 0 : busy > 0.9 ? 3 : busy > 0.6 ? 2 : busy > 0.25 ? 1 : 0;
   for (let k = 0; k < nBus; k++) {
     const st0 = starts[Math.floor(((k + 0.5) * starts.length) / nBus + 3) % starts.length];
-    traffic.push({ v: makeBus(k), i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: 0.5, sp: 0.85, wait: 0, ahead: new THREE.Vector3(), lane: LANE, big: true });
+    traffic.push({ v: makeBus(k), i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: 0.5, sp: 0.85, wait: 0, ahead: new THREE.Vector3(), lane: LANE, big: true, rush: false });
   }
   const segAt = (sg: Seg, u: number, out: THREE.Vector3, dir: THREE.Vector3) => {
     const m = 1 - u;
@@ -2964,12 +2973,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return { p, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d, FOOT), turn: false, u: (k % 5) * 0.2, sp: 0.32 + (k % 4) * 0.05, lane: FOOT, ph: k * 1.7 };
   }) : [];
   const tPos = new THREE.Vector3(), tDir = new THREE.Vector3(), tGap = new THREE.Vector3();
+  let rushNow = isRushHour(), rushAt = 0;
   const trafficLive = (dt: number) => {
+    const now = performance.now();
+    if (now - rushAt > 30e3) { rushAt = now; rushNow = isRushHour(); }
     for (const c of traffic) {
+      if (c.rush) { c.v.visible = rushNow; if (!rushNow) continue; }
       // Wait for the car in front (but never forever, so two cars can't block each other).
       let blocked = false;
       for (const o of traffic) {
-        if (o === c) continue;
+        if (o === c || (o.rush && !rushNow)) continue;
         tGap.copy(o.v.position).sub(c.v.position);
         const ahead = tGap.x * c.ahead.x + tGap.z * c.ahead.z, side = Math.abs(tGap.x * c.ahead.z - tGap.z * c.ahead.x);
         if (ahead > 0.05 && ahead < 0.95 + (o.big ? 0.45 : 0) + (c.big ? 0.45 : 0) && side < 0.32) { blocked = true; break; }

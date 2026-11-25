@@ -331,3 +331,24 @@ describe("friends' cities", () => {
     expect((await worker.fetch(new Request("https://api.example/city?code=ZZZZZZ"), env as never)).status).toBe(404);
   });
 });
+
+describe("Buildaroo gifts", () => {
+  it("leaves one gift a day per friend, and the friend collects it once", async () => {
+    const t1 = await register(P1), t2 = await register(P2);
+    const town = { name: "x", hall: 2, people: 10, levels: {}, props: {}, placed: {}, decor: [], land: [], paint: { coffee: "mint" } };
+    // Sending needs our own shared city.
+    expect((await call("/gift", { player: P1, token: t1, to: "ABCDEF" })).status).toBe(409);
+    const a = (await call("/city", { player: P1, token: t1, city: { name: "Ana", town } })).body.code;
+    const b = (await call("/city", { player: P2, token: t2, city: { name: "Bo", town } })).body.code;
+    expect((await call("/gift", { player: P1, token: "nope", to: b })).status).toBe(403);
+    expect((await call("/gift", { player: P1, token: t1, to: a })).status).toBe(400);
+    expect((await call("/gift", { player: P1, token: t1, to: b })).status).toBe(200);
+    expect((await call("/gift", { player: P1, token: t1, to: b })).status).toBe(409);
+    const got = await call("/gifts", { player: P2, token: t2 });
+    expect(got.body.gifts).toEqual([expect.objectContaining({ from: "Ana", code: a })]);
+    expect((await call("/gifts", { player: P2, token: t2 })).body.gifts).toEqual([]);
+    // (The town's paints are kept for visitors.)
+    const seen = await (await worker.fetch(new Request(`https://api.example/city?code=${b}`), env as never)).json() as any;
+    expect(seen.city.town.paint).toEqual({ coffee: "mint" });
+  });
+});

@@ -86,6 +86,8 @@ import { hallLevel, claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offl
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
 import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, DAILY_REWARDS, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
+import { openGifts } from "./logic/gifts";
+import { bizColors, normalizePaint, ownsPaint } from "./logic/paint";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
@@ -332,7 +334,7 @@ export class App implements DailyHost {
       this.payments.onVip = on => {
         if (!setVip(this.save, on)) { this.persist(); return; }
         this.persist();
-        if (on) { track("purchase_done", { pack: "vip", test }, false); this.sound.purchase(); toast(t("👑 Skyrise VIP is on! Collect your daily gift in the Shop.")); }
+        if (on) { track("purchase_done", { pack: "vip", test }, false); this.sound.purchase(); toast(HAS_CITY ? t("👑 VIP is on! Collect your daily gift in the Shop.") : t("👑 Skyrise VIP is on! Collect your daily gift in the Shop.")); }
         this.refresh();
         this.sheets?.refreshShop();
       };
@@ -347,7 +349,7 @@ export class App implements DailyHost {
       // Towers built offline last time, and a first backup.
       void this.online.flush(this.save, () => this.persist());
       this.scheduleBackup(3000);
-      void this.checkTournament();
+      if (!HAS_CITY) void this.checkTournament();
     });
 
     preloadLogo(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`);
@@ -365,9 +367,12 @@ export class App implements DailyHost {
     void this.restoreBackup();
     onBackButton(() => this.back());
     // Challenge links: skyrise://c/ID in the app, ?vs=ID on the website.
-    onOpenUrl(u => this.openChallengeLink(u));
-    if (challengeIdFrom(location.search)) this.openChallengeLink(location.search);
-    setTimeout(() => void this.checkTries(), 6000);
+    // (Tower challenges belong to the tower game.)
+    if (!HAS_CITY) {
+      onOpenUrl(u => this.openChallengeLink(u));
+      if (challengeIdFrom(location.search)) this.openChallengeLink(location.search);
+      setTimeout(() => void this.checkTries(), 6000);
+    }
     onAppHidden(() => {
       void scheduleReminders(this.reminderInfo());
       this.scheduleBackup(0);
@@ -420,7 +425,7 @@ export class App implements DailyHost {
 
   reminderInfo(): ReminderInfo {
     const v = streakView(this.save);
-    const city = isOpen(this.save, "city"), left = rentFullIn(this.save), hp = holidayProgress(this.save);
+    const city = !HAS_CITY && isOpen(this.save, "city"), left = rentFullIn(this.save), hp = holidayProgress(this.save);
     return {
       doneToday: v.doneToday, streak: v.count, rentFull: city && left <= 0,
       rentFullAt: city && left > 0 && this.save.rent.last ? Date.now() + left * 36e5 : undefined,
@@ -821,6 +826,7 @@ export class App implements DailyHost {
     $("place-cancel").addEventListener("click", () => { this.sound.click(); this.endMove(); });
     $("help-btn").addEventListener("click", () => this.sheets.openHelp());
     $("visit-back").addEventListener("click", () => { this.sound.click(); this.endVisit(); });
+    $("visit-gift").addEventListener("click", () => { void this.sendGift(); });
     $("goals-btn").addEventListener("click", () => { this.sound.ensure(); this.sound.click(); openModal($("goals")); });
     wireModal($("goals"));
     wireModal($("daily-rewards"));
@@ -1731,6 +1737,7 @@ export class App implements DailyHost {
     // Skins and the shop are one place now; it opens with the first skins.
     show("shop-btn", isOpen(save, "skins"), fresh("skins") || (isOpen(save, "shop") && fresh("shop")));
     refreshPass(save, now);
+    if (HAS_CITY) { carriedOver.length = 0; lateChest.opened = false; }
     if (carriedOver.length) {
       toast(tn(carriedOver.length, "Last season's reward was added: {names}", "Last season's rewards were added: {names}", { names: carriedOver.map(rewardText).join(", ") }));
       carriedOver.length = 0;
@@ -1741,7 +1748,7 @@ export class App implements DailyHost {
       toast(t("Yesterday's chest opened for you: +{stars} ★", { stars: CHEST.stars }));
       this.persist();
     }
-    show("pass-btn", isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
+    show("pass-btn", !HAS_CITY && isOpen(save, "pass"), fresh("pass") || unclaimed(save) > 0);
     show("ranks-btn", this.online.ready && isOpen(save, "ranks"), fresh("ranks"));
     // Goals gathers missions, the pass and rankings; its dot means one of them has news.
     // Missions, the Sky Pass and rankings have their own places in the dock (no Goals menu).
@@ -1790,6 +1797,7 @@ export class App implements DailyHost {
         name: save.cityName || t("My city"), hall: hallLevel(save), people: townPeople(save),
         levels: { ...save.tycoon.levels }, props: Object.fromEntries(Object.entries(save.props).filter(([k, v]) => k.startsWith("g:") && v > 0)),
         placed: placedMap(save), decor: [...save.decor], land: [...save.land],
+        paint: Object.fromEntries(Object.entries(save.paint).filter(([, p]) => ownsPaint(save, p))),
       } } : {}),
     };
   }
@@ -1798,8 +1806,40 @@ export class App implements DailyHost {
   private shareTownSoon(): void {
     if (!HAS_CITY || !playerStarted(this.save) || this.online.kind !== "global" || Date.now() - this.townShared < 10 * 60e3) return;
     this.townShared = Date.now();
-    void this.shareCity();
+    void this.shareCity().then(() => this.collectGifts());
   }
+
+  /** Gifts friends left while we were away: paid, with a thank-you toast. */
+  private async collectGifts(): Promise<void> {
+    const list = await this.online.collectGifts(this.save);
+    if (!list.length) return;
+    const r = openGifts(this.save, list.length);
+    this.persist(); this.refresh();
+    const names = [...new Set(list.map(g => displayName(g.from) || t("A friend")))];
+    const who = names.length === 1 ? names[0] : t("{name} and {n} more", { name: names[0], n: names.length - 1 });
+    this.sound.unlock(); fireworks(2, () => this.sound.firework());
+    toast(tn(list.length, "🎁 {who} sent you a gift! +{cash} · +{gems} 💎", "🎁 {who} sent you {n} gifts! +{cash} · +{gems} 💎", { who, n: list.length, cash: tycoonCoins(r.cash), gems: r.crystals }));
+    track("gifts_opened", { n: list.length }, false);
+  }
+
+  /** Leaves a gift in the friend's town we're visiting. */
+  private async sendGift(): Promise<void> {
+    const code = this.visitCode, btn = $("visit-gift") as HTMLButtonElement;
+    if (!code || btn.disabled) return;
+    btn.disabled = true;
+    this.sound.click();
+    // (Our own city must be shared first: the server needs our friend code.)
+    if (!this.save.friendCode) await this.shareCity();
+    const r = await this.online.sendGift(this.save, () => this.persist(), code);
+    if (r === "ok" || r === "already") {
+      this.save.giftsSent = { ...(this.save.giftsSent ?? {}), [code]: dayKey(0, Date.now()) };
+      this.persist();
+      btn.textContent = "✓"; btn.setAttribute("aria-label", t("🎁 Sent!"));
+      if (r === "ok") { this.sound.purchase(); confetti(); toast(t("🎁 Gift sent! They'll get it next time they play.")); track("gift_sent", {}, false); }
+      else toast(t("You already sent a gift here today. Come back tomorrow!"));
+    } else { btn.disabled = false; toast(r === "offline" ? t("You're offline: try again soon") : t("Couldn't send the gift. Try again soon.")); }
+  }
+  private visitCode = "";
 
   shareCity(): Promise<string> { return this.online.shareCity(this.save, () => this.persist(), this.myCity()); }
 
@@ -1815,6 +1855,9 @@ export class App implements DailyHost {
     ghost.props = { ...tw.props };
     ghost.placed = Object.fromEntries(Object.entries(tw.placed).map(([lot, id]) => [id, lot]));
     ghost.decor = [...tw.decor];
+    // (Their paints show as they are: the ghost owns every paint it wears.)
+    ghost.paint = normalizePaint(tw.paint);
+    ghost.paints = Object.values(ghost.paint);
     ghost.land = [...tw.land] as typeof ghost.land;
     ghost.chapters = { ...ghost.chapters, done: Math.max(0, tw.hall - 1) };
     ghost.cityName = tw.name;
@@ -1834,7 +1877,11 @@ export class App implements DailyHost {
     // Buildaroo: a friend's town, drawn like ours, with the camera over it.
     if (HAS_CITY && city.town) {
       this.visiting = city;
+      this.visitCode = code;
       this.visitTown = this.townView(city.town);
+      const gb = $("visit-gift") as HTMLButtonElement, sent = this.save.giftsSent?.[code] === dayKey(0, Date.now());
+      gb.hidden = code === this.save.friendCode || this.online.kind !== "global";
+      gb.disabled = sent; gb.textContent = sent ? "✓" : "🎁"; gb.setAttribute("aria-label", sent ? t("🎁 Sent!") : t("🎁 Gift"));
       this.tycoon.closeTabs();
       this.sound.whoosh();
       document.body.classList.add("visiting", "visiting-town");
@@ -1855,6 +1902,7 @@ export class App implements DailyHost {
   endVisit(): void {
     if (!this.visiting) return;
     this.visiting = null;
+    this.visitCode = "";
     this.visitTown = null;
     this.cityView = null;
     document.body.classList.remove("visiting", "visiting-town");
@@ -2830,7 +2878,8 @@ export class App implements DailyHost {
     // (Nothing in the town changes while a tower is being built: skip the work each frame.)
     if (this.state === "playing" && this.bizCache.key) return this.bizCache.list;
     const s = this.save, lots: BizLot[] = BUSINESSES.map((b, i) => ({
-      id: b.id, c: b.color[0], c2: b.color[1], s: stageNow(s, b.id),
+      ...((c: [string, string]) => ({ c: c[0], c2: c[1] }))(bizColors(s, b.id, b.color as [string, string])),
+      id: b.id, s: stageNow(s, b.id),
       state: (s.tycoon.levels[b.id] ?? 0) > 0 ? "open" : unlockedBusiness(s, i) ? "lease" : "locked",
       ready: (s.tycoon.levels[b.id] ?? 0) > 0 && readyStage(s, b.id) > 0,
     }));

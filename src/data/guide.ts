@@ -1,8 +1,8 @@
 // "How Skyhaven works": every word, number and button in the game, explained in one short
 // line (the ? on the top bar, and Settings > How to play). Plain words a new player gets.
 
-export interface GuideRow { icon: string; title: string; text: string }
-export interface GuideSection { title: string; rows: GuideRow[] }
+export interface GuideRow { icon: string; title: string; text: string; /** Only in the tower game. */ tower?: boolean; /** The city game's own words for it. */ city?: string; cityTitle?: string }
+export interface GuideSection { title: string; rows: GuideRow[]; tower?: boolean; cityTitle?: string }
 
 export const GUIDE: GuideSection[] = [
   {
@@ -10,7 +10,7 @@ export const GUIDE: GuideSection[] = [
     rows: [
       { icon: "crown", title: "Grow Skyhaven to the Sky Capital", text: "Start with one neighbor and a coffee cart. Grow your businesses and the town ranks up." },
       { icon: "map", title: "Town level (Lv)", text: "The bar at the top. Every rank adds something new to the town and +10% to every business." },
-      { icon: "home", title: "Your neighbor", text: "The first person in your first tower. They react whenever the town grows." },
+      { icon: "home", title: "Your neighbor", text: "The first person in your first tower. They react whenever the town grows.", city: "Your first resident. They react whenever the town grows." },
       { icon: "island", title: "The island next door", text: "At Big City, a floating island rises. Build a greenhouse or a lookout there." },
       { icon: "pointer", title: "Looking around", text: "Drag one finger to move around the town. Pinch with two fingers to zoom." },
       { icon: "home", title: "Grow your buildings", text: "Every home, block of flats and office in town is yours: tap one to see who lives there and what it pays. Upgrade it and it grows, from little homes up to a glass skyscraper, and every business earns more. A green ⬆ shows the ones you can grow now." },
@@ -26,25 +26,26 @@ export const GUIDE: GuideSection[] = [
       { icon: "city", title: "Businesses", text: "Coffee Cart, Bakery, Cinema and more. Tap one in town to sell, buy levels, or hire help." },
       { icon: "star", title: "Business levels", text: "Each level makes a business earn more. All levels together raise your town level." },
       { icon: "bolt", title: "Speed milestones", text: "At 10, 25, 50, 100 levels and more, a business works twice as fast." },
-      { icon: "building", title: "Office floors", text: "Every business level needs one. Each tower floor you build adds two." },
+      { icon: "building", title: "Office floors", text: "Every business level needs one. Each tower floor you build adds two.", tower: true },
       { icon: "medal", title: "Managers", text: "A manager sells for you all the time, even while the game is closed (up to 4 hours, 12 with VIP)." },
-      { icon: "tower", title: "HQ", text: "When a business has enough levels, build its new headquarters as a tower to grow it." },
+      { icon: "tower", title: "HQ", text: "When a business has enough levels, build its new headquarters as a tower to grow it.", city: "When a business has enough levels, the builders grow it into a bigger building: tap Grow it!" },
       { icon: "bolt", title: "Rush hour, VIPs and golden customers", text: "Short events in town. Tap them quickly for extra cash." },
       { icon: "bank", title: "Big numbers", text: "K is a thousand, M a million, B a billion, T a trillion. Qa, Qi and Sx are even bigger." },
     ],
   },
   {
-    title: "Stars, crystals and gems",
+    title: "Stars, crystals and gems", cityTitle: "Crystals, gems and passes",
     rows: [
-      { icon: "star", title: "Stars (★)", text: "Earned by building towers and finishing goals. They buy decorations and tower boosters." },
-      { icon: "gem", title: "Sky Crystals (💎)", text: "The special currency for decorations, boosters and tower looks. Earn them from goals and the Sky Pass." },
+      { icon: "star", title: "Stars (★)", text: "Earned by building towers and finishing goals. They buy decorations and tower boosters.", tower: true },
+      { icon: "gem", title: "Sky Crystals (💎)", text: "The special currency for decorations, boosters and tower looks. Earn them from goals and the Sky Pass.", city: "The special currency: finish builds now, paints, decorations and the Season Pass. Earn them from goals, milestones and events." },
       { icon: "sparkle", title: "Sky Gems and New Era", text: "Later on, restart your businesses for Sky Gems. Each gem adds 2% to everything, for good. Gems are not crystals." },
-      { icon: "gift", title: "Sky Pass", text: "A reward road: playing earns XP, and every tier gives a prize." },
-      { icon: "target", title: "Goals and Pip's chapters", text: "Daily goals give stars. Pip's chapter shows the steps to the next town rank." },
+      { icon: "gift", title: "Sky Pass", text: "A reward road: playing earns XP, and every tier gives a prize.", cityTitle: "Season Pass", city: "While a season is on, growing the city earns season points, and every step gives a prize. Premium adds more, with special paints." },
+      { icon: "target", title: "Goals and Pip's chapters", text: "Daily goals give stars. Pip's chapter shows the steps to the next town rank.", city: "Three city quests a day pay cash. City Hall goals show the steps to its next level." },
     ],
   },
   {
     title: "Building towers",
+    tower: true,
     rows: [
       { icon: "pointer", title: "Tap to drop", text: "Tap to drop the sliding floor. Whatever hangs over the edge breaks off." },
       { icon: "sparkle", title: "Perfect drops", text: "Line it up exactly: nothing breaks off, it pays more, and the tower grows wider again." },
@@ -61,4 +62,9 @@ export const PAGE_INTRO: Record<string, string> = {
   shop: "Decorations show up in your town and make every business earn more. Crystals buy the special things.",
   goals: "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.",
   me: "Your builder profile, the leaderboard of the best towers, and settings.",
+};
+/** The city game's own page intros. */
+export const PAGE_INTRO_CITY: Record<string, string> = {
+  goals: "City Hall goals are your big goal. Three city quests a day pay cash; events and the Season Pass give prizes.",
+  me: "Your profile, the city leaderboard, your scrapbook and settings.",
 };

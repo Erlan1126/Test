@@ -14,6 +14,8 @@ export interface PlaceKit {
   tree: (x: number, z: number, s: number, seed: number) => THREE.Object3D;
   /** A kit model scaled to `w` across, or null if the kit isn't loaded. */
   kit: (name: string, w: number) => { obj: THREE.Object3D; h: number } | null;
+  /** Runs `f` every frame (a ferris wheel turning, a lamp blinking). */
+  tick: (f: (t: number, night: number) => void) => void;
 }
 
 const FLOWERS = ["#ff5f8f", "#ffd23a", "#ff8a3c", "#b48cff", "#ffffff", "#ff4d4d"];
@@ -84,6 +86,47 @@ export function buildPlaced(G: THREE.Group, id: string, k: PlaceKit, seed: numbe
         for (let st = 0; st < 4; st++) T(new THREE.BoxGeometry(0.31, 0.05, 0.86).translate(x - 0.47 + st * 0.31, 1.08, z), k.c(cols[i][st % 2], 0.6));
         for (let f = 0; f < 5; f++) T(new THREE.SphereGeometry(0.08, 6, 4).translate(x - 0.4 + f * 0.2, 0.62, z + 0.18), k.c(FLOWERS[(f + i) % FLOWERS.length], 0.7));
       });
+      return 1.4;
+    }
+    case "clocktower": {
+      T(k.slab(), k.grass);
+      const m = k.kit("bl_clocktower", 4.0);
+      if (m) { m.obj.position.y = 0.06; G.add(m.obj); return m.h + 0.2; }
+      T(new THREE.BoxGeometry(1.2, 4.0, 1.2).translate(0, 2.06, 0), k.stone);
+      T(new THREE.ConeGeometry(1.0, 1.4, 4).rotateY(Math.PI / 4).translate(0, 4.76, 0), k.c("#4a5570", 0.6));
+      return 5.6;
+    }
+    case "lighthouse": {
+      T(k.slab(), k.grass);
+      const m = k.kit("bl_lighthouse", 4.2);
+      if (m) { m.obj.position.y = 0.06; G.add(m.obj); return m.h + 0.2; }
+      T(new THREE.CylinderGeometry(0.45, 0.7, 3.2, 16).translate(0, 1.66, 0), k.c("#ffffff", 0.6));
+      T(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 16).translate(0, 3.5, 0), k.c("#e2463a", 0.6));
+      return 4.0;
+    }
+    case "ferris": {
+      T(k.slab(), k.grass);
+      const base = k.kit("bl_ferris_base", 4.2), wheel = k.kit("bl_ferris_wheel", 4.2 * 0.8856);
+      if (base && wheel) {
+        base.obj.position.y = 0.06; G.add(base.obj);
+        // (The wheel turns round its hub: its own origin is the hub.)
+        const inner = wheel.obj.children[0];
+        inner.position.y -= wheel.h / 2;
+        wheel.obj.position.set(0, 0.06 + 0.519 * 4.2, 0);
+        G.add(wheel.obj);
+        k.tick(t => { wheel.obj.rotation.z = t * 0.12; });
+        return 0.06 + 0.519 * 4.2 + wheel.h / 2 + 0.2;
+      }
+      const ring = new THREE.TorusGeometry(1.6, 0.08, 8, 32).translate(0, 2.0, 0);
+      T(ring, k.c("#4f8bff", 0.5, 0.3));
+      return 3.8;
+    }
+    case "airport": {
+      T(k.slab(), k.pave);
+      const m = k.kit("bl_airport", 4.3);
+      if (m) { m.obj.position.y = 0.06; G.add(m.obj); return m.h + 0.2; }
+      T(new THREE.BoxGeometry(2.6, 0.8, 1.2).translate(0, 0.46, -0.8), k.c("#e8eef5", 0.5));
+      T(new THREE.BoxGeometry(4.0, 0.03, 0.8).translate(0, 0.08, 1.2), k.c("#3a3f4a", 0.9));
       return 1.4;
     }
     case "stadium": {

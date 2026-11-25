@@ -10,11 +10,14 @@ import { GEM_BONUS } from "../data/tycoon";
 import { bizThumb } from "../render3d/thumbs";
 import { houseThumb } from "../render3d/housethumbs";
 import { checkCityTrophies, CITY_TROPHIES } from "../logic/cityach";
+import { checkMilestone, nextMilestone as nextPeopleMs, PEOPLE_MILESTONES } from "../logic/milestones";
 import { gameCenterCity } from "../gamecenter";
 import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
 import { pickTalk } from "../data/talk";
 import { earn } from "../logic/tycoon";
-import { citySeason } from "../data/season";
+import { citySeason, isRushHour, isWeekendNight, seasonDaysLeft, seasonInfo } from "../data/season";
+import { buySeasonPass, claimSP, SEASON_PAINT, seasonPass, seasonPoints, SP_FREE, SP_PREMIUM, SP_PRICE, SP_TIERS, spReady, spReward, spTier, type SPReward } from "../logic/seasonpass";
+import { bizColors, PAINTS, paintById, ownsPaint, setPaint } from "../logic/paint";
 import { buyPlace, lotFree, movePlace, PLACE_ITEMS, placeItem, placedOn, storePlace } from "../logic/placedecor";
 import { addDesigns, bookCount, bookReady, BOOK_CRYSTALS, BOOK_SIZE, claimBook, DESIGN_LEVELS, DESIGNS_PER_LEVEL, hasDesign, LEVEL_NAMES, levelCount, ROW_CRYSTALS } from "../logic/collection";
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_AT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
@@ -40,22 +43,22 @@ import { track } from "../stats";
 import { adsReady, showRewarded } from "../ads";
 import { ALBUM_CRYSTALS, ALBUM_DONE_CRYSTALS, ALBUM_KINDS, sightInfo, SIGHT_PEOPLE } from "../data/sights";
 import { HAS_CITY, playerStarted } from "../edition";
-import { buyEventPass, cityEvent, cityEventEndsAt, claimEventStep, eventPoints, eventPrize, eventReady, eventTheme, EVENT_PASS_CRYSTALS, EVENT_STEPS, type EventAction } from "../logic/cityevent";
+import { buyEventPass, cityEvent, cityEventEndsAt, claimEventStep, eventPoints, eventPrize, eventReady, eventTheme, EVENT_PASS_CRYSTALS, EVENT_POINTS, EVENT_STEPS, type EventAction } from "../logic/cityevent";
 import { buildOf, buildPrice, builderCount, BUILDER_PRICES, busyBuilders, completeBuilds, finishNow, finishPrice, hireBuilder, hqPrice, MAX_HIRED, startBuild, TERRACE_PRICE, buildTime, type BuildJob, type BuildKind } from "../logic/builds";
 import { claimTerrace, FLOWER_WIDE, PLAY_FLOORS, projectsOpen, seatingNeed, WIDE_SHARE, type ProjectId } from "../logic/cafe";
 import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote, setGoalTap } from "./mayor";
+import { cityBanner, MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote, setGoalTap } from "./mayor";
 import { formatRecoveryCode } from "../online";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { landOnSale, landPrice, landWaiting, landHall } from "../logic/land";
-import { isLot, lotsAllowed, lotsBuilt, propBlock, propHallNeed, propLevel, propPrice, propRent, propsOpen } from "../logic/props";
+import { townPeople, isLot, lotsAllowed, lotsBuilt, propBlock, propHallNeed, propLevel, propPrice, propRent, propsOpen } from "../logic/props";
 import { PROP_BONUS, PROP_MAX, PROP_PEOPLE, PROP_TIERS } from "../data/props";
 import { LAND, LAND_BONUS } from "../data/land";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
-import { PAGE_INTRO } from "../data/guide";
+import { PAGE_INTRO, PAGE_INTRO_CITY } from "../data/guide";
 import { loadMemories, saveMemory, thenNowCard } from "./memories";
 
 export interface TycoonHost {
@@ -136,7 +139,7 @@ const NEIGHBOR_LINES = [
   "Look at those lights! Our little street is famous now ✨",
   "Airships! I waved at one this morning and it waved back 🎈",
   "Towers on the floating islands... I remember when this was a meadow.",
-  "The capital of the sky. And it all started with your first tower. Thank you! 💛",
+  "The capital of the sky. And it all started with one little coffee cart. Thank you! 💛",
 ];
 /** What the neighbor says on an ordinary day. */
 const DAILY_HELLO = [
@@ -144,7 +147,7 @@ const DAILY_HELLO = [
   "The town feels busier every day. I like it!",
   "I saved you a seat on the terrace 🌷",
   "Morning! The tram was full today: everybody wants to see our town.",
-  "One more tower and we'll have new neighbors!",
+  "One more home and we'll have new neighbors!",
 ];
 const thumbFor = (b: (typeof BUSINESSES)[number], stage: number): string => bizThumb(b.id, stage, b.color[0], b.color[1]);
 /** A multiplier, short: 1.2, 3, 12.5, 1.2K. */
@@ -643,8 +646,9 @@ export class TycoonUI {
     this.host.persist();
     const own = this.save.cafe.starter;
     mayorNote(t("Welcome to Skyhaven Inc.!"), own
-      ? (HAS_CITY && this.save.profile.towers === 0 ? t("Welcome to Skyhaven, your own little town in the sky! Your first neighbor just moved into that apartment block. They'll head over to the Coffee Cart in a moment: sell them their first coffee.")
+      ? (HAS_CITY ? t("Welcome to Skyhaven, your own little town in the sky! Your first neighbor just moved into that apartment block. They'll head over to the Coffee Cart in a moment: sell them their first coffee.")
         : t("That's your first tower, standing in your town! Your first neighbor just moved in. They'll head over to the Coffee Cart in a moment: sell them their first coffee."))
+      : HAS_CITY ? t("Welcome to Skyhaven, your own little town in the sky! Your first neighbor just moved into that apartment block. They'll head over to the Coffee Cart in a moment: sell them their first coffee.")
       : t("This is your business district. Every building is one of your businesses, and they grow as you do. The card at the bottom always tells you what to do next. And when you want to build a tower, tap BUILD!"), t("Let's go!"), done);
   }
 
@@ -909,7 +913,7 @@ export class TycoonUI {
       { label: t("Sell a coffee"), ok: ty.tips >= 1 },
       { label: t("Buy a level"), ok: ty.tips >= 2 },
       { label: t("Hire a manager"), ok: ty.tips >= 3 || ty.managers.length > 0 },
-      { label: t("Build a tower"), ok: !!s.cafe.starter },
+      ...(HAS_CITY ? [] : [{ label: t("Build a tower"), ok: !!s.cafe.starter }]),
       { label: t("Open a second business"), ok: levelOf(s, BUSINESSES[1].id) > 0 },
     ];
     const done = steps.filter(f => f.ok).length;
@@ -1213,7 +1217,7 @@ export class TycoonUI {
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     // Red dots mean "something to collect right now", never "you could buy something".
     dot("build", false);
-    dot("goals", (HAS_CITY && eventReady(s).length > 0) || (!!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || lit("pass-btn") || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn") || (HAS_CITY && bookReady(s).length > 0));
     this.unlockTabs();
   }
@@ -1224,7 +1228,9 @@ export class TycoonUI {
   private barReady = false;
   private unlockTabs(): void {
     const s = this.save, tw = s.profile.towers, tips = s.tycoon.tips;
-    const open: Record<string, boolean> = { company: tips >= 1 || tw >= 3, goals: tips >= 3 || tw >= 3, shop: tw >= 3, me: tw >= 3, build: true };
+    // (The city game has no towers: Shop and Me open with the City Hall's first level-up.)
+    const later = HAS_CITY ? (s.chapters?.done ?? 0) >= 1 : tw >= 3;
+    const open: Record<string, boolean> = { company: tips >= 1 || tw >= 3, goals: tips >= 3 || tw >= 3, shop: later, me: later, build: true };
     const names: Record<string, string> = { company: "Company", goals: "Goals", shop: "Shop", me: "Me" };
     let n = 0;
     for (const btn of $("tcy-bar").querySelectorAll<HTMLElement>("[data-open]")) {
@@ -1411,6 +1417,7 @@ export class TycoonUI {
       this.talk = null;
       this.host.sound.coins(); vibrate(this.save.settings.vibrate, 6);
       toast(t("😊 They tipped you {n} for the lovely city!", { n: coins(tip) }));
+      this.goal("talk");
       this.host.persist(); this.render();
       return;
     }
@@ -1468,6 +1475,7 @@ export class TycoonUI {
         this.movingDecor = "";
         this.host.sound.purchase(); vibrate(this.save.settings.vibrate, 12);
         toast(t("{icon} {name} moved!", { icon: it?.icon ?? "", name: t(it?.name ?? "") }));
+        this.goal("decor");
         this.host.persist();
       } else if (placedOn(this.save, key)?.id !== id) { toast(t("Pick an empty lot (no building on it)")); return; }
       else this.movingDecor = "";
@@ -1532,6 +1540,7 @@ export class TycoonUI {
           this.host.sound.purchase(); confetti(); vibrate(s.settings.vibrate, [15, 30, 15]);
           toast(t("{icon} {name} placed! Every business earns +{pct}%", { icon: it.icon, name: t(it.name), pct: +(it.bonus * 100).toFixed(1) }));
           track("decor_placed", { id: it.id, bought: !owned }, false);
+          this.goal("decor");
           this.selectedProp = ""; this.host.persist(); this.render();
         } else toast(r === "hall" ? t("Opens at City Hall Lv {n}", { n: it.hall }) : r === "short" ? t("Not enough cash yet") : t("Pick an empty lot (no building on it)"));
       } };
@@ -1657,10 +1666,12 @@ export class TycoonUI {
     ].filter(Boolean).join("");
     const lease = !owned ? `<p class="bc-lease">${esc(t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) }))}</p>` : "";
     const growNote = grow ? `<p class="bc-grow">✨ ${esc(t("Ready to grow into {name}!", { name: t(stageName(b.id, grow)) }))}</p>` : !ns && owned ? `<p class="bc-grow done">🏆 ${esc(t("Fully grown!"))}</p>` : "";
-    this.put(card, `<div class="bc-hero" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+    const bc = bizColors(s, b.id, b.color as [string, string]);
+    this.put(card, `<div class="bc-hero" style="--b1:${bc[0]};--b2:${bc[1]}">
         <span class="bc-ico">${iconSvg(b.icon)}</span>
         <span class="bc-title"><small>${owned ? esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 8", { n: st + 1 }) : t(b.name)) : esc(t("For lease"))}</small><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b>${owned ? stars : ""}</span>
         ${owned ? `<span class="bc-lv"><small>${esc(t("Level"))}</small><b>${esc(fmt(lv))}</b></span>` : ""}
+        ${owned && HAS_CITY ? `<button type="button" class="bc-paint" data-card="paint" aria-label="${esc(t("Paint"))}">🎨</button>` : ""}
         <button type="button" class="card-x bc-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
       </div>
       ${owned ? `<div class="bc-earn">
@@ -1737,6 +1748,7 @@ export class TycoonUI {
       return;
     }
     if (what === "look") { this.openSheet("company", id); return; }
+    if (what === "paint" && id) { this.host.sound.click(); this.openPaint(id); return; }
     if (what === "hall") { this.host.sound.click(); this.selected = ""; this.host.openStory(); return; }
     if (what === "build") { this.host.sound.click(); toast(t("Every office floor is full. Build an office block for more!")); this.selected = ""; this.openBuild(); return; }
     const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`) ?? card;
@@ -1771,7 +1783,10 @@ export class TycoonUI {
   private eventAdd(what: EventAction, n = 1): void {
     if (!HAS_CITY) return;
     const s = this.save, before = eventReady(s).length;
+    const spBefore = spReady(s);
     eventPoints(s, what, n);
+    seasonPoints(s, EVENT_POINTS[what] * n);
+    if (spReady(s) > spBefore) toast(t("🎟️ Season Pass: a reward is ready in Goals!"));
     if (eventReady(s).length > before) { this.host.sound.unlock(); toast(t("{icon} {name}: a reward is ready in Goals!", { icon: eventTheme().icon, name: t(eventTheme().name) })); }
   }
 
@@ -1796,9 +1811,57 @@ export class TycoonUI {
     </section>`;
   }
 
+  /** The Season Pass card in Goals (only while a season is on). */
+  private seasonPassHtml(): string {
+    const s = this.save, p = seasonPass(s), se = seasonInfo(citySeason());
+    if (!p || !se) return "";
+    const tier = spTier(p), top = SP_TIERS[SP_TIERS.length - 1];
+    const what = (r: SPReward) => r.paint ? `🎨 ${t(paintById(r.paint)?.name ?? "")}` : r.crystals ? `💎${r.crystals}` : `${coins(starCash(s, r.stars ?? 0))}`;
+    const cell = (track: "free" | "prem", i: number) => {
+      const r = spReward((track === "free" ? SP_FREE : SP_PREMIUM)[i]), got = (track === "free" ? p.free : p.prem).includes(i);
+      const open = track === "free" || p.premium, ready = open && tier > i && !got;
+      const sw = r.paint ? `<i class="sp-sw" style="--p1:${paintById(r.paint)?.c[0]};--p2:${paintById(r.paint)?.c[1]}"></i>` : "";
+      return `<button type="button" class="sp-cell${got ? " got" : ready ? " ready" : ""}${open ? "" : " lock"}" data-goal="sp" data-track="${track}" data-i="${i}"${ready ? "" : " disabled"}>${sw}<small>${esc(got ? "✓" : what(r))}</small></button>`;
+    };
+    const cols = SP_TIERS.map((at, i) => `<div class="sp-col${tier > i ? " on" : ""}"><b>${i + 1}</b>${cell("free", i)}${cell("prem", i)}<em>${fmt(at)}</em></div>`).join("");
+    return `<section class="sp-card" style="--se:${se.bulbs[0]};--se2:${se.bulbs[1]}">
+      <div class="sp-head"><span class="sp-ico">${se.icon}</span><span><b>${esc(t("{name} Season Pass", { name: t(se.name) }))}</b><small>${esc(tn(seasonDaysLeft(), "{n} season points · {d} day left", "{n} season points · {d} days left", { n: fmt(p.pts), d: seasonDaysLeft() }))}</small></span></div>
+      <i class="ev-bar"><i style="width:${Math.min(100, (p.pts / top) * 100).toFixed(1)}%"></i></i>
+      <p class="sp-legend"><span>${esc(t("Top: free"))}</span><span>⭐ ${esc(t("Bottom: Premium"))}</span></p><div class="sp-tracks"><div class="sp-row">${cols}</div></div>
+      ${p.premium ? `<p class="sp-note">${esc(t("Premium is on: collect both rewards at every step!"))}</p>`
+        : `<button type="button" class="ev-pass sp-buy" data-goal="spbuy">${esc(t("Unlock Premium: the {paint} paint, Solid Gold paint and more · 💎{n}", { paint: t(paintById(SEASON_PAINT[se.id])?.name ?? ""), n: SP_PRICE }))}</button>`}
+    </section>`;
+  }
+
+  /** The next population milestone, in Goals. */
+  private milestoneHtml(): string {
+    const s = this.save, m = nextPeopleMs(s);
+    if (!m) return "";
+    const have = townPeople(s), prev = PEOPLE_MILESTONES[PEOPLE_MILESTONES.indexOf(m) - 1]?.at ?? 0;
+    return `<div class="ms-card"><span class="ms-ico">🏙️</span><span><b>${esc(t("Next city milestone: {n} people", { n: fmt(m.at) }))}</b>
+      <i class="ev-bar"><i style="width:${Math.max(0, Math.min(100, ((have - prev) / (m.at - prev)) * 100)).toFixed(1)}%"></i></i>
+      <small>${esc(t("{n} people now · grow homes to get there · +{c} 💎", { n: fmt(have), c: m.crystals }))}</small></span></div>`;
+  }
+
   /** A tap on the event card. Returns true when it was the event's. */
   private onEventTap(el: HTMLElement): boolean {
     const s = this.save;
+    if (el.dataset.goal === "sp") {
+      const r = claimSP(s, el.dataset.track === "prem" ? "prem" : "free", Number(el.dataset.i));
+      if (!r) return true;
+      this.host.sound.unlock(); burst(el, 18);
+      if (r.paint) { fireworks(3, () => this.host.sound.firework()); toast(t("🎨 New paint: {name}! Paint any business from its card.", { name: t(paintById(r.paint)?.name ?? "") })); }
+      else toast(r.crystals ? t("+{n} Sky Crystals", { n: r.crystals }) : t("+{n}", { n: coins(r.cash) }));
+      track("sp_claim", { track: el.dataset.track ?? "", i: Number(el.dataset.i) }, false);
+      this.host.persist(); this.host.refresh(); this.renderGoalsSheet(); this.render();
+      return true;
+    }
+    if (el.dataset.goal === "spbuy") {
+      const r = buySeasonPass(s);
+      if (r === "short") { toast(t("You need {n} more Sky Crystals", { n: SP_PRICE - s.crystals })); this.host.openShop("crystals"); return true; }
+      if (r === "ok") { track("season_pass", {}, false); this.host.sound.purchase(); confetti(); toast(t("⭐ Season Pass Premium unlocked!")); this.host.persist(); this.renderGoalsSheet(); }
+      return true;
+    }
     if (el.dataset.goal === "event") {
       const r = claimEventStep(s, Number(el.dataset.step));
       if (!r) return true;
@@ -2149,7 +2212,7 @@ export class TycoonUI {
     this.renderGoalsSheet();
     openModal($("tcy-goalsheet"));
     // The Community Spire arrives a moment later (it's asked from the server).
-    void this.host.fetchSpire().then(sp => {
+    if (!HAS_CITY) void this.host.fetchSpire().then(sp => {
       this.spire = sp;
       if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet();
     });
@@ -2180,12 +2243,12 @@ export class TycoonUI {
     }
     dealGoals(s);
     // The week's city event first (it has the best rewards), then today's goals.
-    if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.eventHtml());
-    parts.push(`<h3 class="sheet-sub">${esc(t("Today's company goals"))}</h3>${this.goalsHtml()}`);
+    if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.milestoneHtml());
+    parts.push(`<h3 class="sheet-sub">${esc(HAS_CITY ? t("Today's city quests") : t("Today's company goals"))}</h3>${this.goalsHtml()}`);
     // The side activities wait until the story is well under way, so a new player's goals are
     // the town's: the chapter (the next rank) and today's company goals.
     const later = s.chapters.done >= 2;
-    if (later) parts.push(this.spireHtml());
+    if (later && !HAS_CITY) parts.push(this.spireHtml());
     if (!HAS_CITY && later && !$("missions-btn").hidden && s.missions.slots.length) {
       const rows = s.missions.slots.map(m => {
         const done = !!m.d || m.p >= m.n;
@@ -2231,7 +2294,7 @@ export class TycoonUI {
       company: [{ id: "tycoon", name: "Company", open: () => this.openSheet("company") }],
       goals: [
         { id: "tcy-goalsheet", name: "Goals", open: () => this.openGoals() },
-        { id: "pass", name: "Sky Pass", open: () => $("pass-btn").click(), show: () => !$("pass-btn").hidden },
+        { id: "pass", name: "Sky Pass", open: () => $("pass-btn").click(), show: () => !HAS_CITY && !$("pass-btn").hidden },
       ],
       me: [
         { id: "profile", name: "Profile", open: () => $("level-btn").click() },
@@ -2277,7 +2340,7 @@ export class TycoonUI {
         if (!intro) {
           intro = document.createElement("div");
           intro.className = "page-intro";
-          intro.innerHTML = `<span class="pi-ico">?</span><p>${esc(t(PAGE_INTRO[k]))}</p><button type="button">${esc(t("Got it"))}</button>`;
+          intro.innerHTML = `<span class="pi-ico">?</span><p>${esc(t((HAS_CITY && PAGE_INTRO_CITY[k]) || PAGE_INTRO[k]))}</p><button type="button">${esc(t("Got it"))}</button>`;
           intro.querySelector("button")!.onclick = () => { this.save.seenFeatures.push(introKey); this.host.persist(); for (const p of pages) $(p.id).querySelector(".page-intro")?.remove(); };
         }
         const after = sheet.querySelector<HTMLElement>(":scope > .tab-seg") ?? sheet.querySelector<HTMLElement>(":scope > .sheet-top");
@@ -2625,6 +2688,7 @@ export class TycoonUI {
     this.golden.id = "";
     const tip = goldenTip(s);
     this.eventAdd("golden");
+    this.goal("golden");
     const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`);
     const box = popBox ?? tag?.querySelector(".tag-pops") ?? $("tcy-labels"), from = flyFrom ?? tag ?? $("tcy-next");
     for (let k = 0; k < 8; k++) setTimeout(() => popCoin(box, k === 0 ? coins(tip) : ""), k * 80);
@@ -2893,8 +2957,11 @@ export class TycoonUI {
     const text = (k: GoalType, n: number) => k === "vip" ? t("Serve {n} VIP customers", { n }) : k === "buy" ? t("Buy {n} business levels", { n })
       : k === "taps" ? t("Run a business by hand {n} times", { n }) : k === "rush" ? t("Catch {n} rush hours", { n })
       : k === "build" ? tn(n, "Finish {n} build", "Finish {n} builds", { n }) : k === "home" ? tn(n, "Build or grow {n} home", "Build or grow {n} homes", { n })
+      : k === "decor" ? tn(n, "Place or move {n} decoration", "Place or move {n} decorations", { n })
+      : k === "talk" ? tn(n, "Chat with {n} resident (tap their speech bubble)", "Chat with {n} residents (tap their speech bubbles)", { n })
+      : k === "golden" ? tn(n, "Catch {n} golden customer", "Catch {n} golden customers", { n })
       : tn(n, "Help {n} neighbour", "Help {n} neighbours", { n });
-    const icon: Record<GoalType, string> = { vip: "crown", buy: "building", taps: "sparkle", rush: "bolt", build: "building", home: "home", ask: "gift" };
+    const icon: Record<GoalType, string> = { vip: "crown", buy: "building", taps: "sparkle", rush: "bolt", build: "building", home: "home", ask: "gift", decor: "sparkle", talk: "sparkle", golden: "crown" };
     return `<div class="ty-goals">` + g.list.map(x => {
       const done = x.p >= x.n, stars = GOAL_STARS[Math.max(0, GOAL_TIERS[x.t].indexOf(x.n))];
       return `<div class="ty-goal${done ? " done" : ""}"><span class="ty-goal-check">${done ? "✓" : iconSvg(icon[x.t])}</span><span><b>${esc(text(x.t, x.n))}</b>
@@ -3240,7 +3307,8 @@ export class TycoonUI {
     if (!this.inCity || this.selected || this.selectedProp || this.selectedSight || openModalEl() || document.body.classList.contains("tabs-open") || !$("mayor").hidden) return;
     const s = this.save, opened = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
     const newest = opened.length > 1 ? opened[opened.length - 1] : undefined;
-    const line = pickTalk({ season: citySeason(), weather: this.host.weatherNow(), placed: Object.entries(s.placed).filter(([, at]) => at).map(([id]) => id), newest: newest ? t(stageName(newest.id, stageNow(s, newest.id))) : undefined }, Math.random());
+    const line = pickTalk({ season: citySeason(), weather: this.host.weatherNow(), placed: Object.entries(s.placed).filter(([, at]) => at).map(([id]) => id), newest: newest ? t(stageName(newest.id, stageNow(s, newest.id))) : undefined,
+      night: (() => { const h = new Date().getHours(); return h >= 19 || h < 5; })(), weekend: isWeekendNight(), rush: isRushHour() }, Math.random());
     this.host.bizTalk(Math.floor(Math.random() * 1000));
     this.talk = { text: t(line.text, { name: line.name ?? "" }), until: now + 7000 };
     this.render();
@@ -3269,6 +3337,7 @@ export class TycoonUI {
     this.collectAt = now;
     this.renderEraNudge(now);
     this.maybeTalk(now);
+    this.maybeMilestone();
     // Trophies (quietly the first time, when an existing city earns several at once).
     const won = checkCityTrophies(this.save);
     if (won.length) {
@@ -3283,6 +3352,47 @@ export class TycoonUI {
     if (this.collectSeeded && fresh.length <= 2) toast(t("📘 A new building design for your collection! ({n} of {total})", { n: bookCount(this.save), total: BOOK_SIZE }));
     this.collectSeeded = true;
     if (bookReady(this.save).length) this.render();
+  }
+
+  /** Paint a business's building: its own colours, a free paint, one for crystals, or a
+   *  Season Pass paint once won. */
+  private openPaint(id: string): void {
+    const s = this.save, b = BUSINESSES.find(x => x.id === id);
+    if (!b) return;
+    const cur = s.paint[id] ?? "";
+    const done = (name: string) => {
+      this.host.sound.purchase(); vibrate(s.settings.vibrate, [10, 20, 10]); burst($("tcy-card"), 16);
+      toast(t("🎨 {biz} painted {name}!", { biz: t(stageName(id, stageNow(s, id))), name }));
+      track("paint", { id: s.paint[id] ?? "" }, false);
+      this.host.persist(); this.host.refresh(); this.render();
+    };
+    const opts = [{ label: t("Original colours"), sub: cur ? t("Free") : t("Painted now"), swatch: b.color as [string, string], on: !cur, onPick: () => { setPaint(s, id, ""); done(t("its own colours")); } },
+      ...PAINTS.map(p => {
+        const own = ownsPaint(s, p.id);
+        const sub = cur === p.id ? t("Painted now") : own ? (p.crystals ? t("Yours") : t("Free")) : p.pass ? t("A Season Pass reward") : `💎${p.crystals}`;
+        return { label: t(p.name), sub, swatch: p.c, on: cur === p.id, onPick: () => {
+          const r = setPaint(s, id, p.id);
+          if (r === "ok") done(t(p.name));
+          else if (r === "short") { toast(t("You need {n} more Sky Crystals", { n: p.crystals - s.crystals })); this.host.openShop("crystals"); }
+          else toast(t("Win it in the Season Pass (Goals), while a season is on"));
+        } };
+      })];
+    mayorChoice(t("Paint this building"), t("Pick new colours for {name}. You can change them any time.", { name: t(stageName(id, stageNow(s, id))) }), opts, t("Not now"));
+  }
+
+  /** A population milestone passed: the camera flies over the town, fireworks, crystals. */
+  private maybeMilestone(): void {
+    // (Only on the plain town view: not over a card, a sheet or a pop-up.)
+    if (!this.host.onMenu() || this.selected || this.selectedProp || this.selectedSight || document.querySelector(".modal:not([hidden]), .hall-banner") || !$("mayor").hidden) return;
+    const m = checkMilestone(this.save);
+    if (!m) return;
+    this.host.persist(); this.host.refresh();
+    const city = this.save.cityName || t("My city");
+    this.host.visitLandmark(-5, 7000);
+    this.host.sound.tada(); vibrate(this.save.settings.vibrate, [20, 40, 20, 40, 60]);
+    window.setTimeout(() => fireworks(5, () => this.host.sound.firework()), 600);
+    cityBanner(city, t("{n} people!", { n: fmt(m.at) }), t("A city milestone! +{n} 💎", { n: m.crystals }), 3200);
+    track("people_milestone", { at: m.at }, false);
   }
 
   /** Photo mode: every button hidden, the player frames the city, and the shutter takes a

@@ -22,8 +22,12 @@ export const PLACE_ITEMS: PlaceItem[] = [
   { id: "fountain", name: "Fountain plaza", text: "A paved square round a splashing fountain", icon: "⛲", cash: 400e3, bonus: 0.015, hall: 3 },
   { id: "garden", name: "Flower garden", text: "Rows of tulips and roses round a little glasshouse", icon: "🌷", cash: 2.5e6, bonus: 0.02, hall: 3 },
   { id: "statue", name: "Hero statue", text: "A bronze statue of the town's founder on a stone plinth", icon: "🗽", cash: 15e6, bonus: 0.025, hall: 4 },
+  { id: "clocktower", name: "Clock tower", text: "A stone clock tower with glowing faces and a bell, on its own little plaza", icon: "🕰️", cash: 40e6, bonus: 0.025, hall: 4 },
   { id: "market", name: "Market stalls", text: "Striped stalls selling fruit, flowers and snacks", icon: "🍎", cash: 90e6, bonus: 0.03, hall: 5 },
+  { id: "lighthouse", name: "Lighthouse", text: "A red and white lighthouse on the rocks, its lamp shining at night", icon: "🗼", cash: 350e6, bonus: 0.04, hall: 5 },
+  { id: "ferris", name: "Ferris wheel", text: "A big wheel that really turns, with ten colourful cabins", icon: "🎡", cash: 800e6, bonus: 0.05, hall: 6 },
   { id: "stadium", name: "Grand Stadium", text: "A stadium with a full pitch, floodlights and flags, modelled in Blender", icon: "🏟️", cash: 1.5e9, bonus: 0.06, hall: 6 },
+  { id: "airport", name: "City airport", text: "A terminal, a control tower, a runway and a little plane: the city goes global", icon: "✈️", cash: 6e9, bonus: 0.08, hall: 7 },
 ];
 
 export const placeItem = (id: string): PlaceItem | undefined => PLACE_ITEMS.find(p => p.id === id);

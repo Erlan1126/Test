@@ -1,5 +1,7 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
+import { normalizePaint, normalizePaints } from "./paint";
+import { newSeasonPass, normalizeSeasonPass, type SeasonPassState } from "./seasonpass";
 import { newAsks, normalizeAsks, type AskState } from "./asks";
 import { LAND, type LandId } from "../data/land";
 import { normalizeDecor } from "./decor";
@@ -128,6 +130,15 @@ export interface SaveData {
   tycoon: TycoonState;
   /** This player's friend code (from the server), and friends' codes they added. */
   friendCode: string;
+  /** Buildaroo: the day a gift was last left in each friend's city (by friend code). */
+  giftsSent: Record<string, string>;
+  /** Buildaroo: population milestones celebrated (logic/milestones.ts); -1 before the first check. */
+  peopleMilestone: number;
+  /** Buildaroo: each business's building paint (logic/paint.ts), and the paints owned. */
+  paint: Record<string, string>;
+  paints: string[];
+  /** Buildaroo: this season's pass (logic/seasonpass.ts). */
+  seasonPass: SeasonPassState;
   friends: string[];
   /** The story (see chapters.ts): chapters finished, and the last chapter Mayor Pip introduced. */
   chapters: { done: number; seen: number; v?: number };
@@ -247,6 +258,11 @@ export function defaultSave(): SaveData {
     packsFirst: [],
     chapters: { done: 0, seen: -1, v: 2 },
     friendCode: "",
+    giftsSent: {},
+    peopleMilestone: -1,
+    paint: {},
+    paints: [],
+    seasonPass: newSeasonPass(),
     friends: [],
     tycoon: newTycoon(),
     boosts: { rewind: 0, xp: 0, gold: 0 },
@@ -384,6 +400,12 @@ export function normalize(raw: unknown): SaveData {
     chapters: { done: int(obj(r.chapters).done, 0, 0, 99), seen: int(obj(r.chapters).seen, -1, -1, 99), v: int(obj(r.chapters).v, 0, 0, 99) },
     tycoon: normalizeTycoon(r.tycoon, Number(obj(r.profile).floors) || 0),
     friendCode: /^[A-Z2-9]{6}$/.test(String(r.friendCode ?? "")) ? String(r.friendCode) : "",
+    paint: normalizePaint(r.paint),
+    paints: normalizePaints(r.paints),
+    seasonPass: normalizeSeasonPass(r.seasonPass),
+    peopleMilestone: typeof r.peopleMilestone === "number" && Number.isInteger(r.peopleMilestone) ? Math.max(-1, Math.min(50, r.peopleMilestone)) : -1,
+    giftsSent: Object.fromEntries(Object.entries(r.giftsSent && typeof r.giftsSent === "object" ? r.giftsSent as Record<string, unknown> : {})
+      .filter(([k, v]) => /^[A-Z0-9]{4,8}$/.test(k) && typeof v === "string" && /^\d{4}-\d{1,2}-\d{1,2}$/.test(v)).slice(-60)) as Record<string, string>,
     friends: strList(r.friends).filter(c => /^[A-Z2-9]{6}$/.test(c)).slice(0, 30),
     boosts: { rewind: int(b.rewind, 0, 0, 99), xp: int(b.xp, 0, 0, 99), gold: int(b.gold, 0, 0, 99) },
     missions: { slots, done: int(m.done, 0), seen: int(m.seen, 0), day: str(m.day, ""), chest: str(m.chest, "") },
@@ -605,7 +627,7 @@ function normalizeEvolved(v: unknown, levels: Record<string, number>): Record<st
 
 function normalizeGoals(v: unknown): TycoonState["goals"] {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
-  const kinds = ["vip", "buy", "taps", "rush", "build", "home", "ask"];
+  const kinds = ["vip", "buy", "taps", "rush", "build", "home", "ask", "decor", "talk", "golden"];
   const list = Array.isArray(o.list) ? o.list.filter((g): g is CompanyGoal => !!g && typeof g === "object" && kinds.includes((g as CompanyGoal).t)
     && Number.isInteger((g as CompanyGoal).n) && (g as CompanyGoal).n > 0 && typeof (g as CompanyGoal).p === "number").slice(0, 3)
     .map(g => ({ t: g.t, n: g.n, p: Math.max(0, Math.min(g.n, Math.floor(g.p))) })) : [];

@@ -976,7 +976,8 @@ export class Renderer3D {
     if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
     // A rank's new landmark: the camera visits it for a moment.
     // (Rank -4: the City Hall itself, for its level-up celebration.)
-    const lm = this.bizVisit && performance.now() < this.bizVisit.until ? (this.bizVisit.rank === -4 ? { ...this.biz.spot("hall"), zoom: 2.0 } : this.biz.landmark(this.bizVisit.rank)) : null;
+    // (Rank -5: a fly-over of the whole town, end to end, for a population milestone.)
+    const lm = this.bizVisit && performance.now() < this.bizVisit.until ? (this.bizVisit.rank === -4 ? { ...this.biz.spot("hall"), zoom: 2.0 } : this.bizVisit.rank === -5 ? this.flyOver() : this.biz.landmark(this.bizVisit.rank)) : null;
     if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = lm.zoom ?? 1.8; }
     // (The player's own zoom isn't held to the fit-the-island limit either.)
     this.bizFraming = framing || !!this.debugLook || !!lm || (this.camUser.on && !f.bizLive?.sel);
@@ -1165,11 +1166,18 @@ export class Renderer3D {
   /** How far the close-up framing is on (0-1, eased), so leaving a close-up glides. */
   private bizFrameK = 0;
   /** The camera's visit to a town rank's landmark (see bizcity landmark()). */
-  private bizVisit: { rank: number; until: number } | null = null;
+  private bizVisit: { rank: number; until: number; ms?: number } | null = null;
   visitLandmark(rank: number, ms: number): boolean {
-    if (!this.biz || (rank !== -4 && !this.biz.landmark(rank))) return false;
-    this.bizVisit = { rank, until: performance.now() + ms };
+    if (!this.biz || (rank !== -4 && rank !== -5 && !this.biz.landmark(rank))) return false;
+    this.bizVisit = { rank, until: performance.now() + ms, ms };
     return true;
+  }
+  /** Where the town fly-over is now: a slow glide from one end of the town to the other. */
+  private flyOver(): { x: number; z: number; zoom: number } {
+    const v = this.bizVisit!, p = Math.max(0, Math.min(1, 1 - (v.until - performance.now()) / (v.ms || 1)));
+    const e = p * p * (3 - 2 * p), b = townBounds(true);
+    const t = b.tMin * 0.75 + (b.tMax * 0.75 - b.tMin * 0.75) * e, sm = (b.sMin + b.sMax) / 2;
+    return { x: (sm + t) * Math.SQRT1_2, z: (sm - t) * Math.SQRT1_2, zoom: 1.55 - Math.sin(e * Math.PI) * 0.15 };
   }
   debugBounds(): ReturnType<typeof townBounds> { return townBounds(); }
   private readonly tmpV = new THREE.Vector3();

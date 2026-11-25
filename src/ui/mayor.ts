@@ -173,8 +173,8 @@ export function introduce(save: SaveData, persist: () => void): boolean {
 
 /** Pip says something outside the chapters (one button to close). */
 /** Pip offers a choice: each option is a button in the list; the main button closes. */
-export function mayorChoice(title: string, text: string, options: { label: string; sub: string; onPick: () => void }[], button: string): void {
-  show(title, text, options.map((o, i) => `<li class="mayor-pick"><button type="button" data-pick="${i}"><b>${esc(o.label)}</b><small>${esc(o.sub)}</small></button></li>`).join(""), "", button, () => {});
+export function mayorChoice(title: string, text: string, options: { label: string; sub: string; onPick: () => void; swatch?: [string, string]; on?: boolean }[], button: string): void {
+  show(title, text, options.map((o, i) => `<li class="mayor-pick${o.on ? " on" : ""}"><button type="button" data-pick="${i}">${o.swatch ? `<i class="pick-sw" style="--p1:${esc(o.swatch[0])};--p2:${esc(o.swatch[1])}"></i>` : ""}<b>${esc(o.label)}</b><small>${esc(o.sub)}</small></button></li>`).join(""), "", button, () => {});
   $("mayor-goals").querySelectorAll<HTMLButtonElement>("[data-pick]").forEach(b => { b.onclick = () => { $("mayor").hidden = true; options[Number(b.dataset.pick)].onPick(); }; });
 }
 
@@ -190,14 +190,18 @@ export function mayorNote(title: string, text: string, button: string, onOk: () 
 /** The City Hall's level-up banner: a burst of light, "CITY HALL" and the new level, gone
  *  after a couple of seconds. */
 export function hallBanner(level: number, city = ""): void {
+  cityBanner(city ? `${city} · ${t("City Hall")}` : t("City Hall"), t("Level {n}", { n: level }), t("Your town grows!"));
+}
+/** A big celebration banner (the City Hall's level-ups, population milestones). */
+export function cityBanner(small: string, big: string, sub: string, ms = 2200): void {
   document.querySelector(".hall-banner")?.remove();
   const el = document.createElement("div");
   el.className = "hall-banner";
   el.setAttribute("role", "status");
-  el.innerHTML = `<i class="hb-rays"></i><div class="hb-card"><small>${esc(city ? `${city} · ${t("City Hall")}` : t("City Hall"))}</small><b>${esc(t("Level {n}", { n: level }))}</b><em>${esc(t("Your town grows!"))}</em></div>`;
+  el.innerHTML = `<i class="hb-rays"></i><div class="hb-card"><small>${esc(small)}</small><b>${esc(big)}</b><em>${esc(sub)}</em></div>`;
   document.body.appendChild(el);
-  window.setTimeout(() => el.classList.add("out"), 2200);
-  window.setTimeout(() => el.remove(), 2700);
+  window.setTimeout(() => el.classList.add("out"), ms);
+  window.setTimeout(() => el.remove(), ms + 500);
 }
 
 /** A neighbour's face: a round, smiling face with their own skin, hair and shirt colours. */
