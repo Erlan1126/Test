@@ -4460,3 +4460,6 @@ body.photo-mode #tycity > *, body.photo-mode #tcy-bar, body.photo-mode #toast, b
 .coll-trophies li > span svg { width: 18px; height: 18px; }
 .coll-trophies li b { display: block; font-size: 14px; }
 .coll-trophies li small { display: block; font-size: 12px; opacity: 0.75; }
+
+/* A building's card is open: the other bubbles step aside. */
+#tcy-labels .tag.tag-off { visibility: hidden !important; pointer-events: none !important; }

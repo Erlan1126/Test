@@ -1250,6 +1250,8 @@ export class TycoonUI {
 
   /** Keeps each tag floating over its building as the camera moves. */
   private tagSize = new WeakMap<HTMLElement, { w: number; h: number }>();
+  /** How far each bubble is lifted out of the way of the ones in front (eased). */
+  private tagLift = new WeakMap<HTMLElement, number>();
   private placeTags(): void {
     // (All reads first, then all writes: reading a size after moving a tag would make the
     // browser lay the page out again for every tag, every frame, which is what made dragging
@@ -1265,18 +1267,32 @@ export class TycoonUI {
       items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: sz.w, h: sz.h });
     }
     for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
+    // With a building's card open, only its own bubble stays: the rest step aside, so
+    // nothing piles up round the building the camera is looking at.
+    const focus = !!(this.selected || this.selectedProp || this.selectedSight);
+    for (const it of items) it.tag.classList.toggle("tag-off", focus && !it.tag.classList.contains("sel"));
     // Front buildings keep their spot; a bubble that would sit on another moves up a little.
     items.sort((a, b) => b.base - a.base);
     // (Spaced by each bubble's own height, so the small pins stack close, not in a tall column.)
     const placed: { x: number; y: number; w: number; h: number }[] = [];
     for (const it of items) {
       const w = it.w, h = it.h;
-      for (let guard = 0; guard < 6; guard++) {
+      // (Bubbles that stepped aside don't push the others around, but still follow their
+      // building, so they come back in the right place.)
+      const off = focus && it.tag.classList.contains("tag-off");
+      const y0 = it.y;
+      for (let guard = 0; guard < 6 && !off; guard++) {
         const hit = placed.find(o => Math.abs(o.x - it.x) < (o.w + w) / 2 - 2 && Math.abs(o.y - it.y) < (o.h + h) / 2 - 2);
         if (!hit) break;
         it.y = hit.y - (hit.h + h) / 2;
       }
-      placed.push({ x: it.x, y: it.y, w, h });
+      // (A bubble lifted out of another's way glides there instead of jumping, and doesn't
+      // flick back and forth while the camera moves and the two only just touch.)
+      const want = it.y - y0, had = this.tagLift.get(it.tag) ?? want;
+      const lift = Math.abs(want - had) < 3 ? had : had + (want - had) * 0.25;
+      this.tagLift.set(it.tag, lift);
+      it.y = y0 + lift;
+      if (!off) placed.push({ x: it.x, y: y0 + want, w, h });
       // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
       // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
       { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
