@@ -2200,4 +2200,5 @@ export const PT: Record<string, string> = {
   "Your city starts over from a hamlet, and grows back faster.": "Sua cidade recomeça como um vilarejo e cresce mais rápido.",
   "See New Era": "Ver Nova Era",
   "Builders at work": "Construtores trabalhando",
+  "Skip": "Pular",
 };

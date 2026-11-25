@@ -104,7 +104,7 @@ function goalsHtml(save: SaveData, c: Chapter): string {
   return planRoad(save) + (HAS_CITY ? `<li class="plan-to"><b>${esc(t("To reach City Hall level {n}:", { n: chapterIndex(save) + 2 }))}</b></li>` : "") + opensHtml(chapterIndex(save) + 2) + c.goals.map(g => {
     const done = goalDone(save, g), how = !done && g.kind ? GOAL_HOW[g.kind] : "";
     return `<li class="${done ? "done" : "todo"}"${!done && g.kind ? ` data-goal="${g.kind}" role="button" tabindex="0"` : ""}><span>${done ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g.text, g.need))}${how ? `<small class="g-how">${esc(t(how))}</small>` : ""}</div>
-      <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}${!done && g.kind ? `<i class="g-go">›</i>` : ""}</em></li>`;
+      <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}${!done && g.kind ? `<i class="g-go" aria-hidden="true"></i>` : ""}</em></li>`;
   }).join("");
 }
 

@@ -142,6 +142,9 @@ const thumbFor = (b: (typeof BUSINESSES)[number], stage: number): string => bizT
 /** A multiplier, short: 1.2, 3, 12.5, 1.2K. */
 const fmtMult = (m: number): string => (m >= 1000 ? fmt(m) : m >= 10 ? String(Math.round(m * 10) / 10) : String(Math.round(m * 100) / 100));
 
+/** The "→" letter drawn as an arrow (the display font has no good one). Takes escaped HTML. */
+const arrows = (html: string): string => html.replace(/→/g, '<i class="arr" aria-hidden="true"></i>');
+
 export class TycoonUI {
   private amount: number | "max" = 1;
   private tab = "company";
@@ -923,7 +926,7 @@ export class TycoonUI {
   private planLabel(): string {
     const s = this.save, ci = chapterIndex(s), ch = CHAPTERS[ci];
     if (!ch) return esc(t("Next step"));
-    return `${esc(t("City Hall Lv {n} → {next} · {title}", { n: ci + 1, next: ci + 2, title: t(ch.title) }))}<span class="first-dots">${ch.goals.map(g => `<i class="${goalDone(s, g) ? "ok" : ""}"></i>`).join("")}</span>`;
+    return `${arrows(esc(t("City Hall Lv {n} → {next} · {title}", { n: ci + 1, next: ci + 2, title: t(ch.title) })))}<span class="first-dots">${ch.goals.map(g => `<i class="${goalDone(s, g) ? "ok" : ""}"></i>`).join("")}</span>`;
   }
 
   /** The step toward the current chapter's first unfinished goal, when there's one to take. */
@@ -1188,7 +1191,7 @@ export class TycoonUI {
     this.nextAct = n.act;
     const first = this.firstDay();
     this.put($("tcy-next"), `<span class="next-ico">${n.tone === "learn" ? COACH_FACE : n.tone === "gift" ? "🎁" : n.tone === "hot" ? "⚡" : n.tone === "grow" ? "🏗️" : n.tone === "save" ? "💰" : "✨"}</span>
-      <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : this.planLabel()}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go">›</span>`);
+      <span class="next-txt"><small>${first ? `${esc(t("First day in Skyhaven · {n} of {total}", { n: first.done, total: first.steps.length }))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : this.planLabel()}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go" aria-hidden="true"></span>`);
     $("tcy-next").className = `tcy-next tone-${n.tone}`;
     // (Hidden while the neighbor arrives: the Skip button sits there.)
     $("tcy-next").hidden = !!this.selected || !!this.selectedProp || !!this.selectedSight || this.story.stage === "arrive";
@@ -2945,7 +2948,7 @@ export class TycoonUI {
     const more: string[] = [];
     if (!ty.boost) more.push(`<button type="button" class="em-card gold" data-more="boost"><span class="eb-cico">${iconSvg("bolt")}</span><span><b>${esc(t("Cash booster ×2"))}</b><small>${esc(t("Double every dollar, forever"))}</small></span><em>💎 ${fmt(COIN_BOOST_CRYSTALS)}</em></button>`);
     if (warpGain(s, 1, now) > 0 && speedupsLeft(s) > 0) more.push(`<button type="button" class="em-card" data-more="warp"><span class="eb-cico">${iconSvg("clock")}</span><span><b>${esc(t("Time warp: 1 hour"))}</b><small>${esc(t("Get {n} right now", { n: coins(warpGain(s, 1, now)) }))}</small></span><em>💎 ${warpPrice(1)}</em></button>`);
-    more.push(`<button type="button" class="em-card" data-more="decor"><span class="eb-cico">${iconSvg("island")}</span><span><b>${esc(t("Island decorations"))}</b><small>${esc(t("Each one: +{pct}% to every business", { pct: Math.round(DECOR_BONUS * 100) }))}</small></span><em>›</em></button>`);
+    more.push(`<button type="button" class="em-card" data-more="decor"><span class="eb-cico">${iconSvg("island")}</span><span><b>${esc(t("Island decorations"))}</b><small>${esc(t("Each one: +{pct}% to every business", { pct: Math.round(DECOR_BONUS * 100) }))}</small></span><span class="chev" aria-hidden="true"></span></button>`);
     this.put($("earn-more"), more.join(""));
     // The bonuses at work (only the ones you have).
     const bon: [string, string, string][] = [];
@@ -3217,7 +3220,7 @@ export class TycoonUI {
     $("scrap-sub").textContent = t("{n} of {total} postcards", { n: Math.min(RANKS.length, rk + 1), total: RANKS.length });
     const mem = loadMemories(), first = Object.keys(mem).map(Number).sort((a, b) => a - b)[0];
     const share = first !== undefined && rk > first
-      ? `<button type="button" class="btn primary scrap-share" id="scrap-share">${esc(t("Then → Now: show a friend"))}</button>`
+      ? `<button type="button" class="btn primary scrap-share" id="scrap-share">${arrows(esc(t("Then → Now: show a friend")))}</button>`
       : `<p class="scrap-hint">${esc(t("Skyhaven remembers: a picture is taken at each new rank. Reach the next one to make your Then → Now card."))}</p>`;
     $("scrap-grid").innerHTML = share + RANKS.map((r, i) => {
       const got = i <= rk, when = s.scrapbook[i];
