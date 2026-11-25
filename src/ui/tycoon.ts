@@ -1750,8 +1750,17 @@ export class TycoonUI {
     this.lastBuildCheck = now;
     const s = this.save, before = (s.tycoon.builds ?? []).map(b => ({ ...b }));
     const done = completeBuilds(s, now);
-    if (done.length) { this.builtDone(before.filter(b => b.end <= now)); this.host.persist(); }
+    if (done.length) { this.host.sound.tada(); this.builtDone(before.filter(b => b.end <= now)); this.host.persist(); }
+    // While something is being built, a soft hammering now and then (only in the town view,
+    // with no menu over it).
+    if ((s.tycoon.builds ?? []).length && this.inCity && !openModalEl() && !document.body.classList.contains("tabs-open") && now - this.hammerAt > 2600) { this.hammerAt = now; this.host.sound.hammer(); }
     this.renderBuildChip(now);
+  }
+  private hammerAt = 0;
+  /** How busy the town is (0-1): how many people live in the homes you've built. */
+  townBusy(): number {
+    const people = Object.values(this.save.props).reduce((a, l) => a + (PROP_PEOPLE[Math.max(0, Math.min(5, l))] ?? 0), 0);
+    return Math.max(0, Math.min(1, people / 1500));
   }
 
   /** Celebrates finished builds. */

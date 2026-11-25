@@ -2690,6 +2690,9 @@ export class App implements DailyHost {
     // Ambience follows the camera: city and birds near the ground, wind higher up.
     const lvl = this.state === "over" || this.state === "menu" ? 0 : sim.level;
     this.sound.setSong(currentTheme(this.save).id);
+    // Over the town: its own street life, livelier the more people live there.
+    const inTown = this.state === "menu" && this.tycoon.inCity && !document.body.classList.contains("tabs-open");
+    this.sound.townLife(inTown ? this.tycoon.townBusy() : 0, nightAt(Math.max(sim.stack.length, clockSky())), inTown);
     this.sound.ambience(clamp(lvl / 60, 0, 1), nightAt(Math.max(sim.stack.length, clockSky())), sim.mover ? sim.windFor(sim.mover.y) : 0, active);
 
     const shot: Shot = this.state === "menu" ? "menu" : this.state === "over" && this.fallCam <= 0 ? "over" : "play";

@@ -16,6 +16,7 @@ import { buildModelStaged, buildStreetFront, buildTerrace, type ModelMats } from
 import { LAND, type LandId } from "../data/land";
 import { genBuilding, type GenKit } from "./propgen";
 import { HAS_CITY } from "../edition";
+import { PROP_PEOPLE } from "../data/props";
 import { hydrant, mailbox, plazaPiece, roundCenter, seatPiece, type DecoKit } from "./streetdecor";
 import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } from "./trees";
 import { buildCityHall } from "./cityhall";
@@ -2676,8 +2677,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     p.add(new THREE.Mesh(geo, personM));
     return p;
   };
-  const walkers = Array.from({ length: 14 }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: k / 14, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
+  // How busy the streets are follows how many people live in town (each home you build
+  // and grow brings more): 0 in an empty town, 1 once a couple of thousand live here.
+  const townPeople = Object.values(cafe?.props ?? {}).reduce((a, l) => a + (PROP_PEOPLE[Math.max(0, Math.min(5, l))] ?? 0), 0);
+  const busy = Math.max(0, Math.min(1, townPeople / 1500));
+  const walkers = Array.from({ length: Math.round(8 + busy * 22) }, (_, k) => { const p = makePerson(shirts[k % shirts.length]); life.add(p); return { p, u: (k * 0.618) % 1, v: (k % 2 ? 1 : -1) * (0.012 + (k % 5) * 0.003) }; });
   const crowd = Array.from({ length: 10 }, (_, k) => { const p = makePerson(shirts[(k + 3) % shirts.length]); p.visible = false; life.add(p); return p; });
+  // A queue at the door of the busiest businesses: longer the bigger the business and the
+  // more people live in town.
+  const queues: { id: string; i: number; ps: THREE.Object3D[] }[] = [];
   // Shoppers at every open business (the café has its own, in block.ts): they walk in from the
   // sidewalk, spend a moment inside, and come out with a bag in the shop's colors. Bigger
   // businesses get more of them.
@@ -2716,7 +2724,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     grp("hotel", [[itemGeo.case, mats.c("#4f6bff", 0.5)], [itemGeo.handle, mats.c("#2a2f4a", 0.5)]]);
     return m;
   };
-  const shoppers: Shopper[] = Array.from({ length: Math.min(18, shopLots.length * 4) }, (_, k) => {
+  for (const { l, i } of [...shopLots].sort((a, b) => b.l.s - a.l.s).slice(0, 4)) {
+    const n = Math.min(5, Math.round((1 + l.s) * (0.35 + busy * 0.75)));
+    if (n < 1) continue;
+    queues.push({ id: l.id, i, ps: Array.from({ length: n }, (_, k) => { const p = makePerson(shirts[(k * 2 + i) % shirts.length]); life.add(p); return p; }) });
+  }
+  const shoppers: Shopper[] = Array.from({ length: Math.min(Math.round(12 + busy * 16), shopLots.length * 5) }, (_, k) => {
     const p = makePerson(shirts[(k + 5) % shirts.length]);
     const bag = new THREE.Mesh(bagGeo, mats.c("#ffffff"));
     bag.visible = false;
@@ -2832,8 +2845,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   for (const [x, z] of ALL) for (const [i, j] of [[x, z], [x + 1, z], [x, z + 1], [x + 1, z + 1]] as [number, number][]) if (exits(i, j).length && !nodes.some(n => n[0] === i && n[1] === j)) nodes.push([i, j]);
   const starts: { i: number; j: number; d: [number, number] }[] = [];
   for (const [i, j] of nodes) for (const d of exits(i, j)) starts.push({ i, j, d });
-  const traffic = starts.length ? Array.from({ length: Math.min(9, starts.length) }, (_, k) => {
-    const st0 = starts[Math.floor((k * starts.length) / Math.min(9, starts.length))];
+  const nCars = Math.min(Math.round(5 + busy * 11), starts.length);
+  const traffic = starts.length ? Array.from({ length: nCars }, (_, k) => {
+    const st0 = starts[Math.floor((k * starts.length) / nCars)];
     const v = makeCar(BODY[(k + 5) % BODY.length], k % 4 === 1);
     return { v, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d), turn: false, u: (k % 3) * 0.3, sp: 1.15 + (k % 4) * 0.15, wait: 0, ahead: new THREE.Vector3(), lane: LANE };
   }) : [];
@@ -4147,6 +4161,17 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         carPath.at(c.u, tmp, dir);
         c.v.position.set(tmp.x, 0.04, tmp.z);
         c.v.rotation.y = Math.atan2(dir.x, dir.z);
+      }
+      // The queues: people waiting in a line along the sidewalk, shuffling a little.
+      for (const q of queues) {
+        const d = doors.get(q.id);
+        if (!d) continue;
+        const lp = lotPos(q.i);
+        q.ps.forEach((p, k) => {
+          const along = 0.45 + k * 0.32, sway = Math.sin(t * 1.3 + k * 1.7) * 0.03;
+          p.position.set(d.x + Math.sin(lp.a) * along + Math.cos(lp.a) * (0.5 + sway), 0.2 + Math.abs(Math.sin(t * 2 + k)) * 0.015, d.z + Math.cos(lp.a) * along - Math.sin(lp.a) * (0.5 + sway));
+          p.rotation.y = lp.a + Math.PI * 1.5;
+        });
       }
       // A crowd outside the rush-hour business.
       const ri = idx(live.rush);

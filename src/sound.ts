@@ -169,6 +169,36 @@ export class Sound {
    * Called every frame with where the camera is: `altitude` 0 on the ground to 1 high up,
    * `night` 0 to 1, `wind` 0 to 1, and whether a tower is being built.
    */
+  /** A hammer on wood, twice: something is being built. */
+  hammer(): void {
+    for (const d of [0, 0.2]) { this.noise(0.05, 0.05, 1500, "bandpass", 4, d); this.tone(190, 0.07, "triangle", 0.045, d); this.tone(900, 0.02, "square", 0.012, d); }
+  }
+  /** A bright little fanfare: a build is finished. */
+  tada(): void {
+    [0, 4, 7].forEach((n, i) => this.tone(523 * Math.pow(2, n / 12), 0.16, "triangle", 0.06, i * 0.07));
+    [0, 4, 7, 12].forEach(n => this.tone(523 * Math.pow(2, n / 12), 0.7, "triangle", 0.045, 0.24));
+    [12, 16, 19].forEach((n, i) => this.bell(1046 * Math.pow(2, n / 12), 0.6, 0.035, 0.26 + i * 0.05, i - 1));
+  }
+  /** The town's own sounds: the hum of the streets grows with how many people live there,
+   *  and now and then a car goes by, a horn sounds far off, people chatter, birds sing by
+   *  day. Called every frame while the town is on screen; `busy` is 0-1. */
+  private lifeAt = 0;
+  townLife(busy: number, night: number, on: boolean): void {
+    const ac = this.ac;
+    this.townBusy = on ? busy : -1;
+    if (!ac || !on) return;
+    const t = ac.currentTime;
+    if (t < this.lifeAt) return;
+    // More often in a busy town (every ~6s when empty, ~1.5s when full).
+    this.lifeAt = t + (6 - busy * 4.5) * (0.6 + Math.random() * 0.8);
+    const r = Math.random(), pan = Math.random() * 1.6 - 0.8;
+    if (r < 0.4) this.noise(1.4, 0.012 + busy * 0.02, 700, "bandpass", 1.5, 0, 0.5, 300 + Math.random() * 200);
+    else if (r < 0.55 && busy > 0.2) { const f = 380 + Math.random() * 80; this.tone(f, 0.12, "square", 0.008, 0, 0, this.sfx, pan); this.tone(f * 1.26, 0.14, "square", 0.007, 0.13, 0, this.sfx, pan); }
+    else if (r < 0.8 && busy > 0.1) this.noise(1.1, 0.008 + busy * 0.012, 1100, "bandpass", 3, 0, 0.3);
+    else if (night < 0.5) { const f = 2600 + Math.random() * 900; for (let k = 0; k < 3; k++) this.tone(f + k * 140, 0.07, "sine", 0.012, k * 0.11, f * 1.15, this.sfx, pan); }
+  }
+  private townBusy = -1;
+
   ambience(altitude: number, night: number, wind: number, active: boolean): void {
     const ac = this.ac;
     this.altitude = altitude;
@@ -179,7 +209,9 @@ export class Sound {
     // Quieter on the menus, fuller while building.
     this.windBed.gain.gain.setTargetAtTime((0.015 + altitude * 0.09 + wind * 0.08) * (0.6 + gust * 0.6) * (active ? 1 : 0.6), t, 0.4);
     this.windBed.filter.frequency.setTargetAtTime(380 + altitude * 500 + wind * 500 + gust * 200, t, 0.4);
-    this.city.gain.setTargetAtTime(Math.max(0, 1 - altitude * 3) * (1 - night * 0.6) * 0.08, t, 0.5);
+    // (Over the town the hum follows how busy it is.)
+    const hum = this.townBusy >= 0 ? 0.035 + this.townBusy * 0.07 : 0.08;
+    this.city.gain.setTargetAtTime(Math.max(0, 1 - altitude * 3) * (1 - night * 0.6) * hum, t, 0.5);
   }
 
   private tone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.2, delay = 0, slideTo = 0, out: AudioNode | null = this.sfx, pan = 0): void {
