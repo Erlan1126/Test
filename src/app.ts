@@ -2842,9 +2842,15 @@ export class App implements DailyHost {
   /** While a full menu covers the town, it's drawn a few times a second instead of every
    *  frame: nothing behind the sheet needs to be smooth, and the phone stays cool. */
   private coveredWait = 0;
+  private coveredAt = 0;
   private draw(dt: number): void {
     const save = this.save;
-    if (this.state === "menu" && document.body.classList.contains("tabs-open")) {
+    // (Only once the sheet has finished sliding in: while it fades in, the town still shows
+    // through it and must keep moving smoothly, or it jumps.)
+    const covered = this.state === "menu" && document.body.classList.contains("tabs-open");
+    if (covered && !this.coveredAt) this.coveredAt = performance.now();
+    if (!covered) this.coveredAt = 0;
+    if (covered && performance.now() - this.coveredAt > 600) {
       this.coveredWait += dt;
       if (this.coveredWait < 0.25) return;
       dt = this.coveredWait;
