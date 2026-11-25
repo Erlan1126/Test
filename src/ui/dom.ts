@@ -30,12 +30,36 @@ export function displayName(name: string): string {
 }
 
 let toastTimer = 0;
+const TOAST_ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const toastEsc = (s: string) => s.replace(/[&<>"']/g, c => TOAST_ESC[c]);
+/** What kind of moment a message is, from its words: it sets the pop-up's colour and icon. */
+function toastKind(msg: string): { kind: string; ico: string } {
+  const m = msg.toLowerCase();
+  if (/golden|tipped|vip|jackpot|crown|trophy|legend|record/.test(m)) return { kind: "gold", ico: "★" };
+  if (/couldn|can't|cannot|not enough|no room|failed|error|offline|busy/.test(m)) return { kind: "warn", ico: "!" };
+  if (/built|finished|opens|opened|done|grew|ready|unlocked|complete|moved in|level \d|lv \d/.test(m)) return { kind: "good", ico: "✓" };
+  if (/[$€£]|\+\d|earn|cash|paid|sale|rent/.test(m)) return { kind: "money", ico: "$" };
+  return { kind: "info", ico: "✦" };
+}
+/** A message pop-up: a coloured card with an icon, the amounts picked out in gold, a short
+ *  slide-in with a bounce, and a bar showing how long it stays. Tap it to dismiss. */
 export function toast(msg: string): void {
   const el = $("toast");
-  el.textContent = msg;
+  // A leading emoji or symbol becomes the icon; otherwise one is picked for the kind.
+  const lead = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*|[✨★☆✓!])\s*/u.exec(msg);
+  const text = lead ? msg.slice(lead[0].length) : msg, k = toastKind(msg);
+  const ico = lead && lead[1] !== "✨" ? lead[1] : k.ico;
+  const body = toastEsc(text).replace(/([+\-]?[$€£]\s?[\d.,]+\s?[KMBTkmbt]?[a-zA-Z]{0,2}|[+\-]\d[\d.,]*%?|×\d[\d.,]*)/g, "<b>$1</b>");
+  el.className = `toast-${k.kind}`;
+  el.innerHTML = `<span class="t-ico">${toastEsc(ico)}</span><span class="t-msg">${body}</span><i class="t-time"></i>`;
   el.hidden = false;
+  // (Restart the entrance even when one message follows another.)
+  el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
+  el.onclick = () => { el.hidden = true; clearTimeout(toastTimer); };
   clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => { el.hidden = true; }, 2800);
+  const ms = Math.min(5000, 2600 + text.length * 25);
+  el.style.setProperty("--t-ms", `${ms}ms`);
+  toastTimer = window.setTimeout(() => { el.hidden = true; }, ms);
 }
 
 // Modal sheets remember what opened them so focus goes back there on close.
