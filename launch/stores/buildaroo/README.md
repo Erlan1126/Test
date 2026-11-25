@@ -1,15 +1,15 @@
 # Buildaroo store screenshots
 
-Six screenshots, in this order, for both stores. Every image shows the real game
-(a daytime town named "Maple Bay"), with a caption at the top.
+Six screenshots, in this order, for both stores. Every image shows the real game (a town
+named "Maple Bay"), with a caption at the top.
 
 | # | File | Caption | Subtitle |
 |---|------|---------|----------|
 | 1 | 1-town | BUILD YOUR OWN CITY | Start from one coffee cart |
-| 2 | 2-streets | WATCH IT COME ALIVE | More homes, busier streets |
+| 2 | 2-seasons | EVERY SEASON IS A FESTIVAL | Snow, blossoms, pumpkins and more |
 | 3 | 3-business | RUN 10 UNIQUE BUSINESSES | Grow each one into a landmark |
-| 4 | 4-home | EVERY BUILDING HAS A PURPOSE | Homes bring customers and rent |
-| 5 | 5-neighbour | HELP YOUR NEIGHBOURS | Requests that pay in crystals |
+| 4 | 4-decorate | DECORATE IT YOUR WAY | Parks, fountains, even a stadium |
+| 5 | 5-friends | VISIT FRIENDS' CITIES | Climb the city leaderboard |
 | 6 | 6-hall | LEVEL UP CITY HALL | Each level unlocks something new |
 
 ## Where each set goes

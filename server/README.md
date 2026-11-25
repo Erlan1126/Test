@@ -92,6 +92,14 @@ To turn it on, when you decide to release it:
 
 Nothing else changes for players who haven't updated.
 
+## Buildaroo: friends' towns and the city board (new, needs a redeploy)
+
+The city game shares each player's town with their friend code (`POST /city`, now with a
+`town` part) and ranks the shared towns on `GET /cityboard?by=people|hall`. Nothing new to
+set up in the database: it reads the `cities` table that's already there. Until the worker
+is redeployed, visits still work for old shares and the board says it can't reach the
+server. To turn it on, from this folder: `npx wrangler deploy`.
+
 ## The studio report (optional)
 `npx wrangler secret put STATS_KEY` with a long password only the studio knows, then
 `npx wrangler deploy`. Read it with
