@@ -4476,3 +4476,14 @@ body.photo-mode #tycity > *, body.photo-mode #tcy-bar, body.photo-mode #toast, b
 .era-nudge small { display: block; font-size: 12px; opacity: 0.7; }
 .era-nudge .en-btns { display: flex; gap: 8px; margin-top: 10px; }
 .era-nudge .en-btns .btn { flex: 1; padding: 9px 10px; font-size: 14px; }
+
+/* Bubbles over buildings that are off screen (or under the bars) step aside. */
+#tcy-labels .tag.tag-out { visibility: hidden !important; pointer-events: none !important; }
+/* City Hall: a round purple bubble with its level, like the businesses. */
+#tcy-labels .tag.bub.hall-bub .tag-ico { background: linear-gradient(180deg, #8a6cff, #5b3fd6); color: #fff; }
+#tcy-labels .tag.bub.hall-bub .tag-ico svg { width: 22px; height: 22px; }
+#tcy-labels .tag.bub.hall-bub.ready .tag-ico { background: linear-gradient(180deg, #ffcf3a, #ff9a1f); animation: hallPulse 1.2s ease-in-out infinite; }
+/* The next business to open: just a red "+" with its price in a small chip. */
+#tcy-labels .tag.bub.lease:not(.later):not(.hall-lock) { padding: 3px !important; }
+#tcy-labels .tag.bub.lease .tag-lv { white-space: nowrap; background: #ff4f6d; color: #fff; border-color: #fff; }
+#tcy-labels .tag.bub.lease.hall-lock .tag-lv { background: #2a1f6e; color: #ffd23f; }

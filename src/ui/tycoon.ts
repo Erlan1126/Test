@@ -1142,7 +1142,7 @@ export class TycoonUI {
     // The City Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
     // is ready to finish).
     const ci = chapterIndex(s), ch = CHAPTERS[ci], ready = !!ch && chapterReady(s);
-    const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(t("City Hall"))}"><span class="tag-ico">${ready ? "⬆️" : "🏛️"}</span><b>${esc(ready ? t("Upgrade ready!") : t("City Hall · Lv {n}", { n: hallLevel(s) }))}</b></button>` : "";
+    const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall-bub${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(ready ? t("Upgrade ready!") : t("City Hall · Lv {n}", { n: hallLevel(s) }))}">${ready ? `<span class="badge grow">↑</span>` : ""}<span class="tag-ico">${iconSvg("building")}<i class="tag-lv">${esc(fmt(hallLevel(s)))}</i></span></button>` : "";
     // Only one business says "Open" in red at a time: the one to open next (the cheapest
     // waiting; the tapped one if the player picked another). The rest wait as small grey "+",
     // so a new player knows where to begin.
@@ -1156,10 +1156,10 @@ export class TycoonUI {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       // (The next business waiting for the City Hall: a lock with the level it needs.)
-      if (!owned && !open && !b.land && hallLocked(s, b.id) && shownBusiness(s, i)) return `<button type="button" class="tag bub lease hall-lock" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("City Hall level {n}", { n: hallNeed(b.id) }))}"><span class="tag-ico">🔒</span><b>${esc(t("City Hall Lv {n}", { n: hallNeed(b.id) }))}</b></button>`;
+      if (!owned && !open && !b.land && hallLocked(s, b.id) && shownBusiness(s, i)) return `<button type="button" class="tag bub lease hall-lock" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("City Hall level {n}", { n: hallNeed(b.id) }))}"><span class="tag-ico">🔒<i class="tag-lv">${esc(t("Lv {n}", { n: hallNeed(b.id) }))}</i></span></button>`;
       if (!owned && !open) return "";
       if (!owned && b.id !== nextOpen) return `<button type="button" class="tag bub lease later" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("For lease"))}"><span class="tag-ico">+</span></button>`;
-      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+</span><b>${esc(t("Open"))} · ${esc(coins(costOf(b, 0, 1)))}</b></button>`;
+      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+<i class="tag-lv">${esc(coins(costOf(b, 0, 1)))}</i></span>${this.selected === b.id ? `<b>${esc(t("Open"))}</b>` : ""}</button>`;
       const st = stageNow(s, b.id), grow = readyStage(s, b.id), sel = this.selected === b.id;
       // At most one badge: what needs you most.
       const badge = live.golden === b.id ? `<span class="badge golden" data-act="golden">✨</span>`
@@ -1304,6 +1304,9 @@ export class TycoonUI {
       if (!off) placed.push({ x: it.x, y: y0 + want, w, h });
       // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
       // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
+      const keep = it.tag.classList.contains("land-sale") || it.tag.classList.contains("sel");
+      const outside = it.x < -4 || it.x > window.innerWidth + 4 || it.y - it.h < 118 || it.y > window.innerHeight - 178;
+      it.tag.classList.toggle("tag-out", !keep && outside);
       { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
       if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
