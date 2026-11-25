@@ -12,6 +12,7 @@ import { houseThumb } from "../render3d/housethumbs";
 import { checkCityTrophies, CITY_TROPHIES } from "../logic/cityach";
 import { gameCenterCity } from "../gamecenter";
 import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
+import { buyPlace, lotFree, movePlace, PLACE_ITEMS, placeItem, placedOn, storePlace } from "../logic/placedecor";
 import { addDesigns, bookCount, bookReady, BOOK_CRYSTALS, BOOK_SIZE, claimBook, DESIGN_LEVELS, DESIGNS_PER_LEVEL, hasDesign, LEVEL_NAMES, levelCount, ROW_CRYSTALS } from "../logic/collection";
 import { ADVISORS, BOOM_MULT, CRATE_CRYSTALS, FESTIVAL_MULT, UPGRADES, VAULT_HOURS, type Advisor, BUSINESSES, coins, RUSH_MULT, STAGE_AT, STAGE_LABEL, COIN_BOOST_CRYSTALS, SPEEDUPS_PER_DAY } from "../data/tycoon";
 import { getLang, t, tn } from "../i18n";
@@ -1440,6 +1441,17 @@ export class TycoonUI {
   private holdingCard = false;
   /** Opens a property's card (and closes any business card). */
   private selectProp(key: string): void {
+    // Moving a decoration: the lot tapped next is where it goes.
+    if (this.movingDecor) {
+      const id = this.movingDecor, it = placeItem(id);
+      if (lotFree(this.save, key) && movePlace(this.save, id, key)) {
+        this.movingDecor = "";
+        this.host.sound.purchase(); vibrate(this.save.settings.vibrate, 12);
+        toast(t("{icon} {name} moved!", { icon: it?.icon ?? "", name: t(it?.name ?? "") }));
+        this.host.persist();
+      } else if (placedOn(this.save, key)?.id !== id) { toast(t("Pick an empty lot (no building on it)")); return; }
+      else this.movingDecor = "";
+    }
     this.selected = "";
     this.selectedProp = key;
     this.host.sound.click();
@@ -1482,6 +1494,31 @@ export class TycoonUI {
       ${lv ? `<p class="card-perk">📈 ${esc(t("Buildings grow taller as Skyhaven's rank rises."))}</p>` : ""}`);
   }
 
+  /** A decoration being moved: the next empty lot tapped is where it goes. */
+  private movingDecor = "";
+  /** Choose a decoration for an empty lot: the ones put away (free), then the shop. */
+  private openDecorate(lot: string): void {
+    const s = this.save, hall = hallLevel(s);
+    const opts = PLACE_ITEMS.map(it => {
+      const owned = it.id in s.placed, standing = owned && !!s.placed[it.id];
+      const locked = !owned && hall < it.hall, short = !owned && s.tycoon.coins < it.cash;
+      const sub = standing ? t("Already in your city: tap to move it here")
+        : owned ? t("Yours: place it for free")
+        : locked ? t("Opens at City Hall Lv {n}", { n: it.hall })
+        : `${coins(it.cash)} · ${t("+{pct}% earnings", { pct: +(it.bonus * 100).toFixed(1) })}${short ? ` · ${t("not enough cash yet")}` : ""}`;
+      return { label: `${it.icon} ${t(it.name)}`, sub, onPick: () => {
+        const r = owned ? (movePlace(s, it.id, lot) ? "ok" : "taken") : buyPlace(s, it.id, lot);
+        if (r === "ok") {
+          this.host.sound.purchase(); confetti(); vibrate(s.settings.vibrate, [15, 30, 15]);
+          toast(t("{icon} {name} placed! Every business earns +{pct}%", { icon: it.icon, name: t(it.name), pct: +(it.bonus * 100).toFixed(1) }));
+          track("decor_placed", { id: it.id, bought: !owned }, false);
+          this.selectedProp = ""; this.host.persist(); this.render();
+        } else toast(r === "hall" ? t("Opens at City Hall Lv {n}", { n: it.hall }) : r === "short" ? t("Not enough cash yet") : t("Pick an empty lot (no building on it)"));
+      } };
+    });
+    mayorChoice(t("Decorate this lot"), t("Place something people love to visit. Every decoration makes all your businesses earn more, and you can move it any time."), opts, t("Not now"));
+  }
+
   /** A property's card: what it is, who lives there, what it pays, and the upgrade. */
   private renderPropCard(now: number): void {
     const card = $("tcy-card"), s = this.save, key = this.selectedProp, lv = propLevel(s, key), job = buildOf(s, "home", key);
@@ -1502,6 +1539,22 @@ export class TycoonUI {
       : lot ? t("Lots built: {a} of {b}.", { a: lotsBuilt(s), b: lotsAllowed(s) })
       : t("Upgrade it into a bigger building: {tier}. More people move in and pay rent: +{n}/s.", { tier: t(PROP_TIERS[lv + 1]), n: coins(next) });
     const verb = lot ? t("Build") : t("Upgrade");
+    const deco = lot ? placedOn(s, key) : undefined;
+    if (deco) {
+      card.hidden = false;
+      this.put(card, `<div class="card-head" style="--b1:#ffd98a;--b2:#ff9a5c">
+          <span class="card-ico">${deco.icon}</span>
+          <span class="card-name"><b>${esc(t(deco.name))}</b><small>${esc(t("Your decoration"))}</small></span>
+          <button type="button" class="card-x" data-card="close" aria-label="${esc(t("Close"))}">×</button>
+        </div>
+        <p class="card-perk">✨ ${esc(t("Every business earns +{pct}% while it stands in your city.", { pct: +(deco.bonus * 100).toFixed(1) }))}</p>
+        <p class="card-info">${esc(t(deco.text))}</p>
+        <div class="card-acts">
+          <button type="button" class="card-main" data-card="dmove"><b>${esc(t("Move it"))}</b><small>${esc(t("Then tap any empty lot"))}</small></button>
+          <button type="button" class="card-small" data-card="dstore">${esc(t("Put away"))}</button>
+        </div>`);
+      return;
+    }
     card.hidden = false;
     this.put(card, `<div class="card-head" style="--b1:${lot ? "#bfe6a0" : "#7ad3ff"};--b2:${lot ? "#5fb36a" : "#4f8bff"}">
         <span class="card-ico">${lot ? "🏡" : "🏠"}</span>
@@ -1519,6 +1572,7 @@ export class TycoonUI {
         ${max ? "" : job ? `<button type="button" class="card-main building" data-card="pup"><b>🔨 ${esc(fmtLeft(job.end - now))}</b><small>${esc(t("Finish now"))} · 💎${finishPrice(job.end - now)}</small></button>`
           : why === "hall" ? `<button type="button" class="card-main short" data-card="hallgo"><b>🔒 ${esc(t("City Hall Lv {n}", { n: need }))}</b><small>${esc(t("See City Hall goals"))}</small></button>`
           : `<button type="button" class="card-main${can ? "" : " short"}" data-card="pup"><b>${esc(verb)} · ⏱ ${esc(fmtLeft(buildTime(s, "home", key, now)))}</b><small>${COIN_SVG}${esc(coins(price))}</small></button>`}
+        ${lot && HAS_CITY && !job ? `<button type="button" class="card-small" data-card="decorate">🌳 ${esc(t("Decorate"))}</button>` : ""}
       </div>`);
   }
 
@@ -1608,6 +1662,26 @@ export class TycoonUI {
     const id = this.selected, card = $("tcy-card"), what = el.dataset.card!;
     if (what === "close") { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.host.sound.click(); this.render(); return; }
     if (what === "hallgo") { this.selectedProp = ""; this.render(); this.host.openStory(); return; }
+    if (what === "decorate") { this.openDecorate(this.selectedProp); return; }
+    if (what === "dmove") {
+      const d = placedOn(this.save, this.selectedProp);
+      if (!d) return;
+      this.movingDecor = d.id;
+      this.selectedProp = "";
+      this.host.sound.click();
+      toast(t("Tap any empty lot to move the {name} there", { name: t(d.name) }));
+      this.render();
+      return;
+    }
+    if (what === "dstore") {
+      const d = placedOn(this.save, this.selectedProp);
+      if (!d || !storePlace(this.save, d.id)) return;
+      this.selectedProp = "";
+      this.host.sound.click(); this.host.persist();
+      toast(t("{name} put away: place it again for free from any empty lot", { name: t(d.name) }));
+      this.render();
+      return;
+    }
     if (what === "pup") {
       const key = this.selectedProp;
       tick(this.save);

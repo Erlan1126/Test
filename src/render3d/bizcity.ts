@@ -22,6 +22,7 @@ import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } f
 import { buildCityHall } from "./cityhall";
 import { buildHouse, houseDesign, type HouseKit } from "./houses";
 import { holidayTree, lampLights } from "./winter";
+import { buildPlaced, type PlaceKit } from "./placemodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -493,6 +494,8 @@ export interface BizCafe {
   ghostTerrace?: boolean;
   /** Island decorations the player bought (data/decor.ts). */
   decor?: string[];
+  /** The player's own decorations: lot key → decoration id (logic/placedecor.ts). */
+  placed?: Record<string, string>;
   /** The season's look (data/season.ts): "winter" adds snow, lights and a holiday tree. */
   season?: "" | "winter";
   /** The town's rank (data/ranks.ts): each one adds something new to the town. */
@@ -2141,6 +2144,14 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
    *  house at first, then an office block, then a skyscraper. Its height, or null. */
   /** Every building design standing in the town ("level:design"), for the collection book. */
   const designsSeen = new Set<string>();
+  /** What the player's own decorations are built from (placemodels.ts). */
+  const placeKit: PlaceKit = {
+    c: (c, r = 0.7, m = 0) => mats.c(c, r, m), slab: lotSlab, grass: grass2, pave, stone, wood, water,
+    tree: (x, z, s, seed) => new THREE.Mesh(parkTree(x, z, s, seed), natureM),
+    // (Kept whole, not merged with the town: the Blender model's baked shading is in its
+    // vertex colours, which a merge would drop.)
+    kit: (name, w) => { const m = kitPlace(name, w); if (m) m.obj.userData.dynamic = true; return m; },
+  };
   const houseKit: HouseKit = { c: (c, r = 0.7, m = 0) => mats.c(c, r, m), win: winMat };
   /** A building on a lot, drawn in code (houses.ts), sized by level: a house at first, then a
    *  shop or terrace, flats, an office block, then a skyscraper. Its height. */
@@ -2423,7 +2434,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // whatever you've built there (little homes up to a glass skyscraper).
       const gkey = `g:${cell[0]},${cell[1]}`;
       const level = Math.max(0, Math.min(5, cafe.props?.[gkey] ?? 0));
-      if (level === 0) {
+      // A decoration the player placed here (logic/placedecor.ts).
+      const deco = level === 0 ? cafe.placed?.[gkey] : undefined;
+      if (deco) {
+        homeAt(x, z, buildPlaced(lg, deco, placeKit, h), gkey);
+      } else if (level === 0) {
         P(lotSlab(), grass2);
         P(new THREE.BoxGeometry(1.6, 0.03, 1.6).translate(0, 0.07, 0), mats.c("#c9b48e", 0.95));
         P(new THREE.BoxGeometry(0.05, 0.55, 0.05).translate(-0.9, 0.33, 0.9), wood);
