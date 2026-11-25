@@ -7,6 +7,7 @@ import { startTabNav } from "./ui/tabnav";
 import { startIcons } from "./ui/icons";
 import { EDITION } from "./edition";
 import { toast } from "./ui/dom";
+import { hallBanner } from "./ui/mayor";
 
 // The tower game on its own keeps the Skyrise name; the city game is Buildaroo.
 if (EDITION === "skyrise") {
@@ -22,7 +23,7 @@ const app = new App(logoSvg);
 startIcons();
 startTabNav();
 // Automated tests drive the game through this handle.
-if (new URLSearchParams(location.search).has("debug")) { (window as unknown as { __app: App }).__app = app; (window as unknown as { __toast: typeof toast }).__toast = toast; }
+if (new URLSearchParams(location.search).has("debug")) { (window as unknown as { __app: App }).__app = app; (window as unknown as { __toast: typeof toast }).__toast = toast; (window as unknown as { __hallBanner: typeof hallBanner }).__hallBanner = hallBanner; }
 
 // The splash fades once the island has drawn (or after a few seconds whatever happens).
 {

@@ -114,6 +114,11 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   no.textContent = cancel;
   no.onclick = () => { $("mayor").hidden = true; };
   $("mayor-face").innerHTML = mayorSvg(reward ? "happy" : "talk");
+  // (Pip's name back, after a neighbour spoke.)
+  const nm = $("mayor-name");
+  if (nm.dataset.pip === undefined) nm.dataset.pip = nm.textContent ?? "";
+  nm.textContent = nm.dataset.pip;
+  $("mayor").classList.remove("neighbour");
   $("mayor-chapter").textContent = chapter;
   $("mayor-text").textContent = text;
   $("mayor-goals").innerHTML = goals;
@@ -138,10 +143,13 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     confetti();
     fireworks(4);
     const next = CHAPTERS[i + 1];
-    show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
+    // The city game: a big banner over the City Hall first (the camera flies to it), then
+    // Pip with the reward and what the new level opens.
+    if (HAS_CITY) hallBanner(i + 2);
+    window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
-      () => { if (next) { introduce(save, persist); } after(); });
+      () => { if (next) { introduce(save, persist); } after(); }), HAS_CITY ? 2600 : 0);
     return;
   }
   show(head(i, c.title), say(c.intro), goalsHtml(save, c), "", t("Let's build!"), after);
@@ -173,4 +181,41 @@ export function mayorList(title: string, text: string, items: { done: boolean; t
 
 export function mayorNote(title: string, text: string, button: string, onOk: () => void = () => {}, cancel = ""): void {
   show(title, text, "", "", button, onOk, cancel);
+}
+
+/** The City Hall's level-up banner: a burst of light, "CITY HALL" and the new level, gone
+ *  after a couple of seconds. */
+export function hallBanner(level: number): void {
+  document.querySelector(".hall-banner")?.remove();
+  const el = document.createElement("div");
+  el.className = "hall-banner";
+  el.setAttribute("role", "status");
+  el.innerHTML = `<i class="hb-rays"></i><div class="hb-card"><small>${esc(t("City Hall"))}</small><b>${esc(t("Level {n}", { n: level }))}</b><em>${esc(t("Your town grows!"))}</em></div>`;
+  document.body.appendChild(el);
+  window.setTimeout(() => el.classList.add("out"), 2200);
+  window.setTimeout(() => el.remove(), 2700);
+}
+
+/** A neighbour's face: a round, smiling face with their own skin, hair and shirt colours. */
+export function neighbourFace(seed: number): string {
+  const skins = ["#f6d0b0", "#e8b48a", "#c98a5e", "#8d5a3a", "#f2c39a", "#5a3a26"];
+  const hairs = ["#3a2a1a", "#c0504d", "#f2c94c", "#1f1a17", "#8a5a3a", "#6a6f99", "#e8457a"];
+  const shirts = ["#4f8bff", "#19a87a", "#ff8a3b", "#b48cff", "#ff4f8b", "#ffd23f"];
+  const sk = skins[seed % skins.length], hr = hairs[(seed >> 3) % hairs.length], sh = shirts[(seed >> 5) % shirts.length], long = (seed >> 7) % 2 === 0;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#e9f4ff"/>
+    <path d="M18 100c2-20 15-30 32-30s30 10 32 30z" fill="${sh}"/>
+    ${long ? `<path d="M24 58c-4-26 6-42 26-42s30 16 26 42l-6-2c0-14-8-24-20-24s-20 10-20 24z" fill="${hr}"/>` : ""}
+    <circle cx="50" cy="50" r="22" fill="${sk}"/>
+    <path d="M28 46c0-15 10-24 22-24s22 9 22 24c-6-8-14-11-22-11s-16 3-22 11z" fill="${hr}"/>
+    <circle cx="42" cy="51" r="2.8" fill="#2a1f3e"/><circle cx="58" cy="51" r="2.8" fill="#2a1f3e"/>
+    <circle cx="37" cy="58" r="3.5" fill="#ff8aa8" opacity=".55"/><circle cx="63" cy="58" r="3.5" fill="#ff8aa8" opacity=".55"/>
+    <path d="M43 60c4 4 10 4 14 0" fill="none" stroke="#2a1f3e" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+}
+
+/** A neighbour talks (a request, a thank-you): their own face and name in Pip's card. */
+export function neighbourNote(name: string, seed: number, eyebrow: string, text: string, reward: string, button: string, onOk: () => void, cancel = ""): void {
+  show(eyebrow, text, "", reward, button, onOk, cancel);
+  $("mayor-face").innerHTML = neighbourFace(seed);
+  $("mayor-name").textContent = name;
+  $("mayor").classList.add("neighbour");
 }

@@ -25,6 +25,7 @@ import type { Sound } from "../sound";
 import { $, closeModal, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
+import { askCash, askDone, askProgress, collectAsk, newAsk, saveGoal, secondsTo, skipPrice, skipWait } from "../logic/asks";
 import { track } from "../stats";
 import { adsReady, showRewarded } from "../ads";
 import { ALBUM_CRYSTALS, ALBUM_DONE_CRYSTALS, ALBUM_KINDS, sightInfo, SIGHT_PEOPLE } from "../data/sights";
@@ -36,7 +37,7 @@ import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg } from "./mayor";
+import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote } from "./mayor";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { landOnSale, landPrice, landWaiting, landHall } from "../logic/land";
 import { isLot, lotsAllowed, lotsBuilt, propBlock, propHallNeed, propLevel, propPrice, propRent, propsOpen } from "../logic/props";
@@ -1046,6 +1047,10 @@ export class TycoonUI {
     $("tcy-era").textContent = t("Skyhaven Inc.");
     this.renderGoal();
     { const ps = perSecond(s, now); $("tcy-rate").textContent = ps > 0 ? t("+{n}/s", { n: coins(ps) }) : t("Tap a business to sell"); }
+    // The savings goal: a thin bar along the bottom of the wallet.
+    { const g = HAS_CITY ? saveGoal(s, id => hqPrice(s, id), id => readyStage(s, id)) : null, bar = $("tcy-save");
+      bar.hidden = !g || ty.coins >= g.price || ty.tips < 3;
+      if (g && !bar.hidden) (bar.firstElementChild as HTMLElement).style.width = `${Math.max(2, Math.min(100, (ty.coins / g.price) * 100)).toFixed(1)}%`; }
     $("tcy-gems-n").textContent = fmt(s.crystals);
     if (this.shownCoins < 0) $("tcy-coins").textContent = coins(ty.coins);
     const live = this.liveState();
@@ -1074,6 +1079,14 @@ export class TycoonUI {
       .filter(h => h.key === this.selectedProp || (!propBlock(s, h.key) && h.price <= ty.coins))
       .sort((a, b) => (a.key === this.selectedProp ? -1 : b.key === this.selectedProp ? 1 : a.price - b.price)).slice(0, 3)
       .map(h => `<button type="button" class="tag bub prop-up${h.key === this.selectedProp ? " sel" : ""}" data-tag="prop-${h.key}" data-i="${-100 - h.idx}" data-h="-1" aria-label="${esc(t("Upgrade this building"))}"><span class="tag-ico">${h.key === this.selectedProp ? "🏠" : "⬆"}</span>${h.key === this.selectedProp ? `<b>${esc(t("Lv {n}", { n: h.lv }))}</b>` : ""}</button>`).join("");
+    // Neighbour requests: a speech bubble over the home that asks (a green tick once done).
+    if (!closeUp && now - this.askAt > 3000) { this.askAt = now; if (newAsk(s, homes, now)) { this.host.persist(); toast(t("💬 A neighbour has a request! Tap the bubble over their home.")); } }
+    const askTags = closeUp ? "" : s.asks.list.map((a, i) => {
+      const idx = homes.indexOf(a.home);
+      if (idx < 0) return "";
+      const done = askDone(s, a);
+      return `<button type="button" class="tag bub ask${done ? " done" : ""}" data-tag="ask-${i}" data-i="${-100 - idx}" data-h="-1" aria-label="${esc(t("A neighbour's request"))}"><span class="tag-ico">${done ? "✓" : "💬"}</span></button>`;
+    }).join("");
     this.labelsDirty = true;
     // The City Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
     // is ready to finish).
@@ -1088,7 +1101,7 @@ export class TycoonUI {
     if (this.bottleOn() && !this.bottleTold) { this.bottleTold = true; toast(t("🍾 Something washed up on the beach!")); }
     if (!this.bottleOn()) this.bottleTold = false;
     const bottleTag = !closeUp && this.bottleOn() ? `<button type="button" class="tag bub bottle" data-tag="bottle" data-i="-5" data-h="0.55" aria-label="${esc(t("A message in a bottle"))}"><span class="tag-ico"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><g transform="rotate(-35 16 16)"><rect x="13" y="2" width="6" height="5" rx="1.5" fill="#a0683a"/><path d="M13.5 7h5v3.5c3 1.4 4.5 3.6 4.5 6.5v10.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 9 27.5V17c0-2.9 1.5-5.1 4.5-6.5z" fill="#5fd0a0" stroke="#1f7a5a" stroke-width="1.4"/><rect x="11.5" y="16" width="9" height="9" rx="1" fill="#f6ecd0" stroke="#c8a870" stroke-width="0.8"/><path d="M13 19h6M13 21.5h5" stroke="#b08850" stroke-width="0.9"/><path d="M11.5 13.5c1-1.2 2-1.8 3-2" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g></svg></span></button>` : "";
-    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + propTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
+    this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + propTags + askTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       // (The next business waiting for the City Hall: a lock with the level it needs.)
@@ -1295,6 +1308,7 @@ export class TycoonUI {
     if (id === "hall") { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); this.host.openStory(); return; }
     if (id === "bottle") { this.collectBottle(); return; }
     if (id.startsWith("prop-")) { this.selectProp(id.slice(5)); return; }
+    if (id.startsWith("ask-")) { this.openAsk(Number(id.slice(4))); return; }
     if (id === "starter") {
       const st = this.save.cafe.starter;
       if (st) toast(HAS_CITY && this.save.profile.towers === 0 ? t("Your first apartment building: your neighbor lives here") : tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));
@@ -2703,6 +2717,40 @@ export class TycoonUI {
 
   /** What you earn, exactly: per second, minute, hour and day; each business's share;
    *  every bonus at work; and what managers bring in while you're away. */
+  private askAt = 0;
+  /** A neighbour's request: who asks, what for, the reward, and a button to do it (or to
+   *  collect, once it's done). */
+  private openAsk(i: number): void {
+    const s = this.save, a = s.asks.list[i];
+    if (!a) return;
+    this.host.sound.click();
+    const names = ["Rosa", "Theo", "Mia", "Sam", "Nora", "Leo", "Ava", "Max", "Ivy", "Ben", "Lena", "Omar"];
+    let h = 0; for (const c of a.home) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const who = names[h % names.length], b = BUSINESSES.find(x => x.id === a.biz), name = b ? t(b.name) : "";
+    const text = a.kind === "grow" ? t("Our home is getting crowded! Could you grow it into {tier}?", { tier: t(PROP_TIERS[Math.min(PROP_MAX, a.target)]) })
+      : a.kind === "shop" ? t("We'd love a {name} near us. Could you open one?", { name })
+      : a.kind === "more" ? t("We can't get enough of the {name}! Could you grow it to level {n}?", { name, n: a.target })
+      : t("Our friends want to move to Skyhaven. Could you build them a home on an empty lot?");
+    const done = askDone(s, a), pct = Math.round(askProgress(s, a) * 100);
+    const reward = `<span>+${a.crystals} 💎</span><span>+${esc(coins(askCash(s)))}</span>`;
+    if (done) {
+      neighbourNote(who, h, t("{name} is so happy!", { name: who }), `${text} ${t("Thank you!")}`, reward, t("Collect +{c} 💎", { c: a.crystals }), () => {
+        const r = collectAsk(s, i);
+        if (!r) return;
+        this.host.sound.purchase(); confetti(); vibrate(s.settings.vibrate, [15, 30, 15]);
+        toast(t("✨ {name} thanks you: +{c} 💎 and {cash}!", { name: who, c: r.crystals, cash: coins(r.cash) }));
+        track("ask_done", { kind: a.kind }, false);
+        this.host.persist(); this.render();
+      });
+      return;
+    }
+    neighbourNote(who, h, t("A neighbour's request"), `${text}${a.kind === "more" ? ` (${pct}%)` : ""}`, reward, t("Show me"), () => {
+      if (a.kind === "grow") this.selectProp(a.home);
+      else if (a.kind === "more" && b) { this.selected = b.id; this.selectedProp = ""; this.selectedSight = ""; this.render(); }
+      else this.openBuild();
+    }, t("Later"));
+  }
+
   openEarnings(): void {
     this.renderEarnings();
     openModal($("earnings"));
@@ -2711,6 +2759,18 @@ export class TycoonUI {
   private renderEarnings(): void {
     const s = this.save, ty = s.tycoon, now = Date.now(), ps = perSecond(s, now);
     $("earn-sub").textContent = t("Live · updates every second");
+    // What you're saving for, how long it takes, and the crystals to skip the wait.
+    { const g = HAS_CITY ? saveGoal(s, id => hqPrice(s, id), id => readyStage(s, id)) : null, box = $("earn-goal");
+      box.hidden = !g || ty.coins >= g.price;
+      if (g && !box.hidden) {
+        const b = BUSINESSES.find(x => x.id === g.biz)!, sec = secondsTo(s, g.price, now), cost = skipPrice(sec), pct = Math.min(100, (ty.coins / g.price) * 100);
+        const what = g.kind === "open" ? t("Open the {name}", { name: t(b.name) }) : t("The {name}'s new headquarters", { name: t(b.name) });
+        this.put(box, `<span class="eg-ico">${iconSvg(b.icon)}</span><div class="eg-main"><small>${esc(t("Saving for"))}</small><b>${esc(what)}</b>
+          <i class="eg-bar"><i style="width:${pct.toFixed(1)}%"></i></i><em>${esc(t("{have} of {need}", { have: coins(ty.coins), need: coins(g.price) }))} · ${esc(Number.isFinite(sec) ? t("about {t}", { t: fmtLeft(sec * 1000) }) : t("hire a manager to earn while you wait"))}</em></div>
+          ${Number.isFinite(cost) ? `<button type="button" class="eg-skip" data-skip="1"${s.crystals < cost ? " disabled" : ""}><b>${esc(t("Skip the wait"))}</b><small>💎${cost}</small></button>` : ""}`);
+        const btn = box.querySelector<HTMLButtonElement>("[data-skip]");
+        if (btn) btn.onclick = e => { e.stopPropagation(); if (skipWait(s, g.price)) { this.host.sound.purchase(); confetti(); toast(t("✨ Done waiting! You have the cash for: {what}", { what })); track("skip_wait", { cost }, false); this.host.persist(); this.render(); this.renderEarnings(); } };
+      } }
     $("earn-ps").textContent = coins(ps);
     $("earn-pm").textContent = coins(ps * 60);
     $("earn-ph").textContent = coins(ps * 3600);

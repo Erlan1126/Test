@@ -2760,7 +2760,11 @@ export class App implements DailyHost {
   private bizFocus = false;
   canCity(): boolean { return HAS_CITY && this.renderer instanceof Renderer3D && !this.visiting; }
   setBizFocus(on: boolean): void { this.bizFocus = on; }
-  openStory(): void { this.sound.click(); openMayor(this.save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); }
+  openStory(): void {
+    this.sound.click();
+    // A City Hall level-up: the camera flies to the City Hall while the banner plays.
+    openMayor(this.save, () => this.persist(), () => { this.sound.purchase(); window.setTimeout(() => this.sound.firework(), 500); if (HAS_CITY) this.visitLandmark(-4, 2800); }, () => this.refresh());
+  }
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
   bizPan(dx: number, dy: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPan(dx, dy); }
   bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }

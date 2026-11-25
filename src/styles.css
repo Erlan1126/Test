@@ -4352,3 +4352,50 @@ svg.ic.logo { filter: drop-shadow(0 2px 3px rgba(30, 15, 80, 0.3)) !important; o
 /* (A logo is a badge already: no tile behind it, just the logo with a soft shadow.) */
 .card-ico:has(svg.logo), #tcy-card .bc-ico:has(svg.logo) { background: none !important; box-shadow: none !important; }
 .card-ico svg.ic.logo, #tcy-card .bc-ico svg.ic.logo { width: 112% !important; height: 112% !important; filter: drop-shadow(0 3px 5px rgba(40, 10, 60, 0.35)) !important; }
+
+/* ---- Neighbour requests: a speech bubble over the home that asks ---- */
+.tag.ask { background: #fff !important; box-shadow: 0 6px 14px rgba(40, 20, 100, 0.3), inset 0 0 0 2px #6a3cff !important; animation: ask-bob 1.6s ease-in-out infinite; }
+.tag.ask .tag-ico { font-size: 18px; }
+.tag.ask::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; background: #fff; transform: translateX(-50%) rotate(45deg); box-shadow: 2px 2px 0 #6a3cff; }
+.tag.ask.done { box-shadow: 0 6px 14px rgba(20, 120, 70, 0.35), inset 0 0 0 2px #19a87a !important; animation: ask-pop 0.9s ease-in-out infinite; }
+.tag.ask.done .tag-ico { color: #19a87a; font: 400 20px/1 var(--display); }
+.tag.ask.done::after { box-shadow: 2px 2px 0 #19a87a; }
+@keyframes ask-bob { 50% { translate: 0 -4px; } }
+@keyframes ask-pop { 50% { scale: 1.12; } }
+
+/* ---- The savings goal: a thin bar along the bottom of the wallet ---- */
+.tcy-wallet { position: relative; }
+.tcy-save { position: absolute; left: 14px; right: 14px; bottom: 4px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.tcy-save > i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, #7ee08a, #ffd23f); transition: width 0.6s ease-out; }
+.earn-goal { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 12px 12px 12px 10px; border-radius: 20px; background: linear-gradient(135deg, #fff8e0, #f1ecff); box-shadow: inset 0 0 0 2px #ffd56a; }
+.earn-goal .eg-ico { flex: none; display: grid; place-items: center; width: 48px; height: 48px; font-size: 44px; }
+.earn-goal .eg-ico svg.ic { width: 1em; height: 1em; }
+.earn-goal .eg-main { flex: 1; min-width: 0; }
+.earn-goal small { display: block; font: 400 10px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: #d0901a; }
+.earn-goal b { display: block; font: 400 15px/1.15 var(--display); color: #2a1f3e; }
+.earn-goal .eg-bar { display: block; height: 7px; margin: 6px 0 4px; border-radius: 4px; background: #e9e4fa; overflow: hidden; }
+.earn-goal .eg-bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #7ee08a, #ffd23f); }
+.earn-goal em { display: block; font-style: normal; font-size: 11.5px; font-weight: 700; color: #6a6f99; }
+.earn-goal .eg-skip { flex: none; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 10px; border: 0; border-radius: 14px; cursor: pointer; color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 3px 0 #3a1fa0, 0 8px 16px rgba(106, 60, 255, 0.3); }
+.earn-goal .eg-skip b { color: #fff; font-size: 11px; }
+.earn-goal .eg-skip small { color: #fff; font-size: 12px; letter-spacing: 0; text-transform: none; }
+.earn-goal .eg-skip:disabled { opacity: 0.5; }
+
+/* ---- The City Hall's level-up banner ---- */
+.hall-banner { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; pointer-events: none; animation: hb-in 0.5s ease-out both; }
+.hall-banner .hb-rays { position: absolute; width: 140vmax; height: 140vmax; background: repeating-conic-gradient(rgba(255, 226, 122, 0.22) 0 9deg, transparent 9deg 18deg); -webkit-mask: radial-gradient(circle, #000 0, transparent 55%); mask: radial-gradient(circle, #000 0, transparent 55%); animation: hb-spin 6s linear infinite; }
+.hall-banner .hb-card { position: relative; padding: 18px 34px 16px; border-radius: 26px; text-align: center; color: #fff; background: linear-gradient(135deg, #ffcf3a, #ff8a2b 55%, #ff4f8b); box-shadow: 0 18px 40px rgba(120, 40, 0, 0.45), inset 0 -5px 0 rgba(0, 0, 0, 0.15), inset 0 3px 0 rgba(255, 255, 255, 0.45); animation: hb-pop 0.7s cubic-bezier(.2, 1.6, .4, 1) both; }
+.hall-banner small { display: block; font: 400 14px var(--display); letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.95; }
+.hall-banner b { display: block; font: 400 44px/1.05 var(--display); text-shadow: 0 3px 0 rgba(150, 50, 0, 0.45); }
+.hall-banner em { display: block; margin-top: 4px; font: 700 14px var(--ui); font-style: normal; }
+.hall-banner.out { animation: hb-out 0.5s ease-in both; }
+@keyframes hb-in { from { opacity: 0; } }
+@keyframes hb-out { to { opacity: 0; transform: scale(1.06); } }
+@keyframes hb-pop { from { transform: scale(0.3) rotate(-8deg); opacity: 0; } }
+@keyframes hb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .hall-banner, .hall-banner *, .tag.ask { animation: none !important; } }
+/* A neighbour speaking in the mayor's card: a friendlier colour for their name. */
+#mayor.neighbour #mayor-name { color: #19a87a !important; }
+/* Request bubbles: a white speech bubble with a purple chat mark, easy to spot. */
+.tag.ask { width: 40px !important; height: 40px !important; padding: 0 !important; justify-content: center; border-radius: 50% !important; }
+.tag.ask .tag-ico { color: #6a3cff; }

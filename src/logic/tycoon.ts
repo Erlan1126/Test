@@ -362,7 +362,7 @@ export const shownBusiness = (s: SaveData, i: number): boolean => {
   return p >= 0 && unlockedBusiness(s, p);
 };
 
-function earn(s: SaveData, n: number): void {
+export function earn(s: SaveData, n: number): void {
   if (!(n > 0) || !Number.isFinite(n)) return;
   s.tycoon.coins += n;
   s.tycoon.lifetime += n;

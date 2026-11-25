@@ -950,7 +950,8 @@ export class Renderer3D {
     const framing = !!f.bizLive?.frame;
     if (framing) { const a = plotPos(), b = lotPos(0); this.bizLook.tx = (a.x + b.x) / 2 + 1.5; this.bizLook.tz = (a.z + b.z) / 2 + 1.5; this.bizLook.tzoom = 2.0; }
     // A rank's new landmark: the camera visits it for a moment.
-    const lm = this.bizVisit && performance.now() < this.bizVisit.until ? this.biz.landmark(this.bizVisit.rank) : null;
+    // (Rank -4: the City Hall itself, for its level-up celebration.)
+    const lm = this.bizVisit && performance.now() < this.bizVisit.until ? (this.bizVisit.rank === -4 ? { ...this.biz.spot("hall"), zoom: 2.0 } : this.biz.landmark(this.bizVisit.rank)) : null;
     if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = lm.zoom ?? 1.8; }
     // (The player's own zoom isn't held to the fit-the-island limit either.)
     this.bizFraming = framing || !!this.debugLook || !!lm || (this.camUser.on && !f.bizLive?.sel);
@@ -1134,7 +1135,7 @@ export class Renderer3D {
   /** The camera's visit to a town rank's landmark (see bizcity landmark()). */
   private bizVisit: { rank: number; until: number } | null = null;
   visitLandmark(rank: number, ms: number): boolean {
-    if (!this.biz || !this.biz.landmark(rank)) return false;
+    if (!this.biz || (rank !== -4 && !this.biz.landmark(rank))) return false;
     this.bizVisit = { rank, until: performance.now() + ms };
     return true;
   }
