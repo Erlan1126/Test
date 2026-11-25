@@ -70,7 +70,7 @@ export interface TycoonState {
   built: number;
 }
 
-export type GoalType = "vip" | "buy" | "taps" | "rush";
+export type GoalType = "vip" | "buy" | "taps" | "rush" | "build" | "home" | "ask";
 export interface CompanyGoal { t: GoalType; n: number; p: number }
 
 /** The current economy version (see TycoonState.econ). */
@@ -607,7 +607,9 @@ export function adDoubleAway(s: SaveData, earned: number): boolean {
 // ---------- Company goals: three a day ----------
 
 /** Goal kinds with three sizes; each pays stars by size, all three a crystal bonus. */
-export const GOAL_TIERS: Record<GoalType, number[]> = { vip: [2, 4, 6], buy: [10, 25, 50], taps: [30, 60, 120], rush: [1, 2, 3] };
+export const GOAL_TIERS: Record<GoalType, number[]> = { vip: [2, 4, 6], buy: [10, 25, 50], taps: [30, 60, 120], rush: [1, 2, 3], build: [1, 2, 3], home: [1, 2, 3], ask: [1, 2, 2] };
+/** The city game's building goals: finish builds, build or grow homes, help neighbours. */
+export const BUILD_GOALS: GoalType[] = ["build", "home", "ask"];
 export const GOAL_STARS = [3, 5, 8], GOALS_BONUS_CRYSTALS = 10;
 /** The hand-selling goal for a company with no manager yet. */
 export const FRESH_TAPS = 15;
@@ -616,7 +618,10 @@ export const FRESH_TAPS = 15;
 export function dealGoals(s: SaveData, now = Date.now(), rnd = Math.random): void {
   const day = dayKey(0, now), g = s.tycoon.goals;
   if (g.day === day && g.list.length) return;
-  const kinds = (Object.keys(GOAL_TIERS) as GoalType[]).sort(() => rnd() - 0.5).slice(0, 3);
+  // (The city game always has at least one building goal; the tower game never does.)
+  const pool = (Object.keys(GOAL_TIERS) as GoalType[]).filter(k => HAS_CITY || !BUILD_GOALS.includes(k));
+  let kinds = pool.sort(() => rnd() - 0.5).slice(0, 3);
+  if (HAS_CITY && !kinds.some(k => BUILD_GOALS.includes(k))) kinds = [BUILD_GOALS[Math.floor(rnd() * 2) % 2], ...kinds.slice(0, 2)];
   // Before the first manager, selling by hand is slow work: a day-one goal stays small.
   const fresh = s.tycoon.managers.length === 0;
   s.tycoon.goals = { day, bonus: false, list: kinds.map(k => ({ t: k, n: fresh && k === "taps" ? FRESH_TAPS : GOAL_TIERS[k][Math.floor(rnd() * 3)], p: 0 })) };

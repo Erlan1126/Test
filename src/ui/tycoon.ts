@@ -25,6 +25,7 @@ import type { Sound } from "../sound";
 import { $, closeModal, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
+import { cleanCityName } from "../logic/save";
 import { askCash, askDone, askProgress, collectAsk, newAsk, saveGoal, secondsTo, skipPrice, skipWait } from "../logic/asks";
 import { track } from "../stats";
 import { adsReady, showRewarded } from "../ads";
@@ -37,7 +38,7 @@ import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { MAYOR_SVG, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote } from "./mayor";
+import { MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote } from "./mayor";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { landOnSale, landPrice, landWaiting, landHall } from "../logic/land";
 import { isLot, lotsAllowed, lotsBuilt, propBlock, propHallNeed, propLevel, propPrice, propRent, propsOpen } from "../logic/props";
@@ -236,6 +237,8 @@ export class TycoonUI {
     });
     for (const ev of ["pointerup", "pointercancel", "pointerleave", "blur"]) document.addEventListener(ev, stopHold, true);
     // Tapping your money opens what you earn, exactly.
+    document.getElementById("city-rename")?.addEventListener("click", () => { this.host.sound.click(); closeModal($("settings")); this.nameCity(); });
+    this.syncCityNameRow();
     const wallet = $("tcy-top").querySelector<HTMLElement>(".tcy-wallet")!;
     wallet.addEventListener("click", e => { e.stopPropagation(); this.host.sound.click(); this.openEarnings(); });
     wallet.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.host.sound.click(); this.openEarnings(); } });
@@ -1080,6 +1083,7 @@ export class TycoonUI {
       .sort((a, b) => (a.key === this.selectedProp ? -1 : b.key === this.selectedProp ? 1 : a.price - b.price)).slice(0, 3)
       .map(h => `<button type="button" class="tag bub prop-up${h.key === this.selectedProp ? " sel" : ""}" data-tag="prop-${h.key}" data-i="${-100 - h.idx}" data-h="-1" aria-label="${esc(t("Upgrade this building"))}"><span class="tag-ico">${h.key === this.selectedProp ? "🏠" : "⬆"}</span>${h.key === this.selectedProp ? `<b>${esc(t("Lv {n}", { n: h.lv }))}</b>` : ""}</button>`).join("");
     // Neighbour requests: a speech bubble over the home that asks (a green tick once done).
+    if (HAS_CITY && !s.cityName && hallLevel(s) >= 2 && !s.seenFeatures.includes("name-city") && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.nameCity(true);
     if (!closeUp && now - this.askAt > 3000) { this.askAt = now; if (newAsk(s, homes, now)) { this.host.persist(); toast(t("💬 A neighbour has a request! Tap the bubble over their home.")); } }
     const askTags = closeUp ? "" : s.asks.list.map((a, i) => {
       const idx = homes.indexOf(a.home);
@@ -1766,6 +1770,10 @@ export class TycoonUI {
   /** Celebrates finished builds. */
   private builtDone(jobs: BuildJob[]): void {
     const s = this.save;
+    // Today's building goals.
+    this.goal("build", jobs.length);
+    const homes = jobs.filter(j => j.kind === "home").length;
+    if (homes) this.goal("home", homes);
     for (const j of jobs) {
       track("build_done", { kind: j.kind }, false);
       this.eventAdd(j.kind === "home" ? "home" : "build");
@@ -2688,8 +2696,10 @@ export class TycoonUI {
   private goalsHtml(): string {
     const s = this.save, g = s.tycoon.goals;
     const text = (k: GoalType, n: number) => k === "vip" ? t("Serve {n} VIP customers", { n }) : k === "buy" ? t("Buy {n} business levels", { n })
-      : k === "taps" ? t("Run a business by hand {n} times", { n }) : t("Catch {n} rush hours", { n });
-    const icon: Record<GoalType, string> = { vip: "crown", buy: "building", taps: "sparkle", rush: "bolt" };
+      : k === "taps" ? t("Run a business by hand {n} times", { n }) : k === "rush" ? t("Catch {n} rush hours", { n })
+      : k === "build" ? tn(n, "Finish {n} build", "Finish {n} builds", { n }) : k === "home" ? tn(n, "Build or grow {n} home", "Build or grow {n} homes", { n })
+      : tn(n, "Help {n} neighbour", "Help {n} neighbours", { n });
+    const icon: Record<GoalType, string> = { vip: "crown", buy: "building", taps: "sparkle", rush: "bolt", build: "building", home: "home", ask: "gift" };
     return `<div class="ty-goals">` + g.list.map(x => {
       const done = x.p >= x.n, stars = GOAL_STARS[Math.max(0, GOAL_TIERS[x.t].indexOf(x.n))];
       return `<div class="ty-goal${done ? " done" : ""}"><span class="ty-goal-check">${done ? "✓" : iconSvg(icon[x.t])}</span><span><b>${esc(text(x.t, x.n))}</b>
@@ -2727,6 +2737,29 @@ export class TycoonUI {
   /** What you earn, exactly: per second, minute, hour and day; each business's share;
    *  every bonus at work; and what managers bring in while you're away. */
   private askAt = 0;
+  /** Pip asks for the city's name (or a new one). */
+  nameCity(first = false): void {
+    const s = this.save, ideas = ["Maple Bay", "Sunnyvale", "Cloudport", "Brightwater", "Harbor Hills", "Sky Meadow", "Pine Haven", "Coral Point"];
+    const pick = s.cityName || ideas[Math.floor(Math.random() * ideas.length)];
+    if (first && !s.seenFeatures.includes("name-city")) s.seenFeatures.push("name-city");
+    mayorAsk(first ? t("Every great city needs a name!") : t("Rename your city"), first ? t("Your town is growing up. What should we call it? You can change it later in Settings.") : t("What should we call your city?"),
+      pick, t("City name"), t("Name it!"), v => {
+        const name = cleanCityName(v);
+        if (!name) return;
+        s.cityName = name;
+        this.host.persist(); this.host.sound.purchase(); confetti();
+        toast(t("🏙️ Welcome to {name}!", { name }));
+        track("city_named", {}, false);
+        this.render(); this.renderGoal(); this.syncCityNameRow();
+      }, t("Later"));
+  }
+  syncCityNameRow(): void {
+    const row = document.getElementById("city-name-row");
+    if (!row) return;
+    row.hidden = !HAS_CITY;
+    const b = document.getElementById("city-name-val");
+    if (b) b.textContent = this.save.cityName || t("Not named yet");
+  }
   /** A neighbour's request: who asks, what for, the reward, and a button to do it (or to
    *  collect, once it's done). */
   private openAsk(i: number): void {
@@ -2749,6 +2782,7 @@ export class TycoonUI {
         this.host.sound.purchase(); confetti(); vibrate(s.settings.vibrate, [15, 30, 15]);
         toast(t("✨ {name} thanks you: +{c} 💎 and {cash}!", { name: who, c: r.crystals, cash: coins(r.cash) }));
         track("ask_done", { kind: a.kind }, false);
+        this.goal("ask");
         this.host.persist(); this.render();
       });
       return;
@@ -2919,12 +2953,12 @@ export class TycoonUI {
       // The city game: the City Hall badge, its level in the middle and a ring that fills
       // with the goals of the next level (the town's rank comes with the City Hall).
       const ci = chapterIndex(s), ch = CHAPTERS[ci], got = ch ? ch.goals.filter(g => goalDone(s, g)).length : 0, all = ch ? ch.goals.length : 1;
-      const hv = `h${hallLevel(s)}|${got}|${rk}|${getLang()}`;
+      const hv = `h${hallLevel(s)}|${got}|${rk}|${getLang()}|${s.cityName}`;
       if (el.dataset.v === hv) return;
       el.dataset.v = hv;
       el.innerHTML = `<span class="tg-ring" style="--k:${((ch ? got / all : 1) * 360).toFixed(1)}deg"><span class="tg-ico">${iconSvg("building")}</span><b class="tg-lv">${hallLevel(s)}</b></span>`
-        + `<span class="tg-main"><b>${esc(t(RANKS[rk].name))}</b>`
-        + (ch ? `<em class="tg-next">${esc(t("City Hall goals {n}/{total}", { n: got, total: all }))}</em>` : `<em class="tg-next">★ ${esc(t("Top rank"))}</em>`) + `</span>`;
+        + `<span class="tg-main"><b>${esc(s.cityName || t(RANKS[rk].name))}</b>`
+        + `<em class="tg-next">${s.cityName ? `${esc(t(RANKS[rk].name))} · ` : ""}${ch ? esc(t("City Hall goals {n}/{total}", { n: got, total: all })) : `★ ${esc(t("Top rank"))}`}</em>` + `</span>`;
       el.setAttribute("aria-label", t("City Hall level {n}", { n: hallLevel(s) }));
       return;
     }

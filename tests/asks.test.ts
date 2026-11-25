@@ -55,3 +55,31 @@ describe("the savings goal", () => {
     expect(skipWait(s, g.price, T0)).toBe(false); // nothing left to wait for
   });
 });
+
+import { cleanCityName } from "../src/logic/save";
+import { BUILD_GOALS, dealGoals, goalStep } from "../src/logic/tycoon";
+import { HAS_CITY } from "../src/edition";
+
+describe("the city's name and building goals", () => {
+  it("keeps a city name to one clean line of up to 18 characters", () => {
+    expect(cleanCityName("  Maple   Bay ")).toBe("Maple Bay");
+    expect(cleanCityName("<b>Hi</b>\n")).toBe("bHi/b");
+    expect(cleanCityName("A very long city name indeed")).toBe("A very long city n");
+    expect(cleanCityName(42)).toBe("");
+    const s = normalize({ ...defaultSave(), cityName: "Cloudport" } as unknown as Record<string, unknown>);
+    expect(s.cityName).toBe("Cloudport");
+  });
+  it("deals a building goal every day in the city game, and counts it", () => {
+    for (let d = 0; d < 20; d++) {
+      const s = defaultSave();
+      dealGoals(s, T0 + d * 86400e3);
+      expect(s.tycoon.goals.list.some(g => BUILD_GOALS.includes(g.t))).toBe(HAS_CITY);
+    }
+    const s = defaultSave();
+    s.tycoon.goals = { day: "", bonus: false, list: [] };
+    dealGoals(s, T0);
+    s.tycoon.goals.list[0] = { t: "build", n: 1, p: 0 };
+    const r = goalStep(s, "build", 1, T0);
+    expect(r.done.length).toBe(1);
+  });
+});

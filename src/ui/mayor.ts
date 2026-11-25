@@ -145,7 +145,7 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     const next = CHAPTERS[i + 1];
     // The city game: a big banner over the City Hall first (the camera flies to it), then
     // Pip with the reward and what the new level opens.
-    if (HAS_CITY) hallBanner(i + 2);
+    if (HAS_CITY) hallBanner(i + 2, save.cityName);
     window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
@@ -185,12 +185,12 @@ export function mayorNote(title: string, text: string, button: string, onOk: () 
 
 /** The City Hall's level-up banner: a burst of light, "CITY HALL" and the new level, gone
  *  after a couple of seconds. */
-export function hallBanner(level: number): void {
+export function hallBanner(level: number, city = ""): void {
   document.querySelector(".hall-banner")?.remove();
   const el = document.createElement("div");
   el.className = "hall-banner";
   el.setAttribute("role", "status");
-  el.innerHTML = `<i class="hb-rays"></i><div class="hb-card"><small>${esc(t("City Hall"))}</small><b>${esc(t("Level {n}", { n: level }))}</b><em>${esc(t("Your town grows!"))}</em></div>`;
+  el.innerHTML = `<i class="hb-rays"></i><div class="hb-card"><small>${esc(city ? `${city} · ${t("City Hall")}` : t("City Hall"))}</small><b>${esc(t("Level {n}", { n: level }))}</b><em>${esc(t("Your town grows!"))}</em></div>`;
   document.body.appendChild(el);
   window.setTimeout(() => el.classList.add("out"), 2200);
   window.setTimeout(() => el.remove(), 2700);
@@ -218,4 +218,12 @@ export function neighbourNote(name: string, seed: number, eyebrow: string, text:
   $("mayor-face").innerHTML = neighbourFace(seed);
   $("mayor-name").textContent = name;
   $("mayor").classList.add("neighbour");
+}
+
+/** Pip asks for a name: a text box in his card (with a suggestion filled in). */
+export function mayorAsk(title: string, text: string, value: string, label: string, button: string, onOk: (v: string) => void, cancel = ""): void {
+  show(title, text, `<li class="mayor-input"><input type="text" id="mayor-input" maxlength="18" autocomplete="off" spellcheck="false" aria-label="${esc(label)}" value="${esc(value)}"></li>`, "", button, () => onOk(($("mayor-input") as HTMLInputElement).value), cancel);
+  const inp = $("mayor-input") as HTMLInputElement;
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("mayor-ok").click(); } };
+  window.setTimeout(() => { inp.focus(); inp.select(); }, 50);
 }

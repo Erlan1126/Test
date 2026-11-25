@@ -88,6 +88,8 @@ export interface SaveData {
   props: Record<string, number>;
   /** Neighbour requests (logic/asks.ts). */
   asks: AskState;
+  /** The name the player gave their city (empty: not named yet). */
+  cityName: string;
   /** The town scrapbook: when each town rank was first reached (ms, by rank). */
   scrapbook: Record<string, number>;
   /** Your tallest towers, standing on their district's island. */
@@ -213,6 +215,7 @@ export function defaultSave(): SaveData {
     land: [],
     props: {},
     asks: newAsks(),
+    cityName: "",
     scrapbook: {},
     skyline: [],
     population: 0,
@@ -339,6 +342,7 @@ export function normalize(raw: unknown): SaveData {
     album: Array.isArray(r.album) ? [...new Set((r.album as unknown[]).filter((x): x is string => typeof x === "string" && x.length < 30))].slice(0, 200) : [],
     scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
     asks: normalizeAsks(r.asks),
+    cityName: cleanCityName(r.cityName),
     props: Object.fromEntries(Object.entries((r.props && typeof r.props === "object" ? r.props : {}) as Record<string, unknown>).filter(([k, v]) => /^[a-z0-9]{1,4}:-?\d{1,2},-?\d{1,2}$/.test(k) && Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5).slice(0, 400)) as Record<string, number>,
     land: (Array.isArray(r.land) ? r.land : []).filter((x, i, a): x is LandId => LAND.some(l => l.id === x) && a.indexOf(x) === i),
     annex: { pick: ((p: unknown) => (p === "greenhouse" || p === "lookout" ? p : ""))((r.annex as { pick?: unknown } | undefined)?.pick) },
@@ -575,7 +579,7 @@ function normalizeEvolved(v: unknown, levels: Record<string, number>): Record<st
 
 function normalizeGoals(v: unknown): TycoonState["goals"] {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
-  const kinds = ["vip", "buy", "taps", "rush"];
+  const kinds = ["vip", "buy", "taps", "rush", "build", "home", "ask"];
   const list = Array.isArray(o.list) ? o.list.filter((g): g is CompanyGoal => !!g && typeof g === "object" && kinds.includes((g as CompanyGoal).t)
     && Number.isInteger((g as CompanyGoal).n) && (g as CompanyGoal).n > 0 && typeof (g as CompanyGoal).p === "number").slice(0, 3)
     .map(g => ({ t: g.t, n: g.n, p: Math.max(0, Math.min(g.n, Math.floor(g.p))) })) : [];
@@ -646,4 +650,10 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     goals: normalizeGoals(o.goals),
     rush: { id: typeof (o.rush as { id?: unknown })?.id === "string" && ids.includes((o.rush as { id: string }).id) ? (o.rush as { id: string }).id : "", until: big((o.rush as { until?: unknown })?.until) },
   };
+}
+
+/** A city name as the player typed it: plain text, one line, at most 18 characters. */
+export function cleanCityName(v: unknown): string {
+  if (typeof v !== "string") return "";
+  return v.replace(/[\u0000-\u001f\u007f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 18);
 }
