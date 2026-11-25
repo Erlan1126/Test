@@ -67,7 +67,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 /** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
 const EASY_TOWERS = 5;
 import { clockSky, nightAt, setSkyMode } from "./render/scenery";
-import { citySeason, townWeather, winterDaysLeft, winterKey } from "./data/season";
+import { citySeason, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { placedMap } from "./logic/placedecor";
 import { Sound } from "./sound";
 import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
@@ -674,11 +674,11 @@ export class App implements DailyHost {
     const w = this.save.settings.saver ? "clear" : townWeather();
     if (this.renderer.weather.kind !== w) this.renderer.weather.set(w);
     // Winter Lights: said once a year, when the player is settled in the town.
-    const wk = winterKey();
-    if (citySeason() === "winter" && playerStarted(this.save) && !this.save.seenFeatures.includes(wk) && this.tycoon.inCity && !openModalEl()) {
+    const se = seasonInfo(citySeason()), wk = seasonKey();
+    if (se && playerStarted(this.save) && !this.save.seenFeatures.includes(wk) && this.tycoon.inCity && !openModalEl()) {
       this.save.seenFeatures.push(wk);
       this.persist();
-      toast(t("❄️ Winter Lights is here! Snow, string lights, and a giant holiday tree to win in Goals ({n} days)", { n: winterDaysLeft() }));
+      toast(t(se.hello, { n: seasonDaysLeft() }));
     }
   }
 

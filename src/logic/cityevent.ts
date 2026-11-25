@@ -3,7 +3,7 @@
 // reward is a decoration that is free only this week (it's sold for crystals otherwise).
 // The event pass (crystals) doubles every point and adds crystals to each reward.
 import { DECOR, WEEKLY_DECOR } from "../data/decor";
-import { citySeason } from "../data/season";
+import { citySeason, seasonInfo } from "../data/season";
 import { weekIndex } from "../data/events";
 import type { SaveData } from "./save";
 
@@ -36,11 +36,11 @@ export function cityEvent(s: SaveData, now = Date.now()): CityEventState {
   return s.cityEvent;
 }
 
-/** Winter Lights takes over the weekly event while it's on (data/season.ts). */
-export const WINTER_THEME = { name: "Winter Lights", icon: "❄️" };
-export const eventTheme = (now = Date.now()) => citySeason(now) === "winter" ? WINTER_THEME : EVENT_THEMES[((weekIndex(now) % EVENT_THEMES.length) + EVENT_THEMES.length) % EVENT_THEMES.length];
+/** A season takes over the weekly event while it's on (data/season.ts). */
+export const eventTheme = (now = Date.now()) => seasonInfo(citySeason(now)) ?? EVENT_THEMES[((weekIndex(now) % EVENT_THEMES.length) + EVENT_THEMES.length) % EVENT_THEMES.length];
 /** The week's decoration prize. */
-export const eventPrize = (now = Date.now()) => citySeason(now) === "winter" ? DECOR.find(d => d.id === "bigtree")! : WEEKLY_DECOR[((weekIndex(now) % WEEKLY_DECOR.length) + WEEKLY_DECOR.length) % WEEKLY_DECOR.length];
+export const eventPrize = (now = Date.now()) => { const se = seasonInfo(citySeason(now)); return se ? DECOR.find(d => d.id === se.prize)! : WEEKLY_DECOR[((weekIndex(now) % WEEKLY_DECOR.length) + WEEKLY_DECOR.length) % WEEKLY_DECOR.length]; };
+
 
 /** When this week's event ends (ms), or undefined once its prize is won. */
 export function cityEventEndsAt(s: SaveData, now = Date.now()): number | undefined {

@@ -22,7 +22,7 @@ if (EDITION === "skyrise") {
   const q = new URLSearchParams(location.search);
   if (q.has("debug")) {
     const sn = q.get("season"), w = q.get("weather");
-    if (sn !== null) seasonDebug.season = sn === "winter" ? "winter" : "";
+    if (sn !== null) seasonDebug.season = (["spring", "summer", "halloween", "winter"].includes(sn) ? sn : "") as typeof seasonDebug.season;
     if (w === "snow" || w === "rain" || w === "clear") seasonDebug.weather = w;
   }
 }

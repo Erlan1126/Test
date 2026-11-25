@@ -21,7 +21,8 @@ import { hydrant, mailbox, plazaPiece, roundCenter, seatPiece, type DecoKit } fr
 import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } from "./trees";
 import { buildCityHall } from "./cityhall";
 import { buildHouse, houseDesign, type HouseKit } from "./houses";
-import { holidayTree, lampLights } from "./winter";
+import { bandstand, blossomArch, blossomTree, festivalUmbrellas, holidayTree, lampLights, pumpkins } from "./winter";
+import { seasonInfo } from "../data/season";
 import { buildPlaced, type PlaceKit } from "./placemodels";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
@@ -497,7 +498,7 @@ export interface BizCafe {
   /** The player's own decorations: lot key → decoration id (logic/placedecor.ts). */
   placed?: Record<string, string>;
   /** The season's look (data/season.ts): "winter" adds snow, lights and a holiday tree. */
-  season?: "" | "winter";
+  season?: "" | "spring" | "summer" | "halloween" | "winter";
   /** The town's rank (data/ranks.ts): each one adds something new to the town. */
   rank?: number;
   /** The City Hall's level (logic/tycoon.ts hallLevel): the hall grows with it. */
@@ -1139,7 +1140,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     });
     const top = built.top, D = built.D;
     // Winter Lights: a holiday tree in the square, beside the steps.
-    if (cafe.season === "winter") townTicksEarly.push(holidayTree(H, 1.75, 0.08, Math.min(D / 2 + 1.45, 2.3), 2.1, own));
+    // Each season has its own piece in the square, beside the steps.
+    const sqx = 1.75, sqz = Math.min(D / 2 + 1.45, 2.3);
+    if (cafe.season === "winter") townTicksEarly.push(holidayTree(H, sqx, 0.08, sqz, 2.1, own));
+    else if (cafe.season === "spring") blossomTree(H, sqx, 0.08, sqz, 2.0, own);
+    else if (cafe.season === "summer") festivalUmbrellas(H, sqx, 0.08, sqz, 1.6, own);
+    else if (cafe.season === "halloween") { const tk = pumpkins(H, sqx, 0.08, sqz, 1.4, own); townTicksEarly.push(tk); }
     // Clipped trees in stone planters at the square's corners.
     for (const [px, pz] of [[-2.5, D / 2 + 0.9], [2.5, D / 2 + 0.9], [-2.6, -1.4], [2.6, -1.4]]) H.add(new THREE.Mesh(gardenGeometry("topiary", 3).scale(1.5, 1.5, 1.5).translate(px, 0.08, pz), natureM));
     // Facing the town's middle.
@@ -1332,8 +1338,17 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   g.add(jet);
   const decor = new Set(cafe.decor ?? []);
   // The giant holiday tree (Winter Lights' prize): in the fountain each winter.
-  const bigTree = decor.has("bigtree") && cafe.season === "winter";
-  if (bigTree) { townTicksEarly.push(holidayTree(g, pz.x, 0.62, pz.z, 3.4, own)); jet.visible = false; }
+  // The season's prize (won in its weekly event) stands in the fountain while it's on.
+  const prizeOn = (cafe.season === "winter" && decor.has("bigtree")) || (cafe.season === "spring" && decor.has("blossomarch"))
+    || (cafe.season === "summer" && decor.has("bandstand")) || (cafe.season === "halloween" && decor.has("giantpumpkin"));
+  const bigTree = prizeOn;
+  if (prizeOn) {
+    jet.visible = false;
+    if (cafe.season === "winter") townTicksEarly.push(holidayTree(g, pz.x, 0.62, pz.z, 3.4, own));
+    else if (cafe.season === "spring") blossomArch(g, pz.x, 0.62, pz.z, 2.6, own);
+    else if (cafe.season === "summer") { const tk = bandstand(g, pz.x, 0.62, pz.z, 2.4, own); townTicksEarly.push(t => tk(t)); }
+    else { const tk = pumpkins(g, pz.x, 0.62, pz.z, 2.0, own, 1); townTicksEarly.push(tk); }
+  }
   // The golden founder statue (a decoration): on top of the fountain, arm raised.
   if (decor.has("statue") && !bigTree) {
     const gold = mats.gold, sx = pz.x, sz = pz.z, y0 = 1.51;
@@ -4126,7 +4141,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const tmpV = new THREE.Vector3();
   const lampW = lampAt.map(() => new THREE.Vector3());
   // Winter Lights: strings of bulbs on the street lamps.
-  if (cafe.season === "winter" && lampAt.length) townTicks.push(lampLights(g, lampAt));
+  // The season's string lights on the street lamps (bunting colours in summer).
+  const se = cafe.season ? seasonInfo(cafe.season) : undefined;
+  if (se && lampAt.length) townTicks.push(lampLights(g, lampAt, se.bulbs));
   return {
     group: g,
     top: i => (i === -1 ? plotTop : i === -4 ? hallTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),
