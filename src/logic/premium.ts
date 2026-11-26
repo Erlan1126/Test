@@ -85,6 +85,10 @@ export function grantPack(save: SaveData, packId: string, tx: string, now = Date
     save.starter.bought = true;
     if (!save.ownedSkins.includes(STARTER_SKIN)) save.ownedSkins.push(STARTER_SKIN);
     for (const b of ["rewind", "xp", "gold"] as const) save.boosts[b] = Math.min(MAX_BOOSTS, save.boosts[b] + 1);
+    // The city game's extras: the Sunrise building paint and a Fountain plaza (put away,
+    // ready to place on any lot).
+    if (!save.paints.includes("sunrise")) save.paints.push("sunrise");
+    if (save.placed && !("fountain" in save.placed)) save.placed.fountain = "";
   }
   return crystals;
 }

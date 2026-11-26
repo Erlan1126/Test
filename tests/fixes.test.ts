@@ -207,11 +207,11 @@ import { maybeOfferStarter, starterLeft } from "../src/logic/starter";
 import { grantPack } from "../src/logic/premium";
 
 describe("Starter Pack", () => {
-  it("is offered once after the fifth tower, for 48 hours, and gives its extras once", () => {
+  it("is offered once at City Hall level 2 (the city game), for 48 hours, and gives its extras once", () => {
     const save = defaultSave(), now = Date.UTC(2026, 10, 9);
-    save.profile.towers = 4;
+    save.profile.towers = 9;
     expect(maybeOfferStarter(save, now)).toBe(false);
-    save.profile.towers = 5;
+    save.chapters.done = 1;
     expect(maybeOfferStarter(save, now)).toBe(true);
     expect(maybeOfferStarter(save, now)).toBe(false);
     expect(starterLeft(save, now + 47 * 36e5)).toBeGreaterThan(0);
@@ -219,6 +219,8 @@ describe("Starter Pack", () => {
     expect(grantPack(save, "starter_pack", "gp:1")).toBe(300);
     expect(save.ownedSkins).toContain("sunrise");
     expect(save.boosts).toEqual({ rewind: 1, xp: 1, gold: 1 });
+    expect(save.paints).toContain("sunrise");
+    expect(save.placed.fountain).toBe("");
     expect(starterLeft(save, now)).toBe(0);
     expect(grantPack(save, "starter_pack", "gp:1")).toBe(0);
   });

@@ -1,4 +1,6 @@
-// The Starter Pack: offered once, after the fifth tower, for 48 hours.
+// The Starter Pack: offered once (after the fifth tower; in the city game, at City Hall
+// level 2), for 48 hours.
+import { HAS_CITY } from "../edition";
 import type { SaveData } from "./save";
 
 export const STARTER_AFTER = 5;
@@ -12,7 +14,9 @@ export function starterLeft(save: SaveData, now = Date.now()): number {
 
 /** Starts the offer the first time a player qualifies. Returns true when it just started. */
 export function maybeOfferStarter(save: SaveData, now = Date.now()): boolean {
-  if (save.starter.offeredAt || save.starter.bought || save.profile.towers < STARTER_AFTER) return false;
+  // (The city game offers it once the City Hall reaches level 2.)
+  const ready = HAS_CITY ? (save.chapters?.done ?? 0) >= 1 : save.profile.towers >= STARTER_AFTER;
+  if (save.starter.offeredAt || save.starter.bought || !ready) return false;
   save.starter.offeredAt = now;
   return true;
 }

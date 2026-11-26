@@ -4617,3 +4617,5 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 /* "Look inside": the business's room glows when the Company page opens on it. */
 .look-here { animation: look-here 1.6s ease-out 2; border-radius: 22px; }
 @keyframes look-here { 0% { box-shadow: 0 0 0 0 rgba(255, 196, 40, 0.9); } 100% { box-shadow: 0 0 0 14px rgba(255, 196, 40, 0); } }
+
+.starter-list .pick-sw { display: inline-block; width: 26px; height: 20px; border-radius: 6px; vertical-align: middle; background: linear-gradient(135deg, var(--p1) 0 55%, var(--p2) 55%); }

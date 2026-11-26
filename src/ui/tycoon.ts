@@ -3426,14 +3426,15 @@ export class TycoonUI {
     const opts = [{ label: t("Original colours"), sub: cur ? t("Free") : t("Painted now"), swatch: b.color as [string, string], on: !cur, onPick: () => { setPaint(s, id, ""); done(t("its own colours")); } },
       ...PAINTS.map(p => {
         const own = ownsPaint(s, p.id);
-        const sub = cur === p.id ? t("Painted now") : own ? (p.crystals ? t("Yours") : t("Free")) : p.pass ? t("A Season Pass reward") : `💎${p.crystals}`;
+        if (p.starter && !own) return null;
+        const sub = cur === p.id ? t("Painted now") : own ? (p.crystals || p.pass || p.starter ? t("Yours") : t("Free")) : p.pass ? t("A Season Pass reward") : `💎${p.crystals}`;
         return { label: t(p.name), sub, swatch: p.c, on: cur === p.id, onPick: () => {
           const r = setPaint(s, id, p.id);
           if (r === "ok") done(t(p.name));
           else if (r === "short") { toast(t("You need {n} more Sky Crystals", { n: p.crystals - s.crystals })); this.host.openShop("crystals"); }
           else toast(t("Win it in the Season Pass (Goals), while a season is on"));
         } };
-      })];
+      }).filter((o): o is NonNullable<typeof o> => !!o)];
     mayorChoice(t("Paint this building"), t("Pick new colours for {name}. You can change them any time.", { name: t(stageName(id, stageNow(s, id))) }), opts, t("Not now"));
   }
 

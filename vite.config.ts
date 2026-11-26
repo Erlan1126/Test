@@ -51,4 +51,6 @@ export default defineConfig({
   // One script: the app plugins' small web fallbacks are bundled in rather than split out.
   build: { target: "es2020", assetsInlineLimit: 100000, modulePreload: false, rollupOptions: { output: { inlineDynamicImports: true } } },
   plugins: [skyrisePictures(), singleFile()],
-});
+  // (Copies of the project that helper tools make under .claude/ aren't this project's tests.)
+  test: { exclude: ["**/node_modules/**", "**/dist/**", ".claude/**"] },
+} as Parameters<typeof defineConfig>[0]);

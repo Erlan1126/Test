@@ -12,6 +12,8 @@ export interface Paint {
   crystals: number;
   /** Only from the Season Pass (never sold). */
   pass?: boolean;
+  /** Only in the Starter Pack (never sold on its own). */
+  starter?: boolean;
 }
 
 export const PAINTS: Paint[] = [
@@ -28,12 +30,13 @@ export const PAINTS: Paint[] = [
   { id: "pumpkin", name: "Pumpkin", c: ["#ff8a1f", "#5a2f8f"], crystals: 0, pass: true },
   { id: "frost", name: "Frost", c: ["#dff4ff", "#5fa8e8"], crystals: 0, pass: true },
   { id: "gold", name: "Solid Gold", c: ["#ffd23a", "#c88a10"], crystals: 0, pass: true },
+  { id: "sunrise", name: "Sunrise", c: ["#ffb36b", "#ff5f8f"], crystals: 0, starter: true },
 ];
 export const paintById = (id: string): Paint | undefined => PAINTS.find(p => p.id === id);
 
 export const ownsPaint = (s: SaveData, id: string): boolean => {
   const p = paintById(id);
-  return !!p && ((p.crystals === 0 && !p.pass) || s.paints.includes(id));
+  return !!p && ((p.crystals === 0 && !p.pass && !p.starter) || s.paints.includes(id));
 };
 
 /** A business's colours: its paint's, or its own. */
@@ -48,7 +51,7 @@ export function setPaint(s: SaveData, bizId: string, id: string): "ok" | "short"
   const p = paintById(id);
   if (!p) return "locked";
   if (!ownsPaint(s, id)) {
-    if (p.pass) return "locked";
+    if (p.pass || p.starter) return "locked";
     if (s.crystals < p.crystals) return "short";
     s.crystals -= p.crystals;
     s.paints.push(id);

@@ -595,7 +595,13 @@ export class App implements DailyHost {
     if (!left || !pay) return;
     const price = pay.price?.(STARTER_PACK) ?? formatPrice(STARTER_PACK.cents);
     $("starter-buy").textContent = t("Get it for {price}", { price });
-    drawSkinPreview($<HTMLCanvasElement>("starter-preview"), skinById(STARTER_SKIN));
+    if (HAS_CITY) {
+      // The city game's pack: crystals, the Sunrise paint and a Fountain plaza.
+      $("starter-preview").hidden = true;
+      $("starter").querySelector(".starter-list")!.innerHTML = `<li><b>300 💎</b> <span>${esc(t("Sky Crystals"))}</span></li>
+        <li><b><i class="pick-sw" style="--p1:#ffb36b;--p2:#ff5f8f"></i></b> <span>${esc(t("Sunrise building paint, only in this pack"))}</span></li>
+        <li><b>⛲</b> <span>${esc(t("A Fountain plaza for your city (+1.5% earnings)"))}</span></li>`;
+    } else drawSkinPreview($<HTMLCanvasElement>("starter-preview"), skinById(STARTER_SKIN));
     const tick = () => {
       const l = starterLeft(this.save);
       $("starter-timer").textContent = l ? t("⏳ Ends in {time}", { time: duration(l) }) : t("This offer has ended");
