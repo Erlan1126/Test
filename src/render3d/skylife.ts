@@ -47,7 +47,11 @@ export class SkyLife {
     const wing = new THREE.BufferGeometry();
     wing.setAttribute("position", new THREE.Float32BufferAttribute([-0.9, 0.2, -0.25, 0, 0, 0.18, 0, 0, -0.18, 0.9, 0.2, -0.25, 0, 0, -0.18, 0, 0, 0.18], 3));
     wing.computeVertexNormals();
-    this.birds = new THREE.InstancedMesh(wing, new THREE.MeshStandardMaterial({ color: 0x2b2f3a, side: THREE.DoubleSide, roughness: 1 }), FLOCK);
+    // Gulls: white wings with dark tips, so they stand out against the island's grass and
+    // trees on the first floors as well as against the sky higher up.
+    const tip = [0.16, 0.17, 0.22], mid = [1, 1, 1];
+    wing.setAttribute("color", new THREE.Float32BufferAttribute([...tip, ...mid, ...mid, ...tip, ...mid, ...mid], 3));
+    this.birds = new THREE.InstancedMesh(wing, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 1, emissive: 0x30343c }), FLOCK);
     this.birds.frustumCulled = false;
 
     // A striped hot-air balloon with its basket.
@@ -116,7 +120,7 @@ export class SkyLife {
         this.q.setFromAxisAngle(this.p.set(0, 1, 0), face - Math.PI / 2);
         this.m4.compose(
           this.p.set(x + back * HX, y + out * 0.55 + Math.sin(time * 1.3 + i) * 0.3 + flap * 0.08, z + back * HZ),
-          this.q, this.sc.set(1, flap, 1),
+          this.q, this.sc.set(1.35, flap * 1.35, 1.35),
         );
         this.birds.setMatrixAt(i, this.m4);
       }
