@@ -2021,7 +2021,9 @@ export class TycoonUI {
     const hours: 1 | 8 | 0 = warpGain(s, 1, now) >= missing ? 1 : warpGain(s, 8, now) >= missing ? 8 : 0;
     // The first time cash runs short (and a wait of over a minute): a one-time welcome deal
     // from Pip, an hour's time warp at a quarter of its price.
-    if (hours === 1 && wait > 60 && !s.seenFeatures.includes("welcome-warp") && speedupsLeft(s, now) > 0) {
+    // (Only once the player has the crystals for it: shown at 0 crystals it was a one-time deal
+    // spent on a shop page. Until then it waits, and the usual "about N minutes" note shows.)
+    if (hours === 1 && wait > 60 && !s.seenFeatures.includes("welcome-warp") && speedupsLeft(s, now) > 0 && s.crystals >= WELCOME_WARP_CRYSTALS) {
       s.seenFeatures.push("welcome-warp"); this.host.persist();
       this.lastOffer = now;
       const price = WELCOME_WARP_CRYSTALS, full = warpPrice(1), gain = warpGain(s, 1, now);
