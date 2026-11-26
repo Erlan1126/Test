@@ -9,8 +9,23 @@ describe("life in the sky", () => {
     expect(skyKind(5, 0.9)).toBe("birds");
     expect(skyKind(30, 0.1)).toBe("balloon");
     expect(skyKind(30, 0.9)).toBe("birds");
-    expect(skyKind(80, 0.1)).toBe("plane");
-    expect(skyKind(80, 0.9)).toBe("balloon");
+    expect(skyKind(58, 0.1)).toBe("plane");
+    expect(skyKind(58, 0.9)).toBe("balloon");
+  });
+
+  it("sends sky lanterns at twilight and comets among the stars", () => {
+    expect(skyKind(70, 0.1)).toBe("lanterns");
+    expect(skyKind(70, 0.6)).toBe("plane");
+    expect(skyKind(95, 0.1)).toBe("comet");
+    expect(skyKind(95, 0.7)).toBe("lanterns");
+    for (const level of [70, 95]) {
+      const sky = new SkyLife(seeded(level));
+      const seen = new Set<string>();
+      for (let i = 0; i < 60 * 600; i++) { sky.update(1 / 60, i / 60, level, true, 1); if (sky.passing) seen.add(sky.passing); }
+      expect([...seen].sort()).toEqual(level === 70 ? ["balloon", "lanterns", "plane"] : ["comet", "lanterns", "plane"]);
+      // Only the one passing by shows.
+      expect(sky.group.children.filter(c => c.visible).length).toBeLessThanOrEqual(1);
+    }
   });
 
   it("only comes while you build, every so often, and goes again", () => {

@@ -147,4 +147,20 @@ describe("Skyrise's sky layers", () => {
       expect(SKY_LAYERS.flatMap(x => [x.name, x.zephyr]).filter(k => !d[k]), l).toEqual([]);
     }
   });
+
+  it("each earn a tower of their own the first time a tower climbs into them", async () => {
+    const { SKINS } = await import("../src/data/skins");
+    const { isSkinUnlocked, skinUnlockText } = await import("../src/logic/progress");
+    const { SKY_LAYERS } = await import("../src/data/layers");
+    const { dictionary } = await import("../src/i18n");
+    const layered = SKINS.filter(s => s.unlock && "layer" in s.unlock);
+    expect(layered.map(s => (s.unlock as { layer: number }).layer)).toEqual([1, 2, 3, 4]);
+    const save = defaultSave();
+    save.bestMeters = SKY_LAYERS[2].at * 5 - 1;
+    expect(layered.map(s => isSkinUnlocked(save, s))).toEqual([true, false, false, false]);
+    save.bestMeters = SKY_LAYERS[2].at * 5;
+    expect(layered.map(s => isSkinUnlocked(save, s))).toEqual([true, true, false, false]);
+    expect(skinUnlockText(layered[3])).toBe("Climb into the ✨ Starfield (90 floors)");
+    for (const l of ["es", "pt", "fr", "de"] as const) expect(layered.filter(s => !dictionary(l)[s.name]), l).toEqual([]);
+  });
 });

@@ -7,6 +7,7 @@ import { fmt, listNames } from "../core/util";
 import { t, tn } from "../i18n";
 import { type Challenge, challengeById, CHALLENGES, CHAPTER_CHEST, stageStars, STAGES_PER_CHAPTER } from "../data/challenges";
 import { MILESTONES } from "../data/constants";
+import { layerForMeters, SKY_LAYERS } from "../data/layers";
 import { ISLAND_THEMES, ISLAND_UPGRADES, type IslandTheme } from "../data/islands";
 import { MISSION_TYPES, missionText } from "../data/missions";
 import { SKINS, type Skin } from "../data/skins";
@@ -30,6 +31,7 @@ export function isSkinUnlocked(save: SaveData, skin: Skin): boolean {
   if ("product" in skin.unlock) return premiumGrants(save).skins.has(skin.id);
   if ("pass" in skin.unlock || "event" in skin.unlock) return save.ownedSkins.includes(skin.id);
   if ("vip" in skin.unlock) return vipActive(save);
+  if ("layer" in skin.unlock) return layerForMeters(save.bestMeters) >= skin.unlock.layer || save.ownedSkins.includes(skin.id);
   // Height skins: earned by building taller, or kept from before they got harder.
   return save.bestMeters > MILESTONES[skin.unlock.at].m || save.ownedSkins.includes(skin.id);
 }
@@ -43,6 +45,7 @@ export function skinUnlockText(skin: Skin): string {
   if ("product" in skin.unlock) return t("Get it with Sky Crystals in the shop");
   if ("pass" in skin.unlock) return t("A Sky Pass reward ({season} season)", { season: t(skin.unlock.pass) });
   if ("vip" in skin.unlock) return t("Included with Skyrise VIP");
+  if ("layer" in skin.unlock) { const L = SKY_LAYERS[skin.unlock.layer]; return t("Climb into the {name} ({n} floors)", { name: `${L.icon} ${t(L.name)}`, n: L.at }); }
   if ("event" in skin.unlock && skin.unlock.event === "starter") return t("Comes with the Starter Pack");
   if ("event" in skin.unlock) {
     const h = HOLIDAYS.find(x => x.id === (skin.unlock as { event: string }).event);

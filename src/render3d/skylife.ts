@@ -1,16 +1,20 @@
 // Life in the sky around a growing tower: now and then something passes behind the top
 // floors. Low down it's a flock of birds, higher up a hot-air balloon, and above the clouds
-// a little plane with blinking lights. It keeps the sky from feeling empty on a tall tower,
+// a little plane with blinking lights; at twilight a drift of glowing sky lanterns, and up
+// among the stars a comet streaking past. It keeps the sky from feeling empty on a tall tower,
 // stays behind the tower (never between you and the sliding floor) and costs a few meshes.
 import * as THREE from "three";
 import { FH } from "./geom";
 
-export type SkyKind = "birds" | "balloon" | "plane";
+export type SkyKind = "birds" | "balloon" | "plane" | "lanterns" | "comet";
 
 /** What passes by at this height (in floors); r is a random number from 0 to 1. */
 export function skyKind(level: number, r: number): SkyKind {
   if (level < 22) return "birds";
   if (level < 55) return r < 0.6 ? "balloon" : "birds";
+  // Twilight (from floor 62) and the Starfield (from 90): see data/layers.ts.
+  if (level >= 90) return r < 0.6 ? "comet" : r < 0.8 ? "lanterns" : "plane";
+  if (level >= 62) return r < 0.5 ? "lanterns" : r < 0.8 ? "plane" : "balloon";
   return r < 0.65 ? "plane" : "balloon";
 }
 
@@ -20,8 +24,9 @@ export const SKY_GAP: [number, number] = [8, 15];
 const BEHIND = 5;
 /** How far to either side they start and end, in world units along the screen's width. */
 const SPAN = 46;
-const SPEED: Record<SkyKind, number> = { birds: 6.5, balloon: 2.6, plane: 13 };
+const SPEED: Record<SkyKind, number> = { birds: 6.5, balloon: 2.6, plane: 13, lanterns: 2.2, comet: 30 };
 const FLOCK = 7;
+const LANTERNS = 9;
 
 // The screen's horizontal direction in the straight isometric view.
 const HX = Math.SQRT1_2, HZ = -Math.SQRT1_2;
@@ -37,6 +42,9 @@ export class SkyLife {
   private readonly balloonMat = new THREE.MeshStandardMaterial({ roughness: 0.55 });
   private readonly plane = new THREE.Group();
   private readonly lights: { m: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
+  private readonly lanterns: THREE.InstancedMesh;
+  private readonly lanternMat = new THREE.MeshBasicMaterial({ color: 0xffb35c });
+  private readonly comet = new THREE.Group();
   private readonly m4 = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
   private readonly p = new THREE.Vector3();
@@ -76,7 +84,19 @@ export class SkyLife {
       this.plane.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 4).translate(0.3, 0, z), m));
     }
 
-    for (const o of [this.birds, this.balloon, this.plane]) { o.visible = false; this.group.add(o); }
+    // Sky lanterns: little glowing paper lanterns, a warm orange that brightens at dusk.
+    this.lanterns = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.34, 0.26, 0.62, 8), this.lanternMat, LANTERNS);
+    this.lanterns.frustumCulled = false;
+
+    // A comet: a bright head and a long fading tail pointing back along its path (+x ahead).
+    const tail = new THREE.ConeGeometry(0.55, 9, 12, 1, true).rotateZ(Math.PI / 2).translate(-4.5, 0, 0);
+    this.comet.add(
+      new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })),
+      new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 8), new THREE.MeshBasicMaterial({ color: 0xbfe3ff, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })),
+      new THREE.Mesh(tail, new THREE.MeshBasicMaterial({ color: 0x9fd0ff, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })),
+    );
+
+    for (const o of [this.birds, this.balloon, this.plane, this.lanterns, this.comet]) { o.visible = false; this.group.add(o); }
   }
 
   /** The current passer-by, if any (for tests and the debug panel). */
@@ -89,7 +109,7 @@ export class SkyLife {
    *  `active` is false (not building, or the smooth graphics mode). */
   update(dt: number, time: number, level: number, active: boolean, night: number): void {
     if (!this.now) {
-      this.birds.visible = this.balloon.visible = this.plane.visible = false;
+      this.birds.visible = this.balloon.visible = this.plane.visible = this.lanterns.visible = this.comet.visible = false;
       if (!active || level < 3) return;
       this.wait -= dt;
       if (this.wait > 0) return;
@@ -110,6 +130,8 @@ export class SkyLife {
     const face = n.dir > 0 ? Math.PI / 4 : Math.PI / 4 + Math.PI;
     this.birds.visible = n.kind === "birds";
     this.plane.visible = n.kind === "plane";
+    this.lanterns.visible = n.kind === "lanterns";
+    this.comet.visible = n.kind === "comet";
     if (n.kind !== "balloon") this.balloon.visible = false;
     if (n.kind === "birds") {
       for (let i = 0; i < FLOCK; i++) {
@@ -129,6 +151,20 @@ export class SkyLife {
       if (!this.balloon.visible) this.balloonMat.color.setHSL(this.random(), 0.75, 0.6);
       this.balloon.visible = true;
       this.balloon.position.set(x, y + Math.sin(time * 0.7) * 0.6, z);
+    } else if (n.kind === "lanterns") {
+      // A loose drift, each lantern rising and swaying on its own, flickering softly.
+      for (let i = 0; i < LANTERNS; i++) {
+        const back = (i - LANTERNS / 2) * 1.6 * n.dir, up = ((i * 7) % 5) * 0.9 + Math.sin(time * 0.6 + i * 1.7) * 0.5 + n.age * 0.12;
+        this.p.set(x + back * HX + Math.sin(time * 0.8 + i) * 0.3, y + up - 1.5, z + back * HZ);
+        this.m4.compose(this.p, this.q.identity(), this.sc.setScalar(1.5 + ((i * 5) % 3) * 0.25));
+        this.lanterns.setMatrixAt(i, this.m4);
+      }
+      this.lanterns.instanceMatrix.needsUpdate = true;
+      this.lanternMat.color.setRGB(1, 0.62 + Math.sin(time * 9) * 0.04, 0.3).multiplyScalar(0.85 + night * 0.25);
+    } else if (n.kind === "comet") {
+      // Streaking across and a little downwards, tail trailing behind.
+      this.comet.position.set(x, y + 4 - (n.u * n.dir + SPAN) * 0.06, z);
+      this.comet.rotation.set(0, face, -0.06);
     } else {
       this.plane.position.set(x, y + Math.sin(time * 1.1) * 0.25, z);
       this.plane.rotation.set(Math.sin(time * 0.9) * 0.08, face, 0);

@@ -2486,4 +2486,8 @@ export const PT: Record<string, string> = {
   "We're up among the stars! Nobody has flown this high.": "Estamos entre as estrelas! Ninguém voou tão alto.",
   "{icon} New sky layer reached: {name}!": "{icon} Nova camada do céu: {name}!",
   ", up in the {name}": ", lá em cima em {name}",
+  "☁️ Rise through 5 sky layers": "☁️ Suba por 5 camadas do céu",
+  "Keep climbing! The {name} starts at floor {n}": "Continue subindo! O {name} começa no andar {n}",
+  "Cloud Nine": "Nuvem Nove",
+  "Climb into the {name} ({n} floors)": "Suba até {name} ({n} andares)",
 };

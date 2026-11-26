@@ -1553,7 +1553,7 @@ export class App implements DailyHost {
     }
     // Skyrise's sky layers: climbing into a new one (where the sky changes colour) gets its
     // name, a word from Zephyr, a rising chime and something flying past.
-    if (!HAS_CITY && !this.tutorial) {
+    if (!HAS_CITY) {
       const k = layerAt(f.y);
       if (k > 0 && k > layerAt(f.y - 1)) {
         const L = SKY_LAYERS[k];
@@ -1673,6 +1673,8 @@ export class App implements DailyHost {
       else if (n <= 2) text = t("Tap when the sliding floor lines up with the one below");
       else if (n <= 4) text = t("Overhangs break off. Wider floors fit more people!");
       else if (n <= 6) text = t("Perfect drops add bonus people and keep floors wide");
+      // Then a first goal to climb for: the Cloud Sea (most first towers reach it).
+      else if (!HAS_CITY && n >= 9 && n <= 14) text = t("Keep climbing! The {name} starts at floor {n}", { name: t(SKY_LAYERS[1].name), n: SKY_LAYERS[1].at });
     }
     if (text === this.hint) return;
     this.hint = text;
@@ -1753,6 +1755,9 @@ export class App implements DailyHost {
     // City Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
     if (!HAS_CITY && playerStarted(save) && save.chapters.seen < save.chapters.done && !(cityHome && save.tycoon.tips < 3)) this.queuePopup("chapter", () => { if (introduce(save, () => this.persist())) return; this.refresh(); });
     $("rules").hidden = p.towers >= 3;
+    // Skyrise's hook on the first screen is the climb through the sky, not the gold floors
+    // (those are explained the moment one slides in).
+    if (!HAS_CITY) $("rules-gold").textContent = t("☁️ Rise through 5 sky layers");
     $("menu").classList.toggle("returning", p.towers >= 1);
     const friend = $("menu-challenge");
     friend.innerHTML = this.vs?.name

@@ -162,7 +162,8 @@ export class Sheets {
         : pass ? `<span class="premium-tag">Sky Pass</span>`
         : st.unlock && "streak" in st.unlock ? esc(t("🔥 {n}-day streak", { n: st.unlock.streak }))
         : st.unlock && "vip" in st.unlock ? `<span class="premium-tag">VIP</span>`
-        : st.unlock && "event" in st.unlock ? `<span class="premium-tag">${esc(st.unlock.event === "starter" ? t("Starter Pack") : t("Holiday event"))}</span>` : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
+        : st.unlock && "event" in st.unlock ? `<span class="premium-tag">${esc(st.unlock.event === "starter" ? t("Starter Pack") : t("Holiday event"))}</span>`
+        : st.unlock && "layer" in st.unlock ? esc(`${SKY_LAYERS[st.unlock.layer].icon} ${t(SKY_LAYERS[st.unlock.layer].name)}`) : esc(t("Over {n} m", { n: MILESTONES[(st.unlock as { at: number }).at].m })));
       b.setAttribute("aria-label", open ? (on ? t("{name}, equipped", { name }) : name) : t("{name}, locked. {how}", { name, how: skinUnlockText(st) }));
       b.addEventListener("click", () => {
         if (!open) {

@@ -1,5 +1,6 @@
 // Tower skins and the facade looks used to draw buildings.
 import { msAt } from "./constants";
+import { HAS_CITY } from "../edition";
 
 /** How a building's walls are drawn. */
 export interface Look {
@@ -38,7 +39,9 @@ export type SkinUnlock =
   /** Earned during the named holiday event. */
   | { event: string }
   /** Yours while Skyrise VIP is on. */
-  | { vip: true };
+  | { vip: true }
+  /** Skyrise: earned by climbing into this sky layer (SKY_LAYERS[layer]) for the first time. */
+  | { layer: number };
 
 export interface Skin extends Look {
   id: string;
@@ -161,6 +164,23 @@ export const SKINS: Skin[] = [
     floors: ["#2ec4b6", "#ffe8b0", "#20a39e", "#ff9f68"],
     glass: "#cff7f2", frame: "#ffffff", slab: "#fff4d6", slabH: 0.12, lit: ["#ffe28a", "#ff9f68"], swatch: ["#2ec4b6", "#ffe8b0", "#ff9f68"] },
 ];
+
+// Skyrise's sky-layer towers: one for each layer above the first, earned the first time a
+// tower climbs into it, each dressed like the sky it comes from.
+if (!HAS_CITY) SKINS.push(
+  { id: "cloudnine", balcony: "#ffffff", win: "round", name: "Cloud Nine", unlock: { layer: 1 }, kind: "punched",
+    floors: ["#eef4fc", "#dde9f8", "#f6f9fe", "#d3e3f6"],
+    glass: "#8fc3f2", frame: "#ffffff", slab: "#ffffff", slabH: 0.16, lit: ["#fff4cf", "#ffffff"], swatch: ["#eef4fc", "#8fc3f2", "#ffffff"] },
+  { id: "jetstream", brace: "#2fc6dc", name: "Jet Stream", unlock: { layer: 2 }, kind: "ribbon",
+    floors: ["#a9bccf", "#bccbdb", "#93a9c0", "#c8d5e3"],
+    glass: "#2b3f5c", frame: "#e9f1f8", slab: "#6f86a0", slabH: 0.1, lit: ["#bff4ff", "#ffffff"], swatch: ["#a9bccf", "#2fc6dc", "#2b3f5c"] },
+  { id: "twilight", pilaster: "#ffb36b", win: "arch", name: "Twilight", unlock: { layer: 3 }, kind: "punched",
+    floors: ["#ff8a5c", "#e8697a", "#b4589a", "#7c4fa8"],
+    glass: "#3a2552", frame: "#ffd9b0", slab: "#5a3a7a", slabH: 0.12, lit: ["#ffcf7a", "#ffe9b8"], alwaysLit: true, swatch: ["#ff8a5c", "#b4589a", "#7c4fa8"] },
+  { id: "starfield", name: "Starfield", unlock: { layer: 4 }, kind: "ribbon", neon: true,
+    floors: ["#141b44", "#1b2456", "#10163a", "#202a63"],
+    glass: "#0a0f2c", frame: "#9fb4ff", slab: "#0b1030", slabH: 0.08, lit: ["#ffffff", "#fff1a8", "#bcd4ff"], alwaysLit: true, swatch: ["#141b44", "#fff1a8", "#9fb4ff"] },
+);
 
 // Sky Pass skins, three per season theme (see data/pass.ts).
 SKINS.push(
