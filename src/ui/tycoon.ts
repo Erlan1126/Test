@@ -1034,6 +1034,16 @@ export class TycoonUI {
     if (ty.tips === 2) return { text: t("Hire a manager for the Coffee Cart"), sub: t("Managers sell for you, even while you're away"), pct: Math.min(1, ty.coins / cart.manager), tone: "learn", act: select("coffee") };
     // A first-time objective stays in view until it's tried: the block's next project, then a
     // business's first HQ (both cost nothing but a tower).
+    if (projectsOpen(s.cafe) && !s.seenFeatures.includes("try-contract") && HAS_CITY) {
+      // (Short of the price: a savings bar, like the first steps, rather than a sheet of things
+      // that can't be bought yet and a crystal offer.)
+      const pp = buildPrice(s, "project", "flowers");
+      if (ty.coins < pp) return { text: t("Save {n} for your block's next project", { n: coins(pp) }), sub: t("{have} of {n} · a flower market or a playground", { have: coins(ty.coins), n: coins(pp) }), pct: Math.min(1, ty.coins / pp), tone: "save", act: () => {
+        if (!ty.managers.includes("coffee")) { sell(); return; }
+        const rate = perSecond(s, Date.now(), false), missing = pp - ty.coins;
+        toast(rate > 0 ? t("You need {n} more: about {t} of earnings.", { n: coins(missing), t: fmtLeft((missing / rate) * 1000) }) : t("You need {n} more cash. Your businesses are earning it!", { n: coins(missing) }));
+      } };
+    }
     if (projectsOpen(s.cafe) && !s.seenFeatures.includes("try-contract")) return { text: t("Choose your block's next project"), sub: t("A flower market or a playground: both are waiting on your block"), tone: "grow", act: () => this.openBuild("project") };
     const firstHq = !s.seenFeatures.includes("try-hq") ? BUSINESSES.find(b => readyStage(s, b.id)) : undefined;
     if (firstHq) {

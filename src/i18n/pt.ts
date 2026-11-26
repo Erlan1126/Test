@@ -2445,4 +2445,6 @@ export const PT: Record<string, string> = {
   "Brings back VIP after reinstalling or on a new phone": "Recupera o VIP ao reinstalar ou em um celular novo",
   "Help and support": "Ajuda e suporte",
   "{t} left · tap to finish it now, free this time!": "Faltam {t} · toque para terminar agora, grátis desta vez!",
+  "Save {n} for your block's next project": "Junte {n} para o próximo projeto do seu quarteirão",
+  "{have} of {n} · a flower market or a playground": "{have} de {n} · um mercado de flores ou um parquinho",
 };
