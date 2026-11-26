@@ -51,7 +51,7 @@ function openCapsule() {
   if (!(save.capsules > 0)) return null;
   save.capsules--;
   const L = runnerLook(), pool = [];
-  [["t", RUNNER_TOPS], ["s", RUNNER_SHOES], ["b", RUNNER_BOARDS]].forEach(([k, list]) => list.forEach((it, i) => { if (!L.own[k + i]) pool.push([k, i, it.name]); }));
+  [["t", RUNNER_TOPS], ["s", RUNNER_SHOES], ["b", RUNNER_BOARDS]].forEach(([k, list]) => list.forEach((it, i) => { if (!L.own[k + i] && it.reward == null) pool.push([k, i, it.name]); }));   // (district rewards are earned, not found)
   let out;
   if (pool.length && Math.random() < 0.4) { const [k, i, name] = pool[Math.floor(Math.random() * pool.length)]; L.own[k + i] = 1; out = `New: ${name}!`; }
   else { const n = [40, 60, 80, 120, 200, 300][Math.floor(Math.random() ** 1.6 * 6)]; save.glow = (save.glow || 0) + n; out = `+${n} ✦`; }
@@ -136,7 +136,7 @@ function swingGen(R, toX) {
       const ax = p.x + 9 + r() * 5 + hard * (R.stageLen ? 5 : 3) + gapK, ath = runnerTheme(ax);
       let ay = Math.max(28, Math.min(45, p.y + (r() - 0.5) * 8));
       if (sec === "climb") ay = Math.min(46, p.y + 2.5 + r() * 1.5); else if (sec === "dive") ay = 28 + r() * 2.5; else if (sec === "zigzag") ay = p.y > 37 ? 30 + r() * 1.5 : 43 + r() * 1.5;
-      const a = { x: ax, y: ay, kind: ath.anchor, id: R.anchors.length, ph: r() * 6, sec };
+      const a = { x: ax, y: ay, kind: ath.anchor, id: R.gN, ph: r() * 6, sec };   // id from the generator's own count: fixed per course
       // Special anchors: gold (bonus), crumbling (let go quickly), drifting (moves), spring (launches you).
       const roll = r();
       const wk = R.stageLen ? "" : weekEvent().id, goldK = wk === "frost" ? 3 : 1;   // stages keep the same course every week (ghosts must match); weekly anchor events are for the Night shift
@@ -156,7 +156,7 @@ function swingGen(R, toX) {
       if (r() < (R.stageLen ? 0.9 : 0.8) && ax > 10 && !(R.stageLen && ax > R.stageLen)) { const n = 5; for (let q = 1; q <= n; q++) { const t = q / (n + 1); R.motes.push({ x: p.x + (a.x - p.x) * t, y: p.y + (a.y - p.y) * t - 10.5 * Math.sin(Math.PI * t) - 1, line: a.id }); if (R.stageLen) R.motesTotal++; } }
       // The sky route (stages): a daring pair of high anchors with a trail of bonus lights.
       if (R.stageLen && ax > 60 && ax < R.stageLen - 30 && Math.floor(ax / 85) !== Math.floor(p.x / 85)) {
-        const h1 = { x: ax + 3, y: 53 + r() * 3, kind: "lamp", id: R.anchors.length + 5000, ph: r() * 6, type: "gold" }; R.anchors.push(h1);
+        const h1 = { x: ax + 3, y: 53 + r() * 3, kind: "lamp", id: R.gN + 5000, ph: r() * 6, type: "gold" }; R.anchors.push(h1);
         for (let q = 0; q < 6; q++) { R.motes.push({ x: ax - 6 + q * 2.6, y: 48 + Math.sin(q / 5 * Math.PI) * 3, line: -2 }); R.motesTotal++; }
       }
       // Power-ups and the letter hunt, on the arc's low point.
@@ -175,7 +175,7 @@ function swingGen(R, toX) {
     const b = { x0, x1: tree ? x0 + 8 + r() * 4 : x1, h: Math.max(7, Math.min(maxH, tree ? 12 + r() * 8 : tall)), style: th.fac[Math.floor(r() * th.fac.length)], litT: -1, n: R.blds.length, tree, seed: r() };
     // Leave the plot past the finish free for the home of the person who's waiting.
     if (R.stageLen && b.x1 > R.stageLen + 1 && b.x0 < R.stageLen + 17) { R.genX = Math.max(R.genX + 1, R.stageLen + 18); continue; }
-    if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: R.anchors.length + 9000, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
+    if (tree) { b.x1 = Math.min(b.x1, x1); const ta = { x: (b.x0 + b.x1) / 2, y: b.h + 4, kind: "tree", id: (R.gN || 0) + 9000 + R.blds.length, ph: r() * 6, type: "", tree: true }; R.anchors.push(ta); }
     if (pad && !tree) b.pad = true;
     // What the district builds (decided without a random draw, so courses stay the same).
     { const dk = R.stageInfo && !R.stageInfo.daily ? Math.min(5, Math.floor((R.stageInfo.n - 1) / 10)) : Math.max(0, RUNNER_THEMES.indexOf(th)), mix = (b.n * 7) % 10; b.kind = ["office", "shop", "warehouse", "neon", "shop", "glass"][dk]; if (mix < 2 && dk !== 5) b.kind = "office"; b.dist = dk; }
@@ -340,6 +340,7 @@ function runnerUpdate(dt) {
   R.perfT = Math.max(0, R.perfT - dt); R.dashT = Math.max(0, R.dashT - dt); if (R.teth) R.streetT = 0; R.streetT = Math.max(0, (R.streetT || 0) - dt);
   if (R.snap) { R.snap.t += dt; if (R.snap.t > 0.2) R.snap = null; }
   if (R.dust) { R.dust.t += dt; if (R.dust.t > 0.5) R.dust = null; }
+  if (R.bestFlash > 0) R.bestFlash = Math.max(0, R.bestFlash - dt * 1.5);
   if (R.splash) { R.splash.t += dt; if (R.splash.t > 0.9) R.splash = null; }
   if (R.wantShotAt && R.t >= R.wantShotAt) { R.wantShotAt = 0; R.wantShot = true; }
   if (R.cleared && !R.chimed && R.clearAt != null && R.t - R.clearAt > 0.65) { R.chimed = true; if (!R.attract) { sfx.home(); buzz([10, 30, 10]); } }
@@ -398,7 +399,7 @@ function runnerUpdate(dt) {
       // The harbour: you splash into the water instead of hitting the street. No heart lost, but it
       // drags your speed down and costs Flow; you bob back up.
       R.py = (R.tide || 0) + 0.4; R.vy = 17; R.vx = Math.max(6, R.vx * 0.55); R.teth = null; R.flow = Math.max(0, R.flow - 0.35); R.combo = 0; R.pChain = 0;
-      R.splash = { x: R.px, t: 0 }; R.shake = 0.35; R.bursts.push({ x: R.px, y: 0.5, t: 0, c: 0x7fd8ff, big: true });
+      R.splash = { x: R.px, y: R.tide || 0, t: 0 }; R.shake = 0.35; R.bursts.push({ x: R.px, y: (R.tide || 0) + 0.5, t: 0, c: 0x7fd8ff, big: true });
       if (!R.wetMsg) { R.wetMsg = true; runMsg("Splash!", "The water slows you down. Stay up high", 1.4); } sfx.land(); buzz(10);
     }
     else if (R.py < 0.4) {

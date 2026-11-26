@@ -77,6 +77,11 @@ const CHAPTER_STORY = [
 // Your reward for lighting every home in a district: something to wear from that district.
 const CHAPTER_REWARD = [["t", "Lamplight glow"], ["s", "Lantern string scarf"], ["b", "Lighthouse tether"], ["t", "Neon glow"], ["s", "Firefly trail scarf"], ["b", "Dawn tether"]];
 function chapterRewardItem(c) { const k = CHAPTER_REWARD[c][0], list = { t: RUNNER_TOPS, s: RUNNER_SHOES, b: RUNNER_BOARDS }[k]; return [k, list.findIndex(it => it.reward === c)]; }
+// Give every lit district its reward (also for saves from before rewards existed).
+function grantChapterRewards(loud) {
+  save.chapDone = save.chapDone || {};
+  for (let c = 0; c < STAGE_CHAPTERS.length; c++) if (!save.chapDone[c] && distLit(c)) { save.chapDone[c] = 1; const [k, i] = chapterRewardItem(c); if (i >= 0) { runnerLook().own[k + i] = 1; if (loud) setTimeout(() => toast(`<b>${STAGE_CHAPTERS[c]} is lit!</b> Unlocked: ${CHAPTER_REWARD[c][1]}`, true), 2600); } }
+}
 function showChapterIntro(c, go) {
   const el = $("chapIntro"); if (!el) { go(); return; }
   $("ciName").textContent = STAGE_CHAPTERS[c]; $("ciLine").textContent = CHAPTER_STORY[c]; $("ciNum").textContent = `Chapter ${c + 1} of ${STAGE_CHAPTERS.length}`;
@@ -163,7 +168,7 @@ function stageClear(R) {
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
   seasonGain(Math.round(stars * 15 + R.lights / 2));
   // The whole district lit: a reward to wear.
-  if (!info.daily) { const c = Math.floor((n - 1) / 10); save.chapDone = save.chapDone || {}; if (!save.chapDone[c] && distLit(c)) { save.chapDone[c] = 1; const [k, i] = chapterRewardItem(c); if (i >= 0) { runnerLook().own[k + i] = 1; setTimeout(() => toast(`<b>${STAGE_CHAPTERS[c]} is lit!</b> Unlocked: ${CHAPTER_REWARD[c][1]}`, true), 2600); } } }
+  if (!info.daily) grantChapterRewards(true);
   progressEvent("dist", Math.floor(R.px)); progressEvent("home"); progressEvent("stars", stars); if (info.daily) progressEvent("daily"); persist(); checkAchievements();
   R.wantShotAt = R.t + 1.3;   // the picture to share: their window lit, them waving
   sfx.unlock(); buzz([20, 40, 20]);
