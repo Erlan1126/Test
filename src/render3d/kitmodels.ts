@@ -103,9 +103,10 @@ function start(): void {
   started = true;
   if (typeof atob !== "function" || typeof WebAssembly === "undefined") return;
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  // (The city game's landmarks only in the builds that have the city: Skyrise never shows
-  // them, and leaving them out makes its download smaller and its island ready sooner.)
-  const kit = HAS_CITY ? { ...KIT_GLB, ...KIT_GLB_CITY } : KIT_GLB;
+  // (Only the builds with the city use these models: its town, districts and landmarks.
+  // Skyrise's island is drawn without them and never builds the town, so its build leaves
+  // all of them out: a much smaller download, and nothing to unpack at startup.)
+  const kit: Record<string, string> = HAS_CITY ? { ...KIT_GLB, ...KIT_GLB_CITY } : {};
   const jobs = Object.entries(kit).map(([name, b64]) => new Promise<void>(res => {
     try {
       const bin = atob(b64), buf = new Uint8Array(bin.length);

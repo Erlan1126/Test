@@ -3031,7 +3031,9 @@ export class App implements DailyHost {
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       skyline: this.city().skyline,
       districts: this.city().districts,
-      bizLots: this.visitTown ? this.visitTown.lots : this.visiting ? NO_LOTS : this.bizView(),
+      // (Skyrise never shows the business town: it isn't built at all, which saves its
+      // startup work and memory.)
+      bizLots: this.visitTown ? this.visitTown.lots : this.visiting || !HAS_CITY ? NO_LOTS : this.bizView(),
       bizCafe: this.visitTown ? this.visitTown.cafe : this.visiting ? null : this.bizCafe(),
       bizLive: this.tycoon.liveState(),
       bizFocus: this.bizFocus && this.state === "menu",
