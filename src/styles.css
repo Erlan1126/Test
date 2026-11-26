@@ -3037,13 +3037,27 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .card-look { margin-left: auto; padding: 7px 10px; border: 0; border-radius: 12px; cursor: pointer; font: 400 12px var(--display); color: #6a3cff; background: #f1edfc; }
 .card-pops { position: absolute; left: 30%; right: 30%; top: 0; height: 40px; }
 
-/* The bottom bar. */
-.tcy-bar { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; gap: 4px; padding: 8px 6px;
-  border-radius: 24px; background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 10px 28px rgba(40, 20, 100, 0.25); }
-.tcy-bar button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; border: 0; cursor: pointer; background: none; color: #4a3f8a; font: 400 10px var(--display); }
-.tcy-bar svg { width: 26px; height: 26px; padding: 8px; box-sizing: content-box; border-radius: 14px; background: #f1edfc; }
-.tcy-bar .tcy-build svg { width: 30px; height: 30px; margin-top: -22px; color: #fff; background: linear-gradient(180deg, #ff7aa8, #ff4f8b 55%, #e23a78); box-shadow: 0 5px 0 #a8204f, 0 10px 20px rgba(255, 79, 139, 0.45); }
-.tcy-bar .dot { position: absolute; top: 2px; right: 18%; width: 10px; height: 10px; border-radius: 50%; background: #ff4f6a; box-shadow: 0 0 0 2px #fff; }
+/* The bottom tab bar: Shop · Company · BUILD · Goals · Me. It is made of the same stuff as the
+   top HUD (#tcy-top): the same translucent indigo glass pill with a thin white edge and soft drop
+   shadow, plain white glyphs, Figtree labels, and round buttons with a white ring like the "?".
+   The open tab's glyph sits in a purple "?"-style disc; BUILD is the pink one, raised. A new
+   player's bar shows only the tabs unlocked so far, centred (see unlockTabs, which sets --tabs). */
+#tcy-bar { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: calc(var(--tabs, 5) * 78px + 12px); height: 60px; margin: 0 auto; padding: 0 6px;
+  display: grid; grid-template-columns: repeat(var(--tabs, 5), 1fr); align-items: stretch; gap: 0; box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, 0.22); border-radius: 30px; background: linear-gradient(180deg, rgba(58, 40, 130, 0.78), rgba(34, 22, 86, 0.82)); box-shadow: 0 6px 16px rgba(20, 10, 60, 0.3); }
+#tcy-bar > [hidden] { display: none; }
+#tcy-bar > button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; min-width: 44px; min-height: 44px; padding: 0 0 6px; border: 0; border-radius: 0; cursor: pointer;
+  background: none; color: rgba(255, 255, 255, 0.72); font: 800 11px/1.1 var(--ui); letter-spacing: 0.01em; white-space: nowrap; }
+#tcy-bar > button span { text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); }
+#tcy-bar > button svg { width: 22px; height: 22px; padding: 6px; box-sizing: content-box; border: 2px solid transparent; border-radius: 50%; color: #fff; background: none; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+#tcy-bar > button.on:not(.tcy-build) { color: #fff; }
+#tcy-bar > button.on:not(.tcy-build) svg { border-color: rgba(255, 255, 255, 0.85); background: linear-gradient(180deg, #8a5cff, #5a34e0); box-shadow: 0 3px 0 #3a1fa0, 0 6px 14px rgba(20, 10, 60, 0.3); }
+#tcy-bar > .tcy-build { color: #fff; }
+#tcy-bar > .tcy-build svg { width: 28px; height: 28px; padding: 12px; margin-top: -26px; border-color: rgba(255, 255, 255, 0.85); background: linear-gradient(180deg, #ff7aa8, #ff4f8b 55%, #e23a78);
+  box-shadow: 0 3px 0 #a8204f, 0 6px 14px rgba(20, 10, 60, 0.3); }
+#tcy-bar .dot { position: absolute; top: 4px; right: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%; background: #ff4f6a; box-shadow: 0 0 0 2px #2a1a70; }
+#tcy-bar .dot[hidden] { display: none; }
+#tcy-bar .tcy-build .dot { top: -24px; right: calc(50% - 28px); }
 @media (prefers-reduced-motion: reduce) { .flag, .tcy-card, .tcy-coach { animation: none !important; } }
 .tag { padding: 4px 9px 5px; }
 .tag:not(.sel) small { display: none; }
@@ -3117,12 +3131,6 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .card-small:disabled { opacity: 0.5; cursor: default; }
 .card-auto { align-self: center; padding: 6px 10px; border-radius: 11px; font: 400 11px var(--display); color: #19a87a; background: #e2f8ee; }
 
-/* The bar: three buttons, Build in the middle. */
-.tcy-bar { grid-template-columns: 1fr 1.2fr 1fr !important; left: 18px !important; right: 18px !important; }
-.tcy-bar button { font-size: 11px !important; }
-.tcy-bar .tcy-build svg { width: 34px !important; height: 34px !important; margin-top: -26px !important; }
-.tcy-bar .tcy-build span { font-size: 13px; }
-
 /* Build and More sheets. */
 .tcy-sheet h2 { margin: 4px 0 6px; }
 .tcy-sheet-intro { margin: 0 0 14px !important; }
@@ -3157,7 +3165,6 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .tcy-goals .ty-goals { margin: 0; }
 .tcy-goals .more-mayor { width: 100%; }
 .goals-more { display: block; margin: 10px auto 0; }
-.tcy-bar button[data-open="goals"] svg, .tcy-bar button[data-open="more"] svg { color: #6a3cff; }
 
 /* When the business district is home, the old home screen never shows (not even for a
    moment between screens); its buttons are still pressed from the city's Menu. */
@@ -3307,14 +3314,6 @@ body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%
 @keyframes countin-fade { 0% { opacity: 0; } 30% { opacity: 0.55; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .countin b, .countin-rays { animation-duration: 0.01s !important; } }
 
-/* ════════ Tab bar: Shop · Company · BUILD · Goals · Me ════════ */
-.tcy-bar { grid-template-columns: repeat(5, 1fr) !important; left: 10px !important; right: 10px !important; padding: 8px 4px 6px !important; }
-.tcy-bar button { gap: 2px; }
-.tcy-bar svg { width: 24px; height: 24px; padding: 8px; transition: transform 0.15s, background 0.15s, color 0.15s; }
-.tcy-bar button.on:not(.tcy-build) svg { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 6px 14px rgba(106, 60, 255, 0.35); transform: translateY(-3px); }
-.tcy-bar button.on:not(.tcy-build) span { color: #6a3cff; }
-.tcy-bar .tcy-build svg { width: 30px; height: 30px; }
-
 body.tabs-open #tycity { z-index: 40; pointer-events: none; }
 body.tabs-open #tycity .tcy-bar, body.tabs-open #tycity .tcy-top { pointer-events: auto; }
 body.tabs-open #tycity .tcy-labels, body.tabs-open #tycity .tcy-next, body.tabs-open #tycity .tcy-events, body.tabs-open #tycity .tcy-card { visibility: hidden; }
@@ -3370,9 +3369,6 @@ body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-op
 .spire-hint { margin-top: auto; }
 .spire-claim { margin-top: auto; }
 
-/* A new player's bar: only the tabs unlocked so far, centered (see unlockTabs). */
-#tcy-bar { grid-template-columns: repeat(var(--tabs, 5), 1fr) !important; max-width: calc(var(--tabs, 5) * 78px + 12px); margin: 0 auto; }
-#tcy-bar > [hidden] { display: none !important; }
 #tcy-bar .tab-new { animation: tab-new 0.9s cubic-bezier(.3, 1.6, .5, 1) 2; }
 @keyframes tab-new { 0% { transform: scale(0.4); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
 /* The guide's pointing hand. */
@@ -3737,26 +3733,6 @@ body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
 /* The town shows through further now: events and the coach sit just under the slim row. */
 #tycity:has(.tcy-goal:not([hidden])) .tcy-events, #tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 66px) !important; }
 #tycity:has(.tcy-goal:not([hidden])) .tcy-coach, #tycity .tcy-coach { top: calc(env(safe-area-inset-top, 0px) + 98px) !important; }
-
-/* ===== Round 6: the new bottom bar. A deep-purple glass dock (it reads over the town and over
-   the light menu pages alike); every button has its own glossy colored tile, and BUILD is a big
-   round button raised in the middle. ===== */
-#tycity #tcy-bar { left: 10px !important; right: 10px !important; padding: 7px 4px 6px !important; gap: 2px !important; border: 1.5px solid rgba(255, 255, 255, 0.18); border-radius: 26px !important;
-  background: linear-gradient(180deg, rgba(64, 42, 150, 0.9), rgba(36, 22, 92, 0.94)) !important; box-shadow: 0 10px 26px rgba(20, 10, 60, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important; }
-#tycity #tcy-bar button { gap: 3px !important; color: #fff !important; font: 400 10.5px var(--display) !important; letter-spacing: 0.02em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
-#tycity #tcy-bar button svg { width: 22px !important; height: 22px !important; padding: 8px !important; border-radius: 13px !important; color: #fff !important; transform: none;
-  background: var(--tile, linear-gradient(180deg, #8a7cff, #5a4ad8)) !important; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 0 var(--tile-edge, #3a2aa0) !important; }
-#tycity #tcy-bar button[data-open="shop"] { --tile: linear-gradient(180deg, #ffa36b, #ff5f6d); --tile-edge: #b83448; }
-#tycity #tcy-bar button[data-open="company"] { --tile: linear-gradient(180deg, #5ccfff, #2a86e8); --tile-edge: #1a5aa8; }
-#tycity #tcy-bar button[data-open="goals"] { --tile: linear-gradient(180deg, #ffe066, #ffab1a); --tile-edge: #c07a08; }
-#tycity #tcy-bar button[data-open="me"] { --tile: linear-gradient(180deg, #6eeab0, #1fae7c); --tile-edge: #12805a; }
-#tycity #tcy-bar button.on:not(.tcy-build) svg { transform: translateY(-3px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 0 var(--tile-edge, #3a2aa0), 0 0 0 2px #fff !important; }
-#tycity #tcy-bar button.on:not(.tcy-build) span { color: #ffe27a !important; }
-#tycity #tcy-bar .tcy-build svg { width: 32px !important; height: 32px !important; padding: 13px !important; margin-top: -30px !important; border-radius: 50% !important; border: 3px solid #fff;
-  background: radial-gradient(circle at 35% 30%, #ff9cc0, #ff4f8b 55%, #d82f6e) !important; box-shadow: 0 4px 0 #9a1a4a, 0 10px 22px rgba(255, 79, 139, 0.5) !important; }
-#tycity #tcy-bar .tcy-build span { font-size: 12px !important; color: #fff !important; }
-#tycity #tcy-bar .dot { top: 0 !important; right: calc(50% - 24px) !important; box-shadow: 0 0 0 2px #2a1a70 !important; }
-#tycity #tcy-bar .tcy-build .dot { top: -26px !important; right: calc(50% - 30px) !important; }
 #tycity #tcy-top .tg-main b, #tycity #tcy-top .tg-main em { max-width: 72px !important; }
 #tycity #tcy-top .tg-main b { font-size: 12px !important; }
 #tycity #tcy-top .tcy-goal { flex: none !important; }
