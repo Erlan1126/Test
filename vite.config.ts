@@ -39,6 +39,7 @@ function skyrisePictures(): Plugin {
       return html
         .replace(/(href|src|content)="(icon\.svg|icon-192\.png|icon-512\.png|apple-touch-icon\.png|manifest\.webmanifest|og\.jpg)"/g, '$1="skyrise/$2"')
         .replace(/content="Buildaroo: build your own city"/, 'content="Skyrise: build the tallest tower"')
+        .replace(/<meta name="description" content="[^"]*">/, '<meta name="description" content="Build the tallest skyscraper in the world, one tap at a time. Drop each floor perfectly, house as many people as you can, and climb past real landmarks. Free to play in your browser.">')
         .replace(/(apple-mobile-web-app-title|og:site_name)" content="Buildaroo"/g, '$1" content="Skyrise"')
         .replace(/<title>[^<]*<\/title>/, "<title>Skyrise</title>");
     },

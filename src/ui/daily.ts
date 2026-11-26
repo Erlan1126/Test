@@ -206,8 +206,8 @@ export class DailySheets {
     const ics = [
       "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Skyrise//Daily reminder//EN", "BEGIN:VEVENT",
       `UID:skyrise-daily-${Date.now()}@skyrise`, `DTSTAMP:${local(new Date())}`, `DTSTART:${local(start)}`, "DURATION:PT10M",
-      "RRULE:FREQ=DAILY", `SUMMARY:${t("🔥 Skyrise: keep your streak going")}`, `DESCRIPTION:${t("Today's tower is ready.")} ${url}`, `URL:${url}`,
-      "BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", `DESCRIPTION:${t("Skyrise: today's tower is ready")}`, "END:VALARM",
+      "RRULE:FREQ=DAILY", `SUMMARY:${t("🔥 {game}: keep your streak going")}`, `DESCRIPTION:${t("Today's tower is ready.")} ${url}`, `URL:${url}`,
+      "BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", `DESCRIPTION:${t("{game}: today's tower is ready")}`, "END:VALARM",
       "END:VEVENT", "END:VCALENDAR",
     ].join("\r\n");
     const a = document.createElement("a");
@@ -223,7 +223,7 @@ export class DailySheets {
     this.click();
     const time = reminderTime() ? "" : ($<HTMLInputElement>("reminder-time").value || "19:00");
     const r = await setReminder(time, this.host.reminderInfo());
-    toast(r === "denied" ? t("Notifications are off for Skyrise. Turn them on in your phone's settings.")
+    toast(r === "denied" ? t("Notifications are off for {game}. Turn them on in your phone's settings.")
       : r === "on" ? t("We'll remind you at {time} on days you haven't played yet", { time }) : t("Daily reminder turned off"));
     this.renderReminder();
   }
@@ -503,7 +503,7 @@ export class DailySheets {
     if (friends) { void this.renderFriends(); return; }
     if (HAS_CITY) { void this.renderCityBoard(tab === "week" ? "hall" : "people"); return; }
     const global = on.kind === "global";
-    $("ranks-sub2").textContent = global ? t("Builders all over the world") : t("Friends you share Skyrise with");
+    $("ranks-sub2").textContent = global ? t("Builders all over the world") : t("Friends you share {game} with");
     const el = $("rank-list");
     if (global && !el.children.length) el.innerHTML = `<p class="history-empty">${esc(t("Loading…"))}</p>`;
     const board = await on.board(tab, today, week);
@@ -572,7 +572,7 @@ export class DailySheets {
     $("ranks-note").textContent = on.stale ? t("Can't reach the leaderboard right now. It may be out of date.")
       : global ? (tab === "week" ? t("Your best Classic or Daily tower this week. Every tower is checked by replaying it.")
         : tn(board.total, "{count} builder ranked. Every tower is checked by replaying it.", "{count} builders ranked. Every tower is checked by replaying it.", { count: fmt(board.total) }))
-      : !on.canPost ? t("Your scores aren't posted yet: ask whoever shared Skyrise to make you a Contributor.")
+      : !on.canPost ? t("Your scores aren't posted yet: ask whoever shared {game} to make you a Contributor.")
       : t("Share this page with friends as Contributors to compete.");
   }
 

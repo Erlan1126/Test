@@ -190,11 +190,11 @@ import { nextTitle, titleFor, titleProgress, TITLES } from "../src/data/titles";
 import { xpNeeded } from "../src/logic/rules";
 
 describe("builder titles", () => {
-  it("go up to Skyrise Immortal at 100, and track progress to the next one", () => {
+  it("go up to {game} Immortal at 100, and track progress to the next one", () => {
     expect(titleFor(1).name).toBe("Apprentice");
-    expect(titleFor(60).name).toBe("Skyrise Legend");
+    expect(titleFor(60).name).toBe("{game} Legend");
     expect(titleFor(85).name).toBe("Cloud Emperor");
-    expect(titleFor(140).name).toBe("Skyrise Immortal");
+    expect(titleFor(140).name).toBe("{game} Immortal");
     expect(nextTitle(100)).toBeUndefined();
     expect(TITLES.filter(t => t.glow).map(t => t.min)).toEqual([80, 100]);
     expect(titleProgress(10, 0)).toBe(0);

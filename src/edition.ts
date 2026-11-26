@@ -8,6 +8,9 @@ export type Edition = "full" | "skyrise" | "city";
 const raw = (import.meta.env?.VITE_EDITION ?? "") as string;
 export const EDITION: Edition = raw === "skyrise" || raw === "city" ? raw : "full";
 
+/** The game's name in this build: the tower game alone is Skyrise, the city game is Buildaroo. */
+export const GAME_NAME = EDITION === "skyrise" ? "Skyrise" : "Buildaroo";
+
 /** This build has the business city (the tycoon, its town and Mayor Pip's City Plan). */
 export const HAS_CITY = EDITION !== "skyrise";
 

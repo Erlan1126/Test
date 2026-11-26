@@ -1,6 +1,6 @@
 // The pop-up sheets: skins, star shop, challenges, profile, settings and the daily gift.
 import { setSkyMode } from "../render/scenery";
-import { HAS_CITY, playerStarted } from "../edition";
+import { GAME_NAME, HAS_CITY, playerStarted } from "../edition";
 import { townPeople } from "../logic/props";
 import { VIP_SPEED } from "../logic/builds";
 import { track } from "../stats";
@@ -44,7 +44,7 @@ import { towerName } from "../data/towernames";
 import { AVATAR_COLORS, AVATARS, avatarBadge, FRAMES } from "../data/avatars";
 import type { FriendCity, Online } from "../online";
 import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
-import { isNative } from "../native";
+import { isNative, platform } from "../native";
 
 export interface Host {
   readonly save: SaveData;
@@ -70,6 +70,7 @@ export interface Host {
   /** Buys a crystal pack with real money. */
   buyPack(pack: CrystalPack): Promise<void>;
   buyVip(): Promise<void>;
+  restorePurchases(): Promise<void>;
   /** Fills the business boosts (cash booster, vault, time warps) into the shop. */
   townBoosts(el: HTMLElement, after: () => void): void;
   /** A decoration was bought: show it in the town. */
@@ -387,10 +388,12 @@ export class Sheets {
     if (box.hidden) return;
     const price = pay?.vipPrice?.() ?? formatPrice(VIP_CENTS);
     const ready = vipClaimReady(save, day);
-    box.innerHTML = `<div class="vip-head"><b>👑 Skyrise VIP</b>${on ? `<span class="vip-on">${esc(t("Active"))}</span>` : ""}</div>
+    box.innerHTML = `<div class="vip-head"><b>👑 ${esc(GAME_NAME)} VIP</b>${on ? `<span class="vip-on">${esc(t("Active"))}</span>` : ""}</div>
       <ul><li>${esc(t("{n} 💎 every day", { n: VIP_DAILY_CRYSTALS }))}</li>${HAS_CITY ? `<li>${esc(t("An extra builder: build one more thing at once"))}</li><li>${esc(t("Everything builds {pct}% faster", { pct: Math.round((1 - VIP_SPEED) * 100) }))}</li>` : `<li>${esc(t("A free Extra rewind every day"))}</li>`}${HAS_CITY ? "" : `<li>${esc(t("The Platinum tower skin"))}</li>`}</ul>
       <button type="button" class="btn btn-primary wide" id="vip-btn"${on && !ready ? " disabled" : ""}>${on ? (ready ? esc(t("Collect today's VIP gift")) : esc(t("✓ Collected today"))) : esc(t("Join for {price} a month", { price }))}</button>
-      <small>${on ? esc(t("Manage or cancel it any time in your store's subscriptions.")) : esc(t("Renews every month until you cancel. Cancel any time in your store's subscriptions."))}</small>`;
+      <small>${on ? esc(t("Manage or cancel it any time in your store's subscriptions.")) : esc(t("Renews every month until you cancel. Cancel any time in your store's subscriptions."))}</small>
+      <small class="vip-legal"><a href="https://www.bigbrucestudios.com/privacy/" target="_blank" rel="noopener">${esc(t("Privacy policy"))}</a>${platform() === "ios" ? ` · <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener">${esc(t("Terms of use"))}</a>` : ""}${pay?.restore && !on ? ` · <button type="button" class="vip-restore">${esc(t("Restore purchases"))}</button>` : ""}</small>`;
+    box.querySelector(".vip-restore")?.addEventListener("click", () => { this.click(); void this.host.restorePurchases(); });
     $("vip-btn").addEventListener("click", () => {
       if (on) {
         if (claimVip(save, day)) this.bought(HAS_CITY ? t("+{n} 💎. See you tomorrow!", { n: VIP_DAILY_CRYSTALS }) : t("+{n} 💎 and an Extra rewind. See you tomorrow!", { n: VIP_DAILY_CRYSTALS }));
@@ -755,6 +758,8 @@ export class Sheets {
       : st.quality === "high" ? t("Glow and light effects always on (uses more battery)")
       : t("Sharp graphics that adapt to your device");
     document.querySelectorAll<HTMLButtonElement>("[data-lang]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.lang === st.lang)));
+    $("restore-purchases").hidden = !this.host.payments?.restore;
+    $("terms-link").hidden = platform() !== "ios";
   }
 
   openSettings(): void {
@@ -848,6 +853,7 @@ export class Sheets {
       this.renderSettings();
       this.host.applyLang();
     }));
+    $("restore-purchases").addEventListener("click", () => { this.click(); void this.host.restorePurchases(); });
     $("replay-tips").addEventListener("click", () => {
       this.host.replayTips();
       toast(t("Tips will show on your next tower"));

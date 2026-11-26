@@ -130,4 +130,16 @@ describe("translations", () => {
     expect(normalize({ settings: { lang: "es" } }).settings.lang).toBe("es");
     expect(normalize({ settings: { lang: "klingon" } }).settings.lang).toBe("auto");
   });
+
+  it("names the right game: {game} is Buildaroo in the city build, never a hard-coded Skyrise", () => {
+    setLang("en");
+    expect(t("Install {game} as an app")).toBe("Install Buildaroo as an app");
+    expect(t("{game} Legend")).toBe("Buildaroo Legend");
+    setLang("es");
+    expect(t("Install {game} as an app")).toBe("Instala Buildaroo como app");
+    for (const l of ["es", "pt", "fr", "de"] as const) {
+      expect(Object.entries(dictionary(l)).filter(([k, v]) => /Skyrise/.test(k + v)).map(([k]) => k), l).toEqual([]);
+    }
+    expect(sourceKeys().filter(k => /Skyrise/.test(k))).toEqual([]);
+  });
 });
