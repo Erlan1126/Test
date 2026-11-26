@@ -61,8 +61,8 @@ export const TOWER_GUIDE: GuideSection[] = [
   {
     title: "Your goal",
     rows: [
-      { icon: "crown", title: "Build the capital of the sky", text: "Every tower's people move into Skyhaven. Grow it from a meadow to half a million people." },
-      { icon: "target", title: "The Sky City plan", text: "Six chapters of goals, on the strip on the home screen. Finish a chapter for stars and crystals." },
+      { icon: "crown", title: "Build the capital of the sky", text: "Every tower's people move into {city}. Grow it from a meadow to half a million people." },
+      { icon: "target", title: "The Sky City plan", text: "Zephyr the swift guides you through six chapters of goals, on the strip on the home screen. Finish a chapter for stars and crystals." },
       { icon: "map", title: "Builder level (Lv)", text: "The badge at the top. Every tower earns XP, and new levels pay stars and open new things." },
       { icon: "island", title: "New islands", text: "More people open new islands: Snowy Peaks, Desert Oasis and Cherry Blossom. Pick one in the Shop and build there." },
       { icon: "building", title: "Your skyline", text: "Towers of 8 floors or more stand on their island for good. Your tallest one stands on the home island." },
@@ -74,7 +74,7 @@ export const TOWER_GUIDE: GuideSection[] = [
     title: "Building towers",
     rows: [
       ...GUIDE[3].rows.filter(r => r.title !== "What a tower does"),
-      { icon: "city", title: "What a tower does", text: "Its people move into Skyhaven, it earns stars and XP, and tall ones pass famous landmarks." },
+      { icon: "city", title: "What a tower does", text: "Its people move into {city}, it earns stars and XP, and tall ones pass famous landmarks." },
     ],
   },
   {

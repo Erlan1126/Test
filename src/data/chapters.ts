@@ -165,7 +165,7 @@ const inIsland = (id: string) => (s: SaveData) => districtTowers(s, id).length;
 const TOWER_CHAPTERS: Chapter[] = [
   {
     title: "A city in the sky",
-    intro: "Welcome to Skyhaven! It's just a meadow for now, but with your towers it'll be the greatest city in the sky. Let's begin!",
+    intro: "Welcome to {city}! It's just a meadow for now, but with your towers it'll be the greatest city in the sky. Let's begin!",
     outro: "Look at that skyline! People are already moving in. You're a natural.",
     goals: [
       { text: "Build {n} towers", need: 3, have: towers, kind: "towers" },
@@ -176,7 +176,7 @@ const TOWER_CHAPTERS: Chapter[] = [
   },
   {
     title: "Growing up",
-    intro: "Skyhaven is growing! More people means more rent, and more rent means more buildings.",
+    intro: "{city} is growing! More people means more rent, and more rent means more buildings.",
     outro: "{city} has a real heartbeat now. Time to look beyond the meadow...",
     goals: [
       { text: "Reach {n} people", need: 5000, have: people },
@@ -188,7 +188,7 @@ const TOWER_CHAPTERS: Chapter[] = [
   {
     title: "The Snowy Peaks",
     intro: "Over the clouds there's an island covered in snow. Grow the city to open it, then build there!",
-    outro: "Your towers sparkle in the snow. The whole sky is talking about Skyhaven!",
+    outro: "Your towers sparkle in the snow. The whole sky is talking about {city}!",
     goals: [
       { text: "Reach {n} people", need: 15000, have: people },
       { text: "Build {n} towers in Snowy Peaks", need: 3, have: inIsland("snow") },
@@ -210,7 +210,7 @@ const TOWER_CHAPTERS: Chapter[] = [
   {
     title: "Cherry Blossom",
     intro: "The cherry trees are in bloom on the next island. Let's give it towers worth the view.",
-    outro: "Pink petals and perfect towers. Skyhaven has never looked so lovely.",
+    outro: "Pink petals and perfect towers. {city} has never looked so lovely.",
     goals: [
       { text: "Reach {n} people", need: 180000, have: people },
       { text: "Build {n} towers in Cherry Blossom", need: 3, have: inIsland("blossom") },
@@ -220,8 +220,8 @@ const TOWER_CHAPTERS: Chapter[] = [
   },
   {
     title: "Capital of the sky",
-    intro: "One last dream: make Skyhaven the capital of the sky. Half a million people, and a tower to match!",
-    outro: "You did it! Skyhaven is the capital of the sky, and you built every floor of it. Thank you, builder!",
+    intro: "One last dream: make {city} the capital of the sky. Half a million people, and a tower to match!",
+    outro: "You did it! {city} is the capital of the sky, and you built every floor of it. Thank you, builder!",
     goals: [
       { text: "Reach {n} people", need: 500000, have: people },
       { text: "Build a tower {n} m tall", need: 500, have: best, kind: "height" },

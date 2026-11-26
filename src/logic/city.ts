@@ -4,8 +4,10 @@
 import { ISLAND_THEMES, type IslandTheme } from "../data/islands";
 import type { SaveData } from "./save";
 import { premiumGrants } from "./premium";
+import { HAS_CITY } from "../edition";
 
-export const CITY_NAME = "Skyhaven";
+/** The city every tower's people move into: Buildaroo's Skyhaven, or Skyrise's own Cloudreach. */
+export const CITY_NAME = HAS_CITY ? "Skyhaven" : "Cloudreach";
 
 /** Districts in the order they open. */
 export const DISTRICTS: IslandTheme[] = [...ISLAND_THEMES].sort((a, b) => a.people - b.people);

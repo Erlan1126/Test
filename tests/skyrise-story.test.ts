@@ -86,7 +86,7 @@ describe("Skyrise's daily calendar", () => {
 describe("Skyrise has no mayor", () => {
   // Mayor Pip belongs to Buildaroo. Skyrise's story card is the Sky City plan, its guide
   // talks about towers only, and every line of it is translated.
-  const banned = /\bPip\b|mayor|business|café terrace|manager|cash|Coffee Cart/i;
+  const banned = /\bPip\b|mayor|business|café terrace|manager|cash|Coffee Cart|Skyhaven/i;
 
   it("tells its story and guide without Pip or the company", async () => {
     const { TOWER_GUIDE, PAGE_INTRO } = await import("../src/data/guide");
@@ -105,7 +105,7 @@ describe("Skyrise has no mayor", () => {
     const lines = [
       ...CHAPTERS.flatMap(c => [c.title, c.intro, c.outro, ...c.goals.map(g => g.text)]),
       ...TOWER_GUIDE.flatMap(s => [s.title, ...s.rows.flatMap(r => [r.title, r.text])]),
-      PAGE_INTRO.goals, "Sky City plan", "Back to building!",
+      PAGE_INTRO.goals, "Zephyr", "Back to building!",
     ];
     for (const l of ["es", "pt", "fr", "de"] as const) {
       const d = dictionary(l);
@@ -113,14 +113,19 @@ describe("Skyrise has no mayor", () => {
     }
   });
 
-  it("draws the plan's emblem, not Pip", async () => {
-    const { MAYOR_SVG, planSvg } = await import("../src/ui/mayor");
+  it("has its own city, Cloudreach, not Buildaroo's Skyhaven", async () => {
+    const { CITY_NAME } = await import("../src/logic/city");
+    expect(CITY_NAME).toBe("Cloudreach");
+  });
+
+  it("draws Zephyr, not Pip", async () => {
+    const { MAYOR_SVG, zephyrSvg } = await import("../src/ui/mayor");
     expect(MAYOR_SVG).toBe("");
-    const a = planSvg(), b = planSvg("happy");
+    const a = zephyrSvg(), b = zephyrSvg("happy");
     expect(a).toContain("<svg");
     expect(a).not.toMatch(/mp-hat|mp-skin/);
     expect(b).toContain("sp-sparkle");
     // Two copies on screen at once keep their own gradients.
-    expect(a.match(/id="(sp\d+)-sky"/)![1]).not.toBe(b.match(/id="(sp\d+)-sky"/)![1]);
+    expect(a.match(/id="(zp\d+)-sky"/)![1]).not.toBe(b.match(/id="(zp\d+)-sky"/)![1]);
   });
 });
