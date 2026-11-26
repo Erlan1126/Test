@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { seeded } from "../src/core/rng";
 import { REWIND, RunRecorder, replayRun, simFor, type RunRecord } from "../src/logic/replay";
+import { RULES } from "../src/logic/sim";
+import { easyPerfect, floorSpeed, perfectWindow } from "../src/logic/rules";
 
 /** Plays a tower like a person would: taps when the floor is close to lining up, with
  *  some sloppiness, and uses the rewind once. */
@@ -124,5 +126,20 @@ describe("a new player's first tower", () => {
     const out = replayRun(JSON.parse(JSON.stringify(rec)));
     expect(out.ok).toBe(true);
     if (out.ok) expect(out.summary.score).toBe(summary.score);
+  });
+
+  it("eases into full speed instead of lurching at floor 7 or narrowing the perfect at floor 11", () => {
+    const sim = simFor({ ...base, rules: RULES, easy: true });
+    for (let n = 2; n <= 40; n++) {
+      // Each floor slides at most 9% faster than the one before.
+      expect(sim.speedFor(n) / sim.speedFor(n - 1), `floor ${n}`).toBeLessThan(1.09);
+      // The perfect window (in time) never shrinks by more than a fifth from one floor to the next.
+      const win = (k: number) => easyPerfect(k) * perfectWindow(sim.speedFor(k)) / sim.speedFor(k);
+      expect(win(n) / win(n - 1), `floor ${n}`).toBeGreaterThan(0.8);
+    }
+    expect(sim.speedFor(3)).toBeCloseTo(floorSpeed(3) * 0.7);
+    expect(sim.speedFor(12)).toBeCloseTo(floorSpeed(12));
+    expect(easyPerfect(10)).toBe(2);
+    expect(easyPerfect(15)).toBe(1);
   });
 });
