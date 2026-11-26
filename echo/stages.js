@@ -133,7 +133,8 @@ function startStage(n, opts = {}) {
   if (run && run.stage === n) run.attempt = attempt;
   // A helping hand: each time in a row you run out of light on a stage, the dark comes a little
   // slower on your next try (up to 28% after four; 40% on a boss). Clearing the stage resets it.
-  if (run && run.stage === n && !info.daily && !race) run.assist = Math.min(info.boss ? 0.4 : 0.28, ((S.fails || {})[n] || 0) * 0.07);
+  // After three misses in a row, an extra heart too.
+  if (run && run.stage === n && !info.daily && !race) { const f = (S.fails || {})[n] || 0; run.assist = Math.min(info.boss ? 0.4 : 0.28, f * 0.07); if (f >= 3) { run.hearts++; run.extraHeart = true; } }
   // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
   if (opts.cp && run && run.stage === n) {
     const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
