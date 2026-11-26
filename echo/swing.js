@@ -304,7 +304,7 @@ function swingDash() {
 
 function swingHit(R, why) {
   if (R.inv > 0 || R.attract || R.cleared || R.over) { if (R.attract) R.inv = 1; return; }
-  R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5); R.hitsTaken = (R.hitsTaken || 0) + 1;
+  R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5); R.hitsTaken = (R.hitsTaken || 0) + 1; R.lastWhy = why;
   if (R.power && R.power.kind === "shield") { R.power = null; R.inv = 1; R.flash = -0.6; runMsg("Shield!", "", 1.2); sfx.gate(); return; }
   if (why) runMsg(why, "", 1.4);
   runHit();

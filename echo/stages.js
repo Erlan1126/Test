@@ -187,6 +187,14 @@ function stageFail() {
   if (!R.stageInfo.daily && !R.raceTime && !R.attract) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
   setTimeout(() => showStageCard(false), 650);
 }
+// What to try next, by what took your last heart.
+const FAIL_TIPS = {
+  "The dark caught you!": "Keep your speed up: let go on the gold arc, and tap in mid-air for a dash to outrun the dark.",
+  "Drone!": "Drones patrol between anchors. Wait a beat for one to pass, or swing above it.",
+  "Zap!": "Live wires spark between rooftops. Let go a little later to fly over them.",
+  "Keep off the street!": "Grab the next ringed light before you fall too low.",
+  "": "Grab anchors early, let go on the gold arc.",
+};
 function showStageCard(won) {
   const R = run; if (!R || !R.stage && R.stage !== 0) return;
   const info = R.stageInfo, el = $("stageCard");
@@ -205,7 +213,7 @@ function showStageCard(won) {
   if (won) for (let q = 0; q < R.stageStars; q++) setTimeout(() => { if (!$("stageCard").hidden) { sfx.star(q); buzz(q === 2 ? [20, 30, 40] : 10); } }, 120 + q * 180);
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   const attNote = won && R.attempt && !R.hadStars ? `Cleared on attempt ${R.attempt}${R.attempt === 1 ? ". First try!" : ""} · ` : !won && R.bestPct != null && !R.newBestPct ? `Your best: ${R.bestPct}% · ` : "";
-  $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch 40% of the lights for ★★" : `★★★: 70% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
+  $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch 40% of the lights for ★★" : `★★★: 70% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : (FAIL_TIPS[R.lastWhy] || FAIL_TIPS[""])));
   // After the last stage, the first time: the ending.
   const dawn = won && !info.daily && info.n === STAGES_N && !save.dawnSeen;
   const next = $("stNext"); next.textContent = dawn ? "See the dawn" : won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";

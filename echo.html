@@ -234,7 +234,11 @@
   .wordmark { font-weight: 800; font-size: 17px; letter-spacing: 0.42em; padding-left: 2px; background: linear-gradient(90deg, #fff 0%, #fff 40%, #8be9ff 50%, #fff 60%, #fff 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 5s linear infinite; filter: drop-shadow(0 0 12px rgba(139,233,255,0.35)); }
   .wordmark b { font-weight: 800; color: transparent; }
   @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -200% 0; } }
-  .home-chips { display: flex; gap: 6px; align-items: center; }
+  .home-chips { display: flex; gap: 6px; align-items: center; flex: none; }
+  /* Narrow phones: the wordmark gives way so the chips and Settings always fit. */
+  .home-top { gap: 8px; } .home-top .wordmark { min-width: 0; white-space: nowrap; overflow: hidden; }
+  @media (max-width: 430px) { .home-top .wordmark { font-size: 15px; letter-spacing: 0.17em; } .home-chips { gap: 5px; } .home-chips .chip2 { padding: 0 9px; } }
+  @media (max-width: 370px) { .home-top .wordmark { font-size: 13px; letter-spacing: 0.1em; } .home-chips .icon2 { width: 34px; height: 34px; } #looksBtn { display: none; } /* (the Locker is in the tab bar too) */ }
   .chip2 { height: 34px; padding: 0 12px; border-radius: 99px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--txt); font-variant-numeric: tabular-nums; }
   .chip2 .ic { color: var(--gold2); }
   .icon2 { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--txt); position: relative; }

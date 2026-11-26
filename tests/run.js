@@ -192,7 +192,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
         const pr = k => save.dm.list.find(m => DM_POOL[m.i].k === k).prog; out.missionsCountWhatYouDo = pr("home") === 1 && pr("perfect") > 0 && pr("pchain") > 0 && pr("lights") > 0 && pr("free") > 0 && pr("stars") >= 1; }
       startStage(3); { const R = run; R.teth = null; R.hold = false; R.roof = null; R.blds.length = 0; R.inv = 2; R.px = 100; R.py = 30; R.vx = 10; R.vy = 0; const tt = 0.5; R.haz = [{ kind: "drone", x: 105, y0: 30 + 0.9 - SWING.G * tt * tt / 2, amp: 0, ph: 0 }]; runUpdate(1 / 60); runUpdate(1 / 60); out.aDroneOnYourPathWarnsYou = R.haz[0].warn > 0; }
       { const S = stageSave(); const a0 = (S.att && S.att[7]) || 0; startStage(7); startStage(7); out.attemptsCountEachTry = S.att[7] === a0 + 2 && run.attempt === a0 + 2;
-        const R = run; R.teth = null; R.px = R.stageLen * 0.4; R.inv = 0; R.hearts = 1; delete (S.pct || {})[7]; swingHit(R, "test"); out.failingRecordsYourBestPercent = R.failPct === 40 && R.newBestPct === true && S.pct[7] === 40; }
+        const R = run; R.teth = null; R.px = R.stageLen * 0.4; R.inv = 0; R.hearts = 1; delete (S.pct || {})[7]; swingHit(R, "Drone!"); showStageCard(false); out.theFailCardTipFitsWhatHitYou = /Drones patrol/.test($("stNote").textContent); out.failingRecordsYourBestPercent = R.failPct === 40 && R.newBestPct === true && S.pct[7] === 40; }
       startStage(8); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 70; q++) runUpdate(1 / 60); out.youLandOnTheirRoofAtTheEnd = R.cleared && R.roof && R.roof.home && Math.abs(R.py - 17) < 0.01 && Math.abs(R.px - (R.stageLen + 6.5)) < 0.01; }
       startStage(9); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 60 * 6; q++) runUpdate(1 / 60); out.theDarkStaysBackAfterYouWin = R.px - R.darkX > 20; const l0 = R.lights; swingHold(true); swingHold(false); for (let q = 0; q < 5; q++) runUpdate(1 / 60); out.tapsDoNothingAfterTheFinish = !R.teth && R.lights === l0 && R.roof && R.roof.home; }
       { const S = stageSave(); S.pct = S.pct || {}; S.pct[11] = 30; startStage(11); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen * 0.31; R.py = 30; runUpdate(1 / 60); out.passingYourBestCelebrates = R.passedBest === true && R.msgs.some(m => m.text === "New best!"); }
@@ -298,6 +298,16 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       stageSave().best[10] = { stars: 1, time: 20 }; showTitle(); out.theNightShiftOpensAfterStageTen = !$("hardBtn").classList.contains("locked");
       return out;
     });
+    // On a computer: Esc pauses and resumes, Enter takes a card's main button.
+    {
+      await page.evaluate(() => { stageSave().unlocked = 5; startStage(2); });
+      await page.keyboard.press("Escape"); const paused = await page.evaluate(() => run.paused && !$("runPause").hidden);
+      await page.keyboard.press("Escape"); const resumed = await page.evaluate(() => !run.paused && $("runPause").hidden);
+      await page.evaluate(() => { run.inv = 0; run.hearts = 1; runHit(); }); await page.waitForTimeout(800);
+      await page.keyboard.press("Enter"); const retried = await page.evaluate(() => run.stage === 2 && !run.failed && $("stageCard").hidden);
+      s.escPausesAndResumes = paused && resumed; s.enterRetriesFromTheCard = retried;
+      await page.evaluate(() => { run = null; showTitle(); });
+    }
     // The phone's Back button leaves a run for the home screen.
     await page.evaluate(() => startStage(1));
     await page.goBack(); await page.waitForTimeout(200);
@@ -325,6 +335,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       const { page: p2, errors: e2 } = await openGame(browser, size);
       const wide = await p2.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
       check(`no sideways scrolling at ${size.width}×${size.height}`, wide);
+      check(`the top bar fits at ${size.width}×${size.height} with big numbers`, await p2.evaluate(() => { save.glow = 123456; save.run = save.run || {}; save.run.xp = 1e6; renderTitle(); const wm = document.querySelector(".home-top .wordmark"); return $("settingsBtn").getBoundingClientRect().right <= innerWidth && wm.scrollWidth <= wm.clientWidth + 1; }));
       check(`no page errors at ${size.width}×${size.height}`, e2.length === 0, e2[0]);
       await p2.close();
     }

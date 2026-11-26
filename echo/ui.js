@@ -57,7 +57,8 @@ function renderTitle() {
   const rs = runSave();
   { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; }
   $("playSub").textContent = "Hold to swing, let go to fly";
-  $("chipLights").querySelector("b").textContent = (save.glow || 0).toLocaleString();
+  // Big numbers stay short in the top bar (12.3k), so it fits small phones.
+  { const g = save.glow || 0; $("chipLights").querySelector("b").textContent = g >= 10000 ? `${(Math.floor(g / 100) / 10).toLocaleString()}k` : g.toLocaleString(); }
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
   { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : `${stagePerson(0)[0]} waits`; }
   { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Night shift: light the city"; }

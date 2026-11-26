@@ -50,8 +50,14 @@ function audio() {
       setInterval(musicTick, 60);
     } catch (e) { AC = null; }
   }
-  if (AC && AC.state === "suspended") AC.resume();
+  // iPhones can leave the sound "interrupted" after a call or an alarm: any touch brings it back.
+  if (AC && (AC.state === "suspended" || AC.state === "interrupted")) AC.resume().catch(() => {});
 }
+// In the background the sound sleeps (no battery spent on silence); it wakes when you come back.
+document.addEventListener("visibilitychange", () => {
+  if (!AC) return;
+  if (document.hidden) AC.suspend().catch(() => {}); else AC.resume().catch(() => {});
+});
 function applyVolumes() {
   if (!AC) return;
   master.gain.value = muted ? 0 : 1;

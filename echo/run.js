@@ -129,7 +129,7 @@ function runEnd() {
     $("roDist").textContent = runMetres().toLocaleString(); $("roLights").textContent = (run.lights + (run.streakBonus || 0)).toLocaleString(); $("roCombo").textContent = run.comboBest;
     const li = run.levelInfo;
     $("runLevel").textContent = `Level ${li.after.lv}` + (li.after.lv > li.before.lv ? " · Level up!" : "") + ` · +${li.gained} xp`;
-    if (run.mode3) $("runLevel").textContent += ` · ${run.lit} relit · City ${cityPct()}%` + (run.cityTiers ? ` · +${run.cityTiers * 50} ✦` : "") + (run.gotCapsule ? " · Light capsule!" : "");
+    if (run.mode3) $("runLevel").textContent += ` · ${run.lit} relit${cityPct() ? ` · City ${cityPct()}%` : ""}` + (run.cityTiers ? ` · +${run.cityTiers * 50} ✦` : "") + (run.gotCapsule ? " · Light capsule!" : "");
     $("runLevelBar").style.width = `${Math.round(li.after.into / li.after.need * 100)}%`;
     if (best) { sfx.win(); buzz([20, 40, 20, 40]); }
     $("runOverInfo").textContent = `${runMetres()} m · ✦ ${run.lights} lights · best combo ${run.comboBest}`;
@@ -364,6 +364,20 @@ function runLoop(now) {
   window.addEventListener("blur", () => { downs.clear(); if (run) swingHold(false); p = null; });
   document.addEventListener("visibilitychange", () => { if (document.hidden) { downs.clear(); if (run) swingHold(false); p = null; } });
   window.addEventListener("keydown", e => { if (screen === "run" && e.key === " ") e.preventDefault(); });
+  // On a computer: Esc or P pauses and resumes; Enter (or Space on a card) takes the card's main button.
+  window.addEventListener("keydown", e => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key, open = id => { const el = $(id); return el && !el.hidden; }, go = id => { e.preventDefault(); keys[k.toLowerCase()] = false; $(id).click(); };
+    if (open("chapIntro")) { if (k === "Enter" || k === " ") go("ciGo"); return; }
+    if (screen === "title") { if (k === "Enter" && $("sheet").hidden && $("todayPanel").hidden && document.activeElement === document.body) go("playBtn"); return; }
+    if (screen !== "run" || !run) return;
+    const card = k === "Enter" || k === " ";
+    if (open("runContinue")) { if (k === "Enter") go("runContinueGo"); else if (k === "Escape") go("runContinueNo"); return; }
+    if (open("runPause")) { if (k === "Escape" || k === "p" || k === "P" || card) go("runResume"); return; }
+    if (open("stageCard")) { if (card) go("stNext"); else if (k === "Escape") go("stStages"); return; }
+    if (open("runOver")) { if (card) go("runAgain"); else if (k === "Escape") go("runCity"); return; }
+    if (k === "Escape" || k === "p" || k === "P") go("runPauseBtn");
+  });
 }
 // The pause card: who is waiting, and how each star is going so far.
 function runPauseInfo() {
