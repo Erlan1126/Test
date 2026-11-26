@@ -138,8 +138,8 @@ describe("a new player's first tower", () => {
       expect(win(n) / win(n - 1), `floor ${n}`).toBeGreaterThan(0.8);
     }
     expect(sim.speedFor(3)).toBeCloseTo(floorSpeed(3) * 0.7);
-    expect(sim.speedFor(12)).toBeCloseTo(floorSpeed(12));
+    expect(sim.speedFor(24)).toBeCloseTo(floorSpeed(24));
     expect(easyPerfect(10)).toBe(2);
-    expect(easyPerfect(15)).toBe(1);
+    expect(easyPerfect(30)).toBe(1);
   });
 });

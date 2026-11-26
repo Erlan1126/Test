@@ -10,7 +10,8 @@
     "build:city": "tsc --noEmit && vite build --mode city",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "playtest": "VITE_EDITION=skyrise vite-node scripts/playtest-run.ts"
   },
   "devDependencies": {
     "@capacitor/assets": "4.0.0",
