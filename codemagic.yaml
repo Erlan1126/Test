@@ -5,12 +5,12 @@ workflows:
     name: Skyrise iPhone app → TestFlight
     max_build_duration: 60
     instance_type: mac_mini_m2
-    # Builds start by themselves whenever the app's build branch gets new work.
+    # Builds start by themselves whenever the Skyrise app branch (skyrise-app) gets new work.
     triggering:
       events:
         - push
       branch_patterns:
-        - pattern: claude/new-session-klw8t6
+        - pattern: skyrise-app
           include: true
       cancel_previous_builds: true
     integrations:

@@ -1,5 +1,12 @@
 # Putting Skyrise on the App Store and Google Play
 
+> **Where the Skyrise app lives.** Skyrise is its own app (`com.bigbrucestudios.skyrise`) on
+> the `skyrise-app` branch. The shared game code is still made on `claude/new-session-klw8t6`
+> (which builds Buildaroo, `com.bigbrucestudios.buildaroo`). To bring new game work into
+> Skyrise, merge that branch into `skyrise-app`; never merge `skyrise-app` back, or Buildaroo
+> becomes Skyrise. On this branch, Codemagic, the iPhone and the Android builds run for
+> `skyrise-app`. The shared server is deployed only from the Buildaroo branch.
+
 The phone apps are the same game wrapped as a native app with Capacitor (`android/`,
 `ios/`). GitHub builds them for you (`.github/workflows/`), so you don't need a Mac or
 Android Studio. This page lists the steps only you can do, because they need your own

@@ -9,7 +9,7 @@ name: iOS app
 # (codemagic.yaml) is the main way to build the iPhone app; see STORES.md.
 on:
   push:
-    branches: [claude/new-session-klw8t6, main, master]
+    branches: [skyrise-app]
     paths: ["ios/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 

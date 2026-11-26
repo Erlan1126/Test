@@ -6,7 +6,7 @@ name: Android app
 
 on:
   push:
-    branches: [claude/new-session-klw8t6, main, master]
+    branches: [skyrise-app, claude/project-thread-urv4oc]
     paths-ignore: ["launch/**", "**.md"]
   workflow_dispatch:
 
