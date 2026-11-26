@@ -6,7 +6,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 const BULBS = ["#ff4d4d", "#ffd23a", "#4fd1ff", "#5ee07a", "#ff8ad8", "#ffffff"];
 
 /** Bulbs in two sets that take turns twinkling. */
-class Bulbs {
+export class Bulbs {
   readonly mats = [0, 1].map(() => new THREE.MeshBasicMaterial({ color: 0xffffff }));
   private pts: [THREE.Vector3, string][][] = [[], []];
   constructor(private colors = BULBS) {}

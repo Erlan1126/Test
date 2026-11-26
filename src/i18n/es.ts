@@ -2454,4 +2454,12 @@ export const ES: Record<string, string> = {
   "Today's door is ready to open!": "¡La puerta de hoy está lista para abrir!",
   "Next door opens in {time}": "La próxima puerta se abre en {time}",
   "All 24 doors are open. Merry Christmas!": "Las 24 puertas están abiertas. ¡Feliz Navidad!",
+  // The holiday parade (Winter Lights)
+  "🎉 The holiday parade is coming!": "🎉 ¡Llega el desfile navideño!",
+  "Watch": "Ver",
+  "🎁 The giant present float tips you +{n}!": "🎁 ¡La carroza del regalo gigante te da una propina de +{n}!",
+  "⛄ The snowman float tips you +{n}!": "⛄ ¡La carroza del muñeco de nieve te da una propina de +{n}!",
+  "🍪 The gingerbread float tips you +{n}!": "🍪 ¡La carroza de jengibre te da una propina de +{n}!",
+  "🛷 Santa's sleigh tips you +{n}!": "🛷 ¡El trineo de Papá Noel te da una propina de +{n}!",
+  "🎄 You already got this float's tip. Try another one!": "🎄 Ya recibiste la propina de esta carroza. ¡Prueba con otra!",
 };

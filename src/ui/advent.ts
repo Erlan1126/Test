@@ -41,7 +41,8 @@ export function adventRewardText(r: AdventResult): string {
 export class AdventCalendar {
   private busy = false;
 
-  constructor(private readonly host: AdventHost, private readonly onChange: () => void) {
+  /** `onOpened`: a door was just opened (the town's holiday parade comes by after). */
+  constructor(private readonly host: AdventHost, private readonly onChange: () => void, private readonly onOpened: () => void = () => {}) {
     wireModal($("advent-sheet"), () => this.close());
     $("advent-grid").addEventListener("click", e => {
       const el = (e.target as Element).closest<HTMLElement>("[data-door]");
@@ -84,6 +85,7 @@ export class AdventCalendar {
     if (!r) { this.render(); return; }
     // Paid (and saved) straight away; the door only shows it.
     this.host.persist();
+    this.onOpened();
     track("advent_door", { door, kind: r.kind }, false);
     this.busy = true;
     this.host.sound.whoosh();

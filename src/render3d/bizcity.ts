@@ -551,6 +551,11 @@ export interface BizCity {
   designs(): string[];
   /** Where walker k is now (for a resident's speech bubble), or null. */
   walker(k: number): THREE.Vector3 | null;
+  /** The holiday parade's route along the streets (points about 0.3 apart, town space), up
+   *  to `want` long; empty when the town has no streets yet. */
+  paradeRoute(want: number): THREE.Vector3[];
+  /** Closes the streets to traffic (the parade is on) or opens them again. */
+  paradeQuiet(on: boolean): void;
 }
 
 /** A building or place in the city the player can tap to see what it is. `kind` says what
@@ -2957,13 +2962,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   };
   /** At the end of a street: pick the next one (never back the way it came unless it must,
    *  and only right or straight on at a roundabout), and the curve through the crossing. */
-  const nextLeg = (c: (typeof traffic)[number]) => {
+  const nextLeg = (c: { i: number; j: number; d: [number, number]; lane: number }, choose?: (opts: [number, number][], i: number, j: number) => [number, number] | undefined) => {
     const L = c.lane, E = L > 0.6 ? L : END, foot = L > 0.6;
     const i = c.i + c.d[0], j = c.j + c.d[1], back: [number, number] = [-c.d[0], -c.d[1]];
     const r = rightOf(c.d);
     let opts = exits(i, j).filter(e => !(e[0] === back[0] && e[1] === back[1]));
     if (!foot && isRound(i, j)) opts = opts.filter(e => !(e[0] === -r.x && e[1] === -r.z));
-    const d2 = opts.length ? opts[Math.floor(Math.random() * opts.length)] : back;
+    const d2 = (choose ? choose(opts, i, j) : undefined) ?? (opts.length ? opts[Math.floor(Math.random() * opts.length)] : back);
     const B = nodeXZ(i, j), r2 = rightOf(d2);
     const a = B.clone().sub(dv(c.d).multiplyScalar(E)).add(r.clone().multiplyScalar(L));
     const b = B.clone().add(dv(d2).multiplyScalar(E)).add(r2.clone().multiplyScalar(L));
@@ -2983,13 +2988,78 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     life.add(p);
     return { p, i: st0.i, j: st0.j, d: st0.d, seg: street(st0.i, st0.j, st0.d, FOOT), turn: false, u: (k % 5) * 0.2, sp: 0.32 + (k % 4) * 0.05, lane: FOOT, ph: k * 1.7 };
   }) : [];
+  // The holiday parade's route (render3d/parade.ts): a long walk through the town's streets,
+  // near the middle of the road, straight on where it can, never down the same street twice.
+  // Tried from every street end: of the walks long enough, the one that keeps nearest the
+  // middle of town wins (where the player looks), else the longest.
+  const PARADE_LANE = 0.32;
+  const paradeRoute = (want: number): THREE.Vector3[] => {
+    let best: THREE.Vector3[] = [], bestLen = 0, bestFar = Infinity;
+    let mx = 0, mz = 0;
+    for (const [i, j] of nodes) { const v = nodeXZ(i, j); mx += v.x / nodes.length; mz += v.z / nodes.length; }
+    const sample = (sg: Seg, out: THREE.Vector3[]) => {
+      const n = Math.max(3, Math.ceil(sg.len / 0.3)), p = new THREE.Vector3(), d = new THREE.Vector3();
+      for (let k = out.length ? 1 : 0; k <= n; k++) { segAt(sg, k / n, p, d); out.push(p.clone()); }
+    };
+    for (const st0 of starts) {
+      const c = { i: st0.i, j: st0.j, d: st0.d, lane: PARADE_LANE }, used = new Set<string>(), pts: THREE.Vector3[] = [];
+      const key = (i: number, j: number, d: [number, number]) => { const i2 = i + d[0], j2 = j + d[1]; return i < i2 || (i === i2 && j < j2) ? `${i},${j},${i2},${j2}` : `${i2},${j2},${i},${j}`; };
+      let len = 0, ok = true;
+      while (ok && len < want) {
+        used.add(key(c.i, c.j, c.d));
+        const sg = street(c.i, c.j, c.d, PARADE_LANE);
+        sample(sg, pts); len += sg.len;
+        if (len >= want) break;
+        // (Straight on first, then right, then left: only onto streets not walked yet.)
+        const d0 = c.d;
+        const pick = (opts: [number, number][], i: number, j: number) => {
+          const free = opts.filter(e => !used.has(key(i, j, e)));
+          const rank = (e: [number, number]) => (e[0] === d0[0] && e[1] === d0[1] ? 0 : e[0] === -d0[1] && e[1] === d0[0] ? 1 : 2);
+          free.sort((a, b) => rank(a) - rank(b));
+          if (!free.length) ok = false;
+          return free[0] ?? opts[0];
+        };
+        const ni = c.i + d0[0], nj = c.j + d0[1], round = isRound(ni, nj);
+        const turn = nextLeg(c, pick);
+        if (!ok) break;
+        if (!round) { sample(turn, pts); len += turn.len; continue; }
+        // (A roundabout: the floats are wide, so they go right round its island on a circle
+        // instead of cutting across it.)
+        const B = nodeXZ(ni, nj), R = 1.4, d2 = c.d;
+        const a = B.clone().sub(dv(d0).multiplyScalar(END)).add(rightOf(d0).multiplyScalar(PARADE_LANE));
+        const b = B.clone().add(dv(d2).multiplyScalar(END)).add(rightOf(d2).multiplyScalar(PARADE_LANE));
+        const ta = Math.atan2(a.z - B.z, a.x - B.x);
+        let tb = Math.atan2(b.z - B.z, b.x - B.x);
+        // (Round the way the traffic goes: the circle's direction at the entry matches the street's.)
+        const ccw = -Math.sin(ta) * d0[0] + Math.cos(ta) * d0[1] > 0;
+        if (ccw) { while (tb <= ta) tb += Math.PI * 2; } else { while (tb >= ta) tb -= Math.PI * 2; }
+        const steps = Math.max(4, Math.ceil((Math.abs(tb - ta) * R) / 0.3));
+        let prev = pts[pts.length - 1];
+        for (let k = 0; k <= steps; k++) {
+          const th = ta + ((tb - ta) * k) / steps, q = new THREE.Vector3(B.x + Math.cos(th) * R, 0.04, B.z + Math.sin(th) * R);
+          bendV(q);
+          len += prev ? prev.distanceTo(q) : 0;
+          pts.push(q); prev = q;
+        }
+      }
+      const enough = len >= want * 0.8;
+      let far = 0;
+      for (const q of pts) far += Math.hypot(q.x - mx, q.z - mz) / pts.length;
+      if (enough ? bestLen < want * 0.8 || far < bestFar : len > bestLen && bestLen < want * 0.8) { bestLen = len; best = pts; bestFar = enough ? far : Infinity; }
+    }
+    return best;
+  };
+  let paradeQuiet = false;
   const tPos = new THREE.Vector3(), tDir = new THREE.Vector3(), tGap = new THREE.Vector3();
   let rushNow = isRushHour(), rushAt = 0;
   const trafficLive = (dt: number) => {
     const now = performance.now();
     if (now - rushAt > 30e3) { rushAt = now; rushNow = isRushHour(); }
     for (const c of traffic) {
+      // (The streets are closed to traffic while the holiday parade goes by.)
+      if (paradeQuiet) { c.v.visible = false; continue; }
       if (c.rush) { c.v.visible = rushNow; if (!rushNow) continue; }
+      if (!c.v.visible) c.v.visible = true;
       // Wait for the car in front (but never forever, so two cars can't block each other).
       let blocked = false;
       for (const o of traffic) {
@@ -3017,7 +3087,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       while (w.u >= 1) {
         w.u -= 1;
         if (w.turn) { w.seg = street(w.i, w.j, w.d, FOOT); w.turn = false; }
-        else { w.seg = nextLeg(w as unknown as (typeof traffic)[number]); w.turn = true; }
+        else { w.seg = nextLeg(w); w.turn = true; }
       }
       segAt(w.seg, w.u, tPos, tDir);
       const sw = Math.sin(t * 9 + w.ph);
@@ -4366,6 +4436,8 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       return out;
     },
     bizAt: i => bizSpots[i] ?? null,
+    paradeRoute: want => paradeRoute(want),
+    paradeQuiet: on => { paradeQuiet = on; },
     look(l) { fx.look(l); Object.assign(look, l); },
     beach: () => beachSpot,
     update(t, night, live) {

@@ -17,6 +17,7 @@ import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
 import { pickTalk } from "../data/talk";
 import { earn } from "../logic/tycoon";
 import { WeatherMoments } from "./weathermoments";
+import { ParadeUI } from "./parade";
 import { citySeason, isRushHour, isWeekendNight, seasonDaysLeft, seasonInfo } from "../data/season";
 import { buySeasonPass, claimSP, SEASON_PAINT, seasonPass, seasonPoints, SP_FREE, SP_PREMIUM, SP_PRICE, SP_TIERS, spReady, spReward, spTier, type SPReward } from "../logic/seasonpass";
 import { bizColors, PAINTS, paintById, ownsPaint, setPaint } from "../logic/paint";
@@ -122,6 +123,11 @@ export interface TycoonHost {
   bizZoom(f: number): void;
   bizPanEnd(): void;
   bizHold(): void;
+  /** The holiday parade in the town: start one, follow its lead float with the camera for
+   *  `ms`, and which float is under the finger (page px; -1 for none). */
+  paradeStart(): void;
+  paradeWatch(ms: number): void;
+  paradeHit(x: number, y: number): number;
   /** This week's Community Spire (asks the server; null when it can't be reached). */
   fetchSpire(): Promise<SpireNow | null>;
   /** Buildaroo: friends' homes this week, for the friend team (undefined offline). */
@@ -374,6 +380,10 @@ export class TycoonUI {
   /** In the business district (the 3D city), rather than the home screen. */
   inCity = false;
   /** The rainbow after rain and the snow day (ui/weathermoments.ts). */
+  /** The holiday parade (Winter Lights): its timer, banner and tips (ui/parade.ts). */
+  private readonly paradeUI = new ParadeUI(() => ({ save: this.save, sound: this.host.sound, persist: () => this.host.persist(), paradeStart: () => this.host.paradeStart(), paradeWatch: ms => this.host.paradeWatch(ms), paradeHit: (x, y) => this.host.paradeHit(x, y) }));
+  /** Testing (?debug): starts a holiday parade now. */
+  startParade(): boolean { return this.paradeUI.start(); }
   private readonly weather = new WeatherMoments(() => ({ save: this.save, sound: this.host.sound, persist: () => this.host.persist() }));
   /** The building whose card is open in the city. */
   private selected = "";
@@ -819,7 +829,7 @@ export class TycoonUI {
     for (const id of ["ty-coins", "tcy-coins"]) { const el = $(id); if (el.textContent !== shown) el.textContent = shown; }
     if (!$("earnings").hidden && now - this.earnAt > 900) { this.earnAt = now; this.renderEarnings(); }
     this.reactions(now);
-    if (HAS_CITY) this.weather.tick(now, this.inCity);
+    if (HAS_CITY) { this.weather.tick(now, this.inCity); this.paradeUI.tick(now, this.inCity); }
     for (const b of BUSINESSES) {
       if (levelOf(s, b.id) === 0) continue;
       const id = b.id, p = progressOf(s, id, now);
@@ -1468,6 +1478,8 @@ export class TycoonUI {
       if (st) toast(HAS_CITY && this.save.profile.towers === 0 ? t("Your first apartment building: your neighbor lives here") : tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));
       return;
     }
+    // A float in the holiday parade: a tip, once per float.
+    if (!id && HAS_CITY && this.paradeUI.tap(e.clientX, e.clientY)) return;
     // Not on a bubble: the nearest building under the finger, whatever it is (a business,
     // a home or block, a park or a landmark), so no building is ever hard to tap.
     if (!id) {
@@ -2328,7 +2340,7 @@ export class TycoonUI {
   /** The Advent calendar (made the first time it opens). */
   private advent?: AdventCalendar;
   openAdvent(): void {
-    this.advent ??= new AdventCalendar(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); });
+    this.advent ??= new AdventCalendar(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); }, () => { if (HAS_CITY) this.paradeUI.afterAdvent(); });
     this.advent.open();
   }
   /** The Goals sheet's way to the Advent calendar (all December): a red dot while a door waits. */

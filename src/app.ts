@@ -2962,6 +2962,9 @@ export class App implements DailyHost {
   bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }
   bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
   bizHold(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizHold(); }
+  paradeStart(): void { if (this.renderer instanceof Renderer3D) this.renderer.startParade(); }
+  paradeWatch(ms: number): void { if (this.renderer instanceof Renderer3D) this.renderer.watchParade(ms); }
+  paradeHit(x: number, y: number): number { return this.renderer instanceof Renderer3D ? this.renderer.paradeHit(x, y) : -1; }
   visitLandmark(rank: number, ms: number): boolean { return this.renderer instanceof Renderer3D ? this.renderer.visitLandmark(rank, ms) : false; }
   weatherNow(): string { return this.renderer.weather.kind; }
   bizTalk(k: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizTalk(k); }
