@@ -2813,9 +2813,6 @@ body.visiting #menu > *, body.visiting :is(#settings-btn, #level-btn, #stars-btn
 .ty-tabs button[aria-selected="true"] { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 4px 12px rgba(106, 60, 255, 0.35); }
 .ty-tabs .dot { position: absolute; top: 4px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: #ff4f6a; box-shadow: 0 0 0 2px #fff; }
 .ty-panel-intro { margin: 0 6px 10px; font-size: 13px; font-weight: 700; color: #6a6f99; }
-.ty-panel[data-panel="company"] .ty-amount { margin: 0 4px 10px; padding: 4px; border-radius: 14px; background: #ece7fb; }
-.ty-panel[data-panel="company"] .ty-amount button { color: #6a5fa8; background: transparent; }
-.ty-panel[data-panel="company"] .ty-amount button[aria-checked="true"] { color: #4a2a00; background: linear-gradient(180deg, #fff3b0, #ffc93c); }
 
 /* The sky around the tower, by the real time of day. */
 .ty-sky { position: relative; margin: 0 -16px 8px; padding: 14px 14px 0; overflow: hidden; border-radius: 0 0 24px 24px; }
@@ -3201,7 +3198,6 @@ body.city-home.visiting .corner-left, body.city-home.placing .corner-left { disp
 #tycoon .ty-build-btn small { display: none; }
 #tycoon .ty-build-btn span { font-size: 13px; }
 #tycoon .ty-tabs { margin-top: 8px; }
-#tycoon .ty-amount button:not([aria-checked="true"]) { color: #4b2fb0; background: #efeaff; }
 #tycoon .ty-floors b { font-size: 15px; }
 #tycoon .ty-fbar { height: 6px; margin: 3px 0 0; background: rgba(75, 47, 176, 0.14); }
 #tycoon .ty-stats span { color: #6b5fa0; }
@@ -3324,62 +3320,6 @@ body.tabs-open #tycity .tcy-bar, body.tabs-open #tycity .tcy-top { pointer-event
 body.tabs-open #tycity .tcy-labels, body.tabs-open #tycity .tcy-next, body.tabs-open #tycity .tcy-events, body.tabs-open #tycity .tcy-card { visibility: hidden; }
 body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-open #tycoon .ty-top { display: none !important; }
 
-/* ════════ Company page: clean business cards ════════ */
-/* A slim header that scrolls away; the tabs stay pinned at the top. */
-body.tabs-open #tycoon .ty-hero { position: static !important; padding: 10px 6px 8px !important; background: none !important; box-shadow: none !important; margin: 0 !important; }
-body.tabs-open #tycoon .ty-events { margin: 0 0 6px; }
-body.tabs-open #tycoon .ty-office { padding: 8px 8px 8px 14px; border-radius: 18px; }
-body.tabs-open #tycoon .ty-floors small { font-size: 10px; }
-body.tabs-open #tycoon .ty-floors b { font-size: 16px; }
-body.tabs-open #tycoon .ty-panel[data-panel="company"] .ty-amount { margin: 0 2px 12px; }
-/* No sky, roof, lift shaft or lobby: just the businesses. */
-body.tabs-open #tycoon .ty-sky { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
-body.tabs-open #tycoon .ty-sky::before, body.tabs-open #tycoon .ty-sky::after, body.tabs-open #tycoon .tw-roof, body.tabs-open #tycoon .tw-shaft, body.tabs-open #tycoon .tw-lobby { display: none !important; }
-body.tabs-open #tycoon .ty-list { gap: 12px !important; padding: 0 2px 8px !important; background: none !important; border: 0 !important; }
-body.tabs-open #tycoon .ty-biz.room { display: block !important; padding: 0 !important; border-radius: 22px !important; overflow: hidden; background: #fff !important; border: 0 !important;
-  box-shadow: 0 4px 0 rgba(42, 31, 110, 0.06), 0 10px 22px rgba(42, 31, 110, 0.1) !important; }
-/* The banner: the business's colors, its icon, name, stars and floors; earnings along the bottom. */
-body.tabs-open #tycoon .room-scene { height: 88px !important; background: linear-gradient(120deg, var(--b1), var(--b2)) !important; border-radius: 0 !important; }
-body.tabs-open #tycoon .room-scene > :is(.room-wall, .room-window, .room-lamp, .room-awning, .room-light, .room-chand, .room-sparkle, .room-shelf, .room-fx, .room-counter, .walker, .tap-me) { display: none !important; }
-body.tabs-open #tycoon .room-scene::before { content: ""; position: absolute; right: -30px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
-body.tabs-open #tycoon .room-sign { top: 12px !important; left: 12px !important; right: auto !important; gap: 10px !important; padding: 0 !important; background: none !important; box-shadow: none !important; font-size: 22px !important; color: #fff; }
-body.tabs-open #tycoon .room-sign svg.ic { box-sizing: content-box; width: 24px !important; height: 24px !important; padding: 10px; border-radius: 16px; background: rgba(255, 255, 255, 0.25); }
-body.tabs-open #tycoon .room-sign b { font-size: 15px !important; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
-body.tabs-open #tycoon .room-level { top: 40px !important; left: 66px !important; padding: 0 !important; background: none !important; color: rgba(255, 255, 255, 0.92) !important; font: 800 12px var(--ui) !important; }
-body.tabs-open #tycoon .room-stars { top: 12px !important; right: 12px !important; left: auto !important; color: #fff3b0; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
-body.tabs-open #tycoon .room-lease { position: absolute; top: 44px; left: 66px; padding: 2px 8px; border-radius: 8px; font: 400 11px var(--display); color: #fff; background: rgba(0, 0, 0, 0.18); transform: none !important; }
-body.tabs-open #tycoon .room-scene .ty-prog { position: absolute !important; left: 0; right: 0; bottom: 0; height: 18px !important; margin: 0 !important; border-radius: 0 !important; background: rgba(0, 0, 0, 0.16) !important; }
-body.tabs-open #tycoon .room-scene .ty-prog i { background: linear-gradient(90deg, #fff3b0, #ffc93c) !important; border-radius: 0 !important; }
-body.tabs-open #tycoon .room-scene .ty-prog span { font-size: 11px !important; line-height: 18px !important; color: #2a1f5c !important; text-shadow: none !important; }
-body.tabs-open #tycoon .room-scene :is(.hq-tag, .fest-tag, .review-tag, .rush-tag) { top: auto !important; bottom: 24px !important; right: 12px !important; left: auto !important; transform: none !important; }
-/* The action row: what's next, the manager, and a big Buy. */
-body.tabs-open #tycoon .room-bar { grid-template-columns: 1fr auto auto !important; gap: 8px !important; padding: 10px 10px 10px 14px !important; background: #fff !important; }
-body.tabs-open #tycoon .room-bar small { font-size: 12px !important; color: #7a70a8 !important; }
-body.tabs-open #tycoon .room-bar .ty-buy { min-width: 108px; padding: 8px 12px !important; border-radius: 16px !important; }
-body.tabs-open #tycoon .ty-auto { padding: 6px 10px; border-radius: 12px; font: 400 11px var(--display); color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); }
-body.tabs-open #tycoon .ty-biz.locked .room-scene { filter: saturate(0.55) brightness(1.05); }
-body.tabs-open #tycoon .ty-list { display: flex !important; flex-direction: column-reverse; }
-body.tabs-open #tycoon .ty-biz.room { margin: 0 !important; flex: none; }
-body.tabs-open #tycoon .room-scene :is(.vip, .critic, .power-cut) { left: auto !important; right: 44px !important; top: 6px !important; bottom: auto !important; transform: scale(0.85); transform-origin: top right; }
-body.tabs-open #tycoon .room-bar small { font-size: 11.5px !important; line-height: 1.25 !important; }
-body.tabs-open #tycoon .room-bar .ty-hire { max-width: 118px; white-space: normal; line-height: 1.15; font-size: 10.5px !important; padding: 6px 8px !important; }
-
-
-/* ---- Company cards, simplest form: banner + one row with the manager and a big Buy ---- */
-body.tabs-open #tycoon .room-scene { height: 92px !important; }
-body.tabs-open #tycoon .room-level { top: 42px !important; right: 12px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body.tabs-open #tycoon .room-bar { display: flex !important; align-items: stretch; gap: 8px !important; padding: 10px !important; }
-body.tabs-open #tycoon .room-bar > small.room-info { display: none !important; }
-body.tabs-open #tycoon .room-bar .ty-buy { order: 2; flex: 1; display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 17px !important; }
-body.tabs-open #tycoon .room-bar .ty-buy small { font-size: 12px !important; opacity: 0.9; }
-body.tabs-open #tycoon .room-bar .ty-buy svg { width: 20px; height: 20px; }
-body.tabs-open #tycoon .room-bar :is(.ty-hire, .ty-auto) { order: 1; flex: none; display: flex !important; flex-direction: column; align-items: center; justify-content: center; min-width: 92px; max-width: none !important; padding: 6px 10px !important; border-radius: 16px !important; font: 400 13px var(--display) !important; }
-body.tabs-open #tycoon .room-bar .ty-hire small { font: 800 10px var(--ui); opacity: 0.8; }
-body.tabs-open #tycoon .room-bar .ty-auto { color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); font-size: 12px !important; }
-body.tabs-open #tycoon .room-bar .hq-btn { order: 0; flex: 1 1 100%; }
-body.tabs-open #tycoon .room-bar:has(.hq-btn) { flex-wrap: wrap; }
-body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !important; opacity: 0.95; }
-
 /* ---- Team: every advisor with their perk; hire the one you want ---- */
 .ty-adv-list { display: grid; gap: 8px; margin: 0 2px 10px; }
 .ty-adv-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 18px; background: #fff; box-shadow: 0 4px 14px rgba(42, 31, 110, 0.07); }
@@ -3388,10 +3328,10 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 .ty-adv-txt b { font: 400 13.5px var(--display); color: #2a1f5c; }
 .ty-adv-txt b small { font: 800 11px var(--ui); color: #8a80b8; }
 .ty-adv-txt em { font-style: normal; font-size: 12px; font-weight: 700; color: #6a3cff; line-height: 1.25; }
-.ty-adv-hire { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 74px; padding: 7px 10px; border: 0; border-radius: 14px; cursor: pointer; font: 400 13px var(--display); color: #fff;
-  background: linear-gradient(180deg, #8a5cff, #6a3cff); box-shadow: 0 3px 0 #4a24c0; }
-.ty-adv-hire small { font: 800 11px var(--ui); opacity: 0.95; }
-.ty-adv-hire[data-short] { filter: grayscale(0.5); opacity: 0.8; }
+.ty-adv-hire { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer; font: 400 14px/1 var(--display); color: #fff;
+  background: linear-gradient(180deg, #8a5cff, #6a3cff); box-shadow: 0 2px 0 #4a24c0, 0 4px 10px rgba(106, 60, 255, 0.25); }
+.ty-adv-hire small { font: 800 12px var(--ui); opacity: 0.95; }
+.ty-adv-hire[data-short] { color: #8a80b8; background: #f4f1fb; box-shadow: inset 0 0 0 1.5px #ece7fb; }
 .ty-adv-on { flex: none; padding: 6px 10px; border-radius: 12px; font: 400 11px var(--display); color: #19a87a; background: #e3f8ee; }
 
 /* ════════ Café loop ════════ */
@@ -3413,9 +3353,7 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 .tcy-mode.contract { background: linear-gradient(135deg, #fff4e6, #ffe2c4) !important; box-shadow: inset 0 0 0 2px #ffc48a !important; }
 #tcy-labels .tag.bub.starter .tag-ico { font-size: 18px; }
 #tcy-labels .tag.bub.starter.sel { background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }
-.ty-adv-hire.free { background: linear-gradient(180deg, #2fd17a, #13a95a); box-shadow: 0 3px 0 #0b7a40; }
-/* The company list: the yellow "Build the … HQ" row already says it, so no badge on top. */
-body.tabs-open #tycoon .room-scene .hq-tag { display: none; }
+.ty-adv-hire.free { background: linear-gradient(180deg, #2fd17a, #13a95a); box-shadow: 0 2px 0 #0b7a40, 0 4px 10px rgba(19, 169, 90, 0.25); }
 /* Trophy names are single long words in a wide font: a touch smaller, and never cut off. */
 .modal .trophy b { font-size: 12.5px !important; overflow-wrap: anywhere; }
 /* The Community Spire card in Goals: a slim tower filling up, reward marks at each height. */
@@ -3487,31 +3425,6 @@ body.tabs-open .block-say, body.tabs-open .block-skip { display: none !important
 .tcy-labels { z-index: 1; }
 .tcy-top, .tcy-next, .tcy-bar, .tcy-events, .tcy-card { z-index: 6; }
 
-/* ════════ Company cards, solid ════════ */
-/* A thicker card that sits on the page (a colored ledge underneath), a taller banner with the
-   building itself, its growth path, and a row of clear numbers. */
-body.tabs-open #tycoon .ty-biz.room { box-shadow: 0 6px 0 color-mix(in srgb, var(--b2) 55%, #2a1f6e), 0 14px 26px rgba(42, 31, 110, 0.16) !important; margin-bottom: 6px !important; }
-body.tabs-open #tycoon .room-scene { height: 118px !important;
-  background: radial-gradient(120% 90% at 85% 30%, rgba(255, 255, 255, 0.28), transparent 60%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 10px, transparent 10px 20px),
-    linear-gradient(120deg, var(--b1), var(--b2)) !important; }
-body.tabs-open #tycoon .room-scene::before { right: -10px; top: 8px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.22); }
-body.tabs-open #tycoon .room-thumb { position: absolute; right: 2px; bottom: 16px; width: 150px; height: auto; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(30, 20, 80, 0.3)); }
-body.tabs-open #tycoon .room-thumb.ghost { opacity: 0.5; filter: grayscale(0.6); }
-body.tabs-open #tycoon .room-stars { top: auto !important; bottom: 24px !important; left: 66px !important; right: auto !important; font-size: 13px; }
-body.tabs-open #tycoon .room-level { max-width: calc(100% - 210px); white-space: normal !important; line-height: 1.25 !important; }
-body.tabs-open #tycoon .room-sign b { max-width: calc(100vw - 260px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.tabs-open #tycoon .room-path { position: absolute; left: 66px; top: 76px; display: flex; gap: 4px; }
-body.tabs-open #tycoon .room-path i { width: 14px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.3); }
-body.tabs-open #tycoon .room-path i.done { background: rgba(255, 255, 255, 0.85); }
-body.tabs-open #tycoon .room-path i.now { width: 22px; background: #fff3b0; box-shadow: 0 0 8px rgba(255, 243, 176, 0.9); }
-body.tabs-open #tycoon .room-scene .ty-prog { height: 20px !important; }
-body.tabs-open #tycoon .room-scene .ty-prog span { line-height: 20px !important; font-size: 11.5px !important; }
-/* The numbers row. */
-body.tabs-open #tycoon .room-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 10px 0; }
-body.tabs-open #tycoon .room-stats .rs { display: flex; flex-direction: column; align-items: center; padding: 6px 4px; border-radius: 12px; background: color-mix(in srgb, var(--b1) 14%, #f7f5fd); }
-body.tabs-open #tycoon .room-stats small { font: 700 10px var(--ui); color: #7a70a8; text-transform: uppercase; letter-spacing: 0.04em; }
-body.tabs-open #tycoon .room-stats b { font: 400 14px var(--display); color: #2a1f5c; white-space: nowrap; }
 
 /* The money card opens the earnings panel: it looks tappable. */
 .tcy-wallet { cursor: pointer; position: relative; }
@@ -3545,51 +3458,6 @@ body.tabs-open #tycoon .room-stats b { font: 400 14px var(--display); color: #2a
 #earnings .eb-cico svg { width: 18px; height: 18px; }
 .decor-card.cash .decor-ico { background: linear-gradient(140deg, rgba(94, 224, 160, 0.3), rgba(255, 210, 63, 0.25)); }
 
-/* ════════ Company cards v3: a little scene ════════ */
-/* Sky in the business's colors, a band of ground the building stands on, the floors badge,
-   a bar toward what's next, and the manager at the door. */
-body.tabs-open #tycoon .room-scene { height: 150px !important;
-  background:
-    radial-gradient(60px 22px at 22% 30%, rgba(255, 255, 255, 0.45), transparent 70%),
-    radial-gradient(80px 26px at 60% 18%, rgba(255, 255, 255, 0.35), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--b1) 55%, #fff) 0%, var(--b1) 58%, transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--b2) 70%, #3a2a6e) 0%, color-mix(in srgb, var(--b2) 55%, #2a1f5c) 100%) !important; }
-body.tabs-open #tycoon .room-scene::before { right: 18px; top: 26px; width: 120px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); filter: blur(2px); }
-body.tabs-open #tycoon .room-scene::after { content: ""; position: absolute; left: 0; right: 0; top: 58%; height: 3px; background: rgba(255, 255, 255, 0.35); }
-body.tabs-open #tycoon .room-thumb { right: 4px; bottom: 22px; width: 170px; z-index: 1; }
-body.tabs-open #tycoon .room-sign { top: 12px !important; }
-body.tabs-open #tycoon .room-sign b { font-size: 16px !important; }
-body.tabs-open #tycoon .room-level { display: none !important; }
-body.tabs-open #tycoon .room-stars { display: none !important; }
-body.tabs-open #tycoon .room-medal { position: absolute; left: 12px; top: 60px; z-index: 2; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fffbe6, #ffd23a 70%); box-shadow: 0 3px 0 #c98a10, 0 6px 12px rgba(0, 0, 0, 0.2); border: 2px solid #fff; color: #5a3a00; line-height: 1; }
-body.tabs-open #tycoon .room-medal b { font: 400 16px var(--display); margin-top: 8px; }
-body.tabs-open #tycoon .room-medal small { font: 800 8px var(--ui); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
-body.tabs-open #tycoon .room-path { left: 70px !important; top: 66px !important; }
-body.tabs-open #tycoon .room-next { position: absolute; left: 70px; top: 80px; width: calc(100% - 250px); min-width: 96px; z-index: 2; }
-body.tabs-open #tycoon .room-next small { display: block; font: 800 10.5px var(--ui); color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body.tabs-open #tycoon .room-next > i { display: block; height: 7px; margin-top: 3px; border-radius: 4px; background: rgba(0, 0, 0, 0.22); overflow: hidden; }
-body.tabs-open #tycoon .room-next > i > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #fff3b0, #ffd23a); box-shadow: 0 0 6px rgba(255, 210, 63, 0.8); }
-body.tabs-open #tycoon .room-mgr { position: absolute; right: 150px; bottom: 22px; z-index: 2; width: 26px; height: 40px; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
-body.tabs-open #tycoon .room-mgr svg { width: 100%; height: 100%; }
-body.tabs-open #tycoon .room-scene .ty-prog { height: 22px !important; background: rgba(20, 10, 60, 0.35) !important; }
-body.tabs-open #tycoon .room-scene .ty-prog span { color: #fff !important; line-height: 22px !important; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important; }
-body.tabs-open #tycoon .room-scene .ty-prog i { background: linear-gradient(90deg, #ffe680, #ffb13b) !important; opacity: 0.9; }
-body.tabs-open #tycoon .ty-buy small em { font-style: normal; display: block; color: #fff3b0; font-size: 10px; }
-body.tabs-open #tycoon .ty-buy:disabled small em { color: #1f9a55; }
-body.tabs-open #tycoon .room-sign b { max-width: calc(100vw - 150px) !important; position: relative; z-index: 3; }
-body.tabs-open #tycoon .room-sign { z-index: 3; }
-body.tabs-open #tycoon .room-next { width: 54%; }
-body.tabs-open #tycoon .room-next small { white-space: normal; line-height: 1.2; }
-body.tabs-open #tycoon .room-thumb { width: 150px; right: 0; }
-body.tabs-open #tycoon .room-mgr { right: 132px; }
-body.tabs-open #tycoon .room-scene {
-  background:
-    radial-gradient(60px 22px at 22% 30%, rgba(255, 255, 255, 0.45), transparent 70%),
-    radial-gradient(80px 26px at 60% 18%, rgba(255, 255, 255, 0.35), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--b1) 55%, #fff) 0%, var(--b1) 58%, transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--b2) 60%, #6a5aa0) 0%, color-mix(in srgb, var(--b2) 55%, #4a3a7e) 100%) !important; }
-body.tabs-open #tycoon .room-sign, body.tabs-open #tycoon .room-sign b { max-width: none !important; overflow: visible !important; text-overflow: clip !important; }
 
 /* ════════ Sky Pass: a reward road ════════ */
 /* Free rewards on the left, premium on the right, the tiers on a glowing line down the
@@ -3676,14 +3544,8 @@ body.tabs-open #tycoon .room-sign, body.tabs-open #tycoon .room-sign b { max-wid
 #pass .pass-cell.locked { opacity: 1 !important; filter: none !important; }
 #pass .pass-cell.locked .pass-what { color: #6a5f98 !important; }
 #pass .pass-cell.ready::after { content: "CLAIM" !important; }
-/* 9. Company cards: names and labels readable on light colors; the manager clear of the bar. */
-body.tabs-open #tycoon .room-sign b, body.tabs-open #tycoon .room-next small { text-shadow: 0 1px 0 rgba(40, 20, 80, 0.35), 0 2px 6px rgba(40, 20, 80, 0.45) !important; }
-body.tabs-open #tycoon .room-path i:not(.done):not(.now) { background: rgba(40, 20, 80, 0.25); }
-body.tabs-open #tycoon .room-mgr { right: 140px; bottom: 26px; }
-body.tabs-open #tycoon .room-next { width: 48%; }
-body.tabs-open #tycoon .ty-biz.locked .ty-buy:disabled, #tcy-card .ty-buy:disabled { background: #e9e4f7 !important; color: #6a5f98 !important; }
+#tcy-card .ty-buy:disabled { background: #e9e4f7 !important; color: #6a5f98 !important; }
 /* 10. Boosts: the footer clears the tab bar; the New Era button fits its text. */
-body.tabs-open #tycoon .ty-panel { padding-bottom: 24px; }
 #tycoon .era-go { width: auto !important; min-width: 0 !important; white-space: nowrap; padding-left: 12px !important; padding-right: 12px !important; }
 /* 11. The top cards are solid: bubbles never show through. */
 .tcy-wallet, .tcy-gems { background-color: rgba(255, 255, 255, 0.97) !important; }
@@ -4099,29 +3961,28 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 .card-main.building { background: linear-gradient(180deg, #ffd36b, #ffb13b) !important; color: #4a2a00 !important; }
 
 /* The weekly city event and the city album (in Goals). */
-.ev-card, .alb-card { margin: 4px 0 12px; padding: 14px; border-radius: 20px; background: linear-gradient(160deg, #fff7e2, #ffe9f2); box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1); }
-.alb-card { background: linear-gradient(160deg, #eef7ff, #f2ecff); }
+.ev-card, .alb-card { margin: 4px 0 12px; padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 1px 0 rgba(42, 31, 110, 0.05), 0 6px 16px rgba(42, 31, 110, 0.07); }
 .ev-head { display: flex; align-items: center; gap: 10px; }
-.ev-ico { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 24px; background: #fff; }
+.ev-ico { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; font-size: 24px; background: linear-gradient(140deg, rgba(90, 200, 255, 0.25), rgba(169, 139, 255, 0.22)); }
 .ev-head b { display: block; font: 400 16px var(--display); color: #2a1f3e; }
 .ev-head small { font-size: 12px; font-weight: 700; color: #7a6fa8; }
 .ev-how { margin: 8px 0; font-size: 12.5px; color: #5a5480; }
-.ev-bar { display: block; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.8); overflow: hidden; }
+.ev-bar { display: block; height: 8px; border-radius: 5px; background: #ece7fb; overflow: hidden; }
 .ev-bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #ff9a3b, #ff4f8b); }
 .ev-pts { margin: 6px 0; font-size: 12px; font-weight: 800; color: #4a3f78; }
 .ev-pts em { font-style: normal; color: #ff4f8b; }
 .ev-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.ev-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, 0.85); color: #2a1f3e; }
+.ev-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 0; border-radius: 12px; background: #f4f1fb; color: #2a1f3e; }
 .ev-step b { font: 400 14px var(--display); }
 .ev-step small { font-size: 10.5px; font-weight: 700; color: #6a6f99; text-align: center; line-height: 1.15; }
 .ev-step.ready { background: linear-gradient(180deg, #ffd36b, #ffb13b); box-shadow: 0 3px 0 #e0901b; animation: ready-bob 1.4s ease-in-out infinite; }
 .ev-step.got { opacity: 0.55; }
-.ev-pass { width: 100%; margin-top: 10px; padding: 10px; border: 0; border-radius: 14px; font: 400 13px var(--display); color: #fff; background: linear-gradient(180deg, #8a6cff, #5a3fe0); box-shadow: 0 3px 0 #4024b8; }
+.ev-pass { width: 100%; min-height: 34px; margin-top: 12px; padding: 7px 16px; border: 0; border-radius: 999px; font: 400 13px/1.15 var(--display); color: #fff; background: linear-gradient(180deg, #8a5cff, #6a3cff); box-shadow: 0 2px 0 #4a24c0, 0 4px 10px rgba(106, 60, 255, 0.25); }
 .alb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 10px; }
-.alb-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border-radius: 12px; background: rgba(255, 255, 255, 0.6); text-align: center; }
+.alb-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border-radius: 12px; background: #f4f1fb; text-align: center; }
 .alb-cell i { font-style: normal; font-size: 22px; filter: grayscale(1); opacity: 0.4; }
 .alb-cell small { font-size: 9.5px; font-weight: 700; color: #9a94bb; line-height: 1.1; }
-.alb-cell.got { background: #fff; }
+.alb-cell.got { background: #ece6ff; }
 .alb-cell.got i { filter: none; opacity: 1; }
 .alb-cell.got small { color: #4a3f78; }
 
@@ -4467,7 +4328,7 @@ body.visiting-town #mayor { display: none !important; }
 #mayor-goals li.mayor-pick.on button { border-color: #5a3fe0; box-shadow: 0 0 0 3px rgba(90, 63, 224, 0.18); }
 
 /* ---------- Season Pass ---------- */
-.sp-card { margin: 4px 0 12px; padding: 14px; border-radius: 20px; color: #2a1f3e; background: linear-gradient(160deg, color-mix(in srgb, var(--se) 30%, #fff), color-mix(in srgb, var(--se2) 30%, #fff)); box-shadow: 0 6px 16px rgba(60, 40, 140, 0.12); }
+.sp-card { margin: 4px 0 12px; padding: 14px; border-radius: 18px; color: #2a1f3e; background: #fff; box-shadow: 0 1px 0 rgba(42, 31, 110, 0.05), 0 6px 16px rgba(42, 31, 110, 0.07); }
 .sp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .sp-ico { font-size: 28px; }
 .sp-head b { display: block; font: 400 16px var(--display); }
@@ -4480,9 +4341,9 @@ body.visiting-town #mayor { display: none !important; }
 .sp-col > b { font: 400 12px var(--display); color: #6a5f98; }
 .sp-col.on > b { color: #5a3fe0; }
 .sp-col > em { font-style: normal; font-size: 10px; font-weight: 800; color: #8a80b0; }
-.sp-cell { position: relative; width: 64px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; border: 0; border-radius: 12px; background: rgba(255, 255, 255, 0.85); color: #2a1f3e; }
+.sp-cell { position: relative; width: 64px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; border: 0; border-radius: 12px; background: #f4f1fb; color: #2a1f3e; }
 .sp-cell small { font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
-.sp-cell.lock { background: rgba(255, 255, 255, 0.5); }
+.sp-cell.lock { background: #f4f1fb; opacity: 0.75; }
 .sp-cell.lock::after { content: "🔒"; position: absolute; top: 2px; right: 4px; font-size: 10px; }
 .sp-cell.ready { background: linear-gradient(180deg, #ffe46b, #ffb21f); box-shadow: 0 3px 0 #d48a00; animation: sp-glow 1.4s ease-in-out infinite; }
 .sp-cell.got { background: #d9f7e4; color: #19a87a; }
@@ -4492,7 +4353,7 @@ body.visiting-town #mayor { display: none !important; }
 .sp-note { margin: 8px 0 0; font-size: 12px; font-weight: 800; color: #5a3fe0; text-align: center; }
 
 /* ---------- Daily spin wheel ---------- */
-.spin-entry { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 12px 14px; border: 0; border-radius: 18px; text-align: left; color: #2a1f3e; background: linear-gradient(160deg, #fff4d6, #ffe1f0); box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1); }
+.spin-entry { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 12px 14px; border: 0; border-radius: 18px; text-align: left; color: #2a1f3e; background: #fff; box-shadow: 0 1px 0 rgba(42, 31, 110, 0.05), 0 6px 16px rgba(42, 31, 110, 0.07); }
 .spin-entry > span:last-of-type { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-right: 18px; }
 .spin-entry b { font: 400 16px var(--display); }
 .spin-entry small { font-size: 12px; font-weight: 700; color: #7a6fa8; }
@@ -4514,7 +4375,7 @@ body.visiting-town #mayor { display: none !important; }
 .spin-sheet .spin-ad { max-width: 340px; }
 
 /* ---------- Next population milestone ---------- */
-.ms-card { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(160deg, #e8f4ff, #eef0ff); color: #2a1f3e; }
+.ms-card { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 18px; background: #fff; color: #2a1f3e; }
 .ms-ico { font-size: 28px; }
 .ms-card > span:last-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ms-card b { font: 400 13px var(--display); }
@@ -4633,7 +4494,7 @@ body.tabs-open .tab-page .sheet-top::after { display: none !important; }
 .tab-seg button.on { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 3px 8px rgba(106, 60, 255, 0.3); }
 .tab-head > .tab-seg { margin: 8px 0 10px; }
 body.tabs-open .tab-page .tab-head > .tab-seg { margin: 12px 0 0; }
-body.tabs-open .tab-page :is(.sheet-top > .tabs, .ty-tabs) {
+body.tabs-open .tab-page :is(.sheet-top > .tabs, .ty-tabs):not([hidden]) {
   position: sticky !important; top: var(--tab-head, 64px) !important; z-index: 11 !important;
   display: flex !important; gap: 4px !important; margin: 0 0 12px !important; padding: 4px !important; border-radius: 14px !important; background: #e9e4fa !important;
   box-shadow: 0 -4px 0 8px var(--pg), -16px -4px 0 8px var(--pg), 16px -4px 0 8px var(--pg) !important; overflow-x: auto;
@@ -4654,6 +4515,134 @@ body.tabs-open #tycoon .ty-hero { position: static !important; padding: 0 !impor
 body.tabs-open #tycoon .ty-events { margin: 0 0 10px !important; }
 body.tabs-open #tycoon .ty-events:empty { display: none; }
 body.tabs-open #tycoon .ty-panel { padding: 0 !important; }
+
+/* Company and Goals cards: the Shop's family. White cards (18px corners, the one soft shadow),
+   an icon in a soft tile, a bold title over a muted line, small purple pills for actions. */
+body.tabs-open .tab-page {
+  --pg-tile: linear-gradient(140deg, rgba(90, 200, 255, 0.25), rgba(169, 139, 255, 0.22));
+  --pg-soft: #f4f1fb; --pg-line: #ece7fb;
+  --pg-title: 800 15px/1.25 var(--ui); --pg-sub: 600 12.5px/1.35 var(--ui);
+}
+/* The ×1 / ×10 / ×100 / MAX picker is one more segmented control. */
+.ty-amount { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: #e9e4fa; }
+.ty-amount button { flex: 1 1 0; padding: 9px 4px; border: 0; border-radius: 11px; cursor: pointer; font: 400 12px/1 var(--display); color: #6b5fa0; background: transparent; }
+.ty-amount button[aria-checked="true"] { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 3px 8px rgba(106, 60, 255, 0.3); }
+body.tabs-open #tycoon .ty-amount { margin: 0 0 12px; }
+body.tabs-open #tycoon .ty-office { padding: 8px 8px 8px 14px; border-radius: 18px; }
+
+/* Company: every business is one white card: its little scene on top (tap it to sell), its
+   numbers, then the manager and Buy pills. */
+body.tabs-open #tycoon .ty-sky { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
+body.tabs-open #tycoon .ty-sky::before, body.tabs-open #tycoon .ty-sky::after, body.tabs-open #tycoon :is(.tw-roof, .tw-shaft, .tw-lobby) { display: none !important; }
+body.tabs-open #tycoon .ty-list { display: flex !important; flex-direction: column-reverse; gap: 10px !important; padding: 0 0 8px !important; background: none !important; border: 0 !important; }
+body.tabs-open #tycoon .ty-biz.room { flex: none; display: block !important; margin: 0 !important; padding: 8px !important; overflow: hidden;
+  border: 0 !important; border-radius: 18px !important; background: #fff !important; box-shadow: var(--pg-card-shadow) !important; }
+body.tabs-open #tycoon .room-scene { height: 132px; border-radius: 14px;
+  background:
+    radial-gradient(60px 22px at 22% 30%, rgba(255, 255, 255, 0.45), transparent 70%),
+    radial-gradient(80px 26px at 60% 18%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b1) 55%, #fff) 0%, var(--b1) 58%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b2) 60%, #6a5aa0) 0%, color-mix(in srgb, var(--b2) 55%, #4a3a7e) 100%); }
+body.tabs-open #tycoon .room-scene > :is(.room-wall, .room-window, .room-lamp, .room-awning, .room-light, .room-chand, .room-sparkle, .room-shelf, .room-fx, .room-counter, .walker, .tap-me, .room-level, .room-stars, .hq-tag) { display: none !important; }
+body.tabs-open #tycoon .room-scene::before { content: ""; position: absolute; right: 18px; top: 22px; width: 120px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); filter: blur(2px); }
+body.tabs-open #tycoon .room-scene::after { content: ""; position: absolute; left: 0; right: 0; top: 58%; height: 3px; background: rgba(255, 255, 255, 0.35); }
+body.tabs-open #tycoon .ty-biz.locked .room-scene { filter: saturate(0.55) brightness(1.05); }
+body.tabs-open #tycoon .room-sign { z-index: 3; top: 10px; left: 10px; right: auto; max-width: none; gap: 10px; padding: 0; background: none; box-shadow: none; font-size: 22px; color: #fff; }
+body.tabs-open #tycoon .room-sign svg.ic { box-sizing: content-box; width: 24px; height: 24px; padding: 8px; border-radius: 12px; background: rgba(255, 255, 255, 0.25); }
+body.tabs-open #tycoon .room-sign b { position: relative; z-index: 3; overflow: visible; font-size: 15px; text-shadow: 0 1px 0 rgba(40, 20, 80, 0.35), 0 2px 6px rgba(40, 20, 80, 0.45); }
+body.tabs-open #tycoon .room-thumb { position: absolute; z-index: 1; right: 0; bottom: 20px; width: 140px; height: auto; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(30, 20, 80, 0.3)); }
+body.tabs-open #tycoon .room-thumb.ghost { opacity: 0.5; filter: grayscale(0.6); }
+body.tabs-open #tycoon .room-medal { position: absolute; z-index: 2; left: 10px; top: 56px; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; line-height: 1;
+  color: #5a3a00; background: radial-gradient(circle at 35% 30%, #fffbe6, #ffd23a 70%); border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18); }
+body.tabs-open #tycoon .room-medal b { margin-top: 7px; font: 400 15px var(--display); }
+body.tabs-open #tycoon .room-medal small { margin-bottom: 7px; font: 800 8px var(--ui); text-transform: uppercase; letter-spacing: 0.06em; }
+body.tabs-open #tycoon .room-path { position: absolute; left: 66px; top: 60px; display: flex; gap: 4px; }
+body.tabs-open #tycoon .room-path i { width: 14px; height: 6px; border-radius: 3px; background: rgba(40, 20, 80, 0.25); }
+body.tabs-open #tycoon .room-path i.done { background: rgba(255, 255, 255, 0.85); }
+body.tabs-open #tycoon .room-path i.now { width: 22px; background: #fff3b0; box-shadow: 0 0 8px rgba(255, 243, 176, 0.9); }
+body.tabs-open #tycoon .room-next { position: absolute; z-index: 2; left: 66px; top: 74px; width: 48%; min-width: 96px; }
+body.tabs-open #tycoon .room-next small { display: block; overflow: hidden; text-overflow: ellipsis; font: 800 10.5px/1.2 var(--ui); color: #fff; text-shadow: 0 1px 0 rgba(40, 20, 80, 0.35), 0 2px 6px rgba(40, 20, 80, 0.45); }
+body.tabs-open #tycoon .room-next > i { display: block; height: 7px; margin-top: 3px; overflow: hidden; border-radius: 4px; background: rgba(0, 0, 0, 0.22); }
+body.tabs-open #tycoon .room-next > i > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #fff3b0, #ffd23a); box-shadow: 0 0 6px rgba(255, 210, 63, 0.8); }
+body.tabs-open #tycoon .room-mgr { position: absolute; z-index: 2; right: 130px; bottom: 24px; width: 26px; height: 40px; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
+body.tabs-open #tycoon .room-mgr svg { width: 100%; height: 100%; }
+body.tabs-open #tycoon .room-lease { position: absolute; top: 44px; left: 66px; padding: 2px 8px; border-radius: 8px; transform: none; font: 400 11px var(--display); color: #fff; background: rgba(0, 0, 0, 0.18); }
+body.tabs-open #tycoon .room-scene :is(.fest-tag, .review-tag, .rush-tag) { top: auto !important; bottom: 24px !important; right: 12px !important; left: auto !important; transform: none !important; }
+body.tabs-open #tycoon .room-scene :is(.vip, .critic, .power-cut) { left: auto !important; right: 44px !important; top: 6px !important; bottom: auto !important; transform: scale(0.85); transform-origin: top right; }
+body.tabs-open #tycoon .room-scene .ty-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 20px; margin: 0; border-radius: 0; background: rgba(20, 10, 60, 0.35); }
+body.tabs-open #tycoon .room-scene .ty-prog i { border-radius: 0; background: linear-gradient(90deg, #ffe680, #ffb13b); opacity: 0.9; }
+body.tabs-open #tycoon .room-scene .ty-prog span { font-size: 11px; line-height: 20px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+/* Its numbers: three soft chips. */
+body.tabs-open #tycoon .room-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 0 0; }
+body.tabs-open #tycoon .room-stats .rs { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 12px; background: var(--pg-soft); }
+body.tabs-open #tycoon .room-stats small { font: 700 10px var(--ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--pg-muted); }
+body.tabs-open #tycoon .room-stats b { font: 800 14px var(--ui); white-space: nowrap; color: var(--pg-ink); }
+/* The action row: the manager (a white pill) and Buy (the purple pill). */
+body.tabs-open #tycoon .room-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0 0; border: 0; background: none !important; }
+body.tabs-open #tycoon .room-bar > small.room-info { display: none; }
+body.tabs-open #tycoon .room-bar .ty-buy { order: 2; flex: 1 1 0; min-width: 0; justify-content: space-between; gap: 6px; padding: 0 14px 0 16px !important; font-size: 14px !important; }
+body.tabs-open #tycoon .room-bar .ty-buy small { display: flex; flex-direction: column; align-items: flex-start; margin-right: auto; font: 400 12px/1.05 var(--display); text-align: left; color: inherit; }
+body.tabs-open #tycoon .room-bar .ty-buy small em { display: block; font: 800 10px/1.1 var(--ui); font-style: normal; color: #fff3b0; }
+body.tabs-open #tycoon .room-bar .ty-buy:disabled small em { color: #1f9a55; }
+body.tabs-open #tycoon .room-bar .ty-buy svg { width: 18px !important; height: 18px !important; }
+body.tabs-open #tycoon .room-bar :is(.ty-hire, .ty-auto) { order: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; font: 400 13px/1 var(--display); }
+body.tabs-open #tycoon .room-bar .ty-hire { color: #6a3cff; background: #fff; box-shadow: inset 0 0 0 1.5px #d9cffd; }
+body.tabs-open #tycoon .room-bar .ty-hire:disabled { color: #9a90c4; box-shadow: inset 0 0 0 1.5px var(--pg-line); }
+body.tabs-open #tycoon .room-bar .ty-hire small { font: 800 11px var(--ui); color: var(--pg-muted); }
+body.tabs-open #tycoon .room-bar .ty-auto { color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); }
+body.tabs-open #tycoon .room-bar .hq-btn { order: 0; flex: 1 1 100%; border-radius: 14px; }
+/* A pill that can't be pressed yet: soft lavender, never a grey slab. */
+body.tabs-open .tab-page .buy:disabled:not(.owned) { color: #8a80b8 !important; background: var(--pg-soft) !important; box-shadow: inset 0 0 0 1.5px var(--pg-line) !important; text-shadow: none !important; opacity: 1; }
+
+/* Upgrades, Team and Boosts rows: icon tile, title and line, pill. */
+body.tabs-open .tab-page :is(.ty-up, .ty-boost, .ty-era) { grid-template-columns: 44px 1fr auto; gap: 12px; padding: 12px 14px; }
+body.tabs-open .tab-page .ty-up-ico, body.tabs-open .tab-page :is(.ty-boost, .ty-era) :is(.ty-bico, .ty-gem) { width: 44px; height: 44px; border-radius: 12px; font-size: 24px; box-shadow: none; }
+body.tabs-open .tab-page :is(.ty-boost, .ty-era) :is(.ty-bico, .ty-gem) { background: var(--pg-tile); }
+body.tabs-open .tab-page :is(.ty-up, .ty-boost, .ty-era) b, body.tabs-open .tab-page .ty-adv-txt b { font: var(--pg-title); color: var(--pg-ink); }
+body.tabs-open .tab-page :is(.ty-up, .ty-boost, .ty-era) small, body.tabs-open .tab-page .ty-adv-txt em { font: var(--pg-sub); color: var(--pg-muted); }
+body.tabs-open .tab-page .ty-up-bar { background: var(--pg-soft); }
+body.tabs-open .tab-page .ty-era { margin: 0; border-radius: 18px; background: #fff; box-shadow: var(--pg-card-shadow); }
+body.tabs-open .tab-page :is(.ty-boosts, .ty-upgrades) { display: grid; gap: 10px; }
+body.tabs-open .tab-page .ty-adv-list { gap: 10px; margin: 0 0 10px; }
+body.tabs-open .tab-page .ty-adv-row { gap: 12px; padding: 12px 14px; }
+body.tabs-open .tab-page .ty-adv-row .ty-adv-face { width: 44px; height: 44px; border-radius: 12px; }
+body.tabs-open .tab-page .ty-adv-txt b small { font: 700 11.5px var(--ui); color: var(--pg-muted); }
+body.tabs-open .tab-page .ty-adv-head { margin: 0 2px 12px; }
+body.tabs-open .tab-page .ty-adv-head b { font: var(--pg-title); color: var(--pg-ink); }
+body.tabs-open .tab-page .ty-adv-meter { background: var(--pg-line); }
+body.tabs-open .tab-page .ty-panel-intro { margin: 0 2px 12px; font: var(--pg-sub); color: var(--pg-muted); }
+body.tabs-open .tab-page .ty-speedups { margin: 2px 2px 0; text-align: center; font: var(--pg-sub); color: var(--pg-muted); }
+
+/* Goals: the same white cards. Spin, event, team, milestone and album cards lose their tinted
+   washes; their icon sits in the soft tile, their steps in soft chips. */
+body.tabs-open .tab-page :is(.spin-entry, .ev-card, .alb-card, .sp-card, .ms-card, .tm-card, .spire-card) { padding: 14px; color: var(--pg-ink); background: #fff; }
+body.tabs-open .tab-page :is(.ev-ico, .spin-entry-ico, .ms-ico, .sp-ico) { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; font-size: 24px; background: var(--pg-tile); }
+body.tabs-open .tab-page :is(.ev-head, .sp-head) b, body.tabs-open .tab-page :is(.spin-entry, .ms-card) b { font: var(--pg-title); color: var(--pg-ink); }
+body.tabs-open .tab-page :is(.ev-head, .sp-head) small, body.tabs-open .tab-page :is(.spin-entry, .ms-card) small, body.tabs-open .tab-page .ev-how { font: var(--pg-sub); color: var(--pg-muted); }
+body.tabs-open .tab-page .ev-how { margin: 10px 0 8px; }
+body.tabs-open .tab-page .ev-bar { height: 8px; background: var(--pg-line); }
+body.tabs-open .tab-page .ev-pts { margin: 6px 0 8px; font: 800 12px var(--ui); color: var(--pg-ink); }
+body.tabs-open .tab-page :is(.ev-step, .sp-cell, .alb-cell, .tm-mate) { border-radius: 12px; background: var(--pg-soft); }
+body.tabs-open .tab-page :is(.ev-step, .sp-cell).ready { background: linear-gradient(180deg, #ffd36b, #ffb13b); }
+body.tabs-open .tab-page .sp-cell.got { background: #e3f8ee; }
+body.tabs-open .tab-page .alb-cell.got { background: #ece6ff; }
+/* Card actions are the same small pills as the Shop's. */
+body.tabs-open .tab-page :is(.ev-pass, .goals-more, .spire-claim) { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 34px; margin-top: 12px; padding: 7px 16px; border: 0; border-radius: 999px; text-align: center;
+  font: 400 13px/1.15 var(--display); color: #fff; background: linear-gradient(180deg, #8a5cff, #6a3cff); box-shadow: 0 2px 0 #4a24c0, 0 4px 10px rgba(106, 60, 255, 0.25); }
+body.tabs-open .tab-page .goals-more { color: #6a3cff; background: #fff; box-shadow: inset 0 0 0 1.5px #d9cffd; }
+/* Today's quests: a tile for the icon (green once done), the bar in the soft lavender. */
+body.tabs-open .tab-page .ty-goals { display: grid; gap: 10px; }
+body.tabs-open .tab-page .ty-goal { grid-template-columns: 44px 1fr auto; gap: 12px; padding: 12px 14px; border-radius: 18px; background: #fff; box-shadow: var(--pg-card-shadow); }
+body.tabs-open .tab-page .ty-goal-check { width: 44px; height: 44px; border-radius: 12px; color: #6a3cff; background: var(--pg-tile); }
+body.tabs-open .tab-page .ty-goal-check svg.ic { width: 24px; height: 24px; }
+body.tabs-open .tab-page .ty-goal.done .ty-goal-check { color: #fff; background: linear-gradient(135deg, #5ee0a0, #19a87a); }
+body.tabs-open .tab-page .ty-goal b { font: 700 14px/1.3 var(--ui); color: var(--pg-ink); }
+body.tabs-open .tab-page .ty-goal.done b { color: #19a87a; }
+body.tabs-open .tab-page .ty-goal-bar { height: 6px; margin-top: 7px; background: var(--pg-line); }
+body.tabs-open .tab-page .ty-goal em { font: 800 13px var(--ui); color: var(--pg-ink); }
+body.tabs-open .tab-page .ty-goal em small { font: 800 12px var(--ui); color: #1f9a55; }
+body.tabs-open .tab-page .ty-goal-bonus { margin: 10px 2px 0; font: var(--pg-sub); color: var(--pg-muted); }
+body.tabs-open .tab-page .ty-goal-bonus.done { color: #19a87a; }
 
 /* The one-line hint: small, under the header, gone for good after "Got it". */
 .page-intro { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 8px 8px 10px; border: 0; border-radius: 14px; background: #e8e1ff; }

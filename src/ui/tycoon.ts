@@ -638,7 +638,9 @@ export class TycoonUI {
     // (Kept on screen, even while the camera is still gliding over.)
     const half = Math.min(105, el.offsetWidth / 2 || 105);
     el.style.left = `${Math.round(Math.max(half + 8, Math.min(window.innerWidth - half - 8, at[0])))}px`;
-    el.style.top = `${Math.round(at[1])}px`;
+    // (Never over the money bar: it slides down under it on a small phone.)
+    const minTop = this.hudBottom() + 8 + (el.offsetHeight || 40) + 7;
+    el.style.top = `${Math.round(Math.max(minTop, at[1]))}px`;
   }
 
   /** A look at a building (the camera glides there), then its card closes by itself so the
@@ -1296,8 +1298,18 @@ export class TycoonUI {
     const r = target.getBoundingClientRect();
     const x = target.id === "tcy-next" ? r.right - 44 : r.left + r.width / 2;
     hand.style.left = `${Math.round(x)}px`;
-    hand.style.top = `${Math.round(r.top - 6)}px`;
+    // (The hand sits above its target, but never over the money bar.)
+    hand.style.top = `${Math.round(Math.max(r.top - 6, this.hudBottom() + 44))}px`;
     hand.hidden = false;
+  }
+
+  /** The bottom edge of the money bar and whatever hangs under it (the City Hall badge),
+   *  measured on screen: guide bubbles stay below it. */
+  private hudBottom(): number {
+    let y = 0;
+    const top = $("tcy-top");
+    for (const el of [top, ...top.children]) y = Math.max(y, el.getBoundingClientRect().bottom);
+    return y;
   }
 
   /** Keeps each tag floating over its building as the camera moves. */
@@ -1319,6 +1331,9 @@ export class TycoonUI {
       items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: sz.w, h: sz.h });
     }
     for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
+    // (The money bar's bottom edge, measured: on a small phone it reaches further down, and no
+    // bubble may sit on it.)
+    const hudBottom = Math.max(118, this.hudBottom() + 8);
     const nowMs = Date.now();
     for (const it of items) {
       const end = it.tag.dataset.end;
@@ -1355,9 +1370,12 @@ export class TycoonUI {
       // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
       // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
       const keep = it.tag.classList.contains("land-sale") || it.tag.classList.contains("sel");
-      const outside = it.x < -4 || it.x > window.innerWidth + 4 || it.y - it.h < 118 || it.y > window.innerHeight - 178;
+      const outside = it.x < -4 || it.x > window.innerWidth + 4 || it.y - it.h < hudBottom || it.y > window.innerHeight - 178;
       it.tag.classList.toggle("tag-out", !keep && outside);
       { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
+      // A bubble that stays (the first building's caption, the selected one) never covers the
+      // money bar: it slides down under it, still right over its building.
+      if (keep) it.y = Math.max(it.y, hudBottom + it.h);
       if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";
