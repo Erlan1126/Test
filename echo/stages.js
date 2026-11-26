@@ -202,8 +202,9 @@ function showStageCard(won) {
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   const attNote = won && R.attempt && !R.hadStars ? `Cleared on attempt ${R.attempt}${R.attempt === 1 ? ". First try!" : ""} · ` : !won && R.bestPct != null && !R.newBestPct ? `Your best: ${R.bestPct}% · ` : "";
   $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch 40% of the lights for ★★" : `★★★: 70% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
-  const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
-  next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
+  const dawn = won && !info.daily && info.n === STAGES_N;
+  const next = $("stNext"); next.textContent = dawn ? "Watch the dawn" : won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
+  next.dataset.go = dawn ? "dawn" : won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
   $("stShare").hidden = !won;
   { const cb = $("stFromCp"); if (cb) cb.hidden = !!(won || !R.cp); }
@@ -240,6 +241,7 @@ function stagesHtml() {
   const stars = Object.values(S.best).reduce((a, b) => a + (b.stars || 0), 0), nr = nextStarReward(), nx = stageNext();
   if (mapPick == null || mapPick > S.unlocked) mapPick = nx;
   let h = `<li class="dawn"><div><b>${lit}/${STAGES_N}</b> homes relit<span>${lit >= STAGES_N ? "Dawn has come back to the city" : `${STAGES_N - lit} still waiting in the dark`}</span></div><div class="dawn-bar"><i style="width:${(lit / STAGES_N * 100).toFixed(1)}%"></i></div><small>${stars}/${STAGES_N * 3} ★${nr ? ` · next reward at ${nr[0]}★: ${rewardName(nr)}` : ""}</small></li>`;
+  if (save.finaleSeen) h += `<li><span><b>The dawn</b><small>Watch every window light up again</small></span><button data-dawn="1">Watch</button></li>`;
   // Who lives in the building you picked.
   { const n = mapPick, b = S.best[n], [who, line] = stagePerson(n), done = b && b.stars;
     h += `<li class="map-pick ${done ? "won" : ""}"><span><small>${stageChapter(n)} · Stage ${n}${n % 10 === 0 ? " · Boss" : ""}${done ? ` · ${starText(b.stars)} · ${b.time.toFixed(1)} s` : ""}</small><b>${done ? who : stageWaiting(n)}</b><small>${done ? `“${line}”` : "Their window is still dark"}</small></span><button data-stage="${n}">${done ? (b.stars < 3 ? "For 3★" : "Again") : "Go"}</button></li>`; }
@@ -258,6 +260,7 @@ function stagesHtml() {
   return h;
 }
 document.getElementById("shopList").addEventListener("click", e => {
+  if (e.target.closest("button[data-dawn]")) { $("sheet").hidden = true; playFinale(() => openSheet("stages")); return; }
   const pb = e.target.closest("button[data-pick]"); if (!pb) return;
   mapPick = Number(pb.dataset.pick); $("shopList").innerHTML = stagesHtml();
 });
@@ -266,7 +269,7 @@ document.getElementById("shopList").addEventListener("click", e => {
   $("sheet").hidden = true; const n = Number(b.dataset.stage);
   if (screen === "title") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(n), 200); } else startStage(n);
 });
-document.getElementById("stNext").addEventListener("click", () => startStage(Number($("stNext").dataset.go)));
+document.getElementById("stNext").addEventListener("click", () => { const go = $("stNext").dataset.go; if (go === "dawn") { $("stageCard").hidden = true; playFinale(() => { run = null; showTitle(); openSheet("stages"); }); return; } startStage(Number(go)); });
 document.getElementById("stRetry").addEventListener("click", () => run && startStage(run.stage));
 document.getElementById("stStages").addEventListener("click", () => { $("stageCard").hidden = true; run = null; showTitle(); openSheet("stages"); });
 document.getElementById("stShare").addEventListener("click", stageShare);
@@ -327,6 +330,43 @@ function playOpening(done) {
       x.fillStyle = `rgba(255,200,120,${0.12 * k * pulse})`; x.beginPath(); x.arc(bx + 6, by + 8, 30, 0, Math.PI * 2); x.fill();
       x.fillStyle = "#1b2030"; x.fillRect(bx, by, 14, 18); x.fillStyle = `rgba(150,160,190,${0.7 * k})`; x.beginPath(); x.arc(bx + 7, by + 7, 3, 0, Math.PI * 2); x.fill(); x.fillRect(bx + 4, by + 10, 6, 8);
       x.strokeStyle = `rgba(255,217,138,${0.5 * k * pulse})`; x.lineWidth = 1.5; x.setLineDash([4, 6]); x.beginPath(); x.moveTo(W * 0.5, H * 0.5 - H * 0.12 * k); x.lineTo(bx + 7, by + 9); x.stroke(); x.setLineDash([]); }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+// ---------- The finale: dawn over a city where every window is lit, and everyone you reached ----------
+function playFinale(done) {
+  const el = $("finale"), c = $("finaleCanvas"), cap = $("fnCap"), cr = $("fnCredits"), go = $("fnGo");
+  if (!el || !c) { done(); return; } if (!el.hidden) return;
+  el.hidden = false; go.hidden = true; cr.innerHTML = ""; cr.classList.remove("roll"); save.finaleSeen = 1; persist();
+  if (typeof musicStop === "function") musicStop(); if (typeof sfx !== "undefined" && sfx.unlock) sfx.unlock();
+  const t0 = performance.now(), d = Math.min(2, window.devicePixelRatio || 1); let ended = false, lastCap = -1;
+  const caps = ["Every window is lit.", "The Hush is gone.", "Dawn."];
+  const blds = Array.from({ length: 22 }, (_, i) => { const r = seeded(i * 53 + 9); return { x: i / 22, w: 0.04 + r() * 0.04, h: 0.16 + r() * 0.4, wins: Array.from({ length: 50 }, () => [r(), r(), r()]) }; });
+  // Credits: everyone you brought the light to.
+  cr.innerHTML = `<h3>You brought the light to</h3>` + STAGE_PEOPLE.map(([who, line], i) => `<p><b>${who}</b><span>${stageChapter(i + 1)} · “${line}”</span></p>`).join("") + `<h3>Thank you for bringing the light.</h3>`;
+  const finish = () => { if (ended) return; ended = true; el.hidden = true; done(); };
+  go.onclick = e => { e.stopPropagation(); finish(); };
+  $("fnSkip").onclick = e => { e.stopPropagation(); finish(); };
+  const frame = now => {
+    if (ended) return;
+    const t = (now - t0) / 1000, W = c.clientWidth, H = c.clientHeight;
+    if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
+    const x = c.getContext("2d"); x.setTransform(d, 0, 0, d, 0, 0);
+    const scene = t < 4 ? 0 : t < 7 ? 1 : 2, sun = Math.max(0, Math.min(1, (t - 4) / 6));
+    if (scene !== lastCap) { lastCap = scene; cap.classList.add("out"); setTimeout(() => { cap.textContent = caps[scene]; cap.classList.remove("out"); }, 300); if (scene === 2) setTimeout(() => { cr.classList.add("roll"); go.hidden = false; }, 1600); }
+    // The sky goes from night to sunrise.
+    const g = x.createLinearGradient(0, 0, 0, H), mix = (a, b) => a.map((v, i) => Math.round(v + (b[i] - v) * sun));
+    g.addColorStop(0, `rgb(${mix([5, 6, 15], [90, 120, 190])})`); g.addColorStop(0.6, `rgb(${mix([20, 16, 40], [255, 170, 120])})`); g.addColorStop(1, `rgb(${mix([40, 26, 60], [255, 214, 150])})`); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    const base = H * 0.8;
+    // The sun rises behind the skyline.
+    if (sun > 0) { const sy = base - sun * H * 0.35, sg = x.createRadialGradient(W * 0.6, sy, 0, W * 0.6, sy, W * 0.5); sg.addColorStop(0, `rgba(255,240,200,${0.9 * sun})`); sg.addColorStop(0.15, `rgba(255,210,140,${0.6 * sun})`); sg.addColorStop(1, "rgba(255,180,120,0)"); x.fillStyle = sg; x.fillRect(0, 0, W, H); }
+    // Every window lights up, sweeping across the city.
+    const sweep = Math.min(1.2, t / 3.2);
+    for (const b of blds) { const bx = b.x * W, bw = b.w * W, bh = b.h * H; x.fillStyle = `rgb(${mix([18, 22, 36], [60, 50, 70])})`; x.fillRect(bx, base - bh, bw, bh + H);
+      for (const [u, v, k] of b.wins) { if (b.x + u * b.w > sweep) continue; const wx = bx + 3 + u * (bw - 7), wy = base - bh + 5 + v * (bh - 10); x.fillStyle = `rgba(255,${205 + k * 40},${130 + k * 70},${0.95 - sun * 0.4})`; x.fillRect(wx, wy, 3, 4); } }
+    x.fillStyle = `rgb(${mix([8, 9, 14], [40, 32, 40])})`; x.fillRect(0, base, W, H - base);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

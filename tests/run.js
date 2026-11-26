@@ -235,6 +235,18 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       });
       for (const [k, v] of Object.entries(cp)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     }
+    // The finale: clearing stage 60 leads to the dawn, and back to the city.
+    {
+      const f = await page.evaluate(async () => {
+        const o = {}; stageSave().unlocked = 60; save.chapSeen = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }; startStage(60); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60);
+        await new Promise(r => setTimeout(r, 1500));
+        o.clearingStageSixtyOffersTheDawn = $("stNext").textContent === "Watch the dawn";
+        $("stNext").click(); o.theFinalePlays = !$("finale").hidden && $("fnCredits").textContent.includes("Mara") && $("fnCredits").textContent.includes("The whole city");
+        $("fnSkip").click(); o.thenBackToTheCity = $("finale").hidden && !$("sheet").hidden && !!save.finaleSeen;
+        return o;
+      });
+      for (const [k, v] of Object.entries(f)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    }
     // Progress survives a reload (the swing game's saves used to be dropped by the loader).
     await page.evaluate(() => { stageSave().unlocked = 7; save.city = { lit: 12 }; persist(); });
     await page.reload(); await page.waitForTimeout(800);
