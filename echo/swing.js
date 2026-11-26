@@ -79,6 +79,8 @@ function runnerStart(R) {
   const gh = save.ghost; R.ghost = R.daily && gh && gh.day === dayNumber() ? gh.rec : null;
   // The run starts mid-swing from a first anchor overhead.
   if (R.stageInfo) {
+    R.mod = R.stageInfo.daily && typeof dailyMod === "function" ? dailyMod().id : null;
+    if (R.mod && !R.attract) { const M = dailyMod(); runMsg(`Today: ${M.name}`, M.text, 3, true); }
     R.outage = !R.stageInfo.daily && Math.floor((R.stageInfo.n - 1) / 10) === outageDistrict();
     Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
     const nw = !R.attract && STAGE_NEW[R.stageInfo.n];
@@ -140,13 +142,14 @@ function swingGen(R, toX) {
       const wk = R.stageLen ? "" : weekEvent().id, goldK = wk === "frost" ? 3 : 1;   // stages keep the same course every week (ghosts must match); weekly anchor events are for the Night shift
       const dK = R.stageLen ? hard : null;
       a.type = ax < 60 ? "" : roll < 0.07 * goldK ? "gold" : roll < 0.07 + ((dK != null ? dK > 0.1 : ax > 300) ? 0.08 + (dK || 0) * 0.1 : 0) ? "crumble" : roll < 0.18 + ((dK != null ? dK > 0.16 : ax > 500) ? 0.08 + (dK || 0) * 0.1 : 0) ? "drift" : roll < 0.27 + (wk === "spring" ? 0.25 : 0) ? "spring" : "";
+      if (R.mod === "spring" && ax > 60 && !a.type && (a.id % 2 === 0)) a.type = "spring"; else if (R.mod === "gold" && ax > 60 && !a.type && (a.id % 3 === 0)) a.type = "gold";
       if (sec === "springs" && ax > 60) a.type = "spring"; else if ((sec === "zigzag" || sec === "climb") && a.type === "crumble") a.type = "";
       if (a.type === "drift") a.bx = ax;
       if (ath.anchor === "lantern" && !a.type) { a.sway = true; a.bx = ax; a.by = a.y; }
       if ((R.outage || R.glitch) && !a.type && ax > 40 && a.id % (R.glitch ? 2 : 3) === 0) a.flicker = true;   // (no random draw: the course stays the same)
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
-      if (ax > 50 && (r() < (R.stageLen ? 0.22 : 0.16) || sec === "rings" || gapK) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
+      if (ax > 50 && (r() < (R.stageLen ? 0.22 : 0.16) || sec === "rings" || gapK || R.mod === "rings") && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
       // Wind stages: gusts that push you sideways.
       if (R.stageInfo && R.stageInfo.wind && ax > 60 && ax < R.stageLen && r() < 0.3) { const dir = r() < 0.5 ? -1 : 1; R.winds.push({ x0: p.x, x1: ax, f: dir * (5 + R.stageInfo.hard * 6) }); }
       // Lights along the arc you'd swing between them.
@@ -349,7 +352,7 @@ function runnerUpdate(dt) {
   for (let s = 0; s < N; s++) {
     const ox = R.px, oy = R.py;
     if (comet) { R.teth = null; R.vx += (32 - R.vx) * Math.min(1, h * 3); R.vy = (34 - R.py) * 2; R.px += R.vx * h; R.py += R.vy * h; continue; }
-    R.vy -= SWING.G * h;
+    R.vy -= SWING.G * (R.mod === "moon" ? 0.72 : 1) * h;
     if (R.teth) {
       const a = R.teth, dx = R.px - a.x, dy = R.py - a.y, d = Math.hypot(dx, dy) || 1;
       // Holding pulls you in. A shorter rope spins faster (angular momentum is kept), so reeling in
@@ -435,7 +438,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) * (R.mod === "fast" ? 1.3 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract && !R.cleared) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
@@ -448,7 +451,7 @@ function runnerUpdate(dt) {
     const d = Math.hypot(c.x - R.px, c.y - R.py - 0.9);
     if ((mag || R.od > 0) && d < 9 + runUpg("magnet") * 2) { c.x += (R.px - c.x) * Math.min(1, dt * 8); c.y += (R.py + 0.9 - c.y) * Math.min(1, dt * 8); }
     if (d < 1.5 || comet && d < 3) {
-      c.got = true; c.t = 0; swingFx(R, "light", c.x, c.y); if (R.stageLen) R.motesGot++; { const w = (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1); R.lights += w; if (!R.attract) progressEvent("lights", w); } swingFlow(R, 0.022);
+      c.got = true; c.t = 0; swingFx(R, "light", c.x, c.y); if (R.stageLen) R.motesGot++; { const w = (weekEvent().id === "gold" ? 2 : 1) * (R.od > 0 ? 2 : 1) * (R.outage ? 2 : 1) * (R.mod === "fast" ? 2 : 1); R.lights += w; if (!R.attract) progressEvent("lights", w); } swingFlow(R, 0.022);
       R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
       if (runnerPerk("Nova") && R.combo % 10 === 0) { R.lights += 5; runBonus("+5 ✦", 0, R.dist + 2, R.x); }
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }
@@ -494,7 +497,7 @@ function runnerUpdate(dt) {
       // Warning: will you meet in the next 0.8 s? (where you'd be, flying straight; where it will be)
       if (Math.abs(z.x - R.px) < 25) { let w = false; for (let k = 1; k <= 8 && !w; k++) { const tt = k * 0.1, zy = z.y0 + Math.sin((R.t + tt) * 1.4 + z.ph) * z.amp;
         // Two guesses: flying free from here, and staying on the rope; either one meeting the drone warns.
-        const fx = R.px + R.vx * tt, fy = R.py + 0.9 + R.vy * tt - SWING.G * tt * tt / 2; if (Math.hypot(z.x - fx, zy - fy) < 2.2) w = true;
+        const fx = R.px + R.vx * tt, fy = R.py + 0.9 + R.vy * tt - SWING.G * (R.mod === "moon" ? 0.72 : 1) * tt * tt / 2; if (Math.hypot(z.x - fx, zy - fy) < 2.2) w = true;
         if (R.teth && !w) { const ax = R.teth.x, ay = R.teth.y, dx = R.px - ax, dy = R.py - ay, rr = Math.hypot(dx, dy) || 1, om = (dx * R.vy - dy * R.vx) / (rr * rr), th = Math.atan2(dy, dx) + om * tt; if (Math.hypot(z.x - (ax + Math.cos(th) * rr), zy - (ay + Math.sin(th) * rr + 0.9)) < 2.2) w = true; } } z.warn = w ? Math.min(1, (z.warn || 0) + dt * 8) : Math.max(0, (z.warn || 0) - dt * 4); }
       // A drone that hits you breaks apart: one hit per drone, never the same one twice.
       if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
