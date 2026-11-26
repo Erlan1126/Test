@@ -214,3 +214,11 @@ describe("Mayor Pip's chapters", () => {
     expect(migrateChapters(s)).toBe(false);
   });
 });
+
+describe("a tower nobody moved into", () => {
+  it("gets the timing tip instead of a landmark still far away", () => {
+    const s = defaultSave();
+    const out = recordRun(s, { mode: "classic", score: 0, floors: 2, meters: 10, perfects: 0, bestStreak: 0, penthouses: 0, windFloors: 0, afterRewind: 0, rewindsUsed: 0 }, Date.now(), seeded(2));
+    expect(out.near).toBe("Tap when the sliding floor lines up with the one below");
+  });
+});
