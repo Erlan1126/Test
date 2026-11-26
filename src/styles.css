@@ -4594,3 +4594,10 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 .sp-legend { display: flex; justify-content: space-between; margin: 8px 2px 0; font: 400 10px var(--display); color: #6a5f98; }
 #visit-who small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #visit-who > span:last-child { min-width: 0; }
+
+/* Buildaroo on a device without 3D graphics. */
+.no3d { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(180deg, #7fc8ff, #b9e4ff); }
+.no3d-card { max-width: 360px; padding: 28px 24px; border-radius: 26px; background: #fff; color: #2a1f3e; text-align: center; box-shadow: 0 12px 36px rgba(20, 40, 110, 0.25); }
+.no3d-ico { display: block; font-size: 54px; margin-bottom: 8px; }
+.no3d-card b { display: block; font: 400 20px var(--display); margin-bottom: 10px; }
+.no3d-card p { margin: 0; font-size: 15px; line-height: 1.45; color: #5a5f8a; }

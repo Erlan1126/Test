@@ -123,9 +123,15 @@ export interface ReminderInfo {
   eventEndsAt?: number;
   /** The city game (not the tower game): city wording for the daily reminder. */
   city?: boolean;
+  /** Buildaroo: the weekend fireworks show (Friday evening's reminder). */
+  fireworks?: boolean;
+  /** Buildaroo: the Season Pass's end (ms) while rewards are still to win, and the season's name. */
+  seasonEnds?: { at: number; name: string };
+  /** Buildaroo: close to the next population milestone (how many more people, and the mark). */
+  milestone?: { left: number; at: number };
 }
 
-const EXTRA_IDS = [104, 105, 106, 107, 108];
+const EXTRA_IDS = [104, 105, 106, 107, 108, 109, 110, 111];
 
 /**
  * Plans the next three reminders. Today's is skipped once today's tower is built, so a
@@ -187,6 +193,27 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       if (at.getTime() > now + 60_000) {
         notifications.push({ id: 105, title: t("⏳ {name} ends tomorrow", { name: info.holidayEnds.name }), body: t("Last chance to earn the {skin} skin.", { skin: info.holidayEnds.skin }), schedule: { at, allowWhileIdle: true } });
       }
+    }
+    // The weekend fireworks: the coming Friday at 19:30.
+    if (info.fireworks) {
+      const at = new Date();
+      at.setDate(at.getDate() + ((5 - at.getDay() + 7) % 7));
+      at.setHours(19, 30, 0, 0);
+      if (at.getTime() <= now + 60_000) at.setDate(at.getDate() + 7);
+      notifications.push({ id: 109, title: t("🎆 Fireworks over the sea tonight!"), body: t("The weekend show starts after dark. Come and watch over your city."), schedule: { at, allowWhileIdle: true } });
+    }
+    // Two days before the Season Pass ends.
+    if (info.seasonEnds) {
+      const at = new Date(info.seasonEnds.at - 2 * 864e5);
+      at.setHours(Number.isFinite(hh) ? hh : 18, Number.isFinite(mm) ? mm : 0, 0, 0);
+      if (at.getTime() > now + 60_000) notifications.push({ id: 110, title: t("🎟️ {name} ends in 2 days", { name: info.seasonEnds.name }), body: t("Season Pass rewards are still waiting for you."), schedule: { at, allowWhileIdle: true } });
+    }
+    // Almost at the next population milestone: tomorrow at the reminder hour.
+    if (info.milestone) {
+      const at = new Date();
+      at.setDate(at.getDate() + 1);
+      at.setHours(Number.isFinite(hh) ? hh : 18, Number.isFinite(mm) ? mm : 0, 0, 0);
+      notifications.push({ id: 111, title: t("🏙️ Only {n} people to go!", { n: info.milestone.left.toLocaleString() }), body: t("Your city is close to {m} people. Grow a few homes for fireworks and crystals.", { m: info.milestone.at.toLocaleString() }), schedule: { at, allowWhileIdle: true } });
     }
     if (notifications.length) await LocalNotifications.schedule({ notifications });
   } catch { /* notifications unavailable */ }

@@ -67,7 +67,6 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 /** A new player's first towers use the gentle speed (see TowerSim.speedFor). */
 const EASY_TOWERS = 5;
 import { clockSky, nightAt, setSkyMode } from "./render/scenery";
-import { citySeason, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { placedMap } from "./logic/placedecor";
 import type { FriendTown } from "./online";
 import { townPeople } from "./logic/props";
@@ -87,6 +86,9 @@ import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
 import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, DAILY_REWARDS, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
 import { openGifts } from "./logic/gifts";
+import { nextMilestone } from "./logic/milestones";
+import { seasonPass, SP_TIERS } from "./logic/seasonpass";
+import { citySeason, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { bizColors, normalizePaint, ownsPaint } from "./logic/paint";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
@@ -294,7 +296,15 @@ export class App implements DailyHost {
       this.save.settings.flat = false;
       this.save.seenFeatures.push("flat-reset");
     }
-    this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d") && !(this.save.settings.quality === "auto" && this.save.settings.flat)
+    // Buildaroo needs 3D for its town: a phone without it gets a friendly note instead of the
+    // tower game's flat menu.
+    if (HAS_CITY && !webglAvailable()) {
+      const el = document.createElement("div");
+      el.className = "no3d";
+      el.innerHTML = `<div class="no3d-card"><span class="no3d-ico">🏙️</span><b>${esc(t("Your city needs 3D graphics"))}</b><p>${esc(t("This device can't show Buildaroo's 3D town. Try updating your phone's software or your web browser, or play on a newer device. Your progress is safe and will be here."))}</p></div>`;
+      document.body.appendChild(el);
+    }
+    this.renderer = webglAvailable() && !new URLSearchParams(location.search).has("2d") && !(!HAS_CITY && this.save.settings.quality === "auto" && this.save.settings.flat)
       ? new Renderer3D(this.canvas, $<HTMLCanvasElement>("fx"))
       : new Renderer(this.canvas, $<HTMLCanvasElement>("fx"));
     this.sheets = new Sheets(this);
@@ -435,6 +445,9 @@ export class App implements DailyHost {
       buildDoneAt: HAS_CITY ? (this.save.tycoon.builds ?? []).map(b => b.end).filter(e => e > Date.now()).sort((a, b) => a - b)[0] : undefined,
       eventEndsAt: HAS_CITY ? cityEventEndsAt(this.save) : undefined,
       city: HAS_CITY,
+      fireworks: HAS_CITY && playerStarted(this.save),
+      seasonEnds: (() => { const se = seasonInfo(citySeason()), p = seasonPass(this.save); return HAS_CITY && se && p && p.free.length < SP_TIERS.length ? { at: Date.now() + seasonDaysLeft() * 864e5, name: t(se.name) } : undefined; })(),
+      milestone: (() => { const m = HAS_CITY ? nextMilestone(this.save) : undefined, left = m ? m.at - townPeople(this.save) : 0; return m && left > 0 && left <= m.at * 0.15 ? { left, at: m.at } : undefined; })(),
     };
   }
 
