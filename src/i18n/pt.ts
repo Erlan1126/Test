@@ -1,6 +1,7 @@
 // Brazilian Portuguese (informal "você"). Keys are the English text; anything missing here shows in English. Keep every {placeholder} from the key.
 export const PT: Record<string, string> = {
   // ---------- Game text ----------
+  "Skins, shapes and islands for your towers, and boosts for your next one. Crystals buy the special things.": "Skins, formas e ilhas para suas torres, e boosts para a próxima. Os cristais compram as coisas especiais.",
   "Gold penthouse · a perfect drop pays 5x": "Cobertura dourada · um perfeito paga 5x",
   "Icy floor · slides fast, holds 50% more people": "Andar de gelo · rápido, e 50% mais gente",
   "Garden terrace · slow, and widens your tower": "Terraço jardim · lento, e alarga sua torre",
@@ -1685,7 +1686,7 @@ export const PT: Record<string, string> = {
   "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.": "Seus negócios ganham dinheiro. Compre níveis para ganhar mais; um gerente vende por você, mesmo quando você não está.",
   "Decorations show up in your town and make every business earn more. Crystals buy the special things.": "As decorações aparecem na sua cidade e fazem cada negócio ganhar mais. Cristais compram as coisas especiais.",
   "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.": "O capítulo do Pip é seu grande objetivo. Metas diárias dão estrelas; o Passe do céu dá um prêmio a cada nível.",
-  "Your builder profile, the leaderboard of the best towers, and settings.": "Seu perfil de construtor, o ranking das melhores torres e as configurações.",
+  "Your builder profile, the leaderboard of the best towers, your Sky City and settings.": "Seu perfil de construtor, o ranking das melhores torres, sua Cidade do Céu e as configurações.",
   "{n} of {total} postcards": "{n} de {total} postais",
   "Where it all began: your first neighbor moved in.": "Onde tudo começou: seu primeiro vizinho se mudou.",
   "Reach {n} business levels to unlock": "Alcance {n} níveis de negócio para desbloquear",

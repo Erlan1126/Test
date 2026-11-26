@@ -31,3 +31,7 @@ export function addToSkyline(save: SaveData, tower: SkylineTower): boolean {
   save.skyline = [...save.skyline.filter(t => t.d !== tower.d), ...keep];
   return keep.includes(tower);
 }
+
+/** The tallest of these towers (the first one built wins a tie), or null. */
+export const bestTower = (towers: SkylineTower[]): SkylineTower | null =>
+  towers.reduce<SkylineTower | null>((best, t) => (!best || t.f > best.f ? t : best), null);

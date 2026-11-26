@@ -52,6 +52,9 @@ export interface Frame {
   hudBottom: number;
   /** Your tallest tower, in floors, marked on screen while you play (0 for none). */
   bestFloors: number;
+  /** On the home screen, your best tower in this district stands on the building spot
+   *  (it sinks away when a new tower starts). */
+  home?: SkylineTower | null;
   /** City buildings on the island. */
   city: string[];
   /** Where each city building stands (building id → spot id). */

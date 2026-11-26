@@ -27,12 +27,34 @@ function singleFile(): Plugin {
   };
 }
 
+/** The Skyrise build's own page text: title, link preview, search snippet and splash.
+ *  (In the Skyrise app, public/ already holds Skyrise's icons, manifest and share picture.) */
+function skyrisePictures(): Plugin {
+  let skyrise = false;
+  return {
+    name: "skyrise-pictures",
+    configResolved(c) { skyrise = c.env.VITE_EDITION === "skyrise" || c.mode === "skyrise"; },
+    transformIndexHtml(html) {
+      if (!skyrise) return html;
+      return html
+        .replace(/content="Buildaroo: build your own city"/, 'content="Skyrise: build the tallest tower"')
+        .replace(/(apple-mobile-web-app-title|og:site_name)" content="Buildaroo"/g, '$1" content="Skyrise"')
+        .replace(/<title>[^<]*<\/title>/, "<title>Skyrise</title>")
+        // The link preview, search snippet and splash are Skyrise's own, not the city game's.
+        .replace(/(name="description" content=")[^"]*"/, '$1Build the tallest skyscraper in the world, one tap at a time. Drop each floor perfectly, house as many people as you can, and climb past real landmarks. Free to play."')
+        .replace(/(property="og:description" content=")[^"]*"/, '$1Drop each floor perfectly, house as many people as you can and climb past real landmarks. Free to play."')
+        .replace(/(property="og:image:alt" content=")[^"]*"/, '$1A tall glass Skyrise tower on a floating island, next to the Skyrise logo"')
+        .replace(/<div class="splash-logo">[^<]*<\/div>/, '<div class="splash-logo">SKYRISE</div>');
+    },
+  };
+}
+
 export default defineConfig({
   // Relative paths so the built game works from any folder or host.
   base: "./",
   // One script: the app plugins' small web fallbacks are bundled in rather than split out.
   build: { target: "es2020", assetsInlineLimit: 100000, modulePreload: false, rollupOptions: { output: { inlineDynamicImports: true } } },
-  plugins: [singleFile()],
+  plugins: [skyrisePictures(), singleFile()],
   // (Copies of the project that helper tools make under .claude/ aren't this project's tests.)
   test: { exclude: ["**/node_modules/**", "**/dist/**", ".claude/**"] },
 } as Parameters<typeof defineConfig>[0]);

@@ -12,7 +12,7 @@ import { cafeMult } from "./cafe";
 import { orderMult } from "./orders";
 import { vipActive } from "./vip";
 import { snowDayMult, snowDaySpan } from "./weather";
-import { dayKey } from "./rules";
+import { dayKey, giftAmount } from "./rules";
 
 export interface TycoonState {
   coins: number;
@@ -667,11 +667,14 @@ export function goalStep(s: SaveData, kind: GoalType, by = 1, now = Date.now()):
 }
 
 /** What day `streak` of the daily calendar pays (1-based; the week repeats). */
-export function dailyReward(s: SaveData, streak: number, now = Date.now()): { cash: number; gems: number; advisor: boolean } {
+export function dailyReward(s: SaveData, streak: number, now = Date.now()): { cash: number; gems: number; advisor: boolean; stars: number } {
   const r = DAILY_REWARDS[(Math.max(1, streak) - 1) % DAILY_REWARDS.length];
+  // Skyrise has no company: its calendar pays the day's stars (the daily gift, paid with the
+  // claim) and the crystals; never cash or an advisor it could not use.
+  if (!HAS_CITY) return { cash: 0, gems: r.gems ?? 0, advisor: false, stars: giftAmount(streak) };
   const rate = perSecond(s, now, false);
   const cash = r.cash ? Math.max(r.min ?? 0, Math.round(rate * r.cash * 60)) : 0;
-  return { cash, gems: r.gems ?? 0, advisor: !!r.advisor && ADVISORS.some(a => !has(s, a.id)) };
+  return { cash, gems: r.gems ?? 0, advisor: !!r.advisor && ADVISORS.some(a => !has(s, a.id)), stars: 0 };
 }
 /** Pays day `streak` of the calendar. Returns what it gave (and the advisor, if one joined). */
 export function claimDaily(s: SaveData, streak: number, now = Date.now()): { cash: number; gems: number; pick: boolean } {

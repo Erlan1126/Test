@@ -59,12 +59,13 @@ export const GUIDE: GuideSection[] = [
 /** One line at the top of each menu page, the first times it's opened. */
 export const PAGE_INTRO: Record<string, string> = {
   company: "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.",
-  shop: "Decorations show up in your town and make every business earn more. Crystals buy the special things.",
+  shop: "Skins, shapes and islands for your towers, and boosts for your next one. Crystals buy the special things.",
   goals: "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.",
-  me: "Your builder profile, the leaderboard of the best towers, and settings.",
+  me: "Your builder profile, the leaderboard of the best towers, your Sky City and settings.",
 };
 /** The city game's own page intros. */
 export const PAGE_INTRO_CITY: Record<string, string> = {
+  shop: "Decorations show up in your town and make every business earn more. Crystals buy the special things.",
   goals: "City Hall goals are your big goal. Three city quests a day pay cash; events and the Season Pass give prizes.",
   me: "Your profile, the city leaderboard, your scrapbook and settings.",
 };
