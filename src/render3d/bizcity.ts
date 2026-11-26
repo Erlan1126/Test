@@ -967,9 +967,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
         const nx2 = cell[0] + a, nz2 = cell[1] + b;
         if (outerSet.has(`${nx2},${nz2}`) || inAllO(nx2, nz2) || distAt(nx2, nz2) || (b === -1 && beachSet)) continue;
-        const ex = x + a * (C / 2 - ROAD / 2), ez = z + b * (C / 2 - ROAD / 2), w = a ? ROAD : C, d = a ? C : ROAD;
+        // (The sidewalk stops at the curb, and the curb stands a hair proud of the asphalt: no
+        // two faces share a plane, so the city's edge never flickers as the view moves.)
+        const W2 = ROAD - 0.14, ex = x + a * (C / 2 - 0.14 - W2 / 2), ez = z + b * (C / 2 - 0.14 - W2 / 2), w = a ? W2 : C, d = a ? C : W2;
         add(new THREE.BoxGeometry(w, 0.2, d).translate(ex, 0.1, ez), walk);
-        add(new THREE.BoxGeometry(a ? 0.14 : C, 0.22, a ? C : 0.14).translate(x + a * (C / 2 - 0.07), 0.11, z + b * (C / 2 - 0.07)), curb);
+        add(new THREE.BoxGeometry(a ? 0.15 : C + 0.02, 0.22, a ? C + 0.02 : 0.15).translate(x + a * (C / 2 - 0.065), 0.11, z + b * (C / 2 - 0.065)), curb);
       }
     }
   }
@@ -4423,8 +4425,9 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const now = Date.now();
       for (const [id, lg] of lotGroups) {
         if (risingNow.has(lg)) continue;
-        const k = id === live.pulse ? (now - (live.pulseAt ?? 0)) / 450 : 1;
-        if (k >= 0 && k < 1) { g.userData.moving = true; const b = Math.sin(k * Math.PI) * (1 - k); lg.scale.set(1 - b * 0.06, 1 + b * 0.14, 1 - b * 0.06); }
+        // (A springy squash and stretch: up tall, a little squash on the way down, settle.)
+        const k = id === live.pulse ? (now - (live.pulseAt ?? 0)) / 560 : 1;
+        if (k >= 0 && k < 1) { g.userData.moving = true; const b = Math.sin(k * Math.PI * 2.2) * Math.pow(1 - k, 1.6); lg.scale.set(1 - b * 0.08, 1 + b * 0.2, 1 - b * 0.08); }
         else lg.scale.set(1, 1, 1);
       }
       shopperLive(dt);
