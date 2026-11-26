@@ -4582,6 +4582,28 @@ body.visiting-town #mayor { display: none !important; }
 @keyframes sp-glow { 50% { transform: translateY(-2px); } }
 .sp-note { margin: 8px 0 0; font-size: 12px; font-weight: 800; color: #5a3fe0; text-align: center; }
 
+/* ---------- Daily spin wheel ---------- */
+.spin-entry { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 12px 14px; border: 0; border-radius: 18px; text-align: left; color: #2a1f3e; background: linear-gradient(160deg, #fff4d6, #ffe1f0); box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1); }
+.spin-entry > span:last-of-type { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-right: 18px; }
+.spin-entry b { font: 400 16px var(--display); }
+.spin-entry small { font-size: 12px; font-weight: 700; color: #7a6fa8; }
+.spin-entry-ico { font-size: 30px; }
+.spin-entry.ready .spin-entry-ico { animation: spin-wobble 2.4s ease-in-out infinite; }
+.spin-entry .dot { top: 50%; right: 14px; transform: translateY(-50%); background: #ff3b5c; box-shadow: 0 0 0 2px #fff; }
+@keyframes spin-wobble { 0%, 70%, 100% { transform: rotate(0); } 80% { transform: rotate(-14deg); } 90% { transform: rotate(10deg); } }
+.spin-sheet { position: relative; text-align: center; }
+.spin-sheet .spin-sub { margin: 0 auto 10px; max-width: 320px; font-size: 13px; font-weight: 700; color: #6a5f98; }
+.spin-wheel { position: relative; width: min(300px, 78vw, 44vh); aspect-ratio: 1; margin: 8px auto 6px; }
+.spin-disc { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 6px #ffc61a, 0 0 0 10px #fff, 0 10px 26px rgba(60, 40, 140, 0.3); will-change: transform; }
+.spin-disc svg { display: block; width: 100%; height: 100%; }
+.spin-disc text { text-anchor: middle; dominant-baseline: middle; }
+.spin-ico { font-size: 17px; }
+.spin-txt { font: 400 10px var(--display); fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.25); stroke-width: 2px; }
+.spin-pin { position: absolute; top: -10px; left: 50%; width: 0; height: 0; transform: translateX(-50%); border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 26px solid #ff3b5c; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3)); }
+.spin-note { min-height: 2.6em; margin: 10px auto 4px; max-width: 340px; font-size: 14px; font-weight: 800; color: #5a3fe0; }
+.spin-sheet .spin-go { width: 100%; max-width: 340px; }
+.spin-sheet .spin-ad { max-width: 340px; }
+
 /* ---------- Next population milestone ---------- */
 .ms-card { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(160deg, #e8f4ff, #eef0ff); color: #2a1f3e; }
 .ms-ico { font-size: 28px; }

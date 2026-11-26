@@ -81,6 +81,7 @@ import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { COIN_SVG, TycoonUI } from "./ui/tycoon";
+import { spinOpen } from "./logic/spin";
 import { hallLevel, claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness, cityGrow, townHomes } from "./logic/tycoon";
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
@@ -453,6 +454,7 @@ export class App implements DailyHost {
       city: HAS_CITY,
       fireworks: HAS_CITY && playerStarted(this.save),
       seasonEnds: (() => { const se = seasonInfo(citySeason()), p = seasonPass(this.save); return HAS_CITY && se && p && p.free.length < SP_TIERS.length ? { at: Date.now() + seasonDaysLeft() * 864e5, name: t(se.name) } : undefined; })(),
+      spin: spinOpen(this.save, HAS_CITY),
       milestone: (() => { const m = HAS_CITY ? nextMilestone(this.save) : undefined, left = m ? m.at - townPeople(this.save) : 0; return m && left > 0 && left <= m.at * 0.15 ? { left, at: m.at } : undefined; })(),
     };
   }
