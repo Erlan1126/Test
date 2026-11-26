@@ -53,6 +53,11 @@ const STAGE_PEOPLE = [
 // The daily stage: a different neighbour each day, the same one for everyone.
 // Today's rule for the daily stage (the same for everyone, a different one each day).
 // How each person looks in their window (matching their story); others get a look from their stage number.
+/* What they shout to you from the window when the light comes back: lines fit who they are. */
+const THANKS = { child: ["Whoa! Again!", "You're so fast!", "I knew you'd come!", "Best night ever!"], elder: ["Bless you, dear.", "Just like the old days.", "Mind the wires, love!", "Come by for tea!"],
+  hat: ["Much obliged!", "Fine swinging, kid!", "Now that's service."], twins: ["Thank you!! (x2)", "Do a flip! Do a flip!", "Again! Again!"], group: ["Three cheers!", "Everyone, look!", "We can see again!"],
+  parent: ["Thank you so much!", "Say thank you, sweetie!", "Perfect timing!"], couple: ["Our hero!", "Thank you, both of us!"], long: ["You came back!", "Thank you, light!", "I can see again!"], adult: ["Thank you!", "Right on time!", "You did it!", "Wow, look at that!"] };
+function stageThanks(n) { const who = stagePerson(n)[0], look = PEOPLE_LOOK[who] || (/^(The |Everyone|Mo and Ari)/.test(who) ? "group" : ["adult", "long", "adult", "elder", "long"][n % 5]), l = THANKS[look] || THANKS.adult; return l[(n * 7 + 3) % l.length]; }
 const PEOPLE_LOOK = { "Mara": "parent", "Old Tomas": "hat", "Ines": "long", "The twins": "twins", "Sami": "child", "Grandma Rue": "elder", "Theo": "adult", "Little Juno": "child", "Mrs. Halloran": "elder",
   "Captain Ide": "hat", "Nell": "long", "Pip": "child", "Old Fenn": "hat", "Kit": "child", "Hugo": "elder", "Mo and Ari": "couple", "The Ellis family": "group", "Ms. Adeyemi": "elder", "June": "long", "Vera": "elder", "Elio": "child" };
 const DAILY_MODS = [
@@ -177,7 +182,7 @@ function stageClear(R) {
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
   else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
-  setTimeout(() => showStageCard(true), 1300);
+  setTimeout(() => showStageCard(true), 1900);
 }
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();

@@ -208,9 +208,9 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     // The people: every stage has someone waiting; clearing it brings them light.
     {
       const pr = await page.evaluate(async () => {
-        const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]);
+        const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]) && Array.from({ length: STAGES_N }, (_, i) => stageThanks(i + 1)).every(x => typeof x === "string" && x.length > 2);
         stageSave().unlocked = 60; startStage(4); const R = run; R.inv = 9; R.px = R.stageLen + 0.5; runUpdate(1 / 60);
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 2100));
         o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
         o.homesLitCountsClearedStages = homesLit() >= 1;
         run = null; showTitle(); o.homeShowsHomesRelit = $("homeBest").textContent === String(homesLit()) && $("tileCity").textContent.includes("/60");
@@ -241,7 +241,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     {
       const f = await page.evaluate(async () => {
         const o = {}; stageSave().unlocked = 60; save.chapSeen = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }; startStage(60); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60);
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 2100));
         o.clearingStageSixtyOffersTheDawn = $("stNext").textContent === "Watch the dawn";
         $("stNext").click(); o.theFinalePlays = !$("finale").hidden && $("fnCredits").textContent.includes("Mara") && $("fnCredits").textContent.includes("The whole city");
         $("fnSkip").click(); o.thenBackToTheCity = $("finale").hidden && !$("sheet").hidden && !!save.finaleSeen;

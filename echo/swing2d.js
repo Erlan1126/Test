@@ -493,6 +493,12 @@ const SW2D = (() => {
           else if (look === "parent") { person(cx5 - 0.7 * s, 1, "long", true); person(cx5 + 0.9 * s, 1, "child", false); }
           else person(X(R.stageLen + 8.2), 1, look, true); }
         { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
+        /* They thank you: a speech bubble pops out of the window once you land on their roof. */
+        if (R.cleared && R.clearAt != null && !R.attract && t - R.clearAt > 0.75) { const bk = Math.min(1, (t - R.clearAt - 0.75) / 0.25), pop = bk < 1 ? 0.6 + 0.4 * Math.sin(bk * Math.PI * 0.5) + Math.sin(bk * Math.PI) * 0.15 : 1, line = stageThanks(R.stageInfo.n);
+          ctx.save(); ctx.font = `800 ${Math.round(0.8 * s)}px Inter, system-ui, sans-serif`; const tw = ctx.measureText(line).width, bw = tw + 1.6 * s, bh = 1.7 * s, bx = Math.min(W - bw / 2 - 6, Math.max(bw / 2 + 6, (wx0 + wx1) / 2)), by = wy0 - 3.4 * s + Math.sin(t * 2) * 0.12 * s;
+          ctx.translate(bx, by); ctx.scale(pop, pop); ctx.globalAlpha = Math.min(1, bk * 2); ctx.fillStyle = "#fff7e6"; ctx.shadowColor = "rgba(255,200,120,0.8)"; ctx.shadowBlur = 0.8 * s;
+          ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.fill(); ctx.shadowBlur = 0; ctx.beginPath(); ctx.moveTo(-0.4 * s, bh / 2 - 1); ctx.lineTo(0.4 * s, bh / 2 - 1); ctx.lineTo(0, bh / 2 + 0.6 * s); ctx.fill();
+          ctx.fillStyle = "#3a2a1c"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(line, 0, 0.05 * s); ctx.restore(); }
       }
     }
     // A ghost: your best run (or a friend's) on this stage, see-through.
