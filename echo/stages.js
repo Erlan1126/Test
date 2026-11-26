@@ -52,6 +52,9 @@ const STAGE_PEOPLE = [
 ];
 // The daily stage: a different neighbour each day, the same one for everyone.
 // Today's rule for the daily stage (the same for everyone, a different one each day).
+// How each person looks in their window (matching their story); others get a look from their stage number.
+const PEOPLE_LOOK = { "Mara": "parent", "Old Tomas": "hat", "Ines": "long", "The twins": "twins", "Sami": "child", "Grandma Rue": "elder", "Theo": "adult", "Little Juno": "child", "Mrs. Halloran": "elder",
+  "Captain Ide": "hat", "Nell": "long", "Pip": "child", "Old Fenn": "hat", "Kit": "child", "Hugo": "elder", "Mo and Ari": "couple", "The Ellis family": "group", "Ms. Adeyemi": "elder", "June": "long", "Vera": "elder", "Elio": "child" };
 const DAILY_MODS = [
   { id: "moon", name: "Moon day", text: "Lighter gravity: long, floaty jumps" },
   { id: "spring", name: "Spring day", text: "Half the anchors are springs" },
@@ -148,7 +151,7 @@ function stageClear(R) {
   R.stageStars = stars; R.stageTime = time;
   if (R.attract) return;
   const S = stageSave(), n = R.stage, info = R.stageInfo;
-  R.hadStars = !!(S.best[n] && S.best[n].stars);
+  R.hadStars = !!(S.best[n] && S.best[n].stars); if (!R.hadStars && !info.daily) save.newLit = n;   // the city map celebrates it next time
   let newBest = false;
   if (info.daily) {
     const d = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : (save.dailyStage = { day: dayNumber() });
@@ -246,11 +249,12 @@ function stagesHtml() {
     h += `<li class="district ${got === 10 ? "full" : ""} ${open ? "" : "shut"} ${c === outageDistrict() ? "outage" : ""}"><div class="dist-head"><b>${STAGE_CHAPTERS[c]}${c === outageDistrict() ? ` <em class="out-badge">⚡ Outage week · ×2 lights</em>` : ""}</b><span>${open ? `${got}/10 lit` : "Locked"}</span></div><div class="skyline">`;
     for (let n = c * 10 + 1; n <= c * 10 + 10; n++) {
       const b = S.best[n], locked = n > S.unlocked, r = seeded(n * 131)(), ht = n % 10 === 0 ? 100 : 46 + Math.round(r * 40);
-      h += `<button class="bld${b && b.stars ? " lit" : ""}${locked ? " lock" : ""}${n === nx && !locked ? " next" : ""}${n === mapPick ? " sel" : ""}${n % 10 === 0 ? " boss" : ""}" style="height:${ht}%" data-pick="${n}" ${locked ? "disabled" : ""} aria-label="Stage ${n}"><i></i><i></i><small>${n}</small></button>`;
+      h += `<button class="bld${b && b.stars ? " lit" : ""}${locked ? " lock" : ""}${n === nx && !locked ? " next" : ""}${n === mapPick ? " sel" : ""}${n % 10 === 0 ? " boss" : ""}${n === save.newLit ? " fresh" : ""}" style="height:${ht}%" data-pick="${n}" ${locked ? "disabled" : ""} aria-label="Stage ${n}"><i></i><i></i><small>${n}</small></button>`;
     }
     h += `</div></li>`;
   }
   h += `<li class="sec">Daily neighbour</li><li class="${d ? "won" : ""}"><span><b>${stageWaiting(0).replace(" waiting", d ? " got their light" : " waiting today")}</b><small>${d ? `${starText(d.stars || 0)} · ${d.time.toFixed(1)} s · race your ghost` : "The same stage for everyone today"}</small></span><button data-stage="0">${d ? "Again" : "Play"}</button></li>`;
+  if (save.newLit) setTimeout(() => { save.newLit = 0; persist(); }, 4000);
   return h;
 }
 document.getElementById("shopList").addEventListener("click", e => {

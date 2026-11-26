@@ -468,9 +468,21 @@ const SW2D = (() => {
           else { const bk = Math.min(1, (t - R.clearAt - 0.65) / 0.5); if (bk < 1) { ctx.globalAlpha = 1 - bk; const z = (3 + bk * 10) * s; ctx.drawImage(glow([255, 230, 170]), X(tx2) - z / 2, Y(ty2) - z / 2, z, z); } }
           ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
         // The person at the window (waving once the light is back).
-        const px2 = X(R.stageLen + 8.2), py2 = wy1; ctx.fillStyle = lit > 0 ? "#3a2a1c" : "rgba(120,130,160,0.35)";
-        ctx.beginPath(); ctx.arc(px2, py2 - 2.6 * s, 0.55 * s, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(px2 - 0.6 * s, py2 - 2 * s, 1.2 * s, 2 * s);
-        if (lit > 0) { const wv = Math.sin(t * 9) * 0.5; ctx.strokeStyle = "#3a2a1c"; ctx.lineWidth = 0.28 * s; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px2 + 0.5 * s, py2 - 1.8 * s); ctx.lineTo(px2 + (1.2 + wv * 0.3) * s, py2 - (3 + wv) * s); ctx.stroke(); }
+        // Everyone looks like themselves: a child, a hat, an older neighbour with a bun, long hair, a couple, or a group.
+        { const who = stagePerson(R.stageInfo.n)[0], many = /^(The |Everyone|Mo and Ari)/.test(who), v = R.stageInfo.n % 5, col = lit > 0 ? "#3a2a1c" : "rgba(120,130,160,0.35)", wv = lit > 0 ? Math.sin(t * 9) * 0.5 : 0;
+          const person = (px2, k, kind, waves) => { const py2 = wy1, hh = (kind === "child" ? 0.7 : 1) * k, hr = 0.55 * s * Math.min(1, hh + 0.1); ctx.fillStyle = col;
+            ctx.beginPath(); ctx.arc(px2, py2 - 2.6 * s * hh, hr, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(px2 - 0.6 * s * hh, py2 - 2 * s * hh, 1.2 * s * hh, 2 * s * hh);
+            if (kind === "hat") { ctx.fillRect(px2 - 0.8 * s, py2 - 3.05 * s, 1.6 * s, 0.18 * s); ctx.fillRect(px2 - 0.45 * s, py2 - 3.55 * s, 0.9 * s, 0.5 * s); }
+            else if (kind === "elder") { ctx.beginPath(); ctx.arc(px2 + 0.25 * s, py2 - 3.15 * s, 0.28 * s, 0, Math.PI * 2); ctx.fill(); }
+            else if (kind === "long") { ctx.fillRect(px2 - 0.55 * s, py2 - 2.6 * s, 1.1 * s, 1 * s); }
+            if (waves && lit > 0) { ctx.strokeStyle = col; ctx.lineWidth = 0.28 * s * hh; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(px2 + 0.5 * s * hh, py2 - 1.8 * s * hh); ctx.lineTo(px2 + (1.2 + wv * 0.3) * s * hh, py2 - (3 + wv) * s * hh); ctx.stroke(); } };
+          const cx5 = X(R.stageLen + 9);
+          const look = (typeof PEOPLE_LOOK !== "undefined" && PEOPLE_LOOK[who]) || (many ? "group" : ["adult", "long", "adult", "elder", "long"][v]);
+          if (look === "group") { person(cx5 - 1.4 * s, 0.85, "adult", true); person(cx5 + 0.2 * s, 0.7, "child", false); person(cx5 + 1.6 * s, 0.85, v % 2 ? "long" : "adult", true); }
+          else if (look === "twins") { person(cx5 - 0.7 * s, 1, "child", true); person(cx5 + 0.7 * s, 1, "child", true); }
+          else if (look === "couple") { person(cx5 - 0.9 * s, 1, "adult", true); person(cx5 + 0.9 * s, 0.95, "long", false); }
+          else if (look === "parent") { person(cx5 - 0.7 * s, 1, "long", true); person(cx5 + 0.9 * s, 1, "child", false); }
+          else person(X(R.stageLen + 8.2), 1, look, true); }
         { ctx.font = `700 ${Math.round(0.75 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = lit > 0 ? "#ffd98a" : "rgba(200,210,235,0.7)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], (wx0 + wx1) / 2, wy0 - 1.1 * s); }
       }
     }
