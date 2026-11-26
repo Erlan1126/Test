@@ -1,6 +1,7 @@
 // German (informal "du"). Keys are the English text; anything missing here shows in English. Keep every {placeholder} from the key.
 export const DE: Record<string, string> = {
   // ---------- Game text ----------
+  "Skins, shapes and islands for your towers, and boosts for your next one. Crystals buy the special things.": "Skins, Formen und Inseln für deine Türme und Boosts für den nächsten. Kristalle kaufen die besonderen Dinge.",
   "Gold penthouse · a perfect drop pays 5x": "Gold-Penthouse · perfekt gesetzt zahlt 5x",
   "Icy floor · slides fast, holds 50% more people": "Eis-Etage · schnell, 50% mehr Leute",
   "Garden terrace · slow, and widens your tower": "Gartenterrasse · langsam, macht den Turm breiter",
@@ -1685,7 +1686,7 @@ export const DE: Record<string, string> = {
   "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.": "Deine Geschäfte verdienen Geld. Kaufe Stufen für mehr; ein Manager verkauft für dich, auch wenn du weg bist.",
   "Decorations show up in your town and make every business earn more. Crystals buy the special things.": "Deko erscheint in deiner Stadt und lässt jedes Geschäft mehr verdienen. Kristalle kaufen das Besondere.",
   "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.": "Pips Kapitel ist dein großes Ziel. Tagesziele bringen Sterne; der Himmelspass einen Preis pro Stufe.",
-  "Your builder profile, the leaderboard of the best towers, and settings.": "Dein Baumeister-Profil, die Bestenliste der besten Türme und die Einstellungen.",
+  "Your builder profile, the leaderboard of the best towers, your Sky City and settings.": "Dein Baumeister-Profil, die Bestenliste der besten Türme, deine Himmelsstadt und die Einstellungen.",
   "{n} of {total} postcards": "{n} von {total} Postkarten",
   "Where it all began: your first neighbor moved in.": "Wo alles begann: Dein erster Nachbar zog ein.",
   "Reach {n} business levels to unlock": "Erreiche {n} Geschäftsstufen zum Freischalten",

@@ -280,8 +280,11 @@ export class Sheets {
 
   // ---------- Star shop ----------
 
-  /** The shop opens on the town (decorations and business boosts) unless asked otherwise. */
-  openShop(tab: "town" | "towers" | "crystals" | "boosts" = "town"): void {
+  /** The shop opens on the town (decorations and business boosts) unless asked otherwise.
+   *  Skyrise opens on its towers: its island has no town, so it has no Island page (the town's
+   *  decorations would never show there). */
+  openShop(tab: "town" | "towers" | "crystals" | "boosts" = HAS_CITY ? "town" : "towers"): void {
+    if (!HAS_CITY && tab === "town") tab = "towers";
     this.click();
     this.seen("shop");
     this.seen("skins");

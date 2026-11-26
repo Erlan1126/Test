@@ -19,6 +19,13 @@ export const floorSpeed = (n: number): number => Math.min(20, 6.5 + n * 0.06 + M
  *  from the first floors (Zen keeps the gentle curve above). */
 export const floorSpeed4 = (n: number): number => Math.min(20, 7.6 + n * 0.08 + Math.max(0, n - 12) * 0.3);
 
+/** A practice tower (a new player's first towers) slides its floors at 70% speed for six
+ *  floors, then eases up to full speed by floor 12 instead of jumping 43% at floor 7. */
+export const easySpeed = (n: number): number => (n <= 6 ? 0.7 : n >= 12 ? 1 : 0.7 + (n - 6) * 0.05);
+/** ...and doubles the perfect window up to floor 10, then narrows it back to normal by
+ *  floor 15 instead of halving it at floor 11. */
+export const easyPerfect = (level: number): number => (level <= 10 ? 2 : level >= 15 ? 1 : 2 - (level - 10) * 0.2);
+
 /** Wind strength (0 to 1) at floor n. It starts at `from` and is full 30 floors later. */
 export const windAt = (n: number, from = WIND_START): number => clamp((n - from) / 30, 0, 1);
 

@@ -5,7 +5,7 @@ import { clamp } from "../core/util";
 import { BLOCK_SIZE, GROW, RANGE } from "../data/constants";
 import type { Challenge } from "../data/challenges";
 import type { WeekEvent } from "../data/events";
-import { floorSpeed, floorSpeed4, landmarkIndex, metersFor, peopleIn, perfectWindow, windAt, type Box } from "./rules";
+import { easyPerfect, easySpeed, floorSpeed, floorSpeed4, landmarkIndex, metersFor, peopleIn, perfectWindow, windAt, type Box } from "./rules";
 import type { Mode, RunSummary } from "./types";
 
 /**
@@ -163,7 +163,7 @@ export class TowerSim {
   }
 
   speedFor(n: number): number {
-    const easy = this.cfg.easy && n <= 6 ? 0.7 : 1;
+    const easy = this.cfg.easy ? easySpeed(n) : 1;
     if (this.cfg.mode === "zen") return floorSpeed(Math.min(n, 12)) * easy;
     // Rules 4 is faster, except a new player's practice towers keep the gentle curve.
     const fast = (this.cfg.rules ?? 1) >= 4 && !this.cfg.easy;
@@ -261,7 +261,7 @@ export class TowerSim {
     const m = this.mover;
     if (!m) return false;
     // A new player's practice towers (never ranked) forgive a lot more on the first floors.
-    const easy = this.cfg.easy && (this.cfg.rules ?? 1) >= 5 && this.level <= 10 ? 2 : 1;
+    const easy = this.cfg.easy && (this.cfg.rules ?? 1) >= 5 ? easyPerfect(this.level) : 1;
     const k = (m.kind === "magnet" ? 2.5 : 1) * (this.powers.wide > 0 ? 2 : 1) * (this.feverLeft > 0 ? 1.35 : 1) * easy;
     return Math.abs(this.offset()) <= perfectWindow(m.v) * k;
   }

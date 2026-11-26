@@ -266,6 +266,9 @@ export function awardStandingTrophies(save: SaveData): string[] {
 
 /** The closest goal you just missed: your best, the next landmark, or a mission. */
 export function nearMiss(save: SaveData, run: RunSummary, newBest: boolean): string {
+  // Nobody moved in (every floor missed or sliced to a sliver): the timing tip helps more
+  // than a landmark still far away.
+  if (run.score <= 0 && run.mode !== "zen") return t("Tap when the sliding floor lines up with the one below");
   if (!newBest && save.best > 0 && run.score > 0 && save.best - run.score <= Math.max(60, save.best * 0.25)) {
     return t("Only {n} people away from your best!", { n: fmt(save.best - run.score + 1) });
   }

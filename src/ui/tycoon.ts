@@ -290,6 +290,9 @@ export class TycoonUI {
     // Tapping one of Pip's goals goes straight to where it's done.
     setGoalTap(kind => {
       const s = this.save;
+      // (Skyrise has no business district: its tower and height goals are done by building.)
+      if (kind === "towers" || kind === "height") { if (!HAS_CITY || !this.inCity) { this.host.play("classic"); return; } }
+      if (!HAS_CITY) return;
       if (kind === "managers" || kind === "levels") {
         // The business that most needs it (no manager yet / the cheapest level), selected in town.
         const b = kind === "managers" ? BUSINESSES.find(x => levelOf(s, x.id) > 0 && !s.tycoon.managers.includes(x.id)) : BUSINESSES.filter(x => levelOf(s, x.id) > 0).sort((a, b2) => costOf(a, levelOf(s, a.id), 1) - costOf(b2, levelOf(s, b2.id), 1))[0];
@@ -2337,12 +2340,13 @@ export class TycoonUI {
     if (spinOpen(s, HAS_CITY)) parts.push(this.spinEntryHtml());
     // The week's city event first (it has the best rewards), then today's goals.
     if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.teamHtml(), this.milestoneHtml());
-    parts.push(`<h3 class="sheet-sub">${esc(HAS_CITY ? t("Today's city quests") : t("Today's company goals"))}</h3>${this.goalsHtml()}`);
-    // The side activities wait until the story is well under way, so a new player's goals are
-    // the town's: the chapter (the next rank) and today's company goals.
+    // (Skyrise has no businesses: its daily goals are the tower missions below.)
+    if (HAS_CITY) parts.push(`<h3 class="sheet-sub">${esc(t("Today's city quests"))}</h3>${this.goalsHtml()}`);
+    // Skyrise: the tower missions are its daily goals, always shown; the Community Spire waits
+    // until the story is under way.
     const later = s.chapters.done >= 2;
     if (later && !HAS_CITY) parts.push(this.spireHtml());
-    if (!HAS_CITY && later && !$("missions-btn").hidden && s.missions.slots.length) {
+    if (!HAS_CITY && !$("missions-btn").hidden && s.missions.slots.length) {
       const rows = s.missions.slots.map(m => {
         const done = !!m.d || m.p >= m.n;
         return `<div class="ty-goal${done ? " done" : ""}"><span class="ty-goal-check">${done ? "✓" : "★"}</span><span><b>${esc(missionText(m))}</b>
@@ -2393,7 +2397,7 @@ export class TycoonUI {
       me: [
         { id: "profile", name: "Profile", open: () => $("level-btn").click() },
         { id: "ranks", name: "Leaders", open: () => $("ranks-btn").click(), show: () => !$("ranks-btn").hidden },
-        { id: "scrapbook", name: "Scrapbook", open: () => this.openScrapbook() },
+        { id: "scrapbook", name: "Scrapbook", open: () => this.openScrapbook(), show: () => HAS_CITY },
         { id: "collection", name: "Buildings", open: () => this.openCollection(), show: () => HAS_CITY },
         { id: "city", name: "Sky City", open: () => $("city-btn").click(), show: () => !HAS_CITY && !$("city-btn").hidden },
         { id: "settings", name: "Settings", open: () => $("settings-btn").click() },
@@ -3260,6 +3264,8 @@ export class TycoonUI {
 
   /** After buying a decoration in the shop: back to the town to see it. */
   showDecor(_id: string): void {
+    // (Skyrise has no business district to open: its shop has no decorations.)
+    if (!HAS_CITY) return;
     if (!this.inCity && this.host.onMenu()) this.open();
     this.render();
   }

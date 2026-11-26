@@ -16,7 +16,7 @@ import { BOOSTS, MAX_BOOSTS } from "./data/shop";
 import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
-import { addToSkyline, districtTowers } from "./logic/skyline";
+import { addToSkyline, bestTower, districtTowers } from "./logic/skyline";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
 import { nextTitle, titleFor, titleProgress, upcoming } from "./data/titles";
 import { SHAPES } from "./data/shapes";
@@ -1542,6 +1542,8 @@ export class App implements DailyHost {
       setTimeout(() => s.milestone(), 120);
       // The city celebrates with fireworks over the island.
       if (!this.calmMotion) fireworks(2, () => s.firework());
+      // ...and something flies past the new height to say hello.
+      if (this.renderer instanceof Renderer3D) this.renderer.sky.soon();
     }
     if (out.windStarts) {
       this.banner(t("Wind ahead"), t("Gusts speed floors up and slow them down"));
@@ -1724,7 +1726,8 @@ export class App implements DailyHost {
       this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); });
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
-    if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
+    // (Skyrise too: its home screen shows Pip's tower story, where its chapters are claimed.)
+    renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     // (In the town, Pip's chapter waits until the first steps there are done.)
     // (In the city game the bottom card is the one guide: it shows the City Plan, and the
     // City Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
@@ -2195,7 +2198,7 @@ export class App implements DailyHost {
     const slot = (g.streak - 1) % DAILY_REWARDS.length, first = g.streak - slot;
     const tile = (i: number, state: string) => {
       const r = dailyReward(save, first + i), big = i === DAILY_REWARDS.length - 1;
-      const what = r.advisor ? `🎁<b>${esc(t("Free advisor"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
+      const what = r.advisor ? `🎁<b>${esc(t("Free advisor"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : r.stars ? `★<b>${fmt(r.stars)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
       return `<div class="daily-day ${state}${big ? " big" : ""}"><small>${esc(t("Day {n}", { n: i + 1 }))}</small><span class="daily-what">${what}</span>${state === "done" ? `<i class="daily-check">✓</i>` : ""}</div>`;
     };
     const paint = (claimed: boolean) => {
@@ -2220,7 +2223,7 @@ export class App implements DailyHost {
       vibrate(save.settings.vibrate, [15, 30, 15]);
       if (r.pick) setTimeout(() => toast(t("🎁 Free advisor: choose who joins in Company → Team")), 600);
       const next = dailyReward(save, gift.day + 1);
-      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("a free advisor of your choice") : next.gems ? `${fmt(next.gems)} 💎` : tycoonCoins(next.cash) });
+      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("a free advisor of your choice") : next.gems ? `${fmt(next.gems)} 💎` : next.stars ? `${fmt(next.stars)} ★` : tycoonCoins(next.cash) });
       btn.textContent = t("See you tomorrow!");
       btn.classList.add("done");
       this.persist();
@@ -3030,7 +3033,10 @@ export class App implements DailyHost {
       skin: skinById(this.state === "over" && this.builtSkin ? this.builtSkin : save.skin),
       skyline: this.city().skyline,
       districts: this.city().districts,
-      bizLots: this.visitTown ? this.visitTown.lots : this.visiting ? NO_LOTS : this.bizView(),
+      home: HAS_CITY || this.state !== "menu" ? null : bestTower(this.city().skyline),
+      // (Skyrise never shows the business town: it isn't built at all, which saves its
+      // startup work and memory.)
+      bizLots: this.visitTown ? this.visitTown.lots : this.visiting || !HAS_CITY ? NO_LOTS : this.bizView(),
       bizCafe: this.visitTown ? this.visitTown.cafe : this.visiting ? null : this.bizCafe(),
       bizLive: this.tycoon.liveState(),
       bizFocus: this.bizFocus && this.state === "menu",

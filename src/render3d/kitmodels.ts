@@ -3,6 +3,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { KIT_GLB } from "./kitdata";
+import { KIT_GLB_CITY } from "./kitdata-city";
+import { HAS_CITY } from "../edition";
 
 /** Artist-made 3D models (free CC0 packs, see kit/NOTICE.md), unpacked once at startup.
  *  Until they're ready (or if they can't load) the town builds its own shapes as before;
@@ -101,7 +103,11 @@ function start(): void {
   started = true;
   if (typeof atob !== "function" || typeof WebAssembly === "undefined") return;
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const jobs = Object.entries(KIT_GLB).map(([name, b64]) => new Promise<void>(res => {
+  // (Only the builds with the city use these models: its town, districts and landmarks.
+  // Skyrise's island is drawn without them and never builds the town, so its build leaves
+  // all of them out: a much smaller download, and nothing to unpack at startup.)
+  const kit: Record<string, string> = HAS_CITY ? { ...KIT_GLB, ...KIT_GLB_CITY } : {};
+  const jobs = Object.entries(kit).map(([name, b64]) => new Promise<void>(res => {
     try {
       const bin = atob(b64), buf = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);

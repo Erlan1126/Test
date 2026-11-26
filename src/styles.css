@@ -1332,6 +1332,8 @@ body.webgl:not(.scene-ready) #game, body.webgl:not(.scene-ready) #fx { opacity: 
 .card { max-height: calc(100vh - 108px - env(safe-area-inset-top, 0px)); max-height: calc(100dvh - 108px - env(safe-area-inset-top, 0px)); }
 #over-actions .btn-secondary { font-size: 15px; white-space: nowrap; }
 @media (max-width: 380px) { #over-actions .btn-secondary { font-size: 14px; padding: 0 8px; } }
+/* On the narrowest phones "Challenge a friend" wraps onto two lines instead of being cut off. */
+@media (max-width: 350px) { #over-actions #share { white-space: normal; line-height: 1.05; font-size: 13px; } }
 
 /* This week's place in the tournament, on the home screen */
 .rank-line { margin-top: 8px; padding: 7px 14px; border: 2px solid #ffd43b; border-radius: 999px; background: linear-gradient(180deg, #ffe58a, #ffc53d);
@@ -2310,6 +2312,19 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
 
 .mayor-dialog { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: rgba(10, 12, 40, 0.45); }
 .mayor-dialog[hidden] { display: none; }
+/* Room above the card for Pip's face (it pokes out of the card's top), and a card that never
+   grows past the screen: on a small phone the goal list scrolls, the button stays in view. */
+.mayor-dialog { padding-top: calc(76px + env(safe-area-inset-top, 0px)); }
+.mayor-card { display: flex; flex-direction: column; max-height: 100%; box-sizing: border-box; }
+.mayor-talk { display: flex; flex-direction: column; min-height: 0; }
+.mayor-talk > * { flex-shrink: 0; }
+.mayor-talk > .mayor-goals { flex-shrink: 1; min-height: 64px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+@media (max-height: 620px) {
+  .mayor-dialog { padding-top: calc(60px + env(safe-area-inset-top, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .mayor-face { width: 84px; height: 84px; top: -50px; }
+  .mayor-talk { padding-top: 32px; }
+  .mayor-talk p { font-size: 14px; margin: 4px 0 8px; }
+}
 .mayor-card { position: relative; width: min(420px, 100%); padding: 18px 18px 18px; border-radius: 26px; background: linear-gradient(180deg, #fff, #f3f0ff); color: #2a1f6e; box-shadow: 0 20px 50px rgba(10, 12, 40, 0.4); animation: mayor-in 0.45s cubic-bezier(0.25, 1.4, 0.5, 1); }
 @keyframes mayor-in { from { transform: translateY(60px) scale(0.92); opacity: 0; } }
 .mayor-face { position: absolute; top: -64px; left: 18px; width: 104px; height: 104px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #e8f2ff, #c9dbff); box-shadow: 0 0 0 5px #fff, 0 10px 24px rgba(20, 24, 70, 0.3); overflow: hidden; animation: mayor-bob 2.4s ease-in-out infinite; }
@@ -4384,6 +4399,8 @@ body.visiting-town #mayor { display: none !important; }
 
 /* The city game leaves out the tower game's shop shelves (tower skins, tower boosts). */
 body.city-game .tower-only, body.city-game #shop [data-tab="boosts"], body.city-game #shop [data-panel="boosts"] { display: none !important; }
+/* Skyrise has no company: no cash upgrades or business boosts it could never use. */
+body:not(.city-game) .city-only, body:not(.city-game) #shop [data-tab="town"], body:not(.city-game) #shop [data-panel="town"] { display: none !important; }
 body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab="trophies"], body.city-game #profile [data-panel="trophies"], body.city-game #history { display: none !important; }
 .sp-legend { display: flex; justify-content: space-between; margin: 8px 2px 0; font: 400 10px var(--display); color: #6a5f98; }
 #visit-who small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
