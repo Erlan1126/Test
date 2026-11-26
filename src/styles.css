@@ -4417,6 +4417,9 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 /* The spin wheel opens over the Goals page: above the tab bar too, so its Spin button is never
    under the bar on a small phone. */
 body.tabs-open #spin-sheet { z-index: 60; }
+/* Mayor Pip's notes ("While you were away", offers) and dialogs that open over a menu page sit
+   above the tab bar too: under it, the bar covered their second button ("Collect"). */
+body.tabs-open :is(.mayor-dialog, .overlay) { z-index: 60; }
 
 /* ---- Photo mode: the 📷 button, the filter chips and the vignette preview ---- */
 #tycity .photo-btn { position: absolute; z-index: 6; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1; background: linear-gradient(180deg, #ff7aa8, #8a5cff); box-shadow: 0 3px 0 #5a34c0, 0 6px 14px rgba(20, 10, 60, 0.3); }
