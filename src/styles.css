@@ -4727,9 +4727,10 @@ body.tabs-open #profile .stat-grid { gap: 10px !important; margin: 0 !important;
 }
 @media (max-width: 340px) { .tab-seg button { padding: 9px 4px !important; font-size: 9.5px !important; } body.tabs-open .tab-page .tab-head { padding: 14px 12px 10px; margin: 0 -12px; } body.tabs-open .modal.tab-page > .sheet { padding-left: 12px !important; padding-right: 12px !important; } }
 
-/* The holiday parade's banner (ui/parade.ts): a festive pill under the money bar, with a
+/* The holiday parade's banner (ui/parade.ts): a festive pill just above the guide (clear of the
+   tutorial and building bubbles near the top), with a
    Watch button that follows the lead float. */
-.parade-banner { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 150px); z-index: 6; display: flex; align-items: center; gap: 10px;
+.parade-banner { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 178px); z-index: 6; display: flex; align-items: center; gap: 10px;
   max-width: calc(100vw - 24px); padding: 7px 7px 7px 16px; border-radius: 999px; border: 2px solid #ffe27a; transform: translateX(-50%);
   font: 700 14px/1.2 var(--ui-font, system-ui, sans-serif); color: #fff; text-shadow: 0 1px 0 rgba(90, 0, 10, 0.45); white-space: nowrap;
   background: linear-gradient(135deg, #e8344a, #c21d3a 55%, #1f8a4c); box-shadow: 0 8px 20px rgba(90, 10, 30, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.3);
@@ -4740,7 +4741,7 @@ body.tabs-open #profile .stat-grid { gap: 10px !important; margin: 0 !important;
 .parade-banner .pb-watch { flex: none; padding: 7px 14px; border: 0; border-radius: 999px; cursor: pointer;
   font: 800 13px/1 var(--ui-font, system-ui, sans-serif); color: #7a2a00; background: linear-gradient(#fff3b0, #ffcf3a); box-shadow: 0 3px 0 #d9962a; }
 .parade-banner .pb-watch:active { transform: translateY(2px); box-shadow: 0 1px 0 #d9962a; }
-@keyframes pb-in { from { opacity: 0; transform: translate(-50%, -16px) scale(0.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
-@keyframes pb-out { to { opacity: 0; transform: translate(-50%, -10px) scale(0.95); } }
+@keyframes pb-in { from { opacity: 0; transform: translate(-50%, 16px) scale(0.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes pb-out { to { opacity: 0; transform: translate(-50%, 10px) scale(0.95); } }
 @media (prefers-reduced-motion: reduce) { .parade-banner, .parade-banner.out { animation: none; } }
 body.tabs-open .parade-banner { display: none; }
