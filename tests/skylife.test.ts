@@ -1,0 +1,41 @@
+// The sky around a growing tower: something passes now and then, fitting the height, and
+// never while you're not building.
+import { describe, expect, it } from "vitest";
+import { SKY_GAP, SkyLife, skyKind } from "../src/render3d/skylife";
+import { seeded } from "../src/core/rng";
+
+describe("life in the sky", () => {
+  it("sends birds low down, balloons higher and planes above the clouds", () => {
+    expect(skyKind(5, 0.9)).toBe("birds");
+    expect(skyKind(30, 0.1)).toBe("balloon");
+    expect(skyKind(30, 0.9)).toBe("birds");
+    expect(skyKind(80, 0.1)).toBe("plane");
+    expect(skyKind(80, 0.9)).toBe("balloon");
+  });
+
+  it("only comes while you build, every so often, and goes again", () => {
+    const sky = new SkyLife(seeded(7));
+    for (let i = 0; i < 60 * 30; i++) sky.update(1 / 60, i / 60, 20, false, 0);
+    expect(sky.passing).toBeNull();
+    let seen = 0, frames = 0, was: string | null = null;
+    for (let i = 0; i < 60 * 120; i++) {
+      sky.update(1 / 60, i / 60, 20, true, 0);
+      if (sky.passing && !was) seen++;
+      if (sky.passing) frames++;
+      was = sky.passing;
+    }
+    // Two minutes of building: several passers-by, but the sky isn't always busy.
+    expect(seen).toBeGreaterThanOrEqual(120 / (SKY_GAP[1] + 15));
+    expect(seen).toBeLessThanOrEqual(120 / SKY_GAP[0]);
+    expect(frames).toBeLessThan(60 * 120);
+    expect(sky.group.children.some(c => c.visible)).toBe(!!sky.passing);
+  });
+
+  it("hurries over when a landmark is passed", () => {
+    const sky = new SkyLife(seeded(3));
+    sky.update(1 / 60, 0, 10, true, 0);
+    sky.soon();
+    for (let i = 0; i < 40; i++) sky.update(1 / 60, i / 60, 10, true, 0);
+    expect(sky.passing).toBe("birds");
+  });
+});

@@ -34,6 +34,7 @@ import { kitVersion } from "./kitmodels";
 import { CITY_LOTS, buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 import { TownRainbow } from "./rainbow";
+import { SkyLife } from "./skylife";
 import { HAS_CITY } from "../edition";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -197,6 +198,8 @@ export class Renderer3D {
   private compiling = false;
   private precompiled = false;
   private readonly clouds: THREE.Sprite[] = [];
+  /** Birds, balloons and planes passing behind a growing tower. */
+  readonly sky = new SkyLife();
 
   // Skyline island
   private skyline: THREE.Group | null = null;
@@ -374,6 +377,7 @@ export class Renderer3D {
     this.landmark = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, fog: false }));
     this.landmark.renderOrder = -1;
     this.scene.add(this.landmark);
+    this.scene.add(this.sky.group);
 
     const cloudTex = makeCloudTexture();
     for (let i = 0; i < 14; i++) {
@@ -715,6 +719,7 @@ export class Renderer3D {
     this.updateDebris(f.shape);
     this.updateLandmark(f);
     this.updateClouds(dt);
+    this.sky.update(dt, env.time, f.sim.level, f.shot === "play" && f.showMover && !f.low && this.bizK < 0.5, env.nf);
     this.islandAnim?.update(env.time, env.nf);
     // Windows glow warmly at night, without turning the tower into a lamp.
     const wallGlow = (m: THREE.MeshStandardMaterial) => (m.userData.alwaysLit ? Math.max(0.6, env.nf * 0.9) : env.nf * 0.85);

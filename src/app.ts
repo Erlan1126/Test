@@ -1542,6 +1542,8 @@ export class App implements DailyHost {
       setTimeout(() => s.milestone(), 120);
       // The city celebrates with fireworks over the island.
       if (!this.calmMotion) fireworks(2, () => s.firework());
+      // ...and something flies past the new height to say hello.
+      if (this.renderer instanceof Renderer3D) this.renderer.sky.soon();
     }
     if (out.windStarts) {
       this.banner(t("Wind ahead"), t("Gusts speed floors up and slow them down"));
