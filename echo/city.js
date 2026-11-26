@@ -75,6 +75,8 @@ function ranksHtml() {
     let f = null; for (let n = c * 10 + 1; n <= c * 10 + 10; n++) { const b = best[n]; if (b && b.time && (!f || b.time / stageInfo(n).par < f.k)) f = { n, t: b.time, k: b.time / stageInfo(n).par, s: b.stars }; }
     html += f ? `<li><span><b>${STAGE_CHAPTERS[c]}</b><small>Stage ${f.n} · ${stagePerson(f.n)[0]} · ${"★".repeat(f.s)}</small></span><em>${f.t.toFixed(1)} s${f.k <= 1 ? " · under par" : ""}</em></li>` : `<li class="locked"><span><b>${STAGE_CHAPTERS[c]}</b><small>No home reached here yet</small></span></li>`;
   }
+  { const rb = (save.rush || {}).best || {}, ks = Object.keys(rb).map(Number).sort((a, b) => b - a);
+    if (ks.length) { html += `<li class="sec">Boss rush</li>`; for (const k of ks) html += `<li><span><b>${k} bosses in a row</b><small>One set of hearts</small></span><em>${rb[k].toFixed(1)} s</em></li>`; } }
   html += `<li class="sec">Hunts</li><li><span><b>Letter hunt</b><small>Find L·U·M·E·N in the sky today for ✦ 250</small></span><em>${HUNT.split("").map((ch, i) => (i < h.got.length ? ch : "·")).join(" ")}</em></li>`;
   return html;
 }

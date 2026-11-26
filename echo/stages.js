@@ -123,13 +123,13 @@ const stageLink = (n, time, trace) => `${location.origin}${location.pathname}?st
 // ---------- Playing a stage ----------
 function startStage(n, opts = {}) {
   const S = stageSave(), info = stageInfo(n);
-  if (!info.daily && n > S.unlocked && !opts.race) return;
+  if (!info.daily && n > S.unlocked && !opts.race && !opts.rush) return;
   const own = !info.daily && S.ghosts[n] && S.ghosts[n].v === 3 ? ghostDecode(S.ghosts[n].g) : info.daily && save.dailyStage && save.dailyStage.day === dayNumber() && save.dailyStage.g ? ghostDecode(save.dailyStage.g) : null;
   const race = opts.race || null;
   // Arriving in a new district: its chapter card first.
-  { const c = Math.floor((n - 1) / 10); if (!info.daily && !opts.cp && !opts.chapOk && n % 10 === 1 && n > 1 && !((save.chapSeen || {})[c])) { showChapterIntro(c, () => startStage(n, Object.assign({}, opts, { chapOk: true }))); return; } }
+  { const c = Math.floor((n - 1) / 10); if (!info.daily && !opts.cp && !opts.chapOk && !opts.rush && n % 10 === 1 && n > 1 && !((save.chapSeen || {})[c])) { showChapterIntro(c, () => startStage(n, Object.assign({}, opts, { chapOk: true }))); return; } }
   // Attempts, like a level counter in a rhythm game: every try counts.
-  if (!info.daily && !opts.race) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
+  if (!info.daily && !opts.race && !opts.rush) { S.att = S.att || {}; S.att[n] = (S.att[n] || 0) + 1; persist(); }
   $("stageCard").hidden = true;
   const attempt = !info.daily && S.att ? S.att[n] : 0;
   startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
@@ -137,7 +137,8 @@ function startStage(n, opts = {}) {
   // A helping hand: each time in a row you run out of light on a stage, the dark comes a little
   // slower on your next try (up to 28% after four; 40% on a boss). Clearing the stage resets it.
   // After three misses in a row, an extra heart too.
-  if (run && run.stage === n && !info.daily && !race) { const f = (S.fails || {})[n] || 0; run.assist = Math.min(info.boss ? 0.4 : 0.28, f * 0.07); if (f >= 3) { run.hearts++; run.extraHeart = true; } }
+  if (run && run.stage === n && opts.rush) { const Q = opts.rush; run.rush = Q; run.hearts = Q.hearts; run.banner = 2.2; runMsg(`Boss rush · ${Q.i + 1} of ${Q.list.length}`, Q.i ? `${Q.hearts} heart${Q.hearts === 1 ? "" : "s"} left · ${Q.time.toFixed(1)} s so far` : "One set of hearts for every boss you've beaten", 2.6, true); }
+  else if (run && run.stage === n && !info.daily && !race) { const f = (S.fails || {})[n] || 0; run.assist = Math.min(info.boss ? 0.4 : 0.28, f * 0.07); if (f >= 3) { run.hearts++; run.extraHeart = true; } }
   // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
   if (opts.cp && run && run.stage === n) {
     const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
@@ -154,6 +155,7 @@ function stageClear(R) {
   const stars = R.cpUsed ? 1 : 1 + (share >= 0.4 ? 1 : 0) + (share >= 0.7 && R.hitsTaken === 0 && time <= R.stageInfo.par ? 1 : 0);
   R.stageStars = stars; R.stageTime = time;
   if (R.attract) return;
+  if (R.rush) { rushCleared(R); return; }
   const S = stageSave(), n = R.stage, info = R.stageInfo;
   R.hadStars = !!(S.best[n] && S.best[n].stars);
   let newBest = false;
@@ -171,6 +173,7 @@ function stageClear(R) {
     if (S.fails) delete S.fails[n];
   }
   R.newBest = newBest;
+  if (!info.daily && n % 10 === 0 && !R.hadStars && rushBosses().length === 2) setTimeout(() => toast("<b>Boss rush</b> is open: every boss you've beaten, back to back. Find it in the City.", true), 2600);
   starRewards();
   save.glow = (save.glow || 0) + R.lights + stars * 10;
   const r = save.run || runSave(); r.xp = (r.xp || 0) + Math.round(R.lights + stars * 20);
@@ -187,8 +190,9 @@ function stageClear(R) {
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
-  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
-  if (!R.stageInfo.daily && !R.raceTime && !R.attract) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
+  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime && !R.rush) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
+  if (!R.stageInfo.daily && !R.raceTime && !R.attract && !R.rush) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
+  if (R.rush) { R.rush.time += R.stageT || 0; R.rush.lights += R.lights; R.rush.perfects += R.perfects; setTimeout(() => showRushCard(false), 650); return; }
   setTimeout(() => showStageCard(false), 650);
 }
 // What to try next, by what took your last heart.
@@ -275,10 +279,13 @@ function stagesHtml() {
     }
     h += `</div></li>`;
   }
+  { const rb = rushBosses(), bt = rushBest(rb.length);
+    h += `<li class="sec">Boss rush</li><li class="${rb.length >= 2 ? "" : "locked"}"><span><b>Every boss, back to back</b><small>${rb.length >= 2 ? `${rb.length} bosses · one set of hearts${bt ? ` · best ${bt.toFixed(1)} s` : ""}` : "Opens when you've beaten two bosses (stage 20)"}</small></span>${rb.length >= 2 ? `<button data-rush="1">Play</button>` : ""}</li>`; }
   h += `<li class="sec">Daily neighbour</li><li class="${d ? "won" : ""}"><span><b>${stageWaiting(0).replace(" waiting", d ? " got their light" : " waiting today")}</b><small>${d ? `${starText(d.stars || 0)} · ${d.time.toFixed(1)} s · race your ghost` : "The same stage for everyone today"}</small></span><button data-stage="0">${d ? "Again" : "Play"}</button></li>`;
   return h;
 }
 document.getElementById("shopList").addEventListener("click", e => {
+  if (e.target.closest("button[data-rush]")) { $("sheet").hidden = true; if (screen === "title") { $("titleScreen").classList.add("launch"); setTimeout(startRush, 200); } else startRush(); return; }
   const pb = e.target.closest("button[data-pick]"); if (!pb) return;
   mapPick = Number(pb.dataset.pick); $("shopList").innerHTML = stagesHtml();
 });
@@ -289,6 +296,7 @@ document.getElementById("shopList").addEventListener("click", e => {
 });
 document.getElementById("stNext").addEventListener("click", () => {
   const go = $("stNext").dataset.go;
+  if (go === "rush") { startRush(); return; }
   if (go === "dawn") { $("stageCard").hidden = true; showEnding(() => { run = null; showTitle(); }); return; }
   startStage(Number(go));
 });
@@ -296,6 +304,42 @@ document.getElementById("stRetry").addEventListener("click", () => run && startS
 document.getElementById("stStages").addEventListener("click", () => { $("stageCard").hidden = true; run = null; showTitle(); openSheet("stages"); });
 document.getElementById("stShare").addEventListener("click", stageShare);
 document.getElementById("stFromCp").addEventListener("click", () => { if (run && run.cp) startStage(run.stage, { cp: run.cp }); });
+
+// ---------- Boss rush: every boss you've beaten, back to back, on one set of hearts ----------
+// Opens once two bosses are down. Each boss you beat gives one heart back (up to three); your
+// best total time for each number of bosses is kept. No stars, ghosts or unlocks change here.
+const rushBosses = () => { const S = stageSave(), l = []; for (let n = 10; n <= STAGES_N; n += 10) if (S.best[n] && S.best[n].stars) l.push(n); return l; };
+const rushBest = k => ((save.rush || {}).best || {})[k] || 0;
+function startRush() {
+  const list = rushBosses(); if (list.length < 2) return;
+  $("stageCard").hidden = true;
+  startStage(list[0], { rush: { list, i: 0, hearts: 3, time: 0, lights: 0, perfects: 0 } });
+}
+function rushCleared(R) {
+  const Q = R.rush; Q.time += R.stageTime; Q.lights += R.lights; Q.perfects += R.perfects; Q.i++; Q.hearts = Math.max(R.hearts, Math.min(3, R.hearts + 1));
+  sfx.unlock(); buzz([20, 40, 20]);
+  if (Q.i >= Q.list.length) { runMsg("Every boss down!", `${Q.time.toFixed(1)} s`, 2.4, true); setTimeout(() => { if (run === R) showRushCard(true); }, 1300); return; }
+  runMsg(`Boss down! ${Q.i} of ${Q.list.length}`, Q.hearts > R.hearts ? "+1 heart · next boss coming" : "Next boss coming", 1.8, true);
+  setTimeout(() => { if (run === R && screen === "run") startStage(Q.list[Q.i], { rush: Q }); }, 1700);
+}
+function showRushCard(won) {
+  const R = run; if (!R || !R.rush) return;
+  const Q = R.rush, n = Q.list.length, el = $("stageCard"), best = rushBest(n);
+  let newBest = false, gift = 0;
+  if (won) { save.rush = save.rush || { best: {} }; save.rush.best = save.rush.best || {}; if (!best || Q.time < best) { save.rush.best[n] = Q.time; newBest = true; } }
+  gift = Q.i * 20 + Q.lights; save.glow = (save.glow || 0) + gift; save.rush = save.rush || { best: {} }; save.rush.most = Math.max(save.rush.most || 0, Q.i); persist();
+  $("stTitle").textContent = "Boss rush";
+  $("stBadge").textContent = won ? (newBest ? "New best" : "") : `${Q.i} of ${n}`;
+  $("stStars").innerHTML = Q.list.map((b, q) => `<span class="${q < Q.i ? "" : "off"}">★</span>`).join(""); $("stStars").classList.toggle("lost", !won);
+  { const pe = $("stPerson"); pe.hidden = false; pe.innerHTML = won ? `<b>All ${n} bosses beaten in a row.</b><span>“The Hush has nowhere left to hide.”</span><small>+${gift} ✦</small>` : `<b>${BOSSES[Math.min(5, Math.floor((Q.list[Q.i] - 1) / 10))][0]} stopped you.</b><span>${Q.i} of ${n} bosses beaten</span><small>+${gift} ✦</small>`; }
+  el.hidden = false;
+  $("stTime").textContent = won ? Q.time.toFixed(1) : "–"; $("stLights").textContent = String(Q.lights); $("stPerf").textContent = String(Q.perfects);
+  $("stNote").textContent = won ? (newBest && best ? `${(best - Q.time).toFixed(1)} s faster than your best` : best ? `Your best: ${best.toFixed(1)} s` : "Your first full boss rush!") : best ? `Your best for all ${n}: ${best.toFixed(1)} s` : "Each boss you beat gives a heart back.";
+  const next = $("stNext"); next.textContent = "Again"; next.dataset.go = "rush";
+  $("stRetry").hidden = true; $("stShare").hidden = true; { const cb = $("stFromCp"); if (cb) cb.hidden = true; }
+  if (won) sfx.star(2);
+  runHud();
+}
 
 // What's new on a stage: a short line the first time something appears.
 const STAGE_NEW = { 11: ["The Markets", "Lantern strings sway in the breeze: time your grab"], 21: ["The Harbour", "Fall in the water and you splash: it slows you down"], 31: ["The Arcade", "Neon pads on the rooftops bounce you sky-high"], 41: ["The Park", "Grab the glowing treetops for low, fast swings"], 51: ["The Tower", "Updrafts between the towers lift you up"], 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"] };

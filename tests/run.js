@@ -268,6 +268,25 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       });
       for (const [k, v] of Object.entries(cp)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     }
+    // Boss rush: every boss you've beaten, back to back, on one set of hearts.
+    {
+      const br = await page.evaluate(async () => {
+        const o = {}, S = stageSave(); S.unlocked = 60; for (let n = 10; n <= 60; n += 10) delete S.best[n]; S.best[10] = { stars: 1, time: 40 };
+        showTitle(); openSheet("stages"); o.bossRushIsShutWithOneBoss = !document.querySelector("button[data-rush]");
+        S.best[20] = { stars: 2, time: 45 }; openSheet("stages"); o.bossRushOpensWithTwoBosses = !!document.querySelector("button[data-rush]");
+        const best = JSON.stringify(S.best), att = JSON.stringify(S.att || {}); $("sheet").hidden = true; startRush(); let R = run;
+        o.bossRushStartsAtTheFirstBoss = R.stage === 10 && R.rush && R.hearts === 3;
+        for (let q = 0; q < 60 * 120 && !R.cleared; q++) { runnerAuto(); R.inv = 1; if (q === 60) R.hearts = 1; runUpdate(1 / 60); }
+        await new Promise(r => setTimeout(r, 1900)); const R2 = run;
+        o.beatingABossGivesOneHeartBack = R2 !== R && R2.stage === 20 && R2.hearts === 2 && R2.rush.i === 1;
+        R2.inv = 0; R2.hearts = 1; swingHit(R2, "Drone!"); await new Promise(r => setTimeout(r, 900));
+        o.losingShowsTheBossRushCard = !$("stageCard").hidden && $("stTitle").textContent === "Boss rush" && $("stBadge").textContent === "1 of 2" && $("stNext").dataset.go === "rush";
+        o.bossRushLeavesStageRecordsAlone = JSON.stringify(S.best) === best && JSON.stringify(S.att || {}) === att && !(S.fails || {})[20];
+        $("stNext").click(); o.againStartsANewRush = run && run.rush && run.rush.i === 0 && run.stage === 10 && $("stageCard").hidden;
+        run = null; showTitle(); return o;
+      });
+      for (const [k, v] of Object.entries(br)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    }
     // Progress survives a reload (the swing game's saves used to be dropped by the loader).
     await page.evaluate(() => { stageSave().unlocked = 7; save.city = { lit: 12 }; persist(); });
     await page.reload(); await page.waitForTimeout(800);
