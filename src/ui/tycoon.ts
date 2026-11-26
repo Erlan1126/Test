@@ -1017,7 +1017,14 @@ export class TycoonUI {
     if (s.cafe.terrace === 0 && s.cafe.starter && s.cafe.moved) {
       // (City first: the terrace is the player's first build, with a builder and a timer.)
       const job = buildOf(s, "terrace", "");
-      if (job) return { text: t("☕ Building the café terrace…"), sub: t("{t} left · tap to finish now for 💎{n}", { t: fmtLeft(job.end - Date.now()), n: finishPrice(job.end - Date.now()) }), pct: (Date.now() - job.start) / Math.max(1, job.end - job.start), tone: "grow", act: () => this.finishBuild("terrace") };
+      // (The terrace takes 20 s and a new player has no crystals yet: a tap on the pill, which
+      // has been selling coffee until now, keeps selling coffee while it builds, instead of
+      // opening the crystal shop in the middle of the first minutes.)
+      if (job) {
+        const left = job.end - Date.now(), price = finishPrice(left), canFinish = s.crystals >= price;
+        return { text: t("☕ Building the café terrace…"), sub: canFinish ? t("{t} left · tap to finish now for 💎{n}", { t: fmtLeft(left), n: price }) : t("{t} left · tap the Coffee Cart to sell", { t: fmtLeft(left) }), pct: (Date.now() - job.start) / Math.max(1, job.end - job.start), tone: "grow",
+          act: canFinish ? () => this.finishBuild("terrace") : () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
+      }
       // (Saving up for it: keep selling coffee, and the pill sells one each tap too.)
       if (HAS_CITY && s.tycoon.coins < TERRACE_PRICE) return { text: t("Sell coffee to save {n} for a café terrace", { n: coins(TERRACE_PRICE) }), sub: t("{have} of {n} · tap the Coffee Cart to sell", { have: coins(s.tycoon.coins), n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "save", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
       if (HAS_CITY) return { text: t("Build a café terrace"), sub: t("Your neighbor would like to sit down · {n}", { n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "grow", act: () => { this.startCityBuild("terrace"); } };
@@ -1334,6 +1341,8 @@ export class TycoonUI {
     // (The money bar's bottom edge, measured: on a small phone it reaches further down, and no
     // bubble may sit on it.)
     const hudBottom = Math.max(118, this.hudBottom() + 8);
+    // (Where an open building card starts: its own bubble steps aside rather than peek out.)
+    const card = $("tcy-card"), cardTop = card.hidden ? Infinity : card.getBoundingClientRect().top || Infinity;
     const nowMs = Date.now();
     for (const it of items) {
       const end = it.tag.dataset.end;
@@ -1344,7 +1353,7 @@ export class TycoonUI {
     // With a building's card open, only its own bubble stays: the rest step aside, so
     // nothing piles up round the building the camera is looking at.
     const focus = !!(this.selected || this.selectedProp || this.selectedSight);
-    for (const it of items) it.tag.classList.toggle("tag-off", focus && !it.tag.classList.contains("sel"));
+    for (const it of items) if (!it.tag.classList.contains("sel")) it.tag.classList.toggle("tag-off", focus);
     // Front buildings keep their spot; a bubble that would sit on another moves up a little.
     items.sort((a, b) => b.base - a.base);
     // (Spaced by each bubble's own height, so the small pins stack close, not in a tall column.)
@@ -1376,6 +1385,9 @@ export class TycoonUI {
       // A bubble that stays (the first building's caption, the selected one) never covers the
       // money bar: it slides down under it, still right over its building.
       if (keep) it.y = Math.max(it.y, hudBottom + it.h);
+      // (On a short screen the building's own bubble can end up half under its open card:
+      // it steps aside instead of peeking out from behind it.)
+      if (it.tag.classList.contains("sel")) it.tag.classList.toggle("tag-off", focus && it.y > cardTop + 4);
       if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";

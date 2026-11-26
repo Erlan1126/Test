@@ -2165,6 +2165,7 @@ export const FR: Record<string, string> = {
   "Your city is saved online": "Ta ville est sauvegardée en ligne",
   "your city": "ta ville",
   "{have} of {n} · tap the Coffee Cart to sell": "{have} sur {n} · touche le Chariot à café pour vendre",
+  "{t} left · tap the Coffee Cart to sell": "Encore {t} · touche le Chariot à café pour vendre",
   "{n} of {total} designs found · build and upgrade homes to find more": "{n} modèles trouvés sur {total} · construis et améliore des maisons pour en trouver d'autres",
   "❄️ Winter Lights is here! Snow, string lights, and a giant holiday tree to win in Goals ({n} days)": "❄️ Lumières d'hiver est là ! De la neige, des guirlandes lumineuses et un sapin géant à gagner dans Objectifs ({n} jours)",
   "🏆 Trophy: {name}! {text}": "🏆 Trophée : {name} ! {text}",

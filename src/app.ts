@@ -465,11 +465,14 @@ export class App implements DailyHost {
 
   /** The Android back button: closes what's open, pauses, or steps back to the menu.
    *  Returns false on the main menu, where the app goes to the background. */
-  /** Nothing else is up: no splash, sheet, Pip, welcome-back card, celebration or level-up. */
+  /** Nothing else is up: no splash, sheet, Pip, welcome-back card, celebration, level-up or building card. */
   private calm(): boolean {
     return this.state === "menu" && this.startupShown && !document.getElementById("splash") && !openModalEl() && !this.moving && !this.visiting
       && !document.querySelector(".modal:not([hidden]), .overlay:not([hidden]), #evolve:not([hidden])")
-      && $("mayor").hidden && $("welcome").hidden && $("levelup").hidden && $("starter").hidden && $("rewards").hidden;
+      && $("mayor").hidden && $("welcome").hidden && $("levelup").hidden && $("starter").hidden && $("rewards").hidden
+      // (Nor a building's card: hiring the first manager used to bring the daily calendar up
+      // over the card, hiding the moment the manager starts selling.)
+      && (!this.tycoon.inCity || $("tcy-card").hidden);
   }
   private popups: { key: string; run: () => void }[] = [];
   private popTimer = 0;
