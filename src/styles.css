@@ -4701,3 +4701,6 @@ body.tabs-open #profile .stat-grid { gap: 10px !important; margin: 0 !important;
    without changing how they look. */
 #tcy-labels .tag.bub:is(.prop-up, .hall-bub, .lease)::before, #tycity #tcy-top .tcy-help::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; }
 #tycity #tcy-top .tcy-help { position: relative; }
+/* (On a 568 px screen, in longer languages, "While you were away" ran off the top and cut
+   Pip's face: the town line, which the City Hall goals also show, gives way there.) */
+@media (max-height: 600px) { #welcome .welcome-town { display: none; } }
