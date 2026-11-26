@@ -28,7 +28,7 @@ import { FEATURE_LEVEL, FEATURE_NAMES, isNew, isOpen, openedBetween, type Featur
 import { FEATURE_ICON, FEATURE_TEXT } from "./data/levels";
 import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayKey, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
-import { loadSave, normalize, SAVE_KEY, writeSave, writeSaveChecked, type SaveData } from "./logic/save";
+import { backupIsAhead, loadSave, normalize, SAVE_KEY, writeSave, writeSaveChecked, type SaveData } from "./logic/save";
 import { creditDurably } from "./logic/purchase-flow";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { FEVER_AT, FEVER_FLOORS, POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
@@ -429,8 +429,9 @@ export class App implements DailyHost {
     const json = await readBackup();
     if (!json) { if (isNative()) this.persist(); return; }
     try {
-      const backup = JSON.parse(json) as { profile?: { towers?: number } };
-      if ((backup.profile?.towers ?? 0) > this.save.profile.towers) {
+      // (Not by towers alone: Buildaroo players build none, so a cleared web copy never came
+      // back from the backup and the city started over.)
+      if (backupIsAhead(JSON.parse(json), this.save)) {
         this.reloading = true;
         clearTimeout(this.backupTimer);
         clearTimeout(this.cloudTimer);

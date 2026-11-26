@@ -567,6 +567,18 @@ export function loadSave(storage: Pick<Storage, "getItem"> | null): SaveData {
   return migrateLegacy(get) ?? defaultSave();
 }
 
+/** The phone's native backup of the save holds more progress than the save the web view
+ *  loaded (the system cleared the web copy): towers for the tower game, and the company's
+ *  lifetime earnings for the city game, whose players build no towers. */
+export function backupIsAhead(backup: unknown, current: SaveData): boolean {
+  if (!backup || typeof backup !== "object") return false;
+  const b = backup as { profile?: { towers?: unknown }; tycoon?: { lifetime?: unknown } };
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const towers = num(b.profile?.towers), lifetime = num(b.tycoon?.lifetime);
+  if (towers !== current.profile.towers) return towers > current.profile.towers;
+  return lifetime > (current.tycoon?.lifetime ?? 0);
+}
+
 export function writeSave(storage: Pick<Storage, "setItem"> | null, save: SaveData): void {
   try { storage?.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage full or blocked */ }
 }
