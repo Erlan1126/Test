@@ -46,7 +46,7 @@ Code work this package found:
   (Apple counts a game-assigned id as identifying), and add Gameplay Content and Purchase
   History, which the cloud backup stores. The old "not linked" answers would have been an
   under-declaration.
-- The Skyrise listing no longer describes Skyhaven Inc. businesses, advisors or cash boosts,
+- The Skyrise listing no longer describes the old businesses, advisors or cash boosts,
   which PR #29 removed from Skyrise. Its old files (`app-store.md`, `google-play.md`,
   `google-play-es.md` and the screenshot folders) are replaced by `store/skyrise/`.
 - The age rating answers follow Apple's current questionnaire (In-App Controls,

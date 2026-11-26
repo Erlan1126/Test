@@ -5,8 +5,8 @@ tower-stacking game (`npm run build:skyrise`). It replaces the older Skyrise fil
 `launch/stores/` (`app-store.md`, `google-play.md`, `google-play-es.md`), which described
 Skyrise when it still had Buildaroo's business city.
 
-The game text matches the Skyrise build after PR #29 (tower story with Mayor Pip, no city
-business screens). Age rating and privacy answers: `../RATINGS-AND-PRIVACY.md`.
+The game text matches the Skyrise build after PR #29 (Zephyr the swift, the city of
+Cloudreach, sky layers, no city business screens). Age rating and privacy answers: `../RATINGS-AND-PRIVACY.md`.
 
 **App ids (confirmed 2026-11-26 by the Skyrise app-split work, branch `skyrise-app`):**
 
@@ -104,8 +104,8 @@ Skyrise build.
 |---|---|---|
 | 1 | Tap to drop. Stack to the sky. | Perfect drops keep your tower wide |
 | 2 | Race past real landmarks | From Big Ben to the Burj Khalifa |
-| 3 | Grow your sky city | Every tower brings new people home |
-| 4 | Mayor Pip's tower story | Six chapters, from meadow to capital |
+| 3 | Grow your sky city | Every tower brings new people to Cloudreach |
+| 4 | Fly with Zephyr | Six chapters, from meadow to capital |
 | 5 | 53 tower skins to collect | Glass, neon, candy, crystal and more |
 | 6 | A journey to the clouds | 60 stages from Downtown to Cloud City |
 
@@ -120,7 +120,7 @@ the description is the full description.
 
 - **Subtitle:** Stack floors. Touch the sky.
 - **Google Play short description:** Tap to drop each floor, stack the tallest tower and race past real landmarks!
-- **Promotional text (170 max):** Mayor Pip needs a skyline! Stack towers, welcome new people to Skyhaven and climb past the Eiffel Tower, Taipei 101 and the Burj Khalifa.
+- **Promotional text (170 max):** Fly with Zephyr the swift! Stack towers through the Cloud Sea and the Jet Stream up to the Starfield, and grow Cloudreach into the capital of the sky.
 - **Keywords (100 max):** `tower,stack,stacker,skyscraper,building,tap,timing,arcade,casual,blocks,landmarks,city,zen,relaxing`
 - **Description:**
 
@@ -135,8 +135,11 @@ the description is the full description.
 > SPECIAL FLOORS
 > Golden penthouses pay five times as much when you place them perfectly. Icy floors slide fast but hold more people. Garden terraces drift slowly and widen your tower again.
 >
-> GROW SKYHAVEN
-> Every tower brings new people home to your floating city. Follow Mayor Pip's story through six chapters, from a quiet meadow to the capital of the sky, and unlock new islands: snowy peaks, a desert oasis, cherry blossoms, a volcano and a candy island.
+> CLIMB THROUGH THE SKY
+> Your tower rises through five layers of sky: Meadow Air, the Cloud Sea, the Jet Stream, Twilight and the Starfield. The sky changes colour as you climb, and your highest layer shows on your profile.
+>
+> GROW CLOUDREACH
+> Every tower brings new people home to your floating city. Fly with Zephyr, a cheerful swift in an aviator cap, through six chapters, from a quiet meadow to the capital of the sky, and unlock new islands: snowy peaks, a desert oasis, cherry blossoms, a volcano and a candy island.
 >
 > SOMETHING NEW EVERY DAY
 > A daily tower that's the same for everyone, three missions with a reward chest, a daily gift streak, weekly events and a monthly Sky Pass.
@@ -151,7 +154,7 @@ the description is the full description.
 - **Name:** Skyrise: Torre al Cielo
 - **Subtitle:** Apila pisos. Toca el cielo.
 - **Google Play:** ¡Toca para soltar cada piso, construye la torre más alta y supera monumentos!
-- **Promotional text:** ¡El alcalde Pip necesita un horizonte! Apila torres, da la bienvenida a gente nueva en Skyhaven y supera la Torre Eiffel, Taipei 101 y el Burj Khalifa.
+- **Promotional text:** ¡Vuela con Zephyr, el vencejo! Apila torres por el Mar de Nubes y la Corriente en Chorro hasta el Campo de Estrellas, y haz de Cloudreach la capital del cielo.
 - **Keywords:** `torre,apilar,rascacielos,edificio,construir,tocar,arcade,casual,bloques,monumentos,ciudad,zen`
 - **Description:**
 
@@ -166,8 +169,11 @@ the description is the full description.
 > PISOS ESPECIALES
 > Los penthouses dorados pagan cinco veces más si los colocas perfecto. Los pisos de hielo se deslizan rápido pero caben más personas. Las terrazas jardín van lento y vuelven a ensanchar tu torre.
 >
-> HAZ CRECER SKYHAVEN
-> Cada torre trae gente nueva a tu ciudad flotante. Sigue la historia del alcalde Pip en seis capítulos, de un prado tranquilo a la capital del cielo, y desbloquea islas nuevas: montañas nevadas, un oasis, cerezos en flor, un volcán y una isla de dulces.
+> SUBE POR EL CIELO
+> Tu torre atraviesa cinco capas de cielo: Aire de Pradera, Mar de Nubes, Corriente en Chorro, Crepúsculo y Campo de Estrellas. El cielo cambia de color mientras subes, y tu capa más alta aparece en tu perfil.
+>
+> HAZ CRECER CLOUDREACH
+> Cada torre trae gente nueva a tu ciudad flotante. Vuela con Zephyr, un vencejo alegre con gorro de aviador, en seis capítulos, de un prado tranquilo a la capital del cielo, y desbloquea islas nuevas: montañas nevadas, un oasis, cerezos en flor, un volcán y una isla de dulces.
 >
 > ALGO NUEVO CADA DÍA
 > Una torre diaria igual para todos, tres misiones con cofre de premios, una racha de regalos diarios, eventos semanales y un Pase del cielo cada mes.
@@ -182,7 +188,7 @@ the description is the full description.
 - **Name:** Skyrise: Torre ao Céu
 - **Subtitle:** Empilhe andares até o céu
 - **Google Play:** Toque para soltar cada andar, empilhe a torre mais alta e passe de monumentos!
-- **Promotional text:** O prefeito Pip precisa de um horizonte! Empilhe torres, receba gente nova em Skyhaven e passe da Torre Eiffel, do Taipei 101 e do Burj Khalifa.
+- **Promotional text:** Voe com Zephyr, o andorinhão! Empilhe torres pelo Mar de Nuvens e pela Corrente de Jato até o Campo de Estrelas, e faça de Cloudreach a capital do céu.
 - **Keywords:** `torre,empilhar,arranha-céu,prédio,construir,tocar,arcade,casual,blocos,monumentos,cidade,zen`
 - **Description:**
 
@@ -197,8 +203,11 @@ the description is the full description.
 > ANDARES ESPECIAIS
 > Coberturas douradas pagam cinco vezes mais quando encaixadas com perfeição. Andares de gelo deslizam rápido, mas cabem mais pessoas. Terraços-jardim vão devagar e alargam sua torre de novo.
 >
-> FAÇA SKYHAVEN CRESCER
-> Cada torre traz gente nova para sua cidade flutuante. Siga a história do prefeito Pip em seis capítulos, de um campo tranquilo à capital do céu, e desbloqueie novas ilhas: picos nevados, um oásis, cerejeiras, um vulcão e uma ilha de doces.
+> SUBA PELO CÉU
+> Sua torre atravessa cinco camadas de céu: Ar do Campo, Mar de Nuvens, Corrente de Jato, Crepúsculo e Campo de Estrelas. O céu muda de cor enquanto você sobe, e sua camada mais alta aparece no seu perfil.
+>
+> FAÇA CLOUDREACH CRESCER
+> Cada torre traz gente nova para sua cidade flutuante. Voe com Zephyr, um andorinhão alegre de gorro de aviador, em seis capítulos, de um campo tranquilo à capital do céu, e desbloqueie novas ilhas: picos nevados, um oásis, cerejeiras, um vulcão e uma ilha de doces.
 >
 > ALGO NOVO TODO DIA
 > Uma torre diária igual para todos, três missões com baú de prêmios, uma sequência de presentes diários, eventos semanais e um Passe do céu todo mês.
@@ -213,7 +222,7 @@ the description is the full description.
 - **Name:** Skyrise : Tour vers le ciel
 - **Subtitle:** Empile les étages, vise haut
 - **Google Play:** Lâche chaque étage au bon moment et bâtis la plus haute tour du monde !
-- **Promotional text:** Le maire Pip veut une skyline ! Empile des tours, accueille de nouveaux habitants à Skyhaven et dépasse la tour Eiffel, Taipei 101 et le Burj Khalifa.
+- **Promotional text:** Vole avec Zephyr le martinet ! Empile des tours à travers la Mer de Nuages et le Courant-Jet jusqu'au Champ d'Étoiles, et fais de Cloudreach la capitale du ciel.
 - **Keywords:** `tour,empiler,gratte-ciel,immeuble,construire,toucher,arcade,casual,blocs,monuments,ville,zen,détente`
 - **Description:**
 
@@ -228,8 +237,11 @@ the description is the full description.
 > ÉTAGES SPÉCIAUX
 > Les penthouses dorés rapportent cinq fois plus s'ils sont posés parfaitement. Les étages de glace glissent vite mais accueillent plus de monde. Les terrasses jardin avancent lentement et élargissent à nouveau ta tour.
 >
-> FAIS GRANDIR SKYHAVEN
-> Chaque tour amène de nouveaux habitants dans ta ville flottante. Suis l'histoire du maire Pip en six chapitres, d'une prairie tranquille à la capitale du ciel, et débloque de nouvelles îles : sommets enneigés, oasis, cerisiers en fleurs, volcan et île en bonbons.
+> TRAVERSE LE CIEL
+> Ta tour traverse cinq couches de ciel : Air des Prés, Mer de Nuages, Courant-Jet, Crépuscule et Champ d'Étoiles. Le ciel change de couleur pendant que tu montes, et ta couche la plus haute s'affiche sur ton profil.
+>
+> FAIS GRANDIR CLOUDREACH
+> Chaque tour amène de nouveaux habitants dans ta ville flottante. Vole avec Zephyr, un martinet joyeux coiffé d'un casque d'aviateur, en six chapitres, d'une prairie tranquille à la capitale du ciel, et débloque de nouvelles îles : sommets enneigés, oasis, cerisiers en fleurs, volcan et île en bonbons.
 >
 > DU NOUVEAU CHAQUE JOUR
 > Une tour du jour identique pour tous, trois missions avec un coffre, une série de cadeaux quotidiens, des événements chaque semaine et un Pass du ciel chaque mois.
@@ -244,7 +256,7 @@ the description is the full description.
 - **Name:** Skyrise: Turm in den Himmel
 - **Subtitle:** Stapeln bis in den Himmel
 - **Google Play:** Tippe, um jedes Stockwerk fallen zu lassen, und baue den höchsten Turm der Welt!
-- **Promotional text:** Bürgermeister Pip braucht eine Skyline! Stapel Türme, begrüße neue Bewohner in Skyhaven und zieh am Eiffelturm, Taipei 101 und Burj Khalifa vorbei.
+- **Promotional text:** Flieg mit Zephyr, dem Mauersegler! Stapel Türme durch Wolkenmeer und Jetstream bis ins Sternenfeld und mach Cloudreach zur Hauptstadt des Himmels.
 - **Keywords:** `turm,stapeln,wolkenkratzer,hochhaus,bauen,tippen,arcade,casual,blöcke,wahrzeichen,stadt,zen`
 - **Description:**
 
@@ -259,8 +271,11 @@ the description is the full description.
 > BESONDERE STOCKWERKE
 > Goldene Penthäuser bringen das Fünffache, wenn du sie perfekt setzt. Eisetagen gleiten schnell, fassen aber mehr Menschen. Gartenterrassen sind langsam und machen deinen Turm wieder breiter.
 >
-> LASS SKYHAVEN WACHSEN
-> Jeder Turm bringt neue Bewohner in deine schwebende Stadt. Folge Bürgermeister Pips Geschichte durch sechs Kapitel, von der stillen Wiese bis zur Hauptstadt des Himmels, und schalte neue Inseln frei: Schneegipfel, eine Oase, Kirschblüten, einen Vulkan und eine Süßigkeiteninsel.
+> DURCH DEN HIMMEL
+> Dein Turm wächst durch fünf Himmelsschichten: Wiesenluft, Wolkenmeer, Jetstream, Dämmerung und Sternenfeld. Der Himmel ändert beim Klettern seine Farbe, und deine höchste Schicht steht in deinem Profil.
+>
+> LASS CLOUDREACH WACHSEN
+> Jeder Turm bringt neue Bewohner in deine schwebende Stadt. Flieg mit Zephyr, einem fröhlichen Mauersegler mit Fliegerkappe, durch sechs Kapitel, von der stillen Wiese bis zur Hauptstadt des Himmels, und schalte neue Inseln frei: Schneegipfel, eine Oase, Kirschblüten, einen Vulkan und eine Süßigkeiteninsel.
 >
 > JEDEN TAG ETWAS NEUES
 > Ein Tagesturm, der für alle gleich ist, drei Missionen mit Belohnungstruhe, eine tägliche Geschenkserie, wöchentliche Events und jeden Monat ein Himmelspass.
@@ -274,7 +289,7 @@ the description is the full description.
 
 ## 8. What's new
 
-- **Google Play 1.0 release notes:** `Welcome to Skyrise! Tap to drop, stack to the sky and follow Mayor Pip's story from a quiet meadow to the capital of the sky. Thanks for playing our first release.`
+- **Google Play 1.0 release notes:** `Welcome to Skyrise! Tap to drop, stack to the sky and fly with Zephyr the swift from Meadow Air to the Starfield. Thanks for playing our first release.`
 - **Later updates:** one line per change, biggest first, in players' words.
 
 ## 9. Google Play setup
