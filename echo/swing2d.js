@@ -320,7 +320,12 @@ const SW2D = (() => {
       if (a.kind === "balloon" && !below) { ctx.fillStyle = ["#ff5a6e", "#ffbe3c", "#5ac8ff", "#aa78ff"][a.id % 4]; ctx.beginPath(); ctx.ellipse(x, y - 2.8 * s, 1.3 * s, 1.6 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 1.2 * s); ctx.lineTo(x, y); ctx.stroke(); }
       ctx.globalCompositeOperation = "lighter"; const gsz = (hot ? 3.4 : 2.4) * s * (1 + beat * 0.22); ctx.drawImage(glow(col), x - gsz / 2, y - gsz / 2, gsz, gsz); ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 0.38 * s, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = css(col); ctx.globalAlpha = (a.broken ? 0.5 : 1) * (hot ? 0.95 : 0.45); ctx.lineWidth = hot ? 2.5 : 1.5; ctx.beginPath(); ctx.arc(x, y, (hot ? 1 + 0.12 * Math.sin(t * 8) : 0.85) * s, 0, Math.PI * 2); ctx.stroke();
+      // Each special light also has its own shape, not just its colour (for colour-blind players, and
+      // so a light that matches your own glow colour still reads): crumbling = broken ring, gold = diamond,
+      // drifting = double ring, spring = coils (below).
+      ctx.strokeStyle = css(col); ctx.globalAlpha = (a.broken ? 0.5 : 1) * (hot ? 0.95 : a.type === "crumble" ? 0.8 : 0.45); ctx.lineWidth = hot ? 2.5 : a.type === "crumble" ? 2 : 1.5; if (a.type === "crumble") ctx.setLineDash([0.32 * s, 0.26 * s]); ctx.beginPath(); ctx.arc(x, y, (hot ? 1 + 0.12 * Math.sin(t * 8) : 0.85) * s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      if (a.type === "gold") { const d = 0.78 * s; ctx.lineWidth = 2; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.closePath(); ctx.stroke(); }
+      else if (a.type === "drift") { ctx.lineWidth = 1.2; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.arc(x, y, 1.22 * s, 0, Math.PI * 2); ctx.stroke(); }
       ctx.globalAlpha = a.broken ? 0.5 : 1;
       if (a.type === "crumble" && a === R.teth) { ctx.strokeStyle = "#3a1408"; ctx.lineWidth = 2; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(q * 2.1) * 0.4 * s, y + Math.sin(q * 2.1) * 0.4 * s); ctx.stroke(); } }
       if (a.type === "spring") { ctx.strokeStyle = "#8dff6a"; ctx.lineWidth = 2; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.ellipse(x, y + (0.7 + q * 0.3) * s, 0.35 * s, 0.1 * s, 0, 0, Math.PI * 2); ctx.stroke(); } }
@@ -492,7 +497,7 @@ const SW2D = (() => {
     if (gv != null) { ctx.globalAlpha = 0.45; ctx.drawImage(glow([159, 232, 255]), X(R.px + 6) - s, Y(gv + 1) - s, 2 * s, 2 * s); ctx.globalAlpha = 1; }
     // ---------- The darkness: a wall of shadow with smoke and violet lightning ----------
     const dx = X(R.darkX);
-    if (dx > -W * 0.2) {
+    if (dx > -W * 0.2 && !R.free) {
       const gr = ctx.createLinearGradient(dx - 3 * s, 0, dx + 2 * s, 0); gr.addColorStop(0, "rgba(6,2,16,0.97)"); gr.addColorStop(1, "rgba(16,6,36,0)");
       ctx.fillStyle = "rgba(6,2,16,0.97)"; ctx.fillRect(0, 0, Math.max(0, dx - 3 * s), H); ctx.fillStyle = gr; ctx.fillRect(Math.max(0, dx - 3 * s), 0, 5 * s, H);
       for (let q = 0; q < 7; q++) { const a = t * (0.4 + q * 0.05) + q, sz = (6 + Math.sin(a * 2) * 2) * s; ctx.drawImage(smoke, dx + Math.sin(a) * 2 * s - sz / 2, (q / 7) * H + Math.cos(a * 1.3) * 2 * s - sz / 2, sz, sz); }

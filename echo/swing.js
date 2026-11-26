@@ -95,7 +95,8 @@ function runnerStart(R) {
   swingGen(R, 220);
   R.teth = a0; R.L = Math.hypot(R.px - a0.x, R.py - a0.y); R.hold = true;
   if (R.tut) R.tut = 1;
-  if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
+  if (R.free) runMsg("Free swing", "No dark, no hearts, no score · Pause to leave", 2.8, true);
+  else if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
 }
 
 // The six bosses: one per district, each with its own twist.
@@ -159,7 +160,7 @@ function swingGen(R, toX) {
       // Power-ups and the letter hunt, on the arc's low point.
       if (R.stageLen && ax > R.stageLen) continue;
       if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS).filter(k => !(R.stageLen && k === "comet")); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
-      else if (!R.attract && !R.tut && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
+      else if (!R.attract && !R.tut && !R.free && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
       // Drones patrol between some anchors later on.
       if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < (0.06 + hard * 0.12) * (R.stageInfo && R.stageInfo.boss ? 0.5 : 1)) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
     }
@@ -250,6 +251,9 @@ function swingHold(down) {
   R.hold = false; R.grabBuf = 0;
   if (!R.teth) return;
   const was = R.teth; R.teth = null; R.lastLet = was; R.snap = { x: was.x, y: was.y, t: 0 };
+  // Letting go a beat late, on the back-swing, used to fling you backwards at full speed, straight
+  // into the dark (playtests: the most common way slower players lost a stage). It now only drifts back.
+  if (R.vx < 0 && !R.attract) R.vx *= 0.35;
   // A spring anchor launches you on release.
   if (was.type === "spring") { R.vy = Math.max(R.vy, 0) + 10.5; R.vx += 3; if (!R.attract) { runBonus("Boing!", 0, R.dist + 2, R.x); sfx.jump(); } }
   // A Perfect: let go moving forward and up, fast.
@@ -310,6 +314,8 @@ function swingDash() {
 
 function swingHit(R, why) {
   if (R.inv > 0 || R.attract || R.cleared || R.over) { if (R.attract) R.inv = 1; return; }
+  // Free swing: nothing can hurt you. A bump still shows, so you learn what to avoid.
+  if (R.free) { R.inv = 1; R.combo = 0; R.shake = 0.4; if (why) runMsg(why === "Keep off the street!" ? "Bounce!" : why, "No hearts in Free swing", 1.1); swingFx(R, "hit", R.px, R.py + 1); sfx.land(); return; }
   R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5); R.hitsTaken = (R.hitsTaken || 0) + 1; R.lastWhy = why;
   if (R.power && R.power.kind === "shield") { R.power = null; R.inv = 1; R.flash = -0.6; runMsg("Shield!", "", 1.2); sfx.gate(); return; }
   if (why) runMsg(why, "", 1.4);
@@ -384,7 +390,7 @@ function runnerUpdate(dt) {
     if (b && R.py < b.h) {
       if (oy >= b.h - 0.25 || R.roof === b) {
         if (!R.roof && R.vy < -6) R.dust = { x: R.px, y: b.h, t: 0, k: Math.min(1, -R.vy / 20) };
-        if (!R.roof && !R.attract && !R.roofTip && !R.tut) { R.roofTip = true; runMsg("Tap to jump", "Then hold to grab the ringed light", 1.6); }
+        if (!R.roof && !R.attract && !R.roofTip && !R.tut) { R.roofTip = true; runMsg("Tap to jump", save.settings.tapMode ? "Then tap to grab the ringed light" : "Then hold to grab the ringed light", 1.6); }
         if (!R.roof && R.vy < -14) { R.kick = 0.4; if (!R.attract) sfx.land(); }
         if (!R.roof && R.vy < -8) swingFx(R, "land", R.px, b.h + 0.2);
         R.py = b.h; if (R.vy < 0) R.vy = 0; R.roof = b; R.teth = null; R.spinV = 0; R.dashes = 1;
@@ -424,6 +430,7 @@ function runnerUpdate(dt) {
   R.v = Math.hypot(R.vx, R.vy); R.speed = R.v * RUN.M;
   // Stages: the clock, your path (for ghosts), and the finish gate.
   if (R.stageLen) {
+    if (R.px > (R.pxHi || 0)) R.pxHi = R.px;   // progress shown is the furthest reached, so a swing back doesn't lower it
     if (!R.cleared) { R.stageT += dt; R.traceT += dt; while (R.traceT >= 0.1) { R.traceT -= 0.1; R.trace.push([R.px, R.py]); } }
     if (!R.cleared && !R.over && R.px >= R.stageLen) stageClear(R);
     // Passing your best: the moment you go further than ever on this stage.
@@ -442,9 +449,9 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * (1 - (R.assist || 0)) * dt;
+  if (!R.cleared && !R.free) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * (1 - (R.assist || 0)) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
-  if (R.px < R.darkX + 1 && !R.attract && !R.cleared) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
+  if (R.px < R.darkX + 1 && !R.attract && !R.cleared && !R.free) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
   for (const b of R.blds) if (b.litT >= 0) b.litT += dt;
   for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.attract) { runMission("free", R.lit); progressEvent("free"); if (!b.tree) sfx.clear(); } }
@@ -510,11 +517,11 @@ function runnerUpdate(dt) {
   }
   // The first run teaches by doing: let go, then hold.
   // Lesson 1: wait for the swing to come up, then let go (time slows right at that moment, and only then).
-  if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.35; R.tutText = "Let go now!"; } else { R.slow = 1; R.tutText = a ? "Wait for the swing up…" : ""; } }
+  if (R.tut === 1) { const a = R.teth; if (a && R.px > a.x + 1 && R.vy > 1) { R.slow = 0.35; R.tutText = save.settings.tapMode ? "Tap to let go now!" : "Let go now!"; } else { R.slow = 1; R.tutText = a ? "Wait for the swing up…" : ""; } }
   // Lesson 2: hold to grab the ringed light (slows while you fall, so there is time to read it).
-  else if (R.tut === 2) { R.tutText = R.teth ? "" : "Hold to grab the ringed light"; R.slow = !R.teth && R.vy < 0 ? 0.45 : 1; }
+  else if (R.tut === 2) { R.tutText = R.teth ? "" : save.settings.tapMode ? "Tap to grab the ringed light" : "Hold to grab the ringed light"; R.slow = !R.teth && R.vy < 0 ? 0.45 : 1; }
   // Lesson 3: keep holding to reel in (the rope shortens, you speed up), then let go.
-  else if (R.tut === 3) { R.slow = 1; R.tutText = R.teth ? (R.L > SWING.LMIN + 1 ? "Keep holding to reel in" : "Let go as you swing up!") : ""; }
+  else if (R.tut === 3) { R.slow = 1; R.tutText = R.teth ? (R.L > SWING.LMIN + 1 ? (save.settings.tapMode ? "Stay on to reel in" : "Keep holding to reel in") : save.settings.tapMode ? "Tap to let go as you swing up!" : "Let go as you swing up!") : ""; }
   else { R.slow = R.slowT > 0 ? 0.55 : 1; }
   R.slowT = Math.max(0, R.slowT - dt * 2);
   // Events: a light shower, a surge of darkness.

@@ -56,12 +56,12 @@ function nextToast() {
 function renderTitle() {
   const rs = runSave();
   { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; }
-  $("playSub").textContent = "Hold to swing, let go to fly";
+  $("playSub").textContent = save.settings.tapMode ? "Tap to swing, tap again to fly" : "Hold to swing, let go to fly";
   // Big numbers stay short in the top bar (12.3k), so it fits small phones.
   { const g = save.glow || 0; $("chipLights").querySelector("b").textContent = g >= 10000 ? `${(Math.floor(g / 100) / 10).toLocaleString()}k` : g.toLocaleString(); }
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
   { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : `${stagePerson(0)[0]} waits`; }
-  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Finish Downtown" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Night shift: light the city"; }
+  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Free swing" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Night shift: light the city"; }
   $("todayDot").hidden = calState().claimed;
   { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;
     const [who, line] = stagePerson(n); $("heroWhere").textContent = `${stageChapter(n)} · Stage ${n}${n % 10 === 0 ? " · Boss" : ""}`; $("heroWho").textContent = stageWaiting(n); $("heroLine").textContent = st ? `“${line}”` : "Their window is still dark. Bring the light home."; }
@@ -84,7 +84,8 @@ tap("stagesBtn", () => openSheet("stages"));
 tap("dailyRunBtn", () => { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(0), 200); });
 // The Night shift (endless) opens once Downtown is finished: the story comes first.
 function endlessOpen() { return !!(stageSave().best[10] && stageSave().best[10].stars) || (runSave().best || 0) > 0; }
-tap("hardBtn", () => { if (!endlessOpen()) { toast("Endless opens when Downtown is lit: finish stage 10"); return; } playNow({}); });
+// Until then its tile offers Free swing, so no tile on the home screen is a dead end.
+tap("hardBtn", () => { if (!endlessOpen()) { toast("Night shift opens at stage 10 · Free swing for now"); playNow({ free: true }); return; } playNow({}); });
 tap("todayBtn", openToday);
 tap("todayClose", () => { $("todayPanel").hidden = true; });
 tap("calClaim", () => { const n = calClaim(); if (n) { sfx.unlock(); buzz([10, 30, 10]); toast(`Daily gift · <b>+${n}</b> lights`, true); } renderToday2(); if (screen === "title") { const keep = $("todayPanel").hidden; renderTitle(); $("todayPanel").hidden = keep; } });
@@ -121,6 +122,9 @@ function renderSettings() {
   $("setVibrate").setAttribute("aria-pressed", String(!!st.vibrate));
   $("setFps").setAttribute("aria-pressed", String(!!st.fps));
   $("setCalm").setAttribute("aria-pressed", String(!!st.calm));
+  $("setTapMode").setAttribute("aria-pressed", String(!!st.tapMode));
+  $("setBig").setAttribute("aria-pressed", String(!!st.bigText));
+  $("setSpeed").textContent = `${Math.round((st.speed || 1) * 100)}%`;
   $("saveCode").value = "";
   $("aboutVersion").textContent = `· version ${GAME_VERSION}`;
   $("setReset").textContent = "Erase all progress";
@@ -135,6 +139,12 @@ $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
 tap("setCalm", () => { save.settings.calm = !save.settings.calm; persist(); renderSettings(); });
+tap("setTapMode", () => { save.settings.tapMode = !save.settings.tapMode; persist(); renderSettings(); });
+tap("setBig", () => { save.settings.bigText = !save.settings.bigText; persist(); renderSettings(); applyBigText(); });
+// Game speed: 100% → 85% → 70% → back. Everything in a run slows together, the dark included.
+tap("setSpeed", () => { const v = [1, 0.85, 0.7], i = v.indexOf(save.settings.speed || 1); save.settings.speed = v[(i + 1) % v.length]; persist(); renderSettings(); });
+function applyBigText() { document.body.classList.toggle("bigtext", !!save.settings.bigText); }
+applyBigText();
 tap("setFps", () => { save.settings.fps = !save.settings.fps; persist(); renderSettings(); $("fpsMeter").hidden = !save.settings.fps; });
 tap("copyCode", async () => {
   const code = saveCode(), box = $("saveCode");

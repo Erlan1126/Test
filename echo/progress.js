@@ -58,7 +58,7 @@ function dailyMissions() {
 }
 // Something happened in a run: count it toward today's missions and the achievements.
 function progressEvent(k, v = 1) {
-  if (run && run.attract) return;
+  if (run && (run.attract || run.free)) return;
   const dm = dailyMissions();
   for (const m of dm.list) {
     const def = DM_POOL[m.i];

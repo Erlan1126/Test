@@ -187,7 +187,7 @@ function stageClear(R) {
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
-  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(R.px / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
+  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
   if (!R.stageInfo.daily && !R.raceTime && !R.attract) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
   setTimeout(() => showStageCard(false), 650);
 }

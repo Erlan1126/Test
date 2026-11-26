@@ -175,6 +175,13 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       startStage(6); { const R = run; R.blds.length = 0; R.teth = null; R.roof = null; R.inv = 0; R.streetT = 0; R.power = null; R.py = 0.6; R.vy = -8; for (let q = 0; q < 3; q++) runUpdate(1 / 60); out.fromStageFiveTheStreetCostsAHeart = R.hearts === 2; }
       out.thePerfectWindowNarrowsInLaterStages = (() => { startStage(1); const a = perfectWindow(run); startStage(30); const b = perfectWindow(run); return b[0] > a[0] && b[1] < a[1] && b[2] > a[2]; })();
       out.aFastRunCanBeatPar = (() => { startStage(25); const R = run; for (let q = 0; q < 60 * 90 && !R.cleared; q++) { R.inv = 1e9; runnerAuto(); if (!R.teth && R.dashes > 0 && R.vy < 0 && !R.roof) swingDash(); runUpdate(1 / 60); } return R.cleared && R.stageTime < R.stageInfo.par; })();
+      // Playtest fixes, Free swing and accessibility.
+      out.aLateLetGoOnlyDriftsBack = (() => { startStage(5); const R = run; R.vx = -25; R.vy = 5; swingHold(false); return !R.teth && R.vx > -10 && R.vx < 0; })();
+      out.stageProgressShowsTheFurthestPoint = (() => { startStage(3); const R = run; R.pxHi = R.stageLen / 2; R.px = 10; runHud(); return /50%/.test(document.getElementById("runMult").textContent); })();
+      out.noMissionPopUpsInTheFirstStages = (() => { startStage(2); const r = save.run, before = JSON.stringify(r.missions); runMission("free", 1e9); runMission("trail", 1e9); return JSON.stringify(r.missions) === before && !run.msgs.some(m => /Mission/.test(m.text)); })();
+      out.freeSwingCantBeLost = (() => { startRun({ free: true }); const R = run, dm = JSON.stringify(dailyMissions()); for (let q = 0; q < 60 * 20; q++) { R.hold = false; R.teth = null; runUpdate(1 / 60); } swingHit(R, "Drone!"); R.inv = 0; swingHit(R, "Drone!"); runHud(); return R.free && R.hearts >= 3 && !R.over && JSON.stringify(dailyMissions()) === dm && document.getElementById("runMult").textContent === "Free swing" && !R.tut; })();
+      out.tapModeGrabsAndLetsGoWithTaps = (() => { save.settings.tapMode = true; startStage(2); const R = run, c = document.getElementById("runCanvas"), ev = t => c.dispatchEvent(new PointerEvent(t, { pointerId: 7, bubbles: true }));
+        const wasOn = !!R.teth; ev("pointerdown"); ev("pointerup"); const off = !R.teth; for (let q = 0; q < 90 && !R.teth; q++) { if (!R.hold && R.aimOk) { ev("pointerdown"); ev("pointerup"); } runUpdate(1 / 60); } const on = !!R.teth; save.settings.tapMode = false; return wasOn && off && on; })();
       out.threeStarsNeedParTime = stageInfo(20).par > 10 && stageInfo(20).par < stageInfo(20).len / 20;
       save.settings.fps = true; run.paused = false; for (let q = 0; q < 40; q++) paceTick(0.016); out.theFpsCounterShows = !document.getElementById("fpsMeter").hidden; save.settings.fps = false; document.getElementById("fpsMeter").hidden = true;
       // Rings, Good releases, star rewards, wind.
@@ -290,7 +297,9 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       $("todayAwards").click(); out.awardsListEveryAward = $("shopTitle").textContent === "Awards" && document.querySelectorAll("#shopList li").length === RUN_ACHS.length;
       $("tabHome").click(); out.homeClosesTheSheets = $("sheet").hidden && $("todayPanel").hidden && on("titleScreen");
       // Settings.
-      $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 3;
+      $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 5 && !!$("setSpeed");
+      { const sp = $("setSpeed"); sp.click(); const a1 = sp.textContent; sp.click(); const a2 = sp.textContent; sp.click(); out.gameSpeedCyclesThroughThreeSpeeds = a1 === "85%" && a2 === "70%" && sp.textContent === "100%" && save.settings.speed === 1; }
+      { $("setBig").click(); const big = document.body.classList.contains("bigtext"); $("setBig").click(); out.largerTextTogglesOnAndOff = big && !document.body.classList.contains("bigtext"); }
       const c0 = !!save.settings.calm; $("setCalm").click(); out.reduceMotionToggles = save.settings.calm === !c0 && $("setCalm").getAttribute("aria-pressed") === String(!c0);
       $("setFps").click(); out.showFpsToggles = save.settings.fps === true && !$("fpsMeter").hidden; $("setFps").click();
       out.aboutShowsVersionAndPrivacy = $("aboutVersion").textContent.includes(GAME_VERSION) && /no tracking/i.test($("settingsScreen").textContent) && !!document.querySelector('#settingsScreen a[href^="mailto:"]') && !!document.querySelector('#settingsScreen a[href="lumen-rush-privacy.html"]');

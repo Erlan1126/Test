@@ -158,6 +158,15 @@
   .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
   .toggle[aria-pressed=true] { background: #4fc4ee; }
   .toggle[aria-pressed=true]::after { transform: translateX(22px); }
+  .lk-try { margin-top: 8px; padding: 7px 14px; border-radius: 99px; border: 1px solid rgba(139,233,255,0.45); background: rgba(139,233,255,0.1); color: #bff4ff; font: 700 13px/1 inherit; font-family: inherit; }
+  .chip-set { flex: none; min-width: 64px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; font: 700 14px/1 inherit; font-family: inherit; font-variant-numeric: tabular-nums; }
+  /* Larger text (Settings > Accessibility): the small print grows; nothing goes below 14 px. */
+  body.bigtext .set small, body.bigtext .hero-text span, body.bigtext .hero-text small, body.bigtext .home-meta, body.bigtext .tile small, body.bigtext .list2 li small, body.bigtext .sh-sub,
+  body.bigtext .ro-stats span, body.bigtext .ro-daily, body.bigtext .card2 .info, body.bigtext .about p, body.bigtext .pz-goals li, body.bigtext .st-person small, body.bigtext .home-best span,
+  body.bigtext #shopList .lk-tile small, body.bigtext .dist-head span, body.bigtext .season p, body.bigtext .cal div, body.bigtext .chip2 { font-size: 15px; }
+  body.bigtext .run-hud .sub { font-size: 16px; }
+  body.bigtext .st-person span, body.bigtext .ci-card p { font-size: 19px; }
+  body.bigtext .op-cap { font-size: 23px; }
   [hidden] { display: none !important; }
   .tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
   .backup { display: flex; flex-direction: column; gap: 8px; padding: 12px 2px; border-bottom: 1px solid rgba(126, 232, 255, 0.08); text-align: left; }
@@ -272,7 +281,7 @@
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
   .tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 10px 12px 11px; border-radius: 18px; border: 1px solid var(--edge); background: rgba(18,21,32,0.88); color: var(--txt); font: inherit; text-align: left; overflow: hidden; transition: transform 0.12s; }
   .tile:active { transform: scale(0.95); }
-  .tile.locked { opacity: 0.55; filter: grayscale(0.6); } .tile.locked b::after { content: " 🔒"; font-size: 11px; }
+  .tile.locked { opacity: 0.55; filter: grayscale(0.6); } #hardBtn.locked { opacity: 0.85; filter: grayscale(0.3); } .tile.locked b::after { content: " 🔒"; font-size: 11px; }
   .tile b { font-size: 15px; font-weight: 800; } .tile small { font-size: 11px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .tile-art { height: 34px; width: 100%; display: flex; align-items: flex-end; gap: 3px; margin-bottom: 6px; }
   .t-city { background: linear-gradient(180deg, rgba(255,190,100,0.16), rgba(18,21,32,0.9)); }
@@ -506,7 +515,7 @@
     <div class="stage-prog" id="stageProg" hidden><i id="stageProgFill"></i><em class="jbest" id="jBest" hidden>BEST</em><span class="jfig" id="jFig"></span><b class="jhome"></b><small class="jname" id="jName"></small></div><div class="hud-mid"><div class="score" id="runScore">0</div><div class="sub"><span class="hud-stars" id="runStars" hidden><i></i><i></i><i></i></span><span id="runLights">0</span><span id="runMult">×1</span><span id="runPower"></span></div><div class="flow" id="flowBar" hidden><i id="flowFill"></i><b id="flowDash"></b><span id="flowText">FLOW</span></div></div>
     <div class="hud-side right"><button class="icon2" id="runPauseBtn" aria-label="Pause"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></div>
   </div>
-  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="pz-who" id="pzWho"></p><ul class="pz-goals" id="pzGoals"></ul><p class="info">Hold to grab the ringed light · keep holding to reel in · let go to fly</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
+  <div class="card2 mid" id="runPause" hidden><h2>Paused</h2><p class="pz-who" id="pzWho"></p><ul class="pz-goals" id="pzGoals"></ul><p class="info" id="pzHow">Hold to grab the ringed light · keep holding to reel in · let go to fly</p><div class="row2"><button class="ghost" id="runQuit">Quit</button><button class="primary" id="runResume">Resume</button></div></div>
   <div class="card2 mid" id="runContinue" hidden><h2>Keep going?</h2><div class="ring" id="runContinueTime">5</div><p class="info">Spend lights to carry on</p><div class="row2"><button class="ghost" id="runContinueNo">Rest</button><button class="primary" id="runContinueGo"><svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.8 7.2L21 12l-7.2 1.8L12 21l-1.8-7.2L3 12l7.2-1.8z" fill="currentColor" stroke="none"/></svg> <span id="runContinueCost">25</span></button></div></div>
   <div class="card2 bottom" id="stageCard" hidden>
     <div class="ro-head"><span id="stTitle">Stage 1</span><span class="badge" id="stBadge"></span></div>
@@ -571,6 +580,11 @@
       <section class="set-group"><h3>Look &amp; comfort</h3>
       <div class="set"><label>Reduce motion<small>No screen shake, flashes or speed streaks</small></label><button class="toggle" id="setCalm" aria-label="Reduce motion"></button></div>
       <div class="set"><label>Show FPS<small>A small frame-rate counter while you play</small></label><button class="toggle" id="setFps" aria-label="Show FPS"></button></div>
+      </section>
+      <section class="set-group"><h3>Accessibility</h3>
+      <div class="set"><label>Tap to grab and let go<small>No holding: tap once to grab, tap again to let go. Easier with one hand.</small></label><button class="toggle" id="setTapMode" aria-label="Tap to grab and let go"></button></div>
+      <div class="set"><label>Game speed<small>Slower gives you more time to react. Stars still count.</small></label><button class="chip-set" id="setSpeed" aria-label="Game speed">100%</button></div>
+      <div class="set"><label>Larger text<small>Bigger words while you play and in the menus</small></label><button class="toggle" id="setBig" aria-label="Larger text"></button></div>
       </section>
       <section class="set-group"><h3>Your progress</h3>
       <details class="backup"><summary>Back up or move your progress</summary>

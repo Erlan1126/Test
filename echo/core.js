@@ -3,7 +3,7 @@
 
 const $ = id => document.getElementById(id);
 // The game's version, shown in Settings › About. Raise it with every release.
-const GAME_VERSION = "0.9.0";
+const GAME_VERSION = "0.10.0";
 // Which screen is showing: title | run | settings.
 let screen = "title";
 

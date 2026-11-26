@@ -37,7 +37,7 @@ function startRun(opts = {}) {
   const r = runSave();
   const daily = !!opts.daily;
   run = {
-    daily, rng: opts.challenge ? seeded(opts.challenge.seed) : daily ? seeded(dayNumber() * 7919 + 13) : null, attract: !!opts.attract,
+    daily, free: !!opts.free, rng: opts.challenge ? seeded(opts.challenge.seed) : daily ? seeded(dayNumber() * 7919 + 13) : null, attract: !!opts.attract,
     seed: opts.challenge ? opts.challenge.seed : daily ? dayNumber() * 7919 + 13 : 0, challenge: opts.challenge || null, hard: !opts.attract && !!(save.run || {}).hardOn, boss: null, forks: 0,
     combo: 0, comboBest: 0, comboT: 0, boost: 0, dashCd: 0, dashT: 0, power: null, event: null, nextEvent: 250, hunterGap: 1, pops: [], msgs: [], friendSpawned: false, continues: 0, slow: 1, tut: 0, tutText: '',
     dist: 0, speed: 170, x: 200, tx: 200, vx: 0, hearts: 3 + runUpg("heart"), inv: 0, over: 0,
@@ -48,11 +48,11 @@ function startRun(opts = {}) {
   if (opts.stage != null) { const si = stageInfo(opts.stage); Object.assign(run, { stage: opts.stage, stageInfo: si, rng: seeded(si.seed), seed: si.seed, ghostTrace: opts.ghost || null, ghostLabel: opts.ghostLabel || "", raceTime: opts.raceTime || 0 }); }
   runnerStart(run);
   if (opts.attract) { run.hearts = 1e9; return run; }
-  if (!r.tutDone && !daily) run.tut = 1;
+  if (!r.tutDone && !daily && !run.free) run.tut = 1;
   if (run.hard) run.hearts = 1;
   // Without a seed, pick one now, so the run can be shared as a challenge.
   if (!run.rng) { run.seed = 1 + Math.floor(Math.random() * 1e9); run.rng = seeded(run.seed); }
-  progressEvent("runs");
+  if (!run.free) progressEvent("runs");
   for (const m of r.missions) m.run = 0;
   musicStart(4242, 2);
   // Each district has its own groove: key, chords and tempo; the Night shift keeps the first one.
@@ -75,13 +75,15 @@ function runHit() {
   if (run.hearts <= 0) { if (!run.hard && run.continues < 2 && (save.glow || 0) + run.lights >= continueCost()) runOfferContinue(); else runEnd(); }
 }
 function runMission(kind, value) {
-  if (run.attract || run.cleared) return;
+  if (run.attract || run.cleared || run.free) return;
+  // The first three stages are for learning to swing: no mission pop-ups on top of the lessons.
+  if (run.stageInfo && !run.stageInfo.daily && run.stageInfo.n <= 3) return;
   const r = save.run;
   for (const m of r.missions) {
     const def = RUN.missions[m.k];
     if (def.kind !== kind || m.done || value < m.goal) continue;
     m.done = true; r.mult = Math.min(10, r.mult + 1); run.mult = r.mult;
-    runMsg("Mission done!", `Score multiplier ×${r.mult}`, 2.2, true); sfx.unlock(); buzz([10, 30, 10]);
+    runMsg("Mission done!", `${run.stageInfo ? "Night shift score" : "Score multiplier"} ×${r.mult}`, 2.2, true); sfx.unlock(); buzz([10, 30, 10]);
     // A new, a little harder, mission takes its place.
     const k = Math.floor(Math.random() * RUN.missions.length);
     Object.assign(m, { k, goal: Math.round(RUN.missions[k].goal * (1 + 0.5 * (r.mult - 1))), done: false });
@@ -161,13 +163,15 @@ function runHud() {
     // Stars as you earn them: 40% of the lights, then 70% with no hits under par (dims once it's out of reach).
     const sh = (run.motesGot || 0) / Math.max(1, run.motesTotal || 1), s2 = sh >= 0.4, s3ok = !run.hitsTaken && run.stageT <= par, s3 = sh >= 0.7 && s3ok;
     set("stars", `${s2}${s3}${s3ok}${!!run.cleared}`, () => { const st = $("runStars"); st.hidden = false; const is = st.children; is[0].className = run.cleared ? "on" : ""; is[1].className = s2 ? "on" : ""; is[2].className = s3 ? "on" : s3ok ? "" : "lost"; });
-  } else { set("tm", runScore().toLocaleString(), v => { $("runScore").textContent = v; }); set("tcls", "", () => { $("runScore").className = "score"; $("runStars").hidden = true; }); }
+  } else if (run.free) { set("tm", `${runMetres().toLocaleString()} m`, v => { $("runScore").textContent = v; }); set("tcls", "free", () => { $("runScore").className = "score"; $("runStars").hidden = true; }); }
+  else { set("tm", runScore().toLocaleString(), v => { $("runScore").textContent = v; }); set("tcls", "", () => { $("runScore").className = "score"; $("runStars").hidden = true; }); }
   set("li", run.lights, v => { const el = $("runLights"); el.textContent = `✦ ${v}`; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); });
   { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; { const bf = $("jBest"); if (run.bestFlash > 0) { run.bestFlash = Math.max(0, run.bestFlash - 0.02); bf.style.transform = `translateX(-50%) scale(${1 + run.bestFlash * 0.8})`; bf.style.color = "#fff"; } else if (bf.style.color) { bf.style.transform = ""; bf.style.color = ""; } } if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; $("jFig").style.left = w; } if (sp.dataset.n !== String(run.stage)) { sp.dataset.n = String(run.stage); $("jName").textContent = typeof stagePerson === "function" ? stagePerson(run.stage)[0] : ""; const bp = run.stageInfo.daily ? 0 : ((stageSave().pct || {})[run.stage] || 0); $("jBest").hidden = !(bp > 0); $("jBest").style.left = bp + "%"; } } } }
   const maxH = Math.max(run.hearts, run.hard ? 1 : 3 + runUpg("heart"));
   // A lost heart breaks with a little pop; a heart won back pops in.
-  set("hearts", `${run.hearts}/${maxH}`, () => { const prev = H.hn; H.hn = run.hearts; $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}${prev != null && q === run.hearts && prev > run.hearts ? " broke" : ""}${prev != null && q === run.hearts - 1 && prev < run.hearts ? " back" : ""}"></i>`).join(""); });
-  set("mult", run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`, v => { $("runMult").textContent = v; });
+  if (run.free) set("hearts", "free", () => { $("runHearts").innerHTML = ""; });
+  else set("hearts", `${run.hearts}/${maxH}`, () => { const prev = H.hn; H.hn = run.hearts; $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}${prev != null && q === run.hearts && prev > run.hearts ? " broke" : ""}${prev != null && q === run.hearts - 1 && prev < run.hearts ? " back" : ""}"></i>`).join(""); });
+  set("mult", run.free ? "Free swing" : run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor(Math.max(run.pxHi || 0, run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`, v => { $("runMult").textContent = v; });
   $("runPower").textContent = run.power ? `${RUNNER_POWERS[run.power.kind].name} ${Math.ceil(run.power.t)}` : "";
 }
 
@@ -250,6 +254,7 @@ function runDraw(ctx, W, H) {
   // Text and rings are sized to the phone in portrait; on a wide screen (landscape, a computer) they
   // follow the height instead, so they never fill the view.
   const U = Math.min(W, Math.max(H * 0.56, 300)), top = Math.max(H * 0.26, 152);   // (top: under the HUD)
+  const TS = save.settings.bigText ? 1.22 : 1;   // Larger text (Settings > Accessibility)
   // Each district has its own sky and colours; in the Night shift they blend into the next.
   const m = R.dist / RUN.M, b = R.stageInfo ? stageSky(R.stageInfo) : R.forceSky != null ? R.forceSky : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const w1 = runWorld(7 - (b % 8)), w2 = runWorld(7 - ((b + 1) % 8)), mixW = k => mixC(w1[k], w2[k], f);
@@ -267,13 +272,13 @@ function runDraw(ctx, W, H) {
   if (msg && !R.banner) {
     const age = msg.dur - msg.t, y = Math.max(H * 0.19, 160) + Math.max(0, 0.2 - age) * 40;
     ctx.globalAlpha = Math.min(1, msg.t * 2.5, age * 5); ctx.textAlign = "center";
-    ctx.font = `700 ${Math.round(U * 0.042)}px Inter, system-ui, sans-serif`;
-    const t1 = msg.text, t2 = msg.sub || "", w1 = ctx.measureText(t1).width; ctx.font = `500 ${Math.round(U * 0.034)}px Inter, system-ui, sans-serif`; const w2 = ctx.measureText(t2).width;
-    const pw = Math.max(w1, w2) + U * 0.1, ph = t2 ? U * 0.15 : U * 0.1;
+    ctx.font = `700 ${Math.round(U * 0.042 * TS)}px Inter, system-ui, sans-serif`;
+    const t1 = msg.text, t2 = msg.sub || "", w1 = ctx.measureText(t1).width; ctx.font = `500 ${Math.round(U * 0.034 * TS)}px Inter, system-ui, sans-serif`; const w2 = ctx.measureText(t2).width;
+    const pw = Math.max(w1, w2) + U * 0.1, ph = (t2 ? U * 0.15 : U * 0.1) * TS;
     ctx.fillStyle = "rgba(14,16,24,0.72)"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - pw / 2, y - ph / 2, pw, ph, ph / 2); else ctx.rect(W / 2 - pw / 2, y - ph / 2, pw, ph); ctx.fill();
     ctx.strokeStyle = msg.gold ? "rgba(255,217,138,0.5)" : "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.stroke();
-    ctx.font = `700 ${Math.round(U * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = msg.gold ? "#ffd98a" : "#ffffff"; ctx.fillText(t1, W / 2, y + (t2 ? -U * 0.008 : U * 0.014));
-    if (t2) { ctx.font = `500 ${Math.round(U * 0.034)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(t2, W / 2, y + U * 0.045); }
+    ctx.font = `700 ${Math.round(U * 0.042 * TS)}px Inter, system-ui, sans-serif`; ctx.fillStyle = msg.gold ? "#ffd98a" : "#ffffff"; ctx.fillText(t1, W / 2, y + (t2 ? -U * 0.008 : U * 0.014) * TS);
+    if (t2) { ctx.font = `500 ${Math.round(U * 0.034 * TS)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(t2, W / 2, y + U * 0.045 * TS); }
     ctx.globalAlpha = 1;
   }
   // The first run teaches by doing.
@@ -283,7 +288,7 @@ function runDraw(ctx, W, H) {
     if (held) { ctx.fillStyle = "rgba(191,244,255,0.35)"; ctx.beginPath(); ctx.arc(cx, cy, rr * pulse, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = "#eaf6ff"; ctx.beginPath(); ctx.arc(cx, cy, rr * 0.28, 0, Math.PI * 2); ctx.fill();
   }
-  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(U * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
+  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(U * 0.055 * TS)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // Speed: streaks rushing out from the middle when the runner is flying.
   const calmFx = !!(save.settings && save.settings.calm);
   if (R.od > 0 && (R.v || 0) > 16 && !R.over && !R.attract && !calmFx) {
@@ -306,14 +311,14 @@ function runDraw(ctx, W, H) {
   }
   // Floating "+3" when a shadow is sung free.
   ctx.textAlign = "center";
-  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(U * 0.045)}px Inter, system-ui, sans-serif`; const q = P2(p.x, p.at); ctx.fillText(p.text, q[0], q[1] - k * 40 * pxU); }
+  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(U * 0.045 * TS)}px Inter, system-ui, sans-serif`; const q = P2(p.x, p.at); ctx.fillText(p.text, q[0], q[1] - k * 40 * pxU); }
   ctx.globalAlpha = 1;
   // The world's name as you enter it; mission messages.
   if (R.banner > 0 && !R.attract) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(U * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (!R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : runWorld(7 - (R.biome % 8)).name.toUpperCase()).split("").join(String.fromCharCode(8202)), W / 2, top);
-    ctx.font = `700 ${Math.round(U * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : runnerTheme(R.biome * RUN.BIOME_M).name, W / 2, top + U * 0.08);
-    if (R.stageInfo) { ctx.font = `600 ${Math.round(U * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, top + U * 0.15); if (R.attempt > 1) { ctx.font = `700 ${Math.round(U * 0.036)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(`Attempt ${R.attempt}${R.extraHeart ? " · +1 heart, the dark is slower" : R.assist ? " · the dark is slower" : ""}`, W / 2, top + U * 0.22); } }
+    ctx.font = `600 ${Math.round(U * 0.03 * TS)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (!R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : runWorld(7 - (R.biome % 8)).name.toUpperCase()).split("").join(String.fromCharCode(8202)), W / 2, top);
+    ctx.font = `700 ${Math.round(U * 0.07 * TS)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : runnerTheme(R.biome * RUN.BIOME_M).name, W / 2, top + U * 0.08);
+    if (R.stageInfo) { ctx.font = `600 ${Math.round(U * 0.042 * TS)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, top + U * 0.15); if (R.attempt > 1) { ctx.font = `700 ${Math.round(U * 0.036 * TS)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(`Attempt ${R.attempt}${R.extraHeart ? " · +1 heart, the dark is slower" : R.assist ? " · the dark is slower" : ""}`, W / 2, top + U * 0.22); } }
     ctx.globalAlpha = 1;
   }
 
@@ -341,7 +346,7 @@ function runLoop(now) {
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
   // A split-second freeze on a grab or a Perfect makes it land (the picture still draws).
-  if (run.hitstop > 0 && !run.paused) run.hitstop -= dt; else if (!run.paused) runUpdate(dt * (run.slow || 1));
+  if (run.hitstop > 0 && !run.paused) run.hitstop -= dt; else if (!run.paused) runUpdate(dt * (run.slow || 1) * (run.attract ? 1 : save.settings.speed || 1));
   const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
   // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
   if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
@@ -354,12 +359,14 @@ function runLoop(now) {
 {
   const c = document.getElementById("runCanvas");
   let p = null; const downs = new Set();
-  c.addEventListener("pointerdown", e => { audio(); downs.add(e.pointerId); if (run) swingHold(true); p = { x: e.clientX, y: e.clientY, sx: e.clientX }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
+  // Tap mode (Settings > Accessibility): a tap grabs, the next tap lets go, so nothing has to be held.
+  const tapMode = () => !!save.settings.tapMode && run && !run.attract;
+  c.addEventListener("pointerdown", e => { audio(); downs.add(e.pointerId); if (run) { if (tapMode() && run.teth) swingHold(false); else swingHold(true); } p = { x: e.clientX, y: e.clientY, sx: e.clientX }; try { c.setPointerCapture(e.pointerId); } catch (err) {} });
   c.addEventListener("pointermove", e => {
     if (!p || !run) return;
     if (!p.dashed && e.clientX - p.sx > 45 && Math.abs(e.clientY - p.y) < 70) { p.dashed = true; swingDash(); }
   });
-  const end = e => { downs.delete(e.pointerId); if (downs.size) return; if (run) swingHold(false); p = null; };
+  const end = e => { downs.delete(e.pointerId); if (downs.size) return; if (run && !tapMode()) swingHold(false); p = null; };
   c.addEventListener("pointerup", end);
   c.addEventListener("pointercancel", end);
   // Leaving the page or pausing forgets any finger that was down.
@@ -384,8 +391,9 @@ function runLoop(now) {
 // The pause card: who is waiting, and how each star is going so far.
 function runPauseInfo() {
   const R = run, who = $("pzWho"), ul = $("pzGoals"); if (!who || !ul) return;
+  if ($("pzHow")) $("pzHow").textContent = save.settings.tapMode ? "Tap to grab the ringed light · stay on to reel in · tap again to fly" : "Hold to grab the ringed light · keep holding to reel in · let go to fly";
   if (!R || !R.stageInfo) { who.textContent = ""; ul.innerHTML = ""; return; }
-  const tot = Math.max(1, R.motesTotal), share = R.motesGot / tot, par = R.stageInfo.par, pct = Math.max(0, Math.min(100, Math.floor(R.px / R.stageLen * 100)));
+  const tot = Math.max(1, R.motesTotal), share = R.motesGot / tot, par = R.stageInfo.par, pct = Math.max(0, Math.min(100, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100)));
   who.textContent = `${stageWaiting(R.stageInfo.n)} · ${pct}% of the way`;
   const g = (stars, text, now, ok, alive = true) => `<li class="${ok ? "ok" : alive ? "" : "no"}"><b>${stars}</b><span>${text}</span><em>${now}</em></li>`;
   ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +

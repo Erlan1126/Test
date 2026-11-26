@@ -18,6 +18,8 @@ function renderShop() {
 document.getElementById("shopList").addEventListener("click", e => {
   const rb = e.target.closest("button[data-run]");
   if (rb && runBuy(rb.dataset.run)) renderShop();
+  // Free swing: no dark, no hearts, no score. Try a look, practise Perfects, or just swing.
+  if (e.target.closest("button[data-free]")) { $("sheet").hidden = true; playNow({ free: true }); }
 });
 // ---------- The locker: forms of light, glows, scarves and tethers ----------
 const hex = c => "#" + (c >>> 0).toString(16).padStart(6, "0");
@@ -28,7 +30,7 @@ function lockerHtml() {
   };
   const caps = save.capsules || 0, ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";
   const grid = (title, html) => `<li class="sec">${title}</li><li class="lk-grid">${html}</li>`;
-  return `<li class="lk-prev"><canvas id="lkCanvas" width="360" height="260" aria-hidden="true"></canvas><div><small>You are</small><b>${ch.name}</b><span>${ch.perk}</span></div></li>` +
+  return `<li class="lk-prev"><canvas id="lkCanvas" width="360" height="260" aria-hidden="true"></canvas><div><small>You are</small><b>${ch.name}</b><span>${ch.perk}</span><button class="lk-try" data-free="1">Try it in Free swing</button></div></li>` +
     `<li class="${caps ? "won" : "locked"}"><span><b>✦ ${caps} light capsule${caps === 1 ? "" : "s"}</b><small>Earn one by swinging 600 m or making 10 Perfects in a run</small></span>${caps ? `<button data-cap="1">Open</button>` : ""}</li>` +
     grid("Forms of light", RUNNER_CHARS.map((c, i) => tile("c", i, c, hex(c.look.glow), c.perk, L.char === i)).join("")) +
     grid("Glow", RUNNER_TOPS.map((c, i) => tile("t", i, c, hex(c.c ?? ch.look.glow), "", L.top === i)).join("")) +
