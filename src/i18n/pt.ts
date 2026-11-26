@@ -2421,4 +2421,12 @@ export const PT: Record<string, string> = {
   "Next free spin in {time}": "Próximo giro grátis em {time}",
   "Spinning…": "Girando…",
   "Watch an ad for one more spin": "Veja um anúncio para mais um giro",
+  // ---------- Photo mode ----------
+  "Normal": "Normal",
+  "Warm": "Quente",
+  "Vintage": "Vintage",
+  "Night glow": "Brilho noturno",
+  "Filter": "Filtro",
+  "Photos can't be taken on this device": "Não é possível tirar fotos neste aparelho",
+  "📷 First photo today! +{n} 💎": "📷 Primeira foto do dia! +{n} 💎",
 };
