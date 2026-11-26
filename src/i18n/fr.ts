@@ -1,6 +1,7 @@
 // French (informal "tu"). Keys are the English text; anything missing here shows in English. Keep every {placeholder} from the key.
 export const FR: Record<string, string> = {
   // ---------- Game text ----------
+  "Skins, shapes and islands for your towers, and boosts for your next one. Crystals buy the special things.": "Des skins, des formes et des îles pour tes tours, et des boosts pour la prochaine. Les cristaux achètent les choses spéciales.",
   "Gold penthouse · a perfect drop pays 5x": "Penthouse doré · parfait, il rapporte 5x",
   "Icy floor · slides fast, holds 50% more people": "Étage glacé · rapide, 50% d'habitants en plus",
   "Garden terrace · slow, and widens your tower": "Terrasse jardin · lente, élargit ta tour",
@@ -1685,7 +1686,7 @@ export const FR: Record<string, string> = {
   "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.": "Tes commerces gagnent de l'argent. Achète des niveaux pour gagner plus ; un gérant vend pour toi, même en ton absence.",
   "Decorations show up in your town and make every business earn more. Crystals buy the special things.": "Les décorations apparaissent en ville et font gagner plus chaque commerce. Les cristaux achètent le spécial.",
   "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.": "Le chapitre de Pip est ton grand objectif. Les objectifs du jour donnent des étoiles ; le Pass du ciel, un prix à chaque palier.",
-  "Your builder profile, the leaderboard of the best towers, and settings.": "Ton profil de bâtisseur, le classement des meilleures tours et les réglages.",
+  "Your builder profile, the leaderboard of the best towers, your Sky City and settings.": "Ton profil de bâtisseur, le classement des meilleures tours, ta Cité du Ciel et les réglages.",
   "{n} of {total} postcards": "{n} sur {total} cartes postales",
   "Where it all began: your first neighbor moved in.": "Là où tout a commencé : ton premier voisin a emménagé.",
   "Reach {n} business levels to unlock": "Atteins {n} niveaux d'entreprise pour débloquer",

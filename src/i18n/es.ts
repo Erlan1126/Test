@@ -2,6 +2,7 @@
 // missing here shows in English. Keep every {placeholder} from the key.
 export const ES: Record<string, string> = {
   // ---------- Game text ----------
+  "Skins, shapes and islands for your towers, and boosts for your next one. Crystals buy the special things.": "Skins, formas e islas para tus torres, y potenciadores para la próxima. Los cristales compran las cosas especiales.",
   "Gold penthouse · a perfect drop pays 5x": "Penthouse dorado · uno perfecto paga 5x",
   "Icy floor · slides fast, holds 50% more people": "Piso de hielo · rápido, y 50% más gente",
   "Garden terrace · slow, and widens your tower": "Terraza jardín · lenta, y ensancha tu torre",
@@ -1686,7 +1687,7 @@ export const ES: Record<string, string> = {
   "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.": "Tus negocios ganan dinero. Compra niveles para ganar más; un gerente vende por ti, incluso cuando no estás.",
   "Decorations show up in your town and make every business earn more. Crystals buy the special things.": "Las decoraciones aparecen en tu ciudad y hacen que cada negocio gane más. Los cristales compran lo especial.",
   "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.": "El capítulo de Pip es tu gran objetivo. Las metas diarias dan estrellas; el Pase del cielo da un premio en cada nivel.",
-  "Your builder profile, the leaderboard of the best towers, and settings.": "Tu perfil de constructor, el ranking de las mejores torres y los ajustes.",
+  "Your builder profile, the leaderboard of the best towers, your Sky City and settings.": "Tu perfil de constructor, el ranking de las mejores torres, tu Ciudad del Cielo y los ajustes.",
   "{n} of {total} postcards": "{n} de {total} postales",
   "Where it all began: your first neighbor moved in.": "Donde todo empezó: llegó tu primer vecino.",
   "Reach {n} business levels to unlock": "Alcanza {n} niveles de negocio para desbloquear",
