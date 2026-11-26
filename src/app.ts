@@ -495,7 +495,9 @@ export class App implements DailyHost {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (document.body.classList.contains("photo-mode")) { $("photo-x").click(); return true; }
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
-    if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
+    // (Back on one of Pip's offers means "No thanks", never the offer itself: a time warp for
+    // crystals, or a trip to the shop.)
+    if (!$("mayor").hidden) { ($("mayor-no").hidden ? $("mayor-ok") : $("mayor-no")).click(); return true; }
     if (!$("welcome").hidden) { $("welcome-ok").click(); return true; }
     const evo = document.getElementById("evolve");
     if (evo && !evo.hidden) { evo.hidden = true; return true; }
