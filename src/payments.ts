@@ -10,10 +10,14 @@
 //
 // Every completed purchase has a transaction id; the save remembers those ids so a pack
 // is never counted twice (see grantPack in logic/premium.ts).
-import { VIP_ID as VIP_ANDROID, VIP_ID_IOS } from "./logic/vip";
+import { ourId, packStoreId, vipStoreId } from "./data/storeids";
 
-/** VIP's store id on this phone (it differs between the two stores). */
-const VIP_ID = platform() === "ios" ? VIP_ID_IOS : VIP_ANDROID;
+/** On an iPhone (App Store ids differ from Google Play's; see data/storeids.ts). */
+const IOS = platform() === "ios";
+/** VIP's store id on this phone. */
+const VIP_ID = vipStoreId(IOS);
+/** VIP's id as approved purchases report it (after ourId). */
+const VIP_OURS = ourId(VIP_ID, IOS);
 import { CRYSTAL_PACKS, PAYMENTS_API, STARTER_PACK, type CrystalPack } from "./data/premium";
 import { isNative, platform } from "./native";
 import { approvalHandler } from "./logic/purchase-flow";
@@ -146,7 +150,7 @@ function purchasePlugin(): Promise<Cdv | null> {
   });
 }
 
-/** Crystal packs through the App Store or Google Play. Store product ids match ours. */
+/** Crystal packs through the App Store or Google Play (store ids: data/storeids.ts). */
 class StoreProvider implements PaymentProvider {
   readonly live = true;
   readonly store = true;
@@ -162,14 +166,14 @@ class StoreProvider implements PaymentProvider {
     const cdv = await purchasePlugin();
     if (!cdv) return null;
     const plat = platform() === "ios" ? cdv.Platform.APPLE_APPSTORE : cdv.Platform.GOOGLE_PLAY;
-    cdv.store.register([...CRYSTAL_PACKS, STARTER_PACK].map(p => ({ id: p.id, type: cdv.ProductType.CONSUMABLE, platform: plat })));
+    cdv.store.register([...CRYSTAL_PACKS, STARTER_PACK].map(p => ({ id: packStoreId(p.id, IOS), type: cdv.ProductType.CONSUMABLE, platform: plat })));
     cdv.store.register([{ id: VIP_ID, type: cdv.ProductType.PAID_SUBSCRIPTION, platform: plat }]);
     cdv.store.when()
       // The crystals and the transaction id are saved durably first; only then is the
       // store told the purchase is done (see logic/purchase-flow.ts). If saving fails or
       // the app closes in between, the store hands the purchase over again, and the saved
       // transaction id stops it counting twice.
-      .approved(t => void this.onApproved({ id: t.transactionId, products: t.products.map(p => p.id), finish: () => t.finish() }))
+      .approved(t => void this.onApproved({ id: t.transactionId, products: t.products.map(p => ourId(p.id, IOS)), finish: () => t.finish() }))
       .productUpdated(() => this.onPrices())
       // Once the store has loaded the player's purchases, it knows whether VIP is still on
       // (renewed or cancelled).
@@ -184,7 +188,7 @@ class StoreProvider implements PaymentProvider {
 
   private readonly onApproved = approvalHandler({
     isPack: id => [...CRYSTAL_PACKS, STARTER_PACK].some(x => x.id === id),
-    isVip: id => id === VIP_ID,
+    isVip: id => id === VIP_OURS,
     vip: () => this.onVip?.(true),
     credit: async (pack, tx) => (await this.onPurchase?.({ pack, tx })) === true,
     delivered: id => { if (this.waiting?.id === id) { this.waiting.done("ok"); this.waiting = null; } },
@@ -214,7 +218,7 @@ class StoreProvider implements PaymentProvider {
     const cdv = await this.ready;
     const offer = cdv?.store.get(VIP_ID)?.getOffer();
     if (!cdv || !offer) return "error";
-    const done = new Promise<BuyResult>(resolve => { this.waiting = { id: VIP_ID, done: resolve }; });
+    const done = new Promise<BuyResult>(resolve => { this.waiting = { id: VIP_OURS, done: resolve }; });
     const err = await offer.order();
     if (err) {
       this.waiting = null;
@@ -225,12 +229,12 @@ class StoreProvider implements PaymentProvider {
 
   price(pack: CrystalPack): string | null {
     const cdv = (window as unknown as { CdvPurchase?: Cdv }).CdvPurchase;
-    return cdv?.store.get(pack.id)?.pricing?.price ?? null;
+    return cdv?.store.get(packStoreId(pack.id, IOS))?.pricing?.price ?? null;
   }
 
   async buy(pack: CrystalPack): Promise<BuyResult> {
     const cdv = await this.ready;
-    const offer = cdv?.store.get(pack.id)?.getOffer();
+    const offer = cdv?.store.get(packStoreId(pack.id, IOS))?.getOffer();
     if (!cdv || !offer) return "error";
     const done = new Promise<BuyResult>(resolve => { this.waiting = { id: pack.id, done: resolve }; });
     const err = await offer.order();
