@@ -287,7 +287,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 3;
       const c0 = !!save.settings.calm; $("setCalm").click(); out.reduceMotionToggles = save.settings.calm === !c0 && $("setCalm").getAttribute("aria-pressed") === String(!c0);
       $("setFps").click(); out.showFpsToggles = save.settings.fps === true && !$("fpsMeter").hidden; $("setFps").click();
-      out.aboutShowsVersionAndPrivacy = $("aboutVersion").textContent.includes(GAME_VERSION) && /no tracking/i.test($("settingsScreen").textContent) && !!document.querySelector('#settingsScreen a[href^="mailto:"]');
+      out.aboutShowsVersionAndPrivacy = $("aboutVersion").textContent.includes(GAME_VERSION) && /no tracking/i.test($("settingsScreen").textContent) && !!document.querySelector('#settingsScreen a[href^="mailto:"]') && !!document.querySelector('#settingsScreen a[href="lumen-rush-privacy.html"]');
       $("settingsBack").click(); out.doneGoesHome = on("titleScreen");
       // The Night shift opens once Downtown is lit, and ends on the run-over card.
       stageSave().best[10] = { stars: 1, time: 20 }; showTitle(); out.theNightShiftOpensAfterStageTen = !$("hardBtn").classList.contains("locked");
@@ -323,6 +323,11 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       check(`no page errors at ${size.width}×${size.height}`, e2.length === 0, e2[0]);
       await p2.close();
     }
+    // On a wide screen (a computer, a phone on its side) the stage banner stays a sensible size.
+    { const p4 = await browser.newPage({ viewport: { width: 1440, height: 900 } }); await p4.goto(URL); await p4.evaluate(() => { localStorage.clear(); save.opening = 1; });
+      const big = await p4.evaluate(() => { startStage(1); const c = document.createElement("canvas").getContext("2d"); let max = 0; const real = c.__proto__.fillText; CanvasRenderingContext2D.prototype.fillText = function (...a) { max = Math.max(max, parseFloat(this.font.match(/(\d+(?:\.\d+)?)px/)[1])); return real.apply(this, a); }; runDraw($("runCanvas").getContext("2d"), 1440, 900); CanvasRenderingContext2D.prototype.fillText = real; return max; });
+      check("stage text stays readable, not huge, on a wide screen", big > 20 && big < 45, `${big}px`);
+      const pr = await p4.goto(URL.replace("echo.html", "lumen-rush-privacy.html")); check("the privacy policy page is there", pr.ok() && /collect/i.test(await p4.textContent("main"))); await p4.close(); }
     check("nothing loads from other sites (the font comes with the game)", requests.length === 0, requests[0]);
     check("the game's own font is used", await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 16px "Inter"') && [...document.fonts].some(f => f.family.replace(/"/g, "") === "Inter" && f.status === "loaded"); }));
     // Reduce motion starts on when the phone asks for less motion.

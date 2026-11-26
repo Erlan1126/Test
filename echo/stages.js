@@ -229,7 +229,11 @@ async function stageShare() {
     }
     if (navigator.share) { await navigator.share({ title: "Lumen Rush", text, url }); return; }
     await navigator.clipboard.writeText(`${text} ${url}`); toast("Link copied: send it to a friend");
-  } catch (e) {}
+  } catch (e) {
+    // Closing the share sheet is fine; anything else falls back to copying the link.
+    if (e && e.name === "AbortError") return;
+    try { await navigator.clipboard.writeText(`${text} ${url}`); toast("Link copied: send it to a friend"); } catch (e2) { toast("Sharing isn't available in this browser"); }
+  }
 }
 // ---------- The stage map ----------
 // ---------- The city map: six districts, ten homes each; a window lights up for everyone you reach ----------
