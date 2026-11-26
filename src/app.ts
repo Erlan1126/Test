@@ -17,6 +17,7 @@ import { skinById, SKINS } from "./data/skins";
 import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline, bestTower, districtTowers } from "./logic/skyline";
+import { layerAt, layerForMeters, SKY_LAYERS } from "./data/layers";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
 import { nextTitle, titleFor, titleProgress, upcoming } from "./data/titles";
 import { SHAPES } from "./data/shapes";
@@ -1544,6 +1545,20 @@ export class App implements DailyHost {
       if (!this.calmMotion) fireworks(2, () => s.firework());
       // ...and something flies past the new height to say hello.
       if (this.renderer instanceof Renderer3D) this.renderer.sky.soon();
+    }
+    // Skyrise's sky layers: climbing into a new one (where the sky changes colour) gets its
+    // name, a word from Zephyr, a rising chime and something flying past.
+    if (!HAS_CITY && !this.tutorial) {
+      const k = layerAt(f.y);
+      if (k > 0 && k > layerAt(f.y - 1)) {
+        const L = SKY_LAYERS[k];
+        this.banner(t("{icon} Entering the {name}", { icon: L.icon, name: t(L.name) }), t("Zephyr: {line}", { line: t(L.zephyr) }));
+        fx.popup(t(L.name).toUpperCase(), "", f.y + 3.6, "#bfe3ff", 1.3, true);
+        setTimeout(() => s.layer(k), 150);
+        vibrate(vib, [10, 40, 10, 40, 20]);
+        if (this.renderer instanceof Renderer3D) this.renderer.sky.soon();
+        if (k > layerForMeters(this.save.bestMeters)) track("sky_layer", { layer: L.id });
+      }
     }
     if (out.windStarts) {
       this.banner(t("Wind ahead"), t("Gusts speed floors up and slow them down"));

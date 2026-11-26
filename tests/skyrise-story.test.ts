@@ -129,3 +129,22 @@ describe("Skyrise has no mayor", () => {
     expect(a.match(/id="(zp\d+)-sky"/)![1]).not.toBe(b.match(/id="(zp\d+)-sky"/)![1]);
   });
 });
+
+describe("Skyrise's sky layers", () => {
+  it("start where the sky changes colour, lowest first, and are all translated", async () => {
+    const { SKY_LAYERS, layerAt, layerForMeters } = await import("../src/data/layers");
+    const { SKY } = await import("../src/data/constants");
+    const { dictionary } = await import("../src/i18n");
+    expect(SKY_LAYERS.map(l => l.at)).toEqual(SKY.map(s => s.at));
+    expect(layerAt(0)).toBe(0);
+    expect(layerAt(21)).toBe(0);
+    expect(layerAt(22)).toBe(1);
+    expect(layerAt(500)).toBe(SKY_LAYERS.length - 1);
+    expect(layerForMeters(110)).toBe(1);
+    expect(layerForMeters(109)).toBe(0);
+    for (const l of ["es", "pt", "fr", "de"] as const) {
+      const d = dictionary(l);
+      expect(SKY_LAYERS.flatMap(x => [x.name, x.zephyr]).filter(k => !d[k]), l).toEqual([]);
+    }
+  });
+});

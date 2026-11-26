@@ -542,6 +542,13 @@ export class Sound {
     [0, 4, 7, 12].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.7, 0.08, i * 0.09));
     this.tone(130.81, 1.2, "triangle", 0.08, 0, 0);
   }
+  /** A new sky layer (Skyrise): an airy rising chime that starts higher the higher you are,
+   *  over a soft whoosh of wind. */
+  layer(k: number): void {
+    this.noise(1.1, 0.05, 900 + k * 300, "bandpass", 0.4, 0.05, 0.3);
+    const base = 392 * Math.pow(2, (k * 2) / 12);
+    [0, 5, 9, 12, 17].forEach((n, i) => this.bell(base * Math.pow(2, n / 12), 1.1, 0.055, 0.05 + i * 0.1, -0.6 + i * 0.3));
+  }
   unlock(): void { [0, 7, 12, 16, 19].forEach((n, i) => this.bell(392 * Math.pow(2, n / 12), 0.8, 0.06, 0.4 + i * 0.07, (i / 4) * 1.2 - 0.6)); }
   star(): void { [0, 7, 12].forEach((n, i) => this.bell(1046 * Math.pow(2, n / 12), 0.6, 0.05, 0.2 + i * 0.08)); }
   coins(): void { [0, 4, 7, 12].forEach((n, i) => this.bell(1318 * Math.pow(2, n / 12), 0.25, 0.035, i * 0.055, Math.random() * 1.2 - 0.6)); }

@@ -4705,3 +4705,14 @@ body.tabs-open #profile .stat-grid { gap: 10px !important; margin: 0 !important;
   body.tabs-open .tab-page .th-title { font-size: 23px; }
 }
 @media (max-width: 340px) { .tab-seg button { padding: 9px 4px !important; font-size: 9.5px !important; } body.tabs-open .tab-page .tab-head { padding: 14px 12px 10px; margin: 0 -12px; } body.tabs-open .modal.tab-page > .sheet { padding-left: 12px !important; padding-right: 12px !important; } }
+
+/* ---------- Skyrise's own look: golden hour ----------
+   The purple-to-orange sunset of the Skyrise logo colours Zephyr's card and the home strip
+   (Buildaroo keeps its own). Zephyr's portrait is a full round picture, so it isn't nudged. */
+body:not(.city-game) .mayor-card { background: linear-gradient(180deg, #ffffff 0%, #fff6ee 100%); overflow: visible; }
+body:not(.city-game) .mayor-card::before { content: ""; position: absolute; left: 26px; right: 26px; top: 0; height: 5px; border-radius: 0 0 5px 5px; background: linear-gradient(90deg, #5b3fc4, #c25ab8 55%, #ffb36b); }
+body:not(.city-game) .mayor-face { background: linear-gradient(180deg, #5b3fc4, #ffb36b); box-shadow: 0 0 0 5px #fff, 0 10px 24px rgba(91, 63, 196, 0.35); }
+body:not(.city-game) :is(.mayor-face, .mayor-mini) svg { transform: none; }
+body:not(.city-game) .mayor-talk small { color: #c25ab8; }
+body:not(.city-game) #mayor-name { background: linear-gradient(90deg, #5b3fc4, #e0559a 60%, #ff8a3d); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
+body:not(.city-game) .mayor-bar i, body:not(.city-game) .plan-road i.now { background: linear-gradient(90deg, #5b3fc4, #c25ab8, #ffb36b); }

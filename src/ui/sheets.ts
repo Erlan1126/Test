@@ -6,6 +6,7 @@ import { VIP_SPEED } from "../logic/builds";
 import { track } from "../stats";
 import { GUIDE, TOWER_GUIDE } from "../data/guide";
 import { CITY_NAME } from "../logic/city";
+import { layerForMeters, SKY_LAYERS } from "../data/layers";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
 import { hallLevel } from "../logic/tycoon";
@@ -705,6 +706,8 @@ export class Sheets {
       [fmt(save.best), t("best people")], [`${fmt(save.bestMeters)} m`, t("tallest")], [fmt(p.towers), t("towers")],
       [p.bestStreak, t("best streak")], [fmt(p.perfects), t("perfects")], [`${save.challenges.length}/${CHALLENGES.length}`, t("landmarks")],
     ];
+    // Skyrise: the highest sky layer your towers have reached takes the best streak's place.
+    if (!HAS_CITY) { const L = SKY_LAYERS[layerForMeters(save.bestMeters)]; stats[3] = [`${L.icon} ${t(L.name)}`, t("highest sky layer")]; }
     if (HAS_CITY) {
       // The city game's own numbers (its trophies are on the Buildings page).
       stats.length = 0;
