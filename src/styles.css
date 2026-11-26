@@ -4221,8 +4221,18 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 /* (On a narrow phone the name wraps to a second line instead of "COFFEE …".) */
 @media (max-width: 400px) {
   #tcy-card .bc-hero { gap: 8px; }
-  #tcy-card .bc-title b { font-size: 16px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
+  #tcy-card .bc-title b { font-size: 16px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 }
+/* (The smallest phones, 320 px wide: a smaller icon, level box and name, so the name still
+   breaks between words.) */
+@media (max-width: 360px) {
+  #tcy-card .bc-ico { width: 40px; height: 40px; font-size: 22px; }
+  #tcy-card .bc-lv { min-width: 44px; padding: 4px 6px; }
+  #tcy-card .bc-title b { font-size: 14px; }
+}
+/* (A very short screen, 568 px tall: the "Level 10: …" line goes, so the card doesn't
+   climb over the top bar.) */
+@media (max-height: 600px) { #tcy-card .bc-next { display: none !important; } }
 #tcy-card .bc-title .card-stars { display: inline-flex; gap: 3px; margin-top: 2px; }
 #tcy-card .bc-title .card-stars i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
 #tcy-card .bc-title .card-stars i.on { background: #ffe066; box-shadow: 0 0 6px rgba(255, 224, 102, 0.9); }
