@@ -1,0 +1,17 @@
+{
+  "appId": "com.bigbrucestudios.lumenrush",
+  "appName": "Lumen Rush",
+  "webDir": "www",
+  "backgroundColor": "#05060f",
+  "loggingBehavior": "debug",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#05060f"
+  }
+}

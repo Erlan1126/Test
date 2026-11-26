@@ -3,9 +3,20 @@
   "private": true,
   "description": "Browser games for phones: Skyrise and Lumen Rush.",
   "scripts": {
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "build:app": "node tools/build-app.js",
+    "sync": "node tools/build-app.js && npx cap sync"
   },
   "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.0",
     "playwright": "1.48.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/share": "8.0.3"
   }
 }

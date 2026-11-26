@@ -1,0 +1,43 @@
+# Lumen Rush iPhone app on Codemagic (codemagic.io): builds, signs and uploads to TestFlight.
+# Uses the same "App Store Connect key" integration as Buildaroo (setup in STORES.md on the
+# Buildaroo branch). Start it by hand: Codemagic → this repository → Start new build → this
+# branch → "Lumen Rush iPhone app → TestFlight". The app id must be registered first
+# (com.bigbrucestudios.lumenrush, see LUMEN-RUSH-APP.md).
+workflows:
+  lumen-rush-ios:
+    name: Lumen Rush iPhone app → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: App Store Connect key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.bigbrucestudios.lumenrush
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Build the game and copy it into the iPhone project
+        script: |
+          npm ci
+          npm run build:app
+          npx cap sync ios
+      - name: Set up code signing
+        script: xcode-project use-profiles --project "ios/App/App.xcodeproj"
+      - name: Give each build a new number
+        script: |
+          cd ios/App
+          agvtool new-version -all $BUILD_NUMBER
+      - name: Build the app
+        script: |
+          xcode-project build-ipa --project "ios/App/App.xcodeproj" --scheme "App" || {
+            echo "===== Xcode errors ====="
+            grep -hE "error:|requires a provisioning profile|doesn't (include|support)|entitlement" /tmp/xcodebuild_logs/*.log | sort -u | head -40
+            exit 1
+          }
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
