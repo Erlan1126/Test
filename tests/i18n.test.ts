@@ -143,3 +143,26 @@ describe("translations", () => {
     expect(sourceKeys().filter(k => /Skyrise/.test(k))).toEqual([]);
   });
 });
+
+// Every business (town and districts), each of its stage names, every upgrade and every
+// district reads in the player's language: the districts' grander names come from a template
+// and the business's own name ("Big {name}"), so a new business needs only its name.
+describe("the city's names", async () => {
+  const { BUSINESSES, STAGE_NAMES, UPGRADES } = await import("../src/data/tycoon");
+  const { LAND } = await import("../src/data/land");
+  afterEach(() => setLang("en"));
+  it("are all translated", () => {
+    const keys = new Set<string>();
+    for (const b of BUSINESSES) for (const n of STAGE_NAMES[b.id]) keys.add(n);
+    for (const u of UPGRADES) keys.add(u.name);
+    for (const l of LAND) { keys.add(l.name); keys.add(l.what); }
+    for (const lang of ["es", "pt", "fr", "de"] as const) {
+      setLang(lang);
+      // (In the dictionary, or made from a template: some names are the same in both languages.)
+      expect([...keys].filter(k => !(k in dictionary(lang)) && t(k) === k), lang).toEqual([]);
+    }
+    setLang("es");
+    expect(t("Big Fish Market")).toBe("Mercado de Pescado XL");
+    expect(t("Fish Market Sky Wonder")).toBe("Maravilla Mercado de Pescado");
+  });
+});

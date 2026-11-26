@@ -52,7 +52,22 @@ const fill = (s: string, vars?: Record<string, string | number>): string =>
 
 /** Translates English text into the current language. */
 export function t(key: string, vars?: Record<string, string | number>): string {
-  return fill(DICTS[lang]?.[key] ?? key, vars);
+  return fill(DICTS[lang]?.[key] ?? derived(key) ?? key, vars);
+}
+
+/** Names made from a template and a translated name ("Big Fish Market" = "Big {name}" with
+ *  "Fish Market"): the districts' businesses grow through these, so each language needs the
+ *  templates and the names, not every combination. Only when both parts are translated. */
+const DERIVED: [string, string][] = [["Big ", ""], ["Grand ", ""], ["", " Plaza"], ["", " Empire"], ["", " Megatower"], ["", " Tower"], ["", " Sky Wonder"]];
+function derived(key: string): string | undefined {
+  const d = DICTS[lang];
+  if (!d) return undefined;
+  for (const [pre, post] of DERIVED) {
+    if (!key.startsWith(pre) || !key.endsWith(post) || key.length <= pre.length + post.length) continue;
+    const name = key.slice(pre.length, key.length - post.length), tpl = d[`${pre}{name}${post}`];
+    if (tpl && d[name]) return tpl.replace("{name}", d[name]);
+  }
+  return undefined;
 }
 
 /** Picks the singular or plural English key by `n`, then translates it. `{n}` is filled in. */

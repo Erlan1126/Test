@@ -126,6 +126,8 @@ export function amount(n: number): string {
  *  richer room. */
 export const STAGE_AT = [1, 25, 100, 200, 400, 600, 800, 1000];
 export const STAGE_LABEL = ["Stand", "Shop", "Store", "Flagship", "Empire", "Skyscraper", "Megatower", "Sky Wonder"];
+/** The districts' grander names, stage by stage (each is also a translation key). */
+export const STAGE_TEMPLATES = ["{name}", "Big {name}", "Grand {name}", "{name} Plaza", "{name} Empire", "{name} Tower", "{name} Megatower", "{name} Sky Wonder"];
 export const STAGE_NAMES: Record<string, string[]> = new Proxy({
 
   coffee: ["Coffee Cart", "Coffee Shop", "Corner Café", "Coffee House", "Coffee Empire", "Coffee Tower", "Coffee Megatower", "Coffee Sky Wonder"],
@@ -140,7 +142,8 @@ export const STAGE_NAMES: Record<string, string[]> = new Proxy({
   spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate", "Star Tower", "Star Megatower", "Galaxy Wonder"],
 } as Record<string, string[]>, {
   // (The districts' businesses: their name, then grander versions of it.)
-  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return [n, `Big ${n}`, `Grand ${n}`, `${n} Plaza`, `${n} Empire`, `${n} Tower`, `${n} Megatower`, `${n} Sky Wonder`]; })(),
+  // (Translated through STAGE_TEMPLATES in i18n: "Big {name}" and the business's own name.)
+  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return STAGE_TEMPLATES.map(f => f.replace("{name}", n)); })(),
 });
 /** Rush hour: one business earns this many times more for a short while. */
 export const RUSH_MULT = 3, RUSH_SECONDS = 45;
@@ -179,6 +182,49 @@ const BIZ_UPGRADES: Record<string, [string, string, string]> = {
   airport: ["Second Runway", "VIP Lounge", "Duty Free"],
   casino: ["Light Show", "VIP Box", "Encore"],
   spaceport: ["Reusable Rockets", "Moon Tours", "Warp Drive"],
+  // ---- The districts: each business its own three upgrades ----
+  fishmarket: ["Ice Crates", "Dawn Catch", "Fish Auction"],
+  surfshop: ["Board Wax", "Surf Lessons", "Pro Surf Team"],
+  boattours: ["Glass-bottom Boat", "Sunset Cruise", "Whale Watching"],
+  seafood: ["Charcoal Grill", "Lobster Tank", "Chef's Platter"],
+  marina: ["Floating Docks", "Sailing School", "Regatta Cup"],
+  cruise: ["Gangway Bridge", "Ocean Liner", "World Voyage"],
+  icecream: ["Waffle Cones", "Sprinkle Bar", "Sundae Tower"],
+  toystore: ["Toy Trains", "Teddy Workshop", "Play Corner"],
+  gardencenter: ["Seed Packets", "Glass House", "Bonsai Corner"],
+  pettingzoo: ["Pony Rides", "Duck Pond", "Baby Goats"],
+  themepark: ["Bumper Cars", "Roller Coaster", "Fireworks Night"],
+  golfclub: ["Golf Carts", "Driving Range", "Championship"],
+  boutique: ["Window Display", "Tailor Shop", "Runway Show"],
+  gym: ["Spin Bikes", "Personal Trainers", "Climbing Wall"],
+  startup: ["Free Snacks", "Cloud Servers", "Big Launch"],
+  bank: ["Safe Deposit", "Gold Vault", "Credit Cards"],
+  exchange: ["Trading Floor", "Ticker Board", "Opening Bell"],
+  tvstudio: ["Green Screen", "Talk Show", "Prime Time"],
+  smoothiebar: ["Fruit Blender", "Coconut Cups", "Rainbow Smoothie"],
+  cabanaclub: ["Sun Loungers", "Beach Towels", "Private Cabanas"],
+  waterpark: ["Lazy River", "Wave Pool", "Mega Slide"],
+  divecenter: ["Snorkel Gear", "Reef Tours", "Shipwreck Dive"],
+  yachtclub: ["Teak Decks", "Captain's Bar", "Superyacht"],
+  grandresort: ["Infinity Pool", "Butler Service", "Sky Suite"],
+  cloudspa: ["Mist Sauna", "Cloud Massage", "Rainbow Bath"],
+  royalbakery: ["Golden Croissants", "Royal Warrant", "Crown Cake"],
+  skyopera: ["Velvet Seats", "Grand Chorus", "Opening Night"],
+  palacehotel: ["Marble Halls", "Royal Butlers", "Throne Suite"],
+  goldexchange: ["Gold Scales", "Bullion Vault", "Golden Bell"],
+  royalball: ["Crystal Chandelier", "String Quartet", "Midnight Waltz"],
+  gemshop: ["Polishing Wheel", "Rare Gems", "Crown Jewels"],
+  crystalcafe: ["Glass Teapots", "Glow Lattes", "Prism Terrace"],
+  lightshow: ["Laser Beams", "Mirror Ball", "Aurora Show"],
+  jewelry: ["Silver Rings", "Diamond Cut", "Tiara Atelier"],
+  crystallab: ["Microscopes", "Crystal Growing", "Light Engine"],
+  prismtower: ["Glass Elevator", "Rainbow Beam", "Sky Beacon"],
+  spacediner: ["Space Food", "Floating Milkshakes", "Starlight Menu"],
+  zerogym: ["Float Room", "Moon Boots", "Zero-G Dance"],
+  satellite: ["Solar Panels", "Dish Array", "Star Network"],
+  moontours: ["Moon Buggy", "Crater Camp", "Earthrise View"],
+  rocketworks: ["Rocket Fuel", "Launch Tower", "Mega Booster"],
+  starport: ["Star Gate", "Comet Express", "Galaxy Hub"],
 };
 /** Upgrade prices, as multiples of the business's first-level price. */
 export const UPGRADE_COST = [5000, 1e6, 2e8];
