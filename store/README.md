@@ -32,14 +32,12 @@ Things only you can do, or decide:
 3. **Developer accounts** (Apple $99/year, Google $25), enrolled as Big Bruce Studios LLC.
    See `STORES.md`.
 
-Code work this package found (not in this PR):
+Code work this package found:
 
-4. **Skyrise needs its own app id and its own App Store product ids.** Apple product ids are
-   unique per developer account, so Skyrise can't reuse Buildaroo's `crystals_200` and
-   friends. Suggested ids are in [skyrise/LISTING.md](skyrise/LISTING.md); the Skyrise
-   edition needs to ask the store for those. Best done together with the Skyrise app split.
-5. **Lumen Rush needs a phone app** (a Capacitor wrapper like Buildaroo's) before it can go
-   to either store. Until then it stays on the web.
+4. **Skyrise app ids are settled** (iPhone `com.erlanstudios.skyrise`, the existing App Store
+   app; Android `com.bigbrucestudios.skyrise`), and the Skyrise build now asks the App Store for
+   its own `skyrise.`-prefixed product ids (`src/data/storeids.ts`, in this PR).
+5. **Lumen Rush's phone app** is PR #34 (Capacitor, `com.bigbrucestudios.lumenrush`).
 6. **Skyrise preview video** is from November 14 and shows the old home screen.
 
 ## Changes from the earlier drafts in `launch/stores/`

@@ -24,7 +24,7 @@ prefix instead.
 
 ---
 
-## 1. New app
+## 1. App record
 
 | Field | Value |
 |---|---|
