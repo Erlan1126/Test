@@ -1,6 +1,7 @@
 # Putting Skyrise on the App Store and Google Play
 
-> **Where the Skyrise app lives.** Skyrise is its own app (`com.bigbrucestudios.skyrise`) on
+> **Where the Skyrise app lives.** Skyrise is its own app (iPhone `com.erlanstudios.skyrise`, the original Skyrise
+> app in TestFlight; Android `com.bigbrucestudios.skyrise`) on
 > the `skyrise-app` branch. The shared game code is still made on `claude/new-session-klw8t6`
 > (which builds Buildaroo, `com.bigbrucestudios.buildaroo`). To bring new game work into
 > Skyrise, merge that branch into `skyrise-app`; never merge `skyrise-app` back, or Buildaroo
@@ -88,11 +89,9 @@ store's own testing tracks.
 
 - [ ] Join the Apple Developer Program at https://developer.apple.com/programs/enroll
       (Individual, $99 a year).
-- [ ] Register the app id: https://developer.apple.com/account/resources/identifiers →
-      **+** → App IDs → App → description "Skyrise", Bundle ID **Explicit**:
-      `com.bigbrucestudios.skyrise`. Leave capabilities as they are; in-app purchase is on by default.
-- [ ] Create the app in App Store Connect (My Apps → **+** → New App) using
-      `launch/stores/app-store.md`.
+- [x] App id and App Store Connect app: Skyrise's iPhone app keeps its original record,
+      `com.erlanstudios.skyrise` (the "Skyrise" app in TestFlight). Its signing profile is
+      already in Codemagic, so nothing to register. Fill its listing from `launch/stores/app-store.md`.
 - [ ] **Let GitHub sign and upload builds:** in App Store Connect → **Users and Access**
       → **Integrations** → **App Store Connect API** → Team Keys → **+**. Name it
       "GitHub", access **Admin**, then download the `.p8` file. It can only be downloaded once.
@@ -118,5 +117,6 @@ Every push to the branch makes new builds with a higher build number. For an upd
 upload the new `.aab` to Google Play, and pick the new TestFlight build for a new App
 Store version.
 
-The app id `com.bigbrucestudios.skyrise` can't change once the first build is uploaded to
-either store.
+The app ids can't change once the first build is uploaded: iPhone `com.erlanstudios.skyrise`
+(already uploaded to TestFlight), Android `com.bigbrucestudios.skyrise` (not uploaded yet).
+Players never see these ids; the store shows the seller, Big Bruce Studios LLC.

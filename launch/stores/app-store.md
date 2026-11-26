@@ -9,7 +9,7 @@ Copy each part into the matching field in App Store Connect (appstoreconnect.app
 | Platform | iOS |
 | Name | Skyrise: Tower Stack (30 characters max. If it's taken, try "Skyrise: Build the Sky") |
 | Primary language | English (U.S.) |
-| Bundle ID | com.bigbrucestudios.skyrise (register it first under Certificates, Identifiers & Profiles → Identifiers) |
+| Bundle ID | com.erlanstudios.skyrise (already registered: the original Skyrise app in App Store Connect and TestFlight) |
 | SKU | skyrise-ios-1 |
 | User access | Full access |
 
