@@ -425,6 +425,8 @@
   .run-hud .sub { justify-content: center; gap: 8px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--gold2); }
   .run-hud .sub span { padding: 2px 8px; border-radius: 99px; background: rgba(0, 0, 0, 0.3); }
   .run-hud .sub span:empty { display: none; }
+  .run-hud .sub { flex-wrap: wrap; row-gap: 4px; } .run-hud .sub span { white-space: nowrap; } .run-hud .hud-mid { min-width: 0; }
+  @media (max-width: 400px) { .run-hud .sub { gap: 5px; font-size: 12px; } .run-hud .sub span { padding: 2px 6px; } }
   #runLights { color: var(--gold2); } #runMult { color: var(--acc); } #runPower { color: #ffb3d6; }
   body.inrun .run-hud { padding-top: calc(40px + var(--top)); }
   .hearts { display: flex; gap: 6px; margin-top: 10px; font-size: 0; }
