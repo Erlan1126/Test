@@ -1351,6 +1351,9 @@ export class TycoonUI {
     // (The money bar's bottom edge, measured: on a small phone it reaches further down, and no
     // bubble may sit on it. Read before any bubble is touched below.)
     const hudBottom = Math.max(118, this.hudBottom() + 8);
+    // (The window's size, read once: reading it after a bubble has moved makes the browser
+    // lay the page out again, once per bubble, every frame.)
+    const VW = window.innerWidth, VH = window.innerHeight;
     for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
     const nowMs = Date.now();
     for (const it of items) {
@@ -1388,13 +1391,13 @@ export class TycoonUI {
       // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
       // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
       const keep = it.tag.classList.contains("land-sale") || it.tag.classList.contains("sel");
-      const outside = it.x < -4 || it.x > window.innerWidth + 4 || it.y - it.h < hudBottom || it.y > window.innerHeight - 178;
+      const outside = it.x < -4 || it.x > VW + 4 || it.y - it.h < hudBottom || it.y > VH - 178;
       it.tag.classList.toggle("tag-out", !keep && outside);
-      { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
+      { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(VW - m, it.x)); }
       // A bubble that stays (the first building's caption, the selected one) never covers the
       // money bar: it slides down under it, still right over its building.
       if (keep) it.y = Math.max(it.y, hudBottom + it.h);
-      if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
+      if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(VH - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";
       if (it.tag.style.transform !== tr) it.tag.style.transform = tr;
