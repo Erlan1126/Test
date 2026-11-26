@@ -7,6 +7,7 @@ import { track } from "../stats";
 import { GUIDE } from "../data/guide";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
+import { hallLevel } from "../logic/tycoon";
 import { COIN_SVG } from "./tycoon";
 import { buyDecor } from "../logic/decor";
 import { formatRecoveryCode } from "../online";
@@ -481,6 +482,8 @@ export class Sheets {
     this.renderCrystals();
     this.renderDeals();
     $("shop-balance").textContent = t("You have {stars} ★ · {crystals} 💎", { stars: save.stars, crystals: fmt(save.crystals) });
+    // (Stars are the tower game's money; the city game's crystals are already in the top bar.)
+    $("shop-balance").hidden = HAS_CITY;
     const list = $("boost-list");
     list.innerHTML = "";
     for (const bo of BOOSTS) {
@@ -617,6 +620,8 @@ export class Sheets {
 
   openProfile(tab = "journey"): void {
     this.click();
+    // (The city game has no level journey or tower trophies: its profile opens on the city's numbers.)
+    if (HAS_CITY && (tab === "journey" || tab === "trophies")) tab = "stats";
     this.seen("profile");
     this.renderProfile();
     showTab($("profile"), tab);
@@ -700,6 +705,9 @@ export class Sheets {
       const opened = Object.values(save.tycoon.levels).filter(l => l > 0).length;
       stats.push([fmt(townPeople(save)), t("people")], [1 + Math.max(0, save.chapters.done), t("City Hall level")], [opened, t("businesses")],
         [Object.values(save.placed).filter(Boolean).length, t("decorations")], [save.cityTrophies.length, t("trophies")], [p.bestStreak, t("best streak")]);
+      // The header is the city, not the tower game's builder title and XP.
+      $("profile-title").textContent = save.cityName || t("My city");
+      $("profile-xp").textContent = `${t("City Hall level {n}", { n: hallLevel(save) })} · ${t("{n} people", { n: fmt(townPeople(save)) })}`;
       const sel = document.querySelector<HTMLElement>('#profile [data-tab="journey"][aria-selected="true"], #profile [data-tab="trophies"][aria-selected="true"]');
       if (sel) document.querySelector<HTMLElement>('#profile [data-tab="stats"]')?.click();
     }
