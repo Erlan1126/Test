@@ -1,0 +1,99 @@
+# Builds the Lumen Rush Android app on GitHub's machines.
+# - Every run makes lumen-rush-debug.apk, which installs straight onto an Android phone.
+# - When the signing secrets are set (the same four as Buildaroo, see STORES.md on the
+#   Buildaroo branch), it also makes lumen-rush-release.aab for Google Play.
+name: Lumen Rush Android app
+
+on:
+  push:
+    paths: ["echo.html", "echo/**", "tools/build-app.js", "android/**", "package*.json", "capacitor.config.json", ".github/workflows/lumen-rush-android.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.0.${{ github.run_number }}
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build the game into the Android project
+        run: |
+          npm ci
+          npm run build:app
+          npx cap sync android
+
+      - name: Build the test APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lumen-rush-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Build the signed Play Store bundle
+        if: ${{ env.HAS_KEY == 'true' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.jks"
+          export ANDROID_KEYSTORE_PASSWORD="$(printf '%s' "$ANDROID_KEYSTORE_PASSWORD" | tr -d '[:space:]')"
+          export ANDROID_KEY_PASSWORD="$(printf '%s' "$ANDROID_KEY_PASSWORD" | tr -d '[:space:]')"
+          export ANDROID_KEY_ALIAS="$(printf '%s' "$ANDROID_KEY_ALIAS" | tr -d '[:space:]')"
+          ./gradlew bundleRelease --no-daemon
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('android/app/build/outputs/bundle/release/app-release.aab') != '' }}
+        with:
+          name: lumen-rush-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+
+  # Opens the debug app on an Android emulator and checks the game's home screen comes up.
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lumen-rush-debug-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          script: |
+            adb install -r app-debug.apk
+            adb shell am start -n com.bigbrucestudios.lumenrush/.MainActivity
+            sleep 25
+            adb exec-out screencap -p > home.png
+            adb shell pidof com.bigbrucestudios.lumenrush
+            adb logcat -d | grep -iE "Capacitor|chromium|AndroidRuntime" | tail -60 > logcat.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lumen-rush-emulator
+          path: |
+            home.png
+            logcat.txt
