@@ -82,3 +82,69 @@ describe("Skyrise's daily calendar", () => {
     expect(s.crystals).toBe(crystals + 50);
   });
 });
+
+describe("Skyrise has no mayor", () => {
+  // Mayor Pip belongs to Buildaroo. Skyrise's story card is the Sky City plan, its guide
+  // talks about towers only, and every line of it is translated.
+  const banned = /\bPip\b|mayor|business|café terrace|manager|cash|Coffee Cart|Skyhaven/i;
+
+  it("tells its story and guide without Pip or the company", async () => {
+    const { TOWER_GUIDE, PAGE_INTRO } = await import("../src/data/guide");
+    const lines = [
+      ...CHAPTERS.flatMap(c => [c.title, c.intro, c.outro, ...c.goals.map(g => g.text)]),
+      ...TOWER_GUIDE.flatMap(s => [s.title, ...s.rows.flatMap(r => [r.title, r.text])]),
+      PAGE_INTRO.goals, PAGE_INTRO.shop, PAGE_INTRO.me,
+    ];
+    expect(lines.filter(l => banned.test(l))).toEqual([]);
+    expect(TOWER_GUIDE.flatMap(s => s.rows).length).toBeGreaterThan(10);
+  });
+
+  it("has every story and guide line in Spanish, Portuguese, French and German", async () => {
+    const { TOWER_GUIDE, PAGE_INTRO } = await import("../src/data/guide");
+    const { dictionary } = await import("../src/i18n");
+    const lines = [
+      ...CHAPTERS.flatMap(c => [c.title, c.intro, c.outro, ...c.goals.map(g => g.text)]),
+      ...TOWER_GUIDE.flatMap(s => [s.title, ...s.rows.flatMap(r => [r.title, r.text])]),
+      PAGE_INTRO.goals, "Zephyr", "Back to building!",
+    ];
+    for (const l of ["es", "pt", "fr", "de"] as const) {
+      const d = dictionary(l);
+      expect(lines.filter(k => !d[k]), l).toEqual([]);
+    }
+  });
+
+  it("has its own city, Cloudreach, not Buildaroo's Skyhaven", async () => {
+    const { CITY_NAME } = await import("../src/logic/city");
+    expect(CITY_NAME).toBe("Cloudreach");
+  });
+
+  it("draws Zephyr, not Pip", async () => {
+    const { MAYOR_SVG, zephyrSvg } = await import("../src/ui/mayor");
+    expect(MAYOR_SVG).toBe("");
+    const a = zephyrSvg(), b = zephyrSvg("happy");
+    expect(a).toContain("<svg");
+    expect(a).not.toMatch(/mp-hat|mp-skin/);
+    expect(b).toContain("sp-sparkle");
+    // Two copies on screen at once keep their own gradients.
+    expect(a.match(/id="(zp\d+)-sky"/)![1]).not.toBe(b.match(/id="(zp\d+)-sky"/)![1]);
+  });
+});
+
+describe("Skyrise's sky layers", () => {
+  it("start where the sky changes colour, lowest first, and are all translated", async () => {
+    const { SKY_LAYERS, layerAt, layerForMeters } = await import("../src/data/layers");
+    const { SKY } = await import("../src/data/constants");
+    const { dictionary } = await import("../src/i18n");
+    expect(SKY_LAYERS.map(l => l.at)).toEqual(SKY.map(s => s.at));
+    expect(layerAt(0)).toBe(0);
+    expect(layerAt(21)).toBe(0);
+    expect(layerAt(22)).toBe(1);
+    expect(layerAt(500)).toBe(SKY_LAYERS.length - 1);
+    expect(layerForMeters(110)).toBe(1);
+    expect(layerForMeters(109)).toBe(0);
+    for (const l of ["es", "pt", "fr", "de"] as const) {
+      const d = dictionary(l);
+      expect(SKY_LAYERS.flatMap(x => [x.name, x.zephyr]).filter(k => !d[k]), l).toEqual([]);
+    }
+  });
+});

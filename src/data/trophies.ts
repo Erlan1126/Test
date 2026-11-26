@@ -50,5 +50,5 @@ export const TROPHIES: Trophy[] = [
   { id: "floors2000", name: "Skyline Maker", text: "Build 2,000 floors in all", zen: true, test: (_r, c) => c.floors >= 2000 },
   { id: "perfect1000", name: "Perfectionist", text: "Land 1,000 perfect drops in all", zen: true, test: (_r, c) => c.perfects >= 1000 },
   { id: "level15", name: "Seasoned", text: "Reach builder level 15", zen: true, test: (_r, c) => c.level >= 15 },
-  { id: "metropolis", name: "Metropolis", text: "Grow Skyhaven to 100,000 people", zen: true, test: (_r, c) => c.population >= 100000 },
+  { id: "metropolis", name: "Metropolis", text: "Grow your city to 100,000 people", zen: true, test: (_r, c) => c.population >= 100000 },
 ];

@@ -1,5 +1,7 @@
-// Mayor Pip: the friendly face of Skyhaven. A strip on the home screen shows the current
-// chapter's next goal; Pip pops up to start each chapter and to celebrate finishing one.
+// The story card. In Buildaroo, Mayor Pip is the friendly face of Skyhaven: a strip on the
+// home screen shows the current chapter's next goal; Pip pops up to start each chapter and to
+// celebrate finishing one. Skyrise has no mayor (Pip belongs to Buildaroo): its guide is
+// Zephyr, a swift in an aviator cap who tells the Sky City plan's chapters.
 import { playerStarted } from "../edition";
 import { CHAPTERS, GOAL_HOW, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter, type ChapterGoal } from "../data/chapters";
 import { CITY_NAME } from "../logic/city";
@@ -56,7 +58,59 @@ export function mayorSvg(mood: "talk" | "happy" = "talk"): string {
   <path d="M44 12q5-2 8-1v16q-4 0-8-1z" fill="rgba(255,255,255,0.18)"/>
 </svg>`;
 }
-export const MAYOR_SVG = mayorSvg();
+export const MAYOR_SVG = HAS_CITY ? mayorSvg() : "";
+
+/** Zephyr, Skyrise's guide: a cheerful swift in a leather aviator cap with goggles pushed
+ *  up, against a golden-hour sky. The eyes blink; on happy moments (a chapter done) they
+ *  become smiling arcs, the wings lift and a few sparkles pop. Each copy gets its own
+ *  gradient ids, as the home strip and the card can both be on screen. */
+let zephyrIds = 0;
+export function zephyrSvg(mood: "talk" | "happy" = "talk"): string {
+  const id = `zp${++zephyrIds}`, happy = mood === "happy";
+  const eyes = happy
+    ? `<path d="M45 66q5-5 10 0M65 66q5-5 10 0" stroke="#1d1b3a" stroke-width="3.2" fill="none" stroke-linecap="round"/>`
+    : `<g class="mp-eyes"><ellipse cx="50" cy="65" rx="6" ry="6.6" fill="#fff"/><ellipse cx="70" cy="65" rx="6" ry="6.6" fill="#fff"/>
+        <circle cx="51" cy="66" r="3.6" fill="#1d1b3a"/><circle cx="71" cy="66" r="3.6" fill="#1d1b3a"/>
+        <circle cx="52.4" cy="64.4" r="1.3" fill="#fff"/><circle cx="72.4" cy="64.4" r="1.3" fill="#fff"/></g>`;
+  // Long swept wings, the swift's own shape: lifted in a cheer, or resting along the sides.
+  const wings = happy
+    ? `<path d="M34 78C22 70 10 52 6 36c10 10 22 22 34 30z" fill="url(#${id}-wing)"/><path d="M86 78c12-8 24-26 28-42-10 10-22 22-34 30z" fill="url(#${id}-wing)"/>`
+    : `<path d="M34 76C22 82 10 94 4 104c12-4 26-12 36-20z" fill="url(#${id}-wing)"/><path d="M86 76c12 6 24 18 30 28-12-4-26-12-36-20z" fill="url(#${id}-wing)"/>`;
+  const sparkles = happy
+    ? `<g class="sp-sparkle" fill="#fff"><path d="M20 22l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path d="M100 20l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6z"/><path d="M96 54l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/></g>` : "";
+  return `<svg viewBox="0 0 120 120" aria-hidden="true">
+  <defs>
+    <linearGradient id="${id}-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b3fc4"/><stop offset="0.6" stop-color="#c25ab8"/><stop offset="1" stop-color="#ffb36b"/></linearGradient>
+    <radialGradient id="${id}-body" cx="0.4" cy="0.3" r="0.8"><stop offset="0" stop-color="#5a6fd6"/><stop offset="0.6" stop-color="#2f3a8f"/><stop offset="1" stop-color="#1e2462"/></radialGradient>
+    <linearGradient id="${id}-wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a4aa8"/><stop offset="1" stop-color="#1a1f55"/></linearGradient>
+    <linearGradient id="${id}-cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9814a"/><stop offset="1" stop-color="#8a4f26"/></linearGradient>
+    <radialGradient id="${id}-lens" cx="0.35" cy="0.35" r="0.7"><stop offset="0" stop-color="#e8fbff"/><stop offset="0.5" stop-color="#7fd6f0"/><stop offset="1" stop-color="#2a8ab0"/></radialGradient>
+    <clipPath id="${id}-c"><circle cx="60" cy="60" r="56"/></clipPath>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#${id}-sky)"/>
+  <g clip-path="url(#${id}-c)">
+    <path d="M4 96q12-9 26-3 9-9 22-3 12-5 18 5H4z" fill="#fff" opacity="0.55"/>
+    <path d="M70 106q10-7 22-2 8-6 18 0 8 0 10 6H66q0-3 4-4z" fill="#fff" opacity="0.7"/>
+    ${wings}
+    <ellipse cx="60" cy="74" rx="27" ry="28" fill="url(#${id}-body)"/>
+    <path d="M44 82q16 16 32 0q-4 18-16 18t-16-18z" fill="#fff"/>
+    <path d="M52 112l8-12 8 12-8-4z" fill="#1e2462"/>
+  </g>
+  ${eyes}
+  <path d="M56 74l4 6 4-6z" fill="#ffb02e" stroke="#c87a10" stroke-width="1" stroke-linejoin="round"/>
+  <ellipse cx="44" cy="74" rx="4.5" ry="2.8" fill="#ff8aa8" opacity="0.5"/><ellipse cx="76" cy="74" rx="4.5" ry="2.8" fill="#ff8aa8" opacity="0.5"/>
+  <path d="M33 56q0-24 27-24t27 24q-6-6-27-6t-27 6z" fill="url(#${id}-cap)"/>
+  <path d="M33 56q-4 10-1 20l5-2q-2-8 1-14z" fill="#8a4f26"/><path d="M87 56q4 10 1 20l-5-2q2-8-1-14z" fill="#8a4f26"/>
+  <rect x="36" y="42" width="48" height="5" rx="2.5" fill="#4a2f1e"/>
+  <circle cx="49" cy="42" r="8" fill="url(#${id}-lens)" stroke="#d9a441" stroke-width="3"/>
+  <circle cx="71" cy="42" r="8" fill="url(#${id}-lens)" stroke="#d9a441" stroke-width="3"/>
+  <path d="M46 39q3-2 5 0M68 39q3-2 5 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <circle cx="60" cy="60" r="56" fill="none" stroke="#fff" stroke-opacity="0.5" stroke-width="3"/>
+  ${sparkles}
+</svg>`;
+}
+/** The face on the story card and the home strip: Pip in Buildaroo, Zephyr in Skyrise. */
+const storyFace = (mood: "talk" | "happy" = "talk") => (HAS_CITY ? mayorSvg(mood) : zephyrSvg(mood));
 
 const goalText = (text: string, need: number) => t(text, { n: need >= 1e6 ? coins(need) : fmt(need) });
 const say = (line: string) => t(line, { city: t(CITY_NAME) });
@@ -71,7 +125,7 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   const next = c.goals.find(g => !goalDone(save, g)) ?? c.goals[0];
   const pct = ready ? 100 : Math.min(100, (next.have(save) / next.need) * 100);
   el.classList.toggle("ready", ready);
-  el.innerHTML = `<span class="mayor-mini">${MAYOR_SVG}</span>
+  el.innerHTML = `<span class="mayor-mini">${storyFace()}</span>
     <span class="mayor-goal"><small>${esc(head(i, c.title))}</small>
     <b>${esc(ready ? (HAS_CITY ? t("Upgrade the City Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next.text, next.need))}</b>
     <i class="mayor-bar"><i style="width:${pct}%"></i></i></span>`;
@@ -113,11 +167,9 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   no.hidden = !cancel;
   no.textContent = cancel;
   no.onclick = () => { $("mayor").hidden = true; };
-  $("mayor-face").innerHTML = mayorSvg(reward ? "happy" : "talk");
-  // (Pip's name back, after a neighbour spoke.)
-  const nm = $("mayor-name");
-  if (nm.dataset.pip === undefined) nm.dataset.pip = nm.textContent ?? "";
-  nm.textContent = nm.dataset.pip;
+  $("mayor-face").innerHTML = storyFace(reward ? "happy" : "talk");
+  // (Pip's name back, after a neighbour spoke; Skyrise's card is the Sky City plan.)
+  $("mayor-name").textContent = HAS_CITY ? t("Mayor Pip") : t("Zephyr");
   $("mayor").classList.remove("neighbour");
   $("mayor-chapter").textContent = chapter;
   $("mayor-text").textContent = text;
@@ -152,7 +204,7 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     if (HAS_CITY) { hallBanner(i + 2, save.cityName); vibrate(save.settings.vibrate, [20, 40, 20]); }
     window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
-      next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
+      next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : (HAS_CITY ? t("Thanks, Mayor!") : t("Back to building!")),
       () => { if (next) { introduce(save, persist); } after(); }), HAS_CITY ? 2600 : 0);
     return;
   }
