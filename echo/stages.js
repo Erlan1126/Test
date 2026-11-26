@@ -8,7 +8,9 @@
 const STAGES_N = 60;
 function stageInfo(n) {
   const daily = n === 0, k = daily ? 8 + (dayNumber() % 12) : n;
-  const len = Math.min(980, 400 + k * 20), hard = Math.min(1, (k - 1) / 18);
+  // Difficulty climbs the whole way: to 0.75 by stage 19, then slowly to the full 1 at stage 55
+  // (it used to stop climbing at stage 19, so the second half of the game felt the same throughout).
+  const len = Math.min(980, 400 + k * 20), hard = k <= 19 ? (k - 1) / 18 * 0.75 : Math.min(1, 0.75 + (k - 19) / 36 * 0.25);
   return { n, daily, len, hard, boss: !daily && n % 10 === 0, wind: !daily && n >= 7 && n % 3 === 1, par: len / (25 + hard * 5), theme: daily ? (k - 1) % 5 : Math.min(4, Math.floor((n - 1) / 10)), tower: !daily && n > 50, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
 }
 function stageSave() {
@@ -129,6 +131,9 @@ function startStage(n, opts = {}) {
   const attempt = !info.daily && S.att ? S.att[n] : 0;
   startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
   if (run && run.stage === n) run.attempt = attempt;
+  // A helping hand: each time in a row you run out of light on a stage, the dark comes a little
+  // slower on your next try (up to 28% after four; 40% on a boss). Clearing the stage resets it.
+  if (run && run.stage === n && !info.daily && !race) run.assist = Math.min(info.boss ? 0.4 : 0.28, ((S.fails || {})[n] || 0) * 0.07);
   // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
   if (opts.cp && run && run.stage === n) {
     const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
@@ -159,6 +164,7 @@ function stageClear(R) {
     // (v3: the course as built from sections; an older ghost or best time doesn't block saving a v3 ghost.)
     if (!R.cpUsed && (!b.time || time < b.time || !(S.ghosts[n] && S.ghosts[n].v === 3))) { S.ghosts[n] = { v: 3, g: ghostEncode(R.trace), t: time }; newBest = true; }
     S.unlocked = Math.max(S.unlocked, Math.min(STAGES_N, n + 1));
+    if (S.fails) delete S.fails[n];
   }
   R.newBest = newBest;
   starRewards();
@@ -178,6 +184,7 @@ function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
   if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(R.px / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
+  if (!R.stageInfo.daily && !R.raceTime && !R.attract) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
   setTimeout(() => showStageCard(false), 650);
 }
 function showStageCard(won) {

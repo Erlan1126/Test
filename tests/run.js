@@ -207,6 +207,11 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       // The Night shift's "keep going?" offer: pause can't open over it, and its clock waits while the app is hidden.
       { startRun({}); save.glow = 500; const R = run; R.inv = 0; R.hearts = 1; runHit(); const offered = !$("runContinue").hidden;
         $("runPauseBtn").click(); out.pauseCantOpenOverKeepGoing = offered && $("runPause").hidden; $("runContinueNo").click(); }
+      // A helping hand: failing a stage again and again slows the dark a little; clearing it resets.
+      { const S = stageSave(); S.unlocked = 60; S.fails = {}; delete S.best[12]; startStage(12); const a0 = run.assist; run.inv = 0; run.hearts = 1; runHit(); run.inv = 0; startStage(12); const a1 = run.assist; run.inv = 0; run.hearts = 1; runHit(); startStage(12); const a2 = run.assist;
+        S.fails[12] = 9; startStage(12); const cap = run.assist; S.fails[40] = 9; startStage(40); const capB = run.assist; $("chapIntro").hidden = true;
+        startStage(12); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 60 && !R.cleared; q++) runUpdate(1 / 60);
+        out.failingAgainSlowsTheDarkALittle = a0 === 0 && a1 > 0 && a2 > a1 && cap === 0.28 && capB === 0.4 && R.cleared && !S.fails[12]; }
       startStage(3); run.inv = 0; run.hearts = 1; runHit(); out.theLastHeartShattersTheFigure = Array.isArray(run.shatter) && run.shatter.length > 10;
             openSheet("stages"); out.theCityMapShowsSixtyHomes = document.querySelectorAll("#shopList .bld").length === 60 && document.querySelectorAll("#shopList .bld.boss").length === 6 && document.querySelectorAll("#shopList .district").length === 6;
             { const nb = document.querySelector("#shopList .bld:not([disabled])"); nb.click(); out.tappingAHomeShowsWhoLivesThere = document.querySelector("#shopList .map-pick").textContent.includes(stagePerson(Number(nb.dataset.pick))[0]); }

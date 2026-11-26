@@ -435,7 +435,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * (1 - (R.assist || 0)) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract && !R.cleared) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
