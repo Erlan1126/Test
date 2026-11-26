@@ -86,8 +86,8 @@ const head = (i: number, title: string) => HAS_CITY
 function opensHtml(level: number): string {
   if (!HAS_CITY) return "";
   const names = hallOpens(level).map(b => t(b.name));
-  const land = LAND.find(l => landHall(l.id) === level);
-  if (land) names.push(t(land.name));
+  // (A City Hall level can open more than one district: Downtown and the Beach Resort.)
+  for (const land of LAND.filter(l => landHall(l.id) === level)) names.push(t(land.name));
   return names.length ? `<li class="plan-opens"><span>🔓</span>${esc(t("Level {n} opens: {list}", { n: level, list: names.join(", ") }))}</li>` : "";
 }
 

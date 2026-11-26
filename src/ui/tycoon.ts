@@ -934,8 +934,7 @@ export class TycoonUI {
   /** What a City Hall level opens, in one line ("" if nothing new). */
   opensLine(level: number): string {
     const names = hallOpens(level).map(b => t(b.name));
-    const land = LAND.find(l => landHall(l.id) === level);
-    if (HAS_CITY && land) names.push(t(land.name));
+    if (HAS_CITY) for (const land of LAND.filter(l => landHall(l.id) === level)) names.push(t(land.name));
     return names.length ? t("Opens: {list}", { list: names.join(", ") }) : "";
   }
 
@@ -959,8 +958,11 @@ export class TycoonUI {
       case "offices": return { text: t("Build an office block"), sub: t("{n} of {total} office blocks for this chapter", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: g.have(s) / g.need, tone: "grow", act: () => this.openBuild() };
       case "height": return { text: t("Build a tower {n} m tall", { n: fmt(g.need) }), sub: t("Your best so far: {n} m", { n: fmt(Math.floor(g.have(s))) }), pct: Math.min(1, g.have(s) / g.need), tone: "grow", act: play };
       case "land": {
-        const l = LAND.find(x => x.id === g.land), sale = landOnSale(s);
-        if (!l || !sale || sale.id !== l.id) return null;
+        // (Districts go on sale in order: one before this goal's comes first, so a save from
+        // before the Beach Resort is still led to it on the way to the Cloud Kingdom.)
+        const want = LAND.find(x => x.id === g.land), sale = landOnSale(s);
+        const l = sale && want && LAND.indexOf(sale) <= LAND.indexOf(want) ? sale : null;
+        if (!l) return null;
         const lp = landPrice(s, l);
         return ty.coins >= lp
           ? { text: t("Buy the {name}!", { name: t(l.name) }), sub: t(l.what), pct: 1, tone: "gift", act: () => this.openLand() }

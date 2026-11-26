@@ -28,6 +28,12 @@ const PLACES: Record<string, [string, string, string]> = {
   "th-spire": ["💎", "Crystal spire", "A tower of living crystal that glows at night."],
   "th-rocket": ["🚀", "Rocket pad", "Every so often, a rocket launches from here."],
   "th-dish": ["📡", "Radio telescope", "A giant dish listening to the stars."],
+  "th-hotel": ["🏨", "Resort hotel", "A curved tower of sea-view rooms, with a balcony on every floor."],
+  "th-pool": ["🏊", "Resort pool", "Loungers, umbrellas and a curly slide into the deep end."],
+  "th-cabanas": ["⛱️", "Beach cabanas", "Striped cabanas on the sand, their curtains open to the breeze."],
+  "th-palms": ["🌴", "Palm garden", "Palms round a shell fountain: the way into the Beach Resort."],
+  "th-lagoon": ["🛶", "Lagoon pier", "A wooden pier over clear water, with boats tied up at the end."],
+  "th-beach": ["🏖️", "Resort beach", "Rows of loungers down to the water, and a volleyball net."],
   rank1: ["🛍️", "Street market", "Striped stalls and shoppers on the plaza. Opened when Skyhaven became a Village."],
   rank2: ["🚋", "Tram stop", "The little tram runs round the streets. Opened when Skyhaven became a Town."],
   rank3: ["📺", "Billboards", "Glowing billboards light up the corners. Arrived when Skyhaven became a City."],
@@ -56,6 +62,7 @@ export const SIGHT_PEOPLE = [0, 12, 30, 90, 240, 600];
 export const ALBUM_KINDS: string[] = ["block1", "block2", "block3", "block4", "block5", "park", "lighthouse", "home",
   "rank1", "rank2", "rank3", "rank5", "rank6", "rank7",
   "th-marina", "th-market", "th-lighthouse", "th-park", "th-lake", "th-wheel", "th-fountain", "th-plaza",
+  "th-hotel", "th-pool", "th-cabanas", "th-palms", "th-lagoon", "th-beach",
   "th-palace", "th-skygarden", "th-spire", "th-rocket", "th-dish"];
 /** Crystals for each new find, and for the whole album. */
 export const ALBUM_CRYSTALS = 2;
