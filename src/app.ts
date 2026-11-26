@@ -448,7 +448,7 @@ export class App implements DailyHost {
       doneToday: v.doneToday, streak: v.count, rentFull: city && left <= 0,
       rentFullAt: city && left > 0 && this.save.rent.last ? Date.now() + left * 36e5 : undefined,
       // The managers' vault fills up after the offline limit.
-      vaultFullAt: this.save.tycoon.managers.length ? Date.now() + offlineHours(this.save) * 36e5 : undefined,
+      vaultFullAt: HAS_CITY && this.save.tycoon.managers.length ? Date.now() + offlineHours(this.save) * 36e5 : undefined,
       holidayEnds: !HAS_CITY && hp && !hp.done ? { at: Date.now() + holidayDaysLeft(hp.h) * 864e5, name: t(hp.h.name), skin: t(skinById(hp.h.skin).name) } : undefined,
       buildDoneAt: HAS_CITY ? (this.save.tycoon.builds ?? []).map(b => b.end).filter(e => e > Date.now()).sort((a, b) => a - b)[0] : undefined,
       eventEndsAt: HAS_CITY ? cityEventEndsAt(this.save) : undefined,
@@ -1271,8 +1271,13 @@ export class App implements DailyHost {
     this.sound.intensity = 0;
     const run = this.sim.summary();
     if (this.mode === "daily") run.day = this.runDay;
-    const starsBefore = this.save.stars, levelBefore = this.save.profile.level;
+    const starsBefore = this.save.stars, levelBefore = this.save.profile.level, metersBefore = this.save.bestMeters;
     this.outcome = recordRun(this.save, run);
+    // Skyrise: a tower reaching a sky layer none of yours had reached says so on the card.
+    if (!HAS_CITY && this.mode !== "zen" && layerForMeters(run.meters) > layerForMeters(metersBefore)) {
+      const L = SKY_LAYERS[layerForMeters(run.meters)];
+      this.outcome.rewards.unshift({ kind: "pass", text: t("{icon} New sky layer reached: {name}!", { icon: L.icon, name: t(L.name) }) });
+    }
     this.towerStars = Math.max(0, this.save.stars - starsBefore);
     statsTower(run, this.save.profile.towers, this.save.profile.level);
     if (this.vs && this.mode === "classic") void postTry(this.vs.id, this.save.nickname, run.score);
@@ -2594,7 +2599,10 @@ export class App implements DailyHost {
       t("🔥 Best streak {s} · 🏢 {n} people", { s: bestRun(this.drops), n: fmt(sim.score) }),
       t("🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?"),
     ].join("\n");
-    return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
+    // (Skyrise: and the sky layer it reached, once it's above the clouds.)
+    const k = HAS_CITY ? 0 : layerForMeters(sim.meters);
+    const up = k > 0 ? t(", up in the {name}", { name: t(SKY_LAYERS[k].name) }) : "";
+    return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms + up, n: fmt(sim.score) });
   }
 
   /** Records a short clip of the finished tower and opens the share sheet with it. */
@@ -2999,7 +3007,7 @@ export class App implements DailyHost {
     } catch { return null; }
   }
   /** Shares a picture (the native share sheet, the browser's, or a download). */
-  async sharePicture(blob: Blob, text: string, name = "skyrise-skyhaven.jpg", addSite = true): Promise<void> {
+  async sharePicture(blob: Blob, text: string, name = HAS_CITY ? "skyrise-skyhaven.jpg" : "skyrise-cloudreach.jpg", addSite = true): Promise<void> {
     const full = this.site && addSite ? `${text} ${this.site}` : text;
     track("share", { kind: name.replace(/^skyrise-?|\.\w+$/g, "") || "picture" }, false);
     if (await nativeShare(full, blob, name)) return;

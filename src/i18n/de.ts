@@ -2484,4 +2484,6 @@ export const DE: Record<string, string> = {
   "Hold tight, the wind is fast up here!": "Halt dich fest, hier oben weht's kräftig!",
   "The sun is setting below us. Keep going!": "Die Sonne geht unter uns unter. Weiter so!",
   "We're up among the stars! Nobody has flown this high.": "Wir sind bei den Sternen! So hoch ist noch keiner geflogen.",
+  "{icon} New sky layer reached: {name}!": "{icon} Neue Himmelsschicht erreicht: {name}!",
+  ", up in the {name}": ", hoch oben in: {name}",
 };

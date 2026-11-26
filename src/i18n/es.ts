@@ -2485,4 +2485,6 @@ export const ES: Record<string, string> = {
   "Hold tight, the wind is fast up here!": "¡Agárrate, aquí arriba el viento sopla fuerte!",
   "The sun is setting below us. Keep going!": "El sol se pone bajo nosotros. ¡Sigue así!",
   "We're up among the stars! Nobody has flown this high.": "¡Estamos entre las estrellas! Nadie ha volado tan alto.",
+  "{icon} New sky layer reached: {name}!": "{icon} ¡Nueva capa de cielo: {name}!",
+  ", up in the {name}": ", allá arriba en {name}",
 };
