@@ -5,20 +5,20 @@ import { startOpening, buyLevels, costOf, cycleOf, freeFloors, hireManager, leve
 
 /** A brand-new player's first session: they tap whatever is idle, buy the best deal, hire a
  *  manager when they can, and build a tower (about 18 floors) every few minutes. */
-export function firstSession(minutes = 15) {
+export function firstSession(minutes = 15, towers = true) {
   const s = defaultSave();
   let now = 1_800_000_000_000;
   s.tycoon.last = now;
   const at: Record<string, number> = {};
   const mark = (k: string, sec: number) => { if (at[k] === undefined) at[k] = Math.round(sec / 6) / 10; };
-  towerBonus(s, 18, now); // the first tower, before the company opens
+  if (towers) towerBonus(s, 18, now); // the first tower, before the company opens
   startOpening(s, now);
   for (let sec = 0; sec < minutes * 60; sec++) {
     now += 1000;
     for (const b of BUSINESSES) runOnce(s, b.id, now);
     tick(s, now);
     // A tower every four minutes (the BUILD button).
-    if (sec > 0 && sec % 240 === 0) towerBonus(s, 18, now);
+    if (towers && sec > 0 && sec % 240 === 0) towerBonus(s, 18, now);
     if (sec % 3 === 0) for (let g = 0; g < 50; g++) {
       const m = BUSINESSES.find(b => levelOf(s, b.id) > 0 && !s.tycoon.managers.includes(b.id) && s.tycoon.coins >= b.manager);
       if (m) { hireManager(s, m.id, now); mark(`manager:${m.id}`, sec); continue; }
@@ -47,4 +47,14 @@ it("the first session reaches its big moments in time", () => {
   expect(at["manager:coffee"]).toBeLessThan(4);
   expect(at["open:flowers"]).toBeLessThan(5);
   expect(at["ready:coffee"]).toBeLessThan(9);
+});
+
+// Buildaroo, the city game, has no towers (so no tower cash): its first session, with
+// perfect tapping, still reaches the first manager and second business in a few minutes.
+// (Real players tap slower; the coffee manager took about 5-7 minutes in a played session.)
+it("the city game's first session, with no towers, keeps its pace too", () => {
+  const at = firstSession(20, false);
+  expect(at["manager:coffee"]).toBeLessThan(3.5);
+  expect(at["open:flowers"]).toBeLessThan(6);
+  expect(at["ready:coffee"]).toBeLessThan(7);
 });
