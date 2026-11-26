@@ -39,3 +39,13 @@ describe("life in the sky", () => {
     expect(sky.passing).toBe("birds");
   });
 });
+
+describe("the home screen's tower", () => {
+  it("is your tallest tower in the district, the first one built on a tie", async () => {
+    const { bestTower } = await import("../src/logic/skyline");
+    expect(bestTower([])).toBeNull();
+    const a = { f: 20, s: "classic", h: "square", d: "meadow" }, b = { f: 31, s: "glass", h: "round", d: "meadow" }, c = { f: 31, s: "neon", h: "square", d: "meadow" };
+    expect(bestTower([a, b, c])).toBe(b);
+    expect(bestTower([a])).toBe(a);
+  });
+});

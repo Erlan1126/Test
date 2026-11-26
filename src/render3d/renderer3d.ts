@@ -38,6 +38,10 @@ import { SkyLife } from "./skylife";
 import { HAS_CITY } from "../edition";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
+/** The home screen's best tower is shown at most this many floors high. */
+const HOME_FLOORS = 12;
+/** Seconds it takes to rise on the home screen, and to sink when a tower starts. */
+const HOME_RISE = 1.1, HOME_SINK = 0.35;
 const SHADOW_MAX = 128;
 // Line icons on a 24-unit grid, drawn white on the power-up badges and ghost tags.
 const POWER_ICON: Record<PowerUp, string> = {
@@ -203,6 +207,11 @@ export class Renderer3D {
 
   // Skyline island
   private skyline: THREE.Group | null = null;
+  /** Your best tower, standing on the building spot on the home screen. */
+  private home: THREE.Group | null = null;
+  private homeKey = "";
+  /** 0 to 1: how far it has risen (it sinks away when a tower starts, rises again after). */
+  private homeK = 0;
   private skylineKey = "";
   private skylineIn: unknown = null;
   private biz: BizCity | null = null;
@@ -706,6 +715,7 @@ export class Renderer3D {
     this.updateLights(skyN);
     this.updateIsland(f);
     this.updateSkyline(f);
+    this.updateHome(dt, f);
     this.updateBiz(f, dt);
     // Your skyline island is for looking at between towers, not while you build.
     if (this.skyline) {
@@ -896,6 +906,57 @@ export class Renderer3D {
     list.forEach((d, i) => city.add(this.districtIsland(d.theme, d.towers, DISTRICT_SLOTS[i])));
     this.skyline = city;
     this.scene.add(city);
+  }
+
+  /** On the home screen your best tower stands on the building spot, as a reminder of what
+   *  you've built. Taller towers are shown at most HOME_FLOORS high so the title stays clear.
+   *  When a tower starts it sinks into the ground (quickly, while the camera moves in); back
+   *  on the home screen it rises again. */
+  private updateHome(dt: number, f: Frame): void {
+    const tw = f.home ?? null, want = !!tw && f.shot === "menu" && !this.inTown() && f.sim.stack.length <= 1;
+    this.homeK = want ? Math.min(1, this.homeK + dt / HOME_RISE) : Math.max(0, this.homeK - dt / HOME_SINK);
+    if (tw && want) {
+      const base = f.sim.stack[0];
+      const key = `${tw.f}|${tw.s}|${tw.h}|${base.x0},${base.x1},${base.z0},${base.z1}`;
+      if (key !== this.homeKey) {
+        this.homeKey = key;
+        if (this.home) { this.scene.remove(this.home); disposeTree(this.home, false); }
+        this.home = this.homeTower(tw, base);
+        this.scene.add(this.home);
+      }
+    }
+    if (!this.home) return;
+    const k = this.homeK, e = k * k * (3 - 2 * k);
+    this.home.visible = k > 0.001;
+    this.home.scale.y = Math.max(0.001, e);
+    if (!this.home.visible) return;
+    // Its rooftop gear blinks and turns like a finished tower's.
+    const t = this.env.time;
+    this.home.traverse(o => {
+      if (o.userData.blink) ((o as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = Math.floor(t / 0.6) % 2 ? 0.2 : 3;
+      if (o.userData.spin) o.rotation.y = t * 0.8;
+    });
+  }
+
+  private homeTower(tw: SkylineTower, base: Box): THREE.Group {
+    const g = new THREE.Group(), skin = skinById(tw.s), shape = shapeById(tw.h);
+    const floors = Math.min(tw.f, HOME_FLOORS), h = floors * FH;
+    const foot = shape.id === "square" ? boxFoot(base) : footprint(shape, base, 0);
+    const mats = this.floorMats(lookFor(skin, "normal"));
+    const geo = prism(foot, 0, h, shape.id === "round" || shape.id === "pill");
+    paintGeo(geo, floorColor(skin, 8, "normal"));
+    const m = new THREE.Mesh(geo, [mats.wall, mats.roof]);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    g.add(m);
+    // Its rooftop, the one it earned with its real height.
+    const square = shape.id === "square";
+    const roof = buildRoof(roofFor(tw.f), Math.min(base.x1 - base.x0, base.z1 - base.z0) / 2 * (square ? 0.95 : 0.7));
+    roof.position.set((base.x0 + base.x1) / 2, h, (base.z0 + base.z1) / 2);
+    g.add(roof);
+    g.position.y = FH;
+    g.userData.dynamic = true;
+    return g;
   }
 
   private districtIsland(theme: Frame["theme"], towers: SkylineTower[], slot: { x: number; z: number; y: number }): THREE.Group {
