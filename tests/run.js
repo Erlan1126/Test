@@ -235,6 +235,8 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       });
       for (const [k, v] of Object.entries(cp)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     }
+    // Hidden testing tools: five taps on the Settings title.
+    check("testing tools stay hidden until five taps", await page.evaluate(() => { const hid = $("devGroup").hidden; for (let q = 0; q < 5; q++) $("settingsTitle").click(); return hid && !$("devGroup").hidden && $("devDistricts").children.length === 7; }));
     // The finale: clearing stage 60 leads to the dawn, and back to the city.
     {
       const f = await page.evaluate(async () => {

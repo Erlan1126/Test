@@ -311,6 +311,7 @@
   #shopList .lk-tile em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--gold); margin-top: 2px; }
   #shopList .lk-tile.on { border-color: rgba(139,233,255,0.8); background: linear-gradient(180deg, rgba(139,233,255,0.16), rgba(139,233,255,0.04)); } #shopList .lk-tile.on em { color: #8be9ff; }
   #shopList .lk-tile:disabled { opacity: 0.45; } #shopList .lk-tile:active { transform: scale(0.95); }
+  .dev-note { margin: 0 0 8px; font-size: 12px; color: var(--mut); } .dev-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; } .dev-row button { padding: 8px 12px; border-radius: 12px; font-size: 13px; }
   .finale { position: fixed; inset: 0; z-index: 60; background: #04050a; overflow: hidden; }
   .finale[hidden] { display: none; }
   #finaleCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -560,6 +561,11 @@
   <div class="panel tall">
     <h2 id="settingsTitle">Settings</h2>
     <div class="scroll">
+      <section class="set-group" id="devGroup" hidden><h3>Testing</h3>
+        <p class="dev-note">For trying the game out: these change your save.</p>
+        <div class="dev-row"><button class="ghost" id="devUnlock">Unlock all stages</button><button class="ghost" id="devOpening">Replay the opening</button><button class="ghost" id="devDawn">Watch the dawn</button></div>
+        <div class="dev-row" id="devDistricts"></div>
+      </section>
       <section class="set-group"><h3>Sound</h3>
       <div class="set"><label for="setMusic">Music</label><input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
       <div class="set"><label for="setSfx">Sounds</label><input type="range" id="setSfx" min="0" max="1" step="0.05"></div>

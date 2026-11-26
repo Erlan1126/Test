@@ -178,3 +178,18 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 }
 
 showTitle();
+
+// ---------- Testing (hidden): tap the Settings title five times ----------
+{
+  let taps = 0, tapT = 0;
+  document.getElementById("settingsTitle").addEventListener("click", () => {
+    const now = performance.now(); taps = now - tapT < 800 ? taps + 1 : 1; tapT = now;
+    if (taps >= 5) { $("devGroup").hidden = false; toast("Testing tools on"); }
+  });
+  const go = n => { $("settingsScreen").classList.remove("on"); if (typeof showTitle === "function") showTitle(); setTimeout(() => startStage(n), 100); };
+  $("devDistricts").innerHTML = (typeof STAGE_CHAPTERS !== "undefined" ? STAGE_CHAPTERS : []).map((name, c) => `<button class="ghost" data-dev-stage="${c * 10 + 1}">${name}</button>`).join("") + `<button class="ghost" data-dev-stage="60">Stage 60</button>`;
+  $("devDistricts").addEventListener("click", e => { const b = e.target.closest("button[data-dev-stage]"); if (!b) return; stageSave().unlocked = 60; persist(); go(Number(b.dataset.devStage)); });
+  $("devUnlock").addEventListener("click", () => { stageSave().unlocked = 60; persist(); toast("All 60 stages unlocked"); });
+  $("devOpening").addEventListener("click", () => { $("settingsScreen").classList.remove("on"); showTitle(); playOpening(() => showTitle()); });
+  $("devDawn").addEventListener("click", () => { $("settingsScreen").classList.remove("on"); showTitle(); playFinale(() => showTitle()); });
+}
