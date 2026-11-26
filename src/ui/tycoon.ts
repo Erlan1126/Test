@@ -290,6 +290,9 @@ export class TycoonUI {
     // Tapping one of Pip's goals goes straight to where it's done.
     setGoalTap(kind => {
       const s = this.save;
+      // (Skyrise has no business district: its tower and height goals are done by building.)
+      if (kind === "towers" || kind === "height") { if (!HAS_CITY || !this.inCity) { this.host.play("classic"); return; } }
+      if (!HAS_CITY) return;
       if (kind === "managers" || kind === "levels") {
         // The business that most needs it (no manager yet / the cheapest level), selected in town.
         const b = kind === "managers" ? BUSINESSES.find(x => levelOf(s, x.id) > 0 && !s.tycoon.managers.includes(x.id)) : BUSINESSES.filter(x => levelOf(s, x.id) > 0).sort((a, b2) => costOf(a, levelOf(s, a.id), 1) - costOf(b2, levelOf(s, b2.id), 1))[0];

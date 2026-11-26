@@ -8,6 +8,7 @@ import { townRank, usedFloors } from "../logic/tycoon";
 import { RANKS } from "./ranks";
 import { BUSINESSES } from "./tycoon";
 import type { LandId } from "./land";
+import { districtTowers } from "../logic/skyline";
 import type { SaveData } from "../logic/save";
 
 export interface ChapterGoal {
@@ -64,7 +65,7 @@ const inLand = (land: LandId, name: string, need: number): ChapterGoal => ({ tex
 
 // One chapter per town rank: Pip's story and the goal bar in the town tell the same story.
 // The last goal of each chapter is the rank itself.
-export const CHAPTERS: Chapter[] = [
+const CITY_CHAPTERS: Chapter[] = [
   {
     title: "The Village",
     intro: "Welcome to Skyhaven! Your first neighbor needs a place to sit and a busier street. Grow the businesses and our hamlet becomes a village, with a street market!",
@@ -153,9 +154,89 @@ export const CHAPTERS: Chapter[] = [
   },
 ];
 
+// Skyrise, the tower game on its own, has no businesses, café or districts to buy: its story
+// is told with towers, height, the people living in Skyhaven, the islands and the city
+// buildings bought with stars (the Sky City sheet). These are Pip's first six chapters.
+const people = (s: SaveData) => s.population;
+const cityBuilds = (s: SaveData) => s.city.length;
+const builderLevel = (s: SaveData) => s.profile.level;
+const inIsland = (id: string) => (s: SaveData) => districtTowers(s, id).length;
+const TOWER_CHAPTERS: Chapter[] = [
+  {
+    title: "A city in the sky",
+    intro: "Welcome to Skyhaven! It's just a meadow for now, but with your towers it'll be the greatest city in the sky. Let's begin!",
+    outro: "Look at that skyline! People are already moving in. You're a natural.",
+    goals: [
+      { text: "Build {n} towers", need: 3, have: towers, kind: "towers" },
+      { text: "Build a tower {n} m tall", need: 30, have: best, kind: "height" },
+      { text: "Reach builder level {n}", need: 2, have: builderLevel },
+    ],
+    reward: { stars: 10, crystals: 20 },
+  },
+  {
+    title: "Growing up",
+    intro: "Skyhaven is growing! More people means more rent, and more rent means more buildings.",
+    outro: "{city} has a real heartbeat now. Time to look beyond the meadow...",
+    goals: [
+      { text: "Reach {n} people", need: 5000, have: people },
+      { text: "Reach builder level {n}", need: 5, have: builderLevel },
+      { text: "Build {n} city building", need: 1, have: cityBuilds },
+    ],
+    reward: { stars: 15, crystals: 30 },
+  },
+  {
+    title: "The Snowy Peaks",
+    intro: "Over the clouds there's an island covered in snow. Grow the city to open it, then build there!",
+    outro: "Your towers sparkle in the snow. The whole sky is talking about Skyhaven!",
+    goals: [
+      { text: "Reach {n} people", need: 15000, have: people },
+      { text: "Build {n} towers in Snowy Peaks", need: 3, have: inIsland("snow") },
+      { text: "Build {n} city buildings", need: 3, have: cityBuilds },
+    ],
+    reward: { stars: 20, crystals: 40 },
+  },
+  {
+    title: "The Desert Oasis",
+    intro: "Next stop: a warm oasis of palm trees and sand. It needs a skyline only you can build.",
+    outro: "An oasis of glass and gold. I could watch the sunset from your towers all day.",
+    goals: [
+      { text: "Reach {n} people", need: 60000, have: people },
+      { text: "Build {n} towers in Desert Oasis", need: 3, have: inIsland("desert") },
+      { text: "Build a tower {n} m tall", need: 200, have: best, kind: "height" },
+    ],
+    reward: { stars: 30, crystals: 60 },
+  },
+  {
+    title: "Cherry Blossom",
+    intro: "The cherry trees are in bloom on the next island. Let's give it towers worth the view.",
+    outro: "Pink petals and perfect towers. Skyhaven has never looked so lovely.",
+    goals: [
+      { text: "Reach {n} people", need: 180000, have: people },
+      { text: "Build {n} towers in Cherry Blossom", need: 3, have: inIsland("blossom") },
+      { text: "Build {n} city buildings", need: 8, have: cityBuilds },
+    ],
+    reward: { stars: 40, crystals: 80 },
+  },
+  {
+    title: "Capital of the sky",
+    intro: "One last dream: make Skyhaven the capital of the sky. Half a million people, and a tower to match!",
+    outro: "You did it! Skyhaven is the capital of the sky, and you built every floor of it. Thank you, builder!",
+    goals: [
+      { text: "Reach {n} people", need: 500000, have: people },
+      { text: "Build a tower {n} m tall", need: 500, have: best, kind: "height" },
+      { text: "Reach builder level {n}", need: 20, have: builderLevel },
+    ],
+    reward: { stars: 60, crystals: 150 },
+  },
+];
+
+/** Pip's story for this build: the City Hall's levels in the city game, towers in Skyrise. */
+export const CHAPTERS: Chapter[] = HAS_CITY ? CITY_CHAPTERS : TOWER_CHAPTERS;
+
 /** Saves from the old chapters (islands and people) move to these: the chapters whose goals
  *  are already met count as done, without paying their reward again. */
-export const CHAPTERS_V = 3;
+// (Skyrise counts its own version: its tower chapters replaced city goals it could never meet.)
+export const CHAPTERS_V = HAS_CITY ? 3 : 4;
 export function migrateChapters(s: SaveData): boolean {
   if (s.chapters.v === CHAPTERS_V) return false;
   let done = 0;

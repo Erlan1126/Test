@@ -1724,7 +1724,8 @@ export class App implements DailyHost {
       this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); });
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
-    if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
+    // (Skyrise too: its home screen shows Pip's tower story, where its chapters are claimed.)
+    renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
     // (In the town, Pip's chapter waits until the first steps there are done.)
     // (In the city game the bottom card is the one guide: it shows the City Plan, and the
     // City Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
