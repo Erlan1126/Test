@@ -1,5 +1,10 @@
 # Rewarded ads (optional)
 
+> **Buildaroo (the city game):** the one ad is on the welcome-back screen: "Watch a short
+> ad to double what your businesses earned while you were away" (at most 5 a day, only when
+> the player taps it). Everything below applies the same way; in AdMob name the apps
+> "Buildaroo" instead of "Skyrise". Until the four IDs are connected, the button is hidden.
+
 The game is ready for one kind of ad: after a tower, a player can choose to watch a short
 ad to double the stars that tower earned (at most 5 a day). Nothing shows without a tap,
 and there are no banners or pop-ups. Until an ad network is connected the button is
