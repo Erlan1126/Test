@@ -97,6 +97,7 @@ function runnerStart(R) {
   swingGen(R, 220);
   R.teth = a0; R.L = Math.hypot(R.px - a0.x, R.py - a0.y); R.hold = true;
   if (R.tut) R.tut = 1;
+  if (!R.stageInfo && !R.attract) { const nb0 = ((save.run || {}).night || {}); R.weekBest = nb0.week === weekNumber() ? nb0.best || 0 : 0; }
   if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
 }
 
@@ -444,7 +445,7 @@ function runnerUpdate(dt) {
   if (R.px < R.darkX + 1 && !R.attract && !R.cleared) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
   for (const b of R.blds) if (b.litT >= 0) b.litT += dt;
-  for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.attract) { runMission("free", R.lit); progressEvent("free"); if (!b.tree) sfx.clear(); } }
+  for (const b of R.blds) if (b.litT < 0 && R.px > b.x0 - 3) { b.litT = 0; R.lit++; if (!R.stageInfo && !R.attract && R.weekBest > 0 && R.lit === R.weekBest + 1) { runMsg("New week best!", `${R.lit} windows and counting`, 1.6, true); sfx.star(2); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffd25a, big: true }); } if (!R.attract) { runMission("free", R.lit); progressEvent("free"); if (!b.tree) sfx.clear(); } }
   // Lights.
   const mag = R.power && R.power.kind === "magnet";
   for (const c of R.motes) {
