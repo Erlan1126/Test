@@ -140,6 +140,14 @@ function beatTick() {
     const k = music.step, t = music.next, bar = Math.floor(k / 16), root = PROG[bar % 4], s = k % 16, full = music.layers >= 2;
     if (s % 4 === 0) { note(150, { time: t, dur: 0.28, vol: 0.32, glide: 42, echo: 0, attack: 0.003, music: true }); music.kicks.push(t); if (music.kicks.length > 8) music.kicks.shift(); }
     music.root = root;
+    // Each district's own sounds under the music.
+    const A = D.amb, rnd = Math.random();
+    if (A === 0 && s === 0 && bar % 2 === 0) noise({ time: t, filter: "lowpass", freq: 160, q: 0.5, dur: step * 30, attack: 1.2, vol: 0.02, music: true });
+    else if (A === 1 && s === 10 && rnd < 0.5) note(beatHz(root + [4, 7, 9, 11][Math.floor(rnd * 8) % 4], 3), { time: t, dur: 1.2, vol: 0.012, type: "triangle", echo: 1, music: true });
+    else if (A === 2 && s === 0 && bar % 2 === 0) noise({ time: t, filter: "lowpass", freq: 300, glide: 900, q: 0.7, dur: step * 28, attack: 1.4, vol: 0.035, music: true });
+    else if (A === 3 && s % 2 === 1 && rnd < 0.12) note(beatHz(root + [0, 2, 4, 7][Math.floor(rnd * 32) % 4], 3), { time: t, dur: 0.06, vol: 0.01, type: "square", lowpass: 3500, music: true });
+    else if (A === 4 && s % 4 === 2) for (let q = 0; q < 2; q++) noise({ time: t + q * 0.05, filter: "bandpass", freq: 4800, q: 8, dur: 0.035, attack: 0.002, vol: 0.012, music: true });
+    else if (A === 5 && s === 0 && bar % 2 === 0) noise({ time: t, filter: "bandpass", freq: 500, glide: 1100, q: 1.2, dur: step * 30, attack: 1.6, vol: 0.022, music: true });
     if (s === 4 || s === 12) noise({ time: t, filter: "bandpass", freq: 1700, q: 0.7, dur: 0.16, attack: 0.002, vol: 0.16, music: true });
     if (full && s % 2 === 0) noise({ time: t, filter: "highpass", freq: 8500, q: 0.5, dur: s % 4 === 2 ? 0.12 : 0.04, attack: 0.001, vol: s % 4 === 2 ? 0.05 : 0.03, music: true });
     if (s % 2 === 0) note(beatHz(root, -1) * (s % 8 === 6 ? 2 : 1), { time: t, dur: step * 1.7, vol: 0.09, type: "sawtooth", lowpass: 380 + (music.intensity || 0) * 500, attack: 0.004, echo: 0, music: true });

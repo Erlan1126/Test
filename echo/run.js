@@ -56,7 +56,7 @@ function startRun(opts = {}) {
   for (const m of r.missions) m.run = 0;
   musicStart(4242, 2);
   // Each district has its own groove: key, chords and tempo; the Night shift keeps the first one.
-  { const dn = run.stageInfo && !run.stageInfo.daily ? Math.min(5, Math.floor((run.stageInfo.n - 1) / 10)) : -1; music.district = [{ base: 110, prog: [0, 5, 2, 6], bpm: 116 }, { base: 146.83, prog: [0, 3, 4, 0], bpm: 108 }, { base: 98, prog: [0, 5, 3, 4], bpm: 100 }, { base: 123.47, prog: [0, 6, 5, 4], bpm: 126 }, { base: 130.81, prog: [0, 4, 5, 3], bpm: 104 }, { base: 110, prog: [0, 2, 5, 6], bpm: 120 }][dn] || null; }
+  { const dn = run.stageInfo && !run.stageInfo.daily ? Math.min(5, Math.floor((run.stageInfo.n - 1) / 10)) : -1; music.district = [{ base: 110, prog: [0, 5, 2, 6], bpm: 116 , amb: 0 }, { base: 146.83, prog: [0, 3, 4, 0], bpm: 108 , amb: 1 }, { base: 98, prog: [0, 5, 3, 4], bpm: 100 , amb: 2 }, { base: 123.47, prog: [0, 6, 5, 4], bpm: 126 , amb: 3 }, { base: 130.81, prog: [0, 4, 5, 3], bpm: 104 , amb: 4 }, { base: 110, prog: [0, 2, 5, 6], bpm: 120 , amb: 5 }][dn] || null; }
   show("run");
   $("runOver").hidden = true; $("runPause").hidden = true; if ($("stageCard")) $("stageCard").hidden = true;
   runHud();
@@ -246,7 +246,7 @@ const stageSky = si => 7 - (si.daily ? [6, 5, 4, 7, 3][dayNumber() % 5] : si.n =
 function runDraw(ctx, W, H) {
   const R = run;
   // Each district has its own sky and colours; in the Night shift they blend into the next.
-  const m = R.dist / RUN.M, b = R.stageInfo ? stageSky(R.stageInfo) : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
+  const m = R.dist / RUN.M, b = R.stageInfo ? stageSky(R.stageInfo) : R.forceSky != null ? R.forceSky : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const w1 = runWorld(7 - (b % 8)), w2 = runWorld(7 - ((b + 1) % 8)), mixW = k => mixC(w1[k], w2[k], f);
   const night = w1.night + (w2.night - w1.night) * f, tower = mixW("tower"), winC = mixW("win"), neon = mixW("neon"), neon2 = mixC(w1.neon2 || w1.neon, w2.neon2 || w2.neon, f);
   const pal = { night, tower, winC, neon, neon2, rain: f < 0.5 ? w1.rain : w2.rain, sky: [mixC(w1.sky[0], w2.sky[0], f), mixC(w1.sky[1], w2.sky[1], f), mixC(w1.sky[2], w2.sky[2], f)] };
@@ -386,7 +386,10 @@ document.getElementById("runShopList").addEventListener("click", e => {
 // ---------- The title: a run that plays itself ----------
 let titleRun = null, titleRaf = 0;
 function startTitleRun() {
-  if (!titleRun) { const keep = run; titleRun = startRun({ attract: true }); run = keep; }
+  // The city behind the home screen is the district you're up to.
+  const nx = typeof stageNext === "function" ? stageNext() : 1, dk = Math.min(5, Math.floor((nx - 1) / 10));
+  if (titleRun && titleRun.forceKey !== dk) titleRun = null;
+  if (!titleRun) { const keep = run; titleRun = startRun({ attract: true }); titleRun.forceKey = dk; titleRun.forceTheme = Math.min(4, dk); titleRun.forceSky = stageSky({ n: nx, daily: false }); titleRun.anchors.length = 0; titleRun.blds.length = 0; titleRun.motes.length = 0; titleRun.genX = titleRun.px - 60; { const a0 = { x: titleRun.px + 2, y: 40, kind: "lamp", id: 0 }; titleRun.anchors.push(a0); titleRun.lastA = a0; titleRun.teth = a0; } run = keep; }
   if (!titleRaf) titleRaf = requestAnimationFrame(titleLoop);
 }
 function titleLoop(now) {

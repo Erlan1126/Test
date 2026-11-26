@@ -39,7 +39,7 @@ const RUNNER_THEMES = [
   { name: "Neon Arcade", fac: [3, 3, 0, 2], anchor: "ring", neon: 0.85, ad: 0.6 },
   { name: "Park Avenue", fac: [5, 1, 4, 2], anchor: "balloon", neon: 0.15, ad: 0.15, park: true },
 ];
-const runnerTheme = m => typeof run !== "undefined" && run && run.stageInfo ? RUNNER_THEMES[run.stageInfo.theme] : RUNNER_THEMES[Math.floor(Math.max(0, m) / RUN.BIOME_M) % RUNNER_THEMES.length];
+const runnerTheme = m => typeof run !== "undefined" && run && run.stageInfo ? RUNNER_THEMES[run.stageInfo.theme] : run && run.forceTheme != null ? RUNNER_THEMES[run.forceTheme] : RUNNER_THEMES[Math.floor(Math.max(0, m) / RUN.BIOME_M) % RUNNER_THEMES.length];
 // The daily letter hunt: find L-U-M-E-N in the sky in one day.
 const HUNT = "LUMEN";
 function huntState() { const d = dayNumber(); if (!save.hunt || save.hunt.day !== d) save.hunt = { day: d, got: "" }; return save.hunt; }
