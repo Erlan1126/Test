@@ -10,6 +10,7 @@ import { GEM_BONUS } from "../data/tycoon";
 import { bizThumb } from "../render3d/thumbs";
 import { houseThumb } from "../render3d/housethumbs";
 import { checkCityTrophies, CITY_TROPHIES } from "../logic/cityach";
+import { claimTeam, TEAM_STEPS, teamHomes, teamTotal, teamWeek } from "../logic/team";
 import { checkMilestone, nextMilestone as nextPeopleMs, PEOPLE_MILESTONES } from "../logic/milestones";
 import { gameCenterCity } from "../gamecenter";
 import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
@@ -34,7 +35,7 @@ import {
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
 import type { Sound } from "../sound";
-import { $, closeModal, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
+import { $, closeModal, displayName, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
 import { cleanCityName } from "../logic/save";
@@ -51,7 +52,7 @@ import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
 import { cityBanner, MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote, setGoalTap } from "./mayor";
-import { formatRecoveryCode } from "../online";
+import { formatRecoveryCode, type TeamMate } from "../online";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { landOnSale, landPrice, landWaiting, landHall } from "../logic/land";
 import { townPeople, isLot, lotsAllowed, lotsBuilt, propBlock, propHallNeed, propLevel, propPrice, propRent, propsOpen } from "../logic/props";
@@ -116,6 +117,10 @@ export interface TycoonHost {
   bizHold(): void;
   /** This week's Community Spire (asks the server; null when it can't be reached). */
   fetchSpire(): Promise<SpireNow | null>;
+  /** Buildaroo: friends' homes this week, for the friend team (undefined offline). */
+  fetchTeam(): Promise<TeamMate[] | undefined>;
+  /** Buildaroo: shares an invite link. */
+  inviteFriend(): Promise<void>;
 }
 
 /** A gold coin with a star, for counters. */
@@ -1856,6 +1861,16 @@ export class TycoonUI {
       this.host.persist(); this.host.refresh(); this.renderGoalsSheet(); this.render();
       return true;
     }
+    if (el.dataset.goal === "team") {
+      const n = claimTeam(s, Number(el.dataset.step), teamTotal(s, this.mates ?? []));
+      if (!n) return true;
+      this.host.sound.unlock(); burst(el, 18);
+      toast(t("🤝 Team reward: +{n} Sky Crystals", { n }));
+      track("team_claim", { step: Number(el.dataset.step) }, false);
+      this.host.persist(); this.host.refresh(); this.renderGoalsSheet();
+      return true;
+    }
+    if (el.dataset.goal === "invite") { void this.host.inviteFriend(); return true; }
     if (el.dataset.goal === "spbuy") {
       const r = buySeasonPass(s);
       if (r === "short") { toast(t("You need {n} more Sky Crystals", { n: SP_PRICE - s.crystals })); this.host.openShop("crystals"); return true; }
@@ -2029,7 +2044,7 @@ export class TycoonUI {
     // Today's building goals.
     this.goal("build", jobs.length);
     const homes = jobs.filter(j => j.kind === "home").length;
-    if (homes) this.goal("home", homes);
+    if (homes) { this.goal("home", homes); teamHomes(s, homes); }
     for (const j of jobs) {
       track("build_done", { kind: j.kind }, false);
       this.eventAdd(j.kind === "home" ? "home" : "build");
@@ -2212,11 +2227,41 @@ export class TycoonUI {
     this.renderGoalsSheet();
     openModal($("tcy-goalsheet"));
     // The Community Spire arrives a moment later (it's asked from the server).
+    if (HAS_CITY) void this.host.fetchTeam().then(m => {
+      this.mates = m;
+      if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet();
+    });
     if (!HAS_CITY) void this.host.fetchSpire().then(sp => {
       this.spire = sp;
       if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet();
     });
   }
+  /** Friends' weeks, as last heard from the server (undefined: not heard yet or offline). */
+  mates: TeamMate[] | undefined;
+
+  /** The friend team card: homes built together this week, steps that pay crystals. */
+  private teamHtml(): string {
+    const s = this.save, mates = this.mates;
+    if (!mates) return "";
+    const tm = teamWeek(s), total = teamTotal(s, mates), top = TEAM_STEPS[TEAM_STEPS.length - 1].at;
+    const steps = TEAM_STEPS.map((st, i) => {
+      const got = tm.claimed.includes(i), ready = total >= st.at && !got;
+      return `<button type="button" class="ev-step${got ? " got" : ready ? " ready" : ""}" data-goal="team" data-step="${i}"${ready ? "" : " disabled"}><b>${got ? "✓" : fmt(st.at)}</b><small>💎${st.crystals}</small></button>`;
+    }).join("");
+    const week = mates.filter(m => m.week === tm.week && m.homes > 0).sort((a, b) => b.homes - a.homes);
+    const who = [{ name: t("You"), homes: tm.homes }, ...week.map(m => ({ name: displayName(m.name), homes: m.homes }))].slice(0, 6)
+      .map(m => `<span class="tm-mate"><b>${esc(m.name)}</b><small>${esc(fmt(m.homes))}</small></span>`).join("");
+    return `<section class="ev-card tm-card">
+      <div class="ev-head"><span class="ev-ico">🤝</span><span><b>${esc(t("Friend team"))}</b><small>${esc(mates.length ? tn(mates.length, "You and {n} friend, building together this week", "You and {n} friends, building together this week", { n: mates.length }) : t("Invite friends to build together"))}</small></span></div>
+      <p class="ev-how">${esc(t("Every home you or your friends build or grow this week counts. Each step pays everyone on the team."))}</p>
+      <i class="ev-bar"><i style="width:${Math.min(100, (total / top) * 100).toFixed(1)}%"></i></i>
+      <p class="ev-pts">${esc(t("{n} homes together", { n: fmt(total) }))}</p>
+      <div class="ev-steps">${steps}</div>
+      ${mates.length ? `<div class="tm-mates">${who}</div>` : ""}
+      <button type="button" class="ev-pass tm-invite" data-goal="invite">${esc(t("📨 Invite a friend"))}</button>
+    </section>`;
+  }
+
   /** This week's Community Spire, as last heard from the server. */
   spire: SpireNow | null = null;
 
@@ -2243,7 +2288,7 @@ export class TycoonUI {
     }
     dealGoals(s);
     // The week's city event first (it has the best rewards), then today's goals.
-    if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.milestoneHtml());
+    if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.teamHtml(), this.milestoneHtml());
     parts.push(`<h3 class="sheet-sub">${esc(HAS_CITY ? t("Today's city quests") : t("Today's company goals"))}</h3>${this.goalsHtml()}`);
     // The side activities wait until the story is well under way, so a new player's goals are
     // the town's: the chapter (the next rank) and today's company goals.

@@ -70,7 +70,11 @@ export interface FriendTown {
   decor: string[]; land: string[];
   /** Each business's paint (logic/paint.ts); missing from towns shared before paints. */
   paint?: Record<string, string>;
+  /** The week (data/events weekIndex) and homes built or grown in it, for friend teams. */
+  week?: number; weekHomes?: number;
 }
+/** A friend's week, for the friend team. */
+export interface TeamMate { code: string; name: string; city: string; week: number; homes: number }
 /** A line on Buildaroo's city board. */
 export interface CityRow { rank: number; code: string; name: string; city: string; people: number; hall: number; avatar: string; avatarColor: number; frame: string }
 
@@ -221,6 +225,20 @@ export class Online {
       return (await res.json() as { city: FriendCity }).city;
     } catch { return undefined; }
   }
+
+  /** Friends' names and homes this week (undefined when offline). */
+  async teamMates(codes: string[]): Promise<TeamMate[] | undefined> {
+    if (this.kind !== "global") return undefined;
+    if (!codes.length) return [];
+    try {
+      const res = await fetch(`${API}/cities?codes=${codes.slice(0, 30).map(encodeURIComponent).join(",")}`);
+      if (!res.ok) return undefined;
+      return ((await res.json()) as { cities?: TeamMate[] }).cities ?? [];
+    } catch { return undefined; }
+  }
+
+  /** The link that invites a friend to visit this city (its page opens the game). */
+  inviteUrl(code: string): string { return this.kind === "global" && code ? `${API}/v/${code}` : ""; }
 
   /** Leaves a gift in a friend's city (one a day per friend). Needs our own city shared. */
   async sendGift(save: SaveData, persist: () => void, to: string): Promise<"ok" | "already" | "offline" | "error"> {

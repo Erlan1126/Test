@@ -37,6 +37,8 @@ export interface DailyHost extends Host {
   reminderInfo(): ReminderInfo;
   /** Opens the shop on the Sky Crystals tab. */
   openCrystalShop(): void;
+  /** Buildaroo: shares a link inviting a friend to visit this city. */
+  inviteFriend(): Promise<void>;
 }
 
 /** Time until local midnight, when missions and the streak day roll over. */
@@ -104,6 +106,12 @@ export class DailySheets {
       this.host.visit(c, b.dataset.code!);
     }));
     $("ranks-note").textContent = t("Your city shows here once it's shared: it updates every few minutes while you play.");
+    // Invite a friend: a link that opens the game in this city.
+    const inv = document.createElement("button");
+    inv.type = "button"; inv.className = "card-main invite-btn";
+    inv.innerHTML = `<b>${esc(t("📨 Invite a friend"))}</b><small>${esc(t("Send a link: they visit your city and can leave you a gift"))}</small>`;
+    inv.addEventListener("click", () => void this.host.inviteFriend());
+    el.appendChild(inv);
   }
 
   private get save() { return this.host.save; }

@@ -52,8 +52,8 @@ export default {
     // The rankings are open to any game copy (the apps, the website); posting needs the
     // player's token instead.
     const open = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
-    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/cityboard", "/gift", "/gifts", "/spire"].includes(url.pathname)
-      || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/");
+    const ranked = ["/players", "/runs", "/board", "/ghost", "/save", "/recovery", "/restore", "/report", "/diag", "/stats", "/stats/report", "/city", "/cities", "/cityboard", "/gift", "/gifts", "/spire"].includes(url.pathname)
+      || url.pathname === "/challenge" || url.pathname.startsWith("/challenge/") || url.pathname.startsWith("/c/") || url.pathname.startsWith("/v/");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: ranked ? open : cors });
 
     try {
@@ -225,6 +225,15 @@ async function rankings(request, url, env, now) {
     return json({ code, at: row.at, city: JSON.parse(row.data) });
   }
 
+  // Buildaroo friend teams: several friends' names and homes built this week, in one go.
+  if (url.pathname === "/cities" && request.method === "GET") {
+    const codes = [...new Set((url.searchParams.get("codes") ?? "").toUpperCase().split(",").map(c => c.replace(/[^A-Z0-9]/g, "").slice(0, 8)).filter(Boolean))].slice(0, 30);
+    if (!codes.length) return json({ cities: [] });
+    const { results } = await db.prepare(`SELECT code, data FROM cities WHERE code IN (${codes.map(() => "?").join(",")})`).bind(...codes).all();
+    return json({ cities: (results ?? []).map(r => { let c = {}; try { c = JSON.parse(r.data); } catch { /* skip */ }
+      return { code: r.code, name: c.name ?? "", city: c.town?.name ?? "", week: c.town?.week ?? -1, homes: c.town?.weekHomes ?? 0 }; }) });
+  }
+
   // Buildaroo's city board: the shared towns with the most residents (or the highest City Hall).
   if (url.pathname === "/cityboard" && request.method === "GET") {
     const by = url.searchParams.get("by") === "hall" ? "$.town.hall" : "$.town.people";
@@ -357,6 +366,16 @@ async function rankings(request, url, env, now) {
   if (page && request.method === "GET") {
     const row = await db.prepare("SELECT name, score, meters FROM challenges WHERE id = ?").bind(page[1]).first();
     return new Response(challengePage(page[1], row), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+  }
+
+  // Buildaroo invite links: the page a "visit my city" link opens.
+  const vpage = /^\/v\/([A-Za-z0-9]{4,8})$/.exec(url.pathname);
+  if (vpage && request.method === "GET") {
+    const code = vpage[1].toUpperCase();
+    const row = await db.prepare("SELECT data FROM cities WHERE code = ?").bind(code).first();
+    let c = null;
+    try { c = row ? JSON.parse(row.data) : null; } catch { c = null; }
+    return new Response(cityPage(code, c), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
   }
 
   // Anonymous play statistics (src/stats.ts). The install id is random and not a player id.
@@ -624,6 +643,7 @@ function cleanTown(t) {
   return {
     name: cleanName(t.name), hall: n(t.hall, 99), people: n(t.people, 1e9),
     levels, props, placed, paint,
+    week: n(t.week, 1e6), weekHomes: n(t.weekHomes, 1e5),
     decor: (Array.isArray(t.decor) ? t.decor : []).slice(0, 30).map(id).filter(Boolean),
     land: (Array.isArray(t.land) ? t.land : []).slice(0, 10).map(id).filter(Boolean),
   };
@@ -675,6 +695,27 @@ const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&
 // Store pages. The App Store link becomes the app's own page once it's live (set APP_STORE_URL).
 const PLAY_URL = "https://play.google.com/store/apps/details?id=com.bigbrucestudios.buildaroo";
 const APP_STORE_URL = "https://apps.apple.com/search?term=Skyrise%20Tower%20Stack";
+
+const BUILDAROO_APP_STORE = "https://apps.apple.com/search?term=Buildaroo";
+
+/** A Buildaroo invite: whose city it is, open the game there or get it. */
+function cityPage(code, c) {
+  const who = c?.name ? escHtml(c.name) : "A friend";
+  const town = c?.town?.name ? escHtml(c.town.name) : "";
+  const title = c ? `${who} invites you to visit ${town || "their city"}!` : "Buildaroo: build your own city";
+  const line = c?.town ? `A City Hall at level ${Number(c.town.hall) || 1} and ${Number(c.town.people || 0).toLocaleString("en-US")} people. Come and look around, leave a gift, and build your own city.` : "Start with one coffee cart and grow a whole city.";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${line}">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font:600 17px/1.4 system-ui,-apple-system,sans-serif;color:#1b1f4a;background:linear-gradient(180deg,#8fc6ff,#c9f0d8)}
+main{width:min(420px,calc(100% - 32px));padding:28px 22px;border-radius:28px;background:rgba(255,255,255,.9);box-shadow:0 20px 50px rgba(20,24,70,.2);text-align:center}
+h1{margin:0 0 10px;font-size:26px;letter-spacing:-.02em}p{margin:0 0 20px;color:#4a4f7a}
+a{display:block;margin:10px 0;padding:15px;border-radius:18px;text-decoration:none;font-weight:800}
+.open{background:#f63476;color:#fff;box-shadow:0 8px 20px rgba(246,52,118,.3)}.store{background:rgba(27,31,74,.07);color:#1b1f4a}</style></head>
+<body><main><h1>🏙️ ${title}</h1><p>${line}</p>
+<a class="open" href="skyrise://v/${escHtml(code)}">Open in Buildaroo</a>
+<a class="store" href="${BUILDAROO_APP_STORE}">Get it on the App Store</a>
+<a class="store" href="${PLAY_URL}">Get it on Google Play</a></main></body></html>`;
+}
 
 function challengePage(id, row) {
   const who = row ? (row.name ? escHtml(row.name) : "A friend") : "";

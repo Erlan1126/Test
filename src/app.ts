@@ -68,7 +68,7 @@ function storeSent(s: Sent): void { try { localStorage.setItem(SENT_KEY, JSON.st
 const EASY_TOWERS = 5;
 import { clockSky, nightAt, setSkyMode } from "./render/scenery";
 import { placedMap } from "./logic/placedecor";
-import type { FriendTown } from "./online";
+import type { FriendTown, TeamMate } from "./online";
 import { townPeople } from "./logic/props";
 import { Sound } from "./sound";
 import { burst, confetti, countUp, fireworks, isCounting as counting, stopCount } from "./ui/fx";
@@ -85,8 +85,9 @@ import { hallLevel, claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offl
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
 import { BOOM_MINUTES, BOOM_STREAK, BUSINESSES, DAILY_REWARDS, STAGE_NAMES, coins as tycoonCoins } from "./data/tycoon";
-import { openGifts } from "./logic/gifts";
+import { inviteCodeFrom, openGifts } from "./logic/gifts";
 import { nextMilestone } from "./logic/milestones";
+import { teamWeek } from "./logic/team";
 import { seasonPass, SP_TIERS } from "./logic/seasonpass";
 import { citySeason, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { bizColors, normalizePaint, ownsPaint } from "./logic/paint";
@@ -377,6 +378,11 @@ export class App implements DailyHost {
     void this.restoreBackup();
     onBackButton(() => this.back());
     // Challenge links: skyrise://c/ID in the app, ?vs=ID on the website.
+    // Buildaroo invite links: skyrise://v/CODE in the app, ?visit=CODE on the website.
+    if (HAS_CITY) {
+      onOpenUrl(u => this.openInvite(u));
+      if (inviteCodeFrom(location.search)) this.openInvite(location.search);
+    }
     // (Tower challenges belong to the tower game.)
     if (!HAS_CITY) {
       onOpenUrl(u => this.openChallengeLink(u));
@@ -1811,6 +1817,7 @@ export class App implements DailyHost {
         levels: { ...save.tycoon.levels }, props: Object.fromEntries(Object.entries(save.props).filter(([k, v]) => k.startsWith("g:") && v > 0)),
         placed: placedMap(save), decor: [...save.decor], land: [...save.land],
         paint: Object.fromEntries(Object.entries(save.paint).filter(([, p]) => ownsPaint(save, p))),
+        week: teamWeek(save).week, weekHomes: teamWeek(save).homes,
       } } : {}),
     };
   }
@@ -1833,6 +1840,36 @@ export class App implements DailyHost {
     this.sound.unlock(); fireworks(2, () => this.sound.firework());
     toast(tn(list.length, "🎁 {who} sent you a gift! +{cash} · +{gems} 💎", "🎁 {who} sent you {n} gifts! +{cash} · +{gems} 💎", { who, n: list.length, cash: tycoonCoins(r.cash), gems: r.crystals }));
     track("gifts_opened", { n: list.length }, false);
+  }
+
+  /** Shares a link that invites a friend to visit this city. */
+  async inviteFriend(): Promise<void> {
+    this.sound.click();
+    const code = this.save.friendCode || await this.shareCity();
+    const url = this.online.inviteUrl(code);
+    if (!url) { toast(t("You're offline: try again soon")); return; }
+    const text = t("Come and visit my city {name} in Buildaroo! {url}", { name: this.save.cityName || t("My city"), url });
+    track("invite_shared", {}, false);
+    if (await nativeShare(text, null)) return;
+    try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
+    try { await navigator.clipboard.writeText(text); toast(t("Invite link copied: paste it to a friend!")); } catch { toast(url); }
+  }
+
+  /** A friend's invite link was opened: they become a friend, and we visit their city. */
+  private async openInvite(link: string): Promise<void> {
+    const code = inviteCodeFrom(link);
+    if (!code || code === this.save.friendCode) return;
+    if (!this.save.friends.includes(code)) { this.save.friends = [code, ...this.save.friends].slice(0, 30); this.persist(); }
+    const city = await this.online.friendCity(code);
+    if (!city) { toast(t("Can't reach the server right now")); return; }
+    track("invite_opened", {}, false);
+    // (Once the player has a town of their own and nothing else is on screen.)
+    const go = (tries: number) => {
+      if (this.state === "menu" && playerStarted(this.save) && $("mayor").hidden && !document.querySelector(".modal:not([hidden])")) this.visit(city, code);
+      else if (tries > 0) setTimeout(() => go(tries - 1), 2000);
+      else toast(t("{name} is now your friend: visit them from Me → Leaders → Friends", { name: displayName(city.name) }));
+    };
+    go(30);
   }
 
   /** Leaves a gift in the friend's town we're visiting. */
@@ -1998,6 +2035,7 @@ export class App implements DailyHost {
 
   /** This week's Community Spire (only from the worldwide server). */
   fetchSpire(): Promise<SpireNow | null> { return this.online.spire(); }
+  fetchTeam(): Promise<TeamMate[] | undefined> { return this.online.teamMates(this.save.friends); }
 
   /** The contract chip while building: wide floors so far. */
   private updateContractChip(): void {

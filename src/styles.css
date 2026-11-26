@@ -4601,3 +4601,15 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 .no3d-ico { display: block; font-size: 54px; margin-bottom: 8px; }
 .no3d-card b { display: block; font: 400 20px var(--display); margin-bottom: 10px; }
 .no3d-card p { margin: 0; font-size: 15px; line-height: 1.45; color: #5a5f8a; }
+
+/* Invite a friend (under the city board). */
+#rank-list .invite-btn { width: 100%; margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+/* Friend team card. */
+.tm-card { background: linear-gradient(160deg, #e6fff2, #e8f0ff); }
+.tm-card .ev-bar i { background: linear-gradient(90deg, #19c48a, #3fa4ff); }
+.tm-mates { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tm-mate { display: flex; align-items: baseline; gap: 6px; padding: 5px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.85); font-size: 12px; }
+.tm-mate b { font-weight: 800; color: #2a1f3e; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-mate small { font-weight: 800; color: #19a87a; }
+.tm-invite { background: linear-gradient(180deg, #19c48a, #109a6c) !important; box-shadow: 0 3px 0 #0b7a55 !important; }

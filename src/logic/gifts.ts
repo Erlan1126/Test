@@ -15,3 +15,9 @@ export function openGifts(s: SaveData, n: number, now = Date.now()): { cash: num
   s.crystals += crystals;
   return { cash, crystals };
 }
+
+/** The friend code in an invite link ("…/v/CODE" or "?visit=CODE"), if any. */
+export function inviteCodeFrom(link: string): string | null {
+  const m = /(?:\/v\/|[?&]visit=)([A-Za-z0-9]{6})(?![A-Za-z0-9])/.exec(link);
+  return m ? m[1].toUpperCase() : null;
+}

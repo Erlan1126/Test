@@ -352,3 +352,16 @@ describe("Buildaroo gifts", () => {
     expect(seen.city.town.paint).toEqual({ coffee: "mint" });
   });
 });
+
+describe("Buildaroo invites and teams", () => {
+  it("shows an invite page and friends' weeks", async () => {
+    const t1 = await register(P1);
+    const code = (await call("/city", { player: P1, token: t1, city: { name: "Ana", town: { name: "Maple Bay", hall: 3, people: 900, levels: {}, props: {}, placed: {}, decor: [], land: [], week: 42, weekHomes: 7 } } })).body.code;
+    const page = await worker.fetch(new Request(`https://api.example/v/${code}`), env as never);
+    const html = await page.text();
+    expect(html).toContain("Ana invites you to visit Maple Bay");
+    expect(html).toContain(`skyrise://v/${code}`);
+    const r = await worker.fetch(new Request(`https://api.example/cities?codes=${code},ZZZZZZ`), env as never);
+    expect((await r.json() as any).cities).toEqual([{ code, name: "Ana", city: "Maple Bay", week: 42, homes: 7 }]);
+  });
+});

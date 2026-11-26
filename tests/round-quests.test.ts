@@ -120,3 +120,27 @@ describe("day and night in town", () => {
     expect(TALK_WEEKEND).toContain(line.text);
   });
 });
+
+describe("friend teams and invites", () => {
+  it("counts our homes and this week's friends, and pays each step once", async () => {
+    const { teamHomes, teamTotal, teamWeek, claimTeam, TEAM_STEPS } = await import("../src/logic/team");
+    const { weekIndex } = await import("../src/data/events");
+    const s = defaultSave(), w = weekIndex();
+    teamHomes(s, 5);
+    expect(teamWeek(s).homes).toBe(5);
+    const total = teamTotal(s, [{ week: w, homes: 10 }, { week: w - 1, homes: 99 }, { week: w, homes: 6 }]);
+    expect(total).toBe(21);
+    const c = s.crystals;
+    expect(claimTeam(s, 0, total)).toBe(TEAM_STEPS[0].crystals);
+    expect(claimTeam(s, 0, total)).toBe(0);
+    expect(claimTeam(s, 1, total)).toBe(0);
+    expect(s.crystals).toBe(c + TEAM_STEPS[0].crystals);
+  });
+  it("reads friend codes from invite links", async () => {
+    const { inviteCodeFrom } = await import("../src/logic/gifts");
+    expect(inviteCodeFrom("skyrise://v/ABC234")).toBe("ABC234");
+    expect(inviteCodeFrom("https://x.workers.dev/v/abc234")).toBe("ABC234");
+    expect(inviteCodeFrom("?visit=QWERTY&x=1")).toBe("QWERTY");
+    expect(inviteCodeFrom("skyrise://c/ABCDEF")).toBeNull();
+  });
+});

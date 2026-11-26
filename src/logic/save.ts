@@ -1,6 +1,7 @@
 // Player progress: one versioned object in local storage, with migration from the
 // older per-key format and transfer codes for moving progress to another device.
 import { normalizePaint, normalizePaints } from "./paint";
+import { newTeam, normalizeTeam, type TeamState } from "./team";
 import { newSeasonPass, normalizeSeasonPass, type SeasonPassState } from "./seasonpass";
 import { newAsks, normalizeAsks, type AskState } from "./asks";
 import { LAND, type LandId } from "../data/land";
@@ -139,6 +140,8 @@ export interface SaveData {
   paints: string[];
   /** Buildaroo: this season's pass (logic/seasonpass.ts). */
   seasonPass: SeasonPassState;
+  /** Buildaroo: this week's friend-team goal (logic/team.ts). */
+  team: TeamState;
   friends: string[];
   /** The story (see chapters.ts): chapters finished, and the last chapter Mayor Pip introduced. */
   chapters: { done: number; seen: number; v?: number };
@@ -263,6 +266,7 @@ export function defaultSave(): SaveData {
     paint: {},
     paints: [],
     seasonPass: newSeasonPass(),
+    team: newTeam(),
     friends: [],
     tycoon: newTycoon(),
     boosts: { rewind: 0, xp: 0, gold: 0 },
@@ -403,6 +407,7 @@ export function normalize(raw: unknown): SaveData {
     paint: normalizePaint(r.paint),
     paints: normalizePaints(r.paints),
     seasonPass: normalizeSeasonPass(r.seasonPass),
+    team: normalizeTeam(r.team),
     peopleMilestone: typeof r.peopleMilestone === "number" && Number.isInteger(r.peopleMilestone) ? Math.max(-1, Math.min(50, r.peopleMilestone)) : -1,
     giftsSent: Object.fromEntries(Object.entries(r.giftsSent && typeof r.giftsSent === "object" ? r.giftsSent as Record<string, unknown> : {})
       .filter(([k, v]) => /^[A-Z0-9]{4,8}$/.test(k) && typeof v === "string" && /^\d{4}-\d{1,2}-\d{1,2}$/.test(v)).slice(-60)) as Record<string, string>,
