@@ -1,9 +1,11 @@
-# Skyrise privacy policy
+# Privacy policy: Buildaroo and Skyrise
 
-Skyrise is made by Big Bruce Studios (contact: support@bigbrucestudios.com).
+Buildaroo (the city game) and Skyrise (the tower game) are made by Big Bruce Studios LLC
+(contact: support@bigbrucestudios.com). This policy covers both; where it says Skyrise, the
+same applies to Buildaroo, which runs on the same server.
 Last updated: November 26, 2026.
 
-Short version: Skyrise has no accounts, no ads and no tracking. Your progress is saved on
+Short version: the games have no accounts, no ads and no tracking. Your progress is saved on
 your device and backed up to our server under a random player id, so you can get it back
 on a new phone. We never sell or share it.
 
@@ -110,6 +112,11 @@ In the iPhone and Android apps, Sky Crystal packs are bought through the **App S
 only learns which pack was bought, so it can add the crystals. Their privacy policies apply:
 https://www.apple.com/legal/privacy/ and https://policies.google.com/privacy
 
+The optional **VIP** monthly subscription works the same way: Apple or Google bills it and
+renews it until you cancel in your store's subscription settings. The game only asks the
+store whether VIP is on. **Restore purchases** in Settings asks the store again (for
+example after reinstalling); nothing else is sent.
+
 ## Reminders
 
 The phone apps can show a daily reminder notification if you turn it on in the streak
@@ -122,9 +129,9 @@ The game's fonts are included with the game, so it doesn't contact any font serv
 
 ## Children
 
-Skyrise is suitable for all ages. It doesn't ask for names, emails, phone numbers,
+Both games are suitable for all ages. It doesn't ask for names, emails, phone numbers,
 locations or photos from anyone. The only thing a player types that others can see is the
-optional leaderboard nickname, and players can report names that aren't appropriate.
+optional nickname (and, in Buildaroo, the city's name), and players can report names that aren't appropriate.
 
 ## Contact
 
