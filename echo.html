@@ -359,6 +359,9 @@
   #shopList .bld.lock { opacity: 0.35; }
   #shopList .bld.next { border-color: rgba(139,233,255,0.8); animation: bldPulse 1.6s ease-in-out infinite; }
   #shopList .bld.sel { border-color: #8be9ff; background: #1d2840; box-shadow: 0 0 0 1px #8be9ff inset, 0 0 16px rgba(139,233,255,0.35); }
+  #shopList .bld.fresh { border-color: #ffd98a; box-shadow: 0 0 22px rgba(255,200,110,0.7); animation: freshBld 1.4s ease-out 3; } #shopList .bld.fresh i { animation: freshWin 1.4s ease-out 3; }
+  @keyframes freshBld { 0% { transform: translateY(6px) scale(0.96); } 40% { transform: translateY(-4px) scale(1.04); } 100% { transform: none; } }
+  @keyframes freshWin { 0% { background: #fff; box-shadow: 0 0 26px #fff; } 100% { } }
   @keyframes bldPulse { 50% { box-shadow: 0 0 14px rgba(139,233,255,0.5); } }
   canvas.smoothc, #titleScreen > canvas.smoothc, #runScreen > canvas.smoothc { position: absolute !important; inset: 0; width: 100%; height: 100%; display: block; z-index: 0 !important; pointer-events: none; }
   #fpsMeter { position: fixed; left: 8px; bottom: calc(8px + var(--bottom)); z-index: 60; font: 700 11px/1 ui-monospace, Menlo, monospace; color: #7fffb0; background: rgba(0,0,0,0.55); padding: 4px 6px; border-radius: 6px; pointer-events: none; }
