@@ -59,6 +59,7 @@ function startRun(opts = {}) {
   { const dn = run.stageInfo && !run.stageInfo.daily ? Math.min(5, Math.floor((run.stageInfo.n - 1) / 10)) : -1; music.district = [{ base: 110, prog: [0, 5, 2, 6], bpm: 116 , amb: 0 }, { base: 146.83, prog: [0, 3, 4, 0], bpm: 108 , amb: 1 }, { base: 98, prog: [0, 5, 3, 4], bpm: 100 , amb: 2 }, { base: 123.47, prog: [0, 6, 5, 4], bpm: 126 , amb: 3 }, { base: 130.81, prog: [0, 4, 5, 3], bpm: 104 , amb: 4 }, { base: 110, prog: [0, 2, 5, 6], bpm: 120 , amb: 5 }][dn] || null; }
   show("run");
   $("runOver").hidden = true; $("runPause").hidden = true; if ($("stageCard")) $("stageCard").hidden = true;
+  { const sp = $("stageProg"); if (sp) delete sp.dataset.n; }   // (the journey bar re-reads your best for this attempt)
   runHud();
   // One render loop only: a retry or a second tap must not start another.
   if (!runLoop.on) { runLoop.on = true; requestAnimationFrame(runLoop); }
@@ -162,7 +163,7 @@ function runHud() {
     set("stars", `${s2}${s3}${s3ok}${!!run.cleared}`, () => { const st = $("runStars"); st.hidden = false; const is = st.children; is[0].className = run.cleared ? "on" : ""; is[1].className = s2 ? "on" : ""; is[2].className = s3 ? "on" : s3ok ? "" : "lost"; });
   } else { set("tm", runScore().toLocaleString(), v => { $("runScore").textContent = v; }); set("tcls", "", () => { $("runScore").className = "score"; $("runStars").hidden = true; }); }
   set("li", run.lights, v => { const el = $("runLights"); el.textContent = `✦ ${v}`; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); });
-  { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; { const bf = $("jBest"); if (run.bestFlash > 0) { run.bestFlash = Math.max(0, run.bestFlash - 0.02); bf.style.transform = `translateX(-50%) scale(${1 + run.bestFlash * 0.8})`; bf.style.color = "#fff"; } else if (bf.style.color) { bf.style.transform = ""; bf.style.color = ""; } } if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; $("jFig").style.left = w; } if (sp.dataset.n !== String(run.stage)) { sp.dataset.n = String(run.stage); $("jName").textContent = typeof stagePerson === "function" ? stagePerson(run.stage)[0] : ""; const bp = run.stageInfo.daily ? 0 : ((stageSave().pct || {})[run.stage] || 0); $("jBest").hidden = !(bp > 0); $("jBest").style.left = bp + "%"; } } } }
+  { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; { const bf = $("jBest"); if (run.bestFlash > 0) { bf.style.transform = `translateX(-50%) scale(${1 + run.bestFlash * 0.8})`; bf.style.color = "#fff"; } else if (bf.style.color) { bf.style.transform = ""; bf.style.color = ""; } } if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; $("jFig").style.left = w; } if (sp.dataset.n !== String(run.stage)) { sp.dataset.n = String(run.stage); $("jName").textContent = typeof stagePerson === "function" ? stagePerson(run.stage)[0] : ""; const bp = run.stageInfo.daily ? 0 : ((stageSave().pct || {})[run.stage] || 0); $("jBest").hidden = !(bp > 0); $("jBest").style.left = bp + "%"; } } } }
   const maxH = Math.max(run.hearts, run.hard ? 1 : 3 + runUpg("heart"));
   set("hearts", `${run.hearts}/${maxH}`, () => { $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join(""); });
   set("mult", run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`, v => { $("runMult").textContent = v; });
@@ -388,7 +389,7 @@ let titleRun = null, titleRaf = 0;
 function startTitleRun() {
   // The city behind the home screen is the district you're up to.
   const nx = typeof stageNext === "function" ? stageNext() : 1, dk = Math.min(5, Math.floor((nx - 1) / 10));
-  if (titleRun && titleRun.forceKey !== dk) titleRun = null;
+  if (titleRun && (titleRun.forceKey !== dk || titleRun.forceSky !== stageSky({ n: nx, daily: false }))) titleRun = null;
   if (!titleRun) { const keep = run; titleRun = startRun({ attract: true }); titleRun.forceKey = dk; titleRun.forceTheme = Math.min(4, dk); titleRun.forceSky = stageSky({ n: nx, daily: false }); titleRun.anchors.length = 0; titleRun.blds.length = 0; titleRun.motes.length = 0; titleRun.genX = titleRun.px - 60; { const a0 = { x: titleRun.px + 2, y: 40, kind: "lamp", id: 0 }; titleRun.anchors.push(a0); titleRun.lastA = a0; titleRun.teth = a0; } run = keep; }
   if (!titleRaf) titleRaf = requestAnimationFrame(titleLoop);
 }

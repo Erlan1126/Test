@@ -54,6 +54,7 @@ function nextToast() {
 
 // ---------- Home ----------
 function renderTitle() {
+  if (typeof grantChapterRewards === "function") grantChapterRewards(false);
   const rs = runSave();
   { const hl = homesLit(); $("homeBestLabel").textContent = `of ${STAGES_N} lit`; $("homeBest").textContent = `${hl}`; $("heroRing").style.setProperty("--p", (hl / STAGES_N * 100).toFixed(1)); $("tileCity").textContent = `${hl}/${STAGES_N} homes lit`; }
   $("playSub").textContent = "Hold to swing, let go to fly";
