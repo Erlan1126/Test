@@ -35,7 +35,7 @@ export const LAND: LandPlot[] = [
   { id: "resort", name: "Beach Resort", icon: "🏖️", what: "A seaside resort joined to the city: curved hotel towers, a pool with loungers, colourful cabanas and a beach with a pier", minutes: 130, min: 3e9, dir: [1, 1], y: 0, theme: "resort", slot: 6 },
   { id: "cloud", name: "Cloud Kingdom", icon: "👑", what: "The sky city, floating above: white marble villas with golden domes and a golden palace, reached by a sky lift", minutes: 180, min: 5e10, dir: [-1, -1], y: 30, theme: "cloud", slot: 3 },
   { id: "crystal", name: "Crystal Spire", icon: "💎", what: "The sky city grows: glowing crystal towers round a giant crystal spire", minutes: 300, min: 2e13, dir: [-1, 0], y: 30.06, theme: "crystal", slot: 4 },
-  { id: "orbit", name: "Orbit Station", icon: "🚀", what: "The top of the sky city: glass domes, a launch pad and a rocket ready to go", minutes: 500, min: 1e16, dir: [0, -1], y: 30.12, theme: "orbit", slot: 5 },
+  { id: "orbit", name: "Orbit Station", icon: "🚀", what: "The top of the sky city: glass domes, a launch pad and a rocket ready to go", minutes: 300, min: 2e14, dir: [0, -1], y: 30.12, theme: "orbit", slot: 5 },
 ];
 
 /** How much more every business earns for each piece of land bought. */

@@ -199,7 +199,7 @@ describe("Mayor Pip's chapters", () => {
     // the City Hall, asks for more levels each time, so a City Hall level takes a while.)
     if (!HAS_CITY) expect(at).toEqual(RANKS.slice(1).map(r => r.at));
     else {
-      expect(at).toEqual([90, 280, 550, 900, 1400, 2100]);
+      expect(at).toEqual([90, 280, 550, 900, 1250, 1800]);
       at.forEach((n, i) => expect(n).toBeGreaterThan(RANKS[i + 1].at));
     }
   });

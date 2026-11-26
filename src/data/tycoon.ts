@@ -30,8 +30,15 @@ export interface Business {
  *  crystals let a player hurry). */
 export const PAY_K = 0.7, COST_K = 1.6, MANAGER_K = 1.5;
 
+/** What a district's first business costs: about a minute of what a city earns when it gets
+ *  there (read off simulated play, tests/city-playtest.test.ts). Pegged to the old district
+ *  price, the Harbor's six opened all at once for pocket change, while the Crystal Spire's
+ *  fourth took weeks. */
+const DIST_FIRST: Partial<Record<LandId, number>> = { meadow: 1e9, lakeside: 5e9, hills: 1e10, resort: 2.5e10, cloud: 3e10, crystal: 5e10, orbit: 1e12 };
+/** Each business in a district costs this many times the one before. */
+const DIST_STEP = 9;
 const BUSINESSES_BASE: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "biz-coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 60 },
+  { id: "coffee", name: "Coffee Cart", icon: "biz-coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 40 }, // ($60: the first manager is the first big goal, and saving $90 by hand dragged)
   { id: "flowers", name: "Flower Kiosk", icon: "biz-flowers", color: ["#ff9ac8", "#e8457a"], cost: 100, growth: 1.13, income: 12, cycle: 6, manager: 1200 },
   { id: "bakery", name: "Cloud Bakery", icon: "biz-bakery", color: ["#ffe27a", "#ffb13b"], cost: 1200, growth: 1.12, income: 110, cycle: 12, manager: 15000 },
   { id: "pizza", name: "Pizza Place", icon: "biz-pizza", color: ["#ff8a6b", "#e0433a"], cost: 14000, growth: 1.11, income: 1000, cycle: 24, manager: 180000 },
@@ -70,9 +77,9 @@ function districtBusinesses(): Business[] {
   const dark = (hex: string) => { const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255, k = 0.72; return "#" + [r, g, b].map(v => Math.round(v * k).toString(16).padStart(2, "0")).join(""); };
   const out: Business[] = [];
   for (const [land, list] of D) {
-    const base = (LAND.find(l => l.id === land)?.min ?? 1e6) * 0.3;
+    const base = DIST_FIRST[land] ?? (LAND.find(l => l.id === land)?.min ?? 1e6) * 0.3;
     list.forEach(([id, name, icon, c], j) => {
-      const cost = Math.round(base * 14 ** j), [income, cycle] = along(cost);
+      const cost = Math.round(base * DIST_STEP ** j), [income, cycle] = along(cost);
       out.push({ id, name, icon, color: [c, dark(c)], cost, growth: 1.1, income: Math.round(income), cycle: Math.round(cycle), manager: Math.round(cost * 4), land });
     });
   }
