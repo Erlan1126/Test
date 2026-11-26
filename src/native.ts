@@ -267,7 +267,13 @@ const REVIEW_KEY = "skyrise.review";
  * card actually shows, and we ask at most once every 90 days, and never in the first towers.
  */
 export function askForReview(towers: number): void {
-  if (!isNative() || towers < 8) return;
+  askForReviewIf(towers >= 8);
+}
+
+/** The same rating card at a happy moment of the city game, which has no towers: a City Hall
+ *  level-up from level 3 on (once every 90 days, like the tower game's). */
+export function askForReviewIf(happy: boolean): void {
+  if (!isNative() || !happy) return;
   try {
     const last = Number(localStorage.getItem(REVIEW_KEY)) || 0;
     if (Date.now() - last < 90 * 864e5) return;
