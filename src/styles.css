@@ -3319,26 +3319,10 @@ body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%
 .tcy-bar button.on:not(.tcy-build) span { color: #6a3cff; }
 .tcy-bar .tcy-build svg { width: 30px; height: 30px; }
 
-/* A tab's page fills the space between the top bar and the tab bar, which stay put. */
 body.tabs-open #tycity { z-index: 40; pointer-events: none; }
 body.tabs-open #tycity .tcy-bar, body.tabs-open #tycity .tcy-top { pointer-events: auto; }
 body.tabs-open #tycity .tcy-labels, body.tabs-open #tycity .tcy-next, body.tabs-open #tycity .tcy-events, body.tabs-open #tycity .tcy-card { visibility: hidden; }
-body.tabs-open .modal.tab-page { padding: calc(env(safe-area-inset-top, 0px) + 84px) 10px calc(env(safe-area-inset-bottom, 0px) + 100px); align-items: stretch;
-  background: linear-gradient(180deg, rgba(30, 20, 80, 0.35), rgba(30, 20, 80, 0.15)); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-body.tabs-open .modal.tab-page > .sheet { height: 100%; max-height: none !important; border-radius: 26px !important; padding-top: 4px; animation: tab-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1); box-shadow: 0 16px 40px rgba(20, 24, 70, 0.3); }
-body.tabs-open .modal.tab-page > .sheet::before { display: none; }
-@keyframes tab-in { from { transform: translateY(14px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
-/* The tab bar closes pages: no close buttons needed on them. */
-/* (A small close button stays, so every page has a clear way back to town.) */
-body.tabs-open .modal.tab-page .close-btn { opacity: 0.85; }
-/* The Company page: cash is already in the top bar. */
 body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-open #tycoon .ty-top { display: none !important; }
-/* Page chips (Goals | Sky Pass, Profile | Ranks | Sky City | Settings). */
-.tab-seg { position: sticky; top: 0; z-index: 8; display: flex; gap: 6px; margin: 8px -6px 10px; padding: 6px; border-radius: 18px; background: #efeaff; overflow-x: auto; scrollbar-width: none; }
-.tab-seg::-webkit-scrollbar { display: none; }
-.tab-seg button { flex: 1 0 auto; padding: 9px 12px; border: 0; border-radius: 13px; cursor: pointer; white-space: nowrap; font: 400 12.5px var(--display); color: #6b5fa0; background: transparent; }
-.tab-seg button.on { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 5px 12px rgba(106, 60, 255, 0.3); }
-@media (prefers-reduced-motion: reduce) { body.tabs-open .modal.tab-page > .sheet { animation: none; } }
 
 /* ════════ Company page: clean business cards ════════ */
 /* A slim header that scrolls away; the tabs stay pinned at the top. */
@@ -3347,7 +3331,6 @@ body.tabs-open #tycoon .ty-events { margin: 0 0 6px; }
 body.tabs-open #tycoon .ty-office { padding: 8px 8px 8px 14px; border-radius: 18px; }
 body.tabs-open #tycoon .ty-floors small { font-size: 10px; }
 body.tabs-open #tycoon .ty-floors b { font-size: 16px; }
-body.tabs-open #tycoon .ty-tabs { position: sticky !important; top: 0 !important; margin: 0 -10px 10px !important; padding: 8px 10px !important; background: #fbfaff !important; box-shadow: 0 6px 12px -8px rgba(42, 31, 110, 0.25); }
 body.tabs-open #tycoon .ty-panel[data-panel="company"] .ty-amount { margin: 0 2px 12px; }
 /* No sky, roof, lift shaft or lobby: just the businesses. */
 body.tabs-open #tycoon .ty-sky { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
@@ -3381,42 +3364,6 @@ body.tabs-open #tycoon .room-scene :is(.vip, .critic, .power-cut) { left: auto !
 body.tabs-open #tycoon .room-bar small { font-size: 11.5px !important; line-height: 1.25 !important; }
 body.tabs-open #tycoon .room-bar .ty-hire { max-width: 118px; white-space: normal; line-height: 1.15; font-size: 10.5px !important; padding: 6px 8px !important; }
 
-/* ════════ Every page, one design ════════ */
-/* A soft page background so white cards stand out. */
-body.tabs-open .tab-page > .sheet { background: #f5f3fb !important; padding-left: 14px !important; padding-right: 14px !important; }
-/* The page chips scroll away; the page's own header (title, inner tabs) stays pinned. */
-body.tabs-open .tab-page .tab-seg { position: static; margin: 8px 0 4px; background: #e9e4fa; }
-body.tabs-open .tab-page .sheet-top { position: sticky; top: 0; z-index: 6; margin: 0 -14px; padding: 8px 14px 0 !important; background: #f5f3fb !important; }
-body.tabs-open .tab-page .sheet-top::after { height: 10px !important; background: none !important; }
-/* Titles: one style everywhere, no colored banners. */
-body.tabs-open .tab-page .sheet-head { align-items: center; }
-body.tabs-open .tab-page .sheet-head h2, body.tabs-open .tab-page .tcy-sheet > h2 { margin: 0 !important; font: 400 22px/1.15 var(--display) !important; color: #2a1f5c !important; -webkit-text-fill-color: #2a1f5c !important; background: none !important; text-shadow: none !important; letter-spacing: 0.01em; }
-body.tabs-open .tab-page .sheet-head p { margin: 3px 0 0 !important; font: 700 12.5px var(--ui) !important; color: #7a70a8 !important; }
-/* When the page chips already name the page, its title would only repeat it. */
-body.tabs-open .tab-page:not(#profile) .sheet:has(> .tab-seg) .sheet-head h2, body.tabs-open .tab-page .sheet:has(> .tab-seg) > h2 { display: none !important; }
-body.tabs-open .tab-page .sheet:has(> .tab-seg) .sheet-head p:empty { display: none; }
-/* Inner tabs (Towers / Shapes / Islands..., Journey / Stats..., Upgrades / Team...): underlined, so they never look like the page chips. */
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) { display: flex !important; gap: 2px !important; margin: 10px 0 0 !important; padding: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: inset 0 -2px 0 #e4def6 !important; overflow-x: auto; scrollbar-width: none; }
-body.tabs-open .tab-page :is(.tabs, .ty-tabs)::-webkit-scrollbar { display: none; }
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) button { position: relative; flex: 1 0 auto; padding: 10px 8px 12px !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; color: #8a80b8 !important; font: 400 11.5px var(--display) !important; text-shadow: none !important; }
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) button[aria-selected="true"] { color: #6a3cff !important; }
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) button[aria-selected="true"]::after { content: ""; position: absolute; left: 18%; right: 18%; bottom: 0; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #6a3cff, #b04ad8); }
-body.tabs-open #tycoon .ty-tabs { margin: 0 -14px 12px !important; padding: 0 8px !important; background: #f5f3fb !important; }
-/* Section labels. */
-body.tabs-open .tab-page :is(.sheet-sub, .tcy-goal-head, h3) { margin: 18px 4px 8px !important; font: 400 11px var(--display) !important; letter-spacing: 0.08em; color: #8a80b8 !important; text-transform: uppercase; }
-body.tabs-open .tab-page .sheet-note { font-size: 12.5px !important; color: #7a70a8 !important; }
-/* The Sky Pass's banner and the Profile header become cards in the page. */
-body.tabs-open #pass .pass-hero { margin: 4px 0 12px !important; border-radius: 22px !important; }
-body.tabs-open #profile .sheet-head { gap: 12px; padding: 12px; border-radius: 22px; background: #fff; box-shadow: 0 6px 16px rgba(42, 31, 110, 0.08); }
-body.tabs-open #profile .profile-head h2 { font-size: 18px !important; }
-body.tabs-open #profile .sheet-top > .bar { margin: 8px 4px 0; }
-/* Cards: white, round, one shadow. */
-body.tabs-open .tab-page :is(.group, .district, .shop-item, .skin-card, .mission, .trophy, .pass-tier-card, .board-row, .ty-up, .ty-adv, .ty-boost, .tcy-goal, .goal-row, .city-card, .stat) { border: 0 !important; border-radius: 18px !important; background: #fff !important; box-shadow: 0 4px 14px rgba(42, 31, 110, 0.07) !important; }
-body.tabs-open :is(#shop, #city, #ranks, #profile, #pass, #settings, #tycoon, #tcy-goalsheet) .sheet-top { background: #f5f3fb !important; }
-body.tabs-open .tab-page .tab-seg { position: sticky; top: 0; z-index: 7; margin: 0 -14px 0; padding: 8px 14px 6px; border-radius: 0; background: #f5f3fb; box-shadow: none; }
-body.tabs-open .tab-page .tab-seg button { background: #e9e4fa; }
-body.tabs-open .tab-page .tab-seg button.on { background: linear-gradient(135deg, #6a3cff, #b04ad8); }
-body.tabs-open .tab-page .sheet:has(> .tab-seg) .sheet-top { top: 52px; }
 
 /* ---- Company cards, simplest form: banner + one row with the manager and a big Buy ---- */
 body.tabs-open #tycoon .room-scene { height: 92px !important; }
@@ -3467,10 +3414,6 @@ body.tabs-open #tycoon .room-bar .ty-buy:not(:disabled) small { color: #fff !imp
 #tcy-labels .tag.bub.starter .tag-ico { font-size: 18px; }
 #tcy-labels .tag.bub.starter.sel { background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }
 .ty-adv-hire.free { background: linear-gradient(180deg, #2fd17a, #13a95a); box-shadow: 0 3px 0 #0b7a40; }
-/* Ranks, Sky City, Shop and Missions as tab pages: their header sticks under the tabs like
-   every other page (an older rule made it "relative", so "top" shifted it down instead,
-   leaving a gap above and covering the first lines below). */
-body.tabs-open :is(#city, #shop, #missions, #ranks).tab-page .sheet-top { position: sticky; }
 /* The company list: the yellow "Build the … HQ" row already says it, so no badge on top. */
 body.tabs-open #tycoon .room-scene .hq-tag { display: none; }
 /* Trophy names are single long words in a wide font: a touch smaller, and never cut off. */
@@ -3600,10 +3543,6 @@ body.tabs-open #tycoon .room-stats b { font: 400 14px var(--display); color: #2a
 #earnings .eb-chip b { font: 400 14px var(--display); color: #7c4dff; }
 #earnings .eb-cico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: #f1edfb; }
 #earnings .eb-cico svg { width: 18px; height: 18px; }
-/* A pinned page header covers the strip above it too: nothing scrolls through the gap. */
-body.tabs-open .modal.tab-page .sheet-top { top: -4px !important; box-shadow: 0 -8px 0 #f5f3fb; }
-/* Cards across the menus sit on a soft ledge, like the business cards. */
-body.tabs-open .tab-page :is(.decor-card, .shop-item, .ty-boost, .premium-card, .pack-card, .deal) { box-shadow: 0 5px 0 rgba(42, 31, 110, 0.09), 0 10px 20px rgba(42, 31, 110, 0.08) !important; }
 .decor-card.cash .decor-ico { background: linear-gradient(140deg, rgba(94, 224, 160, 0.3), rgba(255, 210, 63, 0.25)); }
 
 /* ════════ Company cards v3: a little scene ════════ */
@@ -3724,7 +3663,7 @@ body.tabs-open #tycoon .room-sign, body.tabs-open #tycoon .room-sign b { max-wid
 /* 5. Trophy names wrap between words. */
 .modal .trophy b { overflow-wrap: normal !important; word-break: normal !important; hyphens: auto; font-size: 12px; }
 /* 6. Tab rows fit the screen (no cut-off labels). */
-body.tabs-open .tab-page .tabs button, .modal .seg.tabs button { font-size: 11px; padding-left: 4px; padding-right: 4px; letter-spacing: 0.02em; min-width: 0; flex: 1 1 auto; white-space: nowrap; }
+.modal .seg.tabs button { font-size: 11px; padding-left: 4px; padding-right: 4px; letter-spacing: 0.02em; min-width: 0; flex: 1 1 auto; white-space: nowrap; }
 /* 7. Crystal packs: the ribbon sits above the gems, and the bonus line fits. */
 .pack-card { padding-top: 22px !important; overflow: visible; }
 .pack-card .first-x2 { top: -8px !important; left: 50% !important; transform: translateX(-50%); white-space: nowrap; }
@@ -3822,16 +3761,12 @@ body.tabs-open #tycity .tcy-goal { visibility: hidden; }
 #earnings .eb-val { flex: none; min-width: 0; }
 #earnings .eb-hire { width: auto !important; min-width: 104px; white-space: nowrap; letter-spacing: 0 !important; font-size: 13px !important; }
 #earnings .eb-hire small { font: 700 9px var(--ui) !important; letter-spacing: 0.02em !important; text-transform: uppercase; white-space: nowrap; }
-/* Page tabs fit on a phone: four tabs share the width instead of scrolling off the edge. */
-.tab-seg { gap: 4px !important; }
-.tab-seg button { flex: 1 1 0 !important; min-width: 0; padding: 9px 4px !important; font-size: 11px !important; overflow: hidden; text-overflow: ellipsis; }
 /* Profile sub-tabs (Journey, Stats, Best towers...): spaced and scrollable, never run together. */
 #profile .seg.tabs { gap: 4px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
 #profile .seg.tabs::-webkit-scrollbar { display: none; }
 #profile .seg.tabs button { flex: none; white-space: nowrap; padding: 7px 10px; }
 /* "2x first time" ribbon: centered without transform (its bob animation uses transform). */
 .pack-card .first-x2 { left: 0 !important; right: 0 !important; margin: 0 auto; width: max-content; max-width: calc(100% - 8px); transform: none !important; font-size: 9px !important; }
-.tab-seg button { font-size: 10.5px !important; padding: 9px 2px !important; letter-spacing: 0 !important; }
 /* Messages always above the town's bubbles (they were drawn under the "Open" pills). */
 #toast { z-index: 95; }
 #earnings .eb-hire small { font-size: 10px !important; }
@@ -3855,21 +3790,20 @@ body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
 
 /* ---- One tab style everywhere (Company, Shop, Goals, Me, City, Leaderboard): the same
    rounded pill row, so moving between menus feels like one place. ---- */
-.modal .seg.tabs, .ty-tabs, .tab-seg {
+.modal .seg.tabs, .ty-tabs {
   display: flex !important; gap: 4px !important; padding: 4px !important; margin: 8px 0 10px !important; border-radius: 16px !important;
   background: #efeaff !important; border: 0 !important; box-shadow: none !important; overflow-x: auto; scrollbar-width: none;
 }
 .modal .seg.tabs::-webkit-scrollbar, .ty-tabs::-webkit-scrollbar { display: none; }
-.modal .seg.tabs button, .ty-tabs button, .tab-seg button {
+.modal .seg.tabs button, .ty-tabs button {
   flex: 1 1 0 !important; min-width: max-content; padding: 9px 8px !important; border: 0 !important; border-radius: 12px !important;
   font: 400 11px/1 var(--display) !important; letter-spacing: 0.02em !important; color: #6b5fa0 !important; background: transparent !important;
   box-shadow: none !important; text-shadow: none !important; white-space: nowrap;
 }
-.modal .seg.tabs button::after, .ty-tabs button::after, .tab-seg button::after { display: none !important; }
-.modal .seg.tabs button[aria-selected="true"], .ty-tabs button[aria-selected="true"], .tab-seg button.on {
+.modal .seg.tabs button::after, .ty-tabs button::after { display: none !important; }
+.modal .seg.tabs button[aria-selected="true"], .ty-tabs button[aria-selected="true"] {
   color: #fff !important; background: linear-gradient(135deg, #6a3cff, #b04ad8) !important; box-shadow: 0 4px 10px rgba(106, 60, 255, 0.3) !important;
 }
-.tab-seg button { min-width: 0 !important; }
 .tcy-goal b { flex: 0 1 auto !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tcy-goal .tg-bar { flex: 1 1 30px !important; min-width: 24px !important; }
 /* Pip's choices (the new island's landmark) */
@@ -3889,11 +3823,6 @@ body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
   font: 400 15px/1 var(--display); color: #fff; background: linear-gradient(150deg, #8a6bff, #5b3cff); box-shadow: 0 3px 0 #3d24b8; }
 .tcy-top .tcy-help:active { transform: translateY(2px); box-shadow: none; }
 .help-sec { margin-top: 14px !important; }
-/* One line at the top of a menu page explaining what it's for. */
-.page-intro { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; padding: 10px 12px; border-radius: 16px; background: linear-gradient(135deg, #eef3ff, #f4ecff); border: 1.5px solid #d9ccff; }
-.page-intro .pi-ico { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 400 14px var(--display); color: #fff; background: linear-gradient(150deg, #8a6bff, #5b3cff); }
-.page-intro p { flex: 1; margin: 0; font-size: 12.5px; font-weight: 700; line-height: 1.35; color: #4a3f7a; }
-.page-intro button { flex: none; padding: 7px 10px; border: 0; border-radius: 10px; cursor: pointer; font: 400 11px var(--display); color: #fff; background: #6a3cff; }
 /* Town scrapbook: a postcard for every rank */
 .scrap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 12px; }
 .postcard { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 16px; background: #fff; box-shadow: 0 4px 0 rgba(42, 31, 110, 0.08), 0 6px 14px rgba(42, 31, 110, 0.08); transform: rotate(-0.6deg); }
@@ -3914,17 +3843,6 @@ body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
 .tcy-top .tcy-wallet em { font: 400 12px var(--display) !important; color: #1f9a55 !important; letter-spacing: 0.02em; }
 .tcy-top .tcy-goal .tg-bar { height: 8px !important; background: rgba(176, 116, 42, 0.16) !important; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08); }
 .tcy-top .tcy-goal .tg-bar > i { min-width: 6px; background: linear-gradient(90deg, #ffc93c, #ff7a59, #ff4f8b) !important; }
-/* Five or more pages: full names, and the row scrolls sideways instead of squeezing them. */
-.tab-seg:has(> button:nth-child(5)) { justify-content: flex-start; }
-.tab-seg:has(> button:nth-child(5)) button { flex: 0 0 auto !important; min-width: max-content !important; padding: 9px 12px !important; overflow: visible !important; }
-/* (Inside the menu pages too: the same pill tabs, overriding the older underlined look.) */
-body.tabs-open .tab-page :is(.tabs, .ty-tabs), body.tabs-open #tycoon .ty-tabs {
-  gap: 4px !important; margin: 8px 0 10px !important; padding: 4px !important; border-radius: 16px !important; background: #efeaff !important; box-shadow: none !important;
-}
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) button { flex: 1 1 0 !important; padding: 9px 6px !important; border-radius: 12px !important; color: #6b5fa0 !important; font: 400 11px/1 var(--display) !important; }
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) button[aria-selected="true"] { color: #fff !important; background: linear-gradient(135deg, #6a3cff, #b04ad8) !important; box-shadow: 0 4px 10px rgba(106, 60, 255, 0.3) !important; }
-body.tabs-open .tab-page :is(.tabs, .ty-tabs) button[aria-selected="true"]::after { display: none !important; }
-body.tabs-open #profile .seg.tabs button { flex: 0 0 auto !important; }
 
 /* Round 5 (ChatGPT's phone check): informative labels no smaller than ~10.5px. */
 .tcy-goal small { font-size: 10.5px; }
@@ -4302,12 +4220,6 @@ body.town-panning #tycity .tcy-next { opacity: 0; pointer-events: none; }
 [hidden] { display: none !important; }
 /* The builders chip never sits on top of a menu. */
 body.tabs-open .tcy-builds, body:has(.modal:not([hidden])) .tcy-builds { display: none !important; }
-/* Pages with tabs: the tabs and one close button share the top row; the page's own
-   close buttons and sticky headers step aside so nothing overlaps. */
-body.tabs-open .tab-page .sheet:has(> .tab-seg) .close-btn { display: none !important; }
-body.tabs-open .tab-page .sheet:has(> .tab-seg) .sheet-top { position: static !important; box-shadow: none !important; }
-body.tabs-open .tab-page .tab-seg { display: flex; align-items: center; }
-.tab-seg .tab-x { flex: 0 0 34px !important; width: 34px; height: 34px; padding: 0 !important; margin-left: auto; border-radius: 50% !important; font: 400 20px/34px var(--display) !important; color: #6b5fa0 !important; background: #fff !important; box-shadow: 0 2px 6px rgba(60, 40, 140, 0.15) !important; }
 /* The city game hides the tower game's lists. */
 body.city-game [data-tab="towers"], body.city-game [data-tab="postcards"], body.city-game [data-panel="towers"], body.city-game [data-panel="postcards"] { display: none !important; }
 /* Every button in a menu answers a touch at once. */
@@ -4315,9 +4227,6 @@ body.city-game [data-tab="towers"], body.city-game [data-tab="postcards"], body.
 .sheet button:active:not(:disabled), .tcy-card button:active:not(:disabled), .tcy-bar button:active { transform: scale(0.96); filter: brightness(0.96); }
 /* Menus scroll smoothly and stop at their edges (no bouncing the whole page). */
 .sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
-/* Tabs always fit on one row next to the close button. */
-body.tabs-open .tab-page .tab-seg { overflow: visible !important; gap: 4px !important; }
-body.tabs-open .tab-page .tab-seg button:not(.tab-x) { flex: 1 1 0 !important; min-width: 0; padding: 9px 4px !important; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px !important; }
 /* The city album: places still to find are small "?" tiles, not a wall of text. */
 .alb-cell:not(.got) small { display: none !important; }
 .alb-cell:not(.got) { min-height: 0 !important; padding: 8px 0 !important; opacity: 0.7; }
@@ -4672,3 +4581,121 @@ body.tabs-open #tycity .photo-btn, body.town-panning #tycity .photo-btn, #tycity
 @keyframes wx-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .tcy-weather .wx-gold { animation: none; } }
 body.tabs-open .tcy-weather { display: none; }
+
+/* ════════ Tab pages (Shop · Company · Goals · Me): the one layout ════════
+   The single source for how a tab's page sits on screen: its header, sub-tabs, hint, cards and
+   card buttons (the older layers of tab-page rules were removed in favour of this block).
+   The page is a solid sheet from just under the top bar to the bottom edge, full width; the tab
+   bar floats over its foot. A pinned header (title + ×, page chips under it) never lets content
+   show through, and the page's own tabs pin right under it. */
+body.tabs-open .modal.tab-page {
+  --pg: #f4f1fb; --pg-ink: #2a1f5c; --pg-muted: #7a70a8;
+  --pg-card-shadow: 0 1px 0 rgba(42, 31, 110, 0.05), 0 6px 16px rgba(42, 31, 110, 0.07);
+  padding: calc(env(safe-area-inset-top, 0px) + 66px) 0 0 !important; align-items: stretch; justify-content: center;
+  background: rgba(22, 14, 64, 0.5) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+body.tabs-open .modal.tab-page > .sheet {
+  width: min(640px, 100%) !important; height: 100%; max-height: none !important; margin: 0 !important;
+  padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 112px) !important;
+  border: 0 !important; border-radius: 24px 24px 0 0 !important; background: var(--pg) !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: 0 -8px 24px rgba(10, 6, 40, 0.28) !important; animation: tab-in 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+body.tabs-open .modal.tab-page > .sheet::before { display: none !important; }
+/* The tab bar's foot: the page colour runs under and around it, so nothing peeks out there. */
+body.tabs-open .modal.tab-page::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; pointer-events: none;
+  height: calc(env(safe-area-inset-bottom, 0px) + 104px); background: linear-gradient(180deg, rgba(244, 241, 251, 0), var(--pg) 22px); }
+@keyframes tab-in { from { transform: translateY(18px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { body.tabs-open .modal.tab-page > .sheet { animation: none; } }
+
+/* The header: title left, × right, page chips under them. */
+.tab-head .th-row { display: none; }
+body.tabs-open .tab-page .tab-head { position: sticky; top: 0; z-index: 12; margin: 0 -16px; padding: 16px 16px 12px; background: var(--pg); }
+body.tabs-open .tab-page .tab-head .th-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+body.tabs-open .tab-page .th-title { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 400 26px/1.1 var(--display); letter-spacing: 0.01em; color: var(--pg-ink); -webkit-text-fill-color: var(--pg-ink); text-shadow: none; background: none; }
+body.tabs-open .tab-page .tab-x { flex: none; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  font: 400 22px/1 var(--display); color: #6b5fa0; background: #fff; box-shadow: 0 2px 8px rgba(60, 40, 140, 0.14); }
+/* Every page's own title row and close button step aside for it. */
+body.tabs-open .tab-page :is(.close-btn, .tcy-sheet > h2, .ty-top) { display: none !important; }
+body.tabs-open .tab-page:not(#profile) .sheet-top > .sheet-head { display: none !important; }
+body.tabs-open :is(#scrapbook, #collection) .sheet-top > .sheet-head { display: flex !important; }
+body.tabs-open :is(#scrapbook, #collection) .sheet-head h2 { display: none !important; }
+body.tabs-open :is(#scrapbook, #collection) .sheet-head p { margin: 0 2px 10px !important; font: 700 12.5px/1.35 var(--ui) !important; color: var(--pg-muted) !important; }
+body.tabs-open .tab-page .sheet-top { position: static !important; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; }
+body.tabs-open .tab-page .sheet-top::after { display: none !important; }
+
+/* Segmented controls: the page chips in the header and the page's own tabs look the same. */
+.tab-seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: #e9e4fa; overflow-x: auto; scrollbar-width: none; }
+.tab-seg::-webkit-scrollbar { display: none; }
+.tab-seg button { flex: 1 1 0; min-width: 0; padding: 9px 4px; border: 0; border-radius: 11px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 400 12px/1 var(--display); color: #6b5fa0; background: transparent; }
+.tab-seg button.on { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 3px 8px rgba(106, 60, 255, 0.3); }
+.tab-head > .tab-seg { margin: 8px 0 10px; }
+body.tabs-open .tab-page .tab-head > .tab-seg { margin: 12px 0 0; }
+body.tabs-open .tab-page :is(.sheet-top > .tabs, .ty-tabs) {
+  position: sticky !important; top: var(--tab-head, 64px) !important; z-index: 11 !important;
+  display: flex !important; gap: 4px !important; margin: 0 0 12px !important; padding: 4px !important; border-radius: 14px !important; background: #e9e4fa !important;
+  box-shadow: 0 -4px 0 8px var(--pg), -16px -4px 0 8px var(--pg), 16px -4px 0 8px var(--pg) !important; overflow-x: auto;
+}
+body.tabs-open .tab-page :is(.sheet-top > .tabs, .ty-tabs) button { flex: 1 1 0 !important; min-width: 0 !important; padding: 9px 4px !important; border-radius: 11px !important;
+  font: 400 12px/1 var(--display) !important; letter-spacing: 0.02em !important; color: #6b5fa0 !important; background: transparent !important; box-shadow: none !important; }
+body.tabs-open .tab-page :is(.sheet-top > .tabs, .ty-tabs) button[aria-selected="true"] { color: #fff !important; background: linear-gradient(135deg, #6a3cff, #b04ad8) !important; box-shadow: 0 3px 8px rgba(106, 60, 255, 0.3) !important; }
+/* (Its sticky parent is the page, so Shop's tab row pins too.) */
+body.tabs-open .tab-page .sheet-top:has(> .tabs) { display: contents !important; }
+
+/* The Company page: header, tabs, then the one-line hint, then the festival chip and cards. */
+body.tabs-open #tycoon > .sheet { display: flex !important; flex-direction: column; }
+body.tabs-open #tycoon > .sheet > * { flex: none; }
+body.tabs-open #tycoon > .sheet > .tab-head { order: -3; }
+body.tabs-open #tycoon > .sheet > .ty-tabs { order: -2; }
+body.tabs-open #tycoon > .sheet > .page-intro { order: -1; }
+body.tabs-open #tycoon .ty-hero { position: static !important; padding: 0 !important; margin: 0 !important; background: none !important; box-shadow: none !important; }
+body.tabs-open #tycoon .ty-events { margin: 0 0 10px !important; }
+body.tabs-open #tycoon .ty-events:empty { display: none; }
+body.tabs-open #tycoon .ty-panel { padding: 0 !important; }
+
+/* The one-line hint: small, under the header, gone for good after "Got it". */
+.page-intro { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 8px 8px 10px; border: 0; border-radius: 14px; background: #e8e1ff; }
+.page-intro .pi-ico { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: 400 12px/1 var(--display); color: #fff; background: #6a3cff; }
+.page-intro p { flex: 1; min-width: 0; margin: 0; font: 600 12px/1.3 var(--ui); color: #4a3f7a; }
+.page-intro button { flex: none; padding: 7px 12px; border: 0; border-radius: 999px; cursor: pointer; font: 400 11px/1 var(--display); color: #6a3cff; background: #fff; box-shadow: 0 1px 3px rgba(60, 40, 140, 0.15); }
+
+/* Section labels and notes. */
+body.tabs-open .tab-page :is(.sheet-sub, .tcy-goal-head, h3) { margin: 20px 2px 8px !important; font: 400 11px var(--display) !important; letter-spacing: 0.08em; color: var(--pg-muted) !important; text-transform: uppercase; }
+body.tabs-open .tab-page .tcy-goals > .sheet-sub:first-child { margin-top: 4px !important; }
+body.tabs-open .tab-page .sheet-note { font-size: 12.5px !important; color: var(--pg-muted) !important; }
+
+/* Cards: 18px corners, one soft shadow, 10px apart. */
+body.tabs-open .tab-page :is(.group, .district, .shop-item, .skin-card, .mission, .trophy, .pass-tier-card, .board-row, .ty-up, .ty-adv, .ty-boost, .tcy-goal, .goal-row, .city-card, .stat, .decor-card, .premium-card, .pack-card, .deal, .town-hero, .mayor-strip, .spin-entry, .ev-card, .sp-card, .ms-card, .tm-card, .spire-card, .ty-adv-row) {
+  border: 0 !important; border-radius: 18px !important; box-shadow: var(--pg-card-shadow) !important; }
+body.tabs-open .tab-page :is(.group, .decor-card, .shop-item, .premium-card, .pack-card, .deal, .mayor-strip, .ty-up, .ty-boost, .ty-adv-row) { background: #fff !important; }
+body.tabs-open .tab-page :is(.mayor-strip, .spin-entry, .ev-card, .sp-card, .ms-card, .tm-card, .spire-card, .town-hero) { margin: 0 0 10px !important; }
+body.tabs-open .tab-page :is(.decor-grid, .scrap-grid) { gap: 10px !important; }
+body.tabs-open .tab-page .decor-card { padding: 12px !important; }
+
+/* Card buttons: one small pill everywhere (the big glossy buy buttons were too heavy). */
+body.tabs-open .tab-page .buy { min-height: 0 !important; height: 34px; padding: 0 14px !important; border-radius: 999px !important; font: 400 14px/1 var(--display) !important;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+body.tabs-open .tab-page .buy:not(.move):not(:disabled):not(.owned) {
+  background: linear-gradient(180deg, #8a5cff, #6a3cff) !important; color: #fff !important; text-shadow: none !important;
+  box-shadow: 0 2px 0 #4a24c0, 0 4px 10px rgba(106, 60, 255, 0.25) !important; }
+body.tabs-open .tab-page .buy:not(.move):not(:disabled)::before { display: none !important; }
+body.tabs-open .tab-page .buy:not(.move):not(:disabled):active { transform: translateY(2px) !important; box-shadow: 0 0 0 #4a24c0 !important; }
+body.tabs-open .tab-page .buy.owned { box-shadow: none !important; }
+body.tabs-open .tab-page .buy svg { width: 16px !important; height: 16px !important; margin: 0 !important; vertical-align: 0 !important; }
+body.tabs-open .tab-page .decor-card .buy { width: 100%; margin-top: 8px; }
+
+/* The Me page: the player's card, then (in the city game) the city's numbers, no tower levels. */
+body.tabs-open #profile .sheet-top > .sheet-head { display: flex !important; align-items: center; gap: 12px; margin: 0 0 12px; padding: 12px; border-radius: 18px; background: #fff; box-shadow: var(--pg-card-shadow); }
+body.tabs-open #profile .profile-head { flex: 1; min-width: 0; }
+body.tabs-open #profile .profile-head h2 { margin: 0 !important; font: 400 19px/1.15 var(--display) !important; color: var(--pg-ink) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.tabs-open #profile .profile-head p { margin: 3px 0 0 !important; font: 700 12.5px var(--ui) !important; color: var(--pg-muted) !important; }
+body.city-game #profile .sheet-top > .bar, body.city-game #profile .sheet-top > .tabs, body.city-game #profile-next { display: none !important; }
+body.tabs-open #profile .stat-grid { gap: 10px !important; margin: 0 !important; }
+/* Small phones: page chips keep their whole names (a touch smaller, and the row scrolls if it must). */
+@media (max-width: 400px) {
+  .tab-seg button, body.tabs-open .tab-page :is(.sheet-top > .tabs, .ty-tabs) button { flex: 1 0 auto !important; padding: 9px 6px !important; font-size: 10.5px !important; letter-spacing: 0 !important; overflow: visible; text-overflow: clip; }
+  body.tabs-open .tab-page .th-title { font-size: 23px; }
+}
+@media (max-width: 340px) { .tab-seg button { padding: 9px 4px !important; font-size: 9.5px !important; } body.tabs-open .tab-page .tab-head { padding: 14px 12px 10px; margin: 0 -12px; } body.tabs-open .modal.tab-page > .sheet { padding-left: 12px !important; padding-right: 12px !important; } }

@@ -142,6 +142,8 @@ export const COIN_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.
 
 /** The building's picture at a stage (3D, the same model as in the town). */
 /** What the first neighbor says when the town reaches each rank (Village first). */
+/** The header title of each tab page: the same word as its button in the tab bar. */
+const TAB_TITLE: Record<string, string> = { shop: "Shop", company: "Company", goals: "Goals", me: "Me" };
 const NEIGHBOR_LINES = [
   "A market on our street! Fresh flowers for my table every day 🌷",
   "A tram! Now I can visit my sister across the island 🚋",
@@ -2407,7 +2409,20 @@ export class TycoonUI {
       if (!open) return;
       this.lastPage[k] = open.id;
       const sheet = $(open.id).querySelector<HTMLElement>(".sheet")!;
-      // What this page is for, in one line, until the player says "Got it".
+      // One header on every page: the tab's name on the left, × on the right, and the page
+      // chips under them when the tab holds several pages. It stays pinned while the page scrolls.
+      let head = sheet.querySelector<HTMLElement>(":scope > .tab-head");
+      if (!head) {
+        head = document.createElement("div");
+        head.className = "tab-head";
+        head.innerHTML = `<div class="th-row"><h2 class="th-title"></h2><button type="button" class="tab-x" aria-label="${esc(t("Close"))}">×</button></div>`;
+        head.querySelector<HTMLElement>(".tab-x")!.onclick = () => { this.host.sound.click(); this.closeTabs(); };
+        sheet.prepend(head);
+      }
+      head.querySelector(".th-title")!.textContent = t(TAB_TITLE[k] ?? k);
+      // The page's own tabs (Shop's shelves, the Company's panels) pin right under the header.
+      const sub = [...sheet.children].find(c => c.matches(".ty-tabs") || (c.matches(".sheet-top") && !!c.querySelector<HTMLElement>(":scope > .tabs")?.offsetParent));
+      // What this page is for, in one line, until the player says "Got it" (then never again).
       const introKey = `intro-${k}`;
       let intro = sheet.querySelector<HTMLElement>(":scope > .page-intro");
       if (PAGE_INTRO[k] && !this.save.seenFeatures.includes(introKey)) {
@@ -2417,17 +2432,18 @@ export class TycoonUI {
           intro.innerHTML = `<span class="pi-ico">?</span><p>${esc(t((HAS_CITY && PAGE_INTRO_CITY[k]) || PAGE_INTRO[k]))}</p><button type="button">${esc(t("Got it"))}</button>`;
           intro.querySelector("button")!.onclick = () => { this.save.seenFeatures.push(introKey); this.host.persist(); for (const p of pages) $(p.id).querySelector(".page-intro")?.remove(); };
         }
-        const after = sheet.querySelector<HTMLElement>(":scope > .tab-seg") ?? sheet.querySelector<HTMLElement>(":scope > .sheet-top");
-        if (after) after.after(intro); else sheet.prepend(intro);
+        (sub ?? head).after(intro);
       } else intro?.remove();
-      let seg = sheet.querySelector<HTMLElement>(":scope > .tab-seg");
-      if (pages.length < 2) { seg?.remove(); return; }
-      if (!seg) { seg = document.createElement("div"); seg.className = "tab-seg"; sheet.prepend(seg); }
-      seg.innerHTML = pages.map(p => `<button type="button" data-page="${p.id}"${p.id === open.id ? ` class="on"` : ""}>${esc(t(p.name))}</button>`).join("")
-        + `<button type="button" class="tab-x" aria-label="${esc(t("Close"))}">×</button>`;
+      let seg = head.querySelector<HTMLElement>(".tab-seg");
+      if (pages.length < 2) seg?.remove();
+      else {
+        if (!seg) { seg = document.createElement("div"); seg.className = "tab-seg"; head.append(seg); }
+        seg.innerHTML = pages.map(p => `<button type="button" data-page="${p.id}"${p.id === open.id ? ` class="on"` : ""}>${esc(t(p.name))}</button>`).join("");
+      }
+      const hd = head;
+      requestAnimationFrame(() => sheet.style.setProperty("--tab-head", `${hd.offsetHeight}px`));
+      if (!seg) return;
       seg.onclick = e => {
-        // One close button for every page, always in the same place: top right.
-        if ((e.target as Element).closest(".tab-x")) { this.host.sound.click(); this.closeTabs(); return; }
         const id = (e.target as Element).closest<HTMLElement>("[data-page]")?.dataset.page;
         const to = pages.find(p => p.id === id);
         if (!to || to.id === open.id) return;
