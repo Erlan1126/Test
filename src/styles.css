@@ -4427,7 +4427,7 @@ body.tabs-open #toast, body:has(.modal:not([hidden])) #toast { top: auto !import
 .photo-go b { display: block; font: 400 16px var(--display); letter-spacing: 0.02em; }
 .photo-go small { display: block; font-size: 12.5px; opacity: 0.92; }
 .photo-go:active { transform: translateY(3px); box-shadow: 0 1px 0 #5a34c0; }
-body.photo-mode #tycity > *, body.photo-mode #tcy-bar, body.photo-mode #toast, body.photo-mode .hall-banner, body.photo-mode #mayor { visibility: hidden !important; }
+body.photo-mode #tycity > *, body.photo-mode #tcy-bar, body.photo-mode #guide-hand, body.photo-mode .hall-banner, body.photo-mode #mayor { visibility: hidden !important; }
 #photo-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 18px); text-align: center; pointer-events: none; }
 #photo-bar .pb-hint { margin: 0 auto 12px; display: inline-block; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; background: rgba(20, 14, 50, 0.55); }
 #photo-bar .pb-row { display: flex; align-items: center; justify-content: space-between; max-width: 320px; margin: 0 auto; }
@@ -4646,3 +4646,16 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 /* The spin wheel opens over the Goals page: above the tab bar too, so its Spin button is never
    under the bar on a small phone. */
 body.tabs-open #spin-sheet { z-index: 60; }
+
+/* ---- Photo mode: the 📷 button, the filter chips and the vignette preview ---- */
+#tycity .photo-btn { position: absolute; z-index: 6; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1; background: linear-gradient(180deg, #ff7aa8, #8a5cff); box-shadow: 0 3px 0 #5a34c0, 0 6px 14px rgba(20, 10, 60, 0.3); }
+#tycity .photo-btn[hidden] { display: none; }
+#tycity .photo-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5a34c0; }
+body.tabs-open #tycity .photo-btn, body.town-panning #tycity .photo-btn, #tycity:has(#tcy-card:not([hidden])) .photo-btn { visibility: hidden; }
+#photo-bar .pb-filters { display: flex; justify-content: center; gap: 6px; max-width: 100%; margin: 0 auto 12px; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
+#photo-bar .pb-filters::-webkit-scrollbar { display: none; }
+#photo-bar .pb-filters button { flex: none; display: flex; align-items: center; gap: 4px; min-height: 36px; padding: 6px 11px; border: 2px solid rgba(255, 255, 255, 0.55); border-radius: 999px; font: 700 13px Figtree, system-ui, sans-serif; color: #fff; background: rgba(20, 14, 50, 0.55); white-space: nowrap; }
+#photo-bar .pb-filters button.on { border-color: #fff; color: #2a1f5c; background: #fff; }
+@media (max-width: 380px) { #photo-bar .pb-filters { justify-content: flex-start; } #photo-bar .pb-filters button { padding: 6px 9px; font-size: 12px; } }
+#photo-vig { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+#photo-vig[hidden] { display: none; }

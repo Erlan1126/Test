@@ -61,6 +61,7 @@ import { LAND, LAND_BONUS } from "../data/land";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
 import { PAGE_INTRO, PAGE_INTRO_CITY } from "../data/guide";
 import { loadMemories, saveMemory, thenNowCard } from "./memories";
+import { PhotoMode } from "./photo";
 import { nextSpinIn, SpinWheel } from "./spin";
 import { spinAdLeft, spinFree, spinOpen } from "../logic/spin";
 
@@ -104,7 +105,7 @@ export interface TycoonHost {
   bizResident(): [number, number] | null;
   visitLandmark(rank: number, ms: number): boolean;
   townPicture(): string | null;
-  sharePicture(blob: Blob, text: string): Promise<void>;
+  sharePicture(blob: Blob, text: string, name?: string): Promise<void>;
   /** The town as it looks right now, full size (for photo mode). */
   townShot(): HTMLCanvasElement | null;
   /** Which walker in the street is talking (their bubble follows them). */
@@ -279,9 +280,8 @@ export class TycoonUI {
       if (b.dataset.en === "go") { track("era_nudge_open", {}, false); this.openSheet("boosts"); }
       else { snoozeEraNudge(this.save); this.host.persist(); }
     });
+    this.photo = new PhotoMode(this.host, () => { this.closeTabs(); this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); });
     $("photo-go").addEventListener("click", () => { this.host.sound.click(); this.photoMode(); });
-    $("photo-x").addEventListener("click", () => { this.host.sound.click(); this.photoOff(); });
-    $("photo-snap").addEventListener("click", () => { void this.photoSnap(); });
     document.getElementById("city-rename")?.addEventListener("click", () => { this.host.sound.click(); closeModal($("settings")); this.nameCity(); });
     this.syncCityNameRow();
     // Tapping one of Pip's goals goes straight to where it's done.
@@ -369,6 +369,7 @@ export class TycoonUI {
   inCity = false;
   /** The building whose card is open in the city. */
   private selected = "";
+  private photo: PhotoMode | null = null;
   get cardOpen(): boolean { return this.inCity && !!this.selected; }
 
   /** Opens Skyhaven Inc.: the 3D district when the phone draws it, else the sheet. */
@@ -2573,6 +2574,7 @@ export class TycoonUI {
     this.announceTabs();
     this.renderTabs();
     if (this.inCity) this.renderCity(now);
+    this.photo?.sync();
     if ($("tycoon").hidden) return;
     if (this.tab === "company") { this.renderRooms(now); this.renderGoals(); }
     else if (this.tab === "upgrades") this.renderUpgrades();
@@ -3475,43 +3477,8 @@ export class TycoonUI {
     track("people_milestone", { at: m.at }, false);
   }
 
-  /** Photo mode: every button hidden, the player frames the city, and the shutter takes a
-   *  picture (with the city's name on it) to save or share. */
-  photoMode(): void {
-    this.closeTabs();
-    this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render();
-    document.body.classList.add("photo-mode");
-    $("photo-bar").hidden = false;
-    track("photo_mode", {}, false);
-  }
-  private photoOff(): void {
-    document.body.classList.remove("photo-mode");
-    $("photo-bar").hidden = true;
-  }
-  private async photoSnap(): Promise<void> {
-    const src = this.host.townShot();
-    if (!src) return;
-    this.host.sound.click(); vibrate(this.save.settings.vibrate, 12);
-    const fl = $("photo-flash"); fl.hidden = false; fl.style.animation = "none"; void fl.offsetWidth; fl.style.animation = ""; window.setTimeout(() => { fl.hidden = true; }, 480);
-    // The picture: the city, a soft band at the bottom with its name and the game's.
-    const c = document.createElement("canvas"), w = src.width, h = src.height;
-    c.width = w; c.height = h;
-    const g = c.getContext("2d")!;
-    g.drawImage(src, 0, 0);
-    const band = Math.round(h * 0.12), gr = g.createLinearGradient(0, h - band * 1.6, 0, h);
-    gr.addColorStop(0, "rgba(20,14,50,0)"); gr.addColorStop(1, "rgba(20,14,50,0.72)");
-    g.fillStyle = gr; g.fillRect(0, h - band * 1.6, w, band * 1.6);
-    const fs = Math.round(w * 0.075), name = this.save.cityName || t("My city");
-    g.fillStyle = "#fff"; g.textBaseline = "alphabetic";
-    g.font = `400 ${fs}px Bungee, Impact, sans-serif`;
-    g.fillText(name.toUpperCase(), w * 0.06, h - band * 0.62, w * 0.88);
-    g.font = `700 ${Math.round(fs * 0.42)}px Figtree, system-ui, sans-serif`;
-    g.globalAlpha = 0.9;
-    g.fillText(t("Built in Buildaroo"), w * 0.06, h - band * 0.22, w * 0.88);
-    g.globalAlpha = 1;
-    const blob = await new Promise<Blob | null>(r => c.toBlob(r, "image/jpeg", 0.9));
-    if (blob) await this.host.sharePicture(blob, t("Look at the city I built: {name}!", { name }));
-  }
+  /** Photo mode (see ./photo.ts). */
+  photoMode(): void { this.photo?.open(); }
 
   openScrapbook(): void {
     const s = this.save, rk = townRank(s), used = usedFloors(s);
