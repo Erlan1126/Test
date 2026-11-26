@@ -260,7 +260,7 @@ function runDraw(ctx, W, H) {
   if (!P2) { ctx.fillStyle = "#0b0d14"; ctx.fillRect(0, 0, W, H); return; }
   // Touched: a flash of violet.
   if (R.flash > 0 && !(save.settings && save.settings.calm)) { ctx.fillStyle = `rgba(120,40,160,${R.flash * 0.3})`; ctx.fillRect(0, 0, W, H); }
-  if (R.flash < 0) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); R.flash = Math.min(0, R.flash + 0.03); }
+  if (R.flash < 0) { if (!(save.settings && save.settings.calm)) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); } R.flash = Math.min(0, R.flash + 0.03); }
 
   // One message at a time in the middle, sliding in and fading out.
   const msg = R.msgs[0];

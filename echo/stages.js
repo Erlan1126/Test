@@ -8,10 +8,13 @@
 const STAGES_N = 60;
 function stageInfo(n) {
   const daily = n === 0, k = daily ? 8 + (dayNumber() % 12) : n;
+  // Par (for ★★★) is set from a frame-perfect, dashing test run: about 5–13% slower than it, since a
+  // player also has to gather 70% of the lights. (It used to be faster than even that run could go
+  // after the first district, so ★★★ was out of reach.)
   // Difficulty climbs the whole way: to 0.75 by stage 19, then slowly to the full 1 at stage 55
   // (it used to stop climbing at stage 19, so the second half of the game felt the same throughout).
   const len = Math.min(980, 400 + k * 20), hard = k <= 19 ? (k - 1) / 18 * 0.75 : Math.min(1, 0.75 + (k - 19) / 36 * 0.25);
-  return { n, daily, len, hard, boss: !daily && n % 10 === 0, wind: !daily && n >= 7 && n % 3 === 1, par: len / (25 + hard * 5), theme: daily ? (k - 1) % 5 : Math.min(4, Math.floor((n - 1) / 10)), tower: !daily && n > 50, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
+  return { n, daily, len, hard, boss: !daily && n % 10 === 0, wind: !daily && n >= 7 && n % 3 === 1, par: len / (21 + hard * 2), theme: daily ? (k - 1) % 5 : Math.min(4, Math.floor((n - 1) / 10)), tower: !daily && n > 50, seed: daily ? dayNumber() * 7919 + 77 : n * 104729 + 13 };
 }
 function stageSave() {
   const S = save.stages || (save.stages = {});
