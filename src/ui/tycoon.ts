@@ -61,6 +61,8 @@ import { LAND, LAND_BONUS } from "../data/land";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
 import { PAGE_INTRO, PAGE_INTRO_CITY } from "../data/guide";
 import { loadMemories, saveMemory, thenNowCard } from "./memories";
+import { nextSpinIn, SpinWheel } from "./spin";
+import { spinAdLeft, spinFree, spinOpen } from "../logic/spin";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -1224,7 +1226,7 @@ export class TycoonUI {
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     // Red dots mean "something to collect right now", never "you could buy something".
     dot("build", false);
-    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (spinOpen(s, HAS_CITY) && spinFree(s)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn") || (HAS_CITY && bookReady(s).length > 0));
     this.unlockTabs();
   }
@@ -2288,12 +2290,26 @@ export class TycoonUI {
       <small>${esc(t("{n} builders", { n: fmt(sp.builders) }))}${next ? ` · ${esc(t("next reward at {n}", { n: fmt(next.floors) }))}` : ` · ${esc(t("all rewards reached!"))}`}</small>${action}</div></div>`;
   }
 
+  /** The daily spin wheel (made the first time it opens). */
+  private spinWheel?: SpinWheel;
+  openSpin(): void {
+    this.spinWheel ??= new SpinWheel(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); });
+    this.spinWheel.open();
+  }
+  /** The Goals sheet's way to the wheel: a red dot while today's free spin waits. */
+  private spinEntryHtml(): string {
+    const s = this.save, free = spinFree(s);
+    const sub = free ? t("Your free spin is ready!") : spinAdLeft(s) && adsReady() ? t("Watch an ad for one more spin") : t("Next free spin in {time}", { time: nextSpinIn() });
+    return `<button type="button" class="spin-entry${free ? " ready" : ""}" data-goal="spin"><span class="spin-entry-ico" aria-hidden="true">🎡</span><span><b>${esc(t("Daily spin"))}</b><small>${esc(sub)}</small></span>${free ? `<i class="dot"></i>` : ""}</button>`;
+  }
+
   private renderGoalsSheet(): void {
     const s = this.save, parts: string[] = [];
     if (!$("mayor-strip").hidden) {
       parts.push(`<h3 class="sheet-sub">${esc(t("Story"))}</h3><button type="button" class="mayor-strip more-mayor${$("mayor-strip").classList.contains("ready") ? " ready" : ""}" data-goal="story">${$("mayor-strip").innerHTML}</button>`);
     }
     dealGoals(s);
+    if (spinOpen(s, HAS_CITY)) parts.push(this.spinEntryHtml());
     // The week's city event first (it has the best rewards), then today's goals.
     if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.teamHtml(), this.milestoneHtml());
     parts.push(`<h3 class="sheet-sub">${esc(HAS_CITY ? t("Today's city quests") : t("Today's company goals"))}</h3>${this.goalsHtml()}`);
@@ -2317,6 +2333,7 @@ export class TycoonUI {
     const el = (e.target as Element).closest<HTMLElement>("[data-goal]");
     if (!el) return;
     if (this.onEventTap(el)) return;
+    if (el.dataset.goal === "spin") { this.host.sound.click(); this.openSpin(); return; }
     if (el.dataset.goal === "spire") {
       const s = this.save, stars = this.spire ? claimSpire(s.spire, this.spire) : 0;
       if (stars) {
