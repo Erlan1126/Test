@@ -31,7 +31,7 @@ import { fmt } from "../core/util";
 import type { SaveData } from "../logic/save";
 import {
   affordable, buyBoost, buyLevels, officePrice, OFFICE_BLOCK_FLOORS, costOf, cycleOf, eraGems, freeFloors, hireManager, levelOf, multiplier, newEra, nextMilestone, officeFloors, usedFloors, townRank,
-  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, WELCOME_WARP_CRYSTALS, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow, adDoubleAway, payStars, starCash,
+  payOf, perSecond, progressOf, goldenArrives, goldenTip, GOLDEN_SECONDS, startOpening, OPENING_MULT, OPENING_MINUTES, runOnce, hurry, rushOn, speedupsLeft, dealGoals, goalStep, offlineHours, GOAL_STARS, GOAL_TIERS, GOALS_BONUS_CRYSTALS, type GoalType, warpPrice, WELCOME_WARP_CRYSTALS, doublePrice, doubleAway, stageName, stageNow, readyStage, hqFloors, startRush, upgradesOnOffer, buyUpgrade, hireAdvisor, vaultCost, buyVault, festivalBiz, vipRate, review, tick, timeWarp, warpGain, unlockedBusiness, shownBusiness, prevBusiness, vipTip, cityGrow, adDoubleAway, payStars, starCash,
   bizMult, workerBonus, reactionTip, rankHall, hallLevel, hallLocked, hallNeed, hallOpens, FLOOR_LIMIT,
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
@@ -46,7 +46,7 @@ import { adsReady, showRewarded } from "../ads";
 import { ALBUM_CRYSTALS, ALBUM_DONE_CRYSTALS, ALBUM_KINDS, sightInfo, SIGHT_PEOPLE } from "../data/sights";
 import { HAS_CITY, playerStarted } from "../edition";
 import { buyEventPass, cityEvent, cityEventEndsAt, claimEventStep, eventPoints, eventPrize, eventReady, eventTheme, EVENT_PASS_CRYSTALS, EVENT_POINTS, EVENT_STEPS, type EventAction } from "../logic/cityevent";
-import { buildOf, buildPrice, builderCount, BUILDER_PRICES, busyBuilders, completeBuilds, finishNow, finishPrice, hireBuilder, hqPrice, MAX_HIRED, startBuild, TERRACE_PRICE, buildTime, type BuildJob, type BuildKind } from "../logic/builds";
+import { buildOf, buildPrice, builderCount, BUILDER_PRICES, busyBuilders, completeBuilds, finishNow, finishPrice, jobFinishPrice, hireBuilder, hqPrice, MAX_HIRED, startBuild, TERRACE_PRICE, buildTime, type BuildJob, type BuildKind } from "../logic/builds";
 import { claimTerrace, FLOWER_WIDE, PLAY_FLOORS, projectsOpen, seatingNeed, WIDE_SHARE, type ProjectId } from "../logic/cafe";
 import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
@@ -929,6 +929,8 @@ export class TycoonUI {
     if (townRank(s) > 0 || s.seenFeatures.includes("first-day-done")) return null;
     const steps = [
       { label: t("Sell a coffee"), ok: ty.tips >= 1 },
+      // (The city's first build: the terrace is the long step of the first minutes, so it gets a tick of its own.)
+      ...(HAS_CITY ? [{ label: t("Build a café terrace"), ok: s.cafe.terrace > 0 || ty.tips >= 2 }] : []),
       { label: t("Buy a level"), ok: ty.tips >= 2 },
       { label: t("Hire a manager"), ok: ty.tips >= 3 || ty.managers.length > 0 },
       ...(HAS_CITY ? [] : [{ label: t("Build a tower"), ok: !!s.cafe.starter }]),
@@ -1019,9 +1021,9 @@ export class TycoonUI {
     if (s.cafe.terrace === 0 && s.cafe.starter && s.cafe.moved) {
       // (City first: the terrace is the player's first build, with a builder and a timer.)
       const job = buildOf(s, "terrace", "");
-      if (job) return { text: t("☕ Building the café terrace…"), sub: t("{t} left · tap to finish now for 💎{n}", { t: fmtLeft(job.end - Date.now()), n: finishPrice(job.end - Date.now()) }), pct: (Date.now() - job.start) / Math.max(1, job.end - job.start), tone: "grow", act: () => this.finishBuild("terrace") };
+      if (job) return { text: t("☕ Building the café terrace…"), sub: t("{t} left · tap to finish it now, free!", { t: fmtLeft(job.end - Date.now()) }), pct: (Date.now() - job.start) / Math.max(1, job.end - job.start), tone: "grow", act: () => this.finishBuild("terrace") };
       // (Saving up for it: keep selling coffee, and the pill sells one each tap too.)
-      if (HAS_CITY && s.tycoon.coins < TERRACE_PRICE) return { text: t("Sell coffee to save {n} for a café terrace", { n: coins(TERRACE_PRICE) }), sub: t("{have} of {n} · tap the Coffee Cart to sell", { have: coins(s.tycoon.coins), n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "save", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
+      if (HAS_CITY && s.tycoon.coins < TERRACE_PRICE) return { text: t("Sell coffee to save {n} for a café terrace", { n: coins(TERRACE_PRICE) }), sub: t("{have} of {n} · tap fast to sell faster", { have: coins(s.tycoon.coins), n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "save", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
       if (HAS_CITY) return { text: t("Build a café terrace"), sub: t("Your neighbor would like to sit down · {n}", { n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "grow", act: () => { this.startCityBuild("terrace"); } };
       const n = seatingNeed(s.cafe);
       return { text: tn(n, "Build {n} more floor for café seating", "Build {n} more floors for café seating", { n }), sub: t("Your neighbor would like to sit down"), pct: s.cafe.floors / (s.cafe.floors + n), tone: "grow", act: () => { this.leave(); this.host.play("classic"); } };
@@ -1030,8 +1032,8 @@ export class TycoonUI {
     // (Short of the price: keep selling, and the pill sells a coffee each tap too.)
     const sell = () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); };
     const cartLevel = costOf(cart, levelOf(s, "coffee"), 1);
-    if (HAS_CITY && ty.tips === 1 && ty.coins < cartLevel) return { text: t("Sell coffee to save {n} for a bigger Coffee Cart", { n: coins(cartLevel) }), sub: t("{have} of {n} · tap the Coffee Cart to sell", { have: coins(ty.coins), n: coins(cartLevel) }), pct: ty.coins / cartLevel, tone: "save", act: sell };
-    if (HAS_CITY && ty.tips === 2 && ty.coins < cart.manager && !ty.managers.length) return { text: t("Sell coffee to save {n} for a manager", { n: coins(cart.manager) }), sub: t("{have} of {n} · tap the Coffee Cart to sell", { have: coins(ty.coins), n: coins(cart.manager) }), pct: ty.coins / cart.manager, tone: "save", act: sell };
+    if (HAS_CITY && ty.tips === 1 && ty.coins < cartLevel) return { text: t("Sell coffee to save {n} for a bigger Coffee Cart", { n: coins(cartLevel) }), sub: t("{have} of {n} · tap fast to sell faster", { have: coins(ty.coins), n: coins(cartLevel) }), pct: ty.coins / cartLevel, tone: "save", act: sell };
+    if (HAS_CITY && ty.tips === 2 && ty.coins < cart.manager && !ty.managers.length) return { text: t("Sell coffee to save {n} for a manager", { n: coins(cart.manager) }), sub: t("{have} of {n} · tap fast to sell faster", { have: coins(ty.coins), n: coins(cart.manager) }), pct: ty.coins / cart.manager, tone: "save", act: sell };
     if (ty.tips === 1) return { text: t("Buy a level for the Coffee Cart"), sub: t("Each level makes every sale bigger"), tone: "learn", act: select("coffee") };
     if (ty.tips === 2) return { text: t("Hire a manager for the Coffee Cart"), sub: t("Managers sell for you, even while you're away"), pct: Math.min(1, ty.coins / cart.manager), tone: "learn", act: select("coffee") };
     // A first-time objective stays in view until it's tried: the block's next project, then a
@@ -2037,7 +2039,7 @@ export class TycoonUI {
   private finishBuild(kind: BuildKind, id = ""): void {
     const s = this.save, job = buildOf(s, kind, id);
     if (!job) return;
-    const price = finishPrice(job.end - Date.now());
+    const price = jobFinishPrice(job);
     const r = finishNow(s, kind, id);
     if (r === "short") { toast(t("You need {n} more Sky Crystals", { n: price - s.crystals })); this.host.openShop("crystals"); return; }
     if (r !== "ok") return;
@@ -2185,7 +2187,7 @@ export class TycoonUI {
     const names: Record<BuildKind, string> = { office: t("Office block"), terrace: t("Café terrace"), land: t("New district"), home: t("Home upgrade"), hq: t("New headquarters"), project: j.id === "play" ? t("Playground") : t("Flower market") };
     const icons: Record<BuildKind, string> = { office: "🏢", terrace: "☕", land: "🏝️", home: "🏠", hq: "🏗️", project: j.id === "play" ? "🛝" : "🌷" };
     const left = j.end - now, pct = Math.min(100, Math.max(0, ((now - j.start) / Math.max(1, j.end - j.start)) * 100));
-    return `<button type="button" class="tcy-mode city job" data-finish="${j.kind}" data-id="${esc(j.id)}"><span class="mode-ico">${icons[j.kind]}</span><span><b>${esc(names[j.kind])}</b><small>${esc(t("Building · {t} left", { t: fmtLeft(left) }))}</small><i class="job-bar"><i style="width:${pct.toFixed(0)}%"></i></i></span><span class="mode-price gem">${esc(t("Finish"))} 💎${finishPrice(left)}</span></button>`;
+    return `<button type="button" class="tcy-mode city job" data-finish="${j.kind}" data-id="${esc(j.id)}"><span class="mode-ico">${icons[j.kind]}</span><span><b>${esc(names[j.kind])}</b><small>${esc(t("Building · {t} left", { t: fmtLeft(left) }))}</small><i class="job-bar"><i style="width:${pct.toFixed(0)}%"></i></i></span><span class="mode-price gem">${jobFinishPrice(j, now) ? `${esc(t("Finish"))} 💎${jobFinishPrice(j, now)}` : esc(t("Finish free"))}</span></button>`;
   }
 
   /** Build: what to build in the city (office blocks, new businesses, a district, homes),
@@ -2883,6 +2885,8 @@ export class TycoonUI {
     this.render();
   }
 
+  /** The first coffee's hand-off (no hurrying it: the neighbor is taking the cup). */
+  private handoffUntil = 0;
   /** What a tap does (from a room in the list, or a building in the city). */
   private doAct(act: string, id: string, el: HTMLElement, e: MouseEvent | null, popBox: Element, flyFrom: Element): void {
     const s = this.save, b = BUSINESSES.find(x => x.id === id)!;
@@ -2896,6 +2900,7 @@ export class TycoonUI {
           // cup is handed to the neighbor at the very moment the sale is credited.
           if (s.tycoon.tips === 0) {
             const due = Date.now() + FIRST_HANDOFF_MS;
+            this.handoffUntil = due;
             s.tycoon.runs[b.id] = due - cycleOf(b, levelOf(s, b.id)) * 1000;
             this.firstSale(due);
           }
@@ -2907,6 +2912,12 @@ export class TycoonUI {
             // The first sale opens the doors: everything earns more for the first minutes.
             if (startOpening(s)) setTimeout(() => toast(t("🎉 Grand opening! Everything earns ×{n} for {m} minutes", { n: OPENING_MULT, m: OPENING_MINUTES })), 1200);
           }
+          this.render();
+        } else if (Date.now() > this.handoffUntil && hurry(s, b.id)) {
+          // (Already selling: the tap hurries it, with a light tick so it feels pressed.)
+          vibrate(s.settings.vibrate, 4);
+          this.pulse = { id: b.id, at: Date.now() };
+          this.host.sound.tap();
           this.render();
         }
         return;

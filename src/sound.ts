@@ -484,6 +484,8 @@ export class Sound {
   }
 
   // ---------- Effects ----------
+  /** A soft tick for hurrying a sale (tapped many times a second, so it stays quiet). */
+  tap(): void { this.tone(1500 + Math.random() * 200, 0.025, "sine", 0.025); }
   click(): void { this.tone(1100, 0.04, "triangle", 0.06); this.tone(1650, 0.03, "sine", 0.03, 0.005); }
   /** A cup set down on the counter, and a small bell: the first coffee sold. Quiet. */
   counter(): void { this.tone(420, 0.06, "triangle", 0.05); this.tone(300, 0.05, "sine", 0.04, 0.01); this.bell(1568, 0.5, 0.035, 0.06); }

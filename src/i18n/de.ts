@@ -2454,4 +2454,7 @@ export const DE: Record<string, string> = {
   "Now sells twice as fast!": "Verkauft jetzt doppelt so schnell!",
   "🏛️ Every City Hall goal done! Level up the City Hall": "🏛️ Alle Rathaus-Ziele erreicht! Bring das Rathaus auf die nächste Stufe",
   "✅ City Hall goal done: {n}/{total}": "✅ Rathaus-Ziel erreicht: {n}/{total}",
+  "{t} left · tap to finish it now, free!": "Noch {t} · tippen, um sie sofort fertigzustellen, gratis!",
+  "Finish free": "Gratis fertigstellen",
+  "{have} of {n} · tap fast to sell faster": "{have} von {n} · schnell tippen, um schneller zu verkaufen",
 };

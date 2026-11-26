@@ -54,6 +54,9 @@ export function hqPrice(s: SaveData, id: string): number {
 
 /** Crystals to finish a build now: about one for every two minutes left (at least one). */
 export const finishPrice = (msLeft: number): number => Math.max(1, Math.ceil(msLeft / (2 * MIN)));
+/** What finishing this build now costs: the very first build (the café terrace) is on the
+ *  house, so a new player learns the speed-up without meeting the crystal shop. */
+export const jobFinishPrice = (job: BuildJob, now = Date.now()): number => (job.kind === "terrace" ? 0 : finishPrice(job.end - now));
 
 /** A build of this thing already under way (or null). */
 export const buildOf = (s: SaveData, kind: BuildKind, id = ""): BuildJob | null => (s.tycoon.builds ?? []).find(b => b.kind === kind && b.id === id) ?? null;
@@ -109,7 +112,7 @@ export function completeBuilds(s: SaveData, now = Date.now()): BuildJob[] {
 export function finishNow(s: SaveData, kind: BuildKind, id = "", now = Date.now()): "ok" | "short" | "none" {
   const b = buildOf(s, kind, id);
   if (!b) return "none";
-  const price = finishPrice(b.end - now);
+  const price = jobFinishPrice(b, now);
   if (s.crystals < price) return "short";
   s.crystals -= price;
   b.end = now;

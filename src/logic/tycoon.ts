@@ -404,6 +404,20 @@ export function runOnce(s: SaveData, id: string, now = Date.now()): boolean {
   return true;
 }
 
+/** Each extra tap on a business that's already selling (and has no manager yet) hurries the
+ *  sale along by this share of its cycle: the first minutes are tapping, and tapping should
+ *  feel like it does something, not like waiting for a bar. */
+export const HURRY_SHARE = 0.12;
+/** Hurries a sale under way (no manager). Returns false if there's nothing to hurry. */
+export function hurry(s: SaveData, id: string, now = Date.now()): boolean {
+  const b = businessById(id), start = s.tycoon.runs[id], lv = levelOf(s, id);
+  if (!b || !start || lv === 0 || s.tycoon.managers.includes(id) || start > now) return false;
+  const c = cycleOf(b, lv) * 1000;
+  // (Never past the end of the cycle: the next tick pays it once, as a normal sale.)
+  s.tycoon.runs[id] = Math.max(now - c, start - c * HURRY_SHARE);
+  return true;
+}
+
 /** How far through its cycle a business is (0 to 1), for its progress bar. */
 export function progressOf(s: SaveData, id: string, now = Date.now()): number {
   const b = businessById(id), start = s.tycoon.runs[id];
