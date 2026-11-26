@@ -208,7 +208,6 @@ export class TycoonUI {
   private power = { id: "", until: 0, taps: 0 };
   private nextCritic = 0;
   private nextPower = 0;
-  private eraArmed = false;
 
   constructor(private readonly host: TycoonHost) {
     $("block-skip").addEventListener("click", () => { this.host.sound.click(); this.skipArrival(); });
@@ -387,7 +386,6 @@ export class TycoonUI {
   openSheet(tab = this.tab, focus?: string): void {
     this.host.sound.click();
     tick(this.save);
-    this.eraArmed = false;
     if (tab !== this.tab) this.showTab(tab);
     this.render();
     openModal($("tycoon"));
@@ -1316,11 +1314,17 @@ export class TycoonUI {
   /** The bottom edge of the money bar and whatever hangs under it (the City Hall badge),
    *  measured on screen: guide bubbles stay below it. */
   private hudBottom(): number {
+    // (Measured at most twice a second: placeTags runs every frame, and measuring the bar
+    // right after the bubbles moved made the browser lay the page out again each frame.)
+    const now = performance.now();
+    if (this.hudAt.y && now - this.hudAt.t < 500) return this.hudAt.y;
     let y = 0;
     const top = $("tcy-top");
     for (const el of [top, ...top.children]) y = Math.max(y, el.getBoundingClientRect().bottom);
+    this.hudAt = { y, t: now };
     return y;
   }
+  private hudAt = { y: 0, t: 0 };
 
   /** Keeps each tag floating over its building as the camera moves. */
   private tagSize = new WeakMap<HTMLElement, { w: number; h: number }>();
@@ -1340,10 +1344,10 @@ export class TycoonUI {
       if (!sz || !sz.w) { sz = { w: tag.offsetWidth, h: tag.offsetHeight + 6 }; if (sz.w) this.tagSize.set(tag, sz); else sz = { w: 44, h: 46 }; }
       items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: sz.w, h: sz.h });
     }
-    for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
     // (The money bar's bottom edge, measured: on a small phone it reaches further down, and no
-    // bubble may sit on it.)
+    // bubble may sit on it. Read before any bubble is touched below.)
     const hudBottom = Math.max(118, this.hudBottom() + 8);
+    for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
     const nowMs = Date.now();
     for (const it of items) {
       const end = it.tag.dataset.end;
@@ -3339,13 +3343,23 @@ export class TycoonUI {
     const s = this.save, g = eraGems(s);
     this.put($("ty-era-card"), `<span class="ty-gem">${iconSvg("sparkle")}</span>
       <span><b>${esc(t("{n} Sky Gems", { n: fmt(s.tycoon.gems) }))}</b><small>${esc(t("Each gem adds 2% to all earnings, for good. A New Era collects them and starts your whole city over, from a little hamlet."))}</small></span>
-      <button type="button" class="buy era-go"${g > 0 ? "" : " disabled"}>${g > 0 ? esc(this.eraArmed ? t("Tap again to reset businesses") : t("New Era: +{n}", { n: fmt(g) })) : esc(t("Keep earning"))}</button>`);
+      <button type="button" class="buy era-go"${g > 0 ? "" : " disabled"}>${g > 0 ? esc(t("New Era: +{n}", { n: fmt(g) })) : esc(t("Keep earning"))}</button>`);
   }
 
   private onEraClick(e: Event): void {
     if (!(e.target as Element).closest(".era-go")) return;
-    if (!this.eraArmed) { this.eraArmed = true; this.render(); return; }
-    this.eraArmed = false;
+    // (A New Era can't be undone, and it starts the whole city over, not just the businesses:
+    // Pip says plainly what goes and what stays before anything happens. A second tap on the
+    // same button used to do it, even long after the first.)
+    const g = eraGems(this.save);
+    if (g <= 0) return;
+    this.host.sound.click();
+    const pct = Math.round((this.save.tycoon.gems + g) * GEM_BONUS * 100);
+    mayorNote(t("Start a New Era?"), t("Your businesses, managers, City Hall rank, districts, homes and headquarters start over, from a little hamlet. You keep your Sky Crystals, decorations and story, and get {n} Sky Gems: +{pct}% on all earnings, for good.", { n: fmt(g), pct }),
+      t("Start a New Era"), () => this.startEra(), t("Not yet"));
+  }
+
+  private startEra(): void {
     const got = newEra(this.save);
     if (!got) return;
     this.host.sound.purchase(); confetti(); fireworks(5, () => this.host.sound.firework());

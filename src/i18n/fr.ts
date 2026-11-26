@@ -2446,4 +2446,8 @@ export const FR: Record<string, string> = {
   "Help and support": "Aide et assistance",
   "Save {n} for your block's next project": "Économise {n} pour le prochain projet de ton quartier",
   "{have} of {n} · a flower market or a playground": "{have} sur {n} · un marché aux fleurs ou une aire de jeux",
+  "Start a New Era?": "Commencer une Nouvelle Ère ?",
+  "Your businesses, managers, City Hall rank, districts, homes and headquarters start over, from a little hamlet. You keep your Sky Crystals, decorations and story, and get {n} Sky Gems: +{pct}% on all earnings, for good.": "Tes commerces, gérants, rang de l'hôtel de ville, quartiers, maisons et sièges repartent de zéro, depuis un petit hameau. Tu gardes tes Cristaux Célestes, tes décorations et ton histoire, et tu reçois {n} Gemmes célestes : +{pct} % sur tous les gains, pour toujours.",
+  "Start a New Era": "Commencer une Nouvelle Ère",
+  "Not yet": "Pas encore",
 };
