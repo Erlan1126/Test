@@ -4457,6 +4457,9 @@ body.tabs-open .modal.tab-page {
   background: rgba(22, 14, 64, 0.5) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 body.tabs-open .modal.tab-page > .sheet {
+  /* (border-box: the 112 px foot is inside the page's height. Without it the page ran 112 px
+     past the bottom of the screen and its last rows stayed hidden under the tab bar.) */
+  box-sizing: border-box;
   width: min(640px, 100%) !important; height: 100%; max-height: none !important; margin: 0 !important;
   padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 112px) !important;
   border: 0 !important; border-radius: 24px 24px 0 0 !important; background: var(--pg) !important;
