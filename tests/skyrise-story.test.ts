@@ -62,3 +62,23 @@ describe("Skyrise's story", () => {
     expect(migrateChapters(s)).toBe(false);
   });
 });
+
+describe("Skyrise's daily calendar", () => {
+  it("pays stars and crystals, never cash or an advisor it has no use for", async () => {
+    const { dailyReward, claimDaily } = await import("../src/logic/tycoon");
+    const { GIFTS } = await import("../src/logic/rules");
+    const s = defaultSave();
+    for (let day = 1; day <= 7; day++) {
+      const r = dailyReward(s, day);
+      expect(r.cash).toBe(0);
+      expect(r.advisor).toBe(false);
+      expect(r.stars).toBe(GIFTS[day - 1]);
+    }
+    expect(dailyReward(s, 7).gems).toBe(50);
+    const coins = s.tycoon.coins, crystals = s.crystals;
+    const got = claimDaily(s, 7);
+    expect(got).toEqual({ cash: 0, gems: 50, pick: false });
+    expect(s.tycoon.coins).toBe(coins);
+    expect(s.crystals).toBe(crystals + 50);
+  });
+});

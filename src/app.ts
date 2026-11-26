@@ -2196,7 +2196,7 @@ export class App implements DailyHost {
     const slot = (g.streak - 1) % DAILY_REWARDS.length, first = g.streak - slot;
     const tile = (i: number, state: string) => {
       const r = dailyReward(save, first + i), big = i === DAILY_REWARDS.length - 1;
-      const what = r.advisor ? `🎁<b>${esc(t("Free advisor"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
+      const what = r.advisor ? `🎁<b>${esc(t("Free advisor"))}</b>` : r.gems ? `💎<b>${fmt(r.gems)}</b>` : r.stars ? `★<b>${fmt(r.stars)}</b>` : `<span class="daily-cash">${COIN_SVG}</span><b>${esc(tycoonCoins(r.cash))}</b>`;
       return `<div class="daily-day ${state}${big ? " big" : ""}"><small>${esc(t("Day {n}", { n: i + 1 }))}</small><span class="daily-what">${what}</span>${state === "done" ? `<i class="daily-check">✓</i>` : ""}</div>`;
     };
     const paint = (claimed: boolean) => {
@@ -2221,7 +2221,7 @@ export class App implements DailyHost {
       vibrate(save.settings.vibrate, [15, 30, 15]);
       if (r.pick) setTimeout(() => toast(t("🎁 Free advisor: choose who joins in Company → Team")), 600);
       const next = dailyReward(save, gift.day + 1);
-      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("a free advisor of your choice") : next.gems ? `${fmt(next.gems)} 💎` : tycoonCoins(next.cash) });
+      $("daily-sub").textContent = t("Tomorrow: {what}. Don't miss it!", { what: next.advisor ? t("a free advisor of your choice") : next.gems ? `${fmt(next.gems)} 💎` : next.stars ? `${fmt(next.stars)} ★` : tycoonCoins(next.cash) });
       btn.textContent = t("See you tomorrow!");
       btn.classList.add("done");
       this.persist();
