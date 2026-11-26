@@ -175,38 +175,48 @@ const SW2D = (() => {
     ctx.drawImage(skyC, 0, 0, W, H);
     if (night > 0.3) { ctx.globalAlpha = (night - 0.3) / 0.7; ctx.drawImage(glow(0xf6f3e6), W * 0.12, H * 0.06, W * 0.22, W * 0.22); ctx.fillStyle = "#f6f3e6"; ctx.beginPath(); ctx.arc(W * 0.23, H * 0.06 + W * 0.11, W * 0.035, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "rgba(180,175,160,0.5)"; ctx.beginPath(); ctx.arc(W * 0.215, H * 0.06 + W * 0.1, W * 0.008, 0, Math.PI * 2); ctx.arc(W * 0.24, H * 0.06 + W * 0.12, W * 0.006, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
     if (day > 0.3) { ctx.globalAlpha = day; ctx.drawImage(glow(0xfff2d8), W * 0.55, H * 0.02, W * 0.5, W * 0.5); ctx.globalAlpha = 1; }
+    // Each layer has two strips, dark and lit, and each is redrawn on its own when the view nears its
+    // edge. A redraw is the costliest thing in a frame, so at most one strip is redrawn early per
+    // frame (while it still covers the screen); only a strip that no longer covers it is redrawn at once.
+    let budget = 1;
     LAYERS.forEach((L, li) => {
-      const camL = cam.x * L.par, sL = s * (0.45 + li * 0.18);
-      let S = strips[li];
-      const stale = !S || Math.abs(sL - S.sL) / S.sL > 0.1 || camL - S.x0 < (W * 0.2) / sL || S.x0 + S.wM - camL < (W * 1.2) / sL || S.key !== palKey;
-      if (stale) {
-        const sw = Math.ceil(W * 2.4), shh = Math.ceil(H * 1.5), x0 = camL - (W * 0.7) / sL;
-        if (!S || S.c.width !== sw || S.c.height !== shh) S = strips[li] = { c: mk(sw, shh, () => {}), cl: mk(sw, shh, () => {}) };
-        Object.assign(S, { sL, x0, wM: sw / sL, key: palKey });
-        for (const lit of [false, true]) {
-          const x = (lit ? S.cl : S.c).getContext("2d"); x.clearRect(0, 0, sw, shh);
-          const base = shh - H * (0.12 - li * 0.04), start = Math.floor(x0 / L.sp) - 1, end = Math.ceil((x0 + sw / sL) / L.sp) + 1;
-          for (let i = start; i <= end; i++) { const im = bgFor(li, i, lit && !P.blackout, distNow), w = im.wM * sL, h = im.hM * sL, sx = (i * L.sp - x0) * sL; x.drawImage(im, sx, base - h, w, h); }
-          // The ground this layer stands on, all the way down: no building ever floats.
-          x.fillStyle = "#0d1018"; x.fillRect(0, base - 1, sw, shh - base + 1);
-          x.globalCompositeOperation = "source-atop"; x.globalAlpha = L.haze * (0.6 + day * 0.4); x.fillStyle = skyCss()[2]; x.fillRect(0, 0, sw, shh);
-          // Ground fog: the bottoms of distant buildings melt into the haze.
-          const fg = x.createLinearGradient(0, base - H * 0.3, 0, base + 2); fg.addColorStop(0, "rgba(0,0,0,0)"); fg.addColorStop(1, skyCss()[2]); x.globalAlpha = 0.55 + li * 0.1; x.fillStyle = fg; x.fillRect(0, base - H * 0.3, sw, shh - base + H * 0.3);
+      const camL = cam.x * L.par, sL0 = s * (0.45 + li * 0.18), sw = Math.ceil(W * 2.4), shh = Math.ceil(H * 1.5);
+      const S = strips[li] || (strips[li] = { c: null, cl: null });
+      for (const lit of [false, true]) {
+        let c = lit ? S.cl : S.c;
+        // Both strips of a layer share one zoom, so buildings line up where lit meets dark.
+        const sib = lit ? S.c : S.cl, sL = sib && Math.abs(sL0 - sib.sL) / sL0 <= 0.1 ? sib.sL : sL0;
+        const must = !c || c.width !== sw || c.height !== shh || Math.abs(sL0 - c.sL) / sL0 > 0.1 || c.sL !== sL || c.key !== palKey ||
+          camL - c.x0 < (W * 0.55) / sL || c.x0 + c.wM - camL < (W * 0.6) / sL;
+        const soon = !must && (camL - c.x0 < (W * 0.2) / sL + (W * 0.35) / sL || c.x0 + c.wM - camL < (W * 1.2) / sL);
+        if (!must && !(soon && budget > 0)) continue;
+        if (!must) budget--;
+        if (!c || c.width !== sw || c.height !== shh) { c = mk(sw, shh, () => {}); if (lit) S.cl = c; else S.c = c; }
+        const x0 = camL - (W * 0.7) / sL;
+        Object.assign(c, { sL, x0, wM: sw / sL, key: palKey });
+        const x = c.getContext("2d"); x.clearRect(0, 0, sw, shh);
+        const base = shh - H * (0.12 - li * 0.04), start = Math.floor(x0 / L.sp) - 1, end = Math.ceil((x0 + sw / sL) / L.sp) + 1;
+        for (let i = start; i <= end; i++) { const im = bgFor(li, i, lit && !P.blackout, distNow), w = im.wM * sL, h = im.hM * sL, sx = (i * L.sp - x0) * sL; x.drawImage(im, sx, base - h, w, h); }
+        // The ground this layer stands on, all the way down: no building ever floats.
+        x.fillStyle = "#0d1018"; x.fillRect(0, base - 1, sw, shh - base + 1);
+        x.globalCompositeOperation = "source-atop"; x.globalAlpha = L.haze * (0.6 + day * 0.4); x.fillStyle = skyCss()[2]; x.fillRect(0, 0, sw, shh);
+        // Ground fog: the bottoms of distant buildings melt into the haze.
+        const fg = x.createLinearGradient(0, base - H * 0.3, 0, base + 2); fg.addColorStop(0, "rgba(0,0,0,0)"); fg.addColorStop(1, skyCss()[2]); x.globalAlpha = 0.55 + li * 0.1; x.fillStyle = fg; x.fillRect(0, base - H * 0.3, sw, shh - base + H * 0.3);
+        x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
+        if (li === 0 && night > 0.35) {
+          // The sky's stars go behind the far skyline, fixed to the skyline (they don't jump when a strip is redrawn).
+          x.globalCompositeOperation = "destination-over"; x.fillStyle = "#fff";
+          const first = Math.floor(x0 * sL / 64), last = Math.ceil((x0 * sL + sw) / 64);
+          for (let cell = first; cell <= last; cell++) { const rs = seeded(cell * 7349 + 5); for (let q = 0; q < 9; q++) { const sx = cell * 64 + rs() * 64 - x0 * sL, sy = rs() * shh * 0.55, a = (night - 0.35) * (0.4 + rs() * 0.6), z = 1 + rs(); if (sx < -2 || sx > sw) continue; x.globalAlpha = a; x.fillRect(sx, sy, z, z); } }
           x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
-          if (li === 0) {
-            // The sky and its stars go behind the far skyline: one solid image, no blending each frame.
-            x.globalCompositeOperation = "destination-over";
-            if (night > 0.35) { x.fillStyle = "#fff"; const rs = seeded(li * 17 + 5); for (let q = 0; q < 140; q++) { x.globalAlpha = (night - 0.35) * (0.4 + rs() * 0.6); x.fillRect(rs() * sw, rs() * shh * 0.55, 1 + rs(), 1 + rs()); } x.globalAlpha = 1; }
-            x.globalCompositeOperation = "source-over";
-          }
         }
       }
       // Copy only what's on screen: the lit part left of the figure, the dark part right of it.
       // Each layer's ground line sits where the world's ground would be at its depth (true parallax).
-      const baseIn = S.c.height - H * (0.12 - li * 0.04), dx0 = (S.x0 - camL) * sL + W / 2, dy0 = Math.min(H * 0.25, oy + Math.min(cam.y, 45) * sL * 0.9 - baseIn), srcY = Math.max(0, -dy0), hh = Math.min(S.c.height - srcY, H - Math.max(0, dy0));
-      if (dy0 + S.c.height < H) { ctx.fillStyle = skyCss()[2]; ctx.globalAlpha = 0.25; ctx.fillRect(0, dy0 + S.c.height - 1, W, H); ctx.globalAlpha = 1; ctx.fillStyle = "#0d1018"; ctx.globalAlpha = 0.8; ctx.fillRect(0, dy0 + S.c.height - 1, W, H); ctx.globalAlpha = 1; }
+      const baseIn = shh - H * (0.12 - li * 0.04), dy0 = Math.min(H * 0.25, oy + Math.min(cam.y, 45) * S.c.sL * 0.9 - baseIn), srcY = Math.max(0, -dy0), hh = Math.min(shh - srcY, H - Math.max(0, dy0));
+      if (dy0 + shh < H) { ctx.fillStyle = skyCss()[2]; ctx.globalAlpha = 0.25; ctx.fillRect(0, dy0 + shh - 1, W, H); ctx.globalAlpha = 1; ctx.fillStyle = "#0d1018"; ctx.globalAlpha = 0.8; ctx.fillRect(0, dy0 + shh - 1, W, H); ctx.globalAlpha = 1; }
       if (hh <= 0) return;
-      const seg = (img, xa, xb) => { xa = Math.max(0, xa); xb = Math.min(W, xb); if (xb - xa < 1) return; ctx.drawImage(img, xa - dx0, srcY, xb - xa, hh, xa, Math.max(0, dy0), xb - xa, hh); };
+      const sL = S.c.sL, seg = (img, xa, xb) => { xa = Math.max(0, xa); xb = Math.min(W, xb); if (xb - xa < 1) return; const dx0 = (img.x0 - camL) * sL + W / 2; ctx.drawImage(img, xa - dx0, srcY, xb - xa, hh, xa, Math.max(0, dy0), xb - xa, hh); };
       seg(S.cl, 0, splitX); seg(S.c, splitX, W);
     });
     // ---------- Their window, far ahead: a warm shaft of light on the horizon that comes closer as you go ----------
@@ -233,7 +243,7 @@ const SW2D = (() => {
       }
     }
     // ---------- The street (and the harbour) ----------
-    const gy = Y(0); if (gy < H + 6 * s) { const th = runnerTheme(R.px);
+    const gy = Y(R.tide || 0); if (gy < H + 6 * s) { const th = runnerTheme(R.px);
       if (th.water) { ctx.fillStyle = "#0f2d45"; ctx.fillRect(0, gy, W, H - gy); ctx.fillStyle = "rgba(160,210,255,0.14)"; for (let q = 0; q < 7; q++) { const off = ((t * 18 + q * 37) % W); ctx.fillRect(off - W, gy + 5 + q * 8, W * 0.6, 1); ctx.fillRect(off, gy + 5 + q * 8, W * 0.4, 1); } }
       else {
         // Sidewalk and curb, then the wet road with the lamps' reflections.
@@ -287,6 +297,8 @@ const SW2D = (() => {
           ctx.save(); ctx.translate(nx, ny); ctx.rotate(-Math.PI / 2); ctx.font = `800 ${Math.round(0.95 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; const fl2 = Math.sin(t * 13 + b.n * 3) > -0.92 ? k : 0.3; ctx.globalAlpha = fl2 * 0.5; ctx.globalCompositeOperation = "lighter"; const tw2 = word.length * 0.7 * s; ctx.drawImage(glow(nc), -tw2 / 2 - s, -1.6 * s, tw2 + 2 * s, 2.4 * s); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = fl2; ctx.fillStyle = `rgb(${nc.map(v => Math.min(255, v + 60))})`; ctx.fillText(word, 0, 0); ctx.restore(); }
       }
     }
+    // The Rising Tide: water in front of the building bases, climbing, with a moving surface.
+    if (R.tide > 0.2) { const ty3 = Y(R.tide); if (ty3 < H) { ctx.fillStyle = "rgba(14,44,70,0.78)"; ctx.fillRect(0, ty3, W, H - ty3); ctx.strokeStyle = "rgba(170,220,255,0.55)"; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 0; x <= W; x += 12) { const yy = ty3 + Math.sin(x * 0.04 + t * 3) * 3; x ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); } ctx.stroke(); } }
     // ---------- Hazards: live wires, drones ----------
     for (const z of R.haz) {
       if (z.kind === "wire") { const a = X(z.x0), b2 = X(z.x1), y = Y(z.y); if (b2 < 0 || a > W) continue; ctx.strokeStyle = "#20242e"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a, y); ctx.lineTo(b2, y); ctx.stroke(); ctx.globalCompositeOperation = "lighter"; for (let q = 0; q < 3; q++) { const f = seeded(Math.floor(t * 14) + q)(); ctx.drawImage(glow([127, 216, 255]), a + f * (b2 - a) - 9, y - 9, 18, 18); } ctx.globalCompositeOperation = "source-over"; }
@@ -335,11 +347,13 @@ const SW2D = (() => {
     ctx.fillStyle = "#ffe08a"; for (const c of R.motes) { if (c.got) continue; const x = X(c.x), y = Y(c.y + Math.sin(t * 3 + c.x) * 0.1); if (x < -20 || x > W + 20) continue; const r2 = 0.28 * s; ctx.beginPath(); ctx.moveTo(x, y - r2); ctx.lineTo(x + r2 * 0.7, y); ctx.lineTo(x, y + r2); ctx.lineTo(x - r2 * 0.7, y); ctx.fill(); }
     for (const u of R.ups) {
       const x = X(u.x), y = Y(u.y + Math.sin(t * 3) * 0.2); if (x < -40 || x > W + 40) continue;
+      if (u.kind === "shard" && R.bossK === 4) { const v = Math.max(0, Math.min(1, (28 - Math.abs(u.x - R.px)) / 14)); if (v <= 0.02) continue; ctx.globalAlpha = v; }
       const col = u.kind === "shard" ? [176, 140, 255] : u.kind === "letter" ? [255, 210, 90] : RUNNER_POWERS[u.kind].rgb.split(",").map(Number);
       ctx.globalCompositeOperation = "lighter"; ctx.drawImage(glow(col), x - 2.2 * s, y - 2.2 * s, 4.4 * s, 4.4 * s); ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = css(col); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 0.9 * s, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `800 ${Math.round(0.95 * s)}px Inter, system-ui, sans-serif`;
       ctx.fillText(u.kind === "letter" ? u.ch : u.kind === "shard" ? "◆" : { magnet: "✧", shield: "◯", comet: "☄" }[u.kind] || "✦", x, y + 1);
+      ctx.globalAlpha = 1;
     }
     ctx.textBaseline = "alphabetic";
     if (!R.teth) R.pNow = false;

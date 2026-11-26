@@ -199,7 +199,7 @@ function runOfferContinue() {
   $("runContinue").hidden = false;
   let left = 5; $("runContinueTime").textContent = left;
   clearInterval(continueTimer);
-  continueTimer = setInterval(() => { left--; $("runContinueTime").textContent = left; if (left <= 0) runDecline(); }, 1000);
+  continueTimer = setInterval(() => { if (document.hidden) return; left--; $("runContinueTime").textContent = left; if (left <= 0) runDecline(); }, 1000);
 }
 function runDecline() { clearInterval(continueTimer); $("runContinue").hidden = true; if (run) { run.paused = false; run.last = 0; runEnd(); } }
 function runContinue() {
@@ -245,6 +245,9 @@ const stageSky = si => 7 - (si.daily ? [6, 5, 4, 7, 3][dayNumber() % 5] : si.n =
 
 function runDraw(ctx, W, H) {
   const R = run;
+  // Text and rings are sized to the phone in portrait; on a wide screen (landscape, a computer) they
+  // follow the height instead, so they never fill the view.
+  const U = Math.min(W, Math.max(H * 0.56, 300)), top = Math.max(H * 0.26, 152);   // (top: under the HUD)
   // Each district has its own sky and colours; in the Night shift they blend into the next.
   const m = R.dist / RUN.M, b = R.stageInfo ? stageSky(R.stageInfo) : R.forceSky != null ? R.forceSky : Math.floor(m / RUN.BIOME_M), f = R.stageInfo ? 0 : Math.max(0, (m % RUN.BIOME_M - (RUN.BIOME_M - 60)) / 60);
   const w1 = runWorld(7 - (b % 8)), w2 = runWorld(7 - ((b + 1) % 8)), mixW = k => mixC(w1[k], w2[k], f);
@@ -260,25 +263,25 @@ function runDraw(ctx, W, H) {
   // One message at a time in the middle, sliding in and fading out.
   const msg = R.msgs[0];
   if (msg && !R.banner) {
-    const age = msg.dur - msg.t, y = H * 0.19 + Math.max(0, 0.2 - age) * 40;
+    const age = msg.dur - msg.t, y = Math.max(H * 0.19, 160) + Math.max(0, 0.2 - age) * 40;
     ctx.globalAlpha = Math.min(1, msg.t * 2.5, age * 5); ctx.textAlign = "center";
-    ctx.font = `700 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`;
-    const t1 = msg.text, t2 = msg.sub || "", w1 = ctx.measureText(t1).width; ctx.font = `500 ${Math.round(W * 0.034)}px Inter, system-ui, sans-serif`; const w2 = ctx.measureText(t2).width;
-    const pw = Math.max(w1, w2) + W * 0.1, ph = t2 ? W * 0.15 : W * 0.1;
+    ctx.font = `700 ${Math.round(U * 0.042)}px Inter, system-ui, sans-serif`;
+    const t1 = msg.text, t2 = msg.sub || "", w1 = ctx.measureText(t1).width; ctx.font = `500 ${Math.round(U * 0.034)}px Inter, system-ui, sans-serif`; const w2 = ctx.measureText(t2).width;
+    const pw = Math.max(w1, w2) + U * 0.1, ph = t2 ? U * 0.15 : U * 0.1;
     ctx.fillStyle = "rgba(14,16,24,0.72)"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - pw / 2, y - ph / 2, pw, ph, ph / 2); else ctx.rect(W / 2 - pw / 2, y - ph / 2, pw, ph); ctx.fill();
     ctx.strokeStyle = msg.gold ? "rgba(255,217,138,0.5)" : "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.stroke();
-    ctx.font = `700 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = msg.gold ? "#ffd98a" : "#ffffff"; ctx.fillText(t1, W / 2, y + (t2 ? -W * 0.008 : W * 0.014));
-    if (t2) { ctx.font = `500 ${Math.round(W * 0.034)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(t2, W / 2, y + W * 0.045); }
+    ctx.font = `700 ${Math.round(U * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = msg.gold ? "#ffd98a" : "#ffffff"; ctx.fillText(t1, W / 2, y + (t2 ? -U * 0.008 : U * 0.014));
+    if (t2) { ctx.font = `500 ${Math.round(U * 0.034)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText(t2, W / 2, y + U * 0.045); }
     ctx.globalAlpha = 1;
   }
   // The first run teaches by doing.
   if (R.tutText) {
-    const cx = W / 2, cy = H * 0.78, rr = W * 0.07, held = R.hold || !!R.teth, pulse = 1 + 0.12 * Math.sin(R.t * 6);
+    const cx = W / 2, cy = H * 0.78, rr = U * 0.07, held = R.hold || !!R.teth, pulse = 1 + 0.12 * Math.sin(R.t * 6);
     ctx.strokeStyle = "rgba(191,244,255,0.9)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, rr * pulse, 0, Math.PI * 2); ctx.stroke();
     if (held) { ctx.fillStyle = "rgba(191,244,255,0.35)"; ctx.beginPath(); ctx.arc(cx, cy, rr * pulse, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = "#eaf6ff"; ctx.beginPath(); ctx.arc(cx, cy, rr * 0.28, 0, Math.PI * 2); ctx.fill();
   }
-  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(W * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
+  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(U * 0.055)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // Speed: streaks rushing out from the middle when the runner is flying.
   const calmFx = !!(save.settings && save.settings.calm);
   if (R.od > 0 && (R.v || 0) > 16 && !R.over && !R.attract && !calmFx) {
@@ -289,7 +292,7 @@ function runDraw(ctx, W, H) {
   // The swing: an arrow to the next anchor when it's off screen, and the darkness creeping in.
   if (!R.attract && !R.over) {
     // A Perfect: a white flash and a ring around the figure.
-    if (R.perfT > 0 && !calmFx) { const k = 1 - R.perfT / 0.45, q = P2(R.x, R.dist); if (!R.pChain || R.pChain === 1 || R.pChain % 5 === 0) { ctx.fillStyle = `rgba(255,255,255,${0.12 * (1 - k)})`; ctx.fillRect(0, 0, W, H); } ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1] + W * 0.05, W * (0.05 + k * 0.3), 0, Math.PI * 2); ctx.stroke(); }
+    if (R.perfT > 0 && !calmFx) { const k = 1 - R.perfT / 0.45, q = P2(R.x, R.dist); if (!R.pChain || R.pChain === 1 || R.pChain % 5 === 0) { ctx.fillStyle = `rgba(255,255,255,${0.12 * (1 - k)})`; ctx.fillRect(0, 0, W, H); } ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(q[0], q[1] + U * 0.05, U * (0.05 + k * 0.3), 0, Math.PI * 2); ctx.stroke(); }
     if (R.od > 0) { const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); g.addColorStop(0, "rgba(255,190,60,0)"); g.addColorStop(1, `rgba(255,190,60,${0.18 + 0.06 * Math.sin(R.t * 8)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     if (R.scrDark != null && R.scrDark > -W * 0.6) { const k = Math.max(0, Math.min(1, (R.scrDark + W * 0.6) / (W * 0.8))), g = ctx.createLinearGradient(0, 0, W * (0.15 + 0.35 * k), 0); g.addColorStop(0, `rgba(10,3,24,${0.85 * k})`); g.addColorStop(1, "rgba(10,3,24,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     const a = R.scrAim;
@@ -301,14 +304,14 @@ function runDraw(ctx, W, H) {
   }
   // Floating "+3" when a shadow is sung free.
   ctx.textAlign = "center";
-  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(W * 0.045)}px Inter, system-ui, sans-serif`; const q = P2(p.x, p.at); ctx.fillText(p.text, q[0], q[1] - k * 40 * pxU); }
+  for (const p of R.attract ? [] : R.pops || []) { const k = p.t / 1.2; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffe2a0"; ctx.font = `600 ${Math.round(U * 0.045)}px Inter, system-ui, sans-serif`; const q = P2(p.x, p.at); ctx.fillText(p.text, q[0], q[1] - k * 40 * pxU); }
   ctx.globalAlpha = 1;
   // The world's name as you enter it; mission messages.
   if (R.banner > 0 && !R.attract) {
     ctx.globalAlpha = Math.min(1, R.banner, (3 - R.banner) * 2); ctx.textAlign = "center";
-    ctx.font = `600 ${Math.round(W * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (!R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : runWorld(7 - (R.biome % 8)).name.toUpperCase()).split("").join(String.fromCharCode(8202)), W / 2, H * 0.26);
-    ctx.font = `700 ${Math.round(W * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : runnerTheme(R.biome * RUN.BIOME_M).name, W / 2, H * 0.26 + W * 0.08);
-    if (R.stageInfo) { ctx.font = `600 ${Math.round(W * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, H * 0.26 + W * 0.15); if (R.attempt > 1) { ctx.font = `700 ${Math.round(W * 0.036)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(`Attempt ${R.attempt}`, W / 2, H * 0.26 + W * 0.22); } }
+    ctx.font = `600 ${Math.round(U * 0.03)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#9aa1b4"; ctx.fillText((R.stageInfo ? (!R.stageInfo.daily ? stageChapter(R.stageInfo.n) : runnerTheme(0).name).toUpperCase() : runWorld(7 - (R.biome % 8)).name.toUpperCase()).split("").join(String.fromCharCode(8202)), W / 2, top);
+    ctx.font = `700 ${Math.round(U * 0.07)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffffff"; ctx.fillText(R.stageInfo ? (R.stageInfo.daily ? "Daily stage" : R.stageInfo.boss ? `Boss · Stage ${R.stageInfo.n}` : `Stage ${R.stageInfo.n}`) : runnerTheme(R.biome * RUN.BIOME_M).name, W / 2, top + U * 0.08);
+    if (R.stageInfo) { ctx.font = `600 ${Math.round(U * 0.042)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#ffd98a"; ctx.fillText(`${stageWaiting(R.stageInfo.n)} in the dark`, W / 2, top + U * 0.15); if (R.attempt > 1) { ctx.font = `700 ${Math.round(U * 0.036)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(`Attempt ${R.attempt}`, W / 2, top + U * 0.22); } }
     ctx.globalAlpha = 1;
   }
 
@@ -372,7 +375,7 @@ function runPauseInfo() {
   ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +
     g("★★★", `70% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
 }
-document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
+document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over || !$("runContinue").hidden) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
@@ -432,5 +435,5 @@ function runShop() {
 
 // Leaving the app mid-run pauses it.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
+  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract && $("runContinue").hidden) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
 });

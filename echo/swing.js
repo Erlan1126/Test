@@ -85,7 +85,11 @@ function runnerStart(R) {
     R.banner = 2.6;
     if (nw && !R.tut) runMsg(nw[0], nw[1], 3, true);
     if (R.outage && !R.attract && !R.tut) runMsg("⚡ Outage week", "Some lights flicker out · every light counts double", 2.6, true);
-    if (R.stageInfo.boss) { R.ev = { kind: "heart", t: 1e9, hits: 0 }; R.hearted = { all: true }; for (const f of [0.3, 0.6, 0.85]) R.ups.push({ x: R.stageInfo.len * f, y: 26 + runR() * 6, kind: "shard" }); }
+    if (R.stageInfo.boss) { R.ev = { kind: "heart", t: 1e9, hits: 0 }; R.hearted = { all: true }; for (const f of [0.3, 0.6, 0.85]) R.ups.push({ x: R.stageInfo.len * f, y: 26 + runR() * 6, kind: "shard" });
+      // Each district's boss has its own twist.
+      R.bossK = Math.min(5, Math.floor((R.stageInfo.n - 1) / 10)); if (R.bossK === 3) R.glitch = true;
+      if (R.bossK === 5) for (const u of R.ups) if (u.kind === "shard") u.y += 8;
+      if (!R.attract) { const B = BOSSES[R.bossK]; runMsg(B[0], B[1], 3, true); } }
   }
   const a0 = { x: 2, y: 40, kind: "lamp", id: 0 }; R.anchors.push(a0); R.lastA = a0;
   swingGen(R, 220);
@@ -94,6 +98,15 @@ function runnerStart(R) {
   if (!R.stageInfo && !R.attract && !R.tut) { const nb = ((save.run || {}).night || {}); runMsg("Night shift", `Light as many windows as you can${nb.week === weekNumber() && nb.best ? ` · this week's best: ${nb.best}` : ""}`, 2.6, true); }
 }
 
+// The six bosses: one per district, each with its own twist.
+const BOSSES = [
+  ["The Heart of the Dark", "Grab its 3 shards before it catches you"],
+  ["The Lantern Thief", "It stole 3 lantern shards, and they won't keep still"],
+  ["The Rising Tide", "The water is climbing: stay high, grab the 3 shards"],
+  ["The Glitch Storm", "Half the lights are glitching. Time your grabs"],
+  ["The Night Bloom", "The 3 shards hide in the dark: they only glow when you're close"],
+  ["The Last Dark", "The final dark is fast. 3 shards, high in the sky"],
+];
 // ---------- Sections: what each stretch of a stage is like ----------
 // Every 110 m a new section: flow (the classic), a climb, a low fast dive, a zigzag, a big gap (with a
 // boost ring; a good release or the air dash), a run of springs, or a course of boost rings. Fixed per
@@ -130,7 +143,7 @@ function swingGen(R, toX) {
       if (sec === "springs" && ax > 60) a.type = "spring"; else if ((sec === "zigzag" || sec === "climb") && a.type === "crumble") a.type = "";
       if (a.type === "drift") a.bx = ax;
       if (ath.anchor === "lantern" && !a.type) { a.sway = true; a.bx = ax; a.by = a.y; }
-      if (R.outage && !a.type && ax > 40 && a.id % 3 === 0) a.flicker = true;   // (no random draw: the course stays the same)
+      if ((R.outage || R.glitch) && !a.type && ax > 40 && a.id % (R.glitch ? 2 : 3) === 0) a.flicker = true;   // (no random draw: the course stays the same)
       R.anchors.push(a); R.lastA = a;
       // A boost ring where you'd fly after letting go: through it for speed, lights and Flow.
       if (ax > 50 && (r() < (R.stageLen ? 0.22 : 0.16) || sec === "rings" || gapK) && !(R.stageLen && ax > R.stageLen)) R.boosts.push({ x: p.x + (a.x - p.x) * 0.62 + 2, y: (p.y + a.y) / 2 - 3, r: 1.7 });
@@ -148,7 +161,7 @@ function swingGen(R, toX) {
       if (ax > 120 && r() < 0.07) { const kinds = Object.keys(RUNNER_POWERS).filter(k => !(R.stageLen && k === "comet")); R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 12, kind: kinds[Math.floor(r() * kinds.length)] }); }
       else if (!R.attract && !R.tut && !R.letterOut && ax > 160 && r() < 0.06) { const h = huntState(); if (h.got.length < HUNT.length) { R.ups.push({ x: (p.x + a.x) / 2, y: (p.y + a.y) / 2 - 11, kind: "letter", ch: HUNT[h.got.length] }); R.letterOut = true; } }
       // Drones patrol between some anchors later on.
-      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < 0.06 + hard * 0.12) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
+      if ((R.stageLen ? hard > 0.1 && ax > 70 : ax > 260) && r() < (0.06 + hard * 0.12) * (R.stageInfo && R.stageInfo.boss ? 0.5 : 1)) R.haz.push({ kind: "drone", x: (p.x + a.x) / 2 + (r() - 0.5) * 3, y0: (p.y + a.y) / 2 - 6 - r() * 6, amp: 2.5 + r() * 3, ph: r() * 6 });
     }
     // One building (or a tree in the park), never so tall that it blocks the anchors.
     const gap = (th.water ? 6 : 3) + r() * (th.water ? 10 : 7) + (r() < 0.12 ? 8 : 0), w = 9 + r() * 10, x0 = R.genX + gap, x1 = x0 + w;
@@ -378,10 +391,10 @@ function runnerUpdate(dt) {
     }
     if (R.roof) { R.py = R.roof.h; R.vx = Math.max(R.vx * (1 - 0.15 * h), 9); }
     // The street.
-    if (R.py < 0.4 && runnerTheme(R.px).water && !R.attract) {
+    if (R.py < (R.tide || 0) + 0.4 && runnerTheme(R.px).water && !R.attract) {
       // The harbour: you splash into the water instead of hitting the street. No heart lost, but it
       // drags your speed down and costs Flow; you bob back up.
-      R.py = 0.4; R.vy = 17; R.vx = Math.max(6, R.vx * 0.55); R.teth = null; R.flow = Math.max(0, R.flow - 0.35); R.combo = 0; R.pChain = 0;
+      R.py = (R.tide || 0) + 0.4; R.vy = 17; R.vx = Math.max(6, R.vx * 0.55); R.teth = null; R.flow = Math.max(0, R.flow - 0.35); R.combo = 0; R.pChain = 0;
       R.splash = { x: R.px, t: 0 }; R.shake = 0.35; R.bursts.push({ x: R.px, y: 0.5, t: 0, c: 0x7fd8ff, big: true });
       if (!R.wetMsg) { R.wetMsg = true; runMsg("Splash!", "The water slows you down. Stay up high", 1.4); } sfx.land(); buzz(10);
     }
@@ -422,7 +435,7 @@ function runnerUpdate(dt) {
   R.motes = R.motes.filter(c => !c.gone && c.x > cut); R.haz = R.haz.filter(z => (z.x1 ?? z.x) > cut); R.ups = R.ups.filter(u => !u.got && u.x > cut);
   // The darkness behind you.
   const surge = R.ev && R.ev.kind === "surge";
-  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? 1.2 : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
+  if (!R.cleared) R.darkX += (R.stageLen ? (4 + R.stageInfo.hard * 6.5) * (R.stageInfo.boss && R.ev && R.ev.kind === "heart" ? (R.bossK === 5 ? 1.35 : 1.2) : 1) : Math.min(14, 4 + Math.max(0, m - 80) * 0.0035)) * (surge ? 1.6 : 1) * (weekEvent().id === "shadow" ? 1.2 : 1) * (R.tut ? 0 : 1) * dt;
   R.darkX = Math.max(R.darkX, R.px - 60);
   if (R.px < R.darkX + 1 && !R.attract && !R.cleared) { R.darkX = R.px - 38; swingHit(R, "The dark caught you!"); R.vx = Math.max(R.vx, 16); R.vy = Math.max(R.vy, 10); }
   // Buildings light back up as you pass.
@@ -441,6 +454,9 @@ function runnerUpdate(dt) {
       if (!R.attract) { sfx.coin(R.combo); runMission("lights", R.lights); }
     }
   }
+  // Boss twists that move: the Lantern Thief's shards drift; the Rising Tide climbs.
+  if (R.bossK === 1) for (const u of R.ups) if (u.kind === "shard" && !u.got) { u.bx ??= u.x; u.by ??= u.y; u.x = u.bx + Math.sin(R.t * 0.9 + u.bx) * 5; u.y = u.by + Math.cos(R.t * 1.3 + u.bx) * 3; }
+  if (R.bossK === 2 && !R.cleared) R.tide = Math.min(9, (R.stageT || 0) * 0.22);
   // Power-ups and letters.
   for (const u of R.ups) if (!u.got && Math.hypot(u.x - R.px, u.y - R.py - 0.9) < 2) {
     u.got = true;
