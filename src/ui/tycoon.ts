@@ -262,7 +262,8 @@ export class TycoonUI {
       if (!btn || btn.disabled) return;
       stopHold();
       const step = () => {
-        if (!btn.isConnected || btn.disabled) { stopHold(); return; }
+        // (Out of cash mid-hold: stop there, with one gentle no, not a toast every tick.)
+        if (!btn.isConnected || btn.disabled || (holdN > 0 && btn.classList.contains("short"))) { if (holdN > 0 && btn.classList.contains("short")) this.nope(btn); stopHold(); return; }
         held = btn;
         // (The town card stays put while it's held, so the same button keeps buying.)
         if (btn.closest("#tcy-card")) this.holdingCard = true;
@@ -1669,7 +1670,6 @@ export class TycoonUI {
   private swapTimer = 0;
 
   private renderCard(now: number): void {
-    if (this.holdingCard) return;
     if (this.selectedSight && !this.selected) { this.renderSightCard(); this.cardFor("s:" + this.selectedSight); return; }
     if (this.selectedProp && !this.selected) { this.renderPropCard(now); this.cardFor("p:" + this.selectedProp); return; }
     if (this.selected) this.cardFor("b:" + this.selected); else $("tcy-card").dataset.for = "";
@@ -1715,7 +1715,7 @@ export class TycoonUI {
     const lease = !owned ? `<p class="bc-lease">${esc(t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) }))}</p>` : "";
     const growNote = grow ? `<p class="bc-grow">✨ ${esc(t("Ready to grow into {name}!", { name: t(stageName(b.id, grow)) }))}</p>` : !ns && owned ? `<p class="bc-grow done">🏆 ${esc(t("Fully grown!"))}</p>` : "";
     const bc = bizColors(s, b.id, b.color as [string, string]);
-    this.put(card, `<div class="bc-hero" style="--b1:${bc[0]};--b2:${bc[1]}">
+    const html = `<div class="bc-hero" style="--b1:${bc[0]};--b2:${bc[1]}">
         <span class="bc-ico">${iconSvg(b.icon)}</span>
         <span class="bc-title"><small>${owned ? esc(t(stageName(b.id, st)) === t(b.name) ? t("Stage {n} of 8", { n: st + 1 }) : t(b.name)) : esc(t("For lease"))}</small><b>${esc(t(owned ? stageName(b.id, st) : b.name))}</b>${owned ? stars : ""}</span>
         ${owned ? `<span class="bc-lv"><small>${esc(t("Level"))}</small><b>${esc(fmt(lv))}</b></span>` : ""}
@@ -1731,8 +1731,36 @@ export class TycoonUI {
       ${owned && !noRoom ? `<div class="bc-amt" role="group" aria-label="${esc(t("How many to buy"))}">${amts}</div>` : ""}
       <div class="card-acts">${main}</div>
       ${tiles ? `<div class="bc-tiles">${tiles}</div>` : ""}
-      <span class="tag-pops card-pops"></span>`);
+      <span class="tag-pops card-pops"></span>`;
+    // While Buy is held the button must stay the same element (it keeps buying), so the card's
+    // numbers are updated in place: the level, price and earnings climb as you hold.
+    if (this.holdingCard) { this.patchCard(card, html); return; }
+    this.put(card, html);
   }
+
+  /** Copies the live numbers of a fresh card into the one on screen, leaving its buttons be. */
+  private patchCard(card: HTMLElement, html: string): void {
+    const tpl = document.createElement("div");
+    tpl.innerHTML = html;
+    for (const sel of [".bc-title", ".bc-lv b", ".bc-money", ".bc-meta", ".bc-next", ".bc-grow", '.card-main[data-card="buy"] b', '.card-main[data-card="buy"] small']) {
+      const a = card.querySelector(sel), b = tpl.querySelector(sel);
+      if (a && b && a.innerHTML !== b.innerHTML) a.innerHTML = b.innerHTML;
+    }
+    const a = card.querySelector('.card-main[data-card="buy"]'), b = tpl.querySelector('.card-main[data-card="buy"]');
+    if (a && b) a.classList.toggle("short", b.classList.contains("short"));
+    this.html.delete(card);
+  }
+
+  /** A button that can't do it right now gives a little shake and a soft buzz. */
+  private nope(el: Element): void {
+    el.classList.remove("nope");
+    void (el as HTMLElement).offsetWidth;
+    el.classList.add("nope");
+    vibrate(this.save.settings.vibrate, [8, 40, 8]);
+  }
+  /** Quick buys in a row climb the scale, like a till ringing up faster and faster. */
+  private buyCombo = 0;
+  private buyAt = 0;
 
   private onCardTap(e: MouseEvent): void {
     const el = (e.target as Element).closest<HTMLElement>("[data-card]");
@@ -1766,7 +1794,10 @@ export class TycoonUI {
       tick(this.save);
       const job = buildOf(this.save, "home", key);
       if (job) { this.finishBuild("home", key); return; }
-      this.startCityBuild("home", key);
+      if (this.startCityBuild("home", key)) {
+        this.pulse = { id: key, at: Date.now() };
+        requestAnimationFrame(() => { const b = $("tcy-card").querySelector(".card-main"); if (b) burst(b, 12); });
+      } else this.nope(el);
       return;
     }
     if (what === "amt") {
@@ -1784,7 +1815,7 @@ export class TycoonUI {
       if (b) {
         const lv = levelOf(this.save, id), n = lv === 0 ? 1 : Math.min(Math.max(1, freeFloors(this.save)), this.amount === "max" ? Math.max(1, affordable(b, lv, ty.coins)) : this.amount);
         const need = what === "hire" ? b.manager : costOf(b, lv, n);
-        if (ty.coins < need) { this.host.sound.click(); toast(t("You need {n} more", { n: coins(need - ty.coins) })); this.shortOffer(need - ty.coins); return; }
+        if (ty.coins < need) { this.host.sound.click(); this.nope(el); toast(t("You need {n} more", { n: coins(need - ty.coins) })); this.shortOffer(need - ty.coins); return; }
       }
     }
     if (what === "amount") {
@@ -2949,8 +2980,20 @@ export class TycoonUI {
         this.pulse = { id: b.id, at: Date.now() };
         if (s.tycoon.tips === 1) s.tycoon.tips = 2;
         const crossed = nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
-        this.host.sound.coins();
+        const nowB = Date.now();
+        this.buyCombo = nowB - this.buyAt < 1300 ? Math.min(12, this.buyCombo + 1) : 0;
+        this.buyAt = nowB;
+        if (crossed || !owned) this.host.sound.coins(); else this.host.sound.buy(this.buyCombo);
+        // (A light tick for every level; a firmer one for the big moments.)
+        vibrate(s.settings.vibrate, crossed || !owned ? [15, 30, 15] : 8);
         burst(el, crossed ? 20 : 8);
+        // The new level floats up off the button and off the building in town.
+        if (owned) {
+          const label = got > 1 ? t("+{n} levels", { n: fmt(got) }) : t("Level {n}", { n: fmt(lv + got) });
+          lvPop(el, label, crossed);
+          if (flyFrom !== el && (flyFrom as HTMLElement).isConnected && !(flyFrom as HTMLElement).closest("#tcy-card")) lvPop(flyFrom, `+${fmt(got)}`, crossed);
+          requestAnimationFrame(() => { const lvEl = document.querySelector("#tcy-card .bc-lv"); if (lvEl) { lvEl.classList.remove("lv-up"); void (lvEl as HTMLElement).offsetWidth; lvEl.classList.add("lv-up"); } });
+        }
         flyFrom.classList.remove("bump");
         void (flyFrom as HTMLElement).offsetWidth;
         flyFrom.classList.add("bump");
@@ -3905,6 +3948,20 @@ const COACH_FACE = MAYOR_SVG.replace(/id="mp-/g, 'id="mpc-').replace(/url\(#mp-/
 const PERSON_VIP = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#e8b48a"/><path d="M5 5q5-5 10 0v-1q-5-4-10 0z" fill="#1c1640"/><rect x="5.5" y="6" width="9" height="2.6" rx="1.2" fill="#1c1640"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#ffc93c"/><path d="M10 14l-2 18h4z" fill="#fff3b0"/><rect x="5" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/><rect x="11" y="31" width="4" height="3" rx="1" fill="#2a1f3e"/></svg>`;
 /** The manager: a suit and a red tie. */
 const PERSON_BOSS = `<svg viewBox="0 0 20 34"><circle cx="10" cy="7" r="5" fill="#f2c39a"/><path d="M5 6q5-6 10 0v-2q-5-4-10 0z" fill="#3a3a4a"/><path d="M3 32v-12q0-6 7-6t7 6v12z" fill="#2a3590"/><path d="M10 14l-2 3 2 9 2-9z" fill="#e8334f"/><path d="M8 14h4l-2 2z" fill="#fff"/></svg>`;
+
+/** A level-up number floating up out of a button or a building's label. (On the page itself,
+ *  not inside the card: the card redraws as its numbers change and would cut it short.) */
+function lvPop(from: Element, text: string, big = false): void {
+  const r = from.getBoundingClientRect();
+  if (!r.width) return;
+  const el = document.createElement("span");
+  el.className = big ? "lv-pop big" : "lv-pop";
+  el.textContent = text;
+  el.style.left = `${r.left + r.width * (0.35 + Math.random() * 0.3)}px`;
+  el.style.top = `${r.top - 14}px`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
 
 function popCoin(box: Element, text: string): void {
   const el = document.createElement("span");

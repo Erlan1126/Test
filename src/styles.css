@@ -3005,6 +3005,19 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .flag.run { background: #ff4f8b; }
 .tag-pops { position: absolute; left: 0; right: 0; bottom: 100%; height: 60px; pointer-events: none; }
 .tag-pops .coin-pop { bottom: 0; }
+/* A level bought: the number floats up off the button (and the building's label in town). */
+.lv-pop { position: fixed; z-index: 90; transform: translateX(-50%); padding: 3px 10px 2px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+  font: 400 14px var(--display); color: #5a3300; background: linear-gradient(180deg, #fff6c4, #ffc93c); box-shadow: 0 3px 0 #b8740c, 0 6px 14px rgba(90, 50, 0, 0.3);
+  animation: lv-up-pop 0.95s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+.lv-pop.big { font-size: 17px; color: #fff; background: linear-gradient(180deg, #c7a6ff, #6a3cff); box-shadow: 0 3px 0 #3a1f9a, 0 6px 16px rgba(106, 60, 255, 0.45); }
+@keyframes lv-up-pop { from { transform: translate(-50%, 6px) scale(0.5); opacity: 0; } 18% { transform: translate(-50%, -10px) scale(1.2); opacity: 1; } 60% { opacity: 1; } to { transform: translate(-50%, -54px) scale(1); opacity: 0; } }
+/* The level badge jumps when it goes up. */
+#tcy-card .bc-lv.lv-up { animation: lv-badge 0.36s cubic-bezier(0.3, 1.8, 0.5, 1); }
+@keyframes lv-badge { 35% { transform: scale(1.22) rotate(-4deg); background: #fff3b0; } }
+/* Can't do it yet: a little shake. */
+.nope { animation: nope-shake 0.32s ease-in-out; }
+@keyframes nope-shake { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@media (prefers-reduced-motion: reduce) { .lv-pop, #tcy-card .bc-lv.lv-up, .nope { animation-duration: 0.01s !important; } }
 
 /* The building card. */
 .tcy-card { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); padding: 12px 14px; border-radius: 24px;
@@ -3106,7 +3119,8 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .card-main b { font: 400 17px var(--display); }
 .card-main small { display: flex; align-items: center; gap: 4px; font: 400 13px var(--display); opacity: 0.95; }
 .card-main small svg { width: 15px; height: 15px; }
-.card-main:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 #a8204f; }
+.card-main { transition: transform 0.06s ease-out, box-shadow 0.06s ease-out, filter 0.12s; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.card-main:active:not(:disabled) { transform: translateY(4px) scale(0.98); box-shadow: 0 1px 0 #a8204f; filter: brightness(1.08); }
 .card-main:disabled { cursor: default; background: linear-gradient(180deg, #c9c3e6, #a59bd6); box-shadow: 0 5px 0 #7a70b0; }
 .card-main.grow { background: linear-gradient(180deg, #c7a6ff, #8a5cff 55%, #6a3cff); box-shadow: 0 5px 0 #3a1f9a, 0 10px 20px rgba(106, 60, 255, 0.35); animation: coach-pulse 1.4s ease-in-out infinite; }
 .card-main.floors { background: linear-gradient(180deg, #9fe6ff, #4f8bff 55%, #3a6cf0); box-shadow: 0 5px 0 #23409a; }

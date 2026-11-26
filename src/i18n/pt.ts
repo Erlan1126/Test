@@ -2450,4 +2450,5 @@ export const PT: Record<string, string> = {
   "Your businesses, managers, City Hall rank, districts, homes and headquarters start over, from a little hamlet. You keep your Sky Crystals, decorations and story, and get {n} Sky Gems: +{pct}% on all earnings, for good.": "Seus negócios, gerentes, nível da Prefeitura, distritos, casas e sedes recomeçam, a partir de um vilarejo. Você mantém seus Cristais do Céu, decorações e história, e ganha {n} Gemas do Céu: +{pct}% em todos os ganhos, para sempre.",
   "Start a New Era": "Começar uma Nova Era",
   "Not yet": "Ainda não",
+  "+{n} levels": "+{n} níveis",
 };
