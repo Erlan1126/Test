@@ -34,6 +34,7 @@ import { kitVersion } from "./kitmodels";
 import { CITY_LOTS, buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 import { TownRainbow } from "./rainbow";
+import { HAS_CITY } from "../edition";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
 const SHADOW_MAX = 128;
@@ -706,7 +707,7 @@ export class Renderer3D {
     if (this.skyline) {
       // Shown around a finished tower. Not while building, and not on the home screen,
       // where their towers crowded the title and showed through the glass buttons.
-      this.skyline.visible = f.shot === "over";
+      this.skyline.visible = f.shot === "over" && !this.inTown();
     }
     this.updateEnvironment(n); // before the tower, so its shaders are prepared against it
     this.updateTower(f);
@@ -727,6 +728,19 @@ export class Renderer3D {
     this.updateShaderFx(dt, f);
     this.updateMenuCamera(dt, f);
 
+    // In the town, the tower game's own island (its meadow, its road and the tower built on
+    // it) is out of sight: it would float beside the city as a second island. (Set last, as
+    // the steps above switch some of these on.)
+    if (this.inTown()) {
+      if (this.island) this.island.visible = false;
+      this.tower.visible = false;
+      this.landShadow.visible = false;
+      this.roofGear.visible = false;
+      this.landmark.visible = false;
+    } else {
+      if (this.island) this.island.visible = true;
+      this.tower.visible = true;
+    }
     this.placeCamera(fx.shake > 0 && !this.calm ? fx.shake : 0);
     this.updateEnvironment(n);
     // Still preparing the first island's shaders: wait (the scene isn't shown yet).
@@ -823,6 +837,10 @@ export class Renderer3D {
       s.visible = this.bizK < 0.98;
     }
   }
+
+  /** Looking at the town (the city game is always there): the tower game's island and
+   *  tower are put away. */
+  private inTown(): boolean { return HAS_CITY || this.bizK > 0.98; }
 
   // ---------- Island and skyline ----------
 
