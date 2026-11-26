@@ -2403,4 +2403,10 @@ export const FR: Record<string, string> = {
   "🏙️ Only {n} people to go!": "🏙️ Plus que {n} habitants !",
   "📨 Invite a friend": "📨 Invite un ami",
   "🤝 Team reward: +{n} Sky Crystals": "🤝 Récompense d'équipe : +{n} cristaux",
+  // Weather moments: the rainbow after rain and the snow day.
+  "❄️ Snow day! Cafés and bakeries earn ×{n} while it snows": "❄️ Jour de neige ! Cafés et boulangeries gagnent ×{n} tant qu'il neige",
+  "🌈 A rainbow! Tap the pot of gold under it for a bonus": "🌈 Un arc-en-ciel ! Touche le chaudron d'or dessous pour un bonus",
+  "The rainbow's pot of gold: tap for a bonus": "Le chaudron d'or de l'arc-en-ciel : touche pour un bonus",
+  "❄️ Snow day: cafés ×{n}": "❄️ Jour de neige : cafés ×{n}",
+  "🌈 The pot of gold: +{n}!": "🌈 Le chaudron d'or : +{n} !",
 };

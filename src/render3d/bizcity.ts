@@ -22,7 +22,7 @@ import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } f
 import { buildCityHall } from "./cityhall";
 import { buildHouse, houseDesign, type HouseKit } from "./houses";
 import { isRushHour, isWeekendNight } from "../data/season";
-import { bandstand, blossomArch, blossomTree, festivalUmbrellas, holidayTree, lampLights, nightMarket, pumpkins } from "./winter";
+import { bandstand, blossomArch, blossomTree, festivalUmbrellas, holidayTree, lampLights, nightMarket, pumpkins, snowmen } from "./winter";
 import { seasonInfo } from "../data/season";
 import { buildPlaced, type PlaceKit } from "./placemodels";
 
@@ -878,9 +878,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       add(new THREE.SphereGeometry(0.1, 8, 6).translate(px, 1.42, pz), mats.c("#fff3c4", 0.3));
     }
   }
+  // Lawns with room for a snowman on a snow day (winter.ts snowmen): the parks', then empty lots.
+  const snowSpots: [number, number, number][] = [];
   // The two parks by the entrance: lawns, a path, a pond, benches.
   for (const [n, cell] of PARKS.entries()) {
     const { x, z } = cellXZ(cell);
+    snowSpots.push([x - 1.7, 0.26, z + 0.15], [x + 1.7, 0.26, z + 0.15]);
     add(roundSlab(C - ROAD * 2 - 0.6, C - ROAD * 2 - 0.6, BLOCK_R - 0.1 - 0.22, 0.06).translate(x, 0.2, z), grass);
     // A winding path and a loop instead of a straight cross.
     add(ribbon(sPath(2.0, n === 1).map(([a, b]): [number, number] => [x + a, z + b]), 0.6, 0.275), pave);
@@ -2382,6 +2385,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         // town to grow out to it.
         const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
         P(lotSlab(), grass2);
+        snowSpots.push([x + 0.2, 0.26, z - 0.2]);
         for (const [tx, tz] of [[-1.3, -1.1], [1.2, 1.3]]) {
           P(parkTree(tx, tz, 0.45, tx * 5 + tz * 11 + k), natureM);
         }
@@ -4332,6 +4336,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // The season's string lights on the street lamps (bunting colours in summer).
   const se = cafe.season ? seasonInfo(cafe.season) : undefined;
   if (se && lampAt.length) townTicks.push(lampLights(g, lampAt, se.bulbs));
+  // A snow day: snowmen on a few lawns once the snow has settled.
+  {
+    const melt = snowmen(g, snowSpots.slice(0, 6), own);
+    let t0 = 0;
+    townTicks.push(t => { melt(look.snow ?? 0, t0 ? Math.min(0.1, t - t0) : 0); t0 = t; });
+  }
   return {
     group: g,
     top: i => (i === -1 ? plotTop : i === -4 ? hallTop : i <= -10 ? 1.3 : i < -1 ? 1.4 : tops[i] ?? 2),

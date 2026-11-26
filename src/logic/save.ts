@@ -11,6 +11,7 @@ import { normalizeCityTrophies } from "./cityach";
 import { newEraNudge, normalizeEraNudge, type EraNudgeState } from "./eranudge";
 import { normalizePlaced, type PlacedState } from "./placedecor";
 import { newCityEvent, normalizeCityEvent, type CityEventState } from "./cityevent";
+import { newWeatherState, normalizeWeather, type WeatherState } from "./weather";
 import { OLD_FEATURE_TOWERS } from "./features";
 import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
 import { ADVISORS, BUSINESSES, UPGRADES, VAULT_COST } from "../data/tycoon";
@@ -89,6 +90,8 @@ export interface SaveData {
   decor: string[];
   /** This week's city event (see logic/cityevent.ts). */
   cityEvent: CityEventState;
+  /** The weather's moments: the rainbow said and its gold claimed, the snow day (logic/weather.ts). */
+  weather: WeatherState;
   /** The city album: kinds of buildings and places found by tapping them (data/sights.ts). */
   album: string[];
   /** The floating island next to the town (opens at Big City): what was built there. */
@@ -240,6 +243,7 @@ export function defaultSave(): SaveData {
     ownedShapes: [],
     decor: [],
     cityEvent: newCityEvent(),
+    weather: newWeatherState(),
     album: [],
     annex: { pick: "" },
     land: [],
@@ -379,6 +383,7 @@ export function normalize(raw: unknown): SaveData {
     ownedShapes: strList(r.ownedShapes, shapeIds),
     decor: normalizeDecor(r.decor),
     cityEvent: normalizeCityEvent(r.cityEvent),
+    weather: normalizeWeather(r.weather),
     album: Array.isArray(r.album) ? [...new Set((r.album as unknown[]).filter((x): x is string => typeof x === "string" && x.length < 30))].slice(0, 200) : [],
     scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
     asks: normalizeAsks(r.asks),
