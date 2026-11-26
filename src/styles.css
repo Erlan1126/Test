@@ -4290,7 +4290,9 @@ body:has(#tcy-card:not([hidden])) #toast { top: calc(env(safe-area-inset-top, 0p
 #tycity .tcy-next:active { transform: translateX(-50%) scale(0.97); }
 #tycity .tcy-next .next-ico { width: 30px !important; height: 30px !important; border-radius: 50% !important; font-size: 16px !important; }
 #tycity .tcy-next small, #tycity .tcy-next em, #tycity .tcy-next .next-bar { display: none !important; }
-#tycity .tcy-next b { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* (Up to two lines, so the whole step can be read on a small phone, never cut off mid-word.) */
+#tycity .tcy-next { border-radius: 24px !important; }
+#tycity .tcy-next b { font-size: 13px !important; line-height: 1.2 !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; }
 #tycity .tcy-next .next-go { font-size: 20px !important; }
 body.town-panning #tycity .tcy-next { opacity: 0; pointer-events: none; }
 @keyframes next-pill-in { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.9); } to { opacity: 1; transform: translateX(-50%); } }
