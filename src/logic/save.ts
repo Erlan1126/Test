@@ -2,6 +2,7 @@
 // older per-key format and transfer codes for moving progress to another device.
 import { normalizePaint, normalizePaints } from "./paint";
 import { newTeam, normalizeTeam, type TeamState } from "./team";
+import { newSpin, normalizeSpin, type SpinState } from "./spin";
 import { newSeasonPass, normalizeSeasonPass, type SeasonPassState } from "./seasonpass";
 import { newAsks, normalizeAsks, type AskState } from "./asks";
 import { LAND, type LandId } from "../data/land";
@@ -11,6 +12,7 @@ import { normalizeCityTrophies } from "./cityach";
 import { newEraNudge, normalizeEraNudge, type EraNudgeState } from "./eranudge";
 import { normalizePlaced, type PlacedState } from "./placedecor";
 import { newCityEvent, normalizeCityEvent, type CityEventState } from "./cityevent";
+import { newWeatherState, normalizeWeather, type WeatherState } from "./weather";
 import { OLD_FEATURE_TOWERS } from "./features";
 import { ECONOMY, newTycoon, stageOf, type CompanyGoal, type TycoonState } from "./tycoon";
 import { ADVISORS, BUSINESSES, UPGRADES, VAULT_COST } from "../data/tycoon";
@@ -89,6 +91,8 @@ export interface SaveData {
   decor: string[];
   /** This week's city event (see logic/cityevent.ts). */
   cityEvent: CityEventState;
+  /** The weather's moments: the rainbow said and its gold claimed, the snow day (logic/weather.ts). */
+  weather: WeatherState;
   /** The city album: kinds of buildings and places found by tapping them (data/sights.ts). */
   album: string[];
   /** The floating island next to the town (opens at Big City): what was built there. */
@@ -142,6 +146,8 @@ export interface SaveData {
   seasonPass: SeasonPassState;
   /** Buildaroo: this week's friend-team goal (logic/team.ts). */
   team: TeamState;
+  /** Buildaroo: the daily spin wheel (logic/spin.ts). */
+  spin: SpinState;
   friends: string[];
   /** The story (see chapters.ts): chapters finished, and the last chapter Mayor Pip introduced. */
   chapters: { done: number; seen: number; v?: number };
@@ -240,6 +246,7 @@ export function defaultSave(): SaveData {
     ownedShapes: [],
     decor: [],
     cityEvent: newCityEvent(),
+    weather: newWeatherState(),
     album: [],
     annex: { pick: "" },
     land: [],
@@ -267,6 +274,7 @@ export function defaultSave(): SaveData {
     paints: [],
     seasonPass: newSeasonPass(),
     team: newTeam(),
+    spin: newSpin(),
     friends: [],
     tycoon: newTycoon(),
     boosts: { rewind: 0, xp: 0, gold: 0 },
@@ -379,6 +387,7 @@ export function normalize(raw: unknown): SaveData {
     ownedShapes: strList(r.ownedShapes, shapeIds),
     decor: normalizeDecor(r.decor),
     cityEvent: normalizeCityEvent(r.cityEvent),
+    weather: normalizeWeather(r.weather),
     album: Array.isArray(r.album) ? [...new Set((r.album as unknown[]).filter((x): x is string => typeof x === "string" && x.length < 30))].slice(0, 200) : [],
     scrapbook: Object.fromEntries(Object.entries((r.scrapbook && typeof r.scrapbook === "object" ? r.scrapbook : {}) as Record<string, unknown>).filter(([k, v]) => /^[0-9]$/.test(k) && typeof v === "number" && Number.isFinite(v) && v > 0)) as Record<string, number>,
     asks: normalizeAsks(r.asks),
@@ -408,6 +417,7 @@ export function normalize(raw: unknown): SaveData {
     paints: normalizePaints(r.paints),
     seasonPass: normalizeSeasonPass(r.seasonPass),
     team: normalizeTeam(r.team),
+    spin: normalizeSpin(r.spin),
     peopleMilestone: typeof r.peopleMilestone === "number" && Number.isInteger(r.peopleMilestone) ? Math.max(-1, Math.min(50, r.peopleMilestone)) : -1,
     giftsSent: Object.fromEntries(Object.entries(r.giftsSent && typeof r.giftsSent === "object" ? r.giftsSent as Record<string, unknown> : {})
       .filter(([k, v]) => /^[A-Z0-9]{4,8}$/.test(k) && typeof v === "string" && /^\d{4}-\d{1,2}-\d{1,2}$/.test(v)).slice(-60)) as Record<string, string>,

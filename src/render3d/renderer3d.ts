@@ -33,6 +33,8 @@ import { buildIsland, type IslandAnim } from "./world";
 import { kitVersion } from "./kitmodels";
 import { CITY_LOTS, buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
+import { TownRainbow } from "./rainbow";
+import { HAS_CITY } from "../edition";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
 const SHADOW_MAX = 128;
@@ -205,6 +207,9 @@ export class Renderer3D {
   /** How much snow lies on the town (0 to 1): its roofs, lawns and squares turn white. */
   private readonly townSnow = { value: 0 };
   private snowShown = false;
+  /** A rainbow over the town after rain (the app sets it from data/season.ts rainbowNow). */
+  rainbow = false;
+  private readonly rainbowFx = new TownRainbow();
   private bizCafeIn: unknown = null;
   /** Each business's stage at the last rebuild (-1 while not open). */
   private bizPrev = new Map<string, number>();
@@ -702,7 +707,7 @@ export class Renderer3D {
     if (this.skyline) {
       // Shown around a finished tower. Not while building, and not on the home screen,
       // where their towers crowded the title and showed through the glass buttons.
-      this.skyline.visible = f.shot === "over";
+      this.skyline.visible = f.shot === "over" && !this.inTown();
     }
     this.updateEnvironment(n); // before the tower, so its shaders are prepared against it
     this.updateTower(f);
@@ -723,6 +728,19 @@ export class Renderer3D {
     this.updateShaderFx(dt, f);
     this.updateMenuCamera(dt, f);
 
+    // In the town, the tower game's own island (its meadow, its road and the tower built on
+    // it) is out of sight: it would float beside the city as a second island. (Set last, as
+    // the steps above switch some of these on.)
+    if (this.inTown()) {
+      if (this.island) this.island.visible = false;
+      this.tower.visible = false;
+      this.landShadow.visible = false;
+      this.roofGear.visible = false;
+      this.landmark.visible = false;
+    } else {
+      if (this.island) this.island.visible = true;
+      this.tower.visible = true;
+    }
     this.placeCamera(fx.shake > 0 && !this.calm ? fx.shake : 0);
     this.updateEnvironment(n);
     // Still preparing the first island's shaders: wait (the scene isn't shown yet).
@@ -819,6 +837,10 @@ export class Renderer3D {
       s.visible = this.bizK < 0.98;
     }
   }
+
+  /** Looking at the town (the city game is always there): the tower game's island and
+   *  tower are put away. */
+  private inTown(): boolean { return HAS_CITY || this.bizK > 0.98; }
 
   // ---------- Island and skyline ----------
 
@@ -1089,13 +1111,24 @@ export class Renderer3D {
       this.townSnow.value += (snowTo - this.townSnow.value) * Math.min(1, dt * 0.5);
       if (Math.abs(snowTo - this.townSnow.value) < 0.002) this.townSnow.value = snowTo;
       L.snow = this.townSnow.value;
+      this.townRainbow(dt);
       L.skyTop.setRGB(st[0] / 255, st[1] / 255, st[2] / 255).convertSRGBToLinear();
       L.skyBot.setRGB(sb[0] / 255, sb[1] / 255, sb[2] / 255).convertSRGBToLinear();
       L.sun.copy(this.sun.position).sub(this.sun.target.position);
       this.biz.look(L);
       this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
-    }
+    } else this.rainbowFx.mesh.visible = false;
     this.updateGrade();
+  }
+
+  /** The rainbow after rain: a big arc behind the town, turned to face the camera and
+   *  following it along the town (so it's always up in the sky). */
+  private townRainbow(dt: number): void {
+    const fx = this.rainbowFx, on = this.rainbow && this.weather.kind === "clear" && this.bizK > 0.5;
+    if (!fx.mesh.parent) this.scene.add(fx.mesh);
+    const a = this.azimuth, hx = Math.cos(a) + Math.sin(a), hz = Math.cos(a) - Math.sin(a), hl = Math.hypot(hx, hz) || 1;
+    const tb = townBounds(true), r = (tb.tMax - tb.tMin) * 0.46, back = r * 0.9;
+    fx.update(dt, on, BIZ_SLOT.x + this.bizLook.x - (hx / hl) * back, BIZ_SLOT.y - r * 0.08, BIZ_SLOT.z + this.bizLook.z - (hz / hl) * back, r, Math.atan2(hx, hz));
   }
 
   /** The final color pass: warmer at sunset in the town, and a heat shimmer over the beach

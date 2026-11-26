@@ -215,6 +215,17 @@
     <div class="tcy-goals" id="tcy-goals"></div>
   </div>
 </div>
+<div id="spin-sheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="spin-title">
+  <div class="sheet tcy-sheet spin-sheet">
+    <button type="button" class="close-btn" aria-label="Close">×</button>
+    <h2 id="spin-title">Daily spin</h2>
+    <p class="spin-sub" id="spin-sub"></p>
+    <div class="spin-wheel" id="spin-wheel" data-no-icons></div>
+    <p class="spin-note" id="spin-note" aria-live="polite"></p>
+    <button type="button" class="btn-primary spin-go" id="spin-go">Spin!</button>
+    <button type="button" class="ev-pass spin-ad" id="spin-ad" hidden></button>
+  </div>
+</div>
 
 <div id="daily-rewards" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="daily-rewards-title">
   <div class="sheet tcy-sheet daily-sheet">

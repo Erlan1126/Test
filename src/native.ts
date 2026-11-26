@@ -129,9 +129,11 @@ export interface ReminderInfo {
   seasonEnds?: { at: number; name: string };
   /** Buildaroo: close to the next population milestone (how many more people, and the mark). */
   milestone?: { left: number; at: number };
+  /** Buildaroo: the daily spin wheel is open (tomorrow's free spin). */
+  spin?: boolean;
 }
 
-const EXTRA_IDS = [104, 105, 106, 107, 108, 109, 110, 111];
+const EXTRA_IDS = [104, 105, 106, 107, 108, 109, 110, 111, 112];
 
 /**
  * Plans the next three reminders. Today's is skipped once today's tower is built, so a
@@ -214,6 +216,13 @@ export async function scheduleReminders(info: ReminderInfo): Promise<void> {
       at.setDate(at.getDate() + 1);
       at.setHours(Number.isFinite(hh) ? hh : 18, Number.isFinite(mm) ? mm : 0, 0, 0);
       notifications.push({ id: 111, title: t("🏙️ Only {n} people to go!", { n: info.milestone.left.toLocaleString() }), body: t("Your city is close to {m} people. Grow a few homes for fireworks and crystals.", { m: info.milestone.at.toLocaleString() }), schedule: { at, allowWhileIdle: true } });
+    }
+    // Tomorrow's free spin, mid-morning.
+    if (info.spin) {
+      const at = new Date();
+      at.setDate(at.getDate() + 1);
+      at.setHours(10, 30, 0, 0);
+      notifications.push({ id: 112, title: t("🎡 Your free spin is ready"), body: t("Spin the wheel for cash, Sky Crystals or the jackpot."), schedule: { at, allowWhileIdle: true } });
     }
     if (notifications.length) await LocalNotifications.schedule({ notifications });
   } catch { /* notifications unavailable */ }

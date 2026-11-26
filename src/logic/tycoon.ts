@@ -11,6 +11,7 @@ import { placedBonus } from "./placedecor";
 import { cafeMult } from "./cafe";
 import { orderMult } from "./orders";
 import { vipActive } from "./vip";
+import { snowDayMult, snowDaySpan } from "./weather";
 import { dayKey } from "./rules";
 
 export interface TycoonState {
@@ -114,12 +115,12 @@ export function festivalBiz(now = Date.now()): string {
   return BUSINESSES[((week % BUSINESSES.length) + BUSINESSES.length) % BUSINESSES.length].id;
 }
 
-/** What multiplies one business: its evolved stage, its upgrades, advisors, the festival
- *  and (live) a critic's five-star review. */
+/** What multiplies one business: its evolved stage, its upgrades, advisors, the festival,
+ *  a snow day (cozy businesses) and (live) a critic's five-star review. */
 export function bizMult(s: SaveData, b: Business, now = Date.now(), live = true): number {
   const ups = UPGRADES.filter(u => u.biz === b.id && s.tycoon.upgrades.includes(u.id)).reduce((m, u) => m * u.mult, 1);
   const adv = perkOf(s, "biz").filter(a => a.biz?.includes(b.id)).reduce((m, a) => m * a.n, 1);
-  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1) * (b.id === "coffee" ? cafeMult(s.cafe) : 1) * decorMult(s) * orderMult(s.orders, b.id)
+  return Math.pow(STAGE_MULT, stageNow(s, b.id)) * ups * adv * (festivalBiz(now) === b.id ? FESTIVAL_MULT : 1) * (b.id === "coffee" ? cafeMult(s.cafe) : 1) * decorMult(s) * orderMult(s.orders, b.id) * snowDayMult(s, b.id, now)
     * (live && (s.tycoon.reviews[b.id] ?? 0) > now ? 2 : 1);
 }
 
@@ -422,7 +423,8 @@ export const offlineHours = (s: SaveData, now = Date.now()): number =>
 function payBreaks(s: SaveData, b: Business, from: number, to: number): number[] {
   const t = s.tycoon, out: number[] = [];
   const rushStart = t.rush.id === b.id ? t.rush.until - rushSeconds(s) * 1000 : NaN;
-  for (const x of [t.opening, t.boom, s.vip.until, s.vip.gift, t.reviews[b.id] ?? 0, rushStart, t.rush.id === b.id ? t.rush.until : NaN]) {
+  const snow = snowDaySpan(s) ?? [NaN, NaN];
+  for (const x of [t.opening, t.boom, s.vip.until, s.vip.gift, t.reviews[b.id] ?? 0, rushStart, t.rush.id === b.id ? t.rush.until : NaN, ...snow]) {
     if (x > from && x < to) out.push(x);
   }
   // Festival weeks change on a fixed day (see festivalBiz).

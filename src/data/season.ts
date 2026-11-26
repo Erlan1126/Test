@@ -33,7 +33,7 @@ export const SEASONS: SeasonInfo[] = [
 export const seasonInfo = (id: CitySeason): SeasonInfo | undefined => SEASONS.find(x => x.id === id);
 
 /** Testing: force a season or the weather (set from the address bar with ?debug). */
-export const seasonDebug: { season?: CitySeason; weather?: WeatherKind } = {};
+export const seasonDebug: { season?: CitySeason; weather?: WeatherKind; rainbow?: boolean } = {};
 
 const md = (d: Date) => (d.getMonth() + 1) * 100 + d.getDate();
 
@@ -70,7 +70,15 @@ export const winterKey = (now = Date.now()): string => (citySeason(now) === "win
  *  (December to February), rain now and then the rest of the year, and most hours are clear. */
 export function townWeather(now = Date.now()): WeatherKind {
   if (seasonDebug.weather) return seasonDebug.weather;
-  const slot = Math.floor(now / 72e5);
+  return slotWeather(now);
+}
+
+/** The two-hour slot the weather is in (it changes from one slot to the next). */
+export const weatherSlot = (now = Date.now()): number => Math.floor(now / 72e5);
+
+/** The weather the hash gives for the slot `now` is in (no testing overrides). */
+function slotWeather(now: number): WeatherKind {
+  const slot = weatherSlot(now);
   // (A steady little hash, so every player sees the same weather at the same hour.)
   let h = (slot * 2654435761) >>> 0;
   h = ((h ^ (h >>> 15)) * 2246822519) >>> 0;
@@ -82,6 +90,14 @@ export function townWeather(now = Date.now()): WeatherKind {
   if (m >= 6 && m <= 8) return r < 0.06 ? "rain" : "clear";
   const wetMonth = m === 4 || m === 10 || m === 11;
   return r < (wetMonth ? 0.22 : 0.12) ? "rain" : "clear";
+}
+
+/** A rainbow over the town: the first clear two hours right after rain. (The weather itself
+ *  stays "clear"; the rainbow is on top of it.) */
+export function rainbowNow(now = Date.now()): boolean {
+  if (seasonDebug.rainbow !== undefined) return seasonDebug.rainbow;
+  if (seasonDebug.weather) return false;
+  return slotWeather(now) === "clear" && slotWeather(now - 72e5) === "rain";
 }
 
 /** Friday and Saturday nights (and the small hours after): the weekend fireworks show. */

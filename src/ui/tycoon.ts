@@ -16,6 +16,7 @@ import { gameCenterCity } from "../gamecenter";
 import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
 import { pickTalk } from "../data/talk";
 import { earn } from "../logic/tycoon";
+import { WeatherMoments } from "./weathermoments";
 import { citySeason, isRushHour, isWeekendNight, seasonDaysLeft, seasonInfo } from "../data/season";
 import { buySeasonPass, claimSP, SEASON_PAINT, seasonPass, seasonPoints, SP_FREE, SP_PREMIUM, SP_PRICE, SP_TIERS, spReady, spReward, spTier, type SPReward } from "../logic/seasonpass";
 import { bizColors, PAINTS, paintById, ownsPaint, setPaint } from "../logic/paint";
@@ -61,6 +62,9 @@ import { LAND, LAND_BONUS } from "../data/land";
 import { ANNEX_BONUS, ANNEX_RANK } from "../data/ranks";
 import { PAGE_INTRO, PAGE_INTRO_CITY } from "../data/guide";
 import { loadMemories, saveMemory, thenNowCard } from "./memories";
+import { PhotoMode } from "./photo";
+import { nextSpinIn, SpinWheel } from "./spin";
+import { spinAdLeft, spinFree, spinOpen } from "../logic/spin";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -102,7 +106,7 @@ export interface TycoonHost {
   bizResident(): [number, number] | null;
   visitLandmark(rank: number, ms: number): boolean;
   townPicture(): string | null;
-  sharePicture(blob: Blob, text: string): Promise<void>;
+  sharePicture(blob: Blob, text: string, name?: string): Promise<void>;
   /** The town as it looks right now, full size (for photo mode). */
   townShot(): HTMLCanvasElement | null;
   /** Which walker in the street is talking (their bubble follows them). */
@@ -277,9 +281,8 @@ export class TycoonUI {
       if (b.dataset.en === "go") { track("era_nudge_open", {}, false); this.openSheet("boosts"); }
       else { snoozeEraNudge(this.save); this.host.persist(); }
     });
+    this.photo = new PhotoMode(this.host, () => { this.closeTabs(); this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); });
     $("photo-go").addEventListener("click", () => { this.host.sound.click(); this.photoMode(); });
-    $("photo-x").addEventListener("click", () => { this.host.sound.click(); this.photoOff(); });
-    $("photo-snap").addEventListener("click", () => { void this.photoSnap(); });
     document.getElementById("city-rename")?.addEventListener("click", () => { this.host.sound.click(); closeModal($("settings")); this.nameCity(); });
     this.syncCityNameRow();
     // Tapping one of Pip's goals goes straight to where it's done.
@@ -365,8 +368,11 @@ export class TycoonUI {
 
   /** In the business district (the 3D city), rather than the home screen. */
   inCity = false;
+  /** The rainbow after rain and the snow day (ui/weathermoments.ts). */
+  private readonly weather = new WeatherMoments(() => ({ save: this.save, sound: this.host.sound, persist: () => this.host.persist() }));
   /** The building whose card is open in the city. */
   private selected = "";
+  private photo: PhotoMode | null = null;
   get cardOpen(): boolean { return this.inCity && !!this.selected; }
 
   /** Opens Skyhaven Inc.: the 3D district when the phone draws it, else the sheet. */
@@ -806,6 +812,7 @@ export class TycoonUI {
     for (const id of ["ty-coins", "tcy-coins"]) { const el = $(id); if (el.textContent !== shown) el.textContent = shown; }
     if (!$("earnings").hidden && now - this.earnAt > 900) { this.earnAt = now; this.renderEarnings(); }
     this.reactions(now);
+    if (HAS_CITY) this.weather.tick(now, this.inCity);
     for (const b of BUSINESSES) {
       if (levelOf(s, b.id) === 0) continue;
       const id = b.id, p = progressOf(s, id, now);
@@ -1231,7 +1238,7 @@ export class TycoonUI {
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     // Red dots mean "something to collect right now", never "you could buy something".
     dot("build", false);
-    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (spinOpen(s, HAS_CITY) && spinFree(s)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn") || (HAS_CITY && bookReady(s).length > 0));
     this.unlockTabs();
   }
@@ -2319,12 +2326,26 @@ export class TycoonUI {
       <small>${esc(t("{n} builders", { n: fmt(sp.builders) }))}${next ? ` · ${esc(t("next reward at {n}", { n: fmt(next.floors) }))}` : ` · ${esc(t("all rewards reached!"))}`}</small>${action}</div></div>`;
   }
 
+  /** The daily spin wheel (made the first time it opens). */
+  private spinWheel?: SpinWheel;
+  openSpin(): void {
+    this.spinWheel ??= new SpinWheel(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); });
+    this.spinWheel.open();
+  }
+  /** The Goals sheet's way to the wheel: a red dot while today's free spin waits. */
+  private spinEntryHtml(): string {
+    const s = this.save, free = spinFree(s);
+    const sub = free ? t("Your free spin is ready!") : spinAdLeft(s) && adsReady() ? t("Watch an ad for one more spin") : t("Next free spin in {time}", { time: nextSpinIn() });
+    return `<button type="button" class="spin-entry${free ? " ready" : ""}" data-goal="spin"><span class="spin-entry-ico" aria-hidden="true">🎡</span><span><b>${esc(t("Daily spin"))}</b><small>${esc(sub)}</small></span>${free ? `<i class="dot"></i>` : ""}</button>`;
+  }
+
   private renderGoalsSheet(): void {
     const s = this.save, parts: string[] = [];
     if (!$("mayor-strip").hidden) {
       parts.push(`<h3 class="sheet-sub">${esc(t("Story"))}</h3><button type="button" class="mayor-strip more-mayor${$("mayor-strip").classList.contains("ready") ? " ready" : ""}" data-goal="story">${$("mayor-strip").innerHTML}</button>`);
     }
     dealGoals(s);
+    if (spinOpen(s, HAS_CITY)) parts.push(this.spinEntryHtml());
     // The week's city event first (it has the best rewards), then today's goals.
     if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.teamHtml(), this.milestoneHtml());
     parts.push(`<h3 class="sheet-sub">${esc(HAS_CITY ? t("Today's city quests") : t("Today's company goals"))}</h3>${this.goalsHtml()}`);
@@ -2348,6 +2369,7 @@ export class TycoonUI {
     const el = (e.target as Element).closest<HTMLElement>("[data-goal]");
     if (!el) return;
     if (this.onEventTap(el)) return;
+    if (el.dataset.goal === "spin") { this.host.sound.click(); this.openSpin(); return; }
     if (el.dataset.goal === "spire") {
       const s = this.save, stars = this.spire ? claimSpire(s.spire, this.spire) : 0;
       if (stars) {
@@ -2587,6 +2609,7 @@ export class TycoonUI {
     this.announceTabs();
     this.renderTabs();
     if (this.inCity) this.renderCity(now);
+    this.photo?.sync();
     if ($("tycoon").hidden) return;
     if (this.tab === "company") { this.renderRooms(now); this.renderGoals(); }
     else if (this.tab === "upgrades") this.renderUpgrades();
@@ -3489,43 +3512,8 @@ export class TycoonUI {
     track("people_milestone", { at: m.at }, false);
   }
 
-  /** Photo mode: every button hidden, the player frames the city, and the shutter takes a
-   *  picture (with the city's name on it) to save or share. */
-  photoMode(): void {
-    this.closeTabs();
-    this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render();
-    document.body.classList.add("photo-mode");
-    $("photo-bar").hidden = false;
-    track("photo_mode", {}, false);
-  }
-  private photoOff(): void {
-    document.body.classList.remove("photo-mode");
-    $("photo-bar").hidden = true;
-  }
-  private async photoSnap(): Promise<void> {
-    const src = this.host.townShot();
-    if (!src) return;
-    this.host.sound.click(); vibrate(this.save.settings.vibrate, 12);
-    const fl = $("photo-flash"); fl.hidden = false; fl.style.animation = "none"; void fl.offsetWidth; fl.style.animation = ""; window.setTimeout(() => { fl.hidden = true; }, 480);
-    // The picture: the city, a soft band at the bottom with its name and the game's.
-    const c = document.createElement("canvas"), w = src.width, h = src.height;
-    c.width = w; c.height = h;
-    const g = c.getContext("2d")!;
-    g.drawImage(src, 0, 0);
-    const band = Math.round(h * 0.12), gr = g.createLinearGradient(0, h - band * 1.6, 0, h);
-    gr.addColorStop(0, "rgba(20,14,50,0)"); gr.addColorStop(1, "rgba(20,14,50,0.72)");
-    g.fillStyle = gr; g.fillRect(0, h - band * 1.6, w, band * 1.6);
-    const fs = Math.round(w * 0.075), name = this.save.cityName || t("My city");
-    g.fillStyle = "#fff"; g.textBaseline = "alphabetic";
-    g.font = `400 ${fs}px Bungee, Impact, sans-serif`;
-    g.fillText(name.toUpperCase(), w * 0.06, h - band * 0.62, w * 0.88);
-    g.font = `700 ${Math.round(fs * 0.42)}px Figtree, system-ui, sans-serif`;
-    g.globalAlpha = 0.9;
-    g.fillText(t("Built in Buildaroo"), w * 0.06, h - band * 0.22, w * 0.88);
-    g.globalAlpha = 1;
-    const blob = await new Promise<Blob | null>(r => c.toBlob(r, "image/jpeg", 0.9));
-    if (blob) await this.host.sharePicture(blob, t("Look at the city I built: {name}!", { name }));
-  }
+  /** Photo mode (see ./photo.ts). */
+  photoMode(): void { this.photo?.open(); }
 
   openScrapbook(): void {
     const s = this.save, rk = townRank(s), used = usedFloors(s);
