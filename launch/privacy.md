@@ -1,7 +1,7 @@
 # Skyrise privacy policy
 
 Skyrise is made by Big Bruce Studios (contact: support@bigbrucestudios.com).
-Last updated: November 14, 2026.
+Last updated: November 26, 2026.
 
 Short version: Skyrise has no accounts, no ads and no tracking. Your progress is saved on
 your device and backed up to our server under a random player id, so you can get it back
@@ -72,6 +72,17 @@ When you tap "Challenge a friend", the tower you share (its height, people, floo
 fast it grew, and your leaderboard nickname if you set one) is saved on the Skyrise server
 so the link can show it. When a friend plays the challenge, their nickname and score are
 saved with it so you can see who tried.
+
+## Buildaroo: friends' cities, gifts and the city leaderboard
+
+In Buildaroo (the city game), every few minutes while you play the game sends our server a
+snapshot of your city under a short **friend code**: your nickname, your city's name, your
+City Hall level and number of residents, your business levels, homes, decorations and
+building paints, and how many homes you built this week. Anyone with your friend code (or
+an invite link you share) can see that snapshot and visit your city, and the biggest
+cities appear on the city leaderboard. If you leave a **gift** in a friend's city, the server
+keeps it, with your nickname, until they collect it, then deletes it. None of this includes
+your real name, email, location or contacts.
 
 ## What the game does not do
 
