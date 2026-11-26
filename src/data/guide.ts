@@ -56,11 +56,43 @@ export const GUIDE: GuideSection[] = [
   },
 ];
 
+/** Skyrise's own guide: the tower game on its own, with no businesses, cash or mayor. */
+export const TOWER_GUIDE: GuideSection[] = [
+  {
+    title: "Your goal",
+    rows: [
+      { icon: "crown", title: "Build the capital of the sky", text: "Every tower's people move into Skyhaven. Grow it from a meadow to half a million people." },
+      { icon: "target", title: "The Sky City plan", text: "Six chapters of goals, on the strip on the home screen. Finish a chapter for stars and crystals." },
+      { icon: "map", title: "Builder level (Lv)", text: "The badge at the top. Every tower earns XP, and new levels pay stars and open new things." },
+      { icon: "island", title: "New islands", text: "More people open new islands: Snowy Peaks, Desert Oasis and Cherry Blossom. Pick one in the Shop and build there." },
+      { icon: "building", title: "Your skyline", text: "Towers of 8 floors or more stand on their island for good. Your tallest one stands on the home island." },
+      { icon: "home", title: "City buildings", text: "Spend stars in the Sky City on a café, a playground, a lighthouse and more. They stand on your island." },
+      { icon: "target", title: "A greyed-out button?", text: "Tap it anyway: the game tells you why, and how long until you can." },
+    ],
+  },
+  {
+    title: "Building towers",
+    rows: [
+      ...GUIDE[3].rows.filter(r => r.title !== "What a tower does"),
+      { icon: "city", title: "What a tower does", text: "Its people move into Skyhaven, it earns stars and XP, and tall ones pass famous landmarks." },
+    ],
+  },
+  {
+    title: "Stars and crystals",
+    rows: [
+      { icon: "star", title: "Stars (★)", text: "Earned by building towers and finishing goals. They buy tower looks, boosters and city buildings." },
+      { icon: "gem", title: "Sky Crystals (💎)", text: "The special currency for tower looks and boosters. Earn them from goals, chapters and the Sky Pass." },
+      GUIDE[2].rows.find(r => r.icon === "gift")!,
+      { icon: "target", title: "Daily goals", text: "Three goals a day, each paying stars. Finish all three to open the day's chest." },
+    ],
+  },
+];
+
 /** One line at the top of each menu page, the first times it's opened. */
 export const PAGE_INTRO: Record<string, string> = {
   company: "Your businesses earn cash. Buy levels to earn more; a manager sells for you, even while you're away.",
   shop: "Skins, shapes and islands for your towers, and boosts for your next one. Crystals buy the special things.",
-  goals: "Pip's chapter is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.",
+  goals: "The Sky City plan is your big goal. Daily goals give stars; the Sky Pass gives a prize at every tier.",
   me: "Your builder profile, the leaderboard of the best towers, your Sky City and settings.",
 };
 /** The city game's own page intros. */

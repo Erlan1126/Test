@@ -156,7 +156,8 @@ const CITY_CHAPTERS: Chapter[] = [
 
 // Skyrise, the tower game on its own, has no businesses, café or districts to buy: its story
 // is told with towers, height, the people living in Skyhaven, the islands and the city
-// buildings bought with stars (the Sky City sheet). These are Pip's first six chapters.
+// buildings bought with stars (the Sky City sheet). Its six chapters are the Sky City plan
+// (Skyrise has no mayor: Pip belongs to Buildaroo).
 const people = (s: SaveData) => s.population;
 const cityBuilds = (s: SaveData) => s.city.length;
 const builderLevel = (s: SaveData) => s.profile.level;
@@ -198,7 +199,7 @@ const TOWER_CHAPTERS: Chapter[] = [
   {
     title: "The Desert Oasis",
     intro: "Next stop: a warm oasis of palm trees and sand. It needs a skyline only you can build.",
-    outro: "An oasis of glass and gold. I could watch the sunset from your towers all day.",
+    outro: "An oasis of glass and gold. Everyone wants a sunset view from your towers now.",
     goals: [
       { text: "Reach {n} people", need: 60000, have: people },
       { text: "Build {n} towers in Desert Oasis", need: 3, have: inIsland("desert") },

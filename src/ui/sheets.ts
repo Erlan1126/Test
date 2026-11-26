@@ -4,7 +4,7 @@ import { HAS_CITY, playerStarted } from "../edition";
 import { townPeople } from "../logic/props";
 import { VIP_SPEED } from "../logic/builds";
 import { track } from "../stats";
-import { GUIDE } from "../data/guide";
+import { GUIDE, TOWER_GUIDE } from "../data/guide";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
 import { hallLevel } from "../logic/tycoon";
@@ -612,8 +612,9 @@ export class Sheets {
   openHelp(): void {
     this.click();
     // Everything in the game, by topic: the goal, money, crystals and gems, towers.
-    // (The city game leaves out the tower game's rows and uses its own words.)
-    $("help-list").innerHTML = GUIDE.filter(sec => !(HAS_CITY && sec.tower)).map(sec => `<h3 class="sheet-sub help-sec">${esc(t((HAS_CITY && sec.cityTitle) || sec.title))}</h3>`
+    // (The city game leaves out the tower game's rows and uses its own words; Skyrise has
+    // its own guide, with no businesses or mayor.)
+    $("help-list").innerHTML = (HAS_CITY ? GUIDE : TOWER_GUIDE).filter(sec => !(HAS_CITY && sec.tower)).map(sec => `<h3 class="sheet-sub help-sec">${esc(t((HAS_CITY && sec.cityTitle) || sec.title))}</h3>`
       + sec.rows.filter(r => !(HAS_CITY && r.tower)).map(r => `<div class="help-row"><span class="help-ico">${iconSvg(r.icon)}</span><span><b>${esc(t((HAS_CITY && r.cityTitle) || r.title))}</b><small>${esc(t((HAS_CITY && r.city) || r.text))}</small></span></div>`).join("")).join("");
     closeModal($("settings"));
     openModal($("help"));

@@ -82,3 +82,45 @@ describe("Skyrise's daily calendar", () => {
     expect(s.crystals).toBe(crystals + 50);
   });
 });
+
+describe("Skyrise has no mayor", () => {
+  // Mayor Pip belongs to Buildaroo. Skyrise's story card is the Sky City plan, its guide
+  // talks about towers only, and every line of it is translated.
+  const banned = /\bPip\b|mayor|business|café terrace|manager|cash|Coffee Cart/i;
+
+  it("tells its story and guide without Pip or the company", async () => {
+    const { TOWER_GUIDE, PAGE_INTRO } = await import("../src/data/guide");
+    const lines = [
+      ...CHAPTERS.flatMap(c => [c.title, c.intro, c.outro, ...c.goals.map(g => g.text)]),
+      ...TOWER_GUIDE.flatMap(s => [s.title, ...s.rows.flatMap(r => [r.title, r.text])]),
+      PAGE_INTRO.goals, PAGE_INTRO.shop, PAGE_INTRO.me,
+    ];
+    expect(lines.filter(l => banned.test(l))).toEqual([]);
+    expect(TOWER_GUIDE.flatMap(s => s.rows).length).toBeGreaterThan(10);
+  });
+
+  it("has every story and guide line in Spanish, Portuguese, French and German", async () => {
+    const { TOWER_GUIDE, PAGE_INTRO } = await import("../src/data/guide");
+    const { dictionary } = await import("../src/i18n");
+    const lines = [
+      ...CHAPTERS.flatMap(c => [c.title, c.intro, c.outro, ...c.goals.map(g => g.text)]),
+      ...TOWER_GUIDE.flatMap(s => [s.title, ...s.rows.flatMap(r => [r.title, r.text])]),
+      PAGE_INTRO.goals, "Sky City plan", "Back to building!",
+    ];
+    for (const l of ["es", "pt", "fr", "de"] as const) {
+      const d = dictionary(l);
+      expect(lines.filter(k => !d[k]), l).toEqual([]);
+    }
+  });
+
+  it("draws the plan's emblem, not Pip", async () => {
+    const { MAYOR_SVG, planSvg } = await import("../src/ui/mayor");
+    expect(MAYOR_SVG).toBe("");
+    const a = planSvg(), b = planSvg("happy");
+    expect(a).toContain("<svg");
+    expect(a).not.toMatch(/mp-hat|mp-skin/);
+    expect(b).toContain("sp-sparkle");
+    // Two copies on screen at once keep their own gradients.
+    expect(a.match(/id="(sp\d+)-sky"/)![1]).not.toBe(b.match(/id="(sp\d+)-sky"/)![1]);
+  });
+});
