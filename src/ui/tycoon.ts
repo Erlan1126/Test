@@ -65,6 +65,9 @@ import { loadMemories, saveMemory, thenNowCard } from "./memories";
 import { PhotoMode } from "./photo";
 import { nextSpinIn, SpinWheel } from "./spin";
 import { spinAdLeft, spinFree, spinOpen } from "../logic/spin";
+import { AdventCalendar } from "./advent";
+import { adventOn, adventReady } from "../logic/advent";
+import { gameNow } from "../data/season";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -1235,7 +1238,7 @@ export class TycoonUI {
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     // Red dots mean "something to collect right now", never "you could buy something".
     dot("build", false);
-    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (spinOpen(s, HAS_CITY) && spinFree(s)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (spinOpen(s, HAS_CITY) && spinFree(s)) || (HAS_CITY && adventReady(s, gameNow()) > 0) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn") || (HAS_CITY && bookReady(s).length > 0));
     this.unlockTabs();
   }
@@ -1561,7 +1564,8 @@ export class TycoonUI {
   /** Choose a decoration for an empty lot: the ones put away (free), then the shop. */
   private openDecorate(lot: string): void {
     const s = this.save, hall = hallLevel(s);
-    const opts = PLACE_ITEMS.map(it => {
+    // (A decoration that's only won, like the Advent calendar's gingerbread house, shows once it's yours.)
+    const opts = PLACE_ITEMS.filter(it => !it.won || it.id in s.placed).map(it => {
       const owned = it.id in s.placed, standing = owned && !!s.placed[it.id];
       const locked = !owned && hall < it.hall, short = !owned && s.tycoon.coins < it.cash;
       const sub = standing ? t("Already in your city: tap to move it here")
@@ -2321,6 +2325,18 @@ export class TycoonUI {
     this.spinWheel ??= new SpinWheel(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); });
     this.spinWheel.open();
   }
+  /** The Advent calendar (made the first time it opens). */
+  private advent?: AdventCalendar;
+  openAdvent(): void {
+    this.advent ??= new AdventCalendar(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); });
+    this.advent.open();
+  }
+  /** The Goals sheet's way to the Advent calendar (all December): a red dot while a door waits. */
+  private adventEntryHtml(): string {
+    const ready = adventReady(this.save, gameNow());
+    const sub = ready > 1 ? t("{n} doors are waiting for you!", { n: ready }) : ready ? t("Today's door is ready to open!") : t("A little gift every day until December 24");
+    return `<button type="button" class="spin-entry advent-entry${ready ? " ready" : ""}" data-goal="advent"><span class="spin-entry-ico" aria-hidden="true">🎄</span><span><b>${esc(t("Advent calendar 🎁"))}</b><small>${esc(sub)}</small></span>${ready ? `<i class="dot"></i>` : ""}</button>`;
+  }
   /** The Goals sheet's way to the wheel: a red dot while today's free spin waits. */
   private spinEntryHtml(): string {
     const s = this.save, free = spinFree(s);
@@ -2334,6 +2350,7 @@ export class TycoonUI {
       parts.push(`<h3 class="sheet-sub">${esc(t("Story"))}</h3><button type="button" class="mayor-strip more-mayor${$("mayor-strip").classList.contains("ready") ? " ready" : ""}" data-goal="story">${$("mayor-strip").innerHTML}</button>`);
     }
     dealGoals(s);
+    if (HAS_CITY && adventOn(gameNow())) parts.push(this.adventEntryHtml());
     if (spinOpen(s, HAS_CITY)) parts.push(this.spinEntryHtml());
     // The week's city event first (it has the best rewards), then today's goals.
     if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.teamHtml(), this.milestoneHtml());
@@ -2359,6 +2376,7 @@ export class TycoonUI {
     if (!el) return;
     if (this.onEventTap(el)) return;
     if (el.dataset.goal === "spin") { this.host.sound.click(); this.openSpin(); return; }
+    if (el.dataset.goal === "advent") { this.host.sound.click(); this.openAdvent(); return; }
     if (el.dataset.goal === "spire") {
       const s = this.save, stars = this.spire ? claimSpire(s.spire, this.spire) : 0;
       if (stars) {

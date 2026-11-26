@@ -15,6 +15,8 @@ export interface PlaceItem {
   bonus: number;
   /** The City Hall level it needs. */
   hall: number;
+  /** Never sold: only won (the gingerbread house is behind the Advent calendar's last door). */
+  won?: boolean;
 }
 
 export const PLACE_ITEMS: PlaceItem[] = [
@@ -27,6 +29,7 @@ export const PLACE_ITEMS: PlaceItem[] = [
   { id: "lighthouse", name: "Lighthouse", text: "A red and white lighthouse on the rocks, its lamp shining at night", icon: "🗼", cash: 350e6, bonus: 0.04, hall: 5 },
   { id: "ferris", name: "Ferris wheel", text: "A big wheel that really turns, with ten colourful cabins", icon: "🎡", cash: 800e6, bonus: 0.05, hall: 6 },
   { id: "stadium", name: "Grand Stadium", text: "A stadium with a full pitch, floodlights and flags, modelled in Blender", icon: "🏟️", cash: 1.5e9, bonus: 0.06, hall: 6 },
+  { id: "gingerbread", name: "Gingerbread house", text: "A snowy gingerbread house with icing on the roof and candy canes by the door, from the Advent calendar", icon: "🍪", cash: 0, bonus: 0.03, hall: 1, won: true },
   { id: "airport", name: "City airport", text: "A terminal, a control tower, a runway and a little plane: the city goes global", icon: "✈️", cash: 6e9, bonus: 0.08, hall: 7 },
 ];
 
@@ -65,6 +68,7 @@ export function buyPlace(s: SaveData, id: string, lot: string): PlaceResult {
   if (!it) return "unknown";
   if (!lotFree(s, lot)) return "taken";
   if (id in s.placed) { s.placed[id] = lot; return "ok"; }
+  if (it.won) return "unknown";
   if (hall(s) < it.hall) return "hall";
   if (s.tycoon.coins < it.cash) return "short";
   s.tycoon.coins -= it.cash;
