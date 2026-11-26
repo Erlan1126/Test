@@ -174,6 +174,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       startStage(10); out.everyTenthStageIsABossWithThreeShards = run.stageInfo.boss && run.ev && run.ev.kind === "heart" && run.ups.filter(u => u.kind === "shard").length === 3;
       startStage(6); { const R = run; R.blds.length = 0; R.teth = null; R.roof = null; R.inv = 0; R.streetT = 0; R.power = null; R.py = 0.6; R.vy = -8; for (let q = 0; q < 3; q++) runUpdate(1 / 60); out.fromStageFiveTheStreetCostsAHeart = R.hearts === 2; }
       out.thePerfectWindowNarrowsInLaterStages = (() => { startStage(1); const a = perfectWindow(run); startStage(30); const b = perfectWindow(run); return b[0] > a[0] && b[1] < a[1] && b[2] > a[2]; })();
+      out.aFastRunCanBeatPar = (() => { startStage(25); const R = run; for (let q = 0; q < 60 * 90 && !R.cleared; q++) { R.inv = 1e9; runnerAuto(); if (!R.teth && R.dashes > 0 && R.vy < 0 && !R.roof) swingDash(); runUpdate(1 / 60); } return R.cleared && R.stageTime < R.stageInfo.par; })();
       out.threeStarsNeedParTime = stageInfo(20).par > 10 && stageInfo(20).par < stageInfo(20).len / 20;
       save.settings.fps = true; run.paused = false; for (let q = 0; q < 40; q++) paceTick(0.016); out.theFpsCounterShows = !document.getElementById("fpsMeter").hidden; save.settings.fps = false; document.getElementById("fpsMeter").hidden = true;
       // Rings, Good releases, star rewards, wind.
