@@ -4613,3 +4613,7 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 .tm-mate b { font-weight: 800; color: #2a1f3e; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tm-mate small { font-weight: 800; color: #19a87a; }
 .tm-invite { background: linear-gradient(180deg, #19c48a, #109a6c) !important; box-shadow: 0 3px 0 #0b7a55 !important; }
+
+/* "Look inside": the business's room glows when the Company page opens on it. */
+.look-here { animation: look-here 1.6s ease-out 2; border-radius: 22px; }
+@keyframes look-here { 0% { box-shadow: 0 0 0 0 rgba(255, 196, 40, 0.9); } 100% { box-shadow: 0 0 0 14px rgba(255, 196, 40, 0); } }

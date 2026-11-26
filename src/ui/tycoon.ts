@@ -1667,7 +1667,7 @@ export class TycoonUI {
       !managed ? tile("run", "👆", t("Sell now"), t("+{n}", { n: coins(pay) }), "sell") : "",
       grow ? (hqJob ? tile("hq", "🔨", t("Building"), fmtLeft(hqJob.end - now), "grow")
         : tile("hq", "🏗️", t("Grow it!"), HAS_CITY ? coins(hqPrice(s, b.id)) : t("{n} floors", { n: hqFloors(grow) }), "grow", HAS_CITY ? `<small>⏱ ${esc(fmtLeft(buildTime(s, "hq", b.id, now)))}</small>` : "")) : "",
-      tile("look", "📋", t("All"), t("businesses"), "all"),
+      HAS_CITY ? tile("look", "👀", t("Look inside"), t("See it at work"), "all") : tile("look", "📋", t("All"), t("businesses"), "all"),
     ].filter(Boolean).join("");
     const lease = !owned ? `<p class="bc-lease">${esc(t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, now)) }))}</p>` : "";
     const growNote = grow ? `<p class="bc-grow">✨ ${esc(t("Ready to grow into {name}!", { name: t(stageName(b.id, grow)) }))}</p>` : !ns && owned ? `<p class="bc-grow done">🏆 ${esc(t("Fully grown!"))}</p>` : "";
@@ -1752,7 +1752,12 @@ export class TycoonUI {
       this.render();
       return;
     }
-    if (what === "look") { this.openSheet("company", id); return; }
+    if (what === "look") {
+      this.openSheet("company", id);
+      // (Its room glows for a moment, so it's easy to find.)
+      if (HAS_CITY && id) requestAnimationFrame(() => { const r = $("ty-list").querySelector<HTMLElement>(`[data-biz="${id}"]`); if (r) { r.classList.remove("look-here"); void r.offsetWidth; r.classList.add("look-here"); } });
+      return;
+    }
     if (what === "paint" && id) { this.host.sound.click(); this.openPaint(id); return; }
     if (what === "hall") { this.host.sound.click(); this.selected = ""; this.host.openStory(); return; }
     if (what === "build") { this.host.sound.click(); toast(t("Every office floor is full. Build an office block for more!")); this.selected = ""; this.openBuild(); return; }
@@ -2485,16 +2490,21 @@ export class TycoonUI {
       this.render();
     }
     if (this.power.id && this.power.until < now) { this.power.id = ""; this.render(); }
+    // The weather plays a part: storms bring trouble more often (a roof to secure), and a
+    // summer heatwave brings more rush hours.
+    const weather = HAS_CITY ? this.host.weatherNow() : "clear", stormy = weather === "rain" || weather === "snow";
+    const mo = new Date(now).getMonth() + 1, hot = HAS_CITY && weather === "clear" && (mo >= 6 && mo <= 8 || citySeason() === "summer");
     if (!this.power.id && now > this.nextPower && !busy()) {
       this.power = { id: pick().id, until: now + 15000, taps: 5 };
-      this.nextPower = now + 180000 + Math.random() * 120000;
+      this.nextPower = now + (180000 + Math.random() * 120000) * (stormy ? 0.5 : 1);
       this.render();
     }
     if (now > this.nextRush && !busy()) {
-      this.nextRush = now + 180000 + Math.random() * 120000;
+      this.nextRush = now + (180000 + Math.random() * 120000) * (hot ? 0.6 : 1);
       const id = startRush(s, now);
       if (id) {
-        toast(t("Rush hour at {name}! ×{n} for a while", { name: t(stageName(id, stageNow(s, id))), n: RUSH_MULT }));
+        toast(hot ? t("☀️ Heatwave! Everyone's at {name}: ×{n} for a while", { name: t(stageName(id, stageNow(s, id))), n: RUSH_MULT })
+          : t("Rush hour at {name}! ×{n} for a while", { name: t(stageName(id, stageNow(s, id))), n: RUSH_MULT }));
         this.host.sound.unlock();
         this.goal("rush");
         this.render();
@@ -2643,7 +2653,7 @@ export class TycoonUI {
         ${managed ? `<i class="walker boss" style="--x:74%;--skin:#f2c39a">${PERSON_BOSS}</i>` : ""}
         ${owned && this.critic.id === b.id && this.critic.until > now ? `<span class="critic" data-act="critic" role="button" aria-label="${esc(t("Food critic: tap to serve"))}"><i>${esc(t("Critic"))}</i>${PERSON_CRITIC}<em>${esc(t("Serve me!"))}</em></span>` : ""}
         ${vip ? `<span class="vip${this.vipFresh ? " fresh" : ""}" data-act="vip" role="button" aria-label="${esc(t("VIP customer: tap for a tip"))}"><i>VIP</i>${PERSON_VIP}<em>${esc(t("Tap!"))}</em></span>` : ""}
-        ${owned && this.power.id === b.id && this.power.until > now ? `<span class="power-cut" data-act="power" role="button"><b>${esc(t("Power cut!"))}</b><small></small></span>` : ""}
+        ${owned && this.power.id === b.id && this.power.until > now ? `<span class="power-cut" data-act="power" role="button"><b>${esc(this.stormy() ? t("Storm!") : t("Power cut!"))}</b><small></small></span>` : ""}
         ${owned ? `<b class="room-level"></b>` : ""}
         ${owned && !managed ? `<span class="tap-me">${esc(t("Tap!"))}</span>` : ""}
         <span class="room-pops"></span>
@@ -2819,11 +2829,13 @@ export class TycoonUI {
         el.classList.remove("zap"); void el.offsetWidth; el.classList.add("zap");
         if (this.power.taps > 0) { this.render(); return; }
         this.power.id = "";
-        const got = vipTip(s, b.id);
+        // (A storm's roof pays half again as much.)
+        const storm = this.stormy(), got = vipTip(s, b.id) * (storm ? 1.5 : 1);
+        if (storm) earn(s, got / 3);
         const box = popBox;
         for (let k = 0; k < 5; k++) setTimeout(() => popCoin(box, k === 0 ? coins(got) : ""), k * 90);
         this.host.sound.coins();
-        toast(t("Lights back on! The customers stayed: +{n}", { n: coins(got) }));
+        toast(storm ? t("🌧️ Roof secured! The customers stayed dry: +{n}", { n: coins(got) }) : t("Lights back on! The customers stayed: +{n}", { n: coins(got) }));
         this.host.persist();
         this.render();
         return;
@@ -3424,6 +3436,9 @@ export class TycoonUI {
       })];
     mayorChoice(t("Paint this building"), t("Pick new colours for {name}. You can change them any time.", { name: t(stageName(id, stageNow(s, id))) }), opts, t("Not now"));
   }
+
+  /** Rain or snow over the town right now (Buildaroo). */
+  private stormy(): boolean { if (!HAS_CITY) return false; const w = this.host.weatherNow(); return w === "rain" || w === "snow"; }
 
   /** A population milestone passed: the camera flies over the town, fireworks, crystals. */
   private maybeMilestone(): void {
