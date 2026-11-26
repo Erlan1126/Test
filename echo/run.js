@@ -58,6 +58,7 @@ function startRun(opts = {}) {
   // Each district has its own groove: key, chords and tempo; the Night shift keeps the first one.
   { const dn = run.stageInfo && !run.stageInfo.daily ? Math.min(5, Math.floor((run.stageInfo.n - 1) / 10)) : -1; music.district = [{ base: 110, prog: [0, 5, 2, 6], bpm: 116 , amb: 0 }, { base: 146.83, prog: [0, 3, 4, 0], bpm: 108 , amb: 1 }, { base: 98, prog: [0, 5, 3, 4], bpm: 100 , amb: 2 }, { base: 123.47, prog: [0, 6, 5, 4], bpm: 126 , amb: 3 }, { base: 130.81, prog: [0, 4, 5, 3], bpm: 104 , amb: 4 }, { base: 110, prog: [0, 2, 5, 6], bpm: 120 , amb: 5 }][dn] || null; }
   show("run");
+  if (runHud.c) runHud.c.hn = null;   // a new run's hearts don't animate in
   $("runOver").hidden = true; $("runPause").hidden = true; if ($("stageCard")) $("stageCard").hidden = true;
   runHud();
   // One render loop only: a retry or a second tap must not start another.
@@ -164,7 +165,8 @@ function runHud() {
   set("li", run.lights, v => { const el = $("runLights"); el.textContent = `✦ ${v}`; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); });
   { const sp = $("stageProg"); if (sp) { const on = !!run.stageInfo; if (sp.hidden === on) sp.hidden = !on; if (on) { const k = Math.max(0, Math.min(1, (run.px || 0) / (run.stageLen || 1))), w = (k * 100).toFixed(1) + "%"; { const bf = $("jBest"); if (run.bestFlash > 0) { run.bestFlash = Math.max(0, run.bestFlash - 0.02); bf.style.transform = `translateX(-50%) scale(${1 + run.bestFlash * 0.8})`; bf.style.color = "#fff"; } else if (bf.style.color) { bf.style.transform = ""; bf.style.color = ""; } } if (sp.dataset.w !== w) { sp.dataset.w = w; $("stageProgFill").style.width = w; $("jFig").style.left = w; } if (sp.dataset.n !== String(run.stage)) { sp.dataset.n = String(run.stage); $("jName").textContent = typeof stagePerson === "function" ? stagePerson(run.stage)[0] : ""; const bp = run.stageInfo.daily ? 0 : ((stageSave().pct || {})[run.stage] || 0); $("jBest").hidden = !(bp > 0); $("jBest").style.left = bp + "%"; } } } }
   const maxH = Math.max(run.hearts, run.hard ? 1 : 3 + runUpg("heart"));
-  set("hearts", `${run.hearts}/${maxH}`, () => { $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}"></i>`).join(""); });
+  // A lost heart breaks with a little pop; a heart won back pops in.
+  set("hearts", `${run.hearts}/${maxH}`, () => { const prev = H.hn; H.hn = run.hearts; $("runHearts").innerHTML = Array.from({ length: maxH }, (_, q) => `<i class="${q < run.hearts ? "on" : ""}${prev != null && q === run.hearts && prev > run.hearts ? " broke" : ""}${prev != null && q === run.hearts - 1 && prev < run.hearts ? " back" : ""}"></i>`).join(""); });
   set("mult", run.stageInfo ? `${run.stageInfo.daily ? "Daily" : `Stage ${run.stageInfo.n}`} · ${Math.max(0, Math.min(100, Math.floor((run.px || 0) / (run.stageLen || 1) * 100)))}%` : `×${run.mult}`, v => { $("runMult").textContent = v; });
   $("runPower").textContent = run.power ? `${RUNNER_POWERS[run.power.kind].name} ${Math.ceil(run.power.t)}` : "";
 }

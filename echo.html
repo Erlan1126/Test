@@ -431,6 +431,9 @@
   body.inrun .run-hud { padding-top: calc(40px + var(--top)); }
   .hearts { display: flex; gap: 6px; margin-top: 10px; font-size: 0; }
   .hearts i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
+  .hearts i.broke { animation: heartBreak 0.6s ease-out; } @keyframes heartBreak { 0% { transform: scale(1.8); background: #ff7aa8 !important; filter: drop-shadow(0 0 10px #ff4d7a); } 40% { transform: scale(0.7) rotate(-12deg); } 100% { transform: none; } }
+  .hearts i.back { animation: heartBack 0.5s cubic-bezier(.2,1.8,.4,1); } @keyframes heartBack { 0% { transform: scale(0); } 100% { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .hearts i.broke, .hearts i.back { animation: none; } }
   .hearts i.on { background: #fff; box-shadow: 0 0 10px rgba(139, 233, 255, 0.8); }
   #runPauseBtn { pointer-events: auto; }
   .card2 { position: absolute; left: 50%; width: min(380px, calc(100% - 28px)); border-radius: 24px; padding: 22px 18px 18px; text-align: center; color: var(--txt); background: rgba(16, 18, 26, 0.84); }

@@ -211,6 +211,12 @@ function swingFx(R, kind, x, y) {
   else if (kind === "perfect") { add(22, 15, [255, 214, 90], 0.6, 0.45); P.push({ x, y, ring: true, t: 0, life: 0.45, c: [255, 214, 90], size: 5 }); R.hitstop = Math.max(R.hitstop || 0, 0.06); }
   else if (kind === "light") add(4, 5, [255, 220, 140], 0.45, 0.25, { home: true });
   else if (kind === "land") add(8, 6, [220, 225, 235], 0.4, 0.3, { grav: true });
+  // The big moments: a shard of the Heart, the Heart breaking, Overdrive, a power-up, a hit.
+  else if (kind === "shard") { add(26, 16, [190, 150, 255], 0.7, 0.45); P.push({ x, y, ring: true, t: 0, life: 0.5, c: [190, 150, 255], size: 5.5 }); R.hitstop = Math.max(R.hitstop || 0, 0.08); R.shake = Math.max(R.shake || 0, 0.35); }
+  else if (kind === "heartbreak") { add(60, 24, [255, 230, 160], 1.1, 0.55); add(30, 14, [190, 150, 255], 0.9, 0.5); P.push({ x, y, ring: true, t: 0, life: 0.8, c: [255, 230, 160], size: 10 }); R.hitstop = Math.max(R.hitstop || 0, 0.16); R.shake = Math.max(R.shake || 0, 0.8); R.flash = -1; }
+  else if (kind === "od") { add(30, 18, [255, 214, 90], 0.8, 0.5); P.push({ x, y, ring: true, t: 0, life: 0.6, c: [255, 214, 90], size: 8 }); R.hitstop = Math.max(R.hitstop || 0, 0.07); R.shake = Math.max(R.shake || 0, 0.3); }
+  else if (kind === "power") { add(16, 11, [255, 180, 220], 0.55, 0.4); P.push({ x, y, ring: true, t: 0, life: 0.4, c: [255, 180, 220], size: 3.5 }); R.hitstop = Math.max(R.hitstop || 0, 0.04); }
+  else if (kind === "hit") { add(18, 12, [170, 90, 220], 0.5, 0.4); R.hitstop = Math.max(R.hitstop || 0, 0.09); }
   if (P.length > 180) P.splice(0, P.length - 180);
 }
 function swingAttach(R) {
@@ -287,7 +293,7 @@ function swingFlow(R, k) {
   R.flow = Math.min(1, R.flow + k);
   if (R.flow >= 1) {
     R.od = 6; R.flow = 1; R.darkX -= 20; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffd25a, big: true });
-    if (!R.attract) { runMsg("OVERDRIVE!", "Double lights · the dark falls back", 2, true); sfx.power(); buzz([20, 30, 20]); }
+    if (!R.attract) { runMsg("OVERDRIVE!", "Double lights · the dark falls back", 2, true); sfx.power(); buzz([20, 30, 20]); swingFx(R, "od", R.px, R.py + 1); }
   }
 }
 // A dash: swipe forward in the air. One charge, back when you grab an anchor.
@@ -307,6 +313,7 @@ function swingHit(R, why) {
   R.combo = 0; R.shake = 0.7; R.flow = Math.max(0, R.flow - 0.5); R.hitsTaken = (R.hitsTaken || 0) + 1; R.lastWhy = why;
   if (R.power && R.power.kind === "shield") { R.power = null; R.inv = 1; R.flash = -0.6; runMsg("Shield!", "", 1.2); sfx.gate(); return; }
   if (why) runMsg(why, "", 1.4);
+  swingFx(R, "hit", R.px, R.py + 1);
   runHit();
 }
 
@@ -462,8 +469,8 @@ function runnerUpdate(dt) {
     u.got = true;
     if (u.kind === "shard") {
       if (!R.ev || R.ev.kind !== "heart") continue;
-      R.ev.hits++; R.darkX -= 18; R.bursts.push({ x: u.x, y: u.y, t: 0, c: 0xb08cff, big: true }); swingFlow(R, 0.2); sfx.flip(); buzz(20);
-      if (R.ev.hits >= 3) { runBonus("The Heart breaks! +60 ✦", 60, R.dist + 2, R.x); R.fireworks.push({ t: 0, seed: Math.random() }); R.darkX = R.px - 70; R.ev = null; R.nextEv = runnerM() + 300; sfx.unlock(); progressEvent("boss"); }
+      R.ev.hits++; R.darkX -= 18; R.bursts.push({ x: u.x, y: u.y, t: 0, c: 0xb08cff, big: true }); swingFlow(R, 0.2); sfx.flip(); buzz(20); swingFx(R, "shard", u.x, u.y);
+      if (R.ev.hits >= 3) { runBonus("The Heart breaks! +60 ✦", 60, R.dist + 2, R.x); swingFx(R, "heartbreak", u.x, u.y); buzz([30, 40, 60]); R.fireworks.push({ t: 0, seed: Math.random() }); R.darkX = R.px - 70; R.ev = null; R.nextEv = runnerM() + 300; sfx.unlock(); progressEvent("boss"); }
       else runMsg(`Shard ${R.ev.hits} of 3`, "", 1.2, true);
       continue;
     }
@@ -475,7 +482,7 @@ function runnerUpdate(dt) {
       continue;
     }
     R.power = { kind: u.kind, t: RUNNER_POWERS[u.kind].dur * (1 + runUpg("song") * 0.2) }; R.happy = 1;
-    if (!R.attract) { sfx.power(); runMsg(RUNNER_POWERS[u.kind].name + "!", { magnet: "Lights fly to you", shield: "One hit is on us", comet: "Blaze across the sky" }[u.kind], 1.6, true); }
+    if (!R.attract) { sfx.power(); buzz(15); swingFx(R, "power", u.x, u.y); runMsg(RUNNER_POWERS[u.kind].name + "!", { magnet: "Lights fly to you", shield: "One hit is on us", comet: "Blaze across the sky" }[u.kind], 1.6, true); }
   }
   // Boost rings.
   for (const b of R.boosts) if (!b.got && Math.hypot(b.x - R.px, b.y - R.py - 0.9) < b.r + 0.4) {
@@ -498,7 +505,7 @@ function runnerUpdate(dt) {
         if (R.teth && !w) { const ax = R.teth.x, ay = R.teth.y, dx = R.px - ax, dy = R.py - ay, rr = Math.hypot(dx, dy) || 1, om = (dx * R.vy - dy * R.vx) / (rr * rr), th = Math.atan2(dy, dx) + om * tt; if (Math.hypot(z.x - (ax + Math.cos(th) * rr), zy - (ay + Math.sin(th) * rr + 0.9)) < 2.2) w = true; } } z.warn = w ? Math.min(1, (z.warn || 0) + dt * 8) : Math.max(0, (z.warn || 0) - dt * 4); }
       // A drone that hits you breaks apart: one hit per drone, never the same one twice.
       if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
-      else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
+      else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; buzz(12); R.kick = Math.max(R.kick || 0, 0.25); }
     }
   }
   // The first run teaches by doing: let go, then hold.
