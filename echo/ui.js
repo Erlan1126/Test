@@ -121,6 +121,7 @@ function renderSettings() {
   $("setFps").setAttribute("aria-pressed", String(!!st.fps));
   $("setCalm").setAttribute("aria-pressed", String(!!st.calm));
   $("saveCode").value = "";
+  $("aboutVersion").textContent = `· version ${GAME_VERSION}`;
   $("setReset").textContent = "Erase all progress";
   resetArmed = false;
 }

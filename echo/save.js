@@ -20,3 +20,7 @@ try {
   }
 } catch (e) {}
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+// The first time the game opens, Reduce motion follows the phone's own accessibility setting.
+if (save.settings.calm == null) {
+  try { save.settings.calm = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { save.settings.calm = false; }
+}

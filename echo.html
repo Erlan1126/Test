@@ -13,10 +13,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lumen Rush">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@1,500&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="echo/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* Inter (SIL Open Font License, echo/fonts/OFL.txt), served with the game so it works offline and
+     nothing is fetched from other sites. One variable file covers every weight. */
+  @font-face { font-family: "Inter"; font-style: normal; font-weight: 300 800; font-display: swap; src: url(echo/fonts/inter-latin.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Inter"; font-style: normal; font-weight: 300 800; font-display: swap; src: url(echo/fonts/inter-latin-ext.woff2) format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
   :root {
     --ink: #e9f3ff;
     --dim: #8ea3c8;
@@ -130,6 +134,17 @@
   .set-group h3 { margin: 10px 0 2px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); opacity: 0.8; }
   .set-group .set:last-of-type { border-bottom: 0; }
   details.backup { padding: 10px 0; }
+  .about p { margin: 8px 2px 10px; font-size: 14px; line-height: 1.45; color: var(--dim); }
+  .about p b { color: var(--ink); font-weight: 600; }
+  .about a { color: var(--acc, #8be9ff); }
+  .about .credits { font-size: 12px; opacity: 0.8; }
+  /* The ending: dawn over the whole city after the last stage. */
+  .chap-intro.dawn { background: linear-gradient(180deg, #2b2a5e 0%, #a75d7a 42%, #ffb27a 72%, #ffe3a8 100%); }
+  .chap-intro.dawn .ci-card h2 { text-shadow: 0 0 40px rgba(255,240,200,0.9); }
+  .chap-intro.dawn .ci-card p, .chap-intro.dawn .ci-card small { color: rgba(30,18,40,0.85); text-shadow: none; }
+  .chap-intro.dawn .ci-homes { color: #4a2440; }
+  .ci-credits { font-size: 12px; line-height: 1.5; color: rgba(30,18,40,0.7); }
+  .ci-credits[hidden] { display: none; }
   details.backup summary { cursor: pointer; font-size: 16px; list-style: none; display: flex; justify-content: space-between; }
   details.backup summary::after { content: "›"; color: var(--dim); transition: transform 0.2s; }
   details.backup[open] summary::after { transform: rotate(90deg); }
@@ -467,7 +482,7 @@
 </div>
 
 <div class="chap-intro" id="chapIntro" hidden>
-  <div class="ci-card"><small id="ciNum">Chapter 2 of 6</small><h2 id="ciName">The Markets</h2><p id="ciLine"></p><span class="ci-homes">10 homes waiting in the dark</span><button class="primary" id="ciGo">Bring the light</button></div>
+  <div class="ci-card"><small id="ciNum">Chapter 2 of 6</small><h2 id="ciName">The Markets</h2><p id="ciLine"></p><span class="ci-homes" id="ciHomes">10 homes waiting in the dark</span><span class="ci-credits" id="ciCredits" hidden></span><button class="primary" id="ciGo">Bring the light</button></div>
 </div>
 <div class="opening" id="opening" hidden>
   <canvas id="openingCanvas" aria-hidden="true"></canvas>
@@ -555,6 +570,12 @@
         <div class="row"><button class="btn" id="copyCode">Copy code</button><button class="btn" id="restoreCode">Restore</button></div>
       </details>
       <button class="btn danger" id="setReset">Erase all progress</button>
+      </section>
+      <section class="set-group about"><h3>About</h3>
+      <p><b>Lumen Rush</b> <span id="aboutVersion"></span><br>Made by Big Bruce Studios LLC.</p>
+      <p><b>Privacy.</b> No account, no ads, no tracking. Lumen Rush collects nothing about you: your progress is saved only on this device, and the game asks nothing from other sites.</p>
+      <p><b>Help or ideas?</b> <a href="mailto:support@bigbrucestudios.com?subject=Lumen%20Rush">support@bigbrucestudios.com</a></p>
+      <p class="credits">Text in Inter by Rasmus Andersson (SIL Open Font License). Music and sounds are made live by the game.</p>
       </section>
     </div>
     <button class="btn main" id="settingsBack">Done</button>

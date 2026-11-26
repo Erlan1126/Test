@@ -12,7 +12,12 @@ if (!out) {
   process.exit(1);
 }
 const html = fs.readFileSync(path.join(root, "echo.html"), "utf8");
-const bundled = html.replace(/<script src="(echo\/[^"]+\.js)"><\/script>/g, (_, file) =>
-  `<script>\n${fs.readFileSync(path.join(root, file), "utf8").replace(/<\/script/gi, "<\\/script")}</script>`);
+const bundled = html
+  .replace(/<script src="(echo\/[^"]+\.js)"><\/script>/g, (_, file) =>
+    `<script>\n${fs.readFileSync(path.join(root, file), "utf8").replace(/<\/script/gi, "<\\/script")}</script>`)
+  // The font goes inside too, so the one file needs nothing else.
+  .replace(/<link rel="preload" href="echo\/fonts\/[^"]+"[^>]*>\n?/, "")
+  .replace(/url\((echo\/fonts\/[^)]+\.woff2)\)/g, (_, file) =>
+    `url(data:font/woff2;base64,${fs.readFileSync(path.join(root, file)).toString("base64")})`);
 fs.writeFileSync(out, bundled);
 console.log(`Wrote ${out} (${Math.round(bundled.length / 1024)} KB)`);

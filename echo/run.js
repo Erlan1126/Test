@@ -199,7 +199,7 @@ function runOfferContinue() {
   $("runContinue").hidden = false;
   let left = 5; $("runContinueTime").textContent = left;
   clearInterval(continueTimer);
-  continueTimer = setInterval(() => { left--; $("runContinueTime").textContent = left; if (left <= 0) runDecline(); }, 1000);
+  continueTimer = setInterval(() => { if (document.hidden) return; left--; $("runContinueTime").textContent = left; if (left <= 0) runDecline(); }, 1000);
 }
 function runDecline() { clearInterval(continueTimer); $("runContinue").hidden = true; if (run) { run.paused = false; run.last = 0; runEnd(); } }
 function runContinue() {
@@ -372,7 +372,7 @@ function runPauseInfo() {
   ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +
     g("★★★", `70% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
 }
-document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
+document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over || !$("runContinue").hidden) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
@@ -432,5 +432,5 @@ function runShop() {
 
 // Leaving the app mid-run pauses it.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
+  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract && $("runContinue").hidden) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
 });

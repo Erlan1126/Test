@@ -71,8 +71,20 @@ function chapterRewardItem(c) { const k = CHAPTER_REWARD[c][0], list = { t: RUNN
 function showChapterIntro(c, go) {
   const el = $("chapIntro"); if (!el) { go(); return; }
   $("ciName").textContent = STAGE_CHAPTERS[c]; $("ciLine").textContent = CHAPTER_STORY[c]; $("ciNum").textContent = `Chapter ${c + 1} of ${STAGE_CHAPTERS.length}`;
+  $("ciHomes").textContent = "10 homes waiting in the dark"; $("ciCredits").hidden = true; $("ciGo").textContent = "Bring the light";
   el.className = "chap-intro d" + c; el.hidden = false; sfx.unlock();
   $("ciGo").onclick = e => { e.stopPropagation(); el.hidden = true; save.chapSeen = save.chapSeen || {}; save.chapSeen[c] = 1; persist(); go(); };
+}
+// The ending: the last home is lit and dawn comes back. Shown once, after the stage card of stage 60.
+function showEnding(go) {
+  const el = $("chapIntro"); if (!el) { go(); return; }
+  $("ciNum").textContent = "The end"; $("ciName").textContent = "Dawn";
+  $("ciLine").textContent = "Every window in the city is lit. The Hush is gone, and everyone you reached is waking up to the sun.";
+  $("ciHomes").textContent = `${homesLit()} of ${STAGES_N} homes relit · ${allStars()} of ${STAGES_N * 3} ★`;
+  const cr = $("ciCredits"); cr.innerHTML = "Lumen Rush · a game by Big Bruce Studios<br>Thank you for playing. The Night shift and a new neighbour every day are still waiting."; cr.hidden = false;
+  $("ciGo").textContent = "Back to the city";
+  el.className = "chap-intro dawn"; el.hidden = false; sfx.win(); buzz([20, 40, 20, 40]);
+  $("ciGo").onclick = e => { e.stopPropagation(); el.hidden = true; save.dawnSeen = 1; persist(); go(); };
 }
 const outageDistrict = () => 1 + weekNumber() % (STAGE_CHAPTERS.length - 1);   // never Downtown: new players learn without it
 const homesLit = () => Object.values(stageSave().best).filter(b => b && b.stars).length;
@@ -177,6 +189,8 @@ function showStageCard(won) {
   $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : R.failPct != null ? `${R.failPct}%${R.newBestPct ? " · New best!" : ""}` : "Out of light";
   $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);
+  // Show the card first: the count-up below only animates while the card is showing.
+  el.hidden = false;
   // The numbers count up; each star lands with its own chime.
   const count = (id, to, fmt, ms = 700) => { const el = $(id), t0 = performance.now(); const f = now => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * e); if (k < 1 && !$("stageCard").hidden) requestAnimationFrame(f); }; f(t0); };
   if (won) count("stTime", R.stageTime, v => v.toFixed(1)); else $("stTime").textContent = "–";
@@ -185,12 +199,14 @@ function showStageCard(won) {
   const raceNote = R.raceTime ? (won ? (R.stageTime < R.raceTime ? `You beat your friend by ${(R.raceTime - R.stageTime).toFixed(1)} s!` : `Your friend was ${(R.stageTime - R.raceTime).toFixed(1)} s faster`) : "Your friend's ghost made it. Try again!") : "";
   const attNote = won && R.attempt && !R.hadStars ? `Cleared on attempt ${R.attempt}${R.attempt === 1 ? ". First try!" : ""} · ` : !won && R.bestPct != null && !R.newBestPct ? `Your best: ${R.bestPct}% · ` : "";
   $("stNote").textContent = attNote + (raceNote || (won ? (R.stageStars < 3 ? (R.stageStars < 2 ? "Catch 40% of the lights for ★★" : `★★★: 70% of the lights, no hits, under ${R.stageInfo.par.toFixed(1)} s`) : "Flawless.") : "Grab anchors early, let go on the gold arc."));
-  const next = $("stNext"); next.textContent = won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
-  next.dataset.go = won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
-  $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
+  // After the last stage, the first time: the ending.
+  const dawn = won && !info.daily && info.n === STAGES_N && !save.dawnSeen;
+  const next = $("stNext"); next.textContent = dawn ? "See the dawn" : won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
+  next.dataset.go = dawn ? "dawn" : won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
+  $("stRetry").hidden = !(dawn || (won && !info.daily && info.n < STAGES_N));
   $("stShare").hidden = !won;
   { const cb = $("stFromCp"); if (cb) cb.hidden = !!(won || !R.cp); }
-  el.hidden = false; runHud();
+  runHud();
 }
 // Share: the best moment of the run as a picture, plus a link to race your ghost.
 async function stageShare() {
@@ -248,14 +264,18 @@ document.getElementById("shopList").addEventListener("click", e => {
   $("sheet").hidden = true; const n = Number(b.dataset.stage);
   if (screen === "title") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(n), 200); } else startStage(n);
 });
-document.getElementById("stNext").addEventListener("click", () => startStage(Number($("stNext").dataset.go)));
+document.getElementById("stNext").addEventListener("click", () => {
+  const go = $("stNext").dataset.go;
+  if (go === "dawn") { $("stageCard").hidden = true; showEnding(() => { run = null; showTitle(); }); return; }
+  startStage(Number(go));
+});
 document.getElementById("stRetry").addEventListener("click", () => run && startStage(run.stage));
 document.getElementById("stStages").addEventListener("click", () => { $("stageCard").hidden = true; run = null; showTitle(); openSheet("stages"); });
 document.getElementById("stShare").addEventListener("click", stageShare);
 document.getElementById("stFromCp").addEventListener("click", () => { if (run && run.cp) startStage(run.stage, { cp: run.cp }); });
 
 // What's new on a stage: a short line the first time something appears.
-const STAGE_NEW = { 11: ["The Markets", "Lantern strings sway in the breeze: time your grab"], 21: ["The Harbour", "Fall in the water and you splash: it slows you down"], 31: ["The Arcade", "Neon pads on the rooftops bounce you sky-high"], 41: ["The Park", "Grab the glowing treetops for low, fast swings"], 51: ["The Tower", "Updrafts between the towers lift you up"], 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"], 10: ["Boss: the Heart of the Dark", "Grab its 3 shards before it catches you"] };
+const STAGE_NEW = { 11: ["The Markets", "Lantern strings sway in the breeze: time your grab"], 21: ["The Harbour", "Fall in the water and you splash: it slows you down"], 31: ["The Arcade", "Neon pads on the rooftops bounce you sky-high"], 41: ["The Park", "Grab the glowing treetops for low, fast swings"], 51: ["The Tower", "Updrafts between the towers lift you up"], 7: ["New: wind", "Gusts push you sideways. Watch the streaks"], 2: ["New: live wires", "Don't touch the sparks between rooftops"], 3: ["New: drones and crumbling anchors", "Let go of orange anchors quickly"], 4: ["New: drifting anchors", "They slide; time your grab"], 5: ["The street bites now", "Every touch costs a heart"] };
 
 // Star rewards: stars from stages unlock looks for free.
 const STAR_REWARDS = [[6, "s", 1], [12, "t", 2], [20, "b", 1], [30, "c", 1], [42, "s", 2], [55, "t", 6], [70, "b", 2], [85, "c", 2], [100, "s", 3], [120, "t", 7], [140, "b", 4], [160, "c", 3], [180, "s", 5]];

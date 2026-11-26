@@ -7,7 +7,16 @@
 const { chromium } = require("playwright");
 const path = require("path");
 
-const URL = "file://" + path.resolve(__dirname, "..", "echo.html");
+const http = require("http"), fs = require("fs");
+// The game is served over http, as on the real site (fonts can't load from file:// pages).
+const ROOT = path.resolve(__dirname, "..");
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".jpg": "image/jpeg" };
+const server = http.createServer((req, res) => {
+  const file = path.join(ROOT, decodeURIComponent(req.url.split("?")[0]));
+  if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream" }); fs.createReadStream(file).pipe(res);
+}).listen(0, "127.0.0.1");
+let URL = "";
 let passed = 0, failed = 0;
 
 function check(name, ok, detail = "") {
@@ -22,7 +31,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
   const errors = [], requests = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
-  page.on("request", r => { if (!r.url().startsWith("file:") && !r.url().startsWith("data:") && !/fonts\.(googleapis|gstatic)\.com/.test(r.url())) requests.push(r.url()); });
+  page.on("request", r => { if (!r.url().startsWith(URL.replace(/echo\.html$/, "")) && !r.url().startsWith("data:")) requests.push(r.url()); });
   await page.goto(URL);
   // Start from a clean save.
   await page.evaluate(() => localStorage.clear());
@@ -30,6 +39,8 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
 }
 
 (async () => {
+  await new Promise(r => server.listening ? r() : server.once("listening", r));
+  URL = `http://127.0.0.1:${server.address().port}/echo.html`;
   const browser = await chromium.launch();
   const t0 = Date.now();
 
@@ -193,6 +204,9 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       startStage(5); { const R = run; R.over = 0.001; R.px = R.stageLen + 1; R.inv = 1; runUpdate(1 / 60); out.dyingAtTheFinishIsNotAClear = !R.cleared; }
       startStage(1); startStage(1); out.retryingKeepsOneRenderLoop = runLoop.on === true;
       startStage(1); { const R = run; swingHold(true); R.paused = true; swingHold(false); R.paused = false; out.aReleaseWhilePausedCounts = R.hold === false; }
+      // The Night shift's "keep going?" offer: pause can't open over it, and its clock waits while the app is hidden.
+      { startRun({}); save.glow = 500; const R = run; R.inv = 0; R.hearts = 1; runHit(); const offered = !$("runContinue").hidden;
+        $("runPauseBtn").click(); out.pauseCantOpenOverKeepGoing = offered && $("runPause").hidden; $("runContinueNo").click(); }
       startStage(3); run.inv = 0; run.hearts = 1; runHit(); out.theLastHeartShattersTheFigure = Array.isArray(run.shatter) && run.shatter.length > 10;
             openSheet("stages"); out.theCityMapShowsSixtyHomes = document.querySelectorAll("#shopList .bld").length === 60 && document.querySelectorAll("#shopList .bld.boss").length === 6 && document.querySelectorAll("#shopList .district").length === 6;
             { const nb = document.querySelector("#shopList .bld:not([disabled])"); nb.click(); out.tappingAHomeShowsWhoLivesThere = document.querySelector("#shopList .map-pick").textContent.includes(stagePerson(Number(nb.dataset.pick))[0]); }
@@ -208,6 +222,16 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
         stageSave().unlocked = 60; startStage(4); const R = run; R.inv = 9; R.px = R.stageLen + 0.5; runUpdate(1 / 60);
         await new Promise(r => setTimeout(r, 1500));
         o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
+        { startStage(5); const C = run; C.teth = null; C.hold = false; C.inv = 9; C.px = C.stageLen + 0.5; C.py = 30; for (let q = 0; q < 60 && !C.cleared; q++) runUpdate(1 / 60); await new Promise(r => setTimeout(r, 2300)); R.stageTime = C.stageTime; R.motesGot = C.motesGot; R.motesTotal = C.motesTotal; R.perfects = C.perfects; R.cleared2 = C.cleared; }
+        o.theCardCountsUpTheRealNumbers = R.cleared2 && $("stTime").textContent === R.stageTime.toFixed(1) && $("stLights").textContent === `${R.motesGot}/${R.motesTotal}` && $("stPerf").textContent === String(R.perfects);
+        // The last stage: the first clear ends on dawn over the city.
+        { const S = stageSave(); for (let n = 1; n < STAGES_N; n++) S.best[n] = S.best[n] || { stars: 1, time: 30 }; S.unlocked = STAGES_N; save.dawnSeen = 0;
+          startStage(STAGES_N); const L = run; L.teth = null; L.hold = false; L.inv = 9; L.px = L.stageLen + 0.5; L.py = 30; for (let q = 0; q < 60 && !L.cleared; q++) runUpdate(1 / 60);
+          await new Promise(r => setTimeout(r, 1500));
+          o.theLastStageOffersTheDawn = $("stNext").textContent === "See the dawn";
+          $("stNext").click(); o.theDawnEndingShows = !$("chapIntro").hidden && $("ciName").textContent === "Dawn" && $("ciHomes").textContent.startsWith(`${STAGES_N} of ${STAGES_N}`);
+          $("ciGo").click(); o.afterTheDawnYouGoHome = screen === "title" && save.dawnSeen === 1 && $("chapIntro").hidden;
+          startStage(11); o.chapterCardsStillReadRight = $("chapIntro").hidden || ($("ciGo").textContent === "Bring the light" && $("ciCredits").hidden); $("chapIntro").hidden = true; }
         o.homesLitCountsClearedStages = homesLit() >= 1;
         run = null; showTitle(); o.homeShowsHomesRelit = $("homeBest").textContent === String(homesLit()) && $("tileCity").textContent.includes("/60");
         o.dailyHasANamedNeighbour = stagePerson(0)[0] && stagePerson(0)[0] !== "A stranger";
@@ -263,6 +287,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 3;
       const c0 = !!save.settings.calm; $("setCalm").click(); out.reduceMotionToggles = save.settings.calm === !c0 && $("setCalm").getAttribute("aria-pressed") === String(!c0);
       $("setFps").click(); out.showFpsToggles = save.settings.fps === true && !$("fpsMeter").hidden; $("setFps").click();
+      out.aboutShowsVersionAndPrivacy = $("aboutVersion").textContent.includes(GAME_VERSION) && /no tracking/i.test($("settingsScreen").textContent) && !!document.querySelector('#settingsScreen a[href^="mailto:"]');
       $("settingsBack").click(); out.doneGoesHome = on("titleScreen");
       // The Night shift opens once Downtown is lit, and ends on the run-over card.
       stageSave().best[10] = { stars: 1, time: 20 }; showTitle(); out.theNightShiftOpensAfterStageTen = !$("hardBtn").classList.contains("locked");
@@ -298,12 +323,17 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       check(`no page errors at ${size.width}×${size.height}`, e2.length === 0, e2[0]);
       await p2.close();
     }
-    check("nothing loads from other sites", requests.length === 0, requests[0]);
+    check("nothing loads from other sites (the font comes with the game)", requests.length === 0, requests[0]);
+    check("the game's own font is used", await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('700 16px "Inter"') && [...document.fonts].some(f => f.family.replace(/"/g, "") === "Inter" && f.status === "loaded"); }));
+    // Reduce motion starts on when the phone asks for less motion.
+    { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" }); const p3 = await ctx.newPage(); await p3.goto(URL); await p3.evaluate(() => localStorage.clear()); await p3.reload();
+      check("reduce motion follows the phone's setting", await p3.evaluate(() => save.settings.calm === true)); await ctx.close(); }
     check("no page errors", errors.length === 0, errors[0]);
     await page.close();
   }
 
   await browser.close();
+  server.close();
   console.log(`\n${passed} passed, ${failed} failed in ${Math.round((Date.now() - t0) / 1000)} s`);
   process.exit(failed ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

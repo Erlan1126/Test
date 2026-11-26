@@ -143,14 +143,14 @@ async function shareRun(score, metres, combo, seed) {
   glowAt(360, 560, 160, "150,235,255");
   g.fillStyle = "#fff"; g.beginPath(); g.arc(360, 560, 46, 0, Math.PI * 2); g.fill();
   g.fillStyle = "#123049"; g.beginPath(); g.ellipse(344, 556, 6, 9, 0, 0, Math.PI * 2); g.ellipse(376, 556, 6, 9, 0, 0, Math.PI * 2); g.fill();
-  g.textAlign = "center"; g.fillStyle = "#eef8ff"; g.font = "500 64px Cinzel, Georgia, serif"; g.fillText("E C H O", 360, 120);
+  g.textAlign = "center"; g.fillStyle = "#eef8ff"; g.font = "800 60px Inter, system-ui, sans-serif"; g.fillText("LUMEN RUSH", 360, 120);
   g.font = "600 110px system-ui, sans-serif"; g.fillText(score.toLocaleString(), 360, 300);
   g.font = "34px system-ui, sans-serif"; g.fillStyle = "#ffd98a"; g.fillText(`${metres} m  ·  ${combo} combo`, 360, 370);
   g.font = "italic 34px Georgia, serif"; g.fillStyle = "#c8d6ee"; g.fillText("Can you glide further?", 360, 780);
   const url = challengeLink(seed, score), text = `I scored ${score.toLocaleString()} in Lumen Rush (${metres} m). Run my street and beat me: ${url}`;
   try {
     const blob = await new Promise(res => c.toBlob(res, "image/png"));
-    const file = new File([blob], "echo-run.png", { type: "image/png" });
+    const file = new File([blob], "lumen-rush.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
     if (navigator.share) { await navigator.share({ text }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
