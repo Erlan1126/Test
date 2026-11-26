@@ -8,17 +8,19 @@ Skyrise when it still had Buildaroo's business city.
 The game text matches the Skyrise build after PR #29 (tower story with Mayor Pip, no city
 business screens). Age rating and privacy answers: `../RATINGS-AND-PRIVACY.md`.
 
-**Before you start, two things that need a decision or a code change:**
+**App ids (confirmed 2026-11-26 by the Skyrise app-split work, branch `skyrise-app`):**
 
-1. **Its own app id.** Skyrise is being split into its own app on your Mac (branch
-   `skyrise-app`). It needs its own bundle id / package name, for example
-   `com.bigbrucestudios.skyrise`. It can't share `com.bigbrucestudios.buildaroo`.
-2. **Its own product ids on the App Store.** Apple product ids are unique across your whole
-   developer account, so once Buildaroo has `crystals_200`, Skyrise can't create it again.
-   The Skyrise build needs its own ids (suggested below: `skyrise.crystals_200` and so on).
-   That is a one-line-per-product change in `src/data/premium.ts` and `src/logic/vip.ts` for
-   the Skyrise edition, and should go in with the app split. Google Play ids are per app, so
-   Android can keep the plain ids.
+- **iPhone:** `com.erlanstudios.skyrise`, the existing Skyrise app in App Store Connect,
+  which already has TestFlight builds and a Codemagic signing profile. Use that app record;
+  don't create a new one.
+- **Android:** `com.bigbrucestudios.skyrise`.
+
+**App Store product ids.** Apple product ids are unique across the whole developer account,
+so Buildaroo and Skyrise can't both use `crystals_200`. The Skyrise build asks the App Store
+for `skyrise.`-prefixed ids (`src/data/storeids.ts`, PR #33). Google Play ids are per app,
+so Android keeps the plain ids. If the existing Skyrise App Store app already has products
+with the plain ids, tell Claude: then Skyrise keeps the plain ids and Buildaroo takes the
+prefix instead.
 
 ---
 
@@ -28,8 +30,8 @@ business screens). Age rating and privacy answers: `../RATINGS-AND-PRIVACY.md`.
 |---|---|
 | Name (30 max) | `Skyrise: Tower Stack` (20). If taken: `Skyrise: Build the Sky` |
 | Primary language | English (U.S.) |
-| Bundle ID / package | `com.bigbrucestudios.skyrise` (to confirm, see above) |
-| SKU | `skyrise-ios-1` |
+| Bundle ID | iPhone `com.erlanstudios.skyrise` (existing app record) · Android `com.bigbrucestudios.skyrise` |
+| SKU | already set on the existing app record |
 | Platform | iPhone only (no iPad), like Buildaroo |
 
 ## 2. App information
