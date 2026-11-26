@@ -47,6 +47,26 @@ Play it at https://erlan1126.github.io/Test/echo.html.
 - **Restore the city:** every relit building counts toward the whole city across all runs (shown on the home screen); every 150 pays 50 lights. **Light capsules** (for 600 m or 10 Perfects in a run) open in the Locker into lights or a random look.
 - **Visuals:** windows flick on in steps with a burst ring, LED strips and blinking roof beacons; energy pulses run along the tether; a flash, ring and slow motion on every Perfect; shooting stars and an aurora at night, sun rays at dawn; drifting tendrils and violet lightning at the edge of the dark.
 
+**What a stage is like now.**
+- **The run:** each stage is built from short sections (flow, climb, dive, zigzag, big gap, springs, rings), so it changes shape every 110 m. The person's window glows on the horizon from the start, and the light you carry (an orb by your hand) grows with every light you catch.
+- **The finish:** you glide in and land on their roof, arms raised, while your light flies into their window.
+- **Attempts and best %:** like a rhythm game, every try is counted ("Attempt 4"). The top bar is a journey toward their house with a BEST flag at your best %; passing it mid-run celebrates, and the fail card shows "34% · New best!".
+- **Stars:** they fill live (finish, 40% of the lights, then 70% with no hits under par). On the end card they chime in one by one while the numbers count up.
+
+**Six districts, six chapters.**
+- **Look:** each district has its own buildings, rooftops and skyline: Downtown offices; Markets shophouses with lantern strings and pagoda roofs; Harbour warehouses and cranes; Arcade neon blocks and billboards; Park pavilions and a Ferris wheel; Tower glass spires.
+- **Sky and sound:** each has its own sky (night deepening toward dawn), its own sounds under the music (hum, wind chime, waves, bleeps, crickets, high wind) and its own mechanic.
+- **Chapters:** arriving shows a chapter card with a line of story, and relighting all ten homes unlocks something to wear from that district.
+- **Bosses:** each district's 10th stage is a boss with a twist: Heart of the Dark, Lantern Thief (drifting shards), Rising Tide, Glitch Storm, Night Bloom (shards hidden until close), Last Dark.
+
+**Feel.**
+- **Music:** the soundtrack's kick makes anchors and lights pulse; an arpeggio joins at a x3 Perfect chain and a lead at x6, and Perfects ring in the music's chord.
+- **Impact:** grabs and Perfects hit with sparks, a shockwave and a split-second freeze; lights fly into you; speed lines appear when you're fast.
+- **A tap always does something:** grab the ringed light; on a roof, jump; in the air with nothing in reach, air dash.
+- **Drones:** they warn you with a red ring when you're on course to hit one.
+
+**Daily stage.** It has a rule that changes every day: Moon day, Spring day, Gold rush, Ring day or Fast night.
+
 **Home and menus.** The home screen is the live swing playing itself behind the LUMEN RUSH wordmark, your lights, level, Locker and Settings at the top, the person waiting at your next stage and **Play**; under it the City (the map), Daily and Night shift tiles. One tab bar: Home, Locker, Shop (upgrades), Ranks and Today. Lists open as **sheets** that slide up from the bottom; tap outside to close. **Today** holds the seven-day gift calendar, three daily missions (the same for everyone), the **season** (a free 30-tier reward track that starts again every month) and the run missions. When a stage ends, a card shows your stars, time, lights and Perfects with Next, Retry and Share; when a Night shift ends, a card counts up your score, windows lit, your level and today's progress. **Settings:** music and sound volume, vibration, Reduce motion, Show FPS, and a backup code to move your progress to another phone.
 
 **Sound.** A generated electronic soundtrack that builds with your speed; each district has its own key, chords and tempo.
