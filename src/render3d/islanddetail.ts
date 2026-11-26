@@ -27,12 +27,16 @@ export interface DetailOptions {
   /** True where something already stands (trees, buildings, ponds...) within r of x, z. */
   blocked: (x: number, z: number, r: number) => boolean;
   anims: ((time: number, night: number) => void)[];
+  /** A plain island (the Skyrise build): no sidewalks, crosswalks, street lamps, house
+   *  gardens or rooftop gear, since there are no roads or houses. */
+  plain?: boolean;
 }
 
 /** Whether x, z is on a road, its sidewalks or the plaza. */
-function onPaving(x: number, z: number, pad = 0): boolean {
+function onPaving(x: number, z: number, pad = 0, plain = false): boolean {
   const p = 2.1 + pad;
   if (Math.abs(x) < 7.8 + pad && Math.abs(z) < 7.8 + pad) return true;           // plaza
+  if (plain) return false;                                                       // no roads
   if (x > 6 && Math.abs(z) < p) return true;                                     // road to +x
   if (x < -6 && Math.abs(z) < p) return true;                                    // road to -x
   if (z > 6 && Math.abs(x) < p) return true;                                     // road to +z
@@ -54,7 +58,7 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
   const walk = (x0: number, x1: number, z0: number, z1: number) => {
     add(box(x1 - x0, 0.14, z1 - z0, (x0 + x1) / 2, 0, (z0 + z1) / 2), curb, false);
   };
-  for (const s of [-1, 1]) {
+  if (!o.plain) for (const s of [-1, 1]) {
     walk(7.4, I - 0.1, s * 1.75 - 0.35, s * 1.75 + 0.35);    // road to +x
     walk(-I + 0.1, -7.4, s * 1.75 - 0.35, s * 1.75 + 0.35);  // road to -x
     walk(s * 1.75 - 0.35, s * 1.75 + 0.35, 7.4, I - 0.1);    // road to +z
@@ -66,7 +70,7 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
 
   // ---- Crosswalks where each road meets the plaza ----
   const paint = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.6 });
-  for (let k = -2; k <= 2; k++) {
+  if (!o.plain) for (let k = -2; k <= 2; k++) {
     const u = k * 0.52;
     add(box(1.1, 0.02, 0.3, 8.4, 0.06, u), paint, false);
     add(box(1.1, 0.02, 0.3, -8.4, 0.06, u), paint, false);
@@ -96,7 +100,7 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
   }
 
   // ---- Street lamps along the sidewalks (the "street lights" upgrade) ----
-  if (o.has(3)) {
+  if (o.has(3) && !o.plain) {
     const glow = new THREE.MeshStandardMaterial({ color: 0xfff6d8, emissive: 0xffd27a, emissiveIntensity: 0.1, roughness: 0.4 });
     glow.userData.dynamic = true; // kept apart from the merge: it brightens at night
     const heads: THREE.BufferGeometry[] = [];
@@ -121,7 +125,7 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
   const picket = std("#fbfbf7", { roughness: 0.7 });
   const brick = std("#a8553c");
   const path = std("#d8cdb8", { roughness: 0.9 });
-  for (const [x, z] of HOUSES) {
+  for (const [x, z] of o.plain ? [] : HOUSES) {
     const fx0 = x - 1.8, fx1 = x + 1.8, fz0 = z - 1.6, fz1 = z + 2.2;
     // Rails all round, with a gate gap in front of the door.
     const rail = (ax: number, az: number, bx: number, bz: number) => {
@@ -144,7 +148,7 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
   // ---- Neighbors' roofs: air conditioners, a water tank and an antenna ----
   const metal = std("#c3c9d2", { roughness: 0.45, metalness: 0.5 });
   const tankMat = std("#8d6e63");
-  const neighbors = [...NEIGHBORS, ...(o.has(2) ? EXTRA_NEIGHBORS : [])];
+  const neighbors = o.plain ? [] : [...NEIGHBORS, ...(o.has(2) ? EXTRA_NEIGHBORS : [])];
   neighbors.forEach((nb, i) => {
     const y = nb.h * FH + 0.2, cx = (nb.x0 + nb.x1) / 2, cz = (nb.z0 + nb.z1) / 2;
     const w = nb.x1 - nb.x0, d = nb.z1 - nb.z0;
@@ -177,7 +181,7 @@ export function addIslandDetail(g: THREE.Group, o: DetailOptions): void {
     const out: [number, number, number][] = [];
     for (let i = 0; out.length < n && i < n * 30; i++) {
       const x = (hash(i, seed, 1) * 2 - 1) * (I - 0.8), z = (hash(i, seed, 2) * 2 - 1) * (I - 0.8);
-      if (!ok(x, z) || onPaving(x, z, r) || o.blocked(x, z, r)) continue;
+      if (!ok(x, z) || onPaving(x, z, r, o.plain) || o.blocked(x, z, r)) continue;
       if (out.some(([a, b]) => Math.hypot(a - x, b - z) < r * 2)) continue;
       if (taken.some(([a, b, tr]) => Math.hypot(a - x, b - z) < r + tr)) continue;
       out.push([x, z, hash(i, seed, 3)]);

@@ -4,11 +4,11 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev": "vite --mode skyrise",
+    "build": "tsc --noEmit && vite build --mode skyrise",
     "build:skyrise": "tsc --noEmit && vite build --mode skyrise",
     "build:city": "tsc --noEmit && vite build --mode city",
-    "preview": "vite preview",
+    "preview": "vite preview --mode skyrise",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

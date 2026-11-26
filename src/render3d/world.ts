@@ -13,6 +13,11 @@ import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { addCityLife } from "./citylife";
 import { addIslandDetail } from "./islanddetail";
+import { HAS_CITY } from "../edition";
+
+/** The Skyrise build (tower game alone) shows a plain island: lawn, plaza, trees and the
+ *  lake, without the town around the tower (roads, cars, houses, apartment blocks, people). */
+const PLAIN = !HAS_CITY;
 
 const I = ISLAND;
 const col = (c: string | number[]) => (typeof c === "string" ? new THREE.Color(c) : new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255));
@@ -101,7 +106,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     }
     const m = new THREE.Mesh(geo, roadMat); m.receiveShadow = true; g.add(m);
   };
-  road(7, I, -1.4, 1.4, "x"); road(-1.4, 1.4, 7, I, "z"); road(-I, -7, -1.4, 1.4, "x");
+  if (!PLAIN) { road(7, I, -1.4, 1.4, "x"); road(-1.4, 1.4, 7, I, "z"); road(-I, -7, -1.4, 1.4, "x"); }
   const slab = (r: number, top: number, c: string) => { const m = new THREE.Mesh(new THREE.BoxGeometry(r * 2, top, r * 2).translate(0, top / 2, 0), std(c, { roughness: 0.7 })); m.receiveShadow = true; g.add(m); };
   slab(7.4, 0.12, t.plaza); slab(6.8, 0.22, t.plaza2);
   const flowerColors = ["#ff6b6b", "#ffd43b", "#f783ac", "#ffffff", "#b197fc"];
@@ -167,7 +172,8 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   const frameMat = std("#fbfaf6", { roughness: 0.6 });
   const footing = std("#9a948a", { roughness: 0.95 });
   anims.push((_t, night) => { winLit.emissiveIntensity = night * 1.5; });
-  for (const [x, z, i] of HOUSES) {
+  const houses = PLAIN ? [] : HOUSES;
+  for (const [x, z, i] of houses) {
     const h = new THREE.Group();
     const W = 2.6, D = 2.2, H = 1.6, wall = new THREE.MeshStandardMaterial({ color: col(HOUSE_WALLS[i % 6]), map: siding, roughness: 0.8 });
     const roofMat = new THREE.MeshStandardMaterial({ color: col(HOUSE_ROOFS[i % 6]), roughness: 0.7, flatShading: true });
@@ -216,7 +222,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   const railing = std("#5f6b7a", { roughness: 0.4, metalness: 0.5 });
   const AWNINGS = ["#d9534f", "#2f7d6d", "#e8a33d", "#3b6fb6", "#8e5aa8"];
   const nbMat = (c: number[]) => [new THREE.MeshStandardMaterial({ color: col(c), map: facade.map, emissiveMap: facade.lit, emissive: 0xffffff, emissiveIntensity: 0, roughnessMap: facade.orm, metalnessMap: facade.orm, roughness: 1, metalness: 1 }), std(c.map(v => Math.min(255, v * 1.1)))];
-  const neighbors = [...NEIGHBORS, ...(has(2) ? EXTRA_NEIGHBORS : [])];
+  const neighbors = PLAIN ? [] : [...NEIGHBORS, ...(has(2) ? EXTRA_NEIGHBORS : [])];
   for (const nb of neighbors) {
     const mats = nbMat(nb.color);
     const m = new THREE.Mesh(prism(boxFoot(nb), 0, nb.h * FH, false, 1), mats);
@@ -256,7 +262,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     && !(has(4) && near(tr.x, tr.z, WHEEL.x, WHEEL.z, 3))
     && !(has(6) && near(tr.x, tr.z, 20.5, 4.5, 1.8)) && !(has(7) && Math.abs(tr.x - POND.x) < 1.8 && tr.z > POND.z) && !(has(11) && near(tr.x, tr.z, -16, -9.5, 2))
     && !o.city.some(id => { const s = spotOf(id); return s && near(tr.x, tr.z, s.x, s.z, s.r + 0.6); })
-    && !(has(2) && EXTRA_NEIGHBORS.some(b => tr.x > b.x0 - 1 && tr.x < b.x1 + 1 && tr.z > b.z0 - 1 && tr.z < b.z1 + 1)));
+    && !(!PLAIN && has(2) && EXTRA_NEIGHBORS.some(b => tr.x > b.x0 - 1 && tr.x < b.x1 + 1 && tr.z > b.z0 - 1 && tr.z < b.z1 + 1)));
   g.add(treeInstances(trees, t));
 
   // ---- Small details: sidewalks, lamps, benches, fences, bushes, flowers... ----
@@ -269,13 +275,13 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
     || (has(0) && near(x, z, FOUNTAIN.x, FOUNTAIN.z, r + 2))
     || (has(1) && near(x, z, POND.x, POND.z, POND.r + r + 0.8))
     || (has(4) && near(x, z, WHEEL.x, WHEEL.z, r + 3.2))
-    || HOUSES.some(([hx, hz]) => x > hx - 2.2 - r && x < hx + 2.2 + r && z > hz - 2 - r && z < hz + 2.6 + r)
-    || [...NEIGHBORS, ...(has(2) ? EXTRA_NEIGHBORS : [])].some(b => inBox(x, z, b, r + 0.6))
+    || houses.some(([hx, hz]) => x > hx - 2.2 - r && x < hx + 2.2 + r && z > hz - 2 - r && z < hz + 2.6 + r)
+    || neighbors.some(b => inBox(x, z, b, r + 0.6))
     || o.city.some(id => { const sp = spotOf(id); return !!sp && near(x, z, sp.x, sp.z, sp.r + r + 0.5); })
     || (has(6) && near(x, z, 20.5, 4.5, r + 1.6))
     || (has(7) && Math.abs(x - POND.x) < 1.6 + r && z > POND.z)
     || (has(11) && near(x, z, -16, -9.5, r + 1.8));
-  addIslandDetail(g, { theme: t, has, blocked, anims });
+  addIslandDetail(g, { theme: t, has, blocked, anims, plain: PLAIN });
 
   // ---- Floating rocks around the island ----
   for (const [i, k] of ROCKS.entries()) {
@@ -294,7 +300,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   // ---- Upgrades: street lights and cars, Ferris wheel, balloons ----
   {
     // A couple of cars from the start; the traffic upgrade fills the streets.
-    const cars = CARS.slice(0, has(3) ? CARS.length : 2).map(c => {
+    const cars = (PLAIN ? [] : CARS.slice(0, has(3) ? CARS.length : 2)).map(c => {
       const car = new THREE.Group();
       car.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.8).translate(0, 0.35, 0), std(c.color as unknown as number[], { roughness: 0.4, metalness: 0.3 })));
       car.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.35, 0.7).translate(-0.1, 0.72, 0), std("#bfe3ff", { roughness: 0.1 })));
@@ -454,7 +460,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   }
 
   // ---- City buildings ----
-  for (const id of o.city) {
+  for (const id of PLAIN ? [] : o.city) {
     const s = spotOf(id);
     if (!s) continue;
     const b = cityBuilding(id, anims, s);
@@ -463,7 +469,7 @@ export function buildIsland(o: IslandOptions): { group: THREE.Group; anim: Islan
   }
 
   // ---- People, a boat and birds ----
-  anims.push(addCityLife(g));
+  if (!PLAIN) anims.push(addCityLife(g));
 
   // Things that move as one (the Ferris wheel, balloons, cars, floating rocks...) are
   // merged inside themselves first, then everything still is merged into the island.

@@ -2,7 +2,7 @@
 # The free plan includes 500 build minutes a month on Macs. Setup is in STORES.md.
 workflows:
   ios-testflight:
-    name: Buildaroo iPhone app → TestFlight
+    name: Skyrise iPhone app → TestFlight
     max_build_duration: 60
     instance_type: mac_mini_m2
     # Builds start by themselves whenever the app's build branch gets new work.
@@ -18,7 +18,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.bigbrucestudios.buildaroo
+        bundle_identifier: com.bigbrucestudios.skyrise
       node: 22
       xcode: latest
       cocoapods: default

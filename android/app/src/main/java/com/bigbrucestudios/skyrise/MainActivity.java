@@ -1,4 +1,4 @@
-package com.bigbrucestudios.buildaroo;
+package com.bigbrucestudios.skyrise;
 
 import com.getcapacitor.BridgeActivity;
 

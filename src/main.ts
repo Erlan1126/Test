@@ -10,7 +10,7 @@ import { toast } from "./ui/dom";
 import { hallBanner } from "./ui/mayor";
 import { seasonDebug } from "./data/season";
 
-// The tower game on its own keeps the Skyrise name; the city game is Buildaroo.
+// Skyrise edition: the page title and splash say Skyrise.
 if (EDITION === "skyrise") {
   document.title = "Skyrise";
   const logo = document.querySelector(".splash-logo");
