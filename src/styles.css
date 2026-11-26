@@ -4218,6 +4218,11 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tcy-card .bc-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 #tcy-card .bc-title small { font: 800 10px/1 system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tcy-card .bc-title b { font: 400 18px/1.1 var(--display); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* (On a narrow phone the name wraps to a second line instead of "COFFEE …".) */
+@media (max-width: 400px) {
+  #tcy-card .bc-hero { gap: 8px; }
+  #tcy-card .bc-title b { font-size: 16px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
+}
 #tcy-card .bc-title .card-stars { display: inline-flex; gap: 3px; margin-top: 2px; }
 #tcy-card .bc-title .card-stars i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
 #tcy-card .bc-title .card-stars i.on { background: #ffe066; box-shadow: 0 0 6px rgba(255, 224, 102, 0.9); }
@@ -4291,6 +4296,12 @@ body:has(#tcy-card:not([hidden])) #toast { top: calc(env(safe-area-inset-top, 0p
 #tycity .tcy-next .next-ico { width: 30px !important; height: 30px !important; border-radius: 50% !important; font-size: 16px !important; }
 #tycity .tcy-next small, #tycity .tcy-next em, #tycity .tcy-next .next-bar { display: none !important; }
 #tycity .tcy-next b { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* (On a narrow phone, like the iPhone SE, the step wraps to two lines instead of being cut
+   off: "Tap the Coffee Cart to sell yo…" hid the very thing a new player has to do.) */
+@media (max-width: 400px) {
+  #tycity .tcy-next { border-radius: 24px !important; }
+  #tycity .tcy-next b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.2 !important; }
+}
 #tycity .tcy-next .next-go { font-size: 20px !important; }
 body.town-panning #tycity .tcy-next { opacity: 0; pointer-events: none; }
 @keyframes next-pill-in { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.9); } to { opacity: 1; transform: translateX(-50%); } }

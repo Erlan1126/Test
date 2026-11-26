@@ -1006,7 +1006,14 @@ export class TycoonUI {
     if (s.cafe.terrace === 0 && s.cafe.starter && s.cafe.moved) {
       // (City first: the terrace is the player's first build, with a builder and a timer.)
       const job = buildOf(s, "terrace", "");
-      if (job) return { text: t("☕ Building the café terrace…"), sub: t("{t} left · tap to finish now for 💎{n}", { t: fmtLeft(job.end - Date.now()), n: finishPrice(job.end - Date.now()) }), pct: (Date.now() - job.start) / Math.max(1, job.end - job.start), tone: "grow", act: () => this.finishBuild("terrace") };
+      // (The terrace takes 20 s and a new player has no crystals yet: a tap on the pill, which
+      // has been selling coffee until now, keeps selling coffee while it builds, instead of
+      // opening the crystal shop in the middle of the first minutes.)
+      if (job) {
+        const left = job.end - Date.now(), price = finishPrice(left), canFinish = s.crystals >= price;
+        return { text: t("☕ Building the café terrace…"), sub: canFinish ? t("{t} left · tap to finish now for 💎{n}", { t: fmtLeft(left), n: price }) : t("{t} left · tap the Coffee Cart to sell", { t: fmtLeft(left) }), pct: (Date.now() - job.start) / Math.max(1, job.end - job.start), tone: "grow",
+          act: canFinish ? () => this.finishBuild("terrace") : () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
+      }
       // (Saving up for it: keep selling coffee, and the pill sells one each tap too.)
       if (HAS_CITY && s.tycoon.coins < TERRACE_PRICE) return { text: t("Sell coffee to save {n} for a café terrace", { n: coins(TERRACE_PRICE) }), sub: t("{have} of {n} · tap the Coffee Cart to sell", { have: coins(s.tycoon.coins), n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "save", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
       if (HAS_CITY) return { text: t("Build a café terrace"), sub: t("Your neighbor would like to sit down · {n}", { n: coins(TERRACE_PRICE) }), pct: Math.min(1, s.tycoon.coins / TERRACE_PRICE), tone: "grow", act: () => { this.startCityBuild("terrace"); } };
@@ -1295,6 +1302,24 @@ export class TycoonUI {
   private tagSize = new WeakMap<HTMLElement, { w: number; h: number }>();
   /** How far each bubble is lifted out of the way of the ones in front (eased). */
   private tagLift = new WeakMap<HTMLElement, number>();
+  /** Where the top bar and its chips end (px from the top), measured at most twice a second. */
+  private hudBottom = 0;
+  private hudAt = 0;
+  private tagTop(): number {
+    const now = performance.now();
+    if (now - this.hudAt > 500) {
+      this.hudAt = now;
+      let b = 0;
+      // (The City Hall badge's name and goals hang below the bar, so its parts count too.)
+      for (const el of document.querySelectorAll("#tcy-top, #tcy-top > *, #tcy-goal > *, #tcy-events")) { const r = el.getBoundingClientRect(); if (r.height) b = Math.max(b, r.bottom); }
+      this.hudBottom = b + 6;
+      const card = $("tcy-card");
+      this.cardTop = card.hidden ? Infinity : card.getBoundingClientRect().top || Infinity;
+    }
+    return this.hudBottom;
+  }
+  /** Where an open building card starts (Infinity with none), measured with the top bar. */
+  private cardTop = Infinity;
   private placeTags(): void {
     // (All reads first, then all writes: reading a size after moving a tag would make the
     // browser lay the page out again for every tag, every frame, which is what made dragging
@@ -1320,7 +1345,7 @@ export class TycoonUI {
     // With a building's card open, only its own bubble stays: the rest step aside, so
     // nothing piles up round the building the camera is looking at.
     const focus = !!(this.selected || this.selectedProp || this.selectedSight);
-    for (const it of items) it.tag.classList.toggle("tag-off", focus && !it.tag.classList.contains("sel"));
+    for (const it of items) if (!it.tag.classList.contains("sel")) it.tag.classList.toggle("tag-off", focus);
     // Front buildings keep their spot; a bubble that would sit on another moves up a little.
     items.sort((a, b) => b.base - a.base);
     // (Spaced by each bubble's own height, so the small pins stack close, not in a tall column.)
@@ -1349,6 +1374,12 @@ export class TycoonUI {
       const outside = it.x < -4 || it.x > window.innerWidth + 4 || it.y - it.h < 118 || it.y > window.innerHeight - 178;
       it.tag.classList.toggle("tag-out", !keep && outside);
       { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
+      // (A bubble that has to stay, like "Your first building!" while the camera frames it,
+      // stays below the top bar and its chips: on a short screen it slid in under them.)
+      if (keep && !it.tag.classList.contains("land-sale")) it.y = Math.max(this.tagTop() + it.h, it.y);
+      // (On a short screen the building's own bubble can end up half under its open card:
+      // it steps aside instead of peeking out from behind it.)
+      if (it.tag.classList.contains("sel")) it.tag.classList.toggle("tag-off", focus && it.y > this.cardTop + 4);
       if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";
