@@ -2444,4 +2444,5 @@ export const FR: Record<string, string> = {
   "Restore purchases": "Restaurer les achats",
   "Brings back VIP after reinstalling or on a new phone": "Récupère le VIP après une réinstallation ou sur un nouveau téléphone",
   "Help and support": "Aide et assistance",
+  "{t} left · tap to finish it now, free this time!": "Encore {t} · touche pour la terminer maintenant, gratuit cette fois !",
 };

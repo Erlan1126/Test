@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultSave, normalize } from "../src/logic/save";
-import { builderCount, buildTime, completeBuilds, finishNow, finishPrice, freeBuilders, hireBuilder, startBuild, TERRACE_PRICE, BUILDER_PRICES } from "../src/logic/builds";
+import { builderCount, buildTime, completeBuilds, finishCost, finishNow, finishPrice, freeBuilders, hireBuilder, startBuild, TERRACE_PRICE, BUILDER_PRICES } from "../src/logic/builds";
 import { officeFloors, OFFICE_BLOCK_FLOORS } from "../src/logic/tycoon";
 import { startingBuilding } from "../src/logic/cafe";
 
@@ -34,12 +34,27 @@ describe("builders and build time", () => {
     expect(s.tycoon.coins).toBe(100 - TERRACE_PRICE);
     expect(finishPrice(10e3)).toBe(1);
     expect(finishPrice(60 * 60e3)).toBe(30);
+    s.tycoon.built = 1; // (not the first build: that one is free, below)
     s.crystals = 0;
     expect(finishNow(s, "terrace", "", T0)).toBe("short");
     s.crystals = 5;
     expect(finishNow(s, "terrace", "", T0)).toBe("ok");
     expect(s.cafe.terrace).toBe(1); // ready to open
     expect(s.crystals).toBe(4);
+  });
+
+  it("the very first build finishes free, so a new player learns it without a shop page", () => {
+    const s = defaultSave();
+    s.tycoon.coins = 100;
+    s.cafe.starter = startingBuilding();
+    expect(startBuild(s, "terrace", "", T0)).toBe("ok");
+    s.crystals = 0;
+    expect(finishCost(s, 20e3)).toBe(0);
+    expect(finishNow(s, "terrace", "", T0)).toBe("ok");
+    expect(s.crystals).toBe(0);
+    expect(s.cafe.terrace).toBe(1);
+    expect(s.tycoon.built).toBe(1);
+    expect(finishCost(s, 20e3)).toBe(1); // from now on, crystals as usual
   });
 
   it("more builders can be hired with crystals, and builds survive a save", () => {
