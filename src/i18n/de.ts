@@ -2444,7 +2444,6 @@ export const DE: Record<string, string> = {
   "Restore purchases": "Käufe wiederherstellen",
   "Brings back VIP after reinstalling or on a new phone": "Holt VIP nach einer Neuinstallation oder auf einem neuen Handy zurück",
   "Help and support": "Hilfe und Support",
-  "{t} left · tap to finish it now, free this time!": "Noch {t} · tippe, um sie jetzt fertigzustellen, diesmal gratis!",
   "Save {n} for your block's next project": "Spare {n} für das nächste Projekt in deinem Block",
   "{have} of {n} · a flower market or a playground": "{have} von {n} · ein Blumenmarkt oder ein Spielplatz",
 };
