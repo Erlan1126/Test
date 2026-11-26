@@ -267,6 +267,15 @@ const SW2D = (() => {
         if (k < 1) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.sin(k * Math.PI) * 0.6; const yy = bot - (bot - top) * k; ctx.drawImage(glow([255, 236, 200]), x0, yy - 12, x1 - x0, 24); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
       }
       if (b.pad) { const hit = Math.max(0, 1 - (t - (b.padHit ?? -9)) * 3), pw2 = (x1 - x0) * 0.7, px5 = (x0 + x1) / 2; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55 + 0.25 * Math.sin(t * 6 + b.n) + hit * 0.5; ctx.drawImage(glow([255, 90, 210]), px5 - pw2 / 2 - s, top - 3 - 1.6 * s, pw2 + 2 * s, 2.6 * s); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#ff7ad9"; ctx.fillRect(px5 - pw2 / 2, top - 3 - 0.35 * s - hit * 0.4 * s, pw2, 0.3 * s); ctx.fillStyle = "#fff"; ctx.font = `800 ${Math.round(0.6 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillText("▲ ▲ ▲", px5, top - 3 - 0.8 * s); }
+      // Birds on some rooftops: they sit along the edge and scatter into the sky when you swing close.
+      if (b.n % 3 === 1 && b.h > 9 && !R.attract) { const gull = runnerTheme(b.x0).water, nb2 = 3 + (b.n % 3);
+        if (b.birdT == null && Math.abs(R.px - (b.x0 + b.x1) / 2) < 9 && R.py < b.h + 12) b.birdT = t;
+        ctx.strokeStyle = gull ? "#e8eef6" : dayImg ? "#2a2e38" : "#9aa3b8"; ctx.lineWidth = Math.max(1.5, 0.14 * s); ctx.lineCap = "round";
+        for (let q = 0; q < nb2; q++) { const bx4 = b.x0 + (b.x1 - b.x0) * (0.2 + q * 0.6 / nb2), fl = b.birdT == null ? 0 : t - b.birdT; let wx = bx4, wy = b.h + 0.5;
+          if (fl > 0) { wx -= fl * (5 + q * 1.3); wy += fl * (6 + q) + Math.sin(fl * 3 + q) * 0.5; if (fl > 4) continue; }
+          const x5 = X(wx), y5 = Y(wy), flap = fl > 0 ? Math.sin(fl * 22 + q * 2) : 0, sp = 0.6 * s;
+          if (fl <= 0) { ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.ellipse(x5, y5 - sp * 0.4, sp * 0.55, sp * 0.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(x5 + sp * 0.45, y5 - sp * 0.85, sp * 0.25, 0, Math.PI * 2); ctx.fill(); }
+          else { ctx.beginPath(); ctx.moveTo(x5 - sp, y5 - flap * sp * 0.6); ctx.quadraticCurveTo(x5 - sp * 0.4, y5 - sp * 0.4, x5, y5); ctx.quadraticCurveTo(x5 + sp * 0.4, y5 - sp * 0.4, x5 + sp, y5 - flap * sp * 0.6); ctx.stroke(); } } }
       // District rooftops.
       if (b.kind === "shop") { ctx.fillStyle = "#7a2f22"; ctx.fillRect(x0 - 0.3 * s, top - 3 - 0.45 * s, x1 - x0 + 0.6 * s, 0.6 * s); ctx.fillStyle = "#5a2018"; for (let q = x0 - 0.3 * s; q < x1 + 0.3 * s; q += 0.8 * s) { ctx.beginPath(); ctx.arc(q + 0.4 * s, top - 3 + 0.15 * s, 0.4 * s, 0, Math.PI); ctx.fill(); }
         const nb = R.blds[R.blds.indexOf(b) + 1]; if (nb && !nb.tree && nb.x0 - b.x1 < 16 && Math.abs(nb.h - b.h) < 8) { const ax2 = X(b.x1), ay2 = Y(b.h + 2.2), bx2 = X(nb.x0), by2 = Y(nb.h + 2.2), sag = 1.6 * s; ctx.strokeStyle = "rgba(60,40,30,0.9)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(ax2, ay2); ctx.quadraticCurveTo((ax2 + bx2) / 2, (ay2 + by2) / 2 + sag * 2, bx2, by2); ctx.stroke();
