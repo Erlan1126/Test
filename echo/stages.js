@@ -51,6 +51,15 @@ const STAGE_PEOPLE = [
   ["The whole city", "Dawn. Every window is lit. You did this."],
 ];
 // The daily stage: a different neighbour each day, the same one for everyone.
+// Today's rule for the daily stage (the same for everyone, a different one each day).
+const DAILY_MODS = [
+  { id: "moon", name: "Moon day", text: "Lighter gravity: long, floaty jumps" },
+  { id: "spring", name: "Spring day", text: "Half the anchors are springs" },
+  { id: "gold", name: "Gold rush", text: "Gold anchors everywhere" },
+  { id: "rings", name: "Ring day", text: "A boost ring in every gap" },
+  { id: "fast", name: "Fast night", text: "The dark is faster, every light counts double" },
+];
+const dailyMod = () => DAILY_MODS[dayNumber() % DAILY_MODS.length];
 const DAILY_PEOPLE = [["Felix", "He'd been holding a candle for hours."], ["Hana", "Her cat finally came out from under the bed."], ["Mr. Duarte", "He reads the letter he'd been saving."], ["Priya", "She can see her plants are okay."], ["Gus", "His model train circles the window again."], ["Odette", "She plays one more song on the piano."], ["Tariq", "He finds his daughter's lost earring."], ["Lou", "The kettle's on. Stay a minute?"], ["Ayla", "She writes the last page of her diary."], ["Bram", "His telescope points at you now."], ["Cleo", "She paints the sunrise from memory."], ["Nico", "His aquarium shimmers blue again."], ["Saoirse", "She reads her grandmother's recipe."], ["Wes", "He finally finds the light switch. It works."]];
 const stagePerson = n => n === 0 ? DAILY_PEOPLE[dayNumber() % DAILY_PEOPLE.length] : STAGE_PEOPLE[(n - 1) % STAGE_PEOPLE.length];
 const stageChapter = n => STAGE_CHAPTERS[Math.min(STAGE_CHAPTERS.length - 1, Math.floor((n - 1) / 10))];
