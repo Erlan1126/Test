@@ -59,6 +59,10 @@ export interface BizLive {
   /** A building that just sold or grew (it bounces), and when. */
   pulse?: string;
   pulseAt?: number;
+  /** A business just levelled up (sparkles rise round it), and when; big for a milestone. */
+  boost?: string;
+  boostAt?: number;
+  boostBig?: boolean;
   rush: string;
   /** A golden customer waiting outside this business. */
   golden?: string;
@@ -2138,6 +2142,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const rising: { lg: THREE.Group; puff: THREE.MeshBasicMaterial; glow: THREE.MeshBasicMaterial; puffMesh: THREE.Mesh; at: number }[] = [];
   const doors = new Map<string, THREE.Vector3>();
   const lotGroups = new Map<string, THREE.Group>();
+  // (The level-up sparkles: shared shapes, one short-lived group per level-up.)
+  const boostRingGeo = new THREE.RingGeometry(0.95, 1.2, 40).rotateX(-Math.PI / 2);
+  const sparkGeo = new THREE.OctahedronGeometry(0.12, 0);
+  const boostFx: { o: THREE.Group; rings: THREE.Mesh[]; sparks: THREE.Mesh[]; mats: THREE.MeshBasicMaterial[]; at: number; big: boolean; par: THREE.Group }[] = [];
+  let boostSeen = 0;
   const tops: number[] = [];
   // ---- Cars: each one a single mesh with painted colors (one draw per car) ----
   const carM = own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.15 }));
@@ -4420,6 +4429,36 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         r.puff.opacity = Math.max(0, 0.7 * (1 - k / 1.6));
         r.puffMesh.scale.setScalar(1 + k * 0.8);
         r.glow.opacity = Math.max(0, Math.sin(Math.min(1, k / 1.4) * Math.PI) * 0.35);
+      }
+      // A business that just levelled up: a ring of light spreads round it and sparkles spiral
+      // up (gold; a milestone or a new business gets two rings and twice the sparkles).
+      if (live.boostAt && live.boostAt !== boostSeen) {
+        boostSeen = live.boostAt;
+        const lg = lotGroups.get(live.boost ?? "");
+        if (lg && Date.now() - live.boostAt < 1000) {
+          const big = !!live.boostBig, o = new THREE.Group(), mats: THREE.MeshBasicMaterial[] = [];
+          const mk = (c: number) => { const m = new THREE.MeshBasicMaterial({ color: c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); mats.push(m); return m; };
+          const rings = (big ? [0xffd23f, 0xb48cff] : [0xffd23f]).map((c, i) => { const r = new THREE.Mesh(boostRingGeo, mk(c)); r.position.y = 0.28 + i * 0.02; o.add(r); return r; });
+          const sm = mk(big ? 0xfff0a0 : 0xffe27a), sm2 = big ? mk(0xd8c0ff) : sm;
+          const sparks = Array.from({ length: big ? 16 : 8 }, (_, i) => { const sp = new THREE.Mesh(sparkGeo, i % 2 ? sm2 : sm); o.add(sp); return sp; });
+          lg.add(o);
+          boostFx.push({ o, rings, sparks, mats, at: t, big, par: lg });
+        }
+      }
+      for (let i = boostFx.length - 1; i >= 0; i--) {
+        const f = boostFx[i], k = (t - f.at) / (f.big ? 1.3 : 0.9);
+        if (k >= 1) { f.par.remove(f.o); f.mats.forEach(m => m.dispose()); boostFx.splice(i, 1); continue; }
+        g.userData.moving = true;
+        f.rings.forEach((r, j) => { const kk = Math.max(0, k * 1.25 - j * 0.25); r.scale.setScalar(0.6 + kk * 2.6); (r.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.9 * (1 - kk)); });
+        // (The parent squashes as it bounces; undo it so the sparkles keep their shape.)
+        const sy = 1 / (f.par.scale.y || 1);
+        f.sparks.forEach((sp, j) => {
+          const n = f.sparks.length, a = (j / n) * Math.PI * 2 + k * 3.2, rad = 1.1 + (j % 3) * 0.35 + k * 0.6, h = 0.4 + k * (2.2 + (j % 4) * 0.45);
+          sp.position.set(Math.cos(a) * rad, h * sy, Math.sin(a) * rad);
+          sp.rotation.y = t * 6 + j;
+          sp.scale.setScalar(Math.max(0.01, (1 - k) * (1 + Math.sin(k * 9 + j) * 0.3)));
+        });
+        f.mats.forEach(m => { if (!f.rings.some(r => r.material === m)) m.opacity = Math.min(1, (1 - k) * 1.6); });
       }
       // A building that just sold bounces.
       const now = Date.now();

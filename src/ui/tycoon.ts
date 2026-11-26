@@ -772,12 +772,15 @@ export class TycoonUI {
     this.render();
   }
 
-  liveState(): { bottle: boolean; frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; selSight: string; building: { kind: string; id: string }[]; pulse: string; pulseAt: number; block: BizBlock } {
+  liveState(): { bottle: boolean; frame: boolean; golden: string; rush: string; vip: string; critic: string; power: string; sel: string; selHome: string; selSight: string; building: { kind: string; id: string }[]; pulse: string; pulseAt: number; boost: string; boostAt: number; boostBig: boolean; block: BizBlock } {
     const now = Date.now(), s = this.save;
     return {
       bottle: this.bottleOn(),
       pulse: this.pulse.id,
       pulseAt: this.pulse.at,
+      boost: this.boost.id,
+      boostAt: this.boost.at,
+      boostBig: this.boost.big,
       sel: this.inCity ? this.selected : "",
       // (A home tapped before homes can be upgraded shows as a sight: "h:" and its key.)
       selHome: this.inCity ? this.selectedProp || (this.selectedSight.startsWith("h:") ? this.selectedSight.slice(2) : "") : "",
@@ -1758,6 +1761,8 @@ export class TycoonUI {
     el.classList.add("nope");
     vibrate(this.save.settings.vibrate, [8, 40, 8]);
   }
+  /** A business just levelled up: sparkles rise round it in town (big for milestones). */
+  private boost = { id: "", at: 0, big: false };
   /** Quick buys in a row climb the scale, like a till ringing up faster and faster. */
   private buyCombo = 0;
   private buyAt = 0;
@@ -2987,6 +2992,7 @@ export class TycoonUI {
         // (A light tick for every level; a firmer one for the big moments.)
         vibrate(s.settings.vibrate, crossed || !owned ? [15, 30, 15] : 8);
         burst(el, crossed ? 20 : 8);
+        this.boost = { id: b.id, at: nowB, big: crossed || !owned || (owned && !!readyStage(s, b.id) && !wasReady) };
         // The new level floats up off the button and off the building in town.
         if (owned) {
           const label = got > 1 ? t("+{n} levels", { n: fmt(got) }) : t("Level {n}", { n: fmt(lv + got) });
@@ -3002,7 +3008,12 @@ export class TycoonUI {
           fireworks(1, () => this.host.sound.firework());
         }
         if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(flyFrom as HTMLElement); }
-        else if (crossed) { toast(t("{name} now runs twice as fast!", { name })); fireworks(2, () => this.host.sound.firework()); }
+        else if (crossed) {
+          // A speed milestone is a big moment: a banner across the town, fireworks and a cheer.
+          cityBanner(name, t("Level {n}", { n: fmt(lv + got) }), t("Now sells twice as fast!"), 1800);
+          this.host.sound.milestone();
+          fireworks(2, () => this.host.sound.firework());
+        }
         this.checkRank();
         this.checkGrow();
         this.host.persist();
@@ -3412,6 +3423,8 @@ export class TycoonUI {
     this.done();
   }
 
+  /** The City Hall goals done when last shown (null until the first look, which says nothing). */
+  private goalsSeen: { ci: number; got: number } | null = null;
   /** The game's purpose, always on screen: grow Skyhaven to the Sky Capital, and what the
    *  next rank brings to the town. */
   private renderGoal(): void {
@@ -3423,6 +3436,17 @@ export class TycoonUI {
       // with the goals of the next level (the town's rank comes with the City Hall).
       const ci = chapterIndex(s), ch = CHAPTERS[ci], got = ch ? ch.goals.filter(g => goalDone(s, g)).length : 0, all = ch ? ch.goals.length : 1;
       const hv = `h${hallLevel(s)}|${got}|${rk}|${getLang()}|${s.cityName}`;
+      // A City Hall goal just got done: say so, and the ring gives a pulse (all of them: the
+      // City Hall is ready to level up, with fireworks).
+      const was = this.goalsSeen;
+      this.goalsSeen = { ci, got };
+      if (ch && was && was.ci === ci && got > was.got) {
+        this.host.sound.star();
+        vibrate(s.settings.vibrate, [10, 30, 10]);
+        if (got >= all) { toast(t("🏛️ Every City Hall goal done! Level up the City Hall")); fireworks(1, () => this.host.sound.firework()); }
+        else toast(t("✅ City Hall goal done: {n}/{total}", { n: got, total: all }));
+        requestAnimationFrame(() => { const r = el.querySelector(".tg-ring"); if (r) { r.classList.remove("tg-pop"); void (r as HTMLElement).offsetWidth; r.classList.add("tg-pop"); } });
+      }
       if (el.dataset.v === hv) return;
       el.dataset.v = hv;
       el.innerHTML = `<span class="tg-ring" style="--k:${((ch ? got / all : 1) * 360).toFixed(1)}deg"><span class="tg-ico">${iconSvg("building")}</span><b class="tg-lv">${hallLevel(s)}</b></span>`

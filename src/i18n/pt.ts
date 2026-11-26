@@ -2451,4 +2451,7 @@ export const PT: Record<string, string> = {
   "Start a New Era": "Começar uma Nova Era",
   "Not yet": "Ainda não",
   "+{n} levels": "+{n} níveis",
+  "Now sells twice as fast!": "Agora vende duas vezes mais rápido!",
+  "🏛️ Every City Hall goal done! Level up the City Hall": "🏛️ Todas as metas da Prefeitura concluídas! Suba o nível da Prefeitura",
+  "✅ City Hall goal done: {n}/{total}": "✅ Meta da Prefeitura concluída: {n}/{total}",
 };
