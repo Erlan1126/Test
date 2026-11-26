@@ -1,6 +1,7 @@
 // Winter Lights in the town (data/season.ts): a holiday tree with colored bulbs and a star,
 // and strings of bulbs on the street lamps. The bulbs twinkle, brighter after dark.
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 const BULBS = ["#ff4d4d", "#ffd23a", "#4fd1ff", "#5ee07a", "#ff8ad8", "#ffffff"];
 
@@ -176,5 +177,66 @@ export function nightMarket(g: THREE.Object3D, x: number, y: number, z: number, 
   return (t, night) => {
     M.visible = night > 0.45;
     if (M.visible) lamp.emissiveIntensity = 0.8 + night * 1.4 + Math.sin(t * 3) * 0.15;
+  };
+}
+
+/** Snowmen on a few empty lawns, out only on a snow day (`snow` near 1): they pop up once the
+ *  snow has settled and melt away after. Four instanced draws however many there are, and
+ *  their matrices are only rewritten while they grow or shrink. Returns the tick. */
+export function snowmen(g: THREE.Object3D, spots: [number, number, number][], own: Own): (snow: number, dt: number) => void {
+  if (!spots.length) return () => {};
+  const n = spots.length;
+  const std = (c: string, rough = 0.8) => { const m = own(new THREE.MeshStandardMaterial({ color: c, roughness: rough })); m.userData.noSnow = true; return m; };
+  const merge = (list: THREE.BufferGeometry[]) => {
+    const flat = list.map(q => { const f = q.index ? q.toNonIndexed() : q; f.deleteAttribute("uv"); return f; });
+    const geo = mergeGeometries(flat)!;
+    list.forEach(q => q.dispose()); flat.forEach(q => q.dispose());
+    return geo;
+  };
+  const body = merge([
+    new THREE.SphereGeometry(0.2, 10, 8).translate(0, 0.17, 0),
+    new THREE.SphereGeometry(0.145, 10, 8).translate(0, 0.43, 0),
+    new THREE.SphereGeometry(0.1, 10, 8).translate(0, 0.63, 0),
+  ]);
+  const hat = merge([
+    new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12).translate(0, 0.7, 0),
+    new THREE.CylinderGeometry(0.075, 0.075, 0.12, 12).translate(0, 0.77, 0),
+    // (Coal eyes and buttons in the same dark draw.)
+    new THREE.SphereGeometry(0.016, 5, 4).translate(-0.035, 0.66, 0.088),
+    new THREE.SphereGeometry(0.016, 5, 4).translate(0.035, 0.66, 0.088),
+    new THREE.SphereGeometry(0.02, 5, 4).translate(0, 0.46, 0.142),
+    new THREE.SphereGeometry(0.02, 5, 4).translate(0, 0.38, 0.14),
+  ]);
+  const nose = new THREE.ConeGeometry(0.025, 0.12, 6).rotateX(Math.PI / 2).translate(0, 0.62, 0.15);
+  const scarf = new THREE.TorusGeometry(0.1, 0.03, 6, 14).rotateX(Math.PI / 2).translate(0, 0.54, 0);
+  const parts: [THREE.BufferGeometry, THREE.Material][] = [[body, std("#f6f9ff", 0.9)], [hat, std("#26232e", 0.6)], [nose, std("#ff8a2a", 0.6)], [scarf, std("#e8334f", 0.8)]];
+  const ims = parts.map(([geo, m]) => {
+    // (Turned to face the camera, which looks from +x +z.)
+    const im = new THREE.InstancedMesh(geo.rotateY(Math.PI / 4), m, n);
+    im.userData.dynamic = true;
+    im.frustumCulled = false;
+    im.castShadow = true;
+    im.visible = false;
+    g.add(im);
+    return im;
+  });
+  const m4 = new THREE.Matrix4();
+  let k = 0, shown = -1;
+  return (snow, dt) => {
+    const want = snow > 0.85 ? 1 : 0;
+    k += Math.sign(want - k) * Math.min(Math.abs(want - k), dt * 1.5);
+    if (k === shown) return;
+    shown = k;
+    const on = k > 0.001;
+    for (const im of ims) im.visible = on;
+    if (!on) return;
+    // (A little overshoot as they pop up.)
+    const e = k < 1 ? k * (1 + 0.25 * Math.sin(k * Math.PI)) : 1;
+    for (let i = 0; i < n; i++) {
+      const [x, y, z] = spots[i], s = e * (0.9 + (i % 3) * 0.1);
+      m4.makeScale(s, s, s).setPosition(x, y, z);
+      for (const im of ims) im.setMatrixAt(i, m4);
+    }
+    for (const im of ims) im.instanceMatrix.needsUpdate = true;
   };
 }

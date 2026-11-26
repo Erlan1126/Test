@@ -4659,3 +4659,16 @@ body.tabs-open #tycity .photo-btn, body.town-panning #tycity .photo-btn, #tycity
 @media (max-width: 380px) { #photo-bar .pb-filters { justify-content: flex-start; } #photo-bar .pb-filters button { padding: 6px 9px; font-size: 12px; } }
 #photo-vig { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 #photo-vig[hidden] { display: none; }
+
+/* The weather's moments in the town (ui/weathermoments.ts): the rainbow's pot of gold, and
+   the snow day's badge. */
+.tcy-weather { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.tcy-weather [hidden] { display: none !important; }
+.tcy-weather .wx-gold { position: absolute; left: 15%; top: 21%; pointer-events: auto; width: 58px; height: 58px; margin: -29px 0 0 -29px; border: 3px solid #ffe27a; border-radius: 50%;
+  padding: 0; font-size: 30px; line-height: 52px; background: radial-gradient(circle at 35% 30%, #fff6c8, #ffc93c 60%, #e89a1a); cursor: pointer;
+  box-shadow: 0 0 0 6px rgba(255, 226, 122, 0.35), 0 8px 18px rgba(80, 40, 0, 0.35); animation: wx-bob 1.6s ease-in-out infinite; }
+.tcy-weather .wx-snow { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 112px); transform: translateX(-50%); padding: 5px 12px; border-radius: 999px;
+  font: 700 13px/1.2 var(--ui-font, system-ui, sans-serif); color: #1c3a66; background: rgba(240, 248, 255, 0.92); box-shadow: 0 4px 12px rgba(30, 60, 110, 0.25); white-space: nowrap; }
+@keyframes wx-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .tcy-weather .wx-gold { animation: none; } }
+body.tabs-open .tcy-weather { display: none; }

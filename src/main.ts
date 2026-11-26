@@ -17,13 +17,15 @@ if (EDITION === "skyrise") {
   if (logo) logo.textContent = "SKYRISE";
 }
 
-// Testing: ?debug&season=winter&weather=snow forces Winter Lights and the weather.
+// Testing: ?debug&season=winter&weather=snow (or rain, clear, rainbow) forces Winter Lights and the weather.
 {
   const q = new URLSearchParams(location.search);
   if (q.has("debug")) {
     const sn = q.get("season"), w = q.get("weather");
     if (sn !== null) seasonDebug.season = (["spring", "summer", "halloween", "winter"].includes(sn) ? sn : "") as typeof seasonDebug.season;
     if (w === "snow" || w === "rain" || w === "clear") seasonDebug.weather = w;
+    // (weather=rainbow: a clear sky with the rainbow that follows rain.)
+    if (w === "rainbow") { seasonDebug.weather = "clear"; seasonDebug.rainbow = true; }
   }
 }
 

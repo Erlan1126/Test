@@ -16,6 +16,7 @@ import { gameCenterCity } from "../gamecenter";
 import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
 import { pickTalk } from "../data/talk";
 import { earn } from "../logic/tycoon";
+import { WeatherMoments } from "./weathermoments";
 import { citySeason, isRushHour, isWeekendNight, seasonDaysLeft, seasonInfo } from "../data/season";
 import { buySeasonPass, claimSP, SEASON_PAINT, seasonPass, seasonPoints, SP_FREE, SP_PREMIUM, SP_PRICE, SP_TIERS, spReady, spReward, spTier, type SPReward } from "../logic/seasonpass";
 import { bizColors, PAINTS, paintById, ownsPaint, setPaint } from "../logic/paint";
@@ -367,6 +368,8 @@ export class TycoonUI {
 
   /** In the business district (the 3D city), rather than the home screen. */
   inCity = false;
+  /** The rainbow after rain and the snow day (ui/weathermoments.ts). */
+  private readonly weather = new WeatherMoments(() => ({ save: this.save, sound: this.host.sound, persist: () => this.host.persist() }));
   /** The building whose card is open in the city. */
   private selected = "";
   private photo: PhotoMode | null = null;
@@ -809,6 +812,7 @@ export class TycoonUI {
     for (const id of ["ty-coins", "tcy-coins"]) { const el = $(id); if (el.textContent !== shown) el.textContent = shown; }
     if (!$("earnings").hidden && now - this.earnAt > 900) { this.earnAt = now; this.renderEarnings(); }
     this.reactions(now);
+    if (HAS_CITY) this.weather.tick(now, this.inCity);
     for (const b of BUSINESSES) {
       if (levelOf(s, b.id) === 0) continue;
       const id = b.id, p = progressOf(s, id, now);

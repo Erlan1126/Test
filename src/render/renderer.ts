@@ -81,6 +81,8 @@ export class Renderer {
   readonly scenery = new Scenery();
   readonly traffic = new SkyTraffic();
   readonly weather = new Weather();
+  /** The town's rainbow after rain (only the 3D town draws it). */
+  rainbow = false;
   private readonly skyline = new Skyline();
   private readonly ctx: CanvasRenderingContext2D;
   private readonly env: Env = { nf: 0, skyTop: [0, 0, 0], skyBot: [0, 0, 0], climb: 0, time: 0, low: false, post: false };

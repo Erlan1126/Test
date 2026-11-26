@@ -2429,4 +2429,10 @@ export const DE: Record<string, string> = {
   "Filter": "Filter",
   "Photos can't be taken on this device": "Auf diesem Gerät können keine Fotos gemacht werden",
   "📷 First photo today! +{n} 💎": "📷 Erstes Foto heute! +{n} 💎",
+  // Weather moments: the rainbow after rain and the snow day.
+  "❄️ Snow day! Cafés and bakeries earn ×{n} while it snows": "❄️ Schneetag! Cafés und Bäckereien verdienen ×{n}, solange es schneit",
+  "🌈 A rainbow! Tap the pot of gold under it for a bonus": "🌈 Ein Regenbogen! Tippe auf den Goldtopf darunter für einen Bonus",
+  "The rainbow's pot of gold: tap for a bonus": "Der Goldtopf am Regenbogen: tippen für einen Bonus",
+  "❄️ Snow day: cafés ×{n}": "❄️ Schneetag: Cafés ×{n}",
+  "🌈 The pot of gold: +{n}!": "🌈 Der Goldtopf: +{n}!",
 };

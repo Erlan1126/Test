@@ -90,7 +90,7 @@ import { inviteCodeFrom, openGifts } from "./logic/gifts";
 import { nextMilestone } from "./logic/milestones";
 import { teamWeek } from "./logic/team";
 import { seasonPass, SP_TIERS } from "./logic/seasonpass";
-import { citySeason, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
+import { citySeason, rainbowNow, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { bizColors, normalizePaint, ownsPaint } from "./logic/paint";
 import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
@@ -708,6 +708,7 @@ export class App implements DailyHost {
     if (!HAS_CITY || this.state !== "menu") return;
     const w = this.save.settings.saver ? "clear" : townWeather();
     if (this.renderer.weather.kind !== w) this.renderer.weather.set(w);
+    this.renderer.rainbow = !this.save.settings.saver && rainbowNow();
     // Winter Lights: said once a year, when the player is settled in the town.
     const se = seasonInfo(citySeason()), wk = seasonKey();
     if (se && playerStarted(this.save) && !this.save.seenFeatures.includes(wk) && this.tycoon.inCity && !openModalEl()) {
