@@ -676,7 +676,7 @@ export class Renderer3D {
     // Looking at the high islands in town: the sky turns deep blue, then the dark of space.
     if (this.biz && this.bizK > 0.5) {
       let h = 0;
-      for (let k = 0; k < 6; k++) {
+      for (let k = 0; k < LAND.length; k++) {
         const a = this.biz.landAt(k);
         if (!a || a.y < 14) continue;
         const d = Math.hypot(this.bizLook.x - (a.x - a.y), this.bizLook.z - (a.z - a.y));
