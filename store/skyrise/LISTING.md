@@ -93,8 +93,12 @@ game and need no store product. Add one review screenshot (Shop → Crystals) to
 - **Google Play phone** (1080 × 1920): `google-play/`, same order.
 - **Google Play feature graphic** (1024 × 500): `feature-graphic.png`. **Icon** (512 × 512):
   `play-icon-512.png`.
-- **App preview video** (optional): `app-preview-886x1920.mp4` is from November 14 and
-  still shows the old home screen. Record a new one before using it, or leave it out.
+- **App preview video** (6.9" iPhone slot): `app-preview-886x1920.mp4`, 23.8 s,
+  886 × 1920, 30 fps, H.264 with a silent stereo track. Recorded from the current build: Zephyr's
+  welcome card, Cloudreach, the first floors, then the tower entering the Cloud Sea, Jet Stream,
+  Twilight and Starfield (short cuts between them, no footage that isn't the game). Poster
+  frame: about 0:11 (the Cloud Sea banner). Google Play takes a YouTube link instead: upload
+  the same file to YouTube as unlisted and paste its URL.
 
 Captions (English, as on the images). Shots 1 and 2 reuse the in-game frames of the
 November 14 set (the tower screen hasn't changed); 3 to 6 are fresh captures of the PR #29

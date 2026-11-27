@@ -12,7 +12,7 @@ Everything the App Store and Google Play ask for, per game, ready to paste and u
 | iPhone 6.3" screenshots | 6 × 1206 × 2622 | 6 × 1206 × 2622 | 6 × 1206 × 2622 |
 | Google Play phone screenshots | 6 × 1080 × 1920 | 6 × 1080 × 1920 | 6 × 1080 × 1920 |
 | Feature graphic 1024 × 500, icon 512 × 512 | yes | yes (Nov 14 art) | yes |
-| Preview video | `preview-886x1920.mp4` | old, re-record before use | none |
+| Preview video | `preview-886x1920.mp4` | `app-preview-886x1920.mp4` (Nov 27, 23.8 s) | none |
 | Expected age rating | 4+ / Everyone / PEGI 3 | 4+ / Everyone / PEGI 3 | 4+ / Everyone / PEGI 3 |
 | Privacy label | 4 linked + 2 not-linked types, no tracking | same | Data Not Collected |
 | Store name | Buildaroo: City Tycoon | Skyrise: Tower Stack | Lumen Rush (name not final) |
@@ -38,7 +38,8 @@ Code work this package found:
    app; Android `com.bigbrucestudios.skyrise`), and the Skyrise build now asks the App Store for
    its own `skyrise.`-prefixed product ids (`src/data/storeids.ts`, in this PR).
 5. **Lumen Rush's phone app** is PR #34 (Capacitor, `com.bigbrucestudios.lumenrush`).
-6. **Skyrise preview video** is from November 14 and shows the old home screen.
+6. **Skyrise preview video** was re-recorded on November 27 from the current build (Zephyr,
+   Cloudreach and all five sky layers).
 
 ## Changes from the earlier drafts in `launch/stores/`
 
