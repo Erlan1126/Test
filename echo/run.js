@@ -121,8 +121,9 @@ function runEnd() {
   persist();
   checkAchievements();
   musicStop(); sfx.fail();
+  const ended = run;
   setTimeout(() => {
-    if (!run) return;
+    if (!run || run !== ended) return;   // a new run started meanwhile: its card isn't this one's
     // The score counts up; a new best glows.
     const t0 = performance.now(), el = $("runOverScore");
     const tick = () => { const k = Math.min(1, (performance.now() - t0) / 900); el.textContent = Math.round(score * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1 && run) requestAnimationFrame(tick); };
@@ -370,8 +371,11 @@ function runLoop(now) {
   c.addEventListener("pointerup", end);
   c.addEventListener("pointercancel", end);
   // Leaving the page or pausing forgets any finger that was down.
-  window.addEventListener("blur", () => { downs.clear(); if (run) swingHold(false); p = null; });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { downs.clear(); if (run) swingHold(false); p = null; } });
+  // A run in play pauses first and keeps hold of its light (letting go here used to drop you mid-swing,
+  // so you came back falling); anything else just lets go.
+  const away = () => { downs.clear(); p = null; if (!run) return; if (runAutoPause()) { run.hold = false; run.grabBuf = 0; run.kHold = false; } else swingHold(false); };
+  window.addEventListener("blur", away);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) away(); });
   window.addEventListener("keydown", e => { if (screen === "run" && e.key === " ") e.preventDefault(); });
   // On a computer: Esc or P pauses and resumes; Enter (or Space on a card) takes the card's main button.
   window.addEventListener("keydown", e => {
@@ -458,6 +462,9 @@ function runShop() {
 }
 
 // Leaving the app mid-run pauses it.
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract && $("runContinue").hidden) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
-});
+function runAutoPause() {
+  if (screen !== "run" || !run || run.over || run.cleared || run.attract || !$("runContinue").hidden) return false;
+  if (!run.paused) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
+  return true;
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) runAutoPause(); });

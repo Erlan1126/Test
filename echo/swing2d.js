@@ -224,7 +224,7 @@ const SW2D = (() => {
       const left = R.stageLen - R.px, fade = Math.min(1, Math.max(0, (left - 30) / 40));
       if (fade > 0) { const bx = W * 0.5 + W * 0.42 * Math.min(1, left / Math.max(120, R.stageLen * 0.6)), by = H * 0.58, pulse = 0.75 + 0.25 * Math.sin(t * 2.4);
         ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.35 * fade * pulse; ctx.drawImage(glow([255, 200, 120]), bx - 0.9 * s, -H * 0.1, 1.8 * s, by + H * 0.1); ctx.globalAlpha = 0.8 * fade; ctx.drawImage(glow([255, 210, 140]), bx - 1.4 * s, by - 1.4 * s, 2.8 * s, 2.8 * s); ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = fade; ctx.fillStyle = "#ffe2b0"; ctx.fillRect(bx - 0.25 * s, by - 0.3 * s, 0.5 * s, 0.6 * s); ctx.font = `700 ${Math.round(0.62 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,226,176,0.85)"; ctx.fillText(stagePerson(R.stageInfo.n)[0], bx, by + 1.5 * s); ctx.globalAlpha = 1; }
+        ctx.globalAlpha = fade; ctx.fillStyle = "#ffe2b0"; ctx.fillRect(bx - 0.25 * s, by - 0.3 * s, 0.5 * s, 0.6 * s); ctx.font = `700 ${Math.round(0.62 * s)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,226,176,0.85)"; { const nm = stagePerson(R.stageInfo.n)[0], hw = ctx.measureText(nm).width / 2; ctx.fillText(nm, Math.min(bx, W - hw - 8), by + 1.5 * s); } ctx.globalAlpha = 1; }
     }
     // ---------- District atmosphere (behind the play line) ----------
     // (Atmosphere is an extra: it switches off by itself as soon as the phone needs to drop quality.)

@@ -185,15 +185,15 @@ function stageClear(R) {
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
   else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
-  setTimeout(() => showStageCard(true), 1300);
+  setTimeout(() => { if (run === R) showStageCard(true); }, 1300);
 }
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
   if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime && !R.rush) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
   if (!R.stageInfo.daily && !R.raceTime && !R.attract && !R.rush) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
-  if (R.rush) { R.rush.time += R.stageT || 0; R.rush.lights += R.lights; R.rush.perfects += R.perfects; setTimeout(() => showRushCard(false), 650); return; }
-  setTimeout(() => showStageCard(false), 650);
+  if (R.rush) { R.rush.time += R.stageT || 0; R.rush.lights += R.lights; R.rush.perfects += R.perfects; setTimeout(() => { if (run === R) showRushCard(false); }, 650); return; }
+  setTimeout(() => { if (run === R) showStageCard(false); }, 650);
 }
 // What to try next, by what took your last heart.
 const FAIL_TIPS = {
@@ -208,7 +208,7 @@ function showStageCard(won) {
   const info = R.stageInfo, el = $("stageCard");
   $("stTitle").textContent = info.daily ? "Daily stage" : `Stage ${info.n}`;
   // Who you brought the light to (or who is still waiting).
-  { const [who, line] = stagePerson(info.n), pe = $("stPerson"); if (pe) { pe.hidden = false; pe.innerHTML = won ? `<b>You brought light to ${who}.</b><span>“${line}”</span><small>${info.daily ? "Back tomorrow: someone new will be waiting" : `${homesLit()} of ${STAGES_N} homes relit`}</small>` : `<b>${stageWaiting(info.n).replace("waiting", "still waiting")} in the dark.</b><span>Try again. They're counting on you.</span>`; } }
+  { const [who, line] = stagePerson(info.n), pe = $("stPerson"); if (pe) { pe.hidden = false; pe.innerHTML = won ? `<b>You brought light to ${who}.</b><span>“${line}”</span><small>${info.daily ? "Back tomorrow: someone new will be waiting" : `${homesLit()} of ${STAGES_N} homes relit${(() => { const nr = nextStarReward(), have = stageTotalStars(); return nr ? ` · ${nr[0] - have} ★ to the ${rewardName(nr)}` : ""; })()}`}</small>` : `<b>${stageWaiting(info.n).replace("waiting", "still waiting")} in the dark.</b><span>Try again. They're counting on you.</span>`; } }
   $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : R.failPct != null ? `${R.failPct}%${R.newBestPct ? " · New best!" : ""}` : "Out of light";
   $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);

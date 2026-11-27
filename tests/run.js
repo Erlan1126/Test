@@ -182,6 +182,8 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       out.freeSwingCantBeLost = (() => { startRun({ free: true }); const R = run, dm = JSON.stringify(dailyMissions()); for (let q = 0; q < 60 * 20; q++) { R.hold = false; R.teth = null; runUpdate(1 / 60); } swingHit(R, "Drone!"); R.inv = 0; swingHit(R, "Drone!"); runHud(); return R.free && R.hearts >= 3 && !R.over && JSON.stringify(dailyMissions()) === dm && document.getElementById("runMult").textContent === "Free swing" && !R.tut; })();
       out.tapModeGrabsAndLetsGoWithTaps = (() => { save.settings.tapMode = true; startStage(2); const R = run, c = document.getElementById("runCanvas"), ev = t => c.dispatchEvent(new PointerEvent(t, { pointerId: 7, bubbles: true }));
         const wasOn = !!R.teth; ev("pointerdown"); ev("pointerup"); const off = !R.teth; for (let q = 0; q < 90 && !R.teth; q++) { if (!R.hold && R.aimOk) { ev("pointerdown"); ev("pointerup"); } runUpdate(1 / 60); } const on = !!R.teth; save.settings.tapMode = false; return wasOn && off && on; })();
+      out.leavingMidSwingPausesAndKeepsHoldOfTheLight = (() => { startStage(4); const R = run; screen = "run"; for (let q = 0; q < 30; q++) runUpdate(1 / 60); const a = R.teth; window.dispatchEvent(new Event("blur")); const ok = R.paused && !!a && R.teth === a && !$("runPause").hidden; $("runResume").click(); return ok && !R.paused && R.teth === a; })();
+      out.aLongPerfectChainPopShowsJustTheLights = (() => { startStage(4); const R = run; R.pChain = 4; R.teth = { x: R.px - 3, y: R.py + 3 }; R.vx = 20; R.vy = 12; R.pops = []; swingHold(false); return R.pops.length > 0 && /^\+\d+ ✦$/.test(R.pops[R.pops.length - 1].text); })();
       out.threeStarsNeedParTime = stageInfo(20).par > 10 && stageInfo(20).par < stageInfo(20).len / 20;
       save.settings.fps = true; run.paused = false; for (let q = 0; q < 40; q++) paceTick(0.016); out.theFpsCounterShows = !document.getElementById("fpsMeter").hidden; save.settings.fps = false; document.getElementById("fpsMeter").hidden = true;
       // Rings, Good releases, star rewards, wind.
@@ -232,7 +234,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     {
       const pr = await page.evaluate(async () => {
         const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]);
-        stageSave().unlocked = 60; startStage(4); const R = run; R.inv = 9; R.px = R.stageLen + 0.5; runUpdate(1 / 60);
+        stageSave().unlocked = 60; startStage(4); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60);
         await new Promise(r => setTimeout(r, 1500));
         o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
         { startStage(5); const C = run; C.teth = null; C.hold = false; C.inv = 9; C.px = C.stageLen + 0.5; C.py = 30; for (let q = 0; q < 60 && !C.cleared; q++) runUpdate(1 / 60); await new Promise(r => setTimeout(r, 2300)); R.stageTime = C.stageTime; R.motesGot = C.motesGot; R.motesTotal = C.motesTotal; R.perfects = C.perfects; R.cleared2 = C.cleared; }
