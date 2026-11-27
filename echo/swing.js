@@ -230,7 +230,9 @@ function swingAttach(R) {
 function swingHold(down) {
   const R = run;
   if (!R || !R.mode3) return;
-  if (R.cleared) { R.hold = false; return; }   // home: nothing to grab any more
+  if (R.cleared) { R.hold = false;   /* home: nothing to grab any more. Once you've landed, a tap skips to the results. */
+    if (down && R.cardTO && R.clearAt != null && R.t - R.clearAt > 0.9) { clearTimeout(R.cardTO); R.cardTO = null; showStageCard(true); }
+    return; }
   if (!down && (R.over || R.paused)) { R.hold = false; R.grabBuf = 0; R.kHold = false; return; }
   if (R.over || R.paused) return;
   // Press: grab the target now; if it's not quite in reach, keep trying for a moment, then fizzle.
@@ -493,7 +495,11 @@ function runnerUpdate(dt) {
   R.boosts = R.boosts.filter(b => b.x > R.px - 60 && (!b.got || b.t < 0.6)); R.winds = R.winds.filter(w => w.x1 > R.px - 60); R.ringT = Math.max(0, R.ringT - dt);
   // Hazards: live wires and drones.
   for (const z of R.haz) {
-    if (z.kind === "wire") { if (R.px > z.x0 && R.px < z.x1 && R.py < z.y + 0.4 && R.py + 1.7 > z.y && !comet) { z.hit = true; swingHit(R, "Zap!"); } }
+    if (z.kind === "wire") { if (R.px > z.x0 && R.px < z.x1 && R.py < z.y + 0.4 && R.py + 1.7 > z.y && !comet) { z.hit = true; swingHit(R, "Zap!"); }
+      /* Skim a live wire without touching it (just over, or just under): a close call once you're past. */
+      else if (R.px > z.x0 && R.px < z.x1 && ((R.py >= z.y + 0.4 && R.py < z.y + 1.5) || (R.py + 1.7 <= z.y && R.py + 1.7 > z.y - 1.1))) z.skim = true;
+      /* Paid out once you're past the wire, and only if it never touched you. */
+      if (z.skim && !z.near && !z.hit && !R.attract && R.px >= z.x1) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; } }
     else if (z.kind === "drone" && !z.dead) {
       z.y = z.y0 + Math.sin(R.t * 1.4 + z.ph) * z.amp; const d = Math.hypot(z.x - R.px, z.y - R.py - 0.9);
       // Warning: will you meet in the next 0.8 s? (where you'd be, flying straight; where it will be)

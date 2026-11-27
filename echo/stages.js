@@ -182,7 +182,7 @@ function stageClear(R) {
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
   else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
-  setTimeout(() => showStageCard(true), 1900);
+  R.cardTO = setTimeout(() => { R.cardTO = null; showStageCard(true); }, 1900);
 }
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
