@@ -2734,4 +2734,6 @@ export const PT: Record<string, string> = {
   "🍪 The gingerbread float tips you +{n}!": "🍪 O carro de gengibre te dá uma gorjeta de +{n}!",
   "🛷 Santa's sleigh tips you +{n}!": "🛷 O trenó do Papai Noel te dá uma gorjeta de +{n}!",
   "🎄 You already got this float's tip. Try another one!": "🎄 Você já ganhou a gorjeta deste carro. Tente outro!",
+  "Builders are on the {name}": "Os construtores estão em {name}",
+  "{t} left · tap to see it": "Faltam {t} · toque para ver",
 };

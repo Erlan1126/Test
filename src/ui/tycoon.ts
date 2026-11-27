@@ -998,6 +998,9 @@ export class TycoonUI {
         const want = LAND.find(x => x.id === g.land), sale = landOnSale(s);
         const l = sale && want && LAND.indexOf(sale) <= LAND.indexOf(want) ? sale : null;
         if (!l) return null;
+        // (Already bought and being built: say so, with the time left, instead of asking to save.)
+        const job = buildOf(s, "land", l.id);
+        if (job) return { text: t("Builders are on the {name}", { name: t(l.name) }), sub: t("{t} left · tap to see it", { t: fmtLeft(Math.max(0, job.end - Date.now())) }), tone: "grow", act: () => this.openLand() };
         const lp = landPrice(s, l);
         return ty.coins >= lp
           ? { text: t("Buy the {name}!", { name: t(l.name) }), sub: t(l.what), pct: 1, tone: "gift", act: () => this.openLand() }
@@ -1090,7 +1093,7 @@ export class TycoonUI {
     // island (when it's affordable, or close), or a building to grow.
     if (Math.floor(Date.now() / 15000) % 2 === 1) {
       const l = landOnSale(s), lp = l ? landPrice(s, l) : 0;
-      if (l && ty.coins >= lp * 0.3) return { text: ty.coins >= lp ? t("A new island is for sale!") : t("Save for {name}", { name: t(l.name) }), sub: t("{name}: {what} · {n}", { name: t(l.name), what: t(l.what), n: coins(lp) }), pct: Math.min(1, ty.coins / lp), tone: "gift", act: () => this.openLand() };
+      if (l && !buildOf(s, "land", l.id) && ty.coins >= lp * 0.3) return { text: ty.coins >= lp ? t("A new island is for sale!") : t("Save for {name}", { name: t(l.name) }), sub: t("{name}: {what} · {n}", { name: t(l.name), what: t(l.what), n: coins(lp) }), pct: Math.min(1, ty.coins / lp), tone: "gift", act: () => this.openLand() };
       const best = propsOpen(s) ? this.host.bizHomes().map(key => ({ key, lv: propLevel(s, key), price: propPrice(s, key) })).filter(h => !propBlock(s, h.key) && h.price <= ty.coins).sort((a, b) => a.price - b.price)[0] : undefined;
       if (best) return { text: t("Grow a building in town"), sub: t("{tier} → {next} · {n}", { tier: t(PROP_TIERS[best.lv]), next: t(PROP_TIERS[best.lv + 1]), n: coins(best.price) }), tone: "grow", act: () => this.selectProp(best.key) };
     }
@@ -1107,7 +1110,7 @@ export class TycoonUI {
     }
     // Land for sale next to the island, once the company can afford it.
     { const l = landOnSale(s), lp = l ? landPrice(s, l) : 0;
-      if (l && ty.coins >= lp) return { text: t("A new island is for sale!"), sub: t("{name}: {what} · {n}", { name: t(l.name), what: t(l.what), n: coins(lp) }), pct: 1, tone: "gift", act: () => this.openLand() }; }
+      if (l && !buildOf(s, "land", l.id) && ty.coins >= lp) return { text: t("A new island is for sale!"), sub: t("{name}: {what} · {n}", { name: t(l.name), what: t(l.what), n: coins(lp) }), pct: 1, tone: "gift", act: () => this.openLand() }; }
     // From here on every step says what it brings the town: the next rank and what it adds.
     const rk = townRank(s), nx = RANKS[rk + 1], left = nx ? Math.max(1, nx.at - usedFloors(s)) : 0;
     const toward = HAS_CITY ? "" : nx ? t("{n} business levels until {rank}: {unlock}", { n: fmt(left), rank: t(nx.name), unlock: t(nx.unlock) }) : "";
