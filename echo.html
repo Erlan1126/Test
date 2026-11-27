@@ -448,6 +448,14 @@
   .ro-stats span { font-size: 11px; color: var(--mut); }
   .ro-level { text-align: left; font-size: 13px; color: var(--txt); font-weight: 600; margin-bottom: 8px; }
   .ro-daily { font-size: 12px; color: var(--mut); margin: 6px 0 14px; }
+
+/* Run highlights on the results card: little badges that pop in one by one. */
+.st-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 10px 0 2px; min-height: 0; }
+.st-badges:empty { display: none; }
+.st-badges span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; font: 700 12px/1 Inter, system-ui, sans-serif; color: #2a1d08; background: linear-gradient(180deg, #ffe7a6, #ffc65a); box-shadow: 0 2px 10px rgba(255, 190, 80, 0.35); opacity: 0; transform: scale(0.4) translateY(6px); animation: stBadgeIn 0.42s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+.st-badges span.cool { color: #08222a; background: linear-gradient(180deg, #c6f4ff, #7fdcff); box-shadow: 0 2px 10px rgba(120, 220, 255, 0.35); }
+.st-badges span.hot { color: #2a0812; background: linear-gradient(180deg, #ffc2d0, #ff7a9a); box-shadow: 0 2px 10px rgba(255, 120, 150, 0.35); }
+@keyframes stBadgeIn { to { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
@@ -511,6 +519,7 @@
     <div class="st-stars" id="stStars">★★★</div>
     <p class="st-person" id="stPerson" hidden></p>
     <div class="ro-stats"><div><b id="stTime">0</b><span>seconds</span></div><div><b id="stLights">0/0</b><span>lights</span></div><div><b id="stPerf">0</b><span>perfects</span></div></div>
+    <div class="st-badges" id="stBadges"></div>
     <p class="ro-daily" id="stNote"></p>
     <div class="row2"><button class="ghost" id="stStages">City</button><button class="primary" id="stNext">Next stage</button><button class="ghost icon-only" id="stShare" aria-label="Share and race a friend"><svg class="ic " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>
     <button class="ghost cp-btn" id="stFromCp" hidden>⟲ From halfway (1 ★)</button>
