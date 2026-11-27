@@ -1218,7 +1218,6 @@ html.phone .card { background: rgba(16, 20, 52, 0.9); }
 
 /* ---------- Starter Pack ---------- */
 .starter-sheet { position: relative; align-items: center; text-align: center; background: linear-gradient(180deg, #4a2370, #1b1446); }
-.starter-sheet .close-btn { position: absolute; top: 12px; right: 12px; }
 .starter-ribbon { align-self: center; padding: 4px 12px; border-radius: 999px; background: #ff4f8b; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 .starter-sheet h2 { margin: 8px 0 4px; font: 400 30px var(--display); color: #ffe08a; }
 #starter-preview { width: 150px; height: 165px; margin: 4px auto; border-radius: 16px; box-shadow: 0 0 30px rgba(255, 154, 90, 0.5); }
@@ -1667,7 +1666,6 @@ body.busy .alt, body.busy .corner-btn, body.busy .card, body.busy .sheet { backg
   box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 1), inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 -12px 40px rgba(20, 24, 70, 0.22);
   color: var(--text);
 }
-body.busy .modal .sheet { background-color: transparent; }
 .modal .sheet-top { background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 248, 253, 0.97)); }
 .modal .sheet-top::after { height: 12px; }
 .modal .sheet-head h2, .dialog h2 {
@@ -2308,14 +2306,32 @@ body.placing :is(#settings-btn, #level-btn, #stars-btn, #streak-btn) { visibilit
 .mayor-strip.ready { background: linear-gradient(135deg, #fff6c8, #ffd36b); box-shadow: 0 0 0 3px #ffb13b, 0 8px 22px rgba(255, 160, 40, 0.45); animation: ready-bob 1.4s ease-in-out infinite; }
 .mayor-strip.ready .mayor-bar i { background: linear-gradient(90deg, #ffb13b, #ff6fa0); }
 
-.mayor-dialog { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: rgba(10, 12, 40, 0.45); }
+/* Pip's card never runs off the screen: it is at most the screen's height (less room for his face
+   above it, the notch and the home indicator). His words stay at the top, the list scrolls in the
+   middle, and the buttons stay pinned at the bottom. */
+.mayor-dialog { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 76px) max(12px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  background: rgba(10, 12, 40, 0.45); }
 .mayor-dialog[hidden] { display: none; }
-.mayor-card { position: relative; width: min(420px, 100%); padding: 18px 18px 18px; border-radius: 26px; background: linear-gradient(180deg, #fff, #f3f0ff); color: #2a1f6e; box-shadow: 0 20px 50px rgba(10, 12, 40, 0.4); animation: mayor-in 0.45s cubic-bezier(0.25, 1.4, 0.5, 1); }
+.mayor-card { position: relative; box-sizing: border-box; display: flex; flex-direction: column; width: min(420px, 100%); max-height: 100%; padding: 18px; border-radius: 26px; background: linear-gradient(180deg, #fff, #f3f0ff); color: #2a1f6e; box-shadow: 0 20px 50px rgba(10, 12, 40, 0.4); animation: mayor-in 0.45s cubic-bezier(0.25, 1.4, 0.5, 1); }
 @keyframes mayor-in { from { transform: translateY(60px) scale(0.92); opacity: 0; } }
 .mayor-face { position: absolute; top: -64px; left: 18px; width: 104px; height: 104px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #e8f2ff, #c9dbff); box-shadow: 0 0 0 5px #fff, 0 10px 24px rgba(20, 24, 70, 0.3); overflow: hidden; animation: mayor-bob 2.4s ease-in-out infinite; }
 .mayor-face svg { width: 100%; height: 100%; transform: translateY(6px); }
 @keyframes mayor-bob { 50% { transform: translateY(-4px) rotate(-2deg); } }
-.mayor-talk { padding-top: 40px; }
+.mayor-talk { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; padding-top: 40px; }
+.mayor-talk > * { flex: none; }
+#welcome .mayor-talk { overflow-y: auto; overscroll-behavior: contain; }
+#mayor .mayor-card { padding: 0; }
+#mayor .mayor-talk { padding-top: 44px; }
+#mayor .mayor-talk > :is(small, b, p) { padding: 0 18px; }
+#mayor-goals { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0; padding: 2px 18px 12px; }
+#mayor-goals[hidden] { display: none; }
+#mayor .mayor-reward { padding: 0 18px; }
+.mayor-foot { flex: none; display: grid; gap: 8px; padding: 12px 18px 18px; border-radius: 0 0 26px 26px; background: #f5f2ff; box-shadow: 0 -1px 0 rgba(42, 31, 110, 0.08); }
+.mayor-foot .btn { min-height: 48px; margin: 0; }
+.mayor-foot .btn[hidden] { display: none; }
+/* Many choices (the paints): two per row, so more fit on screen. */
+#mayor-goals:has(.pick-sw) { grid-template-columns: 1fr 1fr; gap: 8px; }
 .mayor-talk small { display: block; font: 400 11px var(--display); letter-spacing: 0.05em; color: #7b6cff; }
 .mayor-talk > b { display: block; font: 400 20px var(--display); color: #ff4f8b; }
 .mayor-talk p { margin: 6px 0 10px; font-size: 15px; font-weight: 700; line-height: 1.4; color: #3a3570; }
@@ -3037,20 +3053,54 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .card-look { margin-left: auto; padding: 7px 10px; border: 0; border-radius: 12px; cursor: pointer; font: 400 12px var(--display); color: #6a3cff; background: #f1edfc; }
 .card-pops { position: absolute; left: 30%; right: 30%; top: 0; height: 40px; }
 
-/* The bottom bar. */
-.tcy-bar { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; gap: 4px; padding: 8px 6px;
-  border-radius: 24px; background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 10px 28px rgba(40, 20, 100, 0.25); }
-.tcy-bar button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; border: 0; cursor: pointer; background: none; color: #4a3f8a; font: 400 10px var(--display); }
-.tcy-bar svg { width: 26px; height: 26px; padding: 8px; box-sizing: content-box; border-radius: 14px; background: #f1edfc; }
-.tcy-bar .tcy-build svg { width: 30px; height: 30px; margin-top: -22px; color: #fff; background: linear-gradient(180deg, #ff7aa8, #ff4f8b 55%, #e23a78); box-shadow: 0 5px 0 #a8204f, 0 10px 20px rgba(255, 79, 139, 0.45); }
-.tcy-bar .dot { position: absolute; top: 2px; right: 18%; width: 10px; height: 10px; border-radius: 50%; background: #ff4f6a; box-shadow: 0 0 0 2px #fff; }
+/* The bottom tab bar: Shop · Company · BUILD · Goals · Me. Made of the same stuff as the top HUD
+   (#tcy-top): the translucent indigo glass pill with a thin white edge, a glossy top highlight and
+   a soft drop shadow. Bold white glyphs over Figtree labels, evenly spaced. The open tab's glyph
+   sits in a purple disc with a white ring (like the "?"); BUILD is a big pink disc, the same size
+   as the City Hall badge, seated in a notch at the centre of the bar. Every button sinks a little
+   when pressed. A new player's bar shows only the tabs unlocked so far, centred (unlockTabs sets
+   --tabs). */
+#tcy-bar { --bar-top: rgba(62, 42, 138, 0.86); --bar-bot: rgba(34, 22, 86, 0.9);
+  position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); max-width: calc(var(--tabs, 5) * 76px + 12px); height: 64px; margin: 0 auto; padding: 0 6px;
+  display: grid; grid-template-columns: repeat(var(--tabs, 5), minmax(0, 1fr)); align-items: stretch; gap: 0; box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, 0.24); border-radius: 32px; background: linear-gradient(180deg, var(--bar-top), var(--bar-bot));
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.16), 0 8px 20px rgba(20, 10, 60, 0.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* The gloss: a soft white sheen over the top half, like the top pills catching the light. */
+#tcy-bar::before { content: ""; position: absolute; left: 14px; right: 14px; top: 2px; height: 46%; border-radius: 28px 28px 14px 14px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)); }
+#tcy-bar > [hidden] { display: none; }
+#tcy-bar > button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1px; min-width: 44px; min-height: 44px; padding: 0 0 5px; border: 0; border-radius: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; background: none; color: rgba(255, 255, 255, 0.78); font: 800 11.5px/1.15 var(--ui); letter-spacing: 0.01em; white-space: nowrap; }
+#tcy-bar > button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4); }
+#tcy-bar > button svg { width: 25px; height: 25px; padding: 6px; box-sizing: content-box; border: 2px solid transparent; border-radius: 50%; color: #fff;
+  background: none; filter: drop-shadow(0 1.5px 0 rgba(0, 0, 0, 0.3)); transition: transform 0.12s, background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+/* Bolder strokes than the drawings carry, so the glyphs hold their own next to the HUD. */
+#tcy-bar > button svg :is(path, circle) { stroke-width: 2.5px; }
+#tcy-bar > button.on:not(.tcy-build) { color: #fff; }
+#tcy-bar > button.on:not(.tcy-build) span { color: #ffe27a; }
+#tcy-bar > button.on:not(.tcy-build) svg { filter: none; border-color: rgba(255, 255, 255, 0.9); background: linear-gradient(180deg, #9a6cff, #5a34e0);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3), 0 3px 0 #3a1fa0, 0 0 0 3px rgba(154, 108, 255, 0.28), 0 6px 14px rgba(20, 10, 60, 0.35); }
+#tcy-bar > button:active svg { transform: translateY(2px) scale(0.92); }
+#tcy-bar > button:active span { opacity: 0.8; }
+/* BUILD: the City Hall badge's size (56px across), pink, with a white ring and a glossy top; the
+   bar's own colour runs round it as a notch, so it reads as seated in the bar, not stuck on. */
+#tcy-bar > .tcy-build { color: #fff; }
+#tcy-bar > .tcy-build svg { width: 31px; height: 31px; padding: 10px; margin: -31px 0 1px; border: 2.5px solid #fff; filter: none;
+  background: radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, #ff86b0, #ff4f8b 55%, #e0306f);
+  box-shadow: 0 3px 0 #a8204f, 0 0 0 5px var(--bar-top), 0 0 0 6.5px rgba(255, 255, 255, 0.24), 0 10px 18px rgba(20, 10, 60, 0.4); }
+#tcy-bar > .tcy-build svg :is(path, circle) { stroke-width: 2.6px; }
+#tcy-bar > .tcy-build span { font-weight: 900; color: #fff; }
+#tcy-bar > .tcy-build:active svg { transform: translateY(3px); box-shadow: 0 0 0 #a8204f, 0 0 0 5px var(--bar-top), 0 0 0 6.5px rgba(255, 255, 255, 0.24), 0 4px 10px rgba(20, 10, 60, 0.4); }
+#tcy-bar .dot { position: absolute; top: 5px; right: calc(50% - 21px); width: 11px; height: 11px; border-radius: 50%; background: #ff4f6a; box-shadow: 0 0 0 2px #2a1a70; }
+#tcy-bar .dot[hidden] { display: none; }
+#tcy-bar .tcy-build .dot { top: -26px; right: calc(50% - 30px); }
+@media (prefers-reduced-motion: reduce) { #tcy-bar > button svg { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .flag, .tcy-card, .tcy-coach { animation: none !important; } }
 .tag { padding: 4px 9px 5px; }
 .tag:not(.sel) small { display: none; }
 .tag:not(.sel) .tag-prog { width: 70%; }
 .tag:not(.sel) b { font-size: 10px; }
 .tag.lease:not(.sel) small, .tag.lease small { display: block; }
-.tcy-card .ty-buy:disabled { opacity: 1; filter: grayscale(0.85); color: #fff; background: linear-gradient(180deg, #c9c3e6, #a59bd6) !important; box-shadow: 0 4px 0 #7a70b0 !important; }
 .tcy-card .ty-buy:disabled svg { opacity: 0.8; }
 
 /* ══════════ Simpler city: one home, three buttons, a clear next step ══════════ */
@@ -3117,14 +3167,7 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .card-small:disabled { opacity: 0.5; cursor: default; }
 .card-auto { align-self: center; padding: 6px 10px; border-radius: 11px; font: 400 11px var(--display); color: #19a87a; background: #e2f8ee; }
 
-/* The bar: three buttons, Build in the middle. */
-.tcy-bar { grid-template-columns: 1fr 1.2fr 1fr !important; left: 18px !important; right: 18px !important; }
-.tcy-bar button { font-size: 11px !important; }
-.tcy-bar .tcy-build svg { width: 34px !important; height: 34px !important; margin-top: -26px !important; }
-.tcy-bar .tcy-build span { font-size: 13px; }
-
 /* Build and More sheets. */
-.tcy-sheet h2 { margin: 4px 0 6px; }
 .tcy-sheet-intro { margin: 0 0 14px !important; }
 .tcy-modes { display: grid; gap: 10px; }
 .tcy-mode { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px; border: 0; border-radius: 20px; cursor: pointer; text-align: left; color: #2a1f3e; background: #fff; box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1); }
@@ -3157,7 +3200,6 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .tcy-goals .ty-goals { margin: 0; }
 .tcy-goals .more-mayor { width: 100%; }
 .goals-more { display: block; margin: 10px auto 0; }
-.tcy-bar button[data-open="goals"] svg, .tcy-bar button[data-open="more"] svg { color: #6a3cff; }
 
 /* When the business district is home, the old home screen never shows (not even for a
    moment between screens); its buttons are still pressed from the city's Menu. */
@@ -3207,16 +3249,8 @@ body.city-home.visiting .corner-left, body.city-home.placing .corner-left { disp
 #tycoon .ty-tabs { top: var(--ty-hero-h, 0px); margin-top: 0; }
 #tycoon .ty-tabs { background: #fbfaff; }
 
-/* ════════ Seamless: every screen is the same card sliding up over your city ════════ */
-body.city-home .modal { background: rgba(30, 20, 80, 0.22); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
-body.city-home .modal > .sheet { max-height: calc(100dvh - 70px - env(safe-area-inset-top, 0px)); border-radius: 28px 28px 0 0; padding-top: 6px;
-  background: #fbfaff; box-shadow: 0 -12px 40px rgba(20, 24, 70, 0.25); animation: sheet-up 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.05); }
+/* (How every sheet sits on screen is in "Sheets: the one layout", near the end.) */
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
-body.city-home .modal .sheet-top { background: #fbfaff; }
-body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 22px; line-height: 1; color: #4b2fb0; background: #efeaff; box-shadow: none; }
-/* The city's own sheets: title on the left, close on the right like everywhere else. */
-.tcy-sheet > .close-btn { float: right; margin: 10px 0 0 10px; }
-.tcy-sheet > h2 { margin: 14px 0 10px !important; font: 400 24px var(--display) !important; color: #2a1f5c; }
 
 /* ---- Menu: who you are on top, then where to go ---- */
 .more-me { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px; border-radius: 22px; background: linear-gradient(135deg, #6a3cff, #b04ad8); color: #fff; box-shadow: 0 10px 22px rgba(106, 60, 255, 0.3); }
@@ -3307,14 +3341,6 @@ body.city-home .modal .close-btn { width: 36px; height: 36px; border-radius: 50%
 @keyframes countin-fade { 0% { opacity: 0; } 30% { opacity: 0.55; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .countin b, .countin-rays { animation-duration: 0.01s !important; } }
 
-/* ════════ Tab bar: Shop · Company · BUILD · Goals · Me ════════ */
-.tcy-bar { grid-template-columns: repeat(5, 1fr) !important; left: 10px !important; right: 10px !important; padding: 8px 4px 6px !important; }
-.tcy-bar button { gap: 2px; }
-.tcy-bar svg { width: 24px; height: 24px; padding: 8px; transition: transform 0.15s, background 0.15s, color 0.15s; }
-.tcy-bar button.on:not(.tcy-build) svg { color: #fff; background: linear-gradient(135deg, #6a3cff, #b04ad8); box-shadow: 0 6px 14px rgba(106, 60, 255, 0.35); transform: translateY(-3px); }
-.tcy-bar button.on:not(.tcy-build) span { color: #6a3cff; }
-.tcy-bar .tcy-build svg { width: 30px; height: 30px; }
-
 body.tabs-open #tycity { z-index: 40; pointer-events: none; }
 body.tabs-open #tycity .tcy-bar, body.tabs-open #tycity .tcy-top { pointer-events: auto; }
 body.tabs-open #tycity .tcy-labels, body.tabs-open #tycity .tcy-next, body.tabs-open #tycity .tcy-events, body.tabs-open #tycity .tcy-card { visibility: hidden; }
@@ -3370,9 +3396,6 @@ body.tabs-open #tycoon .ty-coins, body.tabs-open #tycoon .ty-stats, body.tabs-op
 .spire-hint { margin-top: auto; }
 .spire-claim { margin-top: auto; }
 
-/* A new player's bar: only the tabs unlocked so far, centered (see unlockTabs). */
-#tcy-bar { grid-template-columns: repeat(var(--tabs, 5), 1fr) !important; max-width: calc(var(--tabs, 5) * 78px + 12px); margin: 0 auto; }
-#tcy-bar > [hidden] { display: none !important; }
 #tcy-bar .tab-new { animation: tab-new 0.9s cubic-bezier(.3, 1.6, .5, 1) 2; }
 @keyframes tab-new { 0% { transform: scale(0.4); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
 /* The guide's pointing hand. */
@@ -3527,7 +3550,6 @@ body.tabs-open .block-say, body.tabs-open .block-skip { display: none !important
 .levelup :is(.lu-unlock small) { font-family: var(--ui) !important; font-weight: 700; }
 /* 4. The earnings panel's hero never shows above the sheet's rounded top. */
 #earnings > .sheet { overflow-x: hidden; clip-path: inset(0 round 26px); }
-#earnings .sheet-top { position: sticky; top: 0; z-index: 4; background: #f5f3fb !important; }
 /* 5. Trophy names wrap between words. */
 .modal .trophy b { overflow-wrap: normal !important; word-break: normal !important; hyphens: auto; font-size: 12px; }
 /* 6. Tab rows fit the screen (no cut-off labels). */
@@ -3544,7 +3566,8 @@ body.tabs-open .block-say, body.tabs-open .block-skip { display: none !important
 #pass .pass-cell.locked { opacity: 1 !important; filter: none !important; }
 #pass .pass-cell.locked .pass-what { color: #6a5f98 !important; }
 #pass .pass-cell.ready::after { content: "CLAIM" !important; }
-#tcy-card .ty-buy:disabled { background: #e9e4f7 !important; color: #6a5f98 !important; }
+/* (iOS fades disabled buttons by itself: solid pill, outline, dark text with its fill colour, full opacity.) */
+#tcy-card .ty-buy:disabled { opacity: 1 !important; filter: none !important; background: #e7e1fa !important; box-shadow: inset 0 0 0 1.5px #c9bff0 !important; color: #5f539c !important; -webkit-text-fill-color: #5f539c !important; text-shadow: none !important; }
 /* 10. Boosts: the footer clears the tab bar; the New Era button fits its text. */
 #tycoon .era-go { width: auto !important; min-width: 0 !important; white-space: nowrap; padding-left: 12px !important; padding-right: 12px !important; }
 /* 11. The top cards are solid: bubbles never show through. */
@@ -3737,26 +3760,6 @@ body.tabs-open #tycity .tcy-top .tcy-goal { display: none !important; }
 /* The town shows through further now: events and the coach sit just under the slim row. */
 #tycity:has(.tcy-goal:not([hidden])) .tcy-events, #tycity .tcy-events { top: calc(env(safe-area-inset-top, 0px) + 66px) !important; }
 #tycity:has(.tcy-goal:not([hidden])) .tcy-coach, #tycity .tcy-coach { top: calc(env(safe-area-inset-top, 0px) + 98px) !important; }
-
-/* ===== Round 6: the new bottom bar. A deep-purple glass dock (it reads over the town and over
-   the light menu pages alike); every button has its own glossy colored tile, and BUILD is a big
-   round button raised in the middle. ===== */
-#tycity #tcy-bar { left: 10px !important; right: 10px !important; padding: 7px 4px 6px !important; gap: 2px !important; border: 1.5px solid rgba(255, 255, 255, 0.18); border-radius: 26px !important;
-  background: linear-gradient(180deg, rgba(64, 42, 150, 0.9), rgba(36, 22, 92, 0.94)) !important; box-shadow: 0 10px 26px rgba(20, 10, 60, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important; }
-#tycity #tcy-bar button { gap: 3px !important; color: #fff !important; font: 400 10.5px var(--display) !important; letter-spacing: 0.02em; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
-#tycity #tcy-bar button svg { width: 22px !important; height: 22px !important; padding: 8px !important; border-radius: 13px !important; color: #fff !important; transform: none;
-  background: var(--tile, linear-gradient(180deg, #8a7cff, #5a4ad8)) !important; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 0 var(--tile-edge, #3a2aa0) !important; }
-#tycity #tcy-bar button[data-open="shop"] { --tile: linear-gradient(180deg, #ffa36b, #ff5f6d); --tile-edge: #b83448; }
-#tycity #tcy-bar button[data-open="company"] { --tile: linear-gradient(180deg, #5ccfff, #2a86e8); --tile-edge: #1a5aa8; }
-#tycity #tcy-bar button[data-open="goals"] { --tile: linear-gradient(180deg, #ffe066, #ffab1a); --tile-edge: #c07a08; }
-#tycity #tcy-bar button[data-open="me"] { --tile: linear-gradient(180deg, #6eeab0, #1fae7c); --tile-edge: #12805a; }
-#tycity #tcy-bar button.on:not(.tcy-build) svg { transform: translateY(-3px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 3px 0 var(--tile-edge, #3a2aa0), 0 0 0 2px #fff !important; }
-#tycity #tcy-bar button.on:not(.tcy-build) span { color: #ffe27a !important; }
-#tycity #tcy-bar .tcy-build svg { width: 32px !important; height: 32px !important; padding: 13px !important; margin-top: -30px !important; border-radius: 50% !important; border: 3px solid #fff;
-  background: radial-gradient(circle at 35% 30%, #ff9cc0, #ff4f8b 55%, #d82f6e) !important; box-shadow: 0 4px 0 #9a1a4a, 0 10px 22px rgba(255, 79, 139, 0.5) !important; }
-#tycity #tcy-bar .tcy-build span { font-size: 12px !important; color: #fff !important; }
-#tycity #tcy-bar .dot { top: 0 !important; right: calc(50% - 24px) !important; box-shadow: 0 0 0 2px #2a1a70 !important; }
-#tycity #tcy-bar .tcy-build .dot { top: -26px !important; right: calc(50% - 30px) !important; }
 #tycity #tcy-top .tg-main b, #tycity #tcy-top .tg-main em { max-width: 72px !important; }
 #tycity #tcy-top .tg-main b { font-size: 12px !important; }
 #tycity #tcy-top .tcy-goal { flex: none !important; }
@@ -3831,8 +3834,7 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tycity .card-auto { font-size: 12px; font-weight: 800; color: #13924f; }
 
 /* Land for sale: a card with a big picture of what gets built, its perks and the price. */
-#land-buy .land-sheet { position: relative; text-align: center; padding: 0 18px 18px; overflow: hidden; max-width: 380px; margin-inline: auto; }
-#land-buy .land-sheet .close-btn { position: absolute; top: 10px; right: 10px; z-index: 2; background: rgba(255, 255, 255, 0.85); }
+#land-buy .land-sheet { position: relative; text-align: center; }
 #land-buy .land-hero { --land: #5ec26a; position: relative; margin: 0 -18px 12px; height: 150px; display: grid; place-items: center;
   background: radial-gradient(120% 90% at 50% 110%, color-mix(in srgb, var(--land) 85%, #000 0%) 0 38%, transparent 39%),
               radial-gradient(60% 50% at 30% 30%, rgba(255, 255, 255, 0.55), transparent 70%),
@@ -4326,8 +4328,8 @@ body.visiting-town #mayor { display: none !important; }
 /* ---------- Building paint ---------- */
 #tcy-card .bc-paint { position: relative; z-index: 1; flex: none; width: 32px; height: 32px; margin-left: auto; margin-right: 6px; border: 0; border-radius: 50%; font-size: 16px; line-height: 32px; background: rgba(255, 255, 255, 0.28); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45); }
 #tcy-card .bc-paint:active { transform: scale(0.92); }
-#mayor-goals li.mayor-pick:has(.pick-sw) button { display: grid; grid-template-columns: 34px 1fr; column-gap: 12px; align-items: center; }
-#mayor-goals li.mayor-pick .pick-sw { grid-row: span 2; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--p1) 0 55%, var(--p2) 55%); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12); }
+#mayor-goals li.mayor-pick:has(.pick-sw) button { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 10px; align-items: center; height: 100%; padding: 10px; }
+#mayor-goals li.mayor-pick .pick-sw { grid-row: span 2; width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, var(--p1) 0 55%, var(--p2) 55%); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12); }
 #mayor-goals li.mayor-pick.on button { border-color: #5a3fe0; box-shadow: 0 0 0 3px rgba(90, 63, 224, 0.18); }
 
 /* ---------- Season Pass ---------- */
@@ -4484,6 +4486,66 @@ body.tabs-open #tycity .photo-btn, body.town-panning #tycity .photo-btn, #tycity
 @media (prefers-reduced-motion: reduce) { .tcy-weather .wx-gold { animation: none; } }
 body.tabs-open .tcy-weather { display: none; }
 
+/* ════════ Sheets: the one layout ════════
+   Every pop-up sheet (Build, Spin, Advent, Daily rewards, Menu, Earnings, Help, Starter Pack, a
+   new island, and the tab pages when they open outside the tab bar) is laid out here and only
+   here, in the tab pages' family (below): one card rising from the bottom edge.
+   · Never taller than the screen less the top HUD (and the notch), so its top always shows.
+   · The header (.sheet-top: title left, round × right) stays pinned while the middle scrolls.
+   · The footer (.sheet-foot: the main buttons) stays pinned at the bottom, above the home indicator.
+   · Tapping the dim backdrop closes it (wireModal), and so does ×. */
+.modal { --sheet-room: calc(env(safe-area-inset-top, 0px) + 16px); padding-top: var(--sheet-room); }
+body.city-home .modal { --sheet-room: calc(env(safe-area-inset-top, 0px) + 66px); background: rgba(22, 14, 64, 0.45); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.modal > .sheet {
+  --pg: #f4f1fb; --pg-ink: #2a1f5c; --pg-muted: #7a70a8;
+  box-sizing: border-box; max-height: calc(100vh - var(--sheet-room)); max-height: calc(100dvh - var(--sheet-room));
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border: 0; border-radius: 24px 24px 0 0; background: var(--pg); color: var(--pg-ink); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 -8px 24px rgba(10, 6, 40, 0.28); animation: sheet-up 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+@media (min-width: 640px) { .modal > .sheet { border-radius: 24px; max-height: min(88dvh, calc(100dvh - var(--sheet-room) - 16px)); } }
+/* The grab handle rides on top of the pinned header. */
+.modal > .sheet::before { z-index: 7; }
+/* The pinned header. */
+.modal > .sheet > .sheet-top { position: sticky; top: 0; z-index: 6; margin: 0 -16px; padding: 18px 16px 12px; border-radius: 24px 24px 0 0; background: var(--pg); box-shadow: none; }
+.modal > .sheet > .sheet-top::after { display: none; }
+.modal > .sheet > .sheet-top > .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.modal > .sheet > .sheet-top > .sheet-head h2 { margin: 6px 0 0; min-width: 0; font: 400 24px/1.12 var(--display); letter-spacing: 0.01em;
+  color: var(--pg-ink); -webkit-text-fill-color: var(--pg-ink); -webkit-text-stroke: 0; background: none; text-shadow: none; }
+.modal > .sheet > .sheet-top > .sheet-head p { margin: 4px 0 0; font: 700 12.5px/1.35 var(--ui); color: var(--pg-muted); }
+/* The round ×, the same on every sheet and tab page: 40px to see, 48px to tap. */
+.modal .close-btn, body.tabs-open .tab-page .tab-x { position: relative; flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  font: 400 22px/1 var(--display); color: #6b5fa0; background: #fff; box-shadow: 0 2px 8px rgba(60, 40, 140, 0.14); }
+.modal .close-btn::after, body.tabs-open .tab-page .tab-x::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; }
+.modal .close-btn:active, body.tabs-open .tab-page .tab-x:active { transform: scale(0.92); background: #efeaff; }
+/* The pinned footer: the sheet's main buttons, always in reach. */
+.modal > .sheet:has(> .sheet-foot) { padding-bottom: 0; }
+.modal > .sheet > .sheet-foot { position: sticky; bottom: 0; z-index: 6; display: grid; gap: 8px; justify-items: center; margin: 12px -16px 0; padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: var(--pg); box-shadow: 0 -1px 0 rgba(42, 31, 110, 0.07), 0 -10px 16px -10px rgba(42, 31, 110, 0.14); }
+.modal > .sheet > .sheet-foot > :is(button, .btn) { width: 100%; max-width: 380px; min-height: 48px; margin: 0; }
+.modal > .sheet > .sheet-foot > [hidden] { display: none; }
+.modal > .sheet > .sheet-foot > p { margin: 0; }
+.modal > .sheet > .sheet-foot > p:empty { display: none; }
+.modal > .sheet > .sheet-foot > .menu-link { min-height: 44px; }
+
+/* Sheets with a picture across the top (a new island, the Starter Pack): the × floats over it. */
+#land-buy > .land-sheet, #starter > .starter-sheet { width: min(420px, 100%); }
+#land-buy > .land-sheet > .close-btn, #starter > .starter-sheet > .close-btn { position: sticky; top: 10px; float: right; z-index: 7; margin: 10px -6px -50px 0; }
+#land-buy > .land-sheet { padding-left: 18px; padding-right: 18px; }
+#land-buy > .land-sheet > .sheet-foot { margin-left: -18px; margin-right: -18px; padding-left: 18px; padding-right: 18px; }
+#starter > .starter-sheet > .sheet-foot { background: #f6f7fd; }
+/* The wheel shrinks on short screens so it, the note and Spin! all fit together. */
+.spin-sheet .spin-wheel { width: min(300px, 78vw, calc(100dvh - 380px)); min-width: 200px; }
+.spin-sheet .spin-note { min-height: 0; margin: 8px auto 0; }
+.spin-sheet .spin-note:empty { display: none; }
+.daily-sheet .sheet-foot .daily-claim { margin: 0; }
+/* Disabled buttons in sheets and Pip's card stay readable on iPhones: WebKit fades disabled
+   buttons by itself, and a near-white pill on a white card vanished. A solid lavender pill with an
+   outline, dark text (fill colour too) and full opacity. */
+:is(.modal, .mayor-card) :is(.buy, .btn, .ty-buy, .daily-claim, .land-buy-btn, .spin-go):disabled {
+  opacity: 1; filter: none; color: #5f539c; -webkit-text-fill-color: #5f539c; background: #e7e1fa; box-shadow: inset 0 0 0 1.5px #c9bff0; text-shadow: none; }
+
 /* ════════ Tab pages (Shop · Company · Goals · Me): the one layout ════════
    The single source for how a tab's page sits on screen: its header, sub-tabs, hint, cards and
    card buttons (the older layers of tab-page rules were removed in favour of this block).
@@ -4516,10 +4578,8 @@ body.tabs-open .tab-page .tab-head { position: sticky; top: 0; z-index: 12; marg
 body.tabs-open .tab-page .tab-head .th-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 body.tabs-open .tab-page .th-title { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font: 400 26px/1.1 var(--display); letter-spacing: 0.01em; color: var(--pg-ink); -webkit-text-fill-color: var(--pg-ink); text-shadow: none; background: none; }
-body.tabs-open .tab-page .tab-x { flex: none; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
-  font: 400 22px/1 var(--display); color: #6b5fa0; background: #fff; box-shadow: 0 2px 8px rgba(60, 40, 140, 0.14); }
 /* Every page's own title row and close button step aside for it. */
-body.tabs-open .tab-page :is(.close-btn, .tcy-sheet > h2, .ty-top) { display: none !important; }
+body.tabs-open .tab-page :is(.close-btn, .ty-top) { display: none !important; }
 body.tabs-open .tab-page:not(#profile) .sheet-top > .sheet-head { display: none !important; }
 body.tabs-open :is(#scrapbook, #collection) .sheet-top > .sheet-head { display: flex !important; }
 body.tabs-open :is(#scrapbook, #collection) .sheet-head h2 { display: none !important; }
@@ -4633,7 +4693,7 @@ body.tabs-open #tycoon .room-bar .ty-hire small { font: 800 11px var(--ui); colo
 body.tabs-open #tycoon .room-bar .ty-auto { color: #fff; background: linear-gradient(180deg, #5ee0a0, #19a87a); }
 body.tabs-open #tycoon .room-bar .hq-btn { order: 0; flex: 1 1 100%; border-radius: 14px; }
 /* A pill that can't be pressed yet: soft lavender, never a grey slab. */
-body.tabs-open .tab-page .buy:disabled:not(.owned) { color: #8a80b8 !important; background: var(--pg-soft) !important; box-shadow: inset 0 0 0 1.5px var(--pg-line) !important; text-shadow: none !important; opacity: 1; }
+body.tabs-open .tab-page .buy:disabled:not(.owned) { color: #5f539c !important; -webkit-text-fill-color: #5f539c !important; background: #e7e1fa !important; box-shadow: inset 0 0 0 1.5px #c9bff0 !important; text-shadow: none !important; opacity: 1 !important; filter: none !important; }
 
 /* Upgrades, Team and Boosts rows: icon tile, title and line, pill. */
 body.tabs-open .tab-page :is(.ty-up, .ty-boost, .ty-era) { grid-template-columns: 44px 1fr auto; gap: 12px; padding: 12px 14px; }
