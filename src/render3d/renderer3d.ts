@@ -31,6 +31,7 @@ import { facadeFor } from "./facade";
 import { boxFoot, FH, prism } from "./geom";
 import { buildIsland, type IslandAnim } from "./world";
 import { kitVersion } from "./kitmodels";
+import { buildParade, type Parade } from "./parade";
 import { CITY_LOTS, buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 import { TownRainbow } from "./rainbow";
@@ -1026,10 +1027,13 @@ export class Renderer3D {
             if (m && !Array.isArray(m)) this.snowOn(m);
           });
         }
+        // (The parade carries on into the new town: it's taken out of the old one first.)
+        if (this.parade) this.parade.group.removeFromParent();
         if (old) { const g0 = old.group; requestAnimationFrame(() => requestAnimationFrame(() => disposeTree(g0))); }
       }
     }
     if (!this.biz) return;
+    this.paradeLive(dt);
     const fo = streetFocus(lots);
     this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom;
     // The first visit: a close look at the player's first tower and the Coffee Cart together.
@@ -1038,7 +1042,8 @@ export class Renderer3D {
     // A rank's new landmark: the camera visits it for a moment.
     // (Rank -4: the City Hall itself, for its level-up celebration.)
     // (Rank -5: a fly-over of the whole town, end to end, for a population milestone.)
-    const lm = this.bizVisit && performance.now() < this.bizVisit.until ? (this.bizVisit.rank === -4 ? { ...this.biz.spot("hall"), zoom: 2.0 } : this.bizVisit.rank === -5 ? this.flyOver() : this.biz.landmark(this.bizVisit.rank)) : null;
+    // (Watching the holiday parade: the camera follows the lead float for a few seconds.)
+    const lm = this.paradeLook() ?? (this.bizVisit && performance.now() < this.bizVisit.until ? (this.bizVisit.rank === -4 ? { ...this.biz.spot("hall"), zoom: 2.0 } : this.bizVisit.rank === -5 ? this.flyOver() : this.biz.landmark(this.bizVisit.rank)) : null);
     if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = lm.zoom ?? 1.8; }
     // (The player's own zoom isn't held to the fit-the-island limit either.)
     this.bizFraming = framing || !!this.debugLook || !!lm || (this.camUser.on && !f.bizLive?.sel);
@@ -1252,6 +1257,57 @@ export class Renderer3D {
     return { x: (sm + t) * Math.SQRT1_2, z: (sm - t) * Math.SQRT1_2, zoom: 1.55 - Math.sin(e * Math.PI) * 0.15 };
   }
   debugBounds(): ReturnType<typeof townBounds> { return townBounds(); }
+
+  // ---- The holiday parade (render3d/parade.ts, logic/parade.ts) ----
+  private parade: Parade | null = null;
+  /** Testing only: holds the parade's lead this far along its route (null: it moves on). */
+  debugParade: number | null = null;
+  private paradeAsk = false;
+  private paradeFollow = 0;
+  private readonly paradeV = new THREE.Vector3();
+  private readonly paradeLookAt = { x: 0, z: 0, zoom: 1.9 };
+  /** Starts a parade down the town's streets (once the town is there). */
+  startParade(): void { this.paradeAsk = true; }
+  /** A parade is on its way (asked for, or going by). */
+  paradeOn(): boolean { return this.paradeAsk || !!this.parade; }
+  /** The camera follows the lead float for `ms`, then the player has it back. */
+  watchParade(ms: number): void { this.paradeFollow = performance.now() + ms; }
+  private paradeLook(): { x: number; z: number; zoom: number } | null {
+    if (!this.parade || performance.now() > this.paradeFollow || !this.parade.lead(this.paradeV)) return null;
+    this.paradeLookAt.x = this.paradeV.x + 0.4; this.paradeLookAt.z = this.paradeV.z + 0.4;
+    return this.paradeLookAt;
+  }
+  private paradeLive(dt: number): void {
+    const biz = this.biz!;
+    if (this.paradeAsk) {
+      this.paradeAsk = false;
+      if (this.parade) this.parade.dispose();
+      const route = biz.paradeRoute(44);
+      this.parade = route.length > 1 ? buildParade(route) : null;
+    }
+    const p = this.parade;
+    if (!p) return;
+    if (p.group.parent !== biz.group) { biz.group.add(p.group); biz.paradeQuiet(true); }
+    if (!p.update(this.env.time, dt, this.env.nf, this.debugParade ?? undefined)) {
+      p.dispose();
+      this.parade = null;
+      this.paradeFollow = 0;
+      biz.paradeQuiet(false);
+    }
+  }
+  /** Which float is under the finger (page px), or -1. */
+  paradeHit(x: number, y: number): number {
+    if (!this.parade || this.bizK < 0.5) return -1;
+    const r = this.canvasRect(), v = this.paradeV;
+    let best = -1, bd = 58;
+    for (let k = 0; k < 4; k++) {
+      if (!this.parade.floatAt(k, v)) continue;
+      v.set(BIZ_SLOT.x + v.x, BIZ_SLOT.y + v.y, BIZ_SLOT.z + v.z).project(this.cam);
+      const d = Math.hypot(r.left + ((v.x + 1) / 2) * r.width - x, r.top + ((1 - v.y) / 2) * r.height - y);
+      if (d < bd) { bd = d; best = k; }
+    }
+    return best;
+  }
   private readonly tmpV = new THREE.Vector3();
   private readonly tmpV2 = new THREE.Vector3();
   private updateGrade(): void {

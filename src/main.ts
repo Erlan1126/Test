@@ -8,7 +8,7 @@ import { startIcons } from "./ui/icons";
 import { EDITION } from "./edition";
 import { toast } from "./ui/dom";
 import { hallBanner } from "./ui/mayor";
-import { seasonDebug } from "./data/season";
+import { citySeason, seasonDebug } from "./data/season";
 
 // The tower game on its own keeps the Skyrise name; the city game is Buildaroo.
 if (EDITION === "skyrise") {
@@ -17,7 +17,8 @@ if (EDITION === "skyrise") {
   if (logo) logo.textContent = "SKYRISE";
 }
 
-// Testing: ?debug&season=winter&weather=snow (or rain, clear, rainbow) forces Winter Lights and the weather.
+// Testing: ?debug&season=winter&weather=snow (or rain, clear, rainbow) forces Winter Lights and the weather,
+// and &date=2026-12-05 fakes the day for the Advent calendar.
 {
   const q = new URLSearchParams(location.search);
   if (q.has("debug")) {
@@ -26,6 +27,14 @@ if (EDITION === "skyrise") {
     if (w === "snow" || w === "rain" || w === "clear") seasonDebug.weather = w;
     // (weather=rainbow: a clear sky with the rainbow that follows rain.)
     if (w === "rainbow") { seasonDebug.weather = "clear"; seasonDebug.rainbow = true; }
+    // ?debug&date=2026-12-05: the calendar features (the Advent calendar) act as if it were
+    // that day, at the same time of day; its season comes with it unless one is given.
+    const dm = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(q.get("date") ?? "");
+    if (dm) {
+      const now = new Date(), at = new Date(+dm[1], +dm[2] - 1, +dm[3], now.getHours(), now.getMinutes(), now.getSeconds());
+      seasonDebug.shift = at.getTime() - now.getTime();
+      if (sn === null) seasonDebug.season = citySeason(at.getTime());
+    }
   }
 }
 

@@ -109,8 +109,10 @@ function goalsHtml(save: SaveData, c: Chapter): string {
   }).join("");
 }
 
-function show(chapter: string, text: string, goals: string, reward: string, button: string, onOk: () => void, cancel = ""): void {
+function show(chapter: string, text: string, goals: string, reward: string, button: string, onOk: () => void, cancel = "", dismiss = !!cancel): void {
   const no = $<HTMLButtonElement>("mayor-no");
+  // A choice or a question that can be turned down also closes by tapping outside the card.
+  $("mayor").onclick = e => { if (dismiss && e.target === $("mayor")) $("mayor").hidden = true; };
   no.hidden = !cancel;
   no.textContent = cancel;
   no.onclick = () => { $("mayor").hidden = true; };
@@ -181,7 +183,8 @@ export function introduce(save: SaveData, persist: () => void): boolean {
 /** Pip says something outside the chapters (one button to close). */
 /** Pip offers a choice: each option is a button in the list; the main button closes. */
 export function mayorChoice(title: string, text: string, options: { label: string; sub: string; onPick: () => void; swatch?: [string, string]; on?: boolean }[], button: string): void {
-  show(title, text, options.map((o, i) => `<li class="mayor-pick${o.on ? " on" : ""}"><button type="button" data-pick="${i}">${o.swatch ? `<i class="pick-sw" style="--p1:${esc(o.swatch[0])};--p2:${esc(o.swatch[1])}"></i>` : ""}<b>${esc(o.label)}</b><small>${esc(o.sub)}</small></button></li>`).join(""), "", button, () => {});
+  show(title, text, options.map((o, i) => `<li class="mayor-pick${o.on ? " on" : ""}"><button type="button" data-pick="${i}">${o.swatch ? `<i class="pick-sw" style="--p1:${esc(o.swatch[0])};--p2:${esc(o.swatch[1])}"></i>` : ""}<b>${esc(o.label)}</b><small>${esc(o.sub)}</small></button></li>`).join(""), "", button, () => {}, "", true);
+  $("mayor-goals").scrollTop = 0;
   $("mayor-goals").querySelectorAll<HTMLButtonElement>("[data-pick]").forEach(b => { b.onclick = () => { $("mayor").hidden = true; options[Number(b.dataset.pick)].onPick(); }; });
 }
 

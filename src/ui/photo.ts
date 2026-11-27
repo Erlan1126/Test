@@ -8,7 +8,7 @@ import { dayKey } from "../logic/rules";
 import type { SaveData } from "../logic/save";
 import type { Sound } from "../sound";
 import { track } from "../stats";
-import { $, toast, vibrate } from "./dom";
+import { $, closeModal, MODAL_IDS, toast, vibrate } from "./dom";
 
 // ---------- Filters (pure) ----------
 
@@ -196,6 +196,9 @@ export class PhotoMode {
   open(): void {
     if (this.isOpen) return;
     this.beforeOpen();
+    // (A window still open, or one that popped up by itself like the daily rewards, would sit
+    // over the town and catch every drag: it's put away first.)
+    for (const id of MODAL_IDS) { const el = document.getElementById(id); if (el && !el.hidden) closeModal(el); }
     document.body.classList.add("photo-mode");
     $("photo-bar").hidden = false;
     this.setFilter(this.filter.id);

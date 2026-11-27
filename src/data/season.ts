@@ -33,7 +33,11 @@ export const SEASONS: SeasonInfo[] = [
 export const seasonInfo = (id: CitySeason): SeasonInfo | undefined => SEASONS.find(x => x.id === id);
 
 /** Testing: force a season or the weather (set from the address bar with ?debug). */
-export const seasonDebug: { season?: CitySeason; weather?: WeatherKind; rainbow?: boolean } = {};
+export const seasonDebug: { season?: CitySeason; weather?: WeatherKind; rainbow?: boolean; shift?: number } = {};
+
+/** The time now as the calendar features see it (the Advent calendar): the real clock, moved
+ *  to another day when testing with ?debug&date=2026-12-05. */
+export const gameNow = (): number => Date.now() + (seasonDebug.shift ?? 0);
 
 const md = (d: Date) => (d.getMonth() + 1) * 100 + d.getDate();
 

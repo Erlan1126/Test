@@ -87,8 +87,10 @@
       <p id="mayor-text"></p>
       <ul class="mayor-goals" id="mayor-goals"></ul>
       <div class="mayor-reward" id="mayor-reward" hidden></div>
-      <button type="button" class="btn btn-primary wide" id="mayor-ok">Let's build!</button>
-      <button type="button" class="btn btn-secondary wide" id="mayor-no" hidden></button>
+      <div class="mayor-foot">
+        <button type="button" class="btn btn-primary wide" id="mayor-ok">Let's build!</button>
+        <button type="button" class="btn btn-secondary wide" id="mayor-no" hidden></button>
+      </div>
     </div>
   </div>
 </div>
@@ -203,45 +205,50 @@
 
 <div id="tcy-buildsheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="tcy-build-title">
   <div class="sheet tcy-sheet">
-    <button type="button" class="close-btn" aria-label="Close">×</button>
-    <h2 id="tcy-build-title">Build</h2>
+    <div class="sheet-top"><div class="sheet-head"><h2 id="tcy-build-title">Build</h2><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <div class="tcy-modes" id="tcy-modes"></div>
   </div>
 </div>
 
 <div id="tcy-goalsheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="tcy-goals-title">
   <div class="sheet tcy-sheet">
-    <button type="button" class="close-btn" aria-label="Close">×</button>
-    <h2 id="tcy-goals-title">Goals</h2>
+    <div class="sheet-top"><div class="sheet-head"><h2 id="tcy-goals-title">Goals</h2><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <div class="tcy-goals" id="tcy-goals"></div>
   </div>
 </div>
 <div id="spin-sheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="spin-title">
   <div class="sheet tcy-sheet spin-sheet">
-    <button type="button" class="close-btn" aria-label="Close">×</button>
-    <h2 id="spin-title">Daily spin</h2>
+    <div class="sheet-top"><div class="sheet-head"><h2 id="spin-title">Daily spin</h2><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <p class="spin-sub" id="spin-sub"></p>
     <div class="spin-wheel" id="spin-wheel" data-no-icons></div>
     <p class="spin-note" id="spin-note" aria-live="polite"></p>
-    <button type="button" class="btn btn-primary spin-go" id="spin-go">Spin!</button>
-    <button type="button" class="ev-pass spin-ad" id="spin-ad" hidden></button>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn-primary spin-go" id="spin-go">Spin!</button>
+      <button type="button" class="ev-pass spin-ad" id="spin-ad" hidden></button>
+    </div>
+  </div>
+</div>
+<div id="advent-sheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="advent-title">
+  <div class="sheet tcy-sheet advent-sheet">
+    <div class="sheet-top"><div class="sheet-head"><h2 id="advent-title">Advent calendar</h2><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
+    <p class="advent-sub" id="advent-sub"></p>
+    <div class="advent-grid" id="advent-grid"></div>
+    <p class="advent-note" id="advent-note" aria-live="polite"></p>
   </div>
 </div>
 
 <div id="daily-rewards" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="daily-rewards-title">
   <div class="sheet tcy-sheet daily-sheet">
-    <button type="button" class="close-btn" aria-label="Close">×</button>
-    <h2 id="daily-rewards-title">Daily rewards</h2>
+    <div class="sheet-top"><div class="sheet-head"><h2 id="daily-rewards-title">Daily rewards</h2><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <p class="daily-sub" id="daily-sub"></p>
     <div class="daily-grid" id="daily-grid"></div>
-    <button type="button" class="daily-claim" id="daily-claim">Claim</button>
+    <div class="sheet-foot"><button type="button" class="daily-claim" id="daily-claim">Claim</button></div>
   </div>
 </div>
 
 <div id="tcy-moresheet" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="tcy-more-title">
   <div class="sheet tcy-sheet">
-    <button type="button" class="close-btn" aria-label="Close">×</button>
-    <h2 id="tcy-more-title">Menu</h2>
+    <div class="sheet-top"><div class="sheet-head"><h2 id="tcy-more-title">Menu</h2><button type="button" class="close-btn" aria-label="Close">×</button></div></div>
     <div class="tcy-more" id="tcy-more"></div>
   </div>
 </div>
@@ -258,8 +265,10 @@
       <li><b>⚡</b> <span>One of each boost</span></li>
     </ul>
     <p class="starter-timer" id="starter-timer"></p>
-    <button type="button" class="btn btn-primary wide" id="starter-buy"></button>
-    <button type="button" class="menu-link" id="starter-later">Not now</button>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn-primary wide" id="starter-buy"></button>
+      <button type="button" class="menu-link" id="starter-later">Not now</button>
+    </div>
   </div>
 </div>
 
@@ -621,8 +630,10 @@
     <p class="land-what" id="land-what"></p>
     <ul class="land-perks" id="land-perks"></ul>
     <div class="land-price"><small id="land-price-label">Price</small><b id="land-price"></b><i class="land-bar"><i id="land-bar"></i></i><small id="land-have"></small></div>
-    <button type="button" class="btn-primary land-buy-btn" id="land-buy-btn">Buy this island</button>
-    <p class="land-step" id="land-step"></p>
+    <div class="sheet-foot">
+      <button type="button" class="btn-primary land-buy-btn" id="land-buy-btn">Buy this island</button>
+      <p class="land-step" id="land-step"></p>
+    </div>
   </div>
 </div>
 

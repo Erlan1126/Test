@@ -17,6 +17,7 @@ import { eraNudge, snoozeEraNudge } from "../logic/eranudge";
 import { pickTalk } from "../data/talk";
 import { earn } from "../logic/tycoon";
 import { WeatherMoments } from "./weathermoments";
+import { ParadeUI } from "./parade";
 import { citySeason, isRushHour, isWeekendNight, seasonDaysLeft, seasonInfo } from "../data/season";
 import { buySeasonPass, claimSP, SEASON_PAINT, seasonPass, seasonPoints, SP_FREE, SP_PREMIUM, SP_PRICE, SP_TIERS, spReady, spReward, spTier, type SPReward } from "../logic/seasonpass";
 import { bizColors, PAINTS, paintById, ownsPaint, setPaint } from "../logic/paint";
@@ -65,6 +66,9 @@ import { loadMemories, saveMemory, thenNowCard } from "./memories";
 import { PhotoMode } from "./photo";
 import { nextSpinIn, SpinWheel } from "./spin";
 import { spinAdLeft, spinFree, spinOpen } from "../logic/spin";
+import { AdventCalendar } from "./advent";
+import { adventOn, adventReady } from "../logic/advent";
+import { gameNow } from "../data/season";
 
 export interface TycoonHost {
   readonly save: SaveData;
@@ -119,6 +123,11 @@ export interface TycoonHost {
   bizZoom(f: number): void;
   bizPanEnd(): void;
   bizHold(): void;
+  /** The holiday parade in the town: start one, follow its lead float with the camera for
+   *  `ms`, and which float is under the finger (page px; -1 for none). */
+  paradeStart(): void;
+  paradeWatch(ms: number): void;
+  paradeHit(x: number, y: number): number;
   /** This week's Community Spire (asks the server; null when it can't be reached). */
   fetchSpire(): Promise<SpireNow | null>;
   /** Buildaroo: friends' homes this week, for the friend team (undefined offline). */
@@ -378,6 +387,10 @@ export class TycoonUI {
   /** In the business district (the 3D city), rather than the home screen. */
   inCity = false;
   /** The rainbow after rain and the snow day (ui/weathermoments.ts). */
+  /** The holiday parade (Winter Lights): its timer, banner and tips (ui/parade.ts). */
+  private readonly paradeUI = new ParadeUI(() => ({ save: this.save, sound: this.host.sound, persist: () => this.host.persist(), paradeStart: () => this.host.paradeStart(), paradeWatch: ms => this.host.paradeWatch(ms), paradeHit: (x, y) => this.host.paradeHit(x, y) }));
+  /** Testing (?debug): starts a holiday parade now. */
+  startParade(): boolean { return this.paradeUI.start(); }
   private readonly weather = new WeatherMoments(() => ({ save: this.save, sound: this.host.sound, persist: () => this.host.persist() }));
   /** The building whose card is open in the city. */
   private selected = "";
@@ -825,7 +838,7 @@ export class TycoonUI {
     for (const id of ["ty-coins", "tcy-coins"]) { const el = $(id); if (el.textContent !== shown) el.textContent = shown; }
     if (!$("earnings").hidden && now - this.earnAt > 900) { this.earnAt = now; this.renderEarnings(); }
     this.reactions(now);
-    if (HAS_CITY) this.weather.tick(now, this.inCity);
+    if (HAS_CITY) { this.weather.tick(now, this.inCity); this.paradeUI.tick(now, this.inCity); }
     for (const b of BUSINESSES) {
       if (levelOf(s, b.id) === 0) continue;
       const id = b.id, p = progressOf(s, id, now);
@@ -1256,7 +1269,7 @@ export class TycoonUI {
     dot("company", !!$("tycoon").querySelector(".ty-tabs .dot:not([hidden])"));
     // Red dots mean "something to collect right now", never "you could buy something".
     dot("build", false);
-    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (spinOpen(s, HAS_CITY) && spinFree(s)) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
+    dot("goals", (HAS_CITY && (eventReady(s).length > 0 || spReady(s) > 0)) || (spinOpen(s, HAS_CITY) && spinFree(s)) || (HAS_CITY && adventReady(s, gameNow()) > 0) || (!HAS_CITY && !!this.spire && spireReady(s.spire, this.spire) > 0) || (!HAS_CITY && lit("missions-btn")) || (!HAS_CITY && lit("pass-btn")) || ($("mayor-strip").classList.contains("ready") && !$("mayor-strip").hidden));
     dot("me", lit("ranks-btn") || lit("city-btn") || lit("level-btn") || (HAS_CITY && bookReady(s).length > 0));
     this.unlockTabs();
   }
@@ -1495,6 +1508,8 @@ export class TycoonUI {
       if (st) toast(HAS_CITY && this.save.profile.towers === 0 ? t("Your first apartment building: your neighbor lives here") : tn(st.f, "Your first tower: {n} floor", "Your first tower: {n} floors", { n: st.f }));
       return;
     }
+    // A float in the holiday parade: a tip, once per float.
+    if (!id && HAS_CITY && this.paradeUI.tap(e.clientX, e.clientY)) return;
     // Not on a bubble: the nearest building under the finger, whatever it is (a business,
     // a home or block, a park or a landmark), so no building is ever hard to tap.
     if (!id) {
@@ -1591,7 +1606,8 @@ export class TycoonUI {
   /** Choose a decoration for an empty lot: the ones put away (free), then the shop. */
   private openDecorate(lot: string): void {
     const s = this.save, hall = hallLevel(s);
-    const opts = PLACE_ITEMS.map(it => {
+    // (A decoration that's only won, like the Advent calendar's gingerbread house, shows once it's yours.)
+    const opts = PLACE_ITEMS.filter(it => !it.won || it.id in s.placed).map(it => {
       const owned = it.id in s.placed, standing = owned && !!s.placed[it.id];
       const locked = !owned && hall < it.hall, short = !owned && s.tycoon.coins < it.cash;
       const sub = standing ? t("Already in your city: tap to move it here")
@@ -2397,6 +2413,18 @@ export class TycoonUI {
     this.spinWheel ??= new SpinWheel(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); });
     this.spinWheel.open();
   }
+  /** The Advent calendar (made the first time it opens). */
+  private advent?: AdventCalendar;
+  openAdvent(): void {
+    this.advent ??= new AdventCalendar(this.host, () => { if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet(); this.host.refresh(); }, () => { if (HAS_CITY) this.paradeUI.afterAdvent(); });
+    this.advent.open();
+  }
+  /** The Goals sheet's way to the Advent calendar (all December): a red dot while a door waits. */
+  private adventEntryHtml(): string {
+    const ready = adventReady(this.save, gameNow());
+    const sub = ready > 1 ? t("{n} doors are waiting for you!", { n: ready }) : ready ? t("Today's door is ready to open!") : t("A little gift every day until December 24");
+    return `<button type="button" class="spin-entry advent-entry${ready ? " ready" : ""}" data-goal="advent"><span class="spin-entry-ico" aria-hidden="true">🎄</span><span><b>${esc(t("Advent calendar 🎁"))}</b><small>${esc(sub)}</small></span>${ready ? `<i class="dot"></i>` : ""}</button>`;
+  }
   /** The Goals sheet's way to the wheel: a red dot while today's free spin waits. */
   private spinEntryHtml(): string {
     const s = this.save, free = spinFree(s);
@@ -2410,6 +2438,7 @@ export class TycoonUI {
       parts.push(`<h3 class="sheet-sub">${esc(t("Story"))}</h3><button type="button" class="mayor-strip more-mayor${$("mayor-strip").classList.contains("ready") ? " ready" : ""}" data-goal="story">${$("mayor-strip").innerHTML}</button>`);
     }
     dealGoals(s);
+    if (HAS_CITY && adventOn(gameNow())) parts.push(this.adventEntryHtml());
     if (spinOpen(s, HAS_CITY)) parts.push(this.spinEntryHtml());
     // The week's city event first (it has the best rewards), then today's goals.
     if (HAS_CITY && s.tycoon.tips >= 3) parts.push(this.seasonPassHtml(), this.eventHtml(), this.teamHtml(), this.milestoneHtml());
@@ -2435,6 +2464,7 @@ export class TycoonUI {
     if (!el) return;
     if (this.onEventTap(el)) return;
     if (el.dataset.goal === "spin") { this.host.sound.click(); this.openSpin(); return; }
+    if (el.dataset.goal === "advent") { this.host.sound.click(); this.openAdvent(); return; }
     if (el.dataset.goal === "spire") {
       const s = this.save, stars = this.spire ? claimSpire(s.spire, this.spire) : 0;
       if (stars) {
