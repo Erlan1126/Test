@@ -281,10 +281,23 @@ export const skinById = (id: string): Skin => SKINS.find(s => s.id === id) ?? SK
 export const NEIGHBOR_LOOK: Look = { kind: "punched", glass: "#7f9cc4", frame: "#ffffff", slab: "#d9d3c7", slabH: 0.1, lit: ["#ffe7a1"] };
 
 /** Special floors draw in their own colors whatever the skin. */
-export const SPECIAL_COLORS = {
+const NORMAL_COLORS = {
   gold: "#ffd23f",
   ice: "#a6e4ff",
   garden: "#6fbf5a",
   shrink: "#ff8a3d",
   magnet: "#e8455f",
-} as const;
+};
+/** The colorblind-friendly set (after the Okabe-Ito palette): gold, pale sky blue,
+ *  bluish green, deep blue and vermillion stay apart with red-green and blue-yellow
+ *  colour blindness, where orange, red and green would all look alike (tests/access). */
+export const COLORBLIND_COLORS: typeof NORMAL_COLORS = {
+  gold: "#ffd23f",
+  ice: "#b8e6ff",
+  garden: "#009e73",
+  shrink: "#0050a0",
+  magnet: "#d55e00",
+};
+export const SPECIAL_COLORS = { ...NORMAL_COLORS };
+/** Switches special floors (and their labels) to the colorblind-friendly colors. */
+export function setColorblind(on: boolean): void { Object.assign(SPECIAL_COLORS, on ? COLORBLIND_COLORS : NORMAL_COLORS); }

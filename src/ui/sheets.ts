@@ -7,6 +7,7 @@ import { track } from "../stats";
 import { GUIDE, TOWER_GUIDE } from "../data/guide";
 import { CITY_NAME } from "../logic/city";
 import { layerForMeters, SKY_LAYERS } from "../data/layers";
+import { applyAccess } from "./access";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
 import { hallLevel } from "../logic/tycoon";
@@ -756,6 +757,9 @@ export class Sheets {
     $<HTMLInputElement>("set-music").checked = st.music;
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
     $<HTMLInputElement>("set-saver").checked = st.saver;
+    $<HTMLInputElement>("set-colorblind").checked = st.colorblind;
+    $<HTMLInputElement>("set-bigtext").checked = st.bigText;
+    $<HTMLInputElement>("set-onehand").checked = st.oneHand;
     $("vibrate-row").hidden = !("vibrate" in navigator) && !isNative();
     document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
     document.querySelectorAll<HTMLButtonElement>("[data-sky]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.sky === st.sky)));
@@ -831,6 +835,14 @@ export class Sheets {
       this.host.persist();
       vibrate(st().vibrate, 20);
     });
+    for (const [id, key] of [["set-colorblind", "colorblind"], ["set-bigtext", "bigText"], ["set-onehand", "oneHand"]] as const) {
+      $<HTMLInputElement>(id).addEventListener("change", e => {
+        st()[key] = (e.target as HTMLInputElement).checked;
+        this.host.persist();
+        this.click();
+        applyAccess(st());
+      });
+    }
     $<HTMLInputElement>("set-saver").addEventListener("change", e => {
       st().saver = (e.target as HTMLInputElement).checked;
       this.host.persist();

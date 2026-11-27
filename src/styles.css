@@ -4716,3 +4716,15 @@ body:not(.city-game) :is(.mayor-face, .mayor-mini) svg { transform: none; }
 body:not(.city-game) .mayor-talk small { color: #c25ab8; }
 body:not(.city-game) #mayor-name { background: linear-gradient(90deg, #5b3fc4, #e0559a 60%, #ff8a3d); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
 body:not(.city-game) .mayor-bar i, body:not(.city-game) .plan-road i.now { background: linear-gradient(90deg, #5b3fc4, #c25ab8, #ffb36b); }
+
+/* ---------- Accessibility ---------- */
+.group .set-head { margin: 0; padding: 12px 14px 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.group .set-head + .setting { border-top: 0; }
+/* Colorblind-friendly special floors (the same colors as SPECIAL_COLORS's colorblind set). */
+body.colorblind #floor-tag.shrink { background: rgba(0, 80, 160, 0.95); color: #fff; }
+body.colorblind #floor-tag.magnet { background: rgba(213, 94, 0, 0.95); color: #fff; }
+body.colorblind #floor-tag.garden { background: rgba(0, 158, 115, 0.95); color: #fff; }
+/* Larger text: every screen and panel drawn a size up (the 3D scene stays as it is). */
+body.big-text > :not(canvas) { zoom: 1.15; }
+/* One-handed play: the pause button sits at the bottom, within reach of the thumb. */
+body.one-hand #pause { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: auto; right: calc(16px + env(safe-area-inset-right, 0px)); width: 52px; height: 52px; }

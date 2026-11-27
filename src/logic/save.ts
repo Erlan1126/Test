@@ -55,6 +55,11 @@ export interface Settings {
   sky: "auto" | "day" | "night";
   /** Battery saver: 30 frames a second in the town, simpler graphics, no weather. */
   saver: boolean;
+  /** Accessibility: colorblind-friendly special floors, larger text, and the pause
+   *  button at the bottom of the screen for one-handed play. */
+  colorblind: boolean;
+  bigText: boolean;
+  oneHand: boolean;
 }
 
 export interface RunRecord {
@@ -294,7 +299,7 @@ export function defaultSave(): SaveData {
     orders: newOrders(),
     spire: newSpire(),
     history: [],
-    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto", sky: "auto", saver: false },
+    settings: { sound: true, music: true, vibrate: true, quality: "auto", autoLow: false, gfx: GFX, flat: false, lang: "auto", sky: "auto", saver: false, colorblind: false, bigText: false, oneHand: false },
     tutorialDone: false,
     seenFeatures: [],
     streak: { count: 0, best: 0, last: "", freezes: 0, freezeWeek: -1, claimed: [] },
@@ -454,6 +459,9 @@ export function normalize(raw: unknown): SaveData {
       lang: (["auto", ...LANGS].includes(set.lang as string) ? set.lang : "auto") as Settings["lang"],
       sky: (["auto", "day", "night"].includes(set.sky as string) ? set.sky : "auto") as Settings["sky"],
       saver: bool(set.saver, false),
+      colorblind: bool(set.colorblind, false),
+      bigText: bool(set.bigText, false),
+      oneHand: bool(set.oneHand, false),
     },
     tutorialDone: bool(r.tutorialDone, false),
     seenFeatures: strList(r.seenFeatures),

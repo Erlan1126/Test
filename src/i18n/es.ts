@@ -2491,4 +2491,10 @@ export const ES: Record<string, string> = {
   "Keep climbing! The {name} starts at floor {n}": "¡Sigue subiendo! El {name} empieza en el piso {n}",
   "Cloud Nine": "Nube Nueve",
   "Climb into the {name} ({n} floors)": "Sube hasta {name} ({n} pisos)",
+  "Accessibility": "Accesibilidad",
+  "Colorblind-friendly colors": "Colores para daltonismo",
+  "Special floors in colors everyone can tell apart": "Pisos especiales en colores que todos pueden distinguir",
+  "Larger text": "Texto más grande",
+  "One-handed play": "Jugar con una mano",
+  "Pause button at the bottom, by your thumb": "Botón de pausa abajo, junto a tu pulgar",
 };

@@ -18,6 +18,7 @@ import { shapeById } from "./data/shapes";
 import { currentShape } from "./logic/shapes";
 import { addToSkyline, bestTower, districtTowers } from "./logic/skyline";
 import { layerAt, layerForMeters, SKY_LAYERS } from "./data/layers";
+import { applyAccess } from "./ui/access";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
 import { nextTitle, titleFor, titleProgress, upcoming } from "./data/titles";
 import { SHAPES } from "./data/shapes";
@@ -279,6 +280,7 @@ export class App implements DailyHost {
     if (this.phone) document.documentElement.classList.add("phone");
     this.save = loadSave(this.storage);
     setSkyMode(this.save.settings.sky);
+    applyAccess(this.save.settings);
     migrateChapters(this.save);
     setLang(resolveLang(this.save.settings.lang));
     translateDom();
@@ -764,6 +766,7 @@ export class App implements DailyHost {
     this.tutorial = !this.save.tutorialDone;
     this.persist();
     this.sound.applySettings();
+    applyAccess(this.save.settings);
     this.applyQuality();
     this.applyLang();
     this.refresh();
