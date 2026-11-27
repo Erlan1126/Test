@@ -2497,4 +2497,5 @@ export const ES: Record<string, string> = {
   "Larger text": "Texto más grande",
   "One-handed play": "Jugar con una mano",
   "Pause button at the bottom, by your thumb": "Botón de pausa abajo, junto a tu pulgar",
+  "{icon} Only {n} floors short of the {name}. A new tower waits there!": "{icon} Solo te faltaron {n} pisos para {name}. ¡Allí te espera una nueva torre!",
 };

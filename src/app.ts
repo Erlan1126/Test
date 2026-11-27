@@ -1281,6 +1281,12 @@ export class App implements DailyHost {
       const L = SKY_LAYERS[layerForMeters(run.meters)];
       this.outcome.rewards.unshift({ kind: "pass", text: t("{icon} New sky layer reached: {name}!", { icon: L.icon, name: t(L.name) }) });
     }
+    // ...and a tower that got close to the next layer still to reach says how close, and that
+    // a new tower waits there: the reason to try once more.
+    const nextLayer = HAS_CITY || this.mode === "zen" ? undefined : SKY_LAYERS[layerForMeters(this.save.bestMeters) + 1];
+    if (nextLayer && run.floors >= nextLayer.at * 0.6 && run.floors < nextLayer.at) {
+      this.outcome.rewards.push({ kind: "pass", text: t("{icon} Only {n} floors short of the {name}. A new tower waits there!", { icon: nextLayer.icon, n: nextLayer.at - run.floors, name: t(nextLayer.name) }) });
+    }
     this.towerStars = Math.max(0, this.save.stars - starsBefore);
     statsTower(run, this.save.profile.towers, this.save.profile.level);
     if (this.vs && this.mode === "classic") void postTry(this.vs.id, this.save.nickname, run.score);
