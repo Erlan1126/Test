@@ -138,7 +138,11 @@ export class Renderer3D {
   private readonly tmpA = new THREE.Vector3();
   private readonly tmpB = new THREE.Vector3();
   private readonly tmpC = new THREE.Color();
-  private readonly calm = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Less motion (the phone's setting or the game's): no screen shake or flashes. */
+  private readonly calmMq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+  private get calm(): boolean {
+    return !!this.calmMq?.matches || (typeof document !== "undefined" && document.documentElement.classList.contains("still"));
+  }
   private dpr = 1;
   private low = false;
 

@@ -43,7 +43,7 @@ import { iconSvg } from "./icons";
 import { towerName } from "../data/towernames";
 import { AVATAR_COLORS, AVATARS, avatarBadge, FRAMES } from "../data/avatars";
 import type { FriendCity, Online } from "../online";
-import { $, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
+import { $, applyA11y, closeModal, esc, showTab, LOCK_ICON, openModal, replay, toast, TROPHY_ICON, vibrate, wireModal } from "./dom";
 import { isNative, platform } from "../native";
 
 export interface Host {
@@ -749,6 +749,9 @@ export class Sheets {
     $<HTMLInputElement>("set-music").checked = st.music;
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
     $<HTMLInputElement>("set-saver").checked = st.saver;
+    $<HTMLInputElement>("set-bigtext").checked = st.bigText;
+    $<HTMLInputElement>("set-onehand").checked = st.oneHand;
+    $<HTMLInputElement>("set-still").checked = st.still;
     $("vibrate-row").hidden = !("vibrate" in navigator) && !isNative();
     document.querySelectorAll<HTMLButtonElement>("[data-q]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.q === st.quality)));
     document.querySelectorAll<HTMLButtonElement>("[data-sky]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.sky === st.sky)));
@@ -826,6 +829,14 @@ export class Sheets {
       this.host.persist();
       vibrate(st().vibrate, 20);
     });
+    for (const [id, key] of [["set-bigtext", "bigText"], ["set-onehand", "oneHand"], ["set-still", "still"]] as const) {
+      $<HTMLInputElement>(id).addEventListener("change", e => {
+        st()[key] = (e.target as HTMLInputElement).checked;
+        applyA11y(st());
+        this.host.persist();
+        this.click();
+      });
+    }
     $<HTMLInputElement>("set-saver").addEventListener("change", e => {
       st().saver = (e.target as HTMLInputElement).checked;
       this.host.persist();

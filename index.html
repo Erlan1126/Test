@@ -168,6 +168,7 @@
   <div class="tcy-events" id="tcy-events"></div>
   <button type="button" class="tcy-builds" id="tcy-builds" hidden aria-label="Builders"></button>
   <button type="button" class="tcy-next" id="tcy-next"></button>
+  <div class="tcy-zoom" id="tcy-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button></div>
   <div class="era-nudge" id="era-nudge" hidden role="status"></div>
   <button type="button" class="block-skip" id="block-skip" hidden>Skip<span class="chev" aria-hidden="true"></span></button>
   <div class="block-say" id="block-say" role="status" aria-live="polite" hidden></div>
@@ -702,6 +703,12 @@
           <button type="button" role="radio" data-lang="de">Deutsch</button>
         </div>
       </div>
+    </div>
+    <div class="group" aria-labelledby="a11y-title">
+      <h3 class="group-title" id="a11y-title">Accessibility</h3>
+      <label class="setting"><span class="set-ico" aria-hidden="true">🔠</span><b>Bigger text<small>Larger menus, cards and buttons</small></b><input type="checkbox" id="set-bigtext" class="switch"></label>
+      <label class="setting"><span class="set-ico" aria-hidden="true">👍</span><b>One-handed play<small>Zoom buttons by your thumb</small></b><input type="checkbox" id="set-onehand" class="switch"></label>
+      <label class="setting"><span class="set-ico" aria-hidden="true">🍃</span><b>Less motion<small>No bouncing, sliding or screen shake</small></b><input type="checkbox" id="set-still" class="switch"></label>
     </div>
     <div class="group">
       <button type="button" class="setting link" id="help-btn"><span class="set-ico" aria-hidden="true">📖</span><b>How to play</b><span class="chev" aria-hidden="true"></span></button>

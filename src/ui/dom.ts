@@ -69,7 +69,19 @@ const openers = new Map<HTMLElement, Element | null>();
 // closed at once), and going from one menu straight to another crossfades instead of
 // dropping one and sliding the other up.
 let lastClose = 0, ghost: HTMLElement | null = null;
-const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** Less motion: the phone's own setting, or the game's (Settings → Less motion). */
+const stillMq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+export const stillMotion = (): boolean =>
+  !!stillMq?.matches || (typeof document !== "undefined" && document.documentElement.classList.contains("still"));
+const reduced = stillMotion;
+
+/** The accessibility settings, as classes on the page (the styles do the rest). */
+export function applyA11y(st: { bigText: boolean; oneHand: boolean; still: boolean }): void {
+  const h = document.documentElement.classList;
+  h.toggle("big-text", st.bigText);
+  h.toggle("one-hand", st.oneHand);
+  h.toggle("still", st.still);
+}
 function ghostOut(el: HTMLElement): void {
   if (reduced() || typeof document === "undefined") return;
   ghost?.remove();

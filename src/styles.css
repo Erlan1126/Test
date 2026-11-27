@@ -4724,3 +4724,30 @@ body.tabs-open #profile .stat-grid { gap: 10px !important; margin: 0 !important;
 /* (On a 568 px screen, in longer languages, "While you were away" ran off the top and cut
    Pip's face: the town line, which the City Hall goals also show, gives way there.) */
 @media (max-height: 600px) { #welcome .welcome-town { display: none; } }
+
+/* ---------- Accessibility (Settings) ---------- */
+.group-title { margin: 0; padding: 12px 16px 4px; font: 400 12px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+/* Bigger text: the menus, cards and the Next step pill grow (the town itself stays put). */
+html.big-text .sheet, html.big-text .dialog, html.big-text .mayor-card, html.big-text #toast, html.big-text .lv-pop { zoom: 1.15; }
+html.big-text #tcy-card { zoom: 1.06; }
+@media (min-width: 360px) {
+  html.big-text #tcy-card { zoom: 1.1; }
+  html.big-text #tycity .tcy-next, html.big-text #tycity .tcy-bar { zoom: 1.1; }
+  html.big-text #tycity .tcy-top { zoom: 1.06; }
+}
+/* One-handed: zoom buttons by the thumb (bottom right, above the Next step pill). */
+.tcy-zoom { display: none; }
+html.one-hand #tycity .tcy-zoom { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 184px); display: flex; flex-direction: column; gap: 8px; }
+html.one-hand #tycity .tcy-zoom button { width: 46px; height: 46px; border: 0; border-radius: 50%; cursor: pointer; background: #fff; color: #4a3f8a; font: 400 26px/1 var(--display); box-shadow: 0 4px 0 #c9c1ea, 0 8px 18px rgba(20, 10, 60, 0.3); }
+html.one-hand #tycity .tcy-zoom button:active { transform: translateY(3px); box-shadow: 0 1px 0 #c9c1ea; }
+#tycity:has(.tcy-card:not([hidden])) .tcy-zoom { display: none !important; }
+/* Less motion: nothing bounces, slides or shakes (the phone's own setting does the same). */
+html.still *, html.still *::before, html.still *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+/* Goal dots: done ones are filled with a tick, to-do ones are rings (not by colour alone). */
+.tcy-next .first-dots i { box-sizing: border-box; background: transparent; border: 2px solid #c9c1ea; box-shadow: none; display: grid; place-items: center; }
+.tcy-next .first-dots i.ok { border: 0; }
+.tcy-next .first-dots i.ok::after { content: ""; width: 4px; height: 2px; margin-top: -1px; border: solid #fff; border-width: 0 0 1.5px 1.5px; transform: rotate(-45deg); }
+/* A long business name wraps to a second line instead of "PIZZA PL…" (and a tile's label
+   wraps rather than spilling out, with bigger text or a long translation). */
+#tcy-card .bc-title b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+#tcy-card .bc-tile b { white-space: normal; text-align: center; max-width: 100%; }

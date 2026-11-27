@@ -9,7 +9,7 @@ import { spin, spinAdLeft, spinFree, SPIN_SLICES, type SpinResult, type SpinSlic
 import type { Sound } from "../sound";
 import { adsReady, showRewarded } from "../ads";
 import { track } from "../stats";
-import { $, closeModal, esc, openModal, toast, wireModal } from "./dom";
+import { $, closeModal, esc, openModal, stillMotion, toast, wireModal } from "./dom";
 import { burst, confetti } from "./fx";
 
 export interface SpinHost {
@@ -129,7 +129,7 @@ export class SpinWheel {
     this.result = r;
     this.host.sound.whoosh();
     const disc = $("spin-disc");
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches, ms = still ? 600 : SPIN_MS;
+    const still = stillMotion(), ms = still ? 600 : SPIN_MS;
     const jitter = (Math.random() - 0.5) * SEG * 0.6;
     const target = -(r.slice * SEG + SEG / 2) + jitter;
     const turn = (((target - this.angle) % 360) + 360) % 360;

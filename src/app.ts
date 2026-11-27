@@ -92,7 +92,7 @@ import { teamWeek } from "./logic/team";
 import { seasonPass, SP_TIERS } from "./logic/seasonpass";
 import { citySeason, rainbowNow, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { bizColors, normalizePaint, ownsPaint } from "./logic/paint";
-import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
+import { $, applyA11y, closeModal, displayName, esc, openModal, openModalEl, replay, stillMotion, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
@@ -251,7 +251,7 @@ export class App implements DailyHost {
   private runDay = 0;
   /** The app is in the background or lost focus. */
   private away = false;
-  private readonly calmMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  private get calmMotion(): boolean { return stillMotion(); }
   private tag = "";
   /** The current tower's taps, for the online rankings. */
   private recorder: RunRecorder | null = null;
@@ -368,6 +368,7 @@ export class App implements DailyHost {
     try { this.friendScore = clamp(parseInt(new URLSearchParams(location.search).get("beat") ?? "", 10) || 0, 0, 999999); } catch { /* no query */ }
 
     this.wire();
+    applyA11y(this.save.settings);
     this.resize();
     this.reset();
     this.renderMenu();
@@ -778,6 +779,7 @@ export class App implements DailyHost {
     this.tutorial = !this.save.tutorialDone;
     this.persist();
     this.sound.applySettings();
+    applyA11y(this.save.settings);
     this.applyQuality();
     this.applyLang();
     this.refresh();

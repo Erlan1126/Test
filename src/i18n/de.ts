@@ -2668,4 +2668,13 @@ export const DE: Record<string, string> = {
   "Star Gate": "Sternentor",
   "Comet Express": "Kometen-Express",
   "Galaxy Hub": "Galaxie-Drehkreuz",
+  "Accessibility": "Barrierefreiheit",
+  "Bigger text": "Größere Schrift",
+  "Larger menus, cards and buttons": "Größere Menüs, Karten und Tasten",
+  "One-handed play": "Einhändig spielen",
+  "Zoom buttons by your thumb": "Zoom-Tasten in Daumennähe",
+  "Less motion": "Weniger Bewegung",
+  "No bouncing, sliding or screen shake": "Kein Hüpfen, Gleiten oder Wackeln",
+  "Zoom in": "Vergrößern",
+  "Zoom out": "Verkleinern",
 };

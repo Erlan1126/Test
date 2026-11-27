@@ -2669,4 +2669,13 @@ export const ES: Record<string, string> = {
   "Star Gate": "Puerta estelar",
   "Comet Express": "Expreso cometa",
   "Galaxy Hub": "Centro galáctico",
+  "Accessibility": "Accesibilidad",
+  "Bigger text": "Texto más grande",
+  "Larger menus, cards and buttons": "Menús, tarjetas y botones más grandes",
+  "One-handed play": "Jugar con una mano",
+  "Zoom buttons by your thumb": "Botones de zoom al alcance del pulgar",
+  "Less motion": "Menos movimiento",
+  "No bouncing, sliding or screen shake": "Sin rebotes, deslizamientos ni temblores de pantalla",
+  "Zoom in": "Acercar",
+  "Zoom out": "Alejar",
 };

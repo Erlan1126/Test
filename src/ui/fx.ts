@@ -1,8 +1,9 @@
+import { stillMotion } from "./dom";
 // Little bits of joy for the menus: sparks when a reward is claimed, confetti for big
 // moments and numbers that count up. All of it is plain DOM + CSS so it costs nothing while
 // idle, and it all stays still for players who ask for reduced motion.
 
-const still = (): boolean => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const still = stillMotion;
 
 const COLORS = ["#ffd23f", "#ff7a5c", "#ff5fa2", "#7b6cff", "#3fc5ff", "#5ee08a"];
 

@@ -102,3 +102,13 @@ describe("the native backup", () => {
     expect(backupIsAhead(fewer, now)).toBe(false);
   });
 });
+
+it("keeps the accessibility settings (off for a new player and for older saves)", () => {
+  const s = defaultSave();
+  expect([s.settings.bigText, s.settings.oneHand, s.settings.still]).toEqual([false, false, false]);
+  const old = JSON.parse(JSON.stringify(s)); delete old.settings.bigText; delete old.settings.oneHand; delete old.settings.still;
+  expect(normalize(old).settings.bigText).toBe(false);
+  s.settings.bigText = true; s.settings.oneHand = true; s.settings.still = true;
+  const back = normalize(JSON.parse(JSON.stringify(s))).settings;
+  expect([back.bigText, back.oneHand, back.still]).toEqual([true, true, true]);
+});

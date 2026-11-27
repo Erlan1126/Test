@@ -36,7 +36,7 @@ import {
 } from "../logic/tycoon";
 import { MILESTONES_AT } from "../data/tycoon";
 import type { Sound } from "../sound";
-import { $, closeModal, displayName, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
+import { $, closeModal, displayName, esc, LOCK_ICON, openModal, openModalEl, stillMotion, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
 import { cleanCityName } from "../logic/save";
@@ -245,6 +245,13 @@ export class TycoonUI {
     $("ty-build").addEventListener("click", () => { closeModal($("tycoon")); this.openBuild(); });
     this.wireTownCamera();
     $("tycity").addEventListener("click", e => this.onCityTap(e));
+    // One-handed play: zoom with a thumb instead of a pinch.
+    $("tcy-zoom").addEventListener("click", e => {
+      const b = (e.target as Element).closest<HTMLElement>("[data-zoom]");
+      if (!b) return;
+      this.host.bizZoom(b.dataset.zoom === "in" ? 1.3 : 1 / 1.3);
+      this.host.sound.click(); vibrate(this.save.settings.vibrate, 6);
+    });
     $("tcy-card").addEventListener("click", e => this.onCardTap(e));
     wireModal($("land-buy"));
     $("land-buy-btn").addEventListener("click", () => this.buyLandNow());
@@ -513,7 +520,7 @@ export class TycoonUI {
   private startStory(dest: string): void {
     this.clearStory();
     const s = this.save, c = s.cafe, now = Date.now();
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced = stillMotion();
     this.story = { stage: "none", at: now, saleAt: 0, crowd: s.tycoon.tips >= 1, reduced };
     if (!c.starter || levelOf(s, "coffee") === 0) return;
     if (!c.moved) {
@@ -1416,7 +1423,7 @@ export class TycoonUI {
   private wireTownCamera(): void {
     const el = $("tycity"), pts = new Map<number, { x: number; y: number }>();
     let start: { x: number; y: number } | null = null, moved = false, pinch = 0, mid: { x: number; y: number } | null = null;
-    const ui = (t: EventTarget | null) => !!(t as Element | null)?.closest?.(".tcy-top, .tcy-bar, .tcy-next, .tcy-card, .tcy-events, .tcy-builds, .block-skip, .tcy-coach, #block-say");
+    const ui = (t: EventTarget | null) => !!(t as Element | null)?.closest?.(".tcy-top, .tcy-bar, .tcy-next, .tcy-card, .tcy-events, .tcy-builds, .tcy-zoom, .block-skip, .tcy-coach, #block-say");
     el.addEventListener("pointerdown", e => {
       if (ui(e.target) || !this.inCity) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1458,7 +1465,7 @@ export class TycoonUI {
     // (Visiting a friend's town: just looking, nothing of ours to tap.)
     if (document.body.classList.contains("visiting-town")) return;
     const target = e.target as Element;
-    if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-next, .tcy-builds")) return;
+    if (target.closest(".tcy-top, .tcy-bar, .tcy-card, .tcy-next, .tcy-builds, .tcy-zoom")) return;
     const act = target.closest<HTMLElement>("[data-act]"), tag = target.closest<HTMLElement>(".tag");
     let id = tag?.dataset.tag ?? "";
     if (id.startsWith("proj-")) {
@@ -3936,7 +3943,7 @@ function showOverlay(el: HTMLElement, click: () => void): void {
 /** A coin flies from a room up to the coin counter. */
 function flyCoin(from: Element, toId = "ty-coins"): void {
   const to = document.getElementById(toId);
-  if (!to || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!to || stillMotion()) return;
   const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
   if (a.bottom < 0 || a.top > innerHeight) return;
   const el = document.createElement("span");
