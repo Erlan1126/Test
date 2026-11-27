@@ -1,7 +1,7 @@
 # Putting Skyrise on the App Store and Google Play
 
-> **Where the Skyrise app lives.** Skyrise is its own app (iPhone `com.erlanstudios.skyrise`, the original Skyrise
-> app in TestFlight; Android `com.bigbrucestudios.skyrise`) on
+> **Where the Skyrise app lives.** Skyrise is its own Big Bruce Studios app (iPhone and Android
+> `com.bigbrucestudios.skyrise`) on
 > the `skyrise-app` branch. The shared game code is still made on `claude/new-session-klw8t6`
 > (which builds Buildaroo, `com.bigbrucestudios.buildaroo`). To bring new game work into
 > Skyrise, merge that branch into `skyrise-app`; never merge `skyrise-app` back, or Buildaroo
@@ -89,9 +89,14 @@ store's own testing tracks.
 
 - [ ] Join the Apple Developer Program at https://developer.apple.com/programs/enroll
       (Individual, $99 a year).
-- [x] App id and App Store Connect app: Skyrise's iPhone app keeps its original record,
-      `com.erlanstudios.skyrise` (the "Skyrise" app in TestFlight). Its signing profile is
-      already in Codemagic, so nothing to register. Fill its listing from `launch/stores/app-store.md`.
+- [ ] App id: in the Apple Developer site → **Certificates, Identifiers & Profiles** →
+      **Identifiers** → **+** → App IDs → App, register `com.bigbrucestudios.skyrise`
+      (description "Skyrise", tick **In-App Purchase**, which is on by default).
+- [ ] App Store Connect app: **Apps** → **+** → New App, with the fields in
+      `launch/stores/app-store.md` (bundle ID `com.bigbrucestudios.skyrise`). Codemagic makes
+      the signing profile for it by itself on the next build. The old TestFlight app with the
+      Erlan Studios id (`com.erlanstudios.skyrise`) is no longer built. If the new app's name
+      is refused as taken, rename or remove that old app first.
 - [ ] **Let GitHub sign and upload builds:** in App Store Connect → **Users and Access**
       → **Integrations** → **App Store Connect API** → Team Keys → **+**. Name it
       "GitHub", access **Admin**, then download the `.p8` file. It can only be downloaded once.
@@ -117,6 +122,6 @@ Every push to the branch makes new builds with a higher build number. For an upd
 upload the new `.aab` to Google Play, and pick the new TestFlight build for a new App
 Store version.
 
-The app ids can't change once the first build is uploaded: iPhone `com.erlanstudios.skyrise`
-(already uploaded to TestFlight), Android `com.bigbrucestudios.skyrise` (not uploaded yet).
+The app ids can't change once the first build is uploaded: `com.bigbrucestudios.skyrise` on
+both iPhone and Android.
 Players never see these ids; the store shows the seller, Big Bruce Studios LLC.
