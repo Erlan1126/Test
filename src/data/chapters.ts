@@ -114,7 +114,7 @@ export const CHAPTERS: Chapter[] = [
     title: "Harbor District",
     intro: "The town is full! West of the square there's room for a harbor: boats, a fish market, a lighthouse. Buy the land and open its first businesses.",
     outro: "Smell that sea air? Fishing boats in, tourists off the ferry. The harbor was the right call.",
-    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), lvC(800, 1250)],
+    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), lvC(800, 1100)],
     reward: { stars: 40, crystals: 80 },
   },
   {
@@ -128,7 +128,7 @@ export const CHAPTERS: Chapter[] = [
     title: "Downtown",
     intro: "Big companies are calling. Downtown is where the towers go: offices, banks, a stock exchange. Build our business quarter!",
     outro: "Look at that skyline! Downtown makes us the business capital of the islands.",
-    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), lvC(1200, 1800)],
+    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), lvC(1200, 1500)],
     reward: { stars: 60, crystals: 120 },
   },
   {
