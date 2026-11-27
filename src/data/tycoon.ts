@@ -34,7 +34,7 @@ export const PAY_K = 0.7, COST_K = 1.6, MANAGER_K = 1.5;
  *  there (read off simulated play, tests/city-playtest.test.ts). Pegged to the old district
  *  price, the Harbor's six opened all at once for pocket change, while the Crystal Spire's
  *  fourth took weeks. */
-const DIST_FIRST: Partial<Record<LandId, number>> = { meadow: 1e9, lakeside: 5e9, hills: 1e10, resort: 2.5e10, cloud: 3e10, crystal: 5e10, orbit: 1e12 };
+const DIST_FIRST: Partial<Record<LandId, number>> = { meadow: 1e9, lakeside: 5e9, hills: 1e10, resort: 2.5e10, canal: 2.8e10, cloud: 3e10, crystal: 5e10, orbit: 1e12 };
 /** Each business in a district costs this many times the one before. */
 const DIST_STEP = 9;
 const BUSINESSES_BASE: Business[] = [
@@ -61,6 +61,7 @@ function districtBusinesses(): Business[] {
     ["lakeside", [["icecream", "Ice Cream Parlor", "gift", "#ff9ac8"], ["toystore", "Toy Store", "balloon", "#ffd23a"], ["gardencenter", "Garden Center", "leaf", "#5ee0a0"], ["pettingzoo", "Petting Zoo", "home", "#c89a5a"], ["themepark", "Theme Park", "star", "#ff5f8b"], ["golfclub", "Golf Club", "flag", "#19a87a"]]],
     ["hills", [["boutique", "Fashion Boutique", "gift", "#e8457a"], ["gym", "City Gym", "fire", "#ff8a3b"], ["startup", "Tech Startup", "sparkle", "#6a3cff"], ["bank", "Grand Bank", "gem", "#e8b020"], ["exchange", "Stock Exchange", "building", "#3a8dff"], ["tvstudio", "TV Studio", "film", "#b48cff"]]],
     ["resort", [["smoothiebar", "Smoothie Bar", "coffee", "#ff9a4a"], ["cabanaclub", "Cabana Club", "sun", "#ffd23a"], ["waterpark", "Water Park", "balloon", "#3ad0e8"], ["divecenter", "Dive Center", "globe", "#2f8fd8"], ["yachtclub", "Yacht Club", "flag", "#ff5f8b"], ["grandresort", "Grand Resort Hotel", "building", "#2ec4a0"]]],
+    ["canal", [["gondola", "Gondola Rides", "flag", "#3a8dff"], ["maskshop", "Mask Shop", "sparkle", "#ff5f8b"], ["glassworks", "Glass Workshop", "gem", "#3ad0c0"], ["bookshop", "Old Bookshop", "home", "#c8864a"], ["artgallery", "Art Gallery", "star", "#9a6cff"], ["clocktower", "Clock Tower Hall", "building", "#e8a020"]]],
     ["cloud", [["cloudspa", "Cloud Spa", "cloud", "#bfe6ff"], ["royalbakery", "Royal Bakery", "sun", "#ffe27a"], ["skyopera", "Sky Opera", "star", "#d9ccff"], ["palacehotel", "Palace Hotel", "building", "#ffd86a"], ["goldexchange", "Gold Exchange", "gem", "#e8b020"], ["royalball", "Royal Ball", "sparkle", "#ff9ac8"]]],
     ["crystal", [["gemshop", "Gem Shop", "gem", "#b48cff"], ["crystalcafe", "Crystal Café", "coffee", "#8af0ff"], ["lightshow", "Light Show", "sparkle", "#ff8ae0"], ["jewelry", "Jewelry House", "gem", "#7ad0ff"], ["crystallab", "Crystal Lab", "globe", "#9a7aff"], ["prismtower", "Prism Tower", "building", "#c8a8ff"]]],
     ["orbit", [["spacediner", "Space Diner", "dish", "#5ae0ff"], ["zerogym", "Zero-G Gym", "fire", "#8a96ff"], ["satellite", "Satellite Co.", "globe", "#3a8dff"], ["moontours", "Moon Tours", "rocket", "#c8d0e4"], ["rocketworks", "Rocket Works", "rocket", "#ff5f6d"], ["starport", "Star Port", "star", "#ffd23f"]]],
@@ -225,6 +226,12 @@ const BIZ_UPGRADES: Record<string, [string, string, string]> = {
   moontours: ["Moon Buggy", "Crater Camp", "Earthrise View"],
   rocketworks: ["Rocket Fuel", "Launch Tower", "Mega Booster"],
   starport: ["Star Gate", "Comet Express", "Galaxy Hub"],
+  gondola: ["Striped Poles", "Gondolier Songs", "Moonlight Rides"],
+  maskshop: ["Feather Trims", "Gold Leaf", "Carnival Night"],
+  glassworks: ["Hot Furnace", "Glass Beads", "Chandelier Order"],
+  bookshop: ["Reading Nook", "First Editions", "Author Signing"],
+  artgallery: ["Spotlights", "Old Masters", "Grand Opening Gala"],
+  clocktower: ["Bell Ringers", "Golden Hands", "New Year Chimes"],
 };
 /** Upgrade prices, as multiples of the business's first-level price. */
 export const UPGRADE_COST = [5000, 1e6, 2e8];

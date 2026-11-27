@@ -3327,7 +3327,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     return top;
   };
   const townC = (() => { const h = islandOutline(ISLAND_PAD, true); return { x: h.reduce((a, p) => a + p[0], 0) / h.length, z: h.reduce((a, p) => a + p[1], 0) / h.length }; })();
-  let resortSea: THREE.Material | null = null;
+  let resortSea: THREE.Material | null = null, canalWater: THREE.Material | null = null;
   (cafe.land ?? []).forEach(({ id, bought, sale }) => {
     const k = LAND.findIndex(l => l.id === id);
     if (k < 0 || (!bought && !sale)) return;
@@ -3372,7 +3372,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const roadD = tc ? own(std(tc.road, { roughness: 0.7, metalness: theme === "orbit" ? 0.3 : 0 })) : road;
     // (Each ground district has its own paving: sandy harbor stone, soft garden stone,
     // downtown granite.)
-    const groundWalk: Record<string, string> = { meadow: "#f3dfb6", lakeside: "#e2ecd2", hills: "#cfd2dc", resort: "#f8e8cc" };
+    const groundWalk: Record<string, string> = { meadow: "#f3dfb6", lakeside: "#e2ecd2", hills: "#cfd2dc", resort: "#f8e8cc", canal: "#e6c2a0" };
     const walkD = tc ? own(std(tc.walk, { roughness: 0.7 })) : groundWalk[id] ? own(std(groundWalk[id], { roughness: 0.85, map: walk.map })) : walk;
     if (!tc && groundWalk[id]) streetUV.set(walkD, 1.0);
     const curbD = tc ? own(std(tc.curbC, { roughness: 0.5, metalness: theme === "cloud" ? 0.6 : 0.2, emissive: new THREE.Color(theme === "cloud" ? "#000000" : tc.curbC), emissiveIntensity: theme === "cloud" ? 0 : 0.35 })) : curb;
@@ -3441,6 +3441,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
           L(new THREE.CylinderGeometry(0.26, 0.22, 0.26, 10).translate(cx2, 0.33, cz2), mats.c("#b8704a", 0.8));
           L(new THREE.IcosahedronGeometry(0.22, 0).translate(cx2, 0.55, cz2), leaf);
           for (let f = 0; f < 4; f++) L(new THREE.SphereGeometry(0.06, 6, 4).translate(cx2 + Math.cos(f * 1.6) * 0.15, 0.66, cz2 + Math.sin(f * 1.6) * 0.15), mats.c(["#ff6fa0", "#ffe27a", "#b48cff", "#ff8a5c"][f], 0.8));
+        } else if (id === "canal") {
+          // (Iron lanterns with a hanging basket of flowers on the canal's corners.)
+          L(new THREE.CylinderGeometry(0.035, 0.05, 1.15, 6).translate(cx2, 0.78, cz2), mats.c("#2a2f45", 0.5, 0.4));
+          L(new THREE.BoxGeometry(0.16, 0.2, 0.16).translate(cx2, 1.42, cz2), lampMat);
+          L(new THREE.ConeGeometry(0.14, 0.12, 4).rotateY(Math.PI / 4).translate(cx2, 1.58, cz2), mats.c("#2a2f45", 0.5, 0.4));
+          L(new THREE.SphereGeometry(0.14, 8, 5, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).translate(cx2 + a2 * 0.2, 1.08, cz2), mats.c("#8a5a30", 0.8));
+          for (let f = 0; f < 4; f++) L(new THREE.SphereGeometry(0.055, 6, 4).translate(cx2 + a2 * 0.2 + Math.cos(f * 1.6) * 0.09, 1.12, cz2 + Math.sin(f * 1.6) * 0.09), mats.c(["#ff6fa0", "#ffe27a", "#ff8a5c", "#ffffff"][f], 0.8));
         } else if (id === "resort") {
           // (Striped beach posts with a life ring on the resort's corners.)
           L(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 8).translate(cx2, 0.55, cz2), mats.c("#ffffff", 0.5));
@@ -3500,6 +3507,10 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       // them, a palm garden toward the town and the beach on the far side, with the lagoon
       // and its pier at the far corner.)
       if (id === "resort") return key === "1,1" || key === "2,1" ? "hotel" : key === "2,2" ? "pool" : key === "1,2" ? "cabanas" : key === "0,0" ? "palms" : key === "3,3" ? "lagoon" : key === "3,2" || key === "2,3" ? "beach" : "home";
+      // (The Canal Quarter: the clock tower's piazza in the middle, canals with bridges and
+      // gondolas round it, the old gate on the corner toward the town (it lies off the town's
+      // front-left), painted townhouses everywhere else.)
+      if (id === "canal") return key === "1,1" ? "clocktower" : key === "2,1" || key === "1,2" || key === "2,2" ? "canal" : key === "3,0" ? "gate" : "home";
       if (id === "cloud") return key === "1,1" ? "palace" : key === "2,2" ? "skygarden" : "villa";
       if (id === "crystal") return key === "1,1" ? "spire" : "crystal";
       return key === "1,1" ? "rocket" : key === "2,2" ? "dish" : "dome";
@@ -3760,6 +3771,119 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
           for (const [tx, tz] of [[-1.4, 1.2], [1.4, 1.2]]) Q(new THREE.BoxGeometry(1.0, 0.04, 0.6).rotateX(-0.5).translate(tx, 0.6, tz), m2("#2a3f8a", 0.2, 0.6));
         }
         continue;
+      }
+      if (id === "canal") {
+        // The Canal Quarter's blocks: brick paving, canals, painted townhouses.
+        const water = canalWater ??= own(std("#2f9fc0", { roughness: 0.15, metalness: 0.1, emissive: 0x0d4a60, emissiveIntensity: 0.12 }));
+        const stone = mats.c("#d9c8b0", 0.85), brick = mats.c("#c8704a", 0.85), iron = mats.c("#2a2f45", 0.5, 0.4), white = mats.c("#ffffff", 0.5);
+        const paint = ["#f2b84a", "#e8735a", "#f4d6a0", "#7fb0c8", "#d9876a", "#f0e2c0", "#b8c87a"];
+        type Put = (geo: THREE.BufferGeometry, m: THREE.Material) => unknown;
+        // (A tall narrow townhouse: painted front, white windows, a red-tiled roof.)
+        const townhouse = (Q: Put, hx: number, hz: number, w5: number, h5: number, c: string, face: number) => {
+          Q(new THREE.BoxGeometry(w5, h5, 0.9).translate(hx, h5 / 2 + 0.06, hz), mats.c(c, 0.8));
+          Q(new THREE.ConeGeometry(w5 * 0.75, 0.5, 4).rotateY(Math.PI / 4).scale(1, 1, 0.9 / w5).translate(hx, h5 + 0.31, hz), mats.c("#b8503a", 0.8));
+          for (let f = 0; f < Math.floor(h5 / 0.6); f++) for (const wx of w5 > 0.8 ? [-0.2, 0.2] : [0]) Q(new THREE.BoxGeometry(0.18, 0.28, 0.04).translate(hx + wx, 0.55 + f * 0.6, hz + face * 0.46), f === 0 && wx <= 0 ? mats.c("#6a3a20", 0.7) : winMat);
+        };
+        // (A gondola: black, curled at both ends, with a gondolier in a striped shirt.)
+        const gondolaAt = (Q2: THREE.Object3D) => {
+          const gd = new THREE.Group(), dark = mats.c("#1c1a28", 0.4);
+          gd.add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.12, 0.3).translate(0, 0.1, 0), dark));
+          for (const sx of [-1, 1]) gd.add(new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.04, 6, 10, Math.PI).rotateZ(sx > 0 ? -Math.PI / 2 : Math.PI / 2).translate(sx * 0.65, 0.2, 0), dark));
+          gd.add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.26).translate(0.1, 0.2, 0), mats.c("#c8303a", 0.7)));
+          gd.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.32, 8).translate(-0.4, 0.38, 0), mats.c("#ffffff", 0.6)));
+          gd.add(new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.08, 8).translate(-0.4, 0.4, 0), mats.c("#c8303a", 0.6)));
+          gd.add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6).translate(-0.4, 0.6, 0), mats.c("#f2c39a", 0.7)));
+          gd.add(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.03, 10).translate(-0.4, 0.67, 0), mats.c("#f4d6a0", 0.7)));
+          gd.add(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.0, 5).rotateZ(0.5).translate(-0.6, 0.45, 0), mats.c("#8a5a30", 0.7)));
+          gd.userData.dynamic = true;
+          Q2.add(gd);
+          return gd;
+        };
+        if (th === "canal") {
+          // A canal across the block between stone edges, an arched brick bridge over it,
+          // painted townhouses on both banks and a gondola gliding up and down.
+          P(lotSlab(), pave);
+          P(new THREE.BoxGeometry(LOT_W, 0.03, 1.5).translate(0, 0.075, 0), water);
+          for (const sz of [-1, 1]) P(new THREE.BoxGeometry(LOT_W, 0.12, 0.16).translate(0, 0.12, sz * 0.83), stone);
+          P(new THREE.TorusGeometry(0.85, 0.13, 6, 14, Math.PI).scale(1, 0.7, 1).rotateY(Math.PI / 2).translate(0.6, 0.08, 0), brick);
+          for (const sx of [-0.12, 0.12]) P(new THREE.BoxGeometry(0.03, 0.18, 1.9).translate(0.6 + sx, 0.74, 0), iron);
+          const right = (i + j) % 2;
+          for (let q = 0; q < 4; q++) {
+            const hx = -1.65 + q * 1.1, w5 = q % 2 ? 0.95 : 0.8;
+            townhouse(P, hx, 1.7, w5, 1.6 + ((n + q) % 3) * 0.45, paint[(n + q) % paint.length], -1);
+            if (q !== 1 || right) townhouse(P, hx, -1.7, w5, 1.5 + ((n + q * 2) % 3) * 0.5, paint[(n + q + 3) % paint.length], 1);
+          }
+          // (Striped mooring poles.)
+          for (const px of [-1.7, -1.35]) { P(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6).translate(px, 0.45, -0.6), white); for (let k5 = 0; k5 < 3; k5++) P(new THREE.CylinderGeometry(0.042, 0.042, 0.1, 6).translate(px, 0.25 + k5 * 0.25, -0.6), mats.c("#3a8dff", 0.5)); }
+          const gd = gondolaAt(lg), ph5 = n * 1.7;
+          townTicks.push(t => { const u = Math.sin(t * 0.12 + ph5); gd.position.set(u * 1.7, 0.02 + Math.sin(t * 1.3 + ph5) * 0.015, 0.1); gd.rotation.y = Math.cos(t * 0.12 + ph5) >= 0 ? 0 : Math.PI; });
+          continue;
+        }
+        if (th === "clocktower") {
+          // The piazza: a tall brick clock tower with a clock on two sides (its hands keep
+          // the real time), a green copper roof, café tables and a well.
+          P(lotSlab(), plazaM);
+          const tx = -0.95, tz = -0.95, hh = 5.6;
+          P(new THREE.BoxGeometry(1.35, hh, 1.35).translate(tx, hh / 2 + 0.06, tz), brick);
+          for (const y5 of [1.2, 3.0, hh - 0.2]) P(new THREE.BoxGeometry(1.45, 0.12, 1.45).translate(tx, y5, tz), stone);
+          // (The belfry: open arches, a bell inside.)
+          P(new THREE.BoxGeometry(1.2, 1.0, 1.2).translate(tx, hh + 0.56, tz), stone);
+          for (const [ox, oz, ry] of [[0, 0.61, 0], [0.61, 0, Math.PI / 2], [0, -0.61, 0], [-0.61, 0, Math.PI / 2]]) P(new THREE.BoxGeometry(0.5, 0.7, 0.04).rotateY(ry).translate(tx + ox, hh + 0.5, tz + oz), mats.c("#2a2030", 0.8));
+          P(new THREE.ConeGeometry(0.22, 0.3, 10).translate(tx, hh + 0.55, tz), mats.c("#e8b020", 0.3, 0.7));
+          P(new THREE.ConeGeometry(0.98, 1.5, 4).rotateY(Math.PI / 4).translate(tx, hh + 1.8, tz), mats.c("#5fa890", 0.6, 0.3));
+          P(new THREE.SphereGeometry(0.1, 8, 6).translate(tx, hh + 2.62, tz), mats.c("#e8b020", 0.3, 0.7));
+          // (Clock faces toward the street on two sides.)
+          const hands: THREE.Object3D[][] = [];
+          for (const [fx, fz, ry] of [[0, 1, 0], [1, 0, Math.PI / 2]] as const) {
+            const face = new THREE.Group();
+            face.position.set(tx + fx * 0.69, hh - 1.0, tz + fz * 0.69); face.rotation.y = ry;
+            face.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.04, 24).rotateX(Math.PI / 2), white));
+            face.add(new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.04, 6, 24), mats.c("#e8b020", 0.3, 0.7)));
+            for (let k5 = 0; k5 < 12; k5++) face.add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.07, 0.02).translate(0, 0.37, 0.03).rotateZ((k5 / 12) * Math.PI * 2), iron));
+            const hr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.24, 0.02).translate(0, 0.1, 0.05), iron), mn = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.36, 0.02).translate(0, 0.16, 0.06), iron);
+            hr.userData.dynamic = true; mn.userData.dynamic = true;
+            face.add(hr, mn); hands.push([hr, mn]);
+            lg.add(face);
+          }
+          townTicks.push(() => { const d = new Date(), m5 = d.getMinutes() + d.getSeconds() / 60, h5 = (d.getHours() % 12) + m5 / 60; for (const [hr, mn] of hands) { hr.rotation.z = -(h5 / 12) * Math.PI * 2; mn.rotation.z = -(m5 / 60) * Math.PI * 2; } });
+          // Café tables under umbrellas, and a stone well.
+          for (const [cx5, cz5, c5] of [[0.9, -1.2, "#e8735a"], [1.3, 0.2, "#3a8dff"], [0.2, 1.3, "#f2b84a"]] as const) {
+            P(new THREE.CylinderGeometry(0.26, 0.26, 0.04, 12).translate(cx5, 0.46, cz5), white);
+            P(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 6).translate(cx5, 0.25, cz5), iron);
+            for (let k5 = 0; k5 < 2; k5++) P(new THREE.BoxGeometry(0.18, 0.3, 0.18).translate(cx5 + (k5 ? 0.38 : -0.38), 0.2, cz5), iron);
+            P(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 5).translate(cx5, 0.66, cz5), white);
+            P(new THREE.ConeGeometry(0.55, 0.25, 8).translate(cx5, 1.3, cz5), mats.c(c5, 0.6));
+          }
+          P(new THREE.CylinderGeometry(0.42, 0.46, 0.4, 14).translate(-1.2, 0.26, 1.2), stone);
+          P(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 14).translate(-1.2, 0.45, 1.2), water);
+          for (const sx of [-0.36, 0.36]) P(new THREE.BoxGeometry(0.05, 0.7, 0.05).translate(-1.2 + sx, 0.75, 1.2), wood);
+          P(new THREE.BoxGeometry(0.8, 0.06, 0.12).translate(-1.2, 1.1, 1.2), wood);
+          continue;
+        }
+        if (th === "gate") {
+          // The old town gate (turned to face the street the camera looks down): a brick arch with a clock-face crest, its name
+          // on a banner, flower boxes and benches.
+          P(lotSlab(), pave);
+          const Q = (() => { const h = new THREE.Group(); h.rotation.y = Math.atan2(1, 1) - lg.rotation.y; lg.add(h); return (geo: THREE.BufferGeometry, m: THREE.Material) => h.add(new THREE.Mesh(geo, m)); })();
+          for (const sx of [-1, 1]) { Q(new THREE.BoxGeometry(0.6, 2.4, 0.7).translate(sx * 1.05, 1.26, 0), brick); Q(new THREE.BoxGeometry(0.7, 0.12, 0.8).translate(sx * 1.05, 2.5, 0), stone); }
+          Q(new THREE.TorusGeometry(0.75, 0.16, 6, 14, Math.PI).translate(0, 1.85, 0), brick);
+          Q(new THREE.BoxGeometry(2.7, 0.55, 0.7).translate(0, 2.85, 0), brick);
+          Q(new THREE.BoxGeometry(2.85, 0.12, 0.8).translate(0, 3.18, 0), stone);
+          Q(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 18).rotateX(Math.PI / 2).translate(0, 2.85, 0.37), white);
+          Q(new THREE.TorusGeometry(0.28, 0.035, 6, 18).translate(0, 2.85, 0.39), mats.c("#e8b020", 0.3, 0.7));
+          const bc = document.createElement("canvas"); bc.width = 512; bc.height = 80;
+          const bx = bc.getContext("2d");
+          if (bx) { bx.fillStyle = "#2f6fb0"; bx.fillRect(0, 0, 512, 80); bx.fillStyle = "#ffe8b0"; bx.font = "bold 44px Arial Black, sans-serif"; bx.textAlign = "center"; bx.textBaseline = "middle"; bx.fillText(LAND[k].name.toUpperCase(), 256, 42); }
+          const btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace;
+          Q(new THREE.PlaneGeometry(1.9, 0.3).translate(0, 2.4, 0.36), own(new THREE.MeshBasicMaterial({ map: btex })));
+          for (const sx of [-1, 1]) {
+            Q(new THREE.BoxGeometry(0.7, 0.3, 0.35).translate(sx * 1.7, 0.21, 0.9), mats.c("#8a5a30", 0.8));
+            for (let f = 0; f < 5; f++) Q(new THREE.SphereGeometry(0.08, 6, 4).translate(sx * 1.7 - 0.26 + f * 0.13, 0.42, 0.9), mats.c(["#ff6fa0", "#ffe27a", "#ff8a5c", "#ffffff", "#b48cff"][f], 0.8));
+            Q(new THREE.BoxGeometry(0.9, 0.06, 0.3).translate(sx * 1.6, 0.38, -1.3), wood);
+            for (const ox of [-0.35, 0.35]) Q(new THREE.BoxGeometry(0.05, 0.32, 0.25).translate(sx * 1.6 + ox, 0.2, -1.3), iron);
+          }
+          continue;
+        }
       }
       if (id === "resort") {
         // The Beach Resort's blocks, each on warm sand (or a pool deck).
@@ -4205,6 +4329,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         const fl: THREE.Mesh[] = [];
         for (let c6 = 0; c6 < 8; c6++) { const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.6, 0).scale(1, 1.8, 1), own(std(["#9a7aff", "#7ad0ff", "#ff8ae0"][c6 % 3], { roughness: 0.1, emissive: new THREE.Color(["#9a7aff", "#7ad0ff", "#ff8ae0"][c6 % 3]), emissiveIntensity: 0.7, flatShading: true }))); cr.userData.dynamic = true; G.add(cr); fl.push(cr); }
         townTicks.push(t => fl.forEach((cr, c6) => { const a = t * 0.15 + (c6 / 8) * Math.PI * 2; cr.position.set(Math.cos(a) * DIST_H * 0.75, 7 + Math.sin(t + c6) * 0.6, Math.sin(a) * DIST_H * 0.75); cr.rotation.y = t + c6; }));
+      } else if (id === "canal") {
+        // A striped hot-air balloon drifting slowly over the rooftops.
+        const bal = new THREE.Group(), cols5 = ["#ff5f6d", "#ffd23a", "#3a8dff", "#ffffff"];
+        for (let q = 0; q < 8; q++) bal.add(new THREE.Mesh(new THREE.SphereGeometry(1.1, 6, 12, (q / 8) * Math.PI * 2, Math.PI / 4).scale(1, 1.15, 1), mats.c(cols5[q % cols5.length], 0.6)));
+        bal.add(new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.7, 12, 1, true).rotateX(Math.PI).translate(0, -1.2, 0), mats.c("#ff5f6d", 0.6)));
+        for (const [ox, oz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) bal.add(new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.6, 4).translate(ox, -1.75, oz), metal));
+        bal.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.42).translate(0, -2.15, 0), mats.c("#8a5a30", 0.8)));
+        bal.userData.dynamic = true;
+        G.add(bal);
+        townTicks.push(t => { const a = t * 0.035; bal.position.set(Math.cos(a) * DIST_H * 0.55, 14 + Math.sin(t * 0.3) * 0.8, Math.sin(a) * DIST_H * 0.55); bal.rotation.y = t * 0.1; });
       } else if (id === "resort") {
         // A little seaplane round the resort, towing a banner with its name.
         const plane = new THREE.Group(), red = mats.c("#ff5f6d", 0.5), wht = mats.c("#ffffff", 0.45);

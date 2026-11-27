@@ -60,6 +60,55 @@ export function bizEmblem(id: string, c1: string, c2: string, m: Mats, stage = -
     case "jewelry": A(new THREE.TorusGeometry(0.3, 0.06, 10, 28).translate(0, 0.38, 0), gold); A(new THREE.OctahedronGeometry(0.12, 0).translate(0, 0.76, 0), p); break;
     case "crystallab": A(new THREE.ConeGeometry(0.3, 0.45, 16).translate(0, 0.23, 0), m.c(c1, 0.15)); cyl(0.08, 0.08, 0.35, 0, 0.62, 0, m.c(c1, 0.15)); for (const [x, y] of [[0.05, 0.9], [-0.06, 1.02]]) ph(0.05, x, y, 0, q); break;
     case "prismtower": A(new THREE.ConeGeometry(0.34, 0.95, 3).translate(0, 0.48, 0), m.c(c1, 0.12)); for (let k = 0; k < 3; k++) box(0.5, 0.025, 0.04, 0.45, 0.3 + k * 0.08, 0, [m.c("#ff5f6d", 0.5), m.c("#ffd23a", 0.5), m.c("#4f8bff", 0.5)][k]); break;
+    // ---- Canal Quarter ----
+    case "gondola": {
+      // A black gondola with curled ends and a striped mooring pole.
+      box(0.86, 0.1, 0.2, 0, 0.16, 0, dk); box(0.6, 0.04, 0.22, 0, 0.22, 0, q);
+      for (const sx of [-1, 1]) A(new THREE.TorusGeometry(0.12, 0.035, 6, 12, Math.PI).rotateZ(sx > 0 ? -Math.PI / 2 : Math.PI / 2).translate(sx * 0.43, 0.27, 0), dk);
+      cyl(0.03, 0.03, 0.95, 0.3, 0.55, -0.12, w, 8);
+      for (let k = 0; k < 4; k++) cyl(0.032, 0.032, 0.1, 0.3, 0.2 + k * 0.22, -0.12, p, 8);
+      ph(0.05, 0.3, 1.04, -0.12, gold);
+      break;
+    }
+    case "maskshop": {
+      // A carnival mask on a gold stick, with feathers.
+      ph(0.3, 0, 0.62, 0, p, 1.25, 0.75, 0.35);
+      for (const x of [-0.13, 0.13]) ph(0.07, x, 0.66, 0.08, dk, 1.3, 0.8, 0.5);
+      for (let k = 0; k < 3; k++) A(new THREE.ConeGeometry(0.05, 0.42, 6).rotateZ((k - 1) * 0.45).translate(-0.18 + k * 0.18, 0.96, -0.02), k === 1 ? q : w);
+      A(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6).rotateZ(-0.4).translate(0.3, 0.3, 0), gold);
+      break;
+    }
+    case "glassworks": {
+      // A blown-glass vase and a bead, see-through and glossy.
+      const pts = [[0.02, 0], [0.22, 0.04], [0.3, 0.25], [0.22, 0.52], [0.1, 0.66], [0.12, 0.82], [0.17, 0.88]].map(([x, y]) => new THREE.Vector2(x, y));
+      A(new THREE.LatheGeometry(pts, 20).translate(0, 0.05, 0), m.c(c1, 0.08, 0.1));
+      ph(0.09, 0.34, 0.12, 0.08, q);
+      break;
+    }
+    case "bookshop": {
+      // A stack of old books with an open one on top.
+      ["#c8864a", "#3a8dff", "#e8457a"].forEach((c, k) => box(0.62 - k * 0.06, 0.13, 0.42, (k - 1) * 0.03, 0.08 + k * 0.14, 0, m.c(c, 0.6)));
+      for (const sx of [-1, 1]) A(new THREE.BoxGeometry(0.3, 0.03, 0.4).rotateZ(sx * 0.2).translate(sx * 0.15, 0.5, 0), w);
+      box(0.03, 0.05, 0.4, 0, 0.48, 0, q);
+      break;
+    }
+    case "artgallery": {
+      // A painting in a gold frame on an easel.
+      for (const [x, z, r] of [[-0.25, 0.12, 0.2], [0.25, 0.12, -0.2], [0, -0.2, 0]]) A(new THREE.CylinderGeometry(0.02, 0.02, 0.85, 5).rotateX(z > 0 ? 0.25 : -0.3).rotateZ(r).translate(x, 0.42, z), m.c("#8a5a30", 0.7));
+      box(0.66, 0.5, 0.04, 0, 0.66, 0.12, gold); box(0.56, 0.4, 0.05, 0, 0.66, 0.13, m.c("#bfe6ff", 0.6));
+      box(0.56, 0.16, 0.06, 0, 0.53, 0.13, m.c("#5fae4a", 0.7)); ph(0.07, 0.14, 0.76, 0.16, q);
+      break;
+    }
+    case "clocktower": {
+      // A clock face with gold hands under a little pointed roof.
+      box(0.56, 0.6, 0.3, 0, 0.32, 0, p);
+      A(new THREE.CylinderGeometry(0.2, 0.2, 0.04, 24).rotateX(Math.PI / 2).translate(0, 0.42, 0.16), w);
+      A(new THREE.TorusGeometry(0.2, 0.03, 6, 24).translate(0, 0.42, 0.18), gold);
+      box(0.03, 0.15, 0.02, 0, 0.48, 0.19, dk); box(0.11, 0.03, 0.02, 0.05, 0.42, 0.19, dk);
+      A(new THREE.ConeGeometry(0.45, 0.4, 4).rotateY(Math.PI / 4).scale(1, 1, 0.6).translate(0, 0.82, 0), q);
+      ph(0.05, 0, 1.06, 0, gold);
+      break;
+    }
     // ---- Orbit Station ----
     case "spacediner": ph(0.26, 0, 0.52, 0, m.c("#e8b060", 0.6), 1, 0.45, 1); cyl(0.26, 0.26, 0.08, 0, 0.38, 0, m.c("#6a3a20", 0.7)); cyl(0.28, 0.28, 0.03, 0, 0.43, 0, m.c("#3fbf6a", 0.6)); ph(0.26, 0, 0.26, 0, m.c("#e8b060", 0.6), 1, 0.3, 1); break;
     case "zerogym": { const d = new THREE.Group(); d.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 8).rotateZ(Math.PI / 2), dk)); for (const x of [-0.35, 0.35]) d.add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16).rotateZ(Math.PI / 2).translate(x, 0, 0), p)); d.rotation.z = 0.4; d.position.y = 0.6; g.add(d); A(new THREE.TorusGeometry(0.42, 0.02, 6, 24).rotateX(Math.PI / 2).translate(0, 0.15, 0), q); break; }

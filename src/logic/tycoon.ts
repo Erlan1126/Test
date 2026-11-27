@@ -331,7 +331,7 @@ export const hallLevel = (s: SaveData): number => 1 + Math.max(0, s.chapters?.do
 export const HALL_UNLOCK: Record<string, number> = { coffee: 1, flowers: 1, bakery: 2, pizza: 2, cinema: 3, hotel: 3, mall: 4, airport: 4, casino: 5, spaceport: 6 };
 /** The City Hall level each district goes on sale at, in the order of data/land.ts (the Beach
  *  Resort opens with Downtown, at level 7: it goes on sale once Downtown is bought). */
-export const LAND_HALL = [5, 6, 7, 7, 8, 9, 10];
+export const LAND_HALL = [5, 6, 7, 7, 8, 8, 9, 10];
 export const hallNeed = (id: string): number => (HAS_CITY ? HALL_UNLOCK[id] ?? 1 : 1);
 /** Waiting for a higher City Hall (it would open otherwise). */
 export const hallLocked = (s: SaveData, id: string): boolean => levelOf(s, id) === 0 && hallLevel(s) < hallNeed(id);
