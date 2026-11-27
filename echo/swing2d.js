@@ -402,14 +402,18 @@ const SW2D = (() => {
     const scf = RUNNER_SHOES[runnerLook().shoe] || RUNNER_SHOES[0], N = Math.min(40, scf.len);
     { const e = hist.length >= 48 ? hist.pop() : [0, 0]; e[0] = R.px; e[1] = R.py + 1.75; hist.unshift(e); }
     // On a Perfect chain of 3 or more, the scarf burns gold.
-    const zone = (R.pChain || 0) >= 3 && !R.cleared, scCol = zone ? [255, 205, 90] : R.od > 0 || scf.c === "prism" ? null : rgbOf(scf.c ?? glowHex);
+    /* ...and keeps heating up: flame at ×6 (wider, shedding embers), white-hot electric at ×10. */
+    const pc = R.cleared ? 0 : (R.pChain || 0), zone = pc >= 3, tier = pc >= 10 ? 2 : pc >= 6 ? 1 : 0, scW = 1 + (zone ? Math.min(0.9, (pc - 2) * 0.09) : 0);
+    const scCol = zone ? [[255, 205, 90], [255, 128, 70], [190, 240, 255]][tier] : R.od > 0 || scf.c === "prism" ? null : rgbOf(scf.c ?? glowHex);
     ctx.globalCompositeOperation = "lighter";
     for (let q = 0; q < Math.min(N, hist.length) - 1; q++) {
-      const a = hist[q], b = hist[q + 1], k = q / N, w = scf.w * s * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)), yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k * s;
+      const a = hist[q], b = hist[q + 1], k = q / N, w = scf.w * scW * s * (1 - k) * (0.6 + 0.4 * Math.sin(t * 9 - q * 0.5)), yo = Math.sin(t * 7 - q * 0.45) * 0.12 * k * s;
       const col = scCol || (() => { const h = (t * 100 + q * 10) % 360; return [Math.round(128 + 127 * Math.cos(h * Math.PI / 180)), Math.round(128 + 127 * Math.cos((h - 120) * Math.PI / 180)), Math.round(128 + 127 * Math.cos((h + 120) * Math.PI / 180))]; })();
       ctx.fillStyle = css(col); ctx.globalAlpha = (1 - k) * 0.85;
       ctx.beginPath(); ctx.moveTo(X(a[0]), Y(a[1]) + yo - w / 2); ctx.lineTo(X(b[0]), Y(b[1]) + yo - w / 2); ctx.lineTo(X(b[0]), Y(b[1]) + yo + w / 2); ctx.lineTo(X(a[0]), Y(a[1]) + yo + w / 2); ctx.fill();
     }
+    if (tier) { for (let q = 2; q < Math.min(N, hist.length); q += 3) { const e = hist[q], u = ((t * 1.7 + q * 0.37) % 1), ex = X(e[0]) + Math.sin(q * 12.9 + t * 3) * 0.6 * s, ey = Y(e[1]) - u * 2.2 * s, z = (tier === 2 ? 0.9 : 0.75) * s * (1 - u);
+        ctx.globalAlpha = (1 - u) * (1 - q / N) * 0.9; ctx.drawImage(glow(tier === 2 ? [170, 230, 255] : [255, 150, 60]), ex - z, ey - z, z * 2, z * 2); } }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     // Afterimages on a dash, a Perfect or a ring.
     if (R.dashT > 0 || R.perfT > 0.2 || R.ringT > 0) { ctx.globalCompositeOperation = "lighter"; for (let q = 3; q < 13 && q < hist.length; q += 3) { const e = hist[q]; ctx.globalAlpha = 0.35 * (1 - q / 13); const z = 2.4 * s; ctx.drawImage(glow(glowRGB), X(e[0]) - z / 2, Y(e[1] - 0.6) - z / 2, z, z); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }

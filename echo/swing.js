@@ -261,7 +261,7 @@ function swingHold(down) {
     swingFx(R, "perfect", R.px, R.py + 1); R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
-    R.pChain = (R.pChain || 0) + 1; R.pChainBest = Math.max(R.pChainBest || 0, R.pChain); if (!R.attract) { progressEvent("perfect"); progressEvent("pchain", R.pChain); }
+    R.pChain = (R.pChain || 0) + 1; R.pChainBest = Math.max(R.pChainBest || 0, R.pChain); if (!R.attract && (R.pChain === 6 || R.pChain === 10)) { runMsg(R.pChain === 6 ? "On fire!" : "Unstoppable!", R.pChain === 6 ? "Perfect ×6 · keep the chain going" : "Perfect ×10 · you're blazing", 1.2, true); sfx.power(); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: R.pChain === 6 ? 0xff8046 : 0xbef0ff, big: true }); } if (!R.attract) { progressEvent("perfect"); progressEvent("pchain", R.pChain); }
     if (!R.attract) { runBonus(R.pChain > 1 ? `Perfect ×${R.pChain}! +${1 + R.pChain} ✦` : "Perfect! +2 ✦", 0, R.dist + 2, R.x); R.lights += 1 + R.pChain; sfx.perfect(R.pChain); runMission("trail", R.perfects); }
   } else if (R.vx > 1.5 && ang > pwLo - 12 && ang < pwHi + 12 && spd > pwV - 3) {
     R.vx *= 1.04; R.vy *= 1.04; R.spinV = 6; R.pChain = 0; R.lights += 1; swingFlow(R, 0.06);
