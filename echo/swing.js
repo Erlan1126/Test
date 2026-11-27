@@ -261,7 +261,7 @@ function swingHold(down) {
     swingFx(R, "perfect", R.px, R.py + 1); R.perfT = 0.45; const big = !R.pChain || (R.pChain + 1) % 5 === 0; if (big) R.slowT = Math.max(R.slowT, 0.18); swingFlow(R, 0.17); R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffffff, big: true });
     if (!R.attract) buzz(15);
     R.combo++; R.comboT = 2; R.comboBest = Math.max(R.comboBest, R.combo);
-    R.pChain = (R.pChain || 0) + 1; if (!R.attract) { progressEvent("perfect"); progressEvent("pchain", R.pChain); }
+    R.pChain = (R.pChain || 0) + 1; R.pChainBest = Math.max(R.pChainBest || 0, R.pChain); if (!R.attract) { progressEvent("perfect"); progressEvent("pchain", R.pChain); }
     if (!R.attract) { runBonus(R.pChain > 1 ? `Perfect ×${R.pChain}! +${1 + R.pChain} ✦` : "Perfect! +2 ✦", 0, R.dist + 2, R.x); R.lights += 1 + R.pChain; sfx.perfect(R.pChain); runMission("trail", R.perfects); }
   } else if (R.vx > 1.5 && ang > pwLo - 12 && ang < pwHi + 12 && spd > pwV - 3) {
     R.vx *= 1.04; R.vy *= 1.04; R.spinV = 6; R.pChain = 0; R.lights += 1; swingFlow(R, 0.06);
@@ -292,7 +292,7 @@ function swingFlow(R, k) {
   if (weekEvent().id === "rush") k *= 2;
   R.flow = Math.min(1, R.flow + k);
   if (R.flow >= 1) {
-    R.od = 6; R.flow = 1; R.darkX -= 20; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffd25a, big: true });
+    R.od = 6; R.flow = 1; R.darkX -= 20; R.odN = (R.odN || 0) + 1; R.bursts.push({ x: R.px, y: R.py + 1, t: 0, c: 0xffd25a, big: true });
     if (!R.attract) { runMsg("OVERDRIVE!", "Double lights · the dark falls back", 2, true); sfx.power(); buzz([20, 30, 20]); }
   }
 }
@@ -499,7 +499,7 @@ function runnerUpdate(dt) {
       /* Skim a live wire without touching it (just over, or just under): a close call once you're past. */
       else if (R.px > z.x0 && R.px < z.x1 && ((R.py >= z.y + 0.4 && R.py < z.y + 1.5) || (R.py + 1.7 <= z.y && R.py + 1.7 > z.y - 1.1))) z.skim = true;
       /* Paid out once you're past the wire, and only if it never touched you. */
-      if (z.skim && !z.near && !z.hit && !R.attract && R.px >= z.x1) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; } }
+      if (z.skim && !z.near && !z.hit && !R.attract && R.px >= z.x1) { z.near = true; progressEvent("near"); R.nearN = (R.nearN || 0) + 1; runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; } }
     else if (z.kind === "drone" && !z.dead) {
       z.y = z.y0 + Math.sin(R.t * 1.4 + z.ph) * z.amp; const d = Math.hypot(z.x - R.px, z.y - R.py - 0.9);
       // Warning: will you meet in the next 0.8 s? (where you'd be, flying straight; where it will be)
@@ -509,7 +509,7 @@ function runnerUpdate(dt) {
         if (R.teth && !w) { const ax = R.teth.x, ay = R.teth.y, dx = R.px - ax, dy = R.py - ay, rr = Math.hypot(dx, dy) || 1, om = (dx * R.vy - dy * R.vx) / (rr * rr), th = Math.atan2(dy, dx) + om * tt; if (Math.hypot(z.x - (ax + Math.cos(th) * rr), zy - (ay + Math.sin(th) * rr + 0.9)) < 2.2) w = true; } } z.warn = w ? Math.min(1, (z.warn || 0) + dt * 8) : Math.max(0, (z.warn || 0) - dt * 4); }
       // A drone that hits you breaks apart: one hit per drone, never the same one twice.
       if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
-      else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
+      else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); R.nearN = (R.nearN || 0) + 1; runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
     }
   }
   // The first run teaches by doing: let go, then hold.

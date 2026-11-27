@@ -182,13 +182,13 @@ function stageClear(R) {
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
   else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
-  R.cardTO = setTimeout(() => { R.cardTO = null; showStageCard(true); }, 1900);
+  R.cardTO = setTimeout(() => { R.cardTO = null; if (run === R) showStageCard(true); }, 1900);   /* only for this run, not one you started since */
 }
 function stageFail() {
   const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
   if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(R.px / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
-  setTimeout(() => showStageCard(false), 650);
+  setTimeout(() => { if (run === R) showStageCard(false); }, 650);
 }
 function showStageCard(won) {
   const R = run; if (!R || !R.stage && R.stage !== 0) return;
@@ -200,7 +200,7 @@ function showStageCard(won) {
   $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);
   // The numbers count up; each star lands with its own chime.
-  const count = (id, to, fmt, ms = 700) => { const el = $(id), t0 = performance.now(); const f = now => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * e); if (k < 1 && !$("stageCard").hidden) requestAnimationFrame(f); }; f(t0); };
+  const count = (id, to, fmt, ms = 700) => { const el = $(id), t0 = performance.now(); const f = now => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * e); if (k < 1 && !(now > t0 && $("stageCard").hidden)) requestAnimationFrame(f); }; f(t0); };   /* (the first frame runs before the card is shown) */
   if (won) count("stTime", R.stageTime, v => v.toFixed(1)); else $("stTime").textContent = "–";
   count("stLights", R.motesGot, v => `${Math.round(v)}/${R.motesTotal}`); count("stPerf", R.perfects, v => String(Math.round(v)));
   if (won) for (let q = 0; q < R.stageStars; q++) setTimeout(() => { if (!$("stageCard").hidden) { sfx.star(q); buzz(q === 2 ? [20, 30, 40] : 10); } }, 120 + q * 180);
@@ -210,6 +210,14 @@ function showStageCard(won) {
   const dawn = won && !info.daily && info.n === STAGES_N;
   const next = $("stNext"); next.textContent = dawn ? "Watch the dawn" : won && !info.daily && info.n < STAGES_N ? `Next: ${stagePerson(info.n + 1)[0]}` : "Retry";
   next.dataset.go = dawn ? "dawn" : won && !info.daily && info.n < STAGES_N ? String(info.n + 1) : String(info.n);
+  /* Run highlights: what you pulled off, as badges that pop in after the numbers. */
+  { const bd = $("stBadges"); if (bd) { const b = [];
+    if ((R.pChainBest || 0) >= 3) b.push(["", `⚡ Perfect chain ×${R.pChainBest}`]);
+    if (R.nearN) b.push(["hot", `😮 ${R.nearN} close call${R.nearN > 1 ? "s" : ""}`]);
+    if (R.odN) b.push(["", `🔥 Overdrive${R.odN > 1 ? ` ×${R.odN}` : ""}`]);
+    if (won && !R.hitsTaken) b.push(["cool", "🛡 No hits"]);
+    bd.innerHTML = b.slice(0, 4).map(([c, t], i) => `<span class="${c}" style="animation-delay:${0.75 + i * 0.16}s">${t}</span>`).join("");
+    b.slice(0, 4).forEach((_, i) => setTimeout(() => { if (!$("stageCard").hidden) sfx.star(Math.min(2, i)); }, 750 + i * 160)); } }
   $("stRetry").hidden = !(won && !info.daily && info.n < STAGES_N);
   $("stShare").hidden = !won;
   { const cb = $("stFromCp"); if (cb) cb.hidden = !!(won || !R.cp); }

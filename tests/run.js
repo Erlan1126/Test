@@ -184,6 +184,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
         const R = run; R.teth = null; R.px = R.stageLen * 0.4; R.inv = 0; R.hearts = 1; delete (S.pct || {})[7]; swingHit(R, "test"); out.failingRecordsYourBestPercent = R.failPct === 40 && R.newBestPct === true && S.pct[7] === 40; }
       startStage(8); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 70; q++) runUpdate(1 / 60); out.youLandOnTheirRoofAtTheEnd = R.cleared && R.roof && R.roof.home && Math.abs(R.py - 17) < 0.01 && Math.abs(R.px - (R.stageLen + 6.5)) < 0.01; }
       startStage(9); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60); const early = (swingHold(true), swingHold(false), $("stageCard").hidden); for (let q = 0; q < 70; q++) runUpdate(1 / 60); swingHold(true); swingHold(false); out.aTapAfterLandingSkipsToResults = early && !$("stageCard").hidden && !R.cardTO; $("stageCard").hidden = true; }
+      startStage(10); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.pChainBest = 5; R.nearN = 2; R.odN = 1; R.hitsTaken = 0; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 70; q++) runUpdate(1 / 60); swingHold(true); swingHold(false); const t = $("stBadges").textContent; out.theResultsShowYourHighlights = /chain ×5/.test(t) && /2 close calls/.test(t) && /Overdrive/.test(t) && /No hits/.test(t); $("stageCard").hidden = true; }
       startStage(8); { const R = run, z = R.haz.find(h => h.kind === "wire"); if (!z) out.skimmingAWireIsACloseCall = false; else { R.teth = null; R.inv = 0; R.hearts = 3; const l0 = R.lights; R.px = z.x0 + 0.2; R.py = z.y + 0.9; R.vx = 12; R.vy = 0; for (let q = 0; q < 200 && R.px < z.x1 + 0.5; q++) { R.py = z.y + 0.9; R.vy = 0; runUpdate(1 / 60); } out.skimmingAWireIsACloseCall = z.near === true && !z.hit && R.hearts === 3; } }
       startStage(9); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; for (let q = 0; q < 60 * 6; q++) runUpdate(1 / 60); out.theDarkStaysBackAfterYouWin = R.px - R.darkX > 20; const l0 = R.lights; swingHold(true); swingHold(false); for (let q = 0; q < 5; q++) runUpdate(1 / 60); out.tapsDoNothingAfterTheFinish = !R.teth && R.lights === l0 && R.roof && R.roof.home; }
       { const S = stageSave(); S.pct = S.pct || {}; S.pct[11] = 30; startStage(11); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen * 0.31; R.py = 30; runUpdate(1 / 60); out.passingYourBestCelebrates = R.passedBest === true && R.msgs.some(m => m.text === "New best!"); }
@@ -211,7 +212,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     {
       const pr = await page.evaluate(async () => {
         const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]) && Array.from({ length: STAGES_N }, (_, i) => stageThanks(i + 1)).every(x => typeof x === "string" && x.length > 2);
-        stageSave().unlocked = 60; startStage(4); const R = run; R.inv = 9; R.px = R.stageLen + 0.5; runUpdate(1 / 60);
+        stageSave().unlocked = 60; startStage(4); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60); o.teleportClears = R.cleared === true;
         await new Promise(r => setTimeout(r, 2100));
         o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
         o.homesLitCountsClearedStages = homesLit() >= 1;
@@ -242,8 +243,9 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
     // The finale: clearing stage 60 leads to the dawn, and back to the city.
     {
       const f = await page.evaluate(async () => {
-        const o = {}; stageSave().unlocked = 60; save.chapSeen = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }; startStage(60); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60);
-        await new Promise(r => setTimeout(r, 2100));
+        const o = {}; stageSave().unlocked = 60; save.chapSeen = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }; $("stageCard").hidden = true; startStage(60); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60);
+        R.perfects = 7; await new Promise(r => setTimeout(r, 2800));
+        o.theResultsNumbersCountUp = $("stPerf").textContent === "7";
         o.clearingStageSixtyOffersTheDawn = $("stNext").textContent === "Watch the dawn";
         $("stNext").click(); o.theFinalePlays = !$("finale").hidden && $("fnCredits").textContent.includes("Mara") && $("fnCredits").textContent.includes("The whole city");
         $("fnSkip").click(); o.thenBackToTheCity = $("finale").hidden && !$("sheet").hidden && !!save.finaleSeen;
