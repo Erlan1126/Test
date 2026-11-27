@@ -4198,6 +4198,9 @@ body.tabs-open #toast, body:has(.modal:not([hidden])) #toast { top: auto !import
 .photo-go small { display: block; font-size: 12.5px; opacity: 0.92; }
 .photo-go:active { transform: translateY(3px); box-shadow: 0 1px 0 #5a34c0; }
 body.photo-mode #tycity > *, body.photo-mode #tcy-bar, body.photo-mode #guide-hand, body.photo-mode .hall-banner, body.photo-mode #mayor { visibility: hidden !important; }
+/* (Anything that pops up during photo mode stays out of the way until it's over: it can't
+   cover the town or catch the drags that frame the picture.) */
+body.photo-mode .modal:not([hidden]), body.photo-mode .mayor-dialog, body.photo-mode .parade-banner { visibility: hidden !important; pointer-events: none !important; }
 #photo-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 18px); text-align: center; pointer-events: none; }
 #photo-bar .pb-hint { margin: 0 auto 12px; display: inline-block; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; background: rgba(20, 14, 50, 0.55); }
 #photo-bar .pb-row { display: flex; align-items: center; justify-content: space-between; max-width: 320px; margin: 0 auto; }
