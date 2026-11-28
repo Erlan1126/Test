@@ -44,6 +44,7 @@ import { TAG_ICON } from "./tagicons";
 import { CLOSE_ZOOM, pickTags, type TagIn, type TagKind } from "../logic/tags";
 import { cleanCityName } from "../logic/save";
 import { gateOpen, nextGateHall } from "../logic/gates";
+import { hallUpgradeReady, nextStepLead } from "../logic/levelup";
 import { openPay, rateView } from "../logic/tycoon";
 import { townText } from "../logic/townname";
 import { askCash, askDone, askProgress, collectAsk, newAsk, saveGoal, secondsTo, skipPrice, skipWait } from "../logic/asks";
@@ -58,7 +59,7 @@ import type { BizBlock } from "../render3d/block";
 import { titleFor } from "../data/titles";
 import { xpNeeded } from "../logic/rules";
 import { missionText } from "../data/missions";
-import { cityBanner, MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote, setGoalTap } from "./mayor";
+import { cityBanner, hallTitle, MAYOR_SVG, mayorAsk, mayorChoice, mayorList, mayorNote, mayorSvg, neighbourNote, setGoalTap } from "./mayor";
 import { formatRecoveryCode, type TeamMate } from "../online";
 import { annexBuilt, annexOpen, annexPrice, buildAnnex, type AnnexPick } from "../logic/annex";
 import { landOnSale, landPrice, landWaiting, landHall } from "../logic/land";
@@ -101,6 +102,8 @@ export interface TycoonHost {
   setBizFocus(on: boolean): void;
   /** Opens Mayor Pip's story (the City Hall). */
   openStory(): void;
+  /** The City Hall's level-up is playing, or just finished: no notes or questions now. */
+  hallBusy(): boolean;
   /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
   /** A moment at a business in the town (see Renderer3D.bizPulse). */
@@ -1067,6 +1070,9 @@ export class TycoonUI {
     // First steps come before anything else: the first sale, then (if ready) the café
     // terrace, then a level, then a manager.
     const cart = BUSINESSES[0];
+    // The City Hall's level-up leads everything once its goals are all done: the game's
+    // biggest moment shouldn't wait behind a smaller objective.
+    if (nextStepLead(s) === "hall") return { text: t("City Hall upgrade ready!"), sub: t("Level {n}: {title} · tap to celebrate", { n: hallLevel(s) + 1, title: t(hallTitle(hallLevel(s) + 1)) }), tone: "hall", act: () => this.host.openStory() };
     if (ty.tips === 0) return { text: t("Tap the Coffee Cart to sell your first coffee!"), sub: t("Every sale earns cash for your company"), tone: "learn", act: () => { this.doAct("run", "coffee", $("tcy-next"), null, $("tcy-next"), $("tcy-next")); this.render(); } };
     // Right after the first sale: café seating for the neighbor (built with the next
     // tower), then opening it; the level and the manager come after.
@@ -1236,8 +1242,9 @@ export class TycoonUI {
     // Neighbor requests: a speech bubble over the home that asks (a green tick once done).
     // Once the city is worth keeping: its recovery code, so a new phone can bring it back.
     const cloud = HAS_CITY && hallLevel(s) >= 3 && !s.seenFeatures.includes("cloud-note") ? this.host.cloudCode() : null;
-    if (cloud && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.cloudNote(cloud);
-    if (HAS_CITY && !s.cityName && hallLevel(s) >= 2 && !s.seenFeatures.includes("name-city") && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.nameCity(true);
+    if (!this.sessionHall) this.sessionHall = hallLevel(s);
+    if (cloud && this.notesOk(3) && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.cloudNote(cloud);
+    if (HAS_CITY && !s.cityName && hallLevel(s) >= 2 && !s.seenFeatures.includes("name-city") && this.notesOk(2) && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.nameCity(true);
     this.collectDesigns(now);
     // (A new request waits while anything else is up: a card, a sheet, Pip, another message.)
     if (!closeUp && now - this.askAt > 3000 && !this.host.popupBusy() && $("toast").hidden) { this.askAt = now; if (newAsk(s, homes, now)) { this.host.persist(); toast(t("💬 A neighbor has a request! Tap the bubble over their home.")); } }
@@ -1315,7 +1322,7 @@ export class TycoonUI {
     const n = this.nextStep();
     this.nextAct = n.act;
     const first = this.firstDay();
-    this.put($("tcy-next"), `<span class="next-ico">${n.tone === "learn" ? COACH_FACE : n.tone === "gift" ? "🎁" : n.tone === "hot" ? "⚡" : n.tone === "grow" ? "🏗️" : n.tone === "save" ? "💰" : "✨"}</span>
+    this.put($("tcy-next"), `<span class="next-ico">${n.tone === "learn" ? COACH_FACE : n.tone === "gift" ? "🎁" : n.tone === "hot" ? "⚡" : n.tone === "grow" ? "🏗️" : n.tone === "save" ? "💰" : n.tone === "hall" ? "🏛️" : "✨"}</span>
       <span class="next-txt"><small>${first ? `${esc(this.firstDayLabel(first))}<span class="first-dots">${first.steps.map(f => `<i class="${f.ok ? "ok" : ""}" title="${esc(f.label)}"></i>`).join("")}</span>` : this.planLabel()}</small><b>${esc(n.text)}</b><em>${esc(n.sub)}</em>${n.pct !== undefined ? `<i class="next-bar"><i style="width:${(n.pct * 100).toFixed(0)}%"></i></i>` : ""}</span><span class="next-go" aria-hidden="true"></span>`);
     $("tcy-next").className = `tcy-next tone-${n.tone}`;
     // (Hidden while the neighbor arrives: the Skip button sits there.)
@@ -3057,6 +3064,8 @@ export class TycoonUI {
         }
         if (!owned) { toast(t("{name} is open!", { name: t(b.name) })); confetti(flyFrom as HTMLElement); }
         else if (crossed) { toast(t("{name} now runs twice as fast!", { name })); fireworks(2, () => this.host.sound.firework()); }
+        // (The first buy after a City Hall level-up: a calm moment for its notes, see notesOk.)
+        if (hallLevel(s) > this.sessionHall) this.boughtSinceUp = true;
         this.checkRank();
         this.checkGrow();
         this.host.persist();
@@ -3490,12 +3499,16 @@ export class TycoonUI {
       // The city game: the City Hall badge, its level in the middle and a ring that fills
       // with the goals of the next level (the town's rank comes with the City Hall).
       const ci = chapterIndex(s), ch = CHAPTERS[ci], got = ch ? ch.goals.filter(g => goalDone(s, g)).length : 0, all = ch ? ch.goals.length : 1;
-      const hv = `h${hallLevel(s)}|${got}|${rk}|${getLang()}|${s.cityName}`;
+      // (Its goals all done: the badge glows gold and says so, until the level-up is claimed.)
+      const ready = hallUpgradeReady(s);
+      el.classList.toggle("hall-ready", ready);
+      const hv = `h${hallLevel(s)}|${got}|${rk}|${getLang()}|${s.cityName}|${ready}`;
       if (el.dataset.v === hv) return;
       el.dataset.v = hv;
       el.innerHTML = `<span class="tg-ring" style="--k:${((ch ? got / all : 1) * 360).toFixed(1)}deg"><span class="tg-ico">${iconSvg("building")}</span><b class="tg-lv">${hallLevel(s)}</b></span>`
         + `<span class="tg-main"><b>${esc(s.cityName || t(RANKS[rk].name))}</b>`
-        + `<em class="tg-next">${s.cityName ? `${esc(t(RANKS[rk].name))} · ` : ""}${ch ? esc(t("City Hall goals {n}/{total}", { n: got, total: all })) : `★ ${esc(t("Top rank"))}`}</em>` + `</span>`;
+        + `<em class="tg-next">${s.cityName ? `${esc(t(RANKS[rk].name))} · ` : ""}${ready ? esc(t("City Hall upgrade ready!")) : ch ? esc(t("City Hall goals {n}/{total}", { n: got, total: all })) : `★ ${esc(t("Top rank"))}`}</em>` + `</span>`
+        + (ready ? `<i class="tg-up" aria-hidden="true">▲</i>` : "");
       el.setAttribute("aria-label", t("City Hall level {n}", { n: hallLevel(s) }));
       return;
     }
@@ -3804,6 +3817,26 @@ export class TycoonUI {
       }
     }, 350);
   }
+
+  /** The City Hall's level when this session began, and whether a business was bought since
+   *  it went up a level: its notes ("name your city", the cloud code) wait for one of those
+   *  calm moments, the next session or the first buy after the level-up, never straight
+   *  after the celebration. */
+  private sessionHall = 0;
+  private boughtSinceUp = false;
+  private notesOk(level: number): boolean {
+    return !this.host.hallBusy() && (this.sessionHall >= level || this.boughtSinceUp);
+  }
+  /** A rank reached with a City Hall level-up: noted without its own celebration (the
+   *  level-up was it). */
+  rankQuiet(): void {
+    const s = this.save, rk = townRank(s);
+    if (rk > (s.tycoon.rankBest ?? 0)) s.tycoon.rankBest = rk;
+    for (let i = 0; i <= rk; i++) if (!s.scrapbook[i]) s.scrapbook[i] = Date.now();
+    for (let i = 1; i <= rk; i++) if (!s.seenFeatures.includes(`rank-${i}`)) s.seenFeatures.push(`rank-${i}`);
+  }
+  /** The City Hall's level-up is starting: cards and selections close. */
+  partyStart(): void { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); }
 
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
   private momentDone = false;

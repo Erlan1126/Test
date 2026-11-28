@@ -2,7 +2,7 @@
 // from things the player does anyway (towers, height, people, city buildings...); finishing
 // all three pays a reward and opens the next chapter. It gives the game a beginning, a
 // middle and an end: from an empty meadow to the capital of the sky.
-import { payStars } from "../logic/tycoon";
+import { payLevelUp } from "../logic/tycoon";
 import { HAS_CITY } from "../edition";
 import { townRank, usedFloors } from "../logic/tycoon";
 import { RANKS } from "./ranks";
@@ -179,8 +179,8 @@ export function claimChapter(s: SaveData): (Chapter["reward"] & { cash: number }
   if (!chapterReady(s)) return null;
   const c = CHAPTERS[chapterIndex(s)];
   s.chapters.done++;
-  // (In the city game the stars come as cash: see payStars.)
-  const cash = payStars(s, c.reward.stars);
+  // (In the city game the stars come as cash, capped at a few minutes' earnings: see payLevelUp.)
+  const cash = payLevelUp(s, c.reward.stars);
   s.crystals += c.reward.crystals;
   return { ...c.reward, cash };
 }

@@ -8,11 +8,14 @@ import { fmt } from "../core/util";
 import { coins } from "../data/tycoon";
 import { HAS_CITY } from "../edition";
 import { hallOpens } from "../logic/tycoon";
+import { hallUnlocks } from "../logic/levelup";
+import { GATE_NAME } from "../logic/gates";
+import { RANK_BONUS, RANKS } from "../data/ranks";
 import { landHall } from "../logic/land";
 import { LAND } from "../data/land";
 import { t } from "../i18n";
 import type { SaveData } from "../logic/save";
-import { $, esc, vibrate } from "./dom";
+import { $, esc } from "./dom";
 import { confetti, fireworks } from "./fx";
 
 /** Mayor Pip, drawn: a round, kind face with shading, grey sideburns and a curled
@@ -131,7 +134,7 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   const nm = $("mayor-name");
   if (nm.dataset.pip === undefined) nm.dataset.pip = nm.textContent ?? "";
   nm.textContent = nm.dataset.pip;
-  $("mayor").classList.remove("neighbour");
+  $("mayor").classList.remove("neighbour", "hall-up");
   $("mayor-chapter").innerHTML = arrowHtml(chapter);
   $("mayor-text").textContent = text;
   $("mayor-goals").innerHTML = goals;
@@ -153,23 +156,51 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
 export function openMayor(save: SaveData, persist: () => void, celebrate: () => void, after: () => void): void {
   const i = chapterIndex(save), c = CHAPTERS[i];
   if (!c) return;
-  if (chapterReady(save)) {
+  // (The city game's level-up is its own celebration: see hallReward and the app's hallLevelUp.)
+  if (chapterReady(save) && !HAS_CITY) {
     const r = claimChapter(save)!;
     persist();
     celebrate();
     confetti();
     fireworks(4);
     const next = CHAPTERS[i + 1];
-    // The city game: a big banner over the City Hall first (the camera flies to it), then
-    // Pip with the reward and what the new level opens.
-    if (HAS_CITY) { hallBanner(i + 2, save.cityName); vibrate(save.settings.vibrate, [20, 40, 20]); }
-    window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro, save), opensHtml(i + 2),
+    show(t("Chapter {n} complete!", { n: i + 1 }), say(c.outro, save), "",
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
-      next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
-      () => { if (next) { introduce(save, persist); } after(); }), HAS_CITY ? 2600 : 0);
+      next ? t("On to chapter {n}!", { n: i + 2 }) : t("Thanks, Mayor!"),
+      () => { if (next) { introduce(save, persist); } after(); });
     return;
   }
   show(head(i, c.title), say(c.intro, save), goalsHtml(save, c), "", t("Let's build!"), after);
+}
+
+/** The City Hall's level-up card, after its celebration: one card with everything. The town's
+ *  new title, the reward, what the level opens, and the next level's three goals; Pip says
+ *  one line. One button. (It replaces the old chapter-done card and the next chapter's
+ *  introduction, which came one after the other.) `level` is the hall's new level. */
+export function hallReward(save: SaveData, level: number, r: { cash: number; crystals: number }, onOk: () => void): void {
+  const done = CHAPTERS[level - 2], next = CHAPTERS[level - 1], u = hallUnlocks(level);
+  const title = t(hallTitle(level));
+  const chips: string[] = [
+    ...u.businesses.map(b => `<i class="hu-chip">${esc(t(b.name))}</i>`),
+    ...u.lands.map(l => `<i class="hu-chip">${esc(l.icon)} ${esc(t(l.name))}</i>`),
+    ...u.gates.map(g => `<i class="hu-chip">${esc(t(GATE_NAME[g]))}</i>`),
+  ];
+  // (A new town rank: its landmark, and every business earning more for good.)
+  if (u.rank > 0) chips.push(`<i class="hu-chip wide">✨ ${esc(t(RANKS[u.rank].unlock))}</i>`, `<i class="hu-chip">${esc(t("+{pct}% earnings", { pct: Math.round(RANK_BONUS * 100) }))}</i>`);
+  const goals = next ? next.goals.map(g => {
+    const ok = goalDone(save, g);
+    return `<li class="${ok ? "done" : "todo"}"><span>${ok ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g.text, g.need))}</div><em>${ok ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}</em></li>`;
+  }).join("") : "";
+  const html = `<li class="hu-hero"><small>${esc(save.cityName ? t("{city} is now", { city: save.cityName }) : t("Welcome to"))}</small><b>${esc(title)}</b>
+      <div class="hu-pay"><span>+${esc(coins(r.cash))}</span><span>+${r.crystals} 💎</span></div></li>`
+    + (chips.length ? `<li class="hu-head">${esc(t("Now open"))}</li><li class="hu-chips">${chips.join("")}</li>` : "")
+    + (next ? `<li class="hu-head">${esc(t("Next: City Hall level {n}", { n: level + 1 }))}</li>${goals}` : "");
+  show(t("City Hall level {n}!", { n: level }), done ? say(done.outro, save) : "", html, "", next ? t("Let's build!") : t("Thanks, Mayor!"), onOk);
+  $("mayor-face").innerHTML = mayorSvg("happy");
+  $("mayor").classList.add("hall-up");
+  $("mayor-goals").scrollTop = 0;
+  // (This card was the next chapter's introduction too: Pip doesn't introduce it again.)
+  if (next && save.chapters.seen < level - 1) save.chapters.seen = level - 1;
 }
 
 /** Pip introduces the current chapter once (the first time the player reaches it). */
@@ -203,8 +234,8 @@ export function mayorNote(title: string, text: string, button: string, onOk: () 
 
 /** The City Hall's level-up banner: a burst of light, "CITY HALL" and the new level, gone
  *  after a couple of seconds. */
-export function hallBanner(level: number, city = ""): void {
-  cityBanner(city ? `${city} · ${t("City Hall")}` : t("City Hall"), t("Level {n}", { n: level }), t("Your town grows!"));
+export function hallBanner(level: number, city = "", sub = t("Your town grows!")): void {
+  cityBanner(city ? `${city} · ${t("City Hall")}` : t("City Hall"), t("Level {n}", { n: level }), sub, 1900);
 }
 /** A big celebration banner (the City Hall's level-ups, population milestones). */
 export function cityBanner(small: string, big: string, sub: string, ms = 2200): void {

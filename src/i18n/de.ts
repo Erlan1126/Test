@@ -2473,4 +2473,13 @@ export const DE: Record<string, string> = {
   "×{n} boosted": "×{n} Boost",
   "More goals open at City Hall level {n}": "Weitere Ziele gibt es ab Rathaus-Level {n}",
   "City Hall goals are your big goal. Each new City Hall level opens more to do here.": "Die Rathaus-Ziele sind dein großes Ziel. Jedes neue Rathaus-Level bringt hier mehr zu tun.",
+  "City Hall upgrade ready!": "Rathaus-Upgrade bereit!",
+  "Level {n}: {title} · tap to celebrate": "Level {n}: {title} · tippe zum Feiern",
+  "{city} is now": "{city} ist jetzt",
+  "Welcome to": "Willkommen in",
+  "Now open": "Jetzt offen",
+  "Next: City Hall level {n}": "Als Nächstes: Rathaus-Level {n}",
+  "Golden customers": "Goldene Kunden",
+  "Daily quests": "Tägliche Aufgaben",
+  "Weekly events": "Wochen-Events",
 };

@@ -1,7 +1,7 @@
 // The game controller: screens, input, the frame loop, and turning drops into effects.
 import { LAND } from "./data/land";
 import { landOnSale } from "./logic/land";
-import { migrateChapters } from "./data/chapters";
+import { claimChapter, migrateChapters } from "./data/chapters";
 import { ANNEX_RANK, RANKS } from "./data/ranks";
 import type { SkylineTower } from "./logic/skyline";
 import { ISLAND_THEMES, type IslandTheme } from "./data/islands";
@@ -77,12 +77,14 @@ import { CITY } from "./data/daily";
 import { BUILD_SPOTS } from "./data/spots";
 import { iconSvg, withIcons } from "./ui/icons";
 import { towerName } from "./data/towernames";
-import { introduce, openMayor, renderMayorStrip } from "./ui/mayor";
+import { hallBanner, hallReward, hallTitle, introduce, openMayor, renderMayorStrip } from "./ui/mayor";
+import { hallUpgradeReady } from "./logic/levelup";
 import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { COIN_SVG, TycoonUI } from "./ui/tycoon";
 import { spinOpen } from "./logic/spin";
 import { dailyMayOpen, gateOpen } from "./logic/gates";
+import { saveMemory } from "./ui/memories";
 import { hallLevel, claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness, cityGrow, townHomes } from "./logic/tycoon";
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
@@ -469,7 +471,7 @@ export class App implements DailyHost {
    *  Returns false on the main menu, where the app goes to the background. */
   /** Nothing else is up: no splash, sheet, Pip, welcome-back card, celebration or level-up. */
   private calm(): boolean {
-    return this.state === "menu" && this.startupShown && !document.getElementById("splash") && !openModalEl() && !this.moving && !this.visiting
+    return this.state === "menu" && this.startupShown && !document.getElementById("splash") && !openModalEl() && !this.moving && !this.visiting && !this.hallBusy()
       && !document.querySelector(".modal:not([hidden]), .overlay:not([hidden]), #evolve:not([hidden])")
       && $("mayor").hidden && $("welcome").hidden && $("levelup").hidden && $("starter").hidden && $("rewards").hidden;
   }
@@ -1743,7 +1745,7 @@ export class App implements DailyHost {
       this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); }, dailyOk);
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
-    if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
+    if (HAS_CITY) renderMayorStrip(save, () => this.openStory());
     // (In the town, Pip's chapter waits until the first steps there are done.)
     // (In the city game the bottom card is the one guide: it shows the City Plan, and the
     // City Hall opens Pip's chapter. Pip doesn't pop up on his own after the welcome.)
@@ -2031,7 +2033,7 @@ export class App implements DailyHost {
   private cafeCache: { key: string; val: BizCafe | null } = { key: "", val: null };
   /** The café loop's pieces for the 3D town (the same object until something changes). */
   private bizCafe(): BizCafe | null {
-    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props, cityGrow(this.save), townHomes(this.save), citySeason(), this.save.placed]);
+    const c = this.save.cafe, hqs = this.save.orders.towers, key = JSON.stringify([this.hallHold, c.starter, c.terrace, c.contract, c.done, projectsOpen(c), c.asked, hqs, this.save.decor, townRank(this.save), this.save.annex.pick, this.save.land, landOnSale(this.save)?.id, this.save.props, cityGrow(this.save), townHomes(this.save), citySeason(), this.save.placed]);
     if (key !== this.cafeCache.key) {
       const sk = c.starter ? skinById(c.starter.s) : null;
       const look = (tw: StarterTower) => { const k = skinById(tw.s); return { b: tw.b, floors: k.floors, glass: k.glass, slab: k.slab, lit: k.lit[0] ?? "#ffd99a", pts: shapeById(tw.h).pts }; };
@@ -2047,8 +2049,8 @@ export class App implements DailyHost {
           decor: [...this.save.decor],
           season: citySeason(),
           placed: placedMap(this.save),
-          rank: townRank(this.save),
-          hall: hallLevel(this.save),
+          rank: this.hallHold ? this.hallHold.rank : townRank(this.save),
+          hall: this.hallHold ? this.hallHold.hall : hallLevel(this.save),
           grow: cityGrow(this.save),
           homes: townHomes(this.save),
           annex: this.save.annex.pick || (townRank(this.save) >= ANNEX_RANK ? "ghost" : ""),
@@ -2973,9 +2975,83 @@ export class App implements DailyHost {
   canCity(): boolean { return HAS_CITY && this.renderer instanceof Renderer3D && !this.visiting; }
   setBizFocus(on: boolean): void { this.bizFocus = on; }
   openStory(): void {
+    if (this.hallParty) return;
     this.sound.click();
-    // A City Hall level-up: the camera flies to the City Hall while the banner plays.
-    openMayor(this.save, () => this.persist(), () => { this.sound.purchase(); window.setTimeout(() => this.sound.firework(), 500); if (HAS_CITY) this.visitLandmark(-4, 2800); }, () => this.refresh());
+    // A City Hall level-up: its own celebration at the hall (see hallLevelUp).
+    if (hallUpgradeReady(this.save)) { this.hallLevelUp(); return; }
+    openMayor(this.save, () => this.persist(), () => { this.sound.purchase(); window.setTimeout(() => this.sound.firework(), 500); }, () => this.refresh());
+  }
+
+  // ---------- The City Hall's level-up ----------
+  /** The level (and rank) the town still shows while the celebration hasn't swapped the hall. */
+  private hallHold: { hall: number; rank: number } | null = null;
+  private hallParty = false;
+  /** Until when the screen stays quiet after the level-up's card (no pop-ups, no notes). */
+  private hallQuietUntil = 0;
+  hallBusy(): boolean { return this.hallParty || Date.now() < this.hallQuietUntil; }
+  /** The City Hall goes up a level: the camera flies to the hall with the buttons out of the
+   *  way, the old building sinks into a cloud of dust and the new one rises in its place, then
+   *  confetti, fireworks and a fanfare, and one card with the new title, the reward, what
+   *  opens and the next goals. (With reduced motion: a fade instead of the flight.) The
+   *  reward is claimed (and saved) first, so closing the game half way loses nothing, and a
+   *  second tap can't claim it twice. */
+  hallLevelUp(): void {
+    const s = this.save;
+    if (this.hallParty || !hallUpgradeReady(s)) return;
+    const from = hallLevel(s), rankFrom = townRank(s), lv = from + 1;
+    const r = claimChapter(s);
+    if (!r) return;
+    this.tycoon.rankQuiet();
+    this.persist();
+    track("hall_level", { level: lv }, false);
+    this.hallParty = true;
+    this.hallHold = { hall: from, rank: rankFrom };
+    this.tycoon.partyStart();
+    document.body.classList.add("hall-party");
+    const r3 = this.renderer instanceof Renderer3D ? this.renderer : null;
+    const fly = !this.calmMotion && !!r3 && this.canCity() && this.visitLandmark(-4, 600000);
+    const swap = () => { this.hallHold = null; this.refresh(); };
+    const cheer = () => {
+      this.sound.win(); this.sound.cheer();
+      vibrate(s.settings.vibrate, [20, 40, 20, 40, 30]);
+      fireworks(5, () => this.sound.firework());
+      confetti();
+    };
+    const card = () => {
+      document.body.classList.remove("hall-party");
+      hallReward(s, lv, r, () => {
+        if (fly) this.visitLandmark(-4, 1);
+        this.hallParty = false;
+        this.hallQuietUntil = Date.now() + 15000;
+        this.persist();
+        this.refresh();
+      });
+      this.persist();
+    };
+    let fade: HTMLElement | null = null;
+    const steps: [number, () => void][] = fly ? [
+      [0, () => this.sound.whoosh()],
+      [1300, () => { r3!.hallSink(800); this.sound.thunder(); vibrate(s.settings.vibrate, [40]); }],
+      [2150, swap],
+      [3250, () => { cheer(); this.sound.tada(); }],
+      [3500, () => { hallBanner(lv, s.cityName, t(hallTitle(lv))); try { saveMemory(townRank(s), this.townPicture()); } catch { /* no picture */ } }],
+      [4300, () => { r3!.hallCheer(false); fireworks(3, () => this.sound.firework()); }],
+      [5700, card],
+    ] : [
+      // Reduced motion (or no 3D town): a gentle fade, the new hall, the fanfare, the card.
+      [0, () => { fade = document.createElement("div"); fade.className = "hall-fade"; document.body.appendChild(fade); requestAnimationFrame(() => fade?.classList.add("on")); }],
+      [700, swap],
+      [900, () => { fade?.classList.remove("on"); this.sound.win(); vibrate(s.settings.vibrate, [20, 40, 20]); }],
+      [1700, () => { fade?.remove(); card(); }],
+    ];
+    // (Run off the clock rather than timers, so a frozen clock freezes the whole moment.)
+    const t0 = performance.now();
+    let next = 0;
+    const timer = window.setInterval(() => {
+      const el = performance.now() - t0;
+      while (next < steps.length && el >= steps[next][0]) steps[next++][1]();
+      if (next >= steps.length) window.clearInterval(timer);
+    }, 40);
   }
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
   bizPan(dx: number, dy: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPan(dx, dy); }
