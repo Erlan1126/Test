@@ -87,6 +87,13 @@ const ICONS: Record<string, string> = {
   vibrate: `<rect x="7.5" y="3" width="9" height="18" rx="2.2" fill="url(#g-ink)" ${S}/><rect x="9" y="5" width="6" height="11.5" rx="1" fill="url(#g-sky)"/><path d="M4.5 8v8M19.5 8v8M2.5 10v4M21.5 10v4" stroke="#2a1270" stroke-width="1.6" stroke-linecap="round"/>`,
   globe: `<circle cx="12" cy="12" r="9.5" fill="url(#g-sky)" ${S}/><path d="M2.5 12h19M12 2.5c3 3 3 16 0 19M12 2.5c-3 3-3 16 0 19" fill="none" stroke="#fff" stroke-width="1.3"/>`,
   bulb: `<path d="M12 2.5a6.5 6.5 0 0 1 3.8 11.8c-.7.5-1.1 1.2-1.1 2V17H9.3v-.7c0-.8-.4-1.5-1.1-2A6.5 6.5 0 0 1 12 2.5z" fill="url(#g-gold)" ${S}/><path d="M9.3 19h5.4M10.3 21.3h3.4" ${S}/>`,
+  wind: `<path d="M3 9h10.5a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 17h7" fill="none" stroke="#2a1270" stroke-width="3.6" stroke-linecap="round"/><path d="M3 9h10.5a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 17h7" fill="none" stroke="url(#g-sky)" stroke-width="2" stroke-linecap="round"/>`,
+  battery: `<rect x="2.5" y="7" width="17" height="10" rx="2.2" fill="url(#g-silver)" ${S}/><path d="M19.5 10.2h1.5a.8.8 0 0 1 .8.8v2a.8.8 0 0 1-.8.8h-1.5" fill="url(#g-ink)" ${S}/><rect x="4.5" y="9" width="9" height="6" rx="1" fill="url(#g-green)"/>`,
+  moon: `<circle cx="12" cy="12" r="9.5" fill="url(#g-gold)" ${S}/><path d="M12 2.5a9.5 9.5 0 0 1 0 19z" fill="url(#g-ink)"/><circle cx="12" cy="12" r="9.5" fill="none" ${S}/>`,
+  palette: `<path d="M12 2.5C6.5 2.5 2.5 6.6 2.5 11.6c0 5.3 4.4 9.9 9.3 9.9 1.6 0 2.2-1.1 1.6-2.3-.7-1.4.1-2.9 1.8-2.9h2.3c2.6 0 4-1.8 4-4.4C21.5 6.4 17.5 2.5 12 2.5z" fill="url(#g-silver)" ${S}/><circle cx="7.5" cy="11" r="1.6" fill="#ff4d6d"/><circle cx="10" cy="6.8" r="1.6" fill="#ffc83d"/><circle cx="14.8" cy="6.8" r="1.6" fill="#2fb35a"/><circle cx="17.6" cy="10.8" r="1.6" fill="#3b82f6"/>`,
+  text: `<rect x="2.5" y="4" width="19" height="16" rx="3.5" fill="url(#g-violet)" ${S}/><path d="M6 16.5l3-9 3 9M7 13.6h4M14.5 16.5v-5.2a2 2 0 0 1 4 0v5.2M14.5 13.8h4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`,
+  thumb: `<path d="M7.5 10.5l3.8-6.6c.6-1 2.2-.8 2.5.4.3 1 .1 2.4-.4 4.2h5.4a2 2 0 0 1 2 2.3l-1.1 6.8a2.2 2.2 0 0 1-2.2 1.9H7.5z" fill="url(#g-gold)" ${S}/><rect x="2.5" y="10" width="5" height="10.5" rx="1.2" fill="url(#g-sky)" ${S}/>`,
+  bug: `<path d="M8 8.5a4 4 0 0 1 8 0z" fill="url(#g-ink)" ${S}/><path d="M6.5 10h11v4.5a5.5 5.5 0 0 1-11 0z" fill="url(#g-pink)" ${S}/><path d="M12 10v10M3 12.5h3.5M17.5 12.5H21M3.5 18l3.5-1.5M20.5 18L17 16.5M4.5 7.5l3 2M19.5 7.5l-3 2" fill="none" stroke="#2a1270" stroke-width="1.4" stroke-linecap="round"/>`,
   cloud: `<path d="M7 19a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.4A3.8 3.8 0 0 1 17.5 19z" fill="url(#g-silver)" ${S}/>`,
   phone: `<rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="url(#g-ink)" ${S}/><rect x="8" y="5" width="8" height="12.5" rx="1" fill="url(#g-sky)"/><circle cx="12" cy="19.5" r=".9" fill="#fff"/>`,
   mail: `<rect x="3" y="5.5" width="18" height="13" rx="2.5" fill="#fff" ${S}/><path d="M3.5 7l8.5 6.5L20.5 7" fill="none" ${S}/><circle cx="18.5" cy="6.5" r="3" fill="#f63476" ${S}/>`,
@@ -124,6 +131,8 @@ const EMOJI: Record<string, string> = {
   "🏁": "flag", "⚑": "flag", "🏰": "building", "🏛": "building", "🕌": "building", "⛩": "pagoda", "🎡": "wheel", "☕": "coffee", "🛝": "slide", "🗽": "statue",
   "🌾": "windmill", "🔭": "telescope", "🎠": "carousel", "🕰": "clock", "📡": "dish", "🎈": "balloon", "🏟": "stadium", "🚀": "rocket", "🛸": "airship",
   "🏝": "island", "📍": "mapPin", "📖": "bulb", "🧭": "map", "🔨": "brick", "👷": "crown",
+  "🌤": "sun", "🌟": "sparkle", "📐": "map", "🔷": "gem", "❄": "ice",
+  "💨": "wind", "🌿": "leaf", "🔋": "battery", "🌗": "moon", "🎨": "palette", "🔠": "text", "👍": "thumb", "🐞": "bug",
 };
 
 const CHARS = Object.keys(EMOJI).sort((a, b) => b.length - a.length).map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));

@@ -4744,3 +4744,6 @@ body.one-hand #pause { top: auto; bottom: calc(16px + env(safe-area-inset-bottom
 /* While Zephyr's (or Pip's) card is open, the goal strip it came from steps aside: it peeked
    out beside the face, half covered. */
 body:has(#mayor:not([hidden])) #mayor-strip { visibility: hidden; }
+/* The home strip's goal gets two lines instead of an ellipsis ("Atteins le niveau de
+   bâtisseur 2" didn't fit one line on a small phone). */
+.mayor-goal b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

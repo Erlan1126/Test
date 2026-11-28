@@ -1,22 +1,34 @@
 // Buttons whose words don't fit (a long translation, a small phone, larger text) shrink
 // their text a little, then wrap to two lines, instead of being cut off at both edges.
-const SELECTOR = ".btn, [role=tab], .seg button";
+const SELECTOR = ".btn, .buy, [role=tab], .seg button";
 const MIN = 0.72;
 let queued = false;
+
+const range = typeof document !== "undefined" ? document.createRange() : null;
+
+/** How much wider the button's words are than the room for them. (Measured on the words
+ *  themselves: scrollWidth also counts the shine that sweeps across a button.) */
+function overflow(el: HTMLElement): number {
+  if (!range) return 0;
+  range.selectNodeContents(el);
+  const cs = getComputedStyle(el), r = el.getBoundingClientRect();
+  const room = r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
+  return range.getBoundingClientRect().width - room;
+}
 
 /** Makes one button's text fit its width. */
 export function fitText(el: HTMLElement): void {
   if (el.dataset.fit) { el.style.fontSize = ""; el.style.whiteSpace = ""; el.style.lineHeight = ""; delete el.dataset.fit; }
-  const over = el.scrollWidth - el.clientWidth;
-  if (over <= 1 || !el.clientWidth) return;
+  const r = el.getBoundingClientRect();
+  if (!r.width) return;
+  const over = overflow(el);
+  if (over <= 1) return;
   const size = parseFloat(getComputedStyle(el).fontSize);
-  // The text is roughly the part of the button that isn't padding.
-  const cs = getComputedStyle(el), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-  const room = el.clientWidth - pad, need = el.scrollWidth - pad;
-  const k = Math.max(MIN, Math.min(1, (room / need) * 0.98));
+  const words = over + (r.width - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight));
+  const k = Math.max(MIN, Math.min(1, ((words - over) / words) * 0.98));
   el.dataset.fit = "1";
   el.style.fontSize = `${(size * k).toFixed(1)}px`;
-  if (el.scrollWidth - el.clientWidth > 1) { el.style.whiteSpace = "normal"; el.style.lineHeight = "1.05"; }
+  if (overflow(el) > 1) { el.style.whiteSpace = "normal"; el.style.lineHeight = "1.05"; }
 }
 
 function fitAll(): void {
