@@ -4,7 +4,7 @@
 // The event pass (crystals) doubles every point and adds crystals to each reward.
 import { DECOR, WEEKLY_DECOR } from "../data/decor";
 import { citySeason, seasonInfo } from "../data/season";
-import { weekIndex } from "../data/events";
+import { eventEndsIn, weekIndex } from "../data/events";
 import type { SaveData } from "./save";
 
 export interface CityEventState { week: number; pts: number; claimed: number[]; pass: boolean }
@@ -46,11 +46,9 @@ export const eventPrize = (now = Date.now()) => { const se = seasonInfo(citySeas
 export function cityEventEndsAt(s: SaveData, now = Date.now()): number | undefined {
   const e = cityEvent(s, now);
   if (e.claimed.includes(EVENT_STEPS.length - 1)) return undefined;
-  // Weeks start on Monday (data/events.ts): find the next one.
-  let t = now;
-  const w = weekIndex(now);
-  for (let h = 1; h <= 7 * 24 + 1; h++) { t = now + h * 3600e3; if (weekIndex(t) !== w) break; }
-  return t;
+  // Weeks start on Monday 00:00 (data/events.ts, the same moment for everyone): the exact
+  // start of the next one, so the countdown ticks down by the minute.
+  return now + eventEndsIn(now);
 }
 
 /** Adds points for something the player did. Returns the points added. */
