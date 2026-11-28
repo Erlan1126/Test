@@ -4786,3 +4786,43 @@ body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled small em {
 .goals-later { margin: 16px 8px 6px; text-align: center; font: 700 13px/1.3 var(--ui); color: #7a70a8; }
 /* A heading that breaks only at its arrow ("Now: … → Next: …"). */
 .nw { white-space: nowrap; }
+/* ===== The City Hall's level-up ===== */
+/* Ready: the Next card turns gold and glows gently, ahead of every other step. */
+.tcy-next.tone-hall { --nx: #e08a00; --nx-txt: #b86a00; --nx-bg: linear-gradient(135deg, #fff3b0, #ffc93c); background: linear-gradient(135deg, #fffbe6, #ffe27a 60%, #ffc93c); box-shadow: 0 0 0 2.5px #ffb321, 0 10px 26px rgba(255, 170, 30, 0.55); animation: hall-ready-glow 1.8s ease-in-out infinite; }
+.tcy-next.tone-hall b { color: #6a3c00; }
+.tcy-next.tone-hall em { color: #8a5a10; }
+.tcy-next.tone-hall .next-ico { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }
+@keyframes hall-ready-glow { 50% { box-shadow: 0 0 0 4px #ffd23f, 0 10px 34px rgba(255, 190, 40, 0.85); transform: scale(1.015); } }
+/* The City Hall badge (top left): a pulsing gold ring and an arrow. */
+#tycity #tcy-top .tcy-goal.hall-ready .tg-ring { background: conic-gradient(#fff3a0, #ffc93c, #ff9a1f, #ffc93c, #fff3a0); box-shadow: 0 0 0 2px #fff, 0 0 18px 4px rgba(255, 200, 40, 0.85) !important; animation: hall-badge 1.6s ease-in-out infinite; }
+#tycity #tcy-top .tcy-goal.hall-ready .tg-main { background: linear-gradient(180deg, #ffcf3a, #ff9a1f) !important; }
+#tycity #tcy-top .tcy-goal.hall-ready .tg-main b, #tycity #tcy-top .tcy-goal.hall-ready .tg-main em { color: #4a2600 !important; text-shadow: none; }
+#tycity #tcy-top .tcy-goal .tg-up { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 900 10px/1 var(--ui); font-style: normal; color: #fff; background: #ff4f8b; box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(120, 20, 60, 0.4); animation: hall-up-bob 1.2s ease-in-out infinite; }
+@keyframes hall-badge { 50% { box-shadow: 0 0 0 2px #fff, 0 0 26px 8px rgba(255, 210, 60, 1) !important; transform: scale(1.06); } }
+@keyframes hall-up-bob { 50% { transform: translateY(-3px); } }
+/* The celebration: every button steps aside (as in photo mode) while the camera is at the hall. */
+body.hall-party #tycity > *, body.hall-party #tcy-bar, body.hall-party #guide-hand, body.hall-party .toast, body.hall-party #toast, body.hall-party .photo-btn { visibility: hidden !important; pointer-events: none !important; }
+body.hall-party #tycity::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 42%, transparent 45%, rgba(20, 10, 50, 0.35)); animation: hall-vig 0.6s ease-out both; }
+@keyframes hall-vig { from { opacity: 0; } }
+/* (The banner sits low, under the hall, not over it.) */
+body.hall-party .hall-banner { place-items: end center; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 15vh); }
+body.hall-party .hall-banner .hb-rays { display: none; }
+/* Reduced motion: a soft fade instead of the flight. */
+.hall-fade { position: fixed; inset: 0; z-index: 95; pointer-events: none; background: radial-gradient(circle, #fffbe6, #ffe27a); opacity: 0; transition: opacity 0.6s ease; }
+.hall-fade.on { opacity: 0.92; }
+/* The reward card: the new title big, the reward, what opens, the next goals. */
+#mayor.hall-up .mayor-card { background: linear-gradient(180deg, #fffaf0, #fff3d6 40%, #f6f0ff); box-shadow: 0 0 0 3px #ffc93c, 0 20px 50px rgba(10, 12, 40, 0.45); }
+#mayor.hall-up .mayor-face { background: radial-gradient(circle at 50% 40%, #fff6c8, #ffd36b); }
+#mayor.hall-up #mayor-chapter { color: #c07a00; }
+#mayor.hall-up .mayor-talk p { margin-bottom: 6px; font-style: italic; }
+#mayor.hall-up #mayor-goals li.hu-hero { display: block; padding: 12px 12px 14px; text-align: center; border-radius: 18px; background: linear-gradient(135deg, #ffcf3a, #ff8a2b 60%, #ff5f8b); color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.12), 0 6px 16px rgba(255, 120, 30, 0.3); }
+#mayor.hall-up .hu-hero small { display: block; font: 400 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; opacity: 0.95; }
+#mayor.hall-up .hu-hero b { display: block; font: 400 32px/1.05 var(--display); text-shadow: 0 3px 0 rgba(150, 50, 0, 0.35); animation: unlock-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.1s both; }
+#mayor.hall-up .hu-pay { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+#mayor.hall-up .hu-pay i { flex: none; display: inline-block; width: auto !important; max-width: none !important; overflow: visible; font-style: normal; white-space: nowrap;  padding: 5px 12px; border-radius: 12px; font: 400 18px var(--display); color: #4a2a00; background: linear-gradient(180deg, #fff8d6, #ffe27a); box-shadow: 0 3px 0 #d79a1a; animation: unlock-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 0.35s both; }
+#mayor.hall-up #mayor-goals li.hu-head { display: block; margin-top: 6px; padding: 0 4px; background: none; font: 400 11px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #7b6cff; }
+#mayor.hall-up #mayor-goals li.hu-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; background: none; }
+#mayor.hall-up .hu-chip { padding: 5px 10px; border-radius: 999px; font: 700 12.5px var(--ui); font-style: normal; color: #6a4a00; background: linear-gradient(90deg, rgba(255, 210, 63, 0.45), rgba(255, 210, 63, 0.2)); box-shadow: inset 0 0 0 1.5px rgba(224, 160, 20, 0.45); }
+#mayor.hall-up .hu-chip.wide { flex: 1 1 100%; }
+#mayor.hall-up #mayor-goals li.todo, #mayor.hall-up #mayor-goals li.done { font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { .tcy-next.tone-hall, #tycity #tcy-top .tcy-goal.hall-ready .tg-ring, #tycity #tcy-top .tcy-goal .tg-up { animation: none !important; } }

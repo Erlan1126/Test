@@ -6,12 +6,12 @@
 
 import * as THREE from "three";
 
-const N = 96;
+const N = 192;
 const still = (): boolean => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const CONFETTI = [0xffd23f, 0xff7a5c, 0xff5fa2, 0x7b6cff, 0x3fc5ff, 0x5ee08a];
 
-export type BurstKind = "sparkle" | "confetti" | "dust";
+export type BurstKind = "sparkle" | "confetti" | "dust" | "puff";
 
 export class BizJuice {
   readonly group = new THREE.Group();
@@ -34,6 +34,7 @@ export class BizJuice {
   private readonly ring: THREE.Mesh;
   private readonly ringMat: THREE.MeshBasicMaterial;
   private ringAt = -1;
+  private ringSize = 1;
   // The manager: a little figure in a suit with a tie.
   private readonly mgr = new THREE.Group();
   private mgrAt = -1;
@@ -114,6 +115,12 @@ export class BizJuice {
         vx = Math.cos(a) * (1.5 + r * 2.5) * spread; vz = Math.sin(a) * (1.5 + r * 2.5) * spread; vy = 4 + Math.random() * 4;
         this.tmp.setHex(CONFETTI[k % CONFETTI.length]);
         this.base[i] = 6 + Math.random() * 5; this.life[i] = 1.3 + Math.random() * 0.6; this.drag[i] = 1.2; this.grav[i] = 7;
+      } else if (kind === "puff") {
+        // A big, billowing cloud (a building going down): grey-brown, slow, rising.
+        vx = Math.cos(a) * (1.2 + r * 1.8) * spread; vz = Math.sin(a) * (1.2 + r * 1.8) * spread; vy = 0.6 + Math.random() * 1.6;
+        const g = 0.62 + Math.random() * 0.18;
+        this.tmp.setRGB(g * 1.05, g, g * 0.9);
+        this.base[i] = 30 + Math.random() * 26; this.life[i] = 1.4 + Math.random() * 0.8; this.drag[i] = 1.8; this.grav[i] = -0.4;
       } else {
         vx = Math.cos(a) * (1.6 + r * 1.4) * spread; vz = Math.sin(a) * (1.6 + r * 1.4) * spread; vy = 0.3 + Math.random() * 0.8;
         this.tmp.setRGB(0.94, 0.88, 0.76);
@@ -129,9 +136,10 @@ export class BizJuice {
   }
 
   /** A golden ring that sweeps out over the ground round a building. */
-  ringAt3(x: number, y: number, z: number): void {
+  ringAt3(x: number, y: number, z: number, size = 1): void {
     if (still()) return;
     this.ring.position.set(x, y, z);
+    this.ringSize = size;
     this.ringAt = performance.now();
     this.ring.visible = true;
   }
@@ -168,7 +176,7 @@ export class BizJuice {
     if (this.ring.visible) {
       const k = (now - this.ringAt) / 900;
       if (k >= 1) this.ring.visible = false;
-      else { this.ring.scale.setScalar(1.2 + 4.3 * (1 - Math.pow(1 - k, 3))); this.ringMat.opacity = 0.9 * (1 - k); }
+      else { this.ring.scale.setScalar((1.2 + 4.3 * (1 - Math.pow(1 - k, 3))) * this.ringSize); this.ringMat.opacity = 0.9 * (1 - k); }
     }
     // The manager: pops in with an overshoot, bobs and waves, then pops out after 3.5 s.
     if (this.mgr.visible && this.mgrAt >= 0) {

@@ -979,8 +979,14 @@ export class Renderer3D {
         // (Dust as it rises, then confetti and a bounce once it's up.)
         if (grown.length) { this.grewAt = performance.now(); this.grew = grown; this.grewDust = false; }
         this.bizPrev = new Map(lots.map(l => [l.id, l.state === "open" ? l.s : -1]));
+        // (The City Hall went up a level: its new building rises in place, see hallLive.)
+        const hl = cafe?.hall ?? 0, hallUp = this.hallPrev > 0 && hl > this.hallPrev;
+        this.hallPrev = hl;
         if (lots.length) {
           this.biz = buildBizCity(lots, style, grown, cafe ?? undefined);
+          if (hallUp) this.hallRise();
+          // (The town rebuilt for something else while the old hall was sinking: it stays sunk.)
+          else if (this.hallFx?.kind === "sink") { const g = this.biz.hall(); if (g) Object.assign(this.hallFx, { g, sx: g.scale.x, sy: g.scale.y, sz: g.scale.z, y: g.position.y }); }
           this.shadowAt.set(1e9, 0, 0);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
@@ -1164,8 +1170,72 @@ export class Renderer3D {
         this.grew = [];
       }
     }
+    this.hallLive(j);
     j.px(this.gl.getPixelRatio());
     if (j.update(dt, biz)) biz.group.userData.moving = true;
+  }
+  // ---- The City Hall's level-up: the old hall sinks into a cloud of dust, the new one rises
+  // in its place, then confetti and sparkles over it. ----
+  private hallPrev = 0;
+  private hallFx: { kind: "sink" | "rise"; at: number; ms: number; g: THREE.Group; sx: number; sy: number; sz: number; y: number; step: number } | null = null;
+  private readonly calmMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Where the City Hall stands in the world (its feet) and how tall it is. */
+  private hallAt(): { x: number; y: number; z: number; top: number } | null {
+    if (!this.biz) return null;
+    const p = this.biz.spot("hall");
+    return { x: BIZ_SLOT.x + p.x, y: BIZ_SLOT.y + 0.2, z: BIZ_SLOT.z + p.z, top: Math.max(2, this.biz.top(-4)) };
+  }
+  private hallFxOn(kind: "sink" | "rise", ms: number): void {
+    const g = this.biz?.hall();
+    if (!g || this.calmMotion) return;
+    // (A sink that was still going is finished first: the old hall goes, the new one is new.)
+    this.hallFx = { kind, at: performance.now(), ms, g, sx: g.scale.x, sy: g.scale.y, sz: g.scale.z, y: g.position.y, step: 0 };
+    if (kind === "rise") g.scale.y = g.scale.y * 0.03;
+  }
+  /** The old City Hall sinks into the square in a cloud of dust (`ms` long). */
+  hallSink(ms = 750): void { this.hallFxOn("sink", ms); }
+  /** The new City Hall rises in its place (called when the town is rebuilt at a higher level). */
+  private hallRise(): void { this.hallFxOn("rise", 1150); }
+  /** Confetti, sparkles and a golden ring over the City Hall. */
+  hallCheer(big = true): void {
+    const at = this.hallAt();
+    if (!at || this.bizK < 0.5) return;
+    if (!this.juice) { this.juice = new BizJuice(this.gl.getPixelRatio()); this.scene.add(this.juice.group); }
+    const j = this.juice;
+    j.burst("confetti", at.x, at.y + at.top, at.z, big ? 56 : 36, big ? 1.5 : 1.2);
+    j.burst("sparkle", at.x, at.y + at.top * 0.7, at.z, big ? 34 : 18, 1.3);
+    if (big) j.ringAt3(at.x, at.y + 0.15, at.z, 1.0);
+  }
+  private hallLive(j: BizJuice): void {
+    const fx = this.hallFx;
+    if (!fx) return;
+    const now = performance.now(), k = Math.max(0, (now - fx.at) / fx.ms), g = fx.g, at = this.hallAt();
+    this.biz!.group.userData.moving = true;
+    if (fx.kind === "sink") {
+      // Dust bursts out as it starts to go, and again as it's swallowed.
+      if (at && fx.step === 0) { fx.step = 1; j.burst("puff", at.x, at.y + 0.4, at.z, 34, 1.6); }
+      if (at && fx.step === 1 && k > 0.5) { fx.step = 2; j.burst("puff", at.x, at.y + 0.6, at.z, 34, 2.0); }
+      const e = Math.min(1, k) ** 2;
+      g.scale.set(fx.sx * (1 + e * 0.06), fx.sy * Math.max(0.03, 1 - e), fx.sz * (1 + e * 0.06));
+      // (A rumble as it goes.)
+      g.position.y = fx.y - e * 0.15 + Math.sin(now * 0.09) * 0.03 * (1 - e);
+      // (If the new hall never comes, the old one comes back rather than stay flat.)
+      if (k > 1 && now - fx.at > fx.ms + 4000) { g.scale.set(fx.sx, fx.sy, fx.sz); g.position.y = fx.y; this.hallFx = null; }
+      return;
+    }
+    if (at && fx.step === 0) { fx.step = 1; j.burst("puff", at.x, at.y + 0.3, at.z, 28, 1.5); }
+    if (k >= 1) {
+      g.scale.set(fx.sx, fx.sy, fx.sz);
+      g.position.y = fx.y;
+      this.hallFx = null;
+      this.hallCheer();
+      return;
+    }
+    // Up out of the ground with an overshoot, a little wider at the bottom of its rise.
+    const c = 1.9, e = 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2);
+    const w = 1 + Math.sin(k * Math.PI) * 0.05;
+    g.scale.set(fx.sx * w, fx.sy * Math.max(0.03, e), fx.sz * w);
+    if (at && fx.step === 1 && k > 0.4) { fx.step = 2; j.burst("sparkle", at.x, at.y + at.top * 0.5, at.z, 20, 1.4); }
   }
   /** Where a business stands in the world (its feet) and how tall it is, or null. */
   private bizSpot(id: string): { x: number; y: number; z: number; top: number } | null {

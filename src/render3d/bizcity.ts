@@ -486,6 +486,8 @@ export interface BizCity {
   bizAt(i: number): { x: number; z: number; y: number; top: number } | null;
   /** A town business's own building group (for a bounce when it's bought), if it has one. */
   lotGroup(id: string): THREE.Group | undefined;
+  /** The City Hall's group (its building on the square), for its level-up, or null. */
+  hall(): THREE.Group | null;
   /** Everything else worth a tap: city blocks, parks, landmarks, district sights. */
   sights(): Sight[];
   /** The building designs standing in the town ("level:design"). */
@@ -1000,7 +1002,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // Parks with a lake on the big open stretches of the island (between the town and the
   // districts): found by looking for the spots furthest from any street, district or shore.
   const parks: { x: number; z: number; r: number }[] = [];
-  let hallAt: { x: number; z: number } | null = null, hallTop = 3;
+  let hallAt: { x: number; z: number } | null = null, hallTop = 3, hallG: THREE.Group | null = null;
   {
     const clear = (x: number, z: number) => {
       let d = Infinity;
@@ -1156,6 +1158,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     H.scale.setScalar(hs);
     H.position.set(hx, 0.2, hz);
     g.add(H);
+    // (Merged on its own and kept out of the town's merge: its level-up sinks the old hall
+    // and raises the new one, so it has to move as a whole.)
+    mergeStatic(H, 0.08);
+    H.userData.dynamic = true;
+    hallG = H;
     hallTop = (top + 0.3) * hs + 0.2;
   }
   // The parks: a lake with a sandy shore, a path all round it with benches facing the water,
@@ -4427,6 +4434,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     },
     bizAt: i => bizSpots[i] ?? null,
     lotGroup: id => lotGroups.get(id),
+    hall: () => hallG,
     paradeRoute: want => paradeRoute(want),
     paradeQuiet: on => { paradeQuiet = on; },
     look(l) { fx.look(l); Object.assign(look, l); },

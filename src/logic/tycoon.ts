@@ -606,6 +606,24 @@ export function doubleAway(s: SaveData, earned: number, awayMs: number, now = Da
 export function starCash(s: SaveData, n: number, now = Date.now()): number {
   return Math.round(n * Math.max(25, perSecond(s, now, false) * 60));
 }
+/** A City Hall level-up's cash is capped at about this many minutes of the company's base
+ *  earnings (never under LEVELUP_FLOOR): enough to feel, never so much that every price in
+ *  town goes trivial at once. */
+export const LEVELUP_MINUTES = 12, LEVELUP_FLOOR = 300;
+/** The cash a City Hall level-up worth `n` stars pays: the stars' cash, capped. */
+export function levelUpCash(s: SaveData, n: number, now = Date.now()): number {
+  if (!(n > 0)) return 0;
+  const cap = Math.max(LEVELUP_FLOOR, rateView(s, now).base * 60 * LEVELUP_MINUTES);
+  return Math.round(Math.min(starCash(s, n, now), cap));
+}
+/** Pays a City Hall level-up (a chapter): capped cash in the city game, stars in the tower
+ *  game. Returns the cash paid. */
+export function payLevelUp(s: SaveData, n: number, now = Date.now()): number {
+  if (!HAS_CITY) return payStars(s, n, now);
+  const c = levelUpCash(s, n, now);
+  earn(s, c);
+  return c;
+}
 /** Pays a reward of `n` stars: cash in the city game, stars in the tower game. Returns the
  *  cash paid (0 when it paid stars). */
 export function payStars(s: SaveData, n: number, now = Date.now()): number {

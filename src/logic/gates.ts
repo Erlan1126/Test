@@ -33,3 +33,8 @@ export function dailyMayOpen(s: SaveData, o: { busy: boolean; freshSince: number
   if (!gateOpen(s, "daily") || s.tycoon.tips < 3 || o.busy) return false;
   return !(o.freshSince && now - o.freshSince < FRESH_CALM_MS);
 }
+
+/** What each extra is called (the City Hall level-up card lists the ones it opens). */
+export const GATE_NAME: Record<Gate, string> = { daily: "Daily rewards", golden: "Golden customers", quests: "Daily quests", event: "Weekly events", team: "Friend team", album: "City album", season: "Season Pass" };
+/** The extras a City Hall level opens. */
+export const gatesAt = (level: number): Gate[] => (HAS_CITY ? (Object.keys(GATE_HALL) as Gate[]).filter(g => GATE_HALL[g] === level) : []);
