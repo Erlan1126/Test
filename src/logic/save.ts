@@ -713,6 +713,7 @@ function normalizeTycoon(v: unknown, floorsBefore = 0): TycoonState {
     builds: normalizeBuilds(o.builds),
     builders: Math.min(2, Math.floor(big(o.builders))),
     built: Math.min(1e6, Math.floor(big(o.built))),
+    goldenAll: Math.min(1e6, Math.floor(big(o.goldenAll))),
     golden: { day: typeof (o.golden as { day?: unknown })?.day === "string" ? String((o.golden as { day: string }).day).slice(0, 12) : "", n: Math.floor(big((o.golden as { n?: unknown })?.n)) },
     tips: managers0.length ? 3 : Math.min(3, Math.floor(big(o.tips))),
     goals: normalizeGoals(o.goals),
