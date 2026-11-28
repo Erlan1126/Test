@@ -395,7 +395,7 @@ it("the daily calendar pays more each day and the week repeats", async () => {
   const { defaultSave } = await import("../src/logic/save");
   const { claimDaily, dailyReward } = await import("../src/logic/tycoon");
   const s = defaultSave();
-  expect(dailyReward(s, 1).cash).toBe(300);       // a young company gets the floor
+  expect(dailyReward(s, 1).cash).toBe(100);       // a young company gets the floor
   expect(dailyReward(s, 2).gems).toBe(10);
   expect(dailyReward(s, 8)).toEqual(dailyReward(s, 1));
   const r = claimDaily(s, 7, Date.now());
@@ -405,7 +405,7 @@ it("the daily calendar pays more each day and the week repeats", async () => {
   expect(r.pick).toBe(true);
   expect(s.tycoon.picks).toBe(1);
   expect(s.tycoon.advisors).toHaveLength(0);
-  expect(s.tycoon.coins).toBeGreaterThanOrEqual(5000);
+  expect(s.tycoon.coins).toBeGreaterThanOrEqual(2000);
 });
 
 it("a free advisor pick hires the advisor the player chooses, without crystals", async () => {

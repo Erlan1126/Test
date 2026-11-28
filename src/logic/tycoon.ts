@@ -133,6 +133,9 @@ export const nextMilestone = (level: number): number | undefined => MILESTONES_A
 export const cycleOf = (b: Business, level: number): number => b.cycle / Math.pow(2, milestonesAt(level));
 /** Coins one cycle pays right now. */
 export const payOf = (s: SaveData, b: Business, now = Date.now()): number => basePay(s, b, now) * (rushOn(s, b.id, now) ? RUSH_MULT : 1);
+/** What a business not open yet would pay a sale once opened (level 1): what its card shows
+ *  right after opening, so the Build sheet promises exactly that. */
+export const openPay = (s: SaveData, b: Business, now = Date.now()): number => b.income * PAY_K * multiplier(s, now) * bizMult(s, b, now);
 /** What one cycle pays without a rush hour (and, unless `live`, without other short boosts). */
 export const basePay = (s: SaveData, b: Business, now = Date.now(), live = true): number =>
   b.income * PAY_K * levelOf(s, b.id) * multiplier(s, now, live) * bizMult(s, b, now, live);
@@ -146,7 +149,8 @@ export const rushOn = (s: SaveData, id: string, now = Date.now()): boolean => s.
 /** Starts a rush hour on a random business the player owns (returns its id, or ""). */
 export function startRush(s: SaveData, now = Date.now(), rnd = Math.random): string {
   const owned = BUSINESSES.filter(b => levelOf(s, b.id) > 0);
-  if (!owned.length || s.tycoon.rush.until > now) return "";
+  // (Never during the grand opening: one boost at a time, so earnings don't spike and drop.)
+  if (!owned.length || s.tycoon.rush.until > now || s.tycoon.opening > now) return "";
   const b = owned[Math.floor(rnd() * owned.length)];
   s.tycoon.rush = { id: b.id, until: now + rushSeconds(s) * 1000 };
   return b.id;
@@ -257,6 +261,13 @@ export function perSecond(s: SaveData, now = Date.now(), rush = true): number {
     if (lv > 0 && s.tycoon.managers.includes(b.id)) n += (rush ? payOf(s, b, now) : basePay(s, b, now, false)) / cycleOf(b, lv);
   }
   return n;
+}
+
+/** The top bar's earnings: the base rate a second (no short boosts: grand opening, boom,
+ *  rush hour, critic's review), and how many times the boosts on now multiply it (1: none). */
+export function rateView(s: SaveData, now = Date.now()): { base: number; boost: number } {
+  const base = perSecond(s, now, false), live = perSecond(s, now);
+  return { base, boost: base > 0 ? live / base : 1 };
 }
 
 /** The price of the next `n` levels. */
