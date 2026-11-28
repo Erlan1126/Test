@@ -4747,3 +4747,5 @@ body:has(#mayor:not([hidden])) #mayor-strip { visibility: hidden; }
 /* The home strip's goal gets two lines instead of an ellipsis ("Atteins le niveau de
    bâtisseur 2" didn't fit one line on a small phone). */
 .mayor-goal b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* Tower names wrap to two lines rather than end in "…" ("Horizonte de Diamante"). */
+.skin-name { white-space: normal; text-align: center; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
