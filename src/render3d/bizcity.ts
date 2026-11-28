@@ -27,6 +27,9 @@ import { isRushHour, isWeekendNight } from "../data/season";
 import { bandstand, blossomArch, blossomTree, festivalUmbrellas, holidayTree, lampLights, nightMarket, pumpkins, snowmen } from "./winter";
 import { seasonInfo } from "../data/season";
 import { buildPlaced, type PlaceKit } from "./placemodels";
+import { fillLot, fillerAt, type FillKind, type FillKit } from "./lotfill";
+import { lotsFor } from "../logic/props";
+import { hallNeed } from "../logic/tycoon";
 
 /** One lot: its business, colors, stage and whether it's open, for lease or still locked. */
 export interface BizLot {
@@ -781,6 +784,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const kind = kinds[sd % kinds.length];
     return treeGeo(kind, x, y, z, s * (kind === "palm" ? 0.92 : 1), sd);
   };
+  // What stands on the lots nobody has built on yet (lotfill.ts): lots for sale, building
+  // sites, parks, car parks, markets, gardens and courts. The glow under a lot for sale
+  // breathes gently (one material for all of them).
+  const saleGlow = own(std("#fff0a8", { roughness: 0.9, emissive: 0xffd23a, emissiveIntensity: 0.35 }));
+  saleGlow.userData.dynamic = true;
+  saleGlow.polygonOffset = true; saleGlow.polygonOffsetFactor = -1; saleGlow.polygonOffsetUnits = -2;
+  const fillKit: FillKit = { c: (c, r = 0.7, m = 0) => mats.c(c, r, m), slab: lotSlab, grass: grass2, pave, earth, water, wood, metal, stone, tree: (x, z, s, seed) => parkTree(x, z, s, seed), natureM, saleGlow };
   const tree = (x: number, z: number, s = 1, y = 0.2) => {
     blob(x, z, 0.62 * s, y);
     const tk = Math.abs(Math.round(x * 7 + z * 13));
@@ -1353,6 +1363,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // Island upgrades bought with cash (data/decor.ts): each appears in the town for good.
   const townTicks: ((t: number, night: number) => void)[] = [];
   townTicks.push((t, night) => { for (const f of townTicksEarly) f(t, night); });
+  townTicks.push(t => { saleGlow.emissiveIntensity = 0.3 + 0.25 * Math.sin(t * 2.4); });
   const glowDecor = own(std("#fff2b0", { emissive: 0xffd27a, emissiveIntensity: 0.2 }));
   glowDecor.userData.dynamic = true;
   townTicks.push((_t, night) => { glowDecor.emissiveIntensity = 0.2 + night * 2.2; });
@@ -2356,14 +2367,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         const key = `t:${cell[0]},${cell[1]}`;
         homeAt(x, z, propBuilding(lg, 20 + k, propLv(key), key), key);
       } else {
-        // Not built yet: an empty lot of grass with a couple of young trees, waiting for the
-        // town to grow out to it.
+        // Not built yet: the next homes to come are building sites; the blocks further off
+        // are a park, a car park, a market, a garden or a court until the town grows out to
+        // them (see lotfill.ts).
         const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
-        P(lotSlab(), grass2);
-        snowSpots.push([x + 0.2, 0.26, z - 0.2]);
-        for (const [tx, tz] of [[-1.3, -1.1], [1.2, 1.3]]) {
-          P(parkTree(tx, tz, 0.45, tx * 5 + tz * 11 + k), natureM);
-        }
+        const next = homeOrder.get(k)! - (cafe.homes ?? 0), kind: FillKind = next < 2 ? "site" : fillerAt(cell[0], cell[1]);
+        if (kind === "park") snowSpots.push([x + 0.2, 0.26, z - 0.2]);
+        fillLot(P, kind, k * 31 + 7, fillKit);
       }
       // Street furniture on the corners: traffic lights, a street sign, now and then a bus
       // stop, and a manhole cover in the street.
@@ -2407,6 +2417,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     const og = new THREE.Group();
     g.add(og);
     const fresh = gridShown > 0 && outer.length > gridShown ? gridShown : outer.length, t0g = performance.now();
+    // (How many more lots City Hall lets you build on now, and the empty lots in the order the
+    // city grows: the nearest ones go on sale first.)
+    const lotsFree = Math.max(0, lotsFor(cafe.hall ?? 1) - Object.entries(cafe.props ?? {}).filter(([k2, l]) => k2.startsWith("g:") && l >= 1).length);
+    const emptyRank = new Map<string, number>();
+    for (const cell of outer) {
+      const key = `g:${cell[0]},${cell[1]}`;
+      if (Math.abs(cell[0] * 73856093 ^ cell[1] * 19349663) % 6 === 0 || (cafe.props?.[key] ?? 0) >= 1 || cafe.placed?.[key]) continue;
+      emptyRank.set(key, emptyRank.size);
+    }
     outer.forEach((cell, k) => {
       const { x, z } = cellXZ(cell), lg = new THREE.Group();
       lg.position.set(x, 0.2, z);
@@ -2426,6 +2445,13 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       }
       const h = Math.abs(cell[0] * 73856093 ^ cell[1] * 19349663);
       const P = (geo: THREE.BufferGeometry, m: THREE.Material) => lg.add(new THREE.Mesh(geo, m));
+      if (h % 6 === 0 && (h >> 3) % 3 !== 0) {
+        // (Most of the city's parks are a pocket park of their own, a fountain, a pond or a
+        // bandstand in it, or now and then a sports court: lotfill.ts.)
+        fillLot(P, (h >> 3) % 5 === 4 ? "court" : "park", h >> 5, fillKit);
+        sightAt(x, z, 1.4, "park", `g${cell[0]},${cell[1]}`);
+        return;
+      }
       if (h % 6 === 0) {
         P(lotSlab(), k % 2 ? grass : grass2);
         P(ribbon(sPath(1.9, k % 2 === 1), 0.55, 0.075), pave);
@@ -2448,13 +2474,12 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       if (deco) {
         homeAt(x, z, buildPlaced(lg, deco, placeKit, h), gkey);
       } else if (level === 0) {
-        P(lotSlab(), grass2);
-        P(new THREE.BoxGeometry(1.6, 0.03, 1.6).translate(0, 0.07, 0), mats.c("#c9b48e", 0.95));
-        P(new THREE.BoxGeometry(0.05, 0.55, 0.05).translate(-0.9, 0.33, 0.9), wood);
-        P(new THREE.BoxGeometry(0.42, 0.26, 0.03).translate(-0.9, 0.62, 0.92), mats.c("#ffffff", 0.7));
-        P(new THREE.BoxGeometry(0.36, 0.06, 0.035).translate(-0.9, 0.66, 0.925), mats.c("#3fae6a", 0.7));
-        P(parkTree(1.3, -1.2, 0.45, h), natureM);
-        homeAt(x, z, 0.5, gkey);
+        // Not built on yet: a lot for sale if City Hall lets you build one more, a building
+        // site if it's one of the next to open, else a park, a car park, a market, a garden
+        // or a court until then (see lotfill.ts).
+        const rank = emptyRank.get(gkey) ?? 0, kind: FillKind = rank < lotsFree ? "sale" : rank < lotsFree + 2 ? "site" : fillerAt(cell[0], cell[1]);
+        homeAt(x, z, kind === "sale" ? 1.0 : 0.5, gkey);
+        fillLot(P, kind, h, fillKit);
       }
       const btop = level ? kitBuilding(lg, h, level, [cell[0], cell[1]]) : null;
       if (level) homeAt(x, z, btop ?? 1.6 + level * 0.8, gkey);
@@ -2518,15 +2543,11 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
         K(new THREE.BoxGeometry(0.9, 0.3, 0.5).translate(0.9, 0.15, 0.4), mats.c("#c86a4a"));
         tops[i] = 1.9;
       } else if (HAS_CITY) {
-        // Buildaroo: the city starts from almost nothing. A business's lot waits as a mown,
-        // empty lot with a little sign until City Hall opens that business.
-        K(lotSlab(), grass2);
-        K(new THREE.BoxGeometry(2.2, 0.03, 2.2).translate(0, 0.07, -0.2), mats.c("#c9b48e", 0.95));
-        K(new THREE.BoxGeometry(0.06, 0.7, 0.06).translate(-1.2, 0.4, 1.3), wood);
-        K(new THREE.BoxGeometry(0.6, 0.34, 0.04).translate(-1.2, 0.78, 1.32), mats.c("#ffffff", 0.7));
-        K(new THREE.BoxGeometry(0.5, 0.08, 0.045).translate(-1.2, 0.82, 1.33), mats.c("#ff8a3b", 0.7));
-        for (const [tx, tz] of [[1.3, -1.3], [1.4, 1.2]]) K(parkTree(tx, tz, 0.45, tx * 5 + tz * 11 + i), natureM);
-        tops[i] = 0.9;
+        // Buildaroo: the city starts from almost nothing. A business's lot is a building site
+        // when City Hall's next level opens that business, and until then something the town
+        // uses meanwhile: a park, a car park, a market, a garden or a court (lotfill.ts).
+        const soon = hallNeed(lot.id) <= (cafe.hall ?? 1) + 1;
+        tops[i] = Math.min(1.6, fillLot(K, soon ? "site" : fillerAt(CELLS[i][0], CELLS[i][1]), i * 17 + 3, fillKit));
       } else if (i % 4 !== 3) {
         // Until the business comes, ordinary neighbors live here: town houses, a block of
         // flats or a corner shop with flats above, so the town looks lived in, like a real city.

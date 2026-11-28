@@ -9,7 +9,10 @@ import { BUSINESSES } from "../data/tycoon";
 export const isLot = (key: string): boolean => key.startsWith("g:");
 export const propLevel = (s: SaveData, key: string): number => { const lo = isLot(key) ? 0 : 1; return Math.max(lo, Math.min(PROP_MAX, s.props[key] ?? lo)); };
 /** How many city lots City Hall lets you build on: a few to start, more every level. */
-export const lotsAllowed = (s: SaveData): number => 1 + 2 * hallLevel(s);
+export const lotsAllowed = (s: SaveData): number => lotsFor(hallLevel(s));
+/** How many city lots a City Hall of this level lets you build on (the town draws the ones
+ *  still open as lots for sale, and the next two as building sites). */
+export const lotsFor = (hall: number): number => 1 + 2 * hall;
 export const lotsBuilt = (s: SaveData): number => Object.entries(s.props).filter(([k, l]) => isLot(k) && l >= 1).length;
 /** The tallest a building can grow at this City Hall level (Apartments at Lv 1, a glass
  *  skyscraper from Lv 4). */
@@ -29,7 +32,7 @@ export function propBlock(s: SaveData, key: string, building = 0): "" | "max" | 
 export function propHallNeed(s: SaveData, key: string): number {
   const l = propLevel(s, key);
   if (l >= 1) return l;
-  let h = hallLevel(s); while (1 + 2 * h <= lotsBuilt(s)) h++;
+  let h = hallLevel(s); while (lotsFor(h) <= lotsBuilt(s)) h++;
   return h;
 }
 
