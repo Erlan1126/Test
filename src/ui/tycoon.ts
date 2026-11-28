@@ -38,7 +38,7 @@ import {
 import { MILESTONES_AT } from "../data/tycoon";
 import type { Sound } from "../sound";
 import { $, closeModal, displayName, esc, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
-import { burst, confetti, fireworks } from "./fx";
+import { burst, coinBurst, confetti, fireworks, floatLabel } from "./fx";
 import { iconSvg } from "./icons";
 import { cleanCityName } from "../logic/save";
 import { askCash, askDone, askProgress, collectAsk, newAsk, saveGoal, secondsTo, skipPrice, skipWait } from "../logic/asks";
@@ -98,6 +98,8 @@ export interface TycoonHost {
   openStory(): void;
   /** Where a lot's building is on screen (i = -1: the player's first tower). */
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null;
+  /** A moment at a business in the town (see Renderer3D.bizPulse). */
+  bizPulse(id: string, kind: "buy" | "speed" | "hire"): void;
   bizHomes(): string[];
   bizSights(): { kind: string; key: string }[];
   /** Set when the results card sent the player here, to see their tower or the café. */
@@ -2867,7 +2869,7 @@ export class TycoonUI {
             s.tycoon.runs[b.id] = due - cycleOf(b, levelOf(s, b.id)) * 1000;
             this.firstSale(due);
           }
-          this.host.sound.click(); vibrate(s.settings.vibrate, 8);
+          this.host.sound.register(); vibrate(s.settings.vibrate, 8);
           this.pulse = { id: b.id, at: Date.now() };
           this.goal("taps");
           if (s.tycoon.tips === 0) {
@@ -2939,7 +2941,10 @@ export class TycoonUI {
         if (!hireManager(s, b.id)) { this.host.sound.click(); return; }
         if (s.tycoon.tips < 3) s.tycoon.tips = 3;
         this.host.sound.unlock();
+        vibrate(s.settings.vibrate, [12, 30, 12]);
         burst(el, 16);
+        // In the town: the new manager pops up by the door, waving.
+        this.bizMoment(b.id, "hire");
         toast(t("A manager now runs {name}, even while you're away", { name }));
         this.host.persist();
         this.render();
@@ -2953,10 +2958,18 @@ export class TycoonUI {
         if (!got) { this.host.sound.click(); if (freeFloors(s) >= 1) this.shortOffer(costOf(b, lv, 1) - s.tycoon.coins); return; }
         this.goal("buy", got);
         this.eventAdd(owned ? "level" : "business", owned ? got : 1);
-        this.pulse = { id: b.id, at: Date.now() };
         if (s.tycoon.tips === 1) s.tycoon.tips = 2;
-        const crossed = nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
-        this.host.sound.coins();
+        const crossed = owned && nextMilestone(lv) !== undefined && lv + got >= (nextMilestone(lv) ?? Infinity);
+        // Ka-ching: each quick buy in a row rings a little higher (a pause starts again).
+        const now = Date.now();
+        this.buyStreak = now - this.buyAt < 1500 ? this.buyStreak + 1 : 0;
+        this.buyAt = now;
+        if (crossed) this.host.sound.speedUp(); else this.host.sound.buy(this.buyStreak);
+        vibrate(s.settings.vibrate, crossed ? [15, 30, 25] : 8);
+        // The building squashes and stretches, and bills pop out of it. (The street's own
+        // bounce on a sale waits a moment, so the two don't fight.)
+        this.pulse = { id: "", at: now };
+        this.bizMoment(b.id, crossed ? "speed" : "buy");
         burst(el, crossed ? 20 : 8);
         flyFrom.classList.remove("bump");
         void (flyFrom as HTMLElement).offsetWidth;
@@ -2974,6 +2987,24 @@ export class TycoonUI {
         return;
       }
     }
+  }
+
+  /** Quick buys in a row (for the rising ka-ching), and when the last one was. */
+  private buyStreak = 0;
+  private buyAt = 0;
+  /** A moment at a business, in the town: the building bounces and bills pop out of it on a
+   *  buy; a speed milestone gets a bigger bounce, a golden ring and "Speed ×2!"; a new
+   *  manager pops up by the door with "Manager hired!". */
+  private bizMoment(id: string, kind: "buy" | "speed" | "hire"): void {
+    const i = BUSINESSES.findIndex(b => b.id === id);
+    if (!this.inCity || i < 0 || !$("tycoon").hidden) return;
+    this.host.bizPulse(id, kind);
+    const p = this.host.bizScreen(i, -1);
+    if (!p) return;
+    const mx = (p.base[0] + p.top[0]) / 2, my = p.base[1] * 0.7 + p.top[1] * 0.3;
+    if (kind === "hire") { floatLabel(p.top[0], p.top[1] - 64, t("Manager hired!"), "hire"); return; }
+    coinBurst(mx, my, kind === "speed" ? 6 : Math.min(6, 3 + this.buyStreak), COIN_SVG);
+    if (kind === "speed") floatLabel(p.top[0], p.top[1] - 64, t("Speed ×2!"), "speed");
   }
 
   /** The hero's live chips: this week's festival, a construction boom. */

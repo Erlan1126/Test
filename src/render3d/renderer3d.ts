@@ -35,6 +35,7 @@ import { buildParade, type Parade } from "./parade";
 import { CITY_LOTS, buildBizCity, lotPos, plotPos, streetFocus, townBounds, type BizCity, type BizStyle } from "./bizcity";
 import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 import { TownRainbow } from "./rainbow";
+import { BizJuice } from "./bizjuice";
 import { HAS_CITY } from "../edition";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
@@ -66,6 +67,8 @@ const DISTRICT_SLOTS = [
 const BIZ_SLOT = { x: 48, z: -48, y: 0 };
 /** How close the camera comes over the district. */
 const BIZ_ZOOM = 1.18;
+/** How close the camera comes to a tapped building (the first visit's close look). */
+const SEL_ZOOM = 2.0;
 /** Floors merged per block. */
 const CHUNK = 16;
 
@@ -617,7 +620,7 @@ export class Renderer3D {
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(target);
     const sx = shake ? rand(-1, 1) * 10 * shake : 0, sy = shake ? rand(-1, 1) * 10 * shake : 0;
-    const cx = lerp(v.cx, v.W / 2, k) + sx, cy = lerp(v.originY, v.H * (this.bizCardK > 0.5 ? 0.34 : 0.4), k) + sy;
+    const cx = lerp(v.cx, v.W / 2, k) + sx, cy = lerp(v.originY, v.H * this.selCy, k) + sy;
     this.cam.left = -cx / S; this.cam.right = (v.W - cx) / S;
     this.cam.top = cy / S; this.cam.bottom = -(v.H - cy) / S;
     this.cam.updateProjectionMatrix();
@@ -973,6 +976,8 @@ export class Renderer3D {
         this.biz = null;
         // Businesses that just grew (or opened) rise out of the ground.
         const grown = this.bizPrev.size ? lots.filter(l => l.state === "open" && (this.bizPrev.get(l.id) ?? -1) < l.s).map(l => l.id) : [];
+        // (Dust as it rises, then confetti and a bounce once it's up.)
+        if (grown.length) { this.grewAt = performance.now(); this.grew = grown; this.grewDust = false; }
         this.bizPrev = new Map(lots.map(l => [l.id, l.state === "open" ? l.s : -1]));
         if (lots.length) {
           this.biz = buildBizCity(lots, style, grown, cafe ?? undefined);
@@ -1006,43 +1011,54 @@ export class Renderer3D {
     // (Watching the holiday parade: the camera follows the lead float for a few seconds.)
     const lm = this.paradeLook() ?? (this.bizVisit && performance.now() < this.bizVisit.until ? (this.bizVisit.rank === -4 ? { ...this.biz.spot("hall"), zoom: 2.0 } : this.bizVisit.rank === -5 ? this.flyOver() : this.biz.landmark(this.bizVisit.rank)) : null);
     if (lm) { this.bizLook.tx = lm.x + 0.4; this.bizLook.tz = lm.z + 0.4; this.bizLook.tzoom = lm.zoom ?? 1.8; }
-    // (The player's own zoom isn't held to the fit-the-island limit either.)
-    this.bizFraming = framing || !!this.debugLook || !!lm || (this.camUser.on && !f.bizLive?.sel);
-    this.bizFrameK += ((this.bizFraming ? 1 : 0) - this.bizFrameK) * Math.min(1, dt * 2);
-    // A tapped building: the camera glides to it.
+    // A tapped building: the camera comes in close (as close as the first visit's look) and
+    // holds it in the open sky above the card, wherever the building is.
     const si = f.bizLive?.sel ? lots.findIndex(l => l.id === f.bizLive!.sel) : -1;
     if (si >= 0) {
       // (A district's business: its own spot, further back the higher its island floats.)
       const db = this.biz.bizAt(si), p = db ? { x: db.x - db.y, z: db.z - db.y } : lotPos(si);
-      this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25);
+      this.bizLook.tx = p.x + 1.2; this.bizLook.tz = p.z + 1.2; this.bizLook.tzoom = SEL_ZOOM;
     }
     // A tapped property: the camera glides to it too (a higher island's shows further back).
-    const hk = f.bizLive?.selHome, home = hk ? this.biz.homes().find(h => h.key === hk) : undefined;
-    if (home && si < 0) { this.bizLook.tx = home.x - home.y + 1.2; this.bizLook.tz = home.z - home.y + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
-    // A tapped sight (a city block, a park, a landmark): the camera glides there as well.
+    const hk = f.bizLive?.selHome, home = hk && si < 0 ? this.biz.homes().find(h => h.key === hk) : undefined;
+    if (home) { this.bizLook.tx = home.x - home.y + 1.2; this.bizLook.tz = home.z - home.y + 1.2; this.bizLook.tzoom = SEL_ZOOM; }
+    // A tapped sight (a city block, a park, a landmark): the camera glides there as well
+    // (a little further back: some of them are big).
     const sk = f.bizLive?.selSight, sight = sk && si < 0 && !home ? this.biz.sights().find(s => s.key === sk) : undefined;
-    if (sight) { this.bizLook.tx = sight.x - sight.y + 1.2; this.bizLook.tz = sight.z - sight.y + 1.2; this.bizLook.tzoom = Math.max(fo.zoom, 1.25); }
-    // The player's own view (drag to look around, pinch to zoom), unless the game is showing
-    // something (a close-up, a landmark, a tapped building). Along the town it never slides
-    // off; across, it can move only as far as the zoom leaves room.
-    let picked = si >= 0 || !!home || !!sight;
-    // A tap on a building no longer swings the camera away: if the building is already in
-    // view above the card, the camera stays put; only one hidden under the card or off the
-    // screen brings the camera over. Closing the card leaves the camera where it is.
+    if (sight) { this.bizLook.tx = sight.x - sight.y + 1.2; this.bizLook.tz = sight.z - sight.y + 1.2; this.bizLook.tzoom = SEL_ZOOM * 0.85; }
+    const picked = si >= 0 || !!home || !!sight;
+    // (The player's own zoom isn't held to the fit-the-island limit either, nor is a close-up
+    // on a tapped building.)
+    this.bizFraming = framing || !!this.debugLook || !!lm || picked || (this.camUser.on && !f.bizLive?.sel);
+    this.bizFrameK += ((this.bizFraming ? 1 : 0) - this.bizFrameK) * Math.min(1, dt * 2);
     {
       const key = si >= 0 ? `b${si}` : home ? `h${hk}` : sight ? `s${sk}` : "";
       if (key !== this.selKey) {
-        if (key) {
-          const at = si >= 0 ? (() => { const db = this.biz!.bizAt(si); return db ? { x: db.x, z: db.z, y: db.y } : { ...lotPos(si), y: 0 }; })() : (home ?? sight)!;
-          const v = new THREE.Vector3(BIZ_SLOT.x + at.x, BIZ_SLOT.y + (at.y ?? 0) + 0.8, BIZ_SLOT.z + at.z).project(this.cam);
-          const sx = (v.x + 1) / 2, sy = (1 - v.y) / 2;
-          this.selStay = sx > 0.08 && sx < 0.92 && sy > 0.16 && sy < 0.56;
-        } else this.selStay = false;
-        // (Whatever the camera shows right now becomes the player's own view: no jump back.)
-        if (this.bizK > 0.5) { const held = this.camUser.drag; this.grabTown(); this.camUser.drag = held; this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom; }
+        // (Whatever the camera shows right now becomes the player's own view: no jump. On a
+        // first tap, the zoom the player had is kept, and closing the card glides back to it.)
+        if (this.bizK > 0.5) {
+          const held = this.camUser.drag, was = this.camUser.on ? this.camUser.zoom : 1;
+          this.grabTown();
+          this.camUser.drag = held;
+          if (key && !this.selKey) this.selZoom = was;
+          if (!key) this.camUser.zoom = this.selZoom;
+        }
         this.selKey = key;
+        this.cardAt = 0;
       }
-      if (picked && this.selStay) { picked = false; this.bizLook.tx = fo.x; this.bizLook.tz = fo.z; this.bizLook.tzoom = fo.zoom; }
+    }
+    // Where the building sits on screen: in the open sky above the card. The card's top is
+    // measured now and then (it differs from phone to phone, and grows with what's on it).
+    {
+      const now = performance.now();
+      if (picked && now - this.cardAt > 300) {
+        this.cardAt = now;
+        const el = document.getElementById("tcy-card"), r = el && !el.hidden ? el.getBoundingClientRect() : null, H = this.view.H;
+        this.cardTop = r && r.height > 0 && H > 0 ? clamp((r.top - this.canvasRect().top) / H, 0.3, 1) : 1;
+      }
+      // (Two thirds of the way down the sky above the card: the building rises up from there.)
+      const want = picked ? clamp(this.cardTop * 0.7, 0.24, 0.4) : this.bizCardK > 0.5 ? 0.34 : 0.4;
+      this.selCy += (want - this.selCy) * Math.min(1, dt * 3);
     }
     // A crane over everything being built (a home upgrade, a new district).
     this.cranes(f.bizLive?.building ?? []);
@@ -1122,8 +1138,63 @@ export class Renderer3D {
       L.sun.copy(this.sun.position).sub(this.sun.target.position);
       this.biz.look(L);
       this.biz.update(this.env.time, this.env.nf, f.bizLive ?? { rush: "", vip: "", critic: "", power: "" }, lots);
+      this.juiceLive(dt);
     } else this.rainbowFx.mesh.visible = false;
     this.updateGrade();
+  }
+
+  /** The town's celebrations (see BizJuice): made once, updated every frame. */
+  private juice: BizJuice | null = null;
+  private grew: string[] = [];
+  private grewAt = 0;
+  private grewDust = false;
+  private juiceLive(dt: number): void {
+    const biz = this.biz;
+    if (!biz) return;
+    if (!this.juice) { this.juice = new BizJuice(this.gl.getPixelRatio()); this.scene.add(this.juice.group); }
+    const j = this.juice;
+    j.group.visible = this.bizK > 0.5;
+    // A business that just grew (or opened): dust round its feet as it rises, then confetti
+    // and a happy bounce once it stands at its new height.
+    if (this.grew.length) {
+      const k = performance.now() - this.grewAt;
+      if (!this.grewDust) { this.grewDust = true; for (const id of this.grew) { const at = this.bizSpot(id); if (at) j.burst("dust", at.x, at.y + 0.3, at.z, 18, 1.2); } }
+      if (k > 1250) {
+        for (const id of this.grew) { const at = this.bizSpot(id); if (at) { j.burst("confetti", at.x, at.y + at.top, at.z, 36); j.pulse(id, true); } }
+        this.grew = [];
+      }
+    }
+    j.px(this.gl.getPixelRatio());
+    if (j.update(dt, biz)) biz.group.userData.moving = true;
+  }
+  /** Where a business stands in the world (its feet) and how tall it is, or null. */
+  private bizSpot(id: string): { x: number; y: number; z: number; top: number } | null {
+    const biz = this.biz, lots = (this.bizIn as { id: string }[] | null) ?? [];
+    if (!biz) return null;
+    const i = lots.findIndex(l => l.id === id);
+    if (i < 0) return null;
+    const db = biz.bizAt(i), p = db ?? { ...lotPos(i), y: 0, top: biz.top(i) };
+    return { x: BIZ_SLOT.x + p.x, y: BIZ_SLOT.y + p.y, z: BIZ_SLOT.z + p.z, top: Math.max(1.2, p.top) };
+  }
+  /** A moment at a business in the town: `buy` a quick squash-and-stretch, `speed` (a speed
+   *  milestone) a big bounce with a golden ring and sparkles, `hire` its new manager popping
+   *  up by the door. */
+  bizPulse(id: string, kind: "buy" | "speed" | "hire" = "buy"): void {
+    const at = this.bizSpot(id);
+    if (!this.biz || !at || this.bizK < 0.5) return;
+    if (!this.juice) { this.juice = new BizJuice(this.gl.getPixelRatio()); this.scene.add(this.juice.group); }
+    const j = this.juice;
+    if (kind === "buy") { j.pulse(id); return; }
+    if (kind === "speed") {
+      j.pulse(id, true);
+      j.ringAt3(at.x, at.y + 0.3, at.z);
+      j.burst("sparkle", at.x, at.y + at.top * 0.6, at.z, 30);
+      return;
+    }
+    // (The manager stands at the front corner, the side the camera looks from.)
+    j.manager(at.x + 1.35, at.y + 0.22, at.z + 1.35);
+    j.pulse(id);
+    j.burst("sparkle", at.x + 1.35, at.y + 0.3, at.z + 1.35, 12, 0.6);
   }
 
   /** The rainbow after rain: a big arc behind the town, turned to face the camera and
@@ -1148,7 +1219,13 @@ export class Renderer3D {
   /** The tapped building (or home, or sight) the camera last reacted to, and whether it chose
    *  to stay put for it. */
   private selKey = "";
-  private selStay = false;
+  /** The zoom the player had before tapping a building (closing the card goes back to it). */
+  private selZoom = 1;
+  /** Where the town camera's aim sits on screen (a fraction of the height), and the top of
+   *  the business card (the same), measured every so often. */
+  private selCy = 0.4;
+  private cardTop = 1;
+  private cardAt = 0;
   /** Where the game itself would look (along/across the island) and its zoom, so the
    *  player's own view starts exactly where the camera is (no jump on the first touch). */
   private bizBase = { s: 0, t: 0, zoom: 1 };

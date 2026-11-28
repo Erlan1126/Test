@@ -50,6 +50,35 @@ export function confetti(el?: Element): void {
   spawn(x, y, 46, Math.min(innerWidth * 0.6, 240), 90, 10, 1300, ["conf", "conf wide", "dot"]);
 }
 
+/** A few coins (or bills: `html` is what each one looks like) popping out of a point on the
+ *  screen, arcing up and tumbling away. */
+export function coinBurst(x: number, y: number, n: number, html: string): void {
+  if (still()) return;
+  const l = layer();
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("i");
+    p.className = "fx-coin";
+    p.innerHTML = html;
+    const a = -Math.PI / 2 + ((i + 0.5) / n - 0.5) * 2.2 + (Math.random() - 0.5) * 0.4;
+    const d = 46 + Math.random() * 34;
+    p.style.cssText = `left:${x}px;top:${y}px;--dx:${Math.cos(a) * d * 1.2}px;--dy:${Math.sin(a) * d - 12}px;--r:${Math.round(Math.random() * 80 - 40)}deg;animation-delay:${i * 25}ms`;
+    l.appendChild(p);
+    setTimeout(() => p.remove(), 1000 + i * 25);
+  }
+}
+
+/** A short word floating up from a point on the screen ("Speed ×2!"). */
+export function floatLabel(x: number, y: number, text: string, cls = ""): void {
+  const l = layer();
+  const p = document.createElement("b");
+  p.className = `fx-label ${cls}`.trim();
+  p.textContent = text;
+  p.style.left = `${Math.max(70, Math.min(innerWidth - 70, x))}px`;
+  p.style.top = `${Math.max(90, y)}px`;
+  l.appendChild(p);
+  setTimeout(() => p.remove(), 1700);
+}
+
 /** Counts a number up inside an element. `format` turns the number into text. */
 const counting = new WeakMap<HTMLElement, number>();
 /** Stops a count-up, e.g. before setting the number directly. */
