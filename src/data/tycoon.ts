@@ -30,8 +30,15 @@ export interface Business {
  *  crystals let a player hurry). */
 export const PAY_K = 0.7, COST_K = 1.6, MANAGER_K = 1.5;
 
+/** What a district's first business costs: about a minute of what a city earns when it gets
+ *  there (read off simulated play, tests/city-playtest.test.ts). Pegged to the old district
+ *  price, the Harbor's six opened all at once for pocket change, while the Crystal Spire's
+ *  fourth took weeks. */
+const DIST_FIRST: Partial<Record<LandId, number>> = { meadow: 1e9, lakeside: 5e9, hills: 1e10, resort: 2.5e10, canal: 2.8e10, cloud: 3e10, crystal: 5e10, orbit: 1e12 };
+/** Each business in a district costs this many times the one before. */
+const DIST_STEP = 9;
 const BUSINESSES_BASE: Business[] = [
-  { id: "coffee", name: "Coffee Cart", icon: "biz-coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 60 },
+  { id: "coffee", name: "Coffee Cart", icon: "biz-coffee", color: ["#ffb36b", "#e0743a"], cost: 10, growth: 1.1, income: 1, cycle: 3, manager: 40 }, // ($60: the first manager is the first big goal, and saving $90 by hand dragged)
   { id: "flowers", name: "Flower Kiosk", icon: "biz-flowers", color: ["#ff9ac8", "#e8457a"], cost: 100, growth: 1.13, income: 12, cycle: 6, manager: 1200 },
   { id: "bakery", name: "Cloud Bakery", icon: "biz-bakery", color: ["#ffe27a", "#ffb13b"], cost: 1200, growth: 1.12, income: 110, cycle: 12, manager: 15000 },
   { id: "pizza", name: "Pizza Place", icon: "biz-pizza", color: ["#ff8a6b", "#e0433a"], cost: 14000, growth: 1.11, income: 1000, cycle: 24, manager: 180000 },
@@ -54,6 +61,7 @@ function districtBusinesses(): Business[] {
     ["lakeside", [["icecream", "Ice Cream Parlor", "gift", "#ff9ac8"], ["toystore", "Toy Store", "balloon", "#ffd23a"], ["gardencenter", "Garden Center", "leaf", "#5ee0a0"], ["pettingzoo", "Petting Zoo", "home", "#c89a5a"], ["themepark", "Theme Park", "star", "#ff5f8b"], ["golfclub", "Golf Club", "flag", "#19a87a"]]],
     ["hills", [["boutique", "Fashion Boutique", "gift", "#e8457a"], ["gym", "City Gym", "fire", "#ff8a3b"], ["startup", "Tech Startup", "sparkle", "#6a3cff"], ["bank", "Grand Bank", "gem", "#e8b020"], ["exchange", "Stock Exchange", "building", "#3a8dff"], ["tvstudio", "TV Studio", "film", "#b48cff"]]],
     ["resort", [["smoothiebar", "Smoothie Bar", "coffee", "#ff9a4a"], ["cabanaclub", "Cabana Club", "sun", "#ffd23a"], ["waterpark", "Water Park", "balloon", "#3ad0e8"], ["divecenter", "Dive Center", "globe", "#2f8fd8"], ["yachtclub", "Yacht Club", "flag", "#ff5f8b"], ["grandresort", "Grand Resort Hotel", "building", "#2ec4a0"]]],
+    ["canal", [["gondola", "Gondola Rides", "flag", "#3a8dff"], ["maskshop", "Mask Shop", "sparkle", "#ff5f8b"], ["glassworks", "Glass Workshop", "gem", "#3ad0c0"], ["bookshop", "Old Bookshop", "home", "#c8864a"], ["artgallery", "Art Gallery", "star", "#9a6cff"], ["clocktower", "Clock Tower Hall", "building", "#e8a020"]]],
     ["cloud", [["cloudspa", "Cloud Spa", "cloud", "#bfe6ff"], ["royalbakery", "Royal Bakery", "sun", "#ffe27a"], ["skyopera", "Sky Opera", "star", "#d9ccff"], ["palacehotel", "Palace Hotel", "building", "#ffd86a"], ["goldexchange", "Gold Exchange", "gem", "#e8b020"], ["royalball", "Royal Ball", "sparkle", "#ff9ac8"]]],
     ["crystal", [["gemshop", "Gem Shop", "gem", "#b48cff"], ["crystalcafe", "Crystal Café", "coffee", "#8af0ff"], ["lightshow", "Light Show", "sparkle", "#ff8ae0"], ["jewelry", "Jewelry House", "gem", "#7ad0ff"], ["crystallab", "Crystal Lab", "globe", "#9a7aff"], ["prismtower", "Prism Tower", "building", "#c8a8ff"]]],
     ["orbit", [["spacediner", "Space Diner", "dish", "#5ae0ff"], ["zerogym", "Zero-G Gym", "fire", "#8a96ff"], ["satellite", "Satellite Co.", "globe", "#3a8dff"], ["moontours", "Moon Tours", "rocket", "#c8d0e4"], ["rocketworks", "Rocket Works", "rocket", "#ff5f6d"], ["starport", "Star Port", "star", "#ffd23f"]]],
@@ -70,9 +78,9 @@ function districtBusinesses(): Business[] {
   const dark = (hex: string) => { const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255, k = 0.72; return "#" + [r, g, b].map(v => Math.round(v * k).toString(16).padStart(2, "0")).join(""); };
   const out: Business[] = [];
   for (const [land, list] of D) {
-    const base = (LAND.find(l => l.id === land)?.min ?? 1e6) * 0.3;
+    const base = DIST_FIRST[land] ?? (LAND.find(l => l.id === land)?.min ?? 1e6) * 0.3;
     list.forEach(([id, name, icon, c], j) => {
-      const cost = Math.round(base * 14 ** j), [income, cycle] = along(cost);
+      const cost = Math.round(base * DIST_STEP ** j), [income, cycle] = along(cost);
       out.push({ id, name, icon, color: [c, dark(c)], cost, growth: 1.1, income: Math.round(income), cycle: Math.round(cycle), manager: Math.round(cost * 4), land });
     });
   }
@@ -119,6 +127,8 @@ export function amount(n: number): string {
  *  richer room. */
 export const STAGE_AT = [1, 25, 100, 200, 400, 600, 800, 1000];
 export const STAGE_LABEL = ["Stand", "Shop", "Store", "Flagship", "Empire", "Skyscraper", "Megatower", "Sky Wonder"];
+/** The districts' grander names, stage by stage (each is also a translation key). */
+export const STAGE_TEMPLATES = ["{name}", "Big {name}", "Grand {name}", "{name} Plaza", "{name} Empire", "{name} Tower", "{name} Megatower", "{name} Sky Wonder"];
 export const STAGE_NAMES: Record<string, string[]> = new Proxy({
 
   coffee: ["Coffee Cart", "Coffee Shop", "Corner Café", "Coffee House", "Coffee Empire", "Coffee Tower", "Coffee Megatower", "Coffee Sky Wonder"],
@@ -133,7 +143,8 @@ export const STAGE_NAMES: Record<string, string[]> = new Proxy({
   spaceport: ["Space Port", "Launch Pad", "Space Center", "Star Base", "Galaxy Gate", "Star Tower", "Star Megatower", "Galaxy Wonder"],
 } as Record<string, string[]>, {
   // (The districts' businesses: their name, then grander versions of it.)
-  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return [n, `Big ${n}`, `Grand ${n}`, `${n} Plaza`, `${n} Empire`, `${n} Tower`, `${n} Megatower`, `${n} Sky Wonder`]; })(),
+  // (Translated through STAGE_TEMPLATES in i18n: "Big {name}" and the business's own name.)
+  get: (t, id: string) => t[id] ?? (() => { const n = BUSINESSES.find(b => b.id === id)?.name ?? id; return STAGE_TEMPLATES.map(f => f.replace("{name}", n)); })(),
 });
 /** Rush hour: one business earns this many times more for a short while. */
 export const RUSH_MULT = 3, RUSH_SECONDS = 45;
@@ -172,6 +183,55 @@ const BIZ_UPGRADES: Record<string, [string, string, string]> = {
   airport: ["Second Runway", "VIP Lounge", "Duty Free"],
   casino: ["Light Show", "VIP Box", "Encore"],
   spaceport: ["Reusable Rockets", "Moon Tours", "Warp Drive"],
+  // ---- The districts: each business its own three upgrades ----
+  fishmarket: ["Ice Crates", "Dawn Catch", "Fish Auction"],
+  surfshop: ["Board Wax", "Surf Lessons", "Pro Surf Team"],
+  boattours: ["Glass-bottom Boat", "Sunset Cruise", "Whale Watching"],
+  seafood: ["Charcoal Grill", "Lobster Tank", "Chef's Platter"],
+  marina: ["Floating Docks", "Sailing School", "Regatta Cup"],
+  cruise: ["Gangway Bridge", "Ocean Liner", "World Voyage"],
+  icecream: ["Waffle Cones", "Sprinkle Bar", "Sundae Tower"],
+  toystore: ["Toy Trains", "Teddy Workshop", "Play Corner"],
+  gardencenter: ["Seed Packets", "Glass House", "Bonsai Corner"],
+  pettingzoo: ["Pony Rides", "Duck Pond", "Baby Goats"],
+  themepark: ["Bumper Cars", "Roller Coaster", "Fireworks Night"],
+  golfclub: ["Golf Carts", "Driving Range", "Championship"],
+  boutique: ["Window Display", "Tailor Shop", "Runway Show"],
+  gym: ["Spin Bikes", "Personal Trainers", "Climbing Wall"],
+  startup: ["Free Snacks", "Cloud Servers", "Big Launch"],
+  bank: ["Safe Deposit", "Gold Vault", "Credit Cards"],
+  exchange: ["Trading Floor", "Ticker Board", "Opening Bell"],
+  tvstudio: ["Green Screen", "Talk Show", "Prime Time"],
+  smoothiebar: ["Fruit Blender", "Coconut Cups", "Rainbow Smoothie"],
+  cabanaclub: ["Sun Loungers", "Beach Towels", "Private Cabanas"],
+  waterpark: ["Lazy River", "Wave Pool", "Mega Slide"],
+  divecenter: ["Snorkel Gear", "Reef Tours", "Shipwreck Dive"],
+  yachtclub: ["Teak Decks", "Captain's Bar", "Superyacht"],
+  grandresort: ["Infinity Pool", "Butler Service", "Sky Suite"],
+  cloudspa: ["Mist Sauna", "Cloud Massage", "Rainbow Bath"],
+  royalbakery: ["Golden Croissants", "Royal Warrant", "Crown Cake"],
+  skyopera: ["Velvet Seats", "Grand Chorus", "Opening Night"],
+  palacehotel: ["Marble Halls", "Royal Butlers", "Throne Suite"],
+  goldexchange: ["Gold Scales", "Bullion Vault", "Golden Bell"],
+  royalball: ["Crystal Chandelier", "String Quartet", "Midnight Waltz"],
+  gemshop: ["Polishing Wheel", "Rare Gems", "Crown Jewels"],
+  crystalcafe: ["Glass Teapots", "Glow Lattes", "Prism Terrace"],
+  lightshow: ["Laser Beams", "Mirror Ball", "Aurora Show"],
+  jewelry: ["Silver Rings", "Diamond Cut", "Tiara Atelier"],
+  crystallab: ["Microscopes", "Crystal Growing", "Light Engine"],
+  prismtower: ["Glass Elevator", "Rainbow Beam", "Sky Beacon"],
+  spacediner: ["Space Food", "Floating Milkshakes", "Starlight Menu"],
+  zerogym: ["Float Room", "Moon Boots", "Zero-G Dance"],
+  satellite: ["Solar Panels", "Dish Array", "Star Network"],
+  moontours: ["Moon Buggy", "Crater Camp", "Earthrise View"],
+  rocketworks: ["Rocket Fuel", "Launch Tower", "Mega Booster"],
+  starport: ["Star Gate", "Comet Express", "Galaxy Hub"],
+  gondola: ["Striped Poles", "Gondolier Songs", "Moonlight Rides"],
+  maskshop: ["Feather Trims", "Gold Leaf", "Carnival Night"],
+  glassworks: ["Hot Furnace", "Glass Beads", "Chandelier Order"],
+  bookshop: ["Reading Nook", "First Editions", "Author Signing"],
+  artgallery: ["Spotlights", "Old Masters", "Grand Opening Gala"],
+  clocktower: ["Bell Ringers", "Golden Hands", "New Year Chimes"],
 };
 /** Upgrade prices, as multiples of the business's first-level price. */
 export const UPGRADE_COST = [5000, 1e6, 2e8];

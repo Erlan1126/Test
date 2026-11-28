@@ -331,7 +331,7 @@ export const hallLevel = (s: SaveData): number => 1 + Math.max(0, s.chapters?.do
 export const HALL_UNLOCK: Record<string, number> = { coffee: 1, flowers: 1, bakery: 2, pizza: 2, cinema: 3, hotel: 3, mall: 4, airport: 4, casino: 5, spaceport: 6 };
 /** The City Hall level each district goes on sale at, in the order of data/land.ts (the Beach
  *  Resort opens with Downtown, at level 7: it goes on sale once Downtown is bought). */
-export const LAND_HALL = [5, 6, 7, 7, 8, 9, 10];
+export const LAND_HALL = [5, 6, 7, 7, 8, 8, 9, 10];
 export const hallNeed = (id: string): number => (HAS_CITY ? HALL_UNLOCK[id] ?? 1 : 1);
 /** Waiting for a higher City Hall (it would open otherwise). */
 export const hallLocked = (s: SaveData, id: string): boolean => levelOf(s, id) === 0 && hallLevel(s) < hallNeed(id);
@@ -401,6 +401,20 @@ export function hireManager(s: SaveData, id: string, now = Date.now()): boolean 
 export function runOnce(s: SaveData, id: string, now = Date.now()): boolean {
   if (levelOf(s, id) === 0 || s.tycoon.runs[id]) return false;
   s.tycoon.runs[id] = now;
+  return true;
+}
+
+/** Each extra tap on a business that's already selling (and has no manager yet) hurries the
+ *  sale along by this share of its cycle: the first minutes are tapping, and tapping should
+ *  feel like it does something, not like waiting for a bar. */
+export const HURRY_SHARE = 0.12;
+/** Hurries a sale under way (no manager). Returns false if there's nothing to hurry. */
+export function hurry(s: SaveData, id: string, now = Date.now()): boolean {
+  const b = businessById(id), start = s.tycoon.runs[id], lv = levelOf(s, id);
+  if (!b || !start || lv === 0 || s.tycoon.managers.includes(id) || start > now) return false;
+  const c = cycleOf(b, lv) * 1000;
+  // (Never past the end of the cycle: the next tick pays it once, as a normal sale.)
+  s.tycoon.runs[id] = Math.max(now - c, start - c * HURRY_SHARE);
   return true;
 }
 

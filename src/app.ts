@@ -20,7 +20,7 @@ import { addToSkyline, districtTowers } from "./logic/skyline";
 import { addPopulation, CITY_NAME, DISTRICTS, peopleFrom } from "./logic/city";
 import { nextTitle, titleFor, titleProgress, upcoming } from "./data/titles";
 import { SHAPES } from "./data/shapes";
-import { claimVip, setVip, VIP_DAILY_CRYSTALS, vipClaimReady } from "./logic/vip";
+import { claimVip, setVip, VIP_DAILY_CRYSTALS, vipActive, vipClaimReady } from "./logic/vip";
 import { holidayProgress, holidayTower } from "./logic/holidays";
 import { holidayAt, holidayDaysLeft } from "./data/holidays";
 import { ALBUM_CRYSTALS, collectPostcard, POSTCARD_STARS, SET_STARS, type PostcardGain } from "./logic/postcards";
@@ -28,7 +28,7 @@ import { FEATURE_LEVEL, FEATURE_NAMES, isNew, isOpen, openedBetween, type Featur
 import { FEATURE_ICON, FEATURE_TEXT } from "./data/levels";
 import { addStars, challengeOpen, currentTheme, isSkinUnlocked, islandLevel, nextChallenge, recordRun, stageGoal, stageName, type RunOutcome } from "./logic/progress";
 import { dailySeed, dayKey, dayNumber, duration, giftState, landmarkIndex, xpNeeded } from "./logic/rules";
-import { loadSave, normalize, SAVE_KEY, writeSave, writeSaveChecked, type SaveData } from "./logic/save";
+import { backupIsAhead, loadSave, normalize, SAVE_KEY, writeSave, writeSaveChecked, type SaveData } from "./logic/save";
 import { creditDurably } from "./logic/purchase-flow";
 import { boostCount, takeBoosts, type ActiveBoosts } from "./logic/shop";
 import { FEVER_AT, FEVER_FLOORS, POWER_FLOORS, TICK, TowerSim, type DropOutcome, type FloorKind, type PowerUp } from "./logic/sim";
@@ -41,7 +41,7 @@ import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
 import { flushDiag, reportError, reportPerf } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
-import { HAS_CITY, playerStarted } from "./edition";
+import { GAME_NAME, HAS_CITY, playerStarted } from "./edition";
 import { cityEventEndsAt } from "./logic/cityevent";
 import { bestRun, dropGrid, type Drop } from "./logic/dailycard";
 import type { SpireNow } from "./logic/spire";
@@ -92,7 +92,7 @@ import { teamWeek } from "./logic/team";
 import { seasonPass, SP_TIERS } from "./logic/seasonpass";
 import { citySeason, rainbowNow, seasonDaysLeft, seasonInfo, seasonKey, townWeather } from "./data/season";
 import { bizColors, normalizePaint, ownsPaint } from "./logic/paint";
-import { $, closeModal, displayName, esc, openModal, openModalEl, replay, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
+import { $, applyA11y, closeModal, displayName, esc, openModal, openModalEl, replay, stillMotion, swatchHtml, toast, vibrate, wireModal, wireTabs } from "./ui/dom";
 import { DailySheets, type DailyHost } from "./ui/daily";
 import { Sheets } from "./ui/sheets";
 import { Online } from "./online";
@@ -251,7 +251,7 @@ export class App implements DailyHost {
   private runDay = 0;
   /** The app is in the background or lost focus. */
   private away = false;
-  private readonly calmMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  private get calmMotion(): boolean { return stillMotion(); }
   private tag = "";
   /** The current tower's taps, for the online rankings. */
   private recorder: RunRecorder | null = null;
@@ -346,7 +346,7 @@ export class App implements DailyHost {
       this.payments.onVip = on => {
         if (!setVip(this.save, on)) { this.persist(); return; }
         this.persist();
-        if (on) { track("purchase_done", { pack: "vip", test }, false); this.sound.purchase(); toast(HAS_CITY ? t("👑 VIP is on! Collect your daily gift in the Shop.") : t("👑 Skyrise VIP is on! Collect your daily gift in the Shop.")); }
+        if (on) { track("purchase_done", { pack: "vip", test }, false); this.sound.purchase(); toast(HAS_CITY ? t("👑 VIP is on! Collect your daily gift in the Shop.") : t("👑 {game} VIP is on! Collect your daily gift in the Shop.")); }
         this.refresh();
         this.sheets?.refreshShop();
       };
@@ -368,6 +368,7 @@ export class App implements DailyHost {
     try { this.friendScore = clamp(parseInt(new URLSearchParams(location.search).get("beat") ?? "", 10) || 0, 0, 999999); } catch { /* no query */ }
 
     this.wire();
+    applyA11y(this.save.settings);
     this.resize();
     this.reset();
     this.renderMenu();
@@ -429,8 +430,9 @@ export class App implements DailyHost {
     const json = await readBackup();
     if (!json) { if (isNative()) this.persist(); return; }
     try {
-      const backup = JSON.parse(json) as { profile?: { towers?: number } };
-      if ((backup.profile?.towers ?? 0) > this.save.profile.towers) {
+      // (Not by towers alone: Buildaroo players build none, so a cleared web copy never came
+      // back from the backup and the city started over.)
+      if (backupIsAhead(JSON.parse(json), this.save)) {
         this.reloading = true;
         clearTimeout(this.backupTimer);
         clearTimeout(this.cloudTimer);
@@ -495,7 +497,9 @@ export class App implements DailyHost {
     if (this.video) return true; // recording the clip: it ends by itself in a few seconds
     if (document.body.classList.contains("photo-mode")) { $("photo-x").click(); return true; }
     if (!$("levelup").hidden) { $("levelup").hidden = true; return true; }
-    if (!$("mayor").hidden) { $("mayor-ok").click(); return true; }
+    // (Back on one of Pip's offers means "No thanks", never the offer itself: a time warp for
+    // crystals, or a trip to the shop.)
+    if (!$("mayor").hidden) { ($("mayor-no").hidden ? $("mayor-ok") : $("mayor-no")).click(); return true; }
     if (!$("welcome").hidden) { $("welcome-ok").click(); return true; }
     const evo = document.getElementById("evolve");
     if (evo && !evo.hidden) { evo.hidden = true; return true; }
@@ -555,6 +559,18 @@ export class App implements DailyHost {
     if (r === "error") toast(t("Couldn't open the checkout. Check your connection and try again."));
   }
 
+  /** Settings → Restore purchases: asks the store for this player's purchases again. */
+  async restorePurchases(): Promise<void> {
+    const pay = this.payments;
+    if (!pay?.restore) return;
+    this.sound.ensure();
+    toast(t("Checking your purchases…"));
+    const r = await pay.restore();
+    track("purchase_restore", { result: r }, false);
+    if (r === "error") toast(t("Couldn't reach the store. Check your connection and try again."));
+    else if (r === "ok") toast(vipActive(this.save) ? t("Purchases restored. VIP is on!") : t("Purchases checked. Crystal packs are added when you buy them, so there was nothing else to restore."));
+  }
+
   /** A pack purchase finished: add its crystals (once per transaction). */
   /** A crystal pack was paid for. Resolves true once the crystals and the purchase's
    *  transaction id are durably saved (only then may the store be told it's done). */
@@ -570,7 +586,7 @@ export class App implements DailyHost {
       }
       this.sound.purchase();
       const extra = packById(p.pack)?.extras;
-      toast((test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting Skyrise!", { n: fmt(added) }))
+      toast((test ? t("Test purchase: +{n} 💎 Sky Crystals. Nothing was charged.", { n: fmt(added) }) : t("+{n} 💎 Sky Crystals. Thanks for supporting {game}!", { n: fmt(added) }))
         + (extra?.vipDays ? " " + t("Plus {n} days of VIP!", { n: extra.vipDays }) : ""));
       if (extra && !this.calmMotion) fireworks(4, () => this.sound.firework());
       this.refresh();
@@ -641,7 +657,7 @@ export class App implements DailyHost {
       u.searchParams.delete("purchase");
       history.replaceState(null, "", u.toString());
       if (returned === "cancelled") toast(t("Purchase cancelled. You weren't charged."));
-      else toast(t("Thanks for supporting Skyrise! Adding your crystals…"));
+      else toast(t("Thanks for supporting {game}! Adding your crystals…"));
     }
     const pay = this.payments;
     if (!pay?.purchases) return;
@@ -763,6 +779,7 @@ export class App implements DailyHost {
     this.tutorial = !this.save.tutorialDone;
     this.persist();
     this.sound.applySettings();
+    applyA11y(this.save.settings);
     this.applyQuality();
     this.applyLang();
     this.refresh();
@@ -2571,12 +2588,12 @@ export class App implements DailyHost {
     // The Daily: a grid of colored squares (how each floor landed), not the tower itself,
     // so it spoils nothing for friends who haven't played today's yet.
     if (this.mode === "daily") return [
-      t("Skyrise Daily #{day} · {m} m", { day: this.runDay, m: sim.meters }),
+      t("{game} Daily #{day} · {m} m", { day: this.runDay, m: sim.meters }),
       ...dropGrid(this.drops),
       t("🔥 Best streak {s} · 🏢 {n} people", { s: bestRun(this.drops), n: fmt(sim.score) }),
       t("🟩 perfect 🟨 wide 🟧 trimmed. Can you beat it today?"),
     ].join("\n");
-    return t("My Skyrise tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
+    return t("My {game} tower is {m} m tall{landmark}, with {n} people living in it. Can you build a bigger one?", { m: sim.meters, landmark: ms, n: fmt(sim.score) });
   }
 
   /** Records a short clip of the finished tower and opens the share sheet with it. */
@@ -2720,7 +2737,7 @@ export class App implements DailyHost {
       const c = await createChallenge({ name: this.save.nickname, score: sim.score, meters: sim.meters, floors: sim.level, pace: this.pace.slice(0, MAX_GHOST) });
       if (c) { url = c.url; const sent = loadSent(); sent.ids = [...sent.ids, c.id].slice(-20); if (!sent.since) sent.since = Date.now(); storeSent(sent); }
     }
-    const text = sim.score > this.friendScore ? t("I beat your tower in Skyrise! Rematch?") : t("So close! Your tower still wins in Skyrise. Rematch?");
+    const text = sim.score > this.friendScore ? t("I beat your tower in {game}! Rematch?") : t("So close! Your tower still wins in {game}. Rematch?");
     await this.sharePicture(blob, url ? `${text} ${url}` : text, "skyrise-versus.jpg", !url);
   }
 
@@ -2752,7 +2769,7 @@ export class App implements DailyHost {
           return;
         }
       }
-      if (navigator.share) { await navigator.share(url ? { title: "Skyrise", text, url } : { title: "Skyrise", text }); return; }
+      if (navigator.share) { await navigator.share(url ? { title: GAME_NAME, text, url } : { title: GAME_NAME, text }); return; }
     } catch (e) {
       if ((e as Error).name === "AbortError") return; // the share sheet was closed
     }

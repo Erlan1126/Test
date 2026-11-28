@@ -1,9 +1,11 @@
-# Política de privacidad de Skyrise
+# Política de privacidad: Buildaroo y Skyrise
 
-Skyrise es un juego de Big Bruce Studios (contacto: support@bigbrucestudios.com).
-Última actualización: 14 de noviembre de 2026.
+Buildaroo (el juego de ciudad) y Skyrise (el juego de torres) son de Big Bruce Studios LLC
+(contacto: support@bigbrucestudios.com). Esta política cubre ambos; donde dice Skyrise, lo
+mismo aplica a Buildaroo, que usa el mismo servidor.
+Última actualización: 26 de noviembre de 2026.
 
-En resumen: Skyrise no tiene cuentas, ni anuncios, ni rastreo. Tu progreso se guarda en
+En resumen: los juegos no tienen cuentas, ni anuncios, ni rastreo. Tu progreso se guarda en
 tu dispositivo y se respalda en nuestro servidor con un id de jugador aleatorio, para que
 puedas recuperarlo en un teléfono nuevo. Nunca lo vendemos ni lo compartimos.
 
@@ -57,11 +59,17 @@ jugador aleatorio). Los nombres reportados por varios jugadores se ocultan.
 ## Informes de fallos y rendimiento
 
 Para encontrar y corregir problemas en teléfonos reales, el juego envía informes técnicos
-anónimos al servidor de Skyrise: el texto de un error si el juego falla y, después de cada
-torre, qué tan fluido funcionó (imágenes por segundo). Cada informe incluye la versión de la
-app, el modelo del teléfono y el chip gráfico, y nada más: ni id de jugador, ni apodo, ni
-partida guardada, ni ubicación. Se guardan unas semanas como máximo (los 20.000 más recientes)
-y nunca se comparten ni se venden.
+anónimos: el texto de un error si algo falla, qué pantalla estaba abierta en ese momento y,
+después de cada torre, qué tan fluido funcionó (imágenes por segundo). Cada informe incluye
+qué juego lo envió, la versión de la app, el modelo del teléfono y el chip gráfico, y nada
+más: ni id de jugador, ni apodo, ni partida guardada, ni ubicación por IP, ni contactos.
+
+Los informes van a nuestro propio servidor, donde se guardan unas semanas como máximo (los
+20.000 más recientes). También podemos enviar los mismos informes de errores a **Sentry**
+(sentry.io), un servicio de informes de fallos que solo los guarda para que los leamos, con
+el guardado de direcciones IP desactivado. Nunca se comparten ni se venden. Si no hay
+conexión, unos pocos errores recientes esperan en tu dispositivo hasta poder enviarse; en
+Ajustes hay un botón "Copiar informe de errores" si quieres enviar uno a soporte tú mismo.
 
 ## Estadísticas de juego anónimas
 
@@ -80,6 +88,18 @@ Cuando tocas "Reta a un amigo", la torre que compartes (su altura, personas, pis
 ritmo creció y tu apodo de las clasificaciones si pusiste uno) se guarda en el servidor de
 Skyrise para que el enlace pueda mostrarla. Cuando un amigo juega el reto, su apodo y su
 puntuación se guardan con él para que veas quién lo intentó.
+
+## Buildaroo: ciudades de amigos, regalos y el ranking de ciudades
+
+En Buildaroo (el juego de ciudad), cada pocos minutos mientras juegas, el juego envía a
+nuestro servidor una instantánea de tu ciudad bajo un **código de amigo** corto: tu apodo,
+el nombre de tu ciudad, el nivel de tu Ayuntamiento y tu número de habitantes, los niveles
+de tus negocios, casas, decoraciones y pinturas de edificios, y cuántas casas construiste
+esta semana. Cualquiera con tu código de amigo (o un enlace de invitación que compartas)
+puede ver esa instantánea y visitar tu ciudad, y las ciudades más grandes aparecen en el
+ranking de ciudades. Si dejas un **regalo** en la ciudad de un amigo, el servidor lo guarda,
+con tu apodo, hasta que lo recoja, y luego lo borra. Nada de esto incluye tu nombre real,
+correo, ubicación ni contactos.
 
 ## Qué no hace el juego
 
@@ -109,6 +129,11 @@ cuenta; el juego solo sabe qué paquete se compró, para poder agregar los crist
 sus políticas de privacidad:
 https://www.apple.com/legal/privacy/ y https://policies.google.com/privacy
 
+La suscripción mensual opcional **VIP** funciona igual: Apple o Google la cobran y la
+renuevan hasta que la canceles en los ajustes de suscripciones de tu tienda. El juego solo
+le pregunta a la tienda si VIP está activo. **Restaurar compras** en Ajustes vuelve a
+preguntarle a la tienda (por ejemplo, después de reinstalar); no se envía nada más.
+
 ## Recordatorios
 
 Las apps para teléfono pueden mostrar una notificación de recordatorio diario si la
@@ -122,7 +147,7 @@ servicio de fuentes.
 
 ## Niños
 
-Skyrise es apto para todas las edades. No pide nombres, correos, números de teléfono,
+Ambos juegos son aptos para todas las edades. No pide nombres, correos, números de teléfono,
 ubicación ni fotos a nadie. Lo único que un jugador escribe y que otros pueden ver es el
 apodo opcional del ranking, y los jugadores pueden reportar nombres que no sean apropiados.
 

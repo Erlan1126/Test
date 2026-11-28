@@ -19,9 +19,9 @@ export const TITLES: Title[] = [
   { min: 15, name: "Architect", icon: "📐", color: "#ffd23f" },
   { min: 25, name: "Engineer", icon: "🏗️", color: "#7cf5ff" },
   { min: 40, name: "Sky Master", icon: "🌤️", color: "#b48cff" },
-  { min: 60, name: "Skyrise Legend", icon: "👑", color: "#ff6f9c" },
+  { min: 60, name: "{game} Legend", icon: "👑", color: "#ff6f9c" },
   { min: 80, name: "Cloud Emperor", icon: "💎", color: "#9ee8ff", glow: true },
-  { min: 100, name: "Skyrise Immortal", icon: "🌟", color: "#fff3a8", glow: true },
+  { min: 100, name: "{game} Immortal", icon: "🌟", color: "#fff3a8", glow: true },
 ];
 
 /** Total XP earned to reach `level`, from xpNeeded in logic/rules.ts. */

@@ -93,7 +93,8 @@ export const CHAPTERS: Chapter[] = [
     outro: "Look at those billboards glow! People come from the other islands just to see our streets.",
     goals: [
       { text: HAS_CITY ? "Build a new headquarters for {n} businesses" : "Grow {n} businesses with a new HQ", need: pick(2, 3), have: grown, kind: "grown" },
-      ht(pick(60, 70)),
+      // (Six managers: City Hall Lv 3 opens only six town businesses, so a seventh can't be had yet.)
+      ht(60),
       lvC(300, 550),
     ],
     reward: { stars: 20, crystals: 40 },
@@ -113,7 +114,7 @@ export const CHAPTERS: Chapter[] = [
     title: "Harbor District",
     intro: "The town is full! West of the square there's room for a harbor: boats, a fish market, a lighthouse. Buy the land and open its first businesses.",
     outro: "Smell that sea air? Fishing boats in, tourists off the ferry. The harbor was the right call.",
-    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), lvC(800, 1400)],
+    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), lvC(800, 1100)],
     reward: { stars: 40, crystals: 80 },
   },
   {
@@ -127,7 +128,7 @@ export const CHAPTERS: Chapter[] = [
     title: "Downtown",
     intro: "Big companies are calling. Downtown is where the towers go: offices, banks, a stock exchange. Build our business quarter!",
     outro: "Look at that skyline! Downtown makes us the business capital of the islands.",
-    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), lvC(1200, 2100)],
+    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), lvC(1200, 1500)],
     reward: { stars: 60, crystals: 120 },
   },
   {

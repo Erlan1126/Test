@@ -10,6 +10,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import { Share } from "@capacitor/share";
 import { SplashScreen } from "@capacitor/splash-screen";
+import { GAME_NAME } from "./edition";
 import { StatusBar } from "@capacitor/status-bar";
 import { InAppReview } from "@capacitor-community/in-app-review";
 import { t } from "./i18n";
@@ -69,7 +70,7 @@ export async function nativeShare(text: string, image: Blob | null, fileName = "
       const saved = await Filesystem.writeFile({ path: fileName, data, directory: Directory.Cache });
       files = [saved.uri];
     }
-    await Share.share({ title: "Skyrise", text, files });
+    await Share.share({ title: GAME_NAME, text, files });
   } catch (e) {
     // Closing the share sheet counts as handled.
     if (!/cancel/i.test(String((e as Error)?.message ?? e))) return false;
@@ -266,7 +267,13 @@ const REVIEW_KEY = "skyrise.review";
  * card actually shows, and we ask at most once every 90 days, and never in the first towers.
  */
 export function askForReview(towers: number): void {
-  if (!isNative() || towers < 8) return;
+  askForReviewIf(towers >= 8);
+}
+
+/** The same rating card at a happy moment of the city game, which has no towers: a City Hall
+ *  level-up from level 3 on (once every 90 days, like the tower game's). */
+export function askForReviewIf(happy: boolean): void {
+  if (!isNative() || !happy) return;
   try {
     const last = Number(localStorage.getItem(REVIEW_KEY)) || 0;
     if (Date.now() - last < 90 * 864e5) return;

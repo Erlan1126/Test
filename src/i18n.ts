@@ -4,6 +4,7 @@ import { DE } from "./i18n/de";
 import { ES } from "./i18n/es";
 import { FR } from "./i18n/fr";
 import { PT } from "./i18n/pt";
+import { GAME_NAME } from "./edition";
 
 export type Lang = "en" | "es" | "pt" | "fr" | "de";
 export const LANGS: Lang[] = ["en", "es", "pt", "fr", "de"];
@@ -44,12 +45,29 @@ export function setLang(l: Lang): boolean {
   return changed;
 }
 
+/** Fills `{name}` placeholders from `vars`. `{game}` is always the game's name (Buildaroo, or
+ *  Skyrise in the tower game's own build), so shared text never names the wrong game. */
 const fill = (s: string, vars?: Record<string, string | number>): string =>
-  vars ? s.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : s;
+  s.replace(/\{(\w+)\}/g, (m, k: string) => (vars && k in vars ? String(vars[k]) : k === "game" ? GAME_NAME : m));
 
 /** Translates English text into the current language. */
 export function t(key: string, vars?: Record<string, string | number>): string {
-  return fill(DICTS[lang]?.[key] ?? key, vars);
+  return fill(DICTS[lang]?.[key] ?? derived(key) ?? key, vars);
+}
+
+/** Names made from a template and a translated name ("Big Fish Market" = "Big {name}" with
+ *  "Fish Market"): the districts' businesses grow through these, so each language needs the
+ *  templates and the names, not every combination. Only when both parts are translated. */
+const DERIVED: [string, string][] = [["Big ", ""], ["Grand ", ""], ["", " Plaza"], ["", " Empire"], ["", " Megatower"], ["", " Tower"], ["", " Sky Wonder"]];
+function derived(key: string): string | undefined {
+  const d = DICTS[lang];
+  if (!d) return undefined;
+  for (const [pre, post] of DERIVED) {
+    if (!key.startsWith(pre) || !key.endsWith(post) || key.length <= pre.length + post.length) continue;
+    const name = key.slice(pre.length, key.length - post.length), tpl = d[`${pre}{name}${post}`];
+    if (tpl && d[name]) return tpl.replace("{name}", d[name]);
+  }
+  return undefined;
 }
 
 /** Picks the singular or plural English key by `n`, then translates it. `{n}` is filled in. */

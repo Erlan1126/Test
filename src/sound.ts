@@ -484,6 +484,8 @@ export class Sound {
   }
 
   // ---------- Effects ----------
+  /** A soft tick for hurrying a sale (tapped many times a second, so it stays quiet). */
+  tap(): void { this.tone(1500 + Math.random() * 200, 0.03, "sine", 0.045); }
   click(): void { this.tone(1100, 0.04, "triangle", 0.06); this.tone(1650, 0.03, "sine", 0.03, 0.005); }
   /** A cup set down on the counter, and a small bell: the first coffee sold. Quiet. */
   counter(): void { this.tone(420, 0.06, "triangle", 0.05); this.tone(300, 0.05, "sine", 0.04, 0.01); this.bell(1568, 0.5, 0.035, 0.06); }
@@ -544,6 +546,13 @@ export class Sound {
   }
   unlock(): void { [0, 7, 12, 16, 19].forEach((n, i) => this.bell(392 * Math.pow(2, n / 12), 0.8, 0.06, 0.4 + i * 0.07, (i / 4) * 1.2 - 0.6)); }
   star(): void { [0, 7, 12].forEach((n, i) => this.bell(1046 * Math.pow(2, n / 12), 0.6, 0.05, 0.2 + i * 0.08)); }
+  /** One level bought: a bright two-note ka-ching, a semitone higher for each quick buy in a row. */
+  buy(step = 0): void {
+    const k = Math.pow(2, Math.min(12, step) / 12);
+    this.tone(523 * k, 0.05, "triangle", 0.05);
+    this.bell(1046 * k, 0.18, 0.045, 0.02);
+    this.bell(1568 * k, 0.26, 0.04, 0.07, 0.2);
+  }
   coins(): void { [0, 4, 7, 12].forEach((n, i) => this.bell(1318 * Math.pow(2, n / 12), 0.25, 0.035, i * 0.055, Math.random() * 1.2 - 0.6)); }
   /** A little fanfare for a premium purchase. */
   purchase(): void {

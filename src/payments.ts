@@ -43,6 +43,9 @@ export interface PaymentProvider {
   vipPrice?(): string | null;
   /** Called with whether VIP is on, whenever the store knows. */
   onVip?: (active: boolean) => void;
+  /** Asks the store again for the player's purchases (Apple requires a Restore button for
+   *  subscriptions): VIP comes back after reinstalling or on a new phone. */
+  restore?(): Promise<BuyResult>;
 }
 
 /** Test mode: adds crystals instantly and charges nothing. */
@@ -52,6 +55,9 @@ class TestProvider implements PaymentProvider {
   onVip?: (active: boolean) => void;
   async buyVip(): Promise<BuyResult> {
     this.onVip?.(true);
+    return "ok";
+  }
+  async restore(): Promise<BuyResult> {
     return "ok";
   }
   async buy(pack: CrystalPack): Promise<BuyResult> {
@@ -118,6 +124,7 @@ interface CdvStore {
   get(id: string, platform?: string): CdvProduct | undefined;
   when(): CdvWhen;
   owned(id: string): boolean;
+  restorePurchases(): Promise<{ code: number; message: string } | undefined>;
   error(cb: (e: { code: number; message: string }) => void): void;
 }
 interface Cdv {
@@ -182,6 +189,21 @@ class StoreProvider implements PaymentProvider {
     credit: async (pack, tx) => (await this.onPurchase?.({ pack, tx })) === true,
     delivered: id => { if (this.waiting?.id === id) { this.waiting.done("ok"); this.waiting = null; } },
   }, platform() === "ios" ? "ios-appstore" : "android-playstore");
+
+  async restore(): Promise<BuyResult> {
+    const cdv = await this.ready;
+    if (!cdv) return "error";
+    try {
+      const err = await cdv.store.restorePurchases();
+      if (err) return err.code === cdv.ErrorCode.PAYMENT_CANCELLED ? "cancelled" : "error";
+    } catch {
+      return "error";
+    }
+    // Any purchase the store hands back goes through approved() as usual (a saved
+    // transaction id is never counted twice); VIP is read from the refreshed receipts.
+    this.onVip?.(cdv.store.owned(VIP_ID));
+    return "ok";
+  }
 
   vipPrice(): string | null {
     const cdv = (window as unknown as { CdvPurchase?: Cdv }).CdvPurchase;

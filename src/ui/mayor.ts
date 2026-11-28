@@ -12,6 +12,7 @@ import { LAND } from "../data/land";
 import { t } from "../i18n";
 import type { SaveData } from "../logic/save";
 import { $, esc, vibrate } from "./dom";
+import { askForReviewIf } from "../native";
 import { confetti, fireworks } from "./fx";
 
 /** Mayor Pip, drawn: a round, kind face with shading, grey sideburns and a curled
@@ -155,7 +156,13 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
-      () => { if (next) { introduce(save, persist); } after(); }), HAS_CITY ? 2600 : 0);
+      () => {
+        if (next) { introduce(save, persist); }
+        after();
+        // (Buildaroo has no towers, so the tower game's rating ask never came: a City Hall
+        // level-up, just celebrated and rewarded, is the city's happy moment to ask.)
+        if (HAS_CITY && i + 2 >= 3) window.setTimeout(() => askForReviewIf(true), 1500);
+      }), HAS_CITY ? 2600 : 0);
     return;
   }
   show(head(i, c.title), say(c.intro), goalsHtml(save, c), "", t("Let's build!"), after);

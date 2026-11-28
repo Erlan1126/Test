@@ -937,6 +937,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .setting.stack .seg button { flex: 1; }
 .setting.stack small { color: var(--muted); font-size: 12px; font-weight: 600; }
 .setting.link { width: 100%; border: 0; color: inherit; font: inherit; cursor: pointer; }
+a.setting.link { text-decoration: none; }
 .chev { margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; transition: transform 0.2s; }
 .disclosure { display: block; padding: 0 !important; }
 .disclosure summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 14px; list-style: none; cursor: pointer; }
@@ -3020,6 +3021,19 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .flag.run { background: #ff4f8b; }
 .tag-pops { position: absolute; left: 0; right: 0; bottom: 100%; height: 60px; pointer-events: none; }
 .tag-pops .coin-pop { bottom: 0; }
+/* A level bought: the number floats up off the button (and the building's label in town). */
+.lv-pop { position: fixed; z-index: 90; transform: translateX(-50%); padding: 3px 10px 2px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+  font: 400 14px var(--display); color: #5a3300; background: linear-gradient(180deg, #fff6c4, #ffc93c); box-shadow: 0 3px 0 #b8740c, 0 6px 14px rgba(90, 50, 0, 0.3);
+  animation: lv-up-pop 0.95s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+.lv-pop.big { font-size: 17px; color: #fff; background: linear-gradient(180deg, #c7a6ff, #6a3cff); box-shadow: 0 3px 0 #3a1f9a, 0 6px 16px rgba(106, 60, 255, 0.45); }
+@keyframes lv-up-pop { from { transform: translate(-50%, 6px) scale(0.5); opacity: 0; } 18% { transform: translate(-50%, -10px) scale(1.2); opacity: 1; } 60% { opacity: 1; } to { transform: translate(-50%, -54px) scale(1); opacity: 0; } }
+/* The level badge jumps when it goes up. */
+#tcy-card .bc-lv.lv-up { animation: lv-badge 0.36s cubic-bezier(0.3, 1.8, 0.5, 1); }
+@keyframes lv-badge { 35% { transform: scale(1.22) rotate(-4deg); background: #fff3b0; } }
+/* Can't do it yet: a little shake. */
+.nope { animation: nope-shake 0.32s ease-in-out; }
+@keyframes nope-shake { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@media (prefers-reduced-motion: reduce) { .lv-pop, #tcy-card .bc-lv.lv-up, .nope { animation-duration: 0.01s !important; } }
 
 /* The building card. */
 .tcy-card { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); padding: 12px 14px; border-radius: 24px;
@@ -3155,7 +3169,8 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .card-main b { font: 400 17px var(--display); }
 .card-main small { display: flex; align-items: center; gap: 4px; font: 400 13px var(--display); opacity: 0.95; }
 .card-main small svg { width: 15px; height: 15px; }
-.card-main:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 #a8204f; }
+.card-main { transition: transform 0.06s ease-out, box-shadow 0.06s ease-out, filter 0.12s; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.card-main:active:not(:disabled) { transform: translateY(4px) scale(0.98); box-shadow: 0 1px 0 #a8204f; filter: brightness(1.08); }
 .card-main:disabled { cursor: default; background: linear-gradient(180deg, #c9c3e6, #a59bd6); box-shadow: 0 5px 0 #7a70b0; }
 .card-main.grow { background: linear-gradient(180deg, #c7a6ff, #8a5cff 55%, #6a3cff); box-shadow: 0 5px 0 #3a1f9a, 0 10px 20px rgba(106, 60, 255, 0.35); animation: coach-pulse 1.4s ease-in-out infinite; }
 .card-main.floors { background: linear-gradient(180deg, #9fe6ff, #4f8bff 55%, #3a6cf0); box-shadow: 0 5px 0 #23409a; }
@@ -3854,7 +3869,7 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #land-buy .land-price b { font-family: Bungee, "Arial Black", sans-serif; font-size: 28px; color: #13924f; }
 #land-buy .land-bar { display: block; width: 100%; height: 8px; border-radius: 4px; background: #ece8fb; overflow: hidden; }
 #land-buy .land-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #34d27f, #16a35a); transition: width 0.4s; }
-#land-buy .land-buy-btn { width: 100%; min-height: 54px; font-size: 17px; }
+#land-buy .land-buy-btn { width: 100%; min-height: 54px; font: 400 17px var(--display); letter-spacing: 0.02em; }
 #land-buy .land-buy-btn.short { filter: grayscale(0.6); opacity: 0.75; }
 #land-buy .land-step { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: #8a80b8; }
 #land-buy .land-step:empty { display: none; }
@@ -4163,6 +4178,12 @@ svg.ic.logo { filter: drop-shadow(0 2px 3px rgba(30, 15, 80, 0.3)) !important; o
 .hall-banner b { display: block; font: 400 44px/1.05 var(--display); text-shadow: 0 3px 0 rgba(150, 50, 0, 0.45); }
 .hall-banner em { display: block; margin-top: 4px; font: 700 14px var(--ui); font-style: normal; }
 .hall-banner.out { animation: hb-out 0.5s ease-in both; }
+/* A City Hall goal done: the ring gives a pulse. */
+#tycity .tg-ring.tg-pop { animation: tg-pop 0.7s cubic-bezier(0.3, 1.7, 0.5, 1); }
+@keyframes tg-pop { 30% { transform: scale(1.3); box-shadow: 0 0 0 6px rgba(255, 210, 63, 0.7), 0 0 24px rgba(255, 210, 63, 0.9); } }
+@media (prefers-reduced-motion: reduce) { #tycity .tg-ring.tg-pop { animation: none; } }
+/* With a building's card open, the banner celebrates above it, over the town. */
+body:has(#tcy-card:not([hidden])) .hall-banner { place-items: start center; padding-top: calc(env(safe-area-inset-top, 0px) + 18vh); }
 @keyframes hb-in { from { opacity: 0; } }
 @keyframes hb-out { to { opacity: 0; transform: scale(1.06); } }
 @keyframes hb-pop { from { transform: scale(0.3) rotate(-8deg); opacity: 0; } }
@@ -4459,6 +4480,7 @@ body.city-game #profile [data-tab="journey"], body.city-game #profile [data-tab=
 /* The spin wheel opens over the Goals page: above the tab bar too, so its Spin button is never
    under the bar on a small phone. */
 body:is(.tabs-open, .tabs-closing) :is(#spin-sheet, #advent-sheet) { z-index: 60; }
+body:is(.tabs-open, .tabs-closing) :is(.mayor-dialog, .overlay) { z-index: 60; }
 
 /* ---- Photo mode: the 📷 button, the filter chips and the vignette preview ---- */
 #tycity .photo-btn { position: absolute; z-index: 6; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer; font-size: 22px; line-height: 1; background: linear-gradient(180deg, #ff7aa8, #8a5cff); box-shadow: 0 3px 0 #5a34c0, 0 6px 14px rgba(20, 10, 60, 0.3); }
@@ -4559,6 +4581,8 @@ body:is(.tabs-open, .tabs-closing) .modal.tab-page {
   background: rgba(22, 14, 64, 0.5) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 body:is(.tabs-open, .tabs-closing) .modal.tab-page > .sheet {
+  /* (border-box: the 112 px foot is inside the page's height, so the last rows aren't hidden under the tab bar.) */
+  box-sizing: border-box;
   width: min(640px, 100%) !important; height: 100%; max-height: none !important; margin: 0 !important;
   padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 112px) !important;
   border: 0 !important; border-radius: 24px 24px 0 0 !important; background: var(--pg) !important;
@@ -4797,6 +4821,42 @@ body:is(.tabs-open, .tabs-closing) #profile .stat-grid { gap: 10px !important; m
   body:is(.tabs-open, .tabs-closing) .tab-page .th-title { font-size: 23px; }
 }
 @media (max-width: 340px) { .tab-seg button { padding: 0 4px !important; font-size: 9.5px !important; } body:is(.tabs-open, .tabs-closing) .tab-page .tab-head { padding: 14px 12px 10px; margin: 0 -12px; } body:is(.tabs-open, .tabs-closing) .modal.tab-page > .sheet { padding-left: 12px !important; padding-right: 12px !important; } }
+.vip-card .vip-legal a, .vip-card .vip-legal .vip-restore { color: inherit; text-decoration: underline; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+/* Bigger fingertips: the town's small round bubbles (upgrade, lease, City Hall) and the ?
+   button are 28–34 px; an invisible ring makes each about 44 px to tap, Apple's minimum,
+   without changing how they look. */
+#tcy-labels .tag.bub:is(.prop-up, .hall-bub, .lease)::before, #tycity #tcy-top .tcy-help::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; }
+#tycity #tcy-top .tcy-help { position: relative; }
+/* (On a 568 px screen, in longer languages, "While you were away" ran off the top and cut
+   Pip's face: the town line, which the City Hall goals also show, gives way there.) */
+@media (max-height: 600px) { #welcome .welcome-town { display: none; } }
+
+/* ---------- Accessibility (Settings) ---------- */
+.group-title { margin: 0; padding: 12px 16px 4px; font: 400 12px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+/* Bigger text: the menus, cards and the Next step pill grow (the town itself stays put). */
+html.big-text .sheet, html.big-text .dialog, html.big-text .mayor-card, html.big-text #toast, html.big-text .lv-pop { zoom: 1.15; }
+html.big-text #tcy-card { zoom: 1.06; }
+@media (min-width: 360px) {
+  html.big-text #tcy-card { zoom: 1.1; }
+  html.big-text #tycity .tcy-next, html.big-text #tycity .tcy-bar { zoom: 1.1; }
+  html.big-text #tycity .tcy-top { zoom: 1.06; }
+}
+/* One-handed: zoom buttons by the thumb (bottom right, above the Next step pill). */
+.tcy-zoom { display: none; }
+html.one-hand #tycity .tcy-zoom { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 184px); display: flex; flex-direction: column; gap: 8px; }
+html.one-hand #tycity .tcy-zoom button { width: 46px; height: 46px; border: 0; border-radius: 50%; cursor: pointer; background: #fff; color: #4a3f8a; font: 400 26px/1 var(--display); box-shadow: 0 4px 0 #c9c1ea, 0 8px 18px rgba(20, 10, 60, 0.3); }
+html.one-hand #tycity .tcy-zoom button:active { transform: translateY(3px); box-shadow: 0 1px 0 #c9c1ea; }
+#tycity:has(.tcy-card:not([hidden])) .tcy-zoom { display: none !important; }
+/* Less motion: nothing bounces, slides or shakes (the phone's own setting does the same). */
+html.still *, html.still *::before, html.still *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+/* Goal dots: done ones are filled with a tick, to-do ones are rings (not by colour alone). */
+.tcy-next .first-dots i { box-sizing: border-box; background: transparent; border: 2px solid #c9c1ea; box-shadow: none; display: grid; place-items: center; }
+.tcy-next .first-dots i.ok { border: 0; }
+.tcy-next .first-dots i.ok::after { content: ""; width: 4px; height: 2px; margin-top: -1px; border: solid #fff; border-width: 0 0 1.5px 1.5px; transform: rotate(-45deg); }
+/* A long business name wraps to a second line instead of "PIZZA PL…" (and a tile's label
+   wraps rather than spilling out, with bigger text or a long translation). */
+#tcy-card .bc-title b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+#tcy-card .bc-tile b { white-space: normal; text-align: center; max-width: 100%; }
 
 /* The holiday parade's banner (ui/parade.ts): a festive pill just above the guide (clear of the
    tutorial and building bubbles near the top), with a
@@ -4826,3 +4886,65 @@ body:is(.tabs-open, .tabs-closing) .tab-page .buy:disabled:not(.owned), body:is(
   box-shadow: inset 0 0 0 1.5px #c9bff0 !important; text-shadow: none !important; }
 body:is(.tabs-open, .tabs-closing) .tab-page .buy:disabled:not(.owned) *, body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled * { opacity: 1 !important; -webkit-text-fill-color: currentColor; }
 body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled small em { color: #7a6fb5 !important; }
+
+/* Launch QA: rows never grow past the sheet on a 320px phone (the price stays in view). */
+.tcy-mode { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.tcy-mode > span:not(.mode-ico):not(.mode-price):not(.dot) { flex: 1 1 auto; min-width: 0; }
+.tcy-mode b { overflow-wrap: anywhere; }
+/* On a narrow phone the "Skip the wait" button goes under the goal instead of squeezing it. */
+@media (max-width: 400px) {
+  .earn-goal { flex-wrap: wrap; }
+  .earn-goal .eg-main { flex: 1 1 calc(100% - 64px); }
+  .earn-goal .eg-skip { flex: 1 1 100%; flex-direction: row; justify-content: center; gap: 8px; margin-left: 60px; }
+}
+/* 320px phones: the Company tab's buy button fits "Buy ×1 · +$32.0M a sale · $698B" without clipping. */
+@media (max-width: 360px) {
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy { gap: 4px; padding: 0 10px 0 12px !important; font-size: 13px !important; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small { font-size: 11px; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small em { font-size: 9.5px; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy svg { width: 15px !important; height: 15px !important; }
+}
+/* Tap targets: small chips get at least 32px of height to hit (Apple asks for 44, these sit in text). */
+.page-intro button { min-height: 32px; padding: 0 14px; }
+#tcy-events .golden-chip { display: inline-flex; align-items: center; min-height: 32px; }
+/* Big crystal packs on a narrow phone: the picture shrinks and the price button stays inside. */
+@media (max-width: 400px) {
+  .pack-card.hero { grid-template-columns: 64px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
+  .pack-card.hero:not(:has(.pack-skin)) { grid-template-columns: minmax(0, 1fr) auto; }
+  .pack-card.hero .pack-skin { width: 64px; height: 70px; }
+  .pack-card.hero b { font-size: 21px; }
+  .pack-card.hero .buy { min-width: 0; padding-left: 12px; padding-right: 12px; }
+}
+@media (max-width: 360px) { #land-buy .land-buy-btn { font-size: 15px; padding: 0 14px; white-space: normal; line-height: 1.15; } }
+/* An opened Advent door's prize (e.g. "Gingerbread house") wraps to two lines instead of "Gingerbre…". */
+.adv-in small { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 9.5px; }
+/* 320px phones and long languages (German): buttons in rows may take two lines instead of
+   being cut off at the card's edge. Found by scripts/qa-city-screens.cjs. */
+@media (max-width: 360px) {
+  #tycoon .era-go { white-space: normal; line-height: 1.1; text-align: center; }
+  #earnings .eb-hire, #earnings .eb-hire small { white-space: normal !important; }
+  #earnings .eb-hire { min-width: 0 !important; max-width: 118px; }
+  .ty-adv-hire { gap: 4px; padding: 0 10px; font-size: 13px; }
+  .ty-up { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
+  .ty-up .buy { min-width: 76px; padding: 9px 10px; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small { min-width: 0; white-space: normal; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small em { white-space: normal; }
+  .pack-card.hero { column-gap: 8px; padding: 10px; }
+  .pack-card.hero b { font-size: 19px; }
+  .pack-card.hero .buy { padding-left: 10px; padding-right: 10px; }
+  .mayor-card .btn, #mayor .btn { padding-left: 14px; padding-right: 14px; }
+}
+/* A big pack without a picture: its extras line sits under the amount, not in the button's column. */
+.pack-card.hero:not(:has(.pack-skin)) .pack-extras { grid-column: 1; }
+@media (max-width: 400px) { .pack-card.hero .buy { min-width: 0 !important; box-sizing: border-box; } .pack-card.hero { grid-template-columns: 64px minmax(0, 1fr) max-content; } .pack-card.hero:not(:has(.pack-skin)) { grid-template-columns: minmax(0, 1fr) max-content; } }
+/* The business card's name on a 320px phone: "Coffee / Cart" on two lines, never "COFF / EE…"
+   (a word only breaks if it can't fit on its own). */
+#tcy-card .bc-title b { overflow-wrap: break-word; word-break: normal; }
+@media (max-width: 360px) {
+  #tcy-card .bc-ico { width: 40px; height: 40px; border-radius: 13px; font-size: 22px; }
+  #tcy-card .bc-lv { min-width: 42px; padding: 4px 6px; }
+  #tcy-card .bc-lv b { font-size: 15px; }
+  #tcy-card .bc-title b { font-size: 15px; }
+  #tcy-card .bc-title small { font-size: 9px; letter-spacing: 0.04em; }
+  #tcy-card .bc-paint { margin-right: 4px; }
+}

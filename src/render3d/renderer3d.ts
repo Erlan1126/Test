@@ -139,7 +139,11 @@ export class Renderer3D {
   private readonly tmpA = new THREE.Vector3();
   private readonly tmpB = new THREE.Vector3();
   private readonly tmpC = new THREE.Color();
-  private readonly calm = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Less motion (the phone's setting or the game's): no screen shake or flashes. */
+  private readonly calmMq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+  private get calm(): boolean {
+    return !!this.calmMq?.matches || (typeof document !== "undefined" && document.documentElement.classList.contains("still"));
+  }
   private dpr = 1;
   private low = false;
 
@@ -633,7 +637,8 @@ export class Renderer3D {
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.tmpB.set(35, 120, -100));
     const sc = this.sun.shadow.camera;
-    if (Math.abs(sc.top - span) > Math.max(0.6, span * 0.08)) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); this.shadowAt.set(1e9, 0, 0); }
+    if (k > 0.99) this.fitTownShadow(sc);
+    else if (Math.abs(sc.top - span) > Math.max(0.6, span * 0.08) || sc.left !== -sc.right || sc.top !== -sc.bottom) { sc.left = -span; sc.right = span; sc.top = span; sc.bottom = -span; sc.updateProjectionMatrix(); this.shadowAt.set(1e9, 0, 0); }
     // In the town almost nothing that casts a shadow moves, so the shadow map is redrawn only
     // when the view moves (or a few times a second for the odd growing building): about a
     // third less work per frame. Everywhere else it's redrawn every frame as before.
@@ -645,6 +650,40 @@ export class Renderer3D {
     } else this.gl.shadowMap.autoUpdate = true;
   }
   private shadowAt = new THREE.Vector3(1e9, 0, 0);
+  /** The sun's view, to work out where the screen's corners fall in the shadow map. */
+  private readonly lightCam = new THREE.OrthographicCamera();
+  /** In the town the shadow map covers exactly what's on screen, corners and all (the square
+   *  round the middle used to leave the bottom of the screen without shadows, so they popped
+   *  in and out along the island's edge as you dragged). Its edges move in whole shadow pixels
+   *  (and only every couple of metres), so shadows never shimmer while the view slides. */
+  private fitTownShadow(sc: THREE.OrthographicCamera): void {
+    const lc = this.lightCam, cam = this.cam;
+    lc.position.copy(this.sun.position);
+    lc.lookAt(this.sun.target.position);
+    lc.updateMatrixWorld();
+    cam.updateMatrixWorld();
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    const a = this.tmpV, b = this.tmpV2, q = this.tmpB;
+    for (const nx of [-1, 1]) for (const ny of [-1, 1]) {
+      a.set(nx, ny, -1).unproject(cam); b.set(nx, ny, 1).unproject(cam);
+      // (The ground, and rooftops: whatever the corner of the screen shows.)
+      for (const gy of [BIZ_SLOT.y - 0.5, BIZ_SLOT.y + 8]) {
+        const t = (a.y - gy) / (a.y - b.y || 1e-6);
+        q.set(a.x + (b.x - a.x) * t, gy, a.z + (b.z - a.z) * t).applyMatrix4(lc.matrixWorldInverse);
+        x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
+      }
+    }
+    if (!Number.isFinite(x0 + x1 + y0 + y1)) return;
+    const n = this.sun.shadow.mapSize.x || 2048, M = 1.5, STEP = 2;
+    // (Sizes in steps of 4 m with room to spare, so the edges can snap without cutting a corner.)
+    const W = Math.ceil((x1 - x0 + 2 * M + STEP) / 4) * 4 + 4, H = Math.ceil((y1 - y0 + 2 * M + STEP) / 4) * 4 + 4;
+    const gx = (W / n) * Math.max(1, Math.round(STEP / (W / n))), gy = (H / n) * Math.max(1, Math.round(STEP / (H / n)));
+    const L = Math.floor((x0 - M) / gx) * gx, B = Math.floor((y0 - M) / gy) * gy;
+    if (sc.left === L && sc.right === L + W && sc.bottom === B && sc.top === B + H) return;
+    sc.left = L; sc.right = L + W; sc.bottom = B; sc.top = B + H;
+    sc.updateProjectionMatrix();
+    this.shadowAt.set(1e9, 0, 0);
+  }
   private shadowTick = 0;
 
   /** Where a point on the island shows on screen (page px), or null when off screen. */

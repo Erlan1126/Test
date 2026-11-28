@@ -13,7 +13,7 @@ const BLOCKS: Record<number, [string, string, string]> = {
 };
 
 const PLACES: Record<string, [string, string, string]> = {
-  park: ["🌳", "Pocket park", "A little park with a pond, a bench and flower beds, where the neighbours take a break."],
+  park: ["🌳", "Pocket park", "A little park with a pond, a bench and flower beds, where the neighbors take a break."],
   lighthouse: ["🗼", "Lighthouse", "Its lamp sweeps over the sea at night and guides the boats home."],
   "th-marina": ["⛵", "Harbor marina", "Sailboats moored along the pier. The Harbor's heart."],
   "th-market": ["🧺", "Harbor market", "Fresh fish and fruit under striped awnings."],
@@ -34,6 +34,9 @@ const PLACES: Record<string, [string, string, string]> = {
   "th-palms": ["🌴", "Palm garden", "Palms round a shell fountain: the way into the Beach Resort."],
   "th-lagoon": ["🛶", "Lagoon pier", "A wooden pier over clear water, with boats tied up at the end."],
   "th-beach": ["🏖️", "Resort beach", "Rows of loungers down to the water, and a volleyball net."],
+  "th-clocktower": ["🕰️", "Clock tower", "A brick clock tower over the piazza. Its hands keep the real time."],
+  "th-canal": ["🛶", "Canal", "Gondolas glide under arched bridges between painted townhouses."],
+  "th-gate": ["🏛️", "Old town gate", "The brick gate into the Canal Quarter, with flower boxes on both sides."],
   rank1: ["🛍️", "Street market", "Striped stalls and shoppers on the plaza. Opened when Skyhaven became a Village."],
   rank2: ["🚋", "Tram stop", "The little tram runs round the streets. Opened when Skyhaven became a Town."],
   rank3: ["📺", "Billboards", "Glowing billboards light up the corners. Arrived when Skyhaven became a City."],
@@ -41,7 +44,7 @@ const PLACES: Record<string, [string, string, string]> = {
   rank6: ["👑", "Skyhaven Tower", "The golden tower over everything: Skyhaven is a Sky Capital."],
   rank7: ["🏝️", "Floating island", "The island beside the town, joined by a rope bridge."],
   lot: ["🏡", "Empty lot", "Room for new homes. Sell a few coffees first, then you can build here."],
-  home: ["🏠", "Family home", "A neighbour's home. Soon you can upgrade homes for rent."],
+  home: ["🏠", "Family home", "A neighbor's home. Soon you can upgrade homes for rent."],
 };
 
 /** The card text for a tapped place (or null if it isn't one we know). */
@@ -63,6 +66,7 @@ export const ALBUM_KINDS: string[] = ["block1", "block2", "block3", "block4", "b
   "rank1", "rank2", "rank3", "rank5", "rank6", "rank7",
   "th-marina", "th-market", "th-lighthouse", "th-park", "th-lake", "th-wheel", "th-fountain", "th-plaza",
   "th-hotel", "th-pool", "th-cabanas", "th-palms", "th-lagoon", "th-beach",
+  "th-clocktower", "th-canal", "th-gate",
   "th-palace", "th-skygarden", "th-spire", "th-rocket", "th-dish"];
 /** Crystals for each new find, and for the whole album. */
 export const ALBUM_CRYSTALS = 2;

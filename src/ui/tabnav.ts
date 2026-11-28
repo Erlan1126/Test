@@ -2,15 +2,17 @@
 // one is open the dock stays on top of it, so the player hops straight from one to another
 // (the new sheet slides in from that side) instead of closing and reopening. Any sheet can
 // also be pulled down by its header to close it, like on iPhone.
-import { closeModal } from "./dom";
+import { closeModal, MODAL_IDS } from "./dom";
 
 const TABS = [["tycoon", "tycoon-btn"], ["city", "city-btn"], ["shop", "shop-btn"], ["missions", "missions-btn"], ["pass", "pass-btn"], ["ranks", "ranks-btn"]] as const;
-const SHEETS = ["shop", "challenges", "profile", "missions", "settings", "streak", "city", "ranks", "pass", "goals", "modes", "starter", "help", "tycoon"];
+// (Every sheet, the city's too: one-handed, the close button up in the corner is far away.)
+const SHEETS: readonly string[] = MODAL_IDS;
 
 const byId = (id: string): HTMLElement | null => document.getElementById(id);
 const openTab = (): number => TABS.findIndex(([m]) => byId(m) && !byId(m)!.hidden);
 
 export function startTabNav(): void {
+  for (const id of SHEETS) pullToClose(byId(id));
   const dock = byId("dock");
   if (!dock) return;
   const home = { parent: dock.parentElement!, next: dock.nextSibling };
@@ -65,8 +67,6 @@ export function startTabNav(): void {
   for (const [m] of TABS) { const el = byId(m); if (el) watch.observe(el, { attributes: true, attributeFilter: ["hidden"] }); }
   watch.observe(document.body, { attributes: true, attributeFilter: ["class"] });
   sync();
-
-  for (const id of SHEETS) pullToClose(byId(id));
 }
 
 /** Drag a sheet down by its top to close it. */

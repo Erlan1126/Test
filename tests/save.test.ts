@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultSave, exportCode, importCode, loadSave, migrateLegacy, normalize, SAVE_KEY, writeSave } from "../src/logic/save";
+import { backupIsAhead, defaultSave, exportCode, importCode, loadSave, migrateLegacy, normalize, SAVE_KEY, writeSave } from "../src/logic/save";
 
 const memory = (init: Record<string, string> = {}) => {
   const data = { ...init };
@@ -72,4 +72,43 @@ describe("save data", () => {
     expect(importCode(code.replace("SKY2-", "SKY2-A"))).toBeNull();
     expect(importCode("hello")).toBeNull();
   });
+});
+
+describe("the native backup", () => {
+  it("comes back when the phone cleared the web copy, in the city game too (no towers)", () => {
+    const cleared = defaultSave();
+    const city = defaultSave();
+    city.tycoon.lifetime = 50_000;
+    expect(backupIsAhead(JSON.parse(JSON.stringify(city)), cleared)).toBe(true);
+    const tower = defaultSave();
+    tower.profile.towers = 5;
+    expect(backupIsAhead(tower, cleared)).toBe(true);
+  });
+
+  it("never replaces a save that is as far along or further, or with junk", () => {
+    const now = defaultSave();
+    now.tycoon.lifetime = 50_000;
+    const older = defaultSave();
+    older.tycoon.lifetime = 40_000;
+    expect(backupIsAhead(older, now)).toBe(false);
+    expect(backupIsAhead(now, now)).toBe(false);
+    expect(backupIsAhead(null, now)).toBe(false);
+    expect(backupIsAhead("x", now)).toBe(false);
+    expect(backupIsAhead({ tycoon: { lifetime: "9e9" } }, now)).toBe(false);
+    // More towers here wins over a richer backup with fewer (the tower game's rule).
+    now.profile.towers = 3;
+    const fewer = defaultSave();
+    fewer.tycoon.lifetime = 1e9;
+    expect(backupIsAhead(fewer, now)).toBe(false);
+  });
+});
+
+it("keeps the accessibility settings (off for a new player and for older saves)", () => {
+  const s = defaultSave();
+  expect([s.settings.bigText, s.settings.oneHand, s.settings.still]).toEqual([false, false, false]);
+  const old = JSON.parse(JSON.stringify(s)); delete old.settings.bigText; delete old.settings.oneHand; delete old.settings.still;
+  expect(normalize(old).settings.bigText).toBe(false);
+  s.settings.bigText = true; s.settings.oneHand = true; s.settings.still = true;
+  const back = normalize(JSON.parse(JSON.stringify(s))).settings;
+  expect([back.bigText, back.oneHand, back.still]).toEqual([true, true, true]);
 });

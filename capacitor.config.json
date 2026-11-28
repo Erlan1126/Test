@@ -3,7 +3,7 @@
   "appName": "Buildaroo",
   "webDir": "dist",
   "backgroundColor": "#d6f0fc",
-  "loggingBehavior": "debug",
+  "loggingBehavior": "production",
   "android": {
     "allowMixedContent": false,
     "captureInput": true,

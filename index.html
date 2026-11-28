@@ -35,7 +35,7 @@
   <div class="splash-by">Big Bruce Studios</div>
 </div>
 <canvas id="fx" hidden aria-hidden="true"></canvas>
-<canvas id="game" aria-label="Skyrise game. Tap or press Space to drop a floor."></canvas>
+<canvas id="game" aria-label="{game} game. Tap or press Space to drop a floor."></canvas>
 
 <div id="countin" class="countin" hidden aria-live="assertive"></div>
 <div id="hud" hidden>
@@ -104,7 +104,7 @@
 
 <div id="menu">
   <div class="menu-top">
-    <h1 class="logo" aria-label="Skyrise"><svg class="logo-art" viewBox="0 0 600 150" role="img" aria-hidden="true">
+    <h1 class="logo" aria-label="{game}"><svg class="logo-art" viewBox="0 0 600 150" role="img" aria-hidden="true">
       <defs>
         <linearGradient id="logo-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#ffffff"/><stop offset="0.32" stop-color="#ffe27a"/><stop offset="0.66" stop-color="#ff8a5c"/><stop offset="1" stop-color="#ff4f9a"/>
@@ -142,7 +142,7 @@
     <div class="challenge-chip" id="menu-challenge" hidden></div>
     <button type="button" class="status-line" id="status-line" hidden></button>
     <button type="button" class="collect-chip" id="collect-chip" hidden></button>
-    <button type="button" class="install-chip" id="install-chip" hidden>Install Skyrise as an app</button>
+    <button type="button" class="install-chip" id="install-chip" hidden>Install {game} as an app</button>
     <div class="mode-row" id="mode-row" role="radiogroup" aria-label="Mode"><button type="button" class="mode-chip" id="classic-btn" role="radio" aria-checked="false"><em aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 21V6l4-3 4 3v15M5 21h14M11 8h2M11 12h2M11 16h2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg></em><span>Classic</span><i class="dot" hidden></i></button><button type="button" class="mode-chip" id="daily-btn" role="radio" aria-checked="false" hidden><em aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5zM4 10h16M8.5 3v4M15.5 3v4M10 15l1.5 1.5L15 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg></em><span><b id="daily-tower-label">Daily</b></span><i class="dot" hidden></i></button><button type="button" class="mode-chip" id="challenges-btn" role="radio" aria-checked="false" hidden><em aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6zM9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg></em><span>Journey</span><i class="dot" hidden></i></button><button type="button" class="mode-chip" id="zen-btn" role="radio" aria-checked="false" hidden><em aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 15-14-1 10-6 15-14 15M5 19l7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg></em><span>Zen</span><i class="dot" hidden></i></button></div>
     <button type="button" class="tap-hint" id="play"><span id="play-label">Tap anywhere to build</span></button>
     <button type="button" class="link-btn" id="restore-link" hidden>Played before? Restore your progress</button>
@@ -170,6 +170,7 @@
   <div class="tcy-events" id="tcy-events"></div>
   <button type="button" class="tcy-builds" id="tcy-builds" hidden aria-label="Builders"></button>
   <button type="button" class="tcy-next" id="tcy-next"></button>
+  <div class="tcy-zoom" id="tcy-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button></div>
   <div class="era-nudge" id="era-nudge" hidden role="status"></div>
   <button type="button" class="block-skip" id="block-skip" hidden>Skip<span class="chev" aria-hidden="true"></span></button>
   <div class="block-say" id="block-say" role="status" aria-live="polite" hidden></div>
@@ -535,7 +536,7 @@
   <div class="sheet">
     <div class="sheet-top">
       <div class="sheet-head">
-        <div><h2 id="ranks-title">Leaderboard</h2><p id="ranks-sub2">Friends you share Skyrise with</p></div>
+        <div><h2 id="ranks-title">Leaderboard</h2><p id="ranks-sub2">Friends you share {game} with</p></div>
         <button type="button" class="gc-btn" id="gc-btn" hidden>Game Center</button>
         <button type="button" class="close-btn" aria-label="Close">×</button>
       </div>
@@ -599,7 +600,7 @@
       <div class="ty-boosts" id="ty-boosts"></div>
       <h3 class="sheet-sub">New Era</h3>
       <div class="ty-era" id="ty-era-card"></div>
-      <p class="sheet-note">Every person in your sky city works here: build taller towers to earn more. Managers keep businesses running even while Skyrise is closed.</p>
+      <p class="sheet-note">Every person in your sky city works here: build taller towers to earn more. Managers keep businesses running even while {game} is closed.</p>
     </div>
   </div>
 </div>
@@ -630,7 +631,7 @@
     <ul class="land-perks" id="land-perks"></ul>
     <div class="land-price"><small id="land-price-label">Price</small><b id="land-price"></b><i class="land-bar"><i id="land-bar"></i></i><small id="land-have"></small></div>
     <div class="sheet-foot">
-      <button type="button" class="btn-primary land-buy-btn" id="land-buy-btn">Buy this island</button>
+      <button type="button" class="btn btn-primary land-buy-btn" id="land-buy-btn">Buy this island</button>
       <p class="land-step" id="land-step"></p>
     </div>
   </div>
@@ -714,6 +715,12 @@
         </div>
       </div>
     </div>
+    <div class="group" aria-labelledby="a11y-title">
+      <h3 class="group-title" id="a11y-title">Accessibility</h3>
+      <label class="setting"><span class="set-ico" aria-hidden="true">🔠</span><b>Bigger text<small>Larger menus, cards and buttons</small></b><input type="checkbox" id="set-bigtext" class="switch"></label>
+      <label class="setting"><span class="set-ico" aria-hidden="true">👍</span><b>One-handed play<small>Zoom buttons by your thumb</small></b><input type="checkbox" id="set-onehand" class="switch"></label>
+      <label class="setting"><span class="set-ico" aria-hidden="true">🍃</span><b>Less motion<small>No bouncing, sliding or screen shake</small></b><input type="checkbox" id="set-still" class="switch"></label>
+    </div>
     <div class="group">
       <button type="button" class="setting link" id="help-btn"><span class="set-ico" aria-hidden="true">📖</span><b>How to play</b><span class="chev" aria-hidden="true"></span></button>
       <button type="button" class="setting link" id="replay-tips"><span class="set-ico" aria-hidden="true">💡</span><b>Show beginner tips again</b><span class="chev" aria-hidden="true"></span></button>
@@ -738,6 +745,12 @@
           <p class="transfer-msg" id="code-msg" role="status"></p>
         </div>
       </details>
+    </div>
+    <div class="group" id="legal-group">
+      <button type="button" class="setting link" id="restore-purchases" hidden><span class="set-ico" aria-hidden="true">🧾</span><b>Restore purchases<small>Brings back VIP after reinstalling or on a new phone</small></b><span class="chev" aria-hidden="true"></span></button>
+      <a class="setting link" href="mailto:support@bigbrucestudios.com"><span class="set-ico" aria-hidden="true">✉️</span><b>Help and support<small>support@bigbrucestudios.com</small></b><span class="chev" aria-hidden="true"></span></a>
+      <a class="setting link" href="https://www.bigbrucestudios.com/privacy/" target="_blank" rel="noopener"><span class="set-ico" aria-hidden="true">🔒</span><b>Privacy policy</b><span class="chev" aria-hidden="true"></span></a>
+      <a class="setting link" id="terms-link" href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener" hidden><span class="set-ico" aria-hidden="true">📄</span><b>Terms of use</b><span class="chev" aria-hidden="true"></span></a>
     </div>
   </div>
 </div>

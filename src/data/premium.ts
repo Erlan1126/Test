@@ -77,7 +77,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: "founders", name: "Founder's Pack", kind: "bundle", crystals: 1500,
-    text: "Every premium skin and island (not Legendary), plus 50 stars. Thank you for supporting Skyrise!",
+    text: "Every premium skin and island (not Legendary), plus 50 stars. Thank you for supporting {game}!",
     grants: { skins: ["crystal", "sakura", "royal", "cyber"], themes: ["volcano", "candy"], stars: 50 },
   },
 ];

@@ -40,10 +40,27 @@ describe("land next to the island", () => {
     newEra(s, Date.now());
     expect(s.land).toEqual([]);
   });
+  it("sells the Canal Quarter after the Beach Resort, even to a save that's past it", () => {
+    const canal = LAND.find(l => l.id === "canal")!;
+    expect(canal.y).toBe(0);
+    expect(landHall("canal")).toBeGreaterThanOrEqual(landHall("resort"));
+    expect(landHall("canal")).toBeLessThanOrEqual(landHall("cloud"));
+    expect(BUSINESSES.filter(b => b.land === "canal")).toHaveLength(6);
+    // A save that already owns every other district keeps them all and gets the Canal Quarter.
+    const s = normalize({ ...defaultSave(), land: ["meadow", "lakeside", "hills", "resort", "cloud", "crystal", "orbit"] } as unknown as Record<string, unknown>);
+    s.tycoon.levels = { [BUSINESSES[0].id]: 3, [BUSINESSES[1].id]: 1 };
+    s.tycoon.tips = 3;
+    s.chapters.done = 9;
+    expect(landOnSale(s)?.id).toBe("canal");
+    s.tycoon.coins = 1e17;
+    expect(buyLand(s, "canal")).toBe("ok");
+    expect(s.land).toContain("canal");
+    expect(landOnSale(s)).toBeNull();
+  });
   it("sells the Beach Resort after Downtown and before the sky city, keeping old saves", () => {
-    expect(LAND.map(l => l.id)).toEqual(["meadow", "lakeside", "hills", "resort", "cloud", "crystal", "orbit"]);
+    expect(LAND.map(l => l.id)).toEqual(["meadow", "lakeside", "hills", "resort", "canal", "cloud", "crystal", "orbit"]);
     // (Each district keeps the number its buildings are saved under: the resort takes a new one.)
-    expect(LAND.map(l => l.slot)).toEqual([0, 1, 2, 6, 3, 4, 5]);
+    expect(LAND.map(l => l.slot)).toEqual([0, 1, 2, 6, 7, 3, 4, 5]);
     expect(landHall("resort")).toBeGreaterThanOrEqual(landHall("hills"));
     expect(landHall("resort")).toBeLessThanOrEqual(landHall("cloud"));
     const resort = LAND.find(l => l.id === "resort")!;
@@ -59,6 +76,9 @@ describe("land next to the island", () => {
     expect(landOnSale(s)?.id).toBe("resort");
     s.tycoon.coins = 1e15;
     expect(buyLand(s, "resort")).toBe("ok");
+    // (Then the Canal Quarter, the last ground district, then on up the sky city.)
+    expect(landOnSale(s)?.id).toBe("canal");
+    expect(buyLand(s, "canal")).toBe("ok");
     expect(landOnSale(s)?.id).toBe("crystal");
   });
   it("survives a save round trip and drops unknown or repeated ids", () => {
