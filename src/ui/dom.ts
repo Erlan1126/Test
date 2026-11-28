@@ -74,7 +74,9 @@ function ghostOut(el: HTMLElement): void {
   if (reduced() || typeof document === "undefined") return;
   ghost?.remove();
   const g = el.cloneNode(true) as HTMLElement;
-  g.removeAttribute("id");
+  // (The copy keeps the menu's own id, so it keeps the menu's look while it slides away: the
+  // real menu comes first in the page, so looking the id up still finds the real one. Only the
+  // ids inside it are dropped.)
   g.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
   g.classList.add("modal-ghost");
   g.setAttribute("aria-hidden", "true");
@@ -83,7 +85,15 @@ function ghostOut(el: HTMLElement): void {
   el.parentElement?.appendChild(g);
   if (gs && sheet) gs.scrollTop = sheet.scrollTop;
   ghost = g;
-  window.setTimeout(() => { g.remove(); if (ghost === g) ghost = null; }, 260);
+  // A tab page (Shop, Company, Goals, Me) is styled while a tab is open: that look stays on
+  // until its copy has slid away, or the page flashes its old design on the way out.
+  const tabs = typeof document !== "undefined" && document.body.classList.contains("tabs-open");
+  if (tabs) document.body.classList.add("tabs-closing");
+  window.setTimeout(() => {
+    g.remove();
+    if (ghost === g) ghost = null;
+    if (tabs && !document.querySelector(".modal-ghost")) document.body.classList.remove("tabs-closing");
+  }, 260);
 }
 
 export function openModal(el: HTMLElement, focusEl?: HTMLElement | null): void {
