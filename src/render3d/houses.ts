@@ -28,6 +28,27 @@ function rng(seed: number): () => number {
 /** Which design a lot gets, spread evenly over `n` designs. */
 const designOf = (seed: number, level: number, n: number) => (Math.imul((Math.floor(seed) | 0) ^ (level * 7919), 2246822519) >>> 16) % n;
 
+/** The skins offices and towers wear over their design: glass (null: a blue picked per
+ *  building), floor bands, mullions (thick stone piers on a stone skin), how tall the band
+ *  of windows is on each floor (and so how it glows at night), and what stands on the roof. */
+interface TowerSkin { glass: string | null; band: string; mull: string; wb: number; stone?: boolean; roof: "" | "gold" | "garden" | "pergola" | "heli" }
+export const TOWER_SKINS: TowerSkin[] = [
+  // Blue glass, white bands (the classic).
+  { glass: null, band: "#d8dce2", mull: "#c8ccd2", wb: 0.55, roof: "" },
+  // Warm bronze glass, dark bronze bands, a gold crown.
+  { glass: "#d6a861", band: "#6a4a2e", mull: "#8a6a3a", wb: 0.45, roof: "gold" },
+  // Seafoam glass, slim white ribbons, a roof garden.
+  { glass: "#6cc8b8", band: "#f6f6f0", mull: "#eef2ee", wb: 0.34, roof: "garden" },
+  // Rose stone with deep-set windows and a pergola terrace.
+  { glass: "#eab4a2", band: "#fbeee6", mull: "#f4d6ca", wb: 0.32, stone: true, roof: "pergola" },
+  // Midnight glass, sky-blue trim, a helipad.
+  { glass: "#3a4e74", band: "#8fd8ff", mull: "#6a7ea8", wb: 0.4, roof: "heli" },
+];
+/** Which skin a building wears: from where it stands on the grid (never the same as the
+ *  buildings beside it), else from its seed. */
+export const towerSkin = (seed: number, at?: [number, number]): number =>
+  at ? (((at[0] * 3 + at[1] * 7) % TOWER_SKINS.length) + TOWER_SKINS.length) % TOWER_SKINS.length : (Math.imul((Math.floor(seed) | 0) ^ 0x5bd1, 2654435761) >>> 20) % TOWER_SKINS.length;
+
 /** Which of a level's 10 designs a lot shows (the collection book counts these). */
 export const houseDesign = (seed: number, level: number, at?: [number, number], n = 10): number =>
   at ? (((at[0] + 2 * at[1] + level * 5) % n) + n) % n : designOf(seed, level, n);
@@ -105,6 +126,8 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
     box(w + 0.06, 0.12, d + 0.06, cx, y, cz, k.c("#d8d4cc", 0.85));
     box(w - 0.12, 0.02, d - 0.12, cx, y + 0.11, cz, k.c("#8a8f98", 0.9));
     box(w + 0.1, 0.03, d + 0.1, cx, y + 0.12, cz, trim);
+    // (Offices and towers: whatever their skin puts on the roof, in place of the plant.)
+    if (lv >= 4 && w > 0.9 && roofTop(w, d, y, cx, cz)) return;
     if (plant) {
       for (let i = 0; i < 2; i++) { const ax = cx + (r() - 0.5) * (w - 0.8), az = cz + (r() - 0.5) * (d - 0.8); box(0.32, 0.18, 0.26, ax, y + 0.12, az, k.c("#c8ccd2", 0.6, 0.3)); T(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 12).translate(ax, y0 + y + 0.31, az), dark); }
       T(new THREE.CylinderGeometry(0.05, 0.05, 0.22, 8).translate(cx + w * 0.3, y0 + y + 0.23, cz - d * 0.3), metal);
@@ -500,19 +523,61 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
   }
 
   // Glass buildings: a stone podium, curtain walls with mullions and floor bands, a crown.
-  const glassC = pick(["#6f9ec4", "#5a8aa8", "#7fb0c8", "#4f7a9a", "#8aa8c0"]), glass = k.c(glassC, 0.12, 0.55);
+  // (Each tall building also wears one of the skins, picked from where it stands: its glass,
+  // its floor bands, how deep its windows sit and what stands on its roof, so a skyline of
+  // them never repeats one look.)
+  const sk = TOWER_SKINS[towerSkin(seed, at)];
+  const glassC = sk.glass ?? pick(["#6f9ec4", "#5a8aa8", "#7fb0c8", "#4f7a9a", "#8aa8c0"]), glass = sk.stone ? k.c(glassC, 0.8) : k.c(glassC, 0.12, 0.55);
+  const bandM = k.c(sk.band, 0.5, 0.3), mullM = sk.stone ? k.c(sk.mull, 0.8) : k.c(sk.mull, 0.4, 0.5);
   const tower = (w: number, d: number, yb: number, floors: number, fh: number, cx = 0, cz = 0) => {
     box(w, floors * fh, d, cx, yb, cz, glass);
     // Floor bands (lit windows behind at night) and mullions.
     for (let f = 0; f < floors; f++) {
       const y = yb + f * fh;
-      box(w + 0.05, 0.05, d + 0.05, cx, y, cz, k.c("#d8dce2", 0.5, 0.3));
-      box(w + 0.03, fh * 0.55, d + 0.03, cx, y + fh * 0.25, cz, k.win);
+      box(w + 0.05, 0.05, d + 0.05, cx, y, cz, bandM);
+      box(w + 0.03, fh * sk.wb, d + 0.03, cx, y + fh * 0.25, cz, k.win);
     }
-    const n = Math.max(3, Math.round(w / 0.32)), m = Math.max(3, Math.round(d / 0.32));
-    for (let i = 0; i <= n; i++) for (const sz of [-1, 1]) box(0.025, floors * fh, 0.03, cx - w / 2 + (i / n) * w, yb, cz + sz * (d / 2 + 0.01), k.c("#c8ccd2", 0.4, 0.5));
-    for (let i = 0; i <= m; i++) for (const sx of [-1, 1]) box(0.03, floors * fh, 0.025, cx + sx * (w / 2 + 0.01), yb, cz - d / 2 + (i / m) * d, k.c("#c8ccd2", 0.4, 0.5));
+    // (A stone skin has thick piers between its windows: rows of deep-set windows, not a
+    // glass curtain.)
+    const pw = sk.stone ? 0.11 : 0.025, pd = sk.stone ? 0.07 : 0.03, sp = sk.stone ? 0.44 : 0.32;
+    const n = Math.max(3, Math.round(w / sp)), m = Math.max(3, Math.round(d / sp));
+    for (let i = 0; i <= n; i++) for (const sz of [-1, 1]) box(pw, floors * fh, pd, cx - w / 2 + (i / n) * w, yb, cz + sz * (d / 2 + 0.01), mullM);
+    for (let i = 0; i <= m; i++) for (const sx of [-1, 1]) box(pd, floors * fh, pw, cx + sx * (w / 2 + 0.01), yb, cz - d / 2 + (i / m) * d, mullM);
     return yb + floors * fh;
+  };
+  /** What stands on an office's or a tower's flat roof, by its skin: a gold crown, a roof
+   *  garden, a pergola terrace or a helipad (or, returning false, the usual plant). */
+  const roofTop = (w: number, d: number, y: number, cx: number, cz: number): boolean => {
+    const Y = y0 + y, s = Math.min(w, d);
+    if (sk.roof === "gold") {
+      const gold = k.c("#e8b020", 0.3, 0.8);
+      box(w + 0.16, 0.1, d + 0.16, cx, y + 0.04, cz, gold);
+      T(new THREE.SphereGeometry(s * 0.3, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(cx, Y + 0.14, cz), gold);
+      T(new THREE.ConeGeometry(0.05, 0.8, 8).translate(cx, Y + s * 0.3 + 0.5, cz), gold);
+      return true;
+    }
+    if (sk.roof === "garden" || sk.roof === "pergola") {
+      box(w - 0.16, 0.08, d - 0.16, cx, y + 0.1, cz, k.c("#6aa84a", 0.95));
+      const leafC = k.c("#3a8a3a", 0.9), bloom = k.c(["#ff8ab0", "#ffd23a", "#b48cff"][Math.abs(Math.floor(seed)) % 3], 0.8);
+      for (const [fx, fz, q] of [[-0.3, -0.28, 0.2], [0.3, -0.26, 0.16], [-0.28, 0.3, 0.15], [0.31, 0.3, 0.19]]) {
+        T(new THREE.IcosahedronGeometry(q * s, 0).translate(cx + fx * w, Y + 0.18 + q * s * 0.6, cz + fz * d), leafC);
+      }
+      for (let i = 0; i < 4; i++) T(new THREE.SphereGeometry(0.06, 6, 4).translate(cx - w * 0.2 + i * w * 0.13, Y + 0.22, cz + d * 0.04), bloom);
+      if (sk.roof === "pergola") {
+        const wd = k.c("#c8a070", 0.8);
+        for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(0.05, 0.42, 0.05, cx + px * w * 0.2, y + 0.18, cz + pz * d * 0.2, wd);
+        for (let i = 0; i < 4; i++) box(w * 0.46, 0.03, 0.05, cx, y + 0.6, cz - d * 0.2 + i * d * 0.133, wd);
+      }
+      return true;
+    }
+    if (sk.roof === "heli") {
+      const R = s * 0.36, white = k.c("#ffffff", 0.6);
+      T(new THREE.CylinderGeometry(R, R, 0.06, 20).translate(cx, Y + 0.15, cz), k.c("#4a4f5a", 0.7));
+      T(new THREE.RingGeometry(R * 0.62, R * 0.76, 20).rotateX(-Math.PI / 2).translate(cx, Y + 0.185, cz), k.c("#f2c230", 0.6));
+      box(0.06, 0.006, R * 0.6, cx - R * 0.2, y + 0.18, cz, white); box(0.06, 0.006, R * 0.6, cx + R * 0.2, y + 0.18, cz, white); box(R * 0.4, 0.006, 0.06, cx, y + 0.18, cz, white);
+      return true;
+    }
+    return false;
   };
   /** A many-sided glass column (sides 3 = triangle, 6 hexagon, 8 octagon, 24 round), maybe
    *  tapering, with a band of windows and a slab at every floor. */
@@ -521,8 +586,8 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
     T(new THREE.CylinderGeometry(rAt(h), R, h, sides).rotateY(rot).translate(cx, y0 + yb + h / 2, cz), glass);
     for (let f = 0; f < floors; f++) {
       const y = f * fh, ra = rAt(y), rb = rAt(y + fh);
-      T(new THREE.CylinderGeometry(ra + 0.035, ra + 0.035, 0.05, sides).rotateY(rot).translate(cx, y0 + yb + y, cz), k.c("#d8dce2", 0.5, 0.3));
-      T(new THREE.CylinderGeometry((ra + rb) / 2 + 0.015, (ra + rb) / 2 + 0.015, fh * 0.5, sides, 1, true).rotateY(rot).translate(cx, y0 + yb + y + fh * 0.48, cz), k.win);
+      T(new THREE.CylinderGeometry(ra + 0.035, ra + 0.035, 0.05, sides).rotateY(rot).translate(cx, y0 + yb + y, cz), bandM);
+      T(new THREE.CylinderGeometry((ra + rb) / 2 + 0.015, (ra + rb) / 2 + 0.015, fh * Math.min(0.5, sk.wb), sides, 1, true).rotateY(rot).translate(cx, y0 + yb + y + fh * 0.48, cz), k.win);
     }
     return yb + h;
   };
@@ -1002,8 +1067,10 @@ export function buildHouse(G: THREE.Group, seed: number, level: number, k: House
   top = tower(W * 0.8, D * 0.8, top + 0.08, f2, fh);
   box(W * 0.8 + 0.06, 0.08, D * 0.8 + 0.06, 0, top, 0, trim);
   top = tower(W * 0.6, D * 0.6, top + 0.08, f3, fh);
-  // The crown: a lit band, a pyramid cap and a mast with a red light.
+  // The crown: a lit band, then (by its skin) a roof garden, a helipad or a gold dome, or a
+  // pyramid cap and a mast with a red light.
   box(W * 0.6 + 0.08, 0.2, D * 0.6 + 0.08, 0, top, 0, k.c("#e8e4da", 0.4, 0.4));
+  if (sk.roof && roofTop(W * 0.6, D * 0.6, top + 0.2, 0, 0)) return top + 1.4 + y0;
   T(new THREE.CylinderGeometry(0.01, W * 0.42, 0.7, 4).rotateY(Math.PI / 4).translate(0, y0 + top + 0.55, 0), glass);
   T(new THREE.CylinderGeometry(0.025, 0.04, 1.1, 8).translate(0, y0 + top + 1.45, 0), metal);
   T(new THREE.SphereGeometry(0.05, 8, 6).translate(0, y0 + top + 2.02, 0), k.c("#ff3a3a", 0.4));
