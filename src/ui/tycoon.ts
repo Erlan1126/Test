@@ -468,8 +468,12 @@ export class TycoonUI {
       this.frameUntil = Math.max(this.frameUntil, Date.now() + (intro ? 180000 : 4000));
       this.render();
       if (intro) {
-        // Pip speaks once the neighbor is in (or the arrival was skipped).
-        const note = () => this.welcomeNote(() => this.walkToCart());
+        // A first look at the town's City Hall in its corner, then back to the cart.
+        if (HAS_CITY) this.later(700, () => { this.host.visitLandmark(-4, 3000); });
+        // Pip speaks once the neighbor is in (or the arrival was skipped), and once the camera
+        // is back from the City Hall: his words point at the apartment block.
+        const back = Date.now() + (HAS_CITY ? 4600 : 0);
+        const note = () => { const w = back - Date.now(); if (w > 0) setTimeout(() => this.welcomeNote(() => this.walkToCart()), w); else this.welcomeNote(() => this.walkToCart()); };
         if (this.story.stage === "arrive") this.afterArrival = note;
         else setTimeout(note, 1600);
       } else this.later(4000, () => { if (this.save.tycoon.tips > 0) { this.frameUntil = 0; this.render(); } });
