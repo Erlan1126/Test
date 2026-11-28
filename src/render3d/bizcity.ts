@@ -20,7 +20,7 @@ import { PROP_PEOPLE } from "../data/props";
 import { hydrant, mailbox, plazaPiece, roundCenter, seatPiece, type DecoKit } from "./streetdecor";
 import { NatureBatch, gardenGeometry, natureMaterial, treeGeo, type TreeKind } from "./trees";
 import { buildCityHall } from "./cityhall";
-import { ALL, BEACH, C, CELLS, CITY_LOTS, DIST_GAP, DIST_H, DIST_N, HALL_R, HALL_SCALE, ISLAND_PAD, NEIGH, NEIGH_PARK, OFF, PARKS, PLAZA, PLOT, cellXZ, distEdge, grow, hallSpot, insidePoly, growGrid, landJoin, landPrev, landSpot, makeOutline } from "./townplan";
+import { ALL, BEACH, C, CELLS, CITY_LOTS, DIST_GAP, DIST_H, DIST_N, CIVIC, CIVIC_IN, HALL_PLAZA, HALL_SCALE, ISLAND_PAD, NEIGH, NEIGH_PARK, OFF, PARKS, PLAZA, PLOT, cellXZ, distEdge, grow, hallSpot, insidePoly, isCivic, onHall, growGrid, landJoin, landPrev, landSpot, makeOutline } from "./townplan";
 export { CITY_LOTS, landJoin, landPrev, landSpot };
 import { buildHouse, houseDesign, type HouseKit } from "./houses";
 import { isRushHour, isWeekendNight } from "../data/season";
@@ -886,7 +886,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   const outer = gridOut;
   const outerSet = new Set(outer.map(c => `${c[0]},${c[1]}`));
   /** Whether a point is on the city grid's blocks or a district (not countryside). */
-  const inGrid = (x: number, z: number, m = 0.4) => inDist(x, z, m) || outer.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + m && Math.abs(z - p.z) < C / 2 + m; });
+  const inGrid = (x: number, z: number, m = 0.4) => inDist(x, z, m) || onHall(x, z, 0, m) || outer.some(c => { const p = cellXZ(c); return Math.abs(x - p.x) < C / 2 + m && Math.abs(z - p.z) < C / 2 + m; });
   // The grid's streets: the same asphalt, curb and sidewalk as the town's, with markings on
   // every street between two blocks.
   {
@@ -899,15 +899,15 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       const distAt = (gx: number, gz: number) => { const p = cellXZ([gx, gz]); return inDist(p.x, p.z, -0.1); };
       for (const [a, b, along] of [[1, 0, "z"], [0, 1, "x"]] as const) {
         const n = `${cell[0] + a},${cell[1] + b}`;
-        if (outerSet.has(n) || inAllO(cell[0] + a, cell[1] + b) || distAt(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
+        if (outerSet.has(n) || inAllO(cell[0] + a, cell[1] + b) || isCivic(cell[0] + a, cell[1] + b) || distAt(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
       }
-      for (const [a, b, along] of [[-1, 0, "z"], [0, -1, "x"]] as const) if (inAllO(cell[0] + a, cell[1] + b) || distAt(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
+      for (const [a, b, along] of [[-1, 0, "z"], [0, -1, "x"]] as const) if (inAllO(cell[0] + a, cell[1] + b) || isCivic(cell[0] + a, cell[1] + b) || distAt(cell[0] + a, cell[1] + b)) markStreet(add, x + a * q, z + b * q, along, C - 0.6);
       // Where the city ends (no street beyond): the last half street is a sidewalk with a curb,
       // not asphalt running out onto the grass.
       const beachSet = BEACH.some(c => c[0] === cell[0] && c[1] === cell[1] - 1);
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
         const nx2 = cell[0] + a, nz2 = cell[1] + b;
-        if (outerSet.has(`${nx2},${nz2}`) || inAllO(nx2, nz2) || distAt(nx2, nz2) || (b === -1 && beachSet)) continue;
+        if (outerSet.has(`${nx2},${nz2}`) || inAllO(nx2, nz2) || isCivic(nx2, nz2) || distAt(nx2, nz2) || (b === -1 && beachSet)) continue;
         const ex = x + a * (C / 2 - ROAD / 2), ez = z + b * (C / 2 - ROAD / 2), w = a ? ROAD : C, d = a ? C : ROAD;
         add(new THREE.BoxGeometry(w, 0.2, d).translate(ex, 0.1, ez), walk);
         add(new THREE.BoxGeometry(a ? 0.14 : C, 0.22, a ? C : 0.14).translate(x + a * (C / 2 - 0.07), 0.11, z + b * (C / 2 - 0.07)), curb);
@@ -1009,7 +1009,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       for (const c of cand) { if (parks.length >= 3) break; if (hallAt && Math.hypot(hallAt.x - c.x, hallAt.z - c.z) < c.r + 4) continue; if (parks.every(p => Math.hypot(p.x - c.x, p.z - c.z) > p.r + c.r + 2)) parks.push({ ...c, r: Math.min(c.r, 11) }); }
     }
   }
-  const inPark = (x: number, z: number) => parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r) || (!!hallAt && Math.hypot(x - hallAt.x, z - hallAt.z) < HALL_R + 0.1);
+  const inPark = (x: number, z: number) => parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r) || onHall(x, z, 0, 0.3);
   // (Nothing of the countryside's goes on the land the player bought: that's for its own build.)
   const onLand = (x: number, z: number) => landBuilt.some(sp => Math.abs(x - sp.x) < DIST_H + 0.6 && Math.abs(z - sp.z) < DIST_H + 0.6) || nearLink(x, z) || inPark(x, z);
   // The road from the town's streets out to the first island's bridge (once it's for sale or
@@ -1053,7 +1053,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     // (Even steps, about 1.1 apart, so the curve reads as one smooth road.)
     const even: [number, number][] = [];
     for (let i = 0; i < ringR.length; i++) { const a = ringR[i], b = ringR[(i + 1) % ringR.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let d = 0; d < L; d += 1.1) even.push([a[0] + ((b[0] - a[0]) * d) / L, a[1] + ((b[1] - a[1]) * d) / L]); }
-    const okAt = (x: number, z: number) => insidePoly(hull, x, z, 1.6) && z > beachZ + 1.2 && !landBuilt.some(sp => Math.abs(x - sp.x) < DIST_H + 0.8 && Math.abs(z - sp.z) < DIST_H + 0.8) && !parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r) && !(hallAt && Math.hypot(x - hallAt.x, z - hallAt.z) < HALL_R + 0.3) && !ALL.some(c => { const q = cellXZ(c); return Math.abs(x - q.x) < C / 2 + 1.4 && Math.abs(z - q.z) < C / 2 + 1.4; });
+    const okAt = (x: number, z: number) => insidePoly(hull, x, z, 1.6) && z > beachZ + 1.2 && !landBuilt.some(sp => Math.abs(x - sp.x) < DIST_H + 0.8 && Math.abs(z - sp.z) < DIST_H + 0.8) && !parks.some(p => Math.hypot(x - p.x, z - p.z) < p.r) && !onHall(x, z, 0, 0.3) && !ALL.some(c => { const q = cellXZ(c); return Math.abs(x - q.x) < C / 2 + 1.4 && Math.abs(z - q.z) < C / 2 + 1.4; });
     for (let i = 0; i < even.length; i++) {
       const a = even[i], b = even[(i + 1) % even.length];
       if (!okAt(a[0], a[1]) || !okAt(b[0], b[1])) continue;
@@ -1069,18 +1069,64 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
   // dome and statue, and at last a grand capitol with a beacon). Tap it for Mayor Pip's story.
   if (hallAt) {
     const { x: hx, z: hz } = hallAt, rk = cafe.hall ? Math.min(6, Math.round((cafe.hall - 1) * 0.6)) : cafe.rank ?? 0, H = new THREE.Group();
-    const T = (geo: THREE.BufferGeometry, m: THREE.Material) => H.add(new THREE.Mesh(geo, m));
+    // ---- The civic block: a whole 2 by 2 block of the grid, the hall's own square ----
+    // Streets round it like any block's (half a street on its side of the line) where there
+    // is a block across the street; where the city hasn't reached yet, a sidewalk and a curb
+    // to the grass (the streets grow round it later). Never a street through it.
+    {
+      const blockAt = (gx: number, gz: number) => ALL.some(c => c[0] === gx && c[1] === gz) || outerSet.has(`${gx},${gz}`) || (() => { const p = cellXZ([gx, gz]); return inDist(p.x, p.z, -0.1); })();
+      for (const cell of CIVIC) {
+        const { x, z } = cellXZ(cell);
+        add(new THREE.BoxGeometry(C, 0.1, C).translate(x, 0.0, z), road);
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const nx2 = cell[0] + a, nz2 = cell[1] + b;
+          if (isCivic(nx2, nz2)) continue;
+          // (A town or grid block across the street: the street between them, its markings
+          // drawn once, here for the town's blocks, by the grid's own blocks for theirs.)
+          if (blockAt(nx2, nz2)) {
+            if (ALL.some(c => c[0] === nx2 && c[1] === nz2)) markStreet(add, x + a * q, z + b * q, a ? "z" : "x", C - 0.6);
+            continue;
+          }
+          const ex = x + a * (C / 2 - ROAD / 2), ez = z + b * (C / 2 - ROAD / 2), w = a ? ROAD : C, d = a ? C : ROAD;
+          add(new THREE.BoxGeometry(w, 0.2, d).translate(ex, 0.1, ez), walk);
+          add(new THREE.BoxGeometry(a ? 0.14 : C, 0.22, a ? C : 0.14).translate(x + a * (C / 2 - 0.07), 0.11, z + b * (C / 2 - 0.07)), curb);
+        }
+      }
+      // The block itself: a curb and a sidewalk all round, the same as every block's.
+      const B = CIVIC_IN * 2;
+      add(roundSlab(B + 0.24, B + 0.24, BLOCK_R + 0.12, 0.056).translate(hx, 0, hz), gutterM);
+      add(roundSlab(B, B, BLOCK_R, 0.18).translate(hx, 0, hz), curb);
+      add(roundSlab(B - 0.16, B - 0.16, BLOCK_R - 0.1, 0.2).translate(hx, 0, hz), walk);
+      // Inside the sidewalk a lawn; on it the square: paving with a stone border, walks in
+      // from the middle of each side, and the hall in the middle.
+      const LAWN = B - 1.0, PL = HALL_PLAZA * 2, W2 = 1.3;
+      add(roundSlab(LAWN, LAWN, 0.5, 0.06).translate(hx, 0.2, hz), grass);
+      add(roundSlab(PL + 0.3, PL + 0.3, 1.25, 0.07).translate(hx, 0.2, hz), stone);
+      add(roundSlab(PL, PL, 1.1, 0.09).translate(hx, 0.2, hz), plazaM);
+      const len = (LAWN - PL) / 2 + 0.1, mid = PL / 2 + len / 2 - 0.05;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        add(new THREE.BoxGeometry(a ? len : W2, 0.085, a ? W2 : len).translate(hx + a * mid, 0.2 + 0.0425, hz + b * mid), plazaM);
+        // Low hedges either side of each walk, and lamps where the walk meets the square.
+        for (const sd of [-1, 1]) {
+          const along = mid, across = sd * (W2 / 2 + 0.75);
+          nature.garden("hedge", hx + (a ? a * along : across), 0.26, hz + (b ? b * along : across), 1.0, 3, a ? 0 : Math.PI / 2);
+          const lAlong = PL / 2 + 0.2, lAcross = sd * (W2 / 2 + 0.2);
+          nature.garden("lamp", hx + (a ? a * lAlong : lAcross), 0.26, hz + (b ? b * lAlong : lAcross), 1.0, 5, 0);
+        }
+      }
+      // Trees in the lawn's four corners, flower beds beside them.
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const tx = hx + sx * (LAWN / 2 - 0.75), tz = hz + sz * (LAWN / 2 - 0.75);
+        tree(tx, tz, 0.95, 0.26);
+      }
+    }
     const goldM = mats.gold;
-    // The square: paving, steps and planters.
-    T(new THREE.CylinderGeometry(3.3, 3.35, 0.08, 32).translate(0, 0.04, 0), plazaM);
-    T(new THREE.RingGeometry(3.0, 3.25, 32).rotateX(-Math.PI / 2).translate(0, 0.085, 0), mats.c("#d9cfbd", 0.8));
     // The building itself: real architecture, growing with the hall's level (cityhall.ts).
     const built = buildCityHall(H, rk, {
       c: (c, r = 0.7, m = 0) => mats.c(c, r, m), win: winMat, gold: goldM,
       beacon: () => { const bm = own(std("#fff3c0", { emissive: 0xffd27a, emissiveIntensity: 1.2 })); bm.userData.dynamic = true; townTicksEarly.push(t => { bm.emissiveIntensity = 0.8 + Math.sin(t * 2.5) * 0.5; }); return bm; },
     });
     const top = built.top, D = built.D;
-    // Winter Lights: a holiday tree in the square, beside the steps.
     // Each season has its own piece in the square, beside the steps.
     const sqx = 1.75, sqz = Math.min(D / 2 + 1.45, 2.3);
     if (cafe.season === "winter") townTicksEarly.push(holidayTree(H, sqx, 0.08, sqz, 2.1, own));
@@ -1089,16 +1135,16 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
     else if (cafe.season === "halloween") { const tk = pumpkins(H, sqx, 0.08, sqz, 1.4, own); townTicksEarly.push(tk); }
     // The night market opens on the other side of the steps after dark.
     if (HAS_CITY && (cafe.hall ?? 0) >= 2) townTicksEarly.push(nightMarket(H, -sqx - 0.1, 0.08, sqz, 1.5, own));
-    // Clipped trees in stone planters at the square's corners.
+    // Clipped trees in stone planters at the corners of the hall.
     for (const [px, pz] of [[-2.5, D / 2 + 0.9], [2.5, D / 2 + 0.9], [-2.6, -1.4], [2.6, -1.4]]) H.add(new THREE.Mesh(gardenGeometry("topiary", 3).scale(1.5, 1.5, 1.5).translate(px, 0.08, pz), natureM));
-    // Facing the town's middle, at an angle on its own corner of the island, a touch bigger
-    // than its first design (the same at every level: it never snaps to the grid or shrinks).
+    // Square on its block, sideways to the town's camera (its front and a side), a touch bigger
+    // than its first design (one spot at every level: it never moves or shrinks).
     const hs = HALL_SCALE;
     H.rotation.y = hallSpot().rot;
     H.scale.setScalar(hs);
-    H.position.set(hx, 0, hz);
+    H.position.set(hx, 0.2, hz);
     g.add(H);
-    hallTop = (top + 0.3) * hs;
+    hallTop = (top + 0.3) * hs + 0.2;
   }
   // The parks: a lake with a sandy shore, a path all round it with benches facing the water,
   // a wooden jetty with a rowboat, a white gazebo, flower beds, and trees in a ring.

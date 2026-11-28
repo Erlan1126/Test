@@ -29,50 +29,49 @@ export const cellXZ = ([gx, gz]: [number, number]) => ({ x: gx * C - OFF, z: gz 
 /** How far the island reaches past the town's streets. */
 export const ISLAND_PAD = 3.4;
 
-/** The City Hall's square: how far its paving reaches from the middle, and how much bigger
- *  than its first design the hall stands (its square grows with it). */
-export const HALL_SCALE = 1.06;
-export const HALL_R = 3.35 * HALL_SCALE;
-let hallCache: { x: number; z: number; rot: number } | null = null;
-/** Where the City Hall stands: one fixed spot for the whole game, in every save. The open
- *  corner of the base island nearest the middle of town with room round it (off the town's
- *  blocks and the beach), turned to face the middle of town. Nothing else may be built on it:
- *  the city grid, the districts and the countryside all keep clear (see `hallClaims`). */
+/** The City Hall's own civic block: a whole 2 by 2 block of the street grid (streets round its
+ *  edges like any block's, none through it), by the town's front right corner. It is there
+ *  from the very first day, lawn, paving and all; the streets grow round it later. */
+export const CIVIC: [number, number][] = [[4, 0], [5, 0], [4, 1], [5, 1]];
+const civicKeys = new Set(CIVIC.map(c => `${c[0]},${c[1]}`));
+/** Whether a cell of the street grid is part of the civic block. */
+export const isCivic = (gx: number, gz: number): boolean => civicKeys.has(`${gx},${gz}`);
+/** The civic block's half-size, its streets included (half a street on each side). */
+export const CIVIC_H = C;
+/** Half the width of a street (the town's ROAD). */
+export const STREET_HALF = 1.2;
+/** The civic block's half-size inside its streets (the curb's outside edge). */
+export const CIVIC_IN = CIVIC_H - STREET_HALF;
+/** The hall's paved square (half its width), inside the civic block's lawn. */
+export const HALL_PLAZA = 4.6;
+/** How much bigger than its first design the hall stands on its square. */
+export const HALL_SCALE = 1.12;
+/** Where the City Hall stands: one fixed spot for the whole game, in every save, the middle of
+ *  its civic block. Square to its block's streets, its front steps on the walk toward the
+ *  town: from the town's diagonal camera it stands sideways, its front and a side both in
+ *  view, as it did on the open grass early in the game. */
 export function hallSpot(): { x: number; z: number; rot: number } {
-  if (hallCache) return hallCache;
-  const hull = baseOutline(), beachZ = cellXZ([0, 0]).z - C / 2;
-  const clear = (x: number, z: number) => {
-    let d = Infinity;
-    for (const c of ALL) { const p = cellXZ(c); d = Math.min(d, Math.hypot(Math.max(0, Math.abs(x - p.x) - C / 2), Math.max(0, Math.abs(z - p.z) - C / 2))); }
-    d = Math.min(d, z - beachZ);
-    for (let m = 1; m < d && m < 14; m += 1) if (!insidePoly(hull, x, z, m)) { d = Math.min(d, m - 1); break; }
-    return d;
-  };
-  const { x: tcx, z: tcz } = townMiddle();
-  const hx0 = Math.min(...hull.map(p => p[0])), hx1 = Math.max(...hull.map(p => p[0])), hz0 = Math.min(...hull.map(p => p[1])), hz1 = Math.max(...hull.map(p => p[1]));
-  let bestD = Infinity, at = { x: tcx, z: tcz };
-  for (let x = hx0; x <= hx1; x += 1) for (let z = hz0; z <= hz1; z += 1) {
-    if (!insidePoly(hull, x, z) || clear(x, z) < 3.4) continue;
-    const d = Math.hypot(x - tcx, z - tcz);
-    if (d < bestD) { bestD = d; at = { x, z }; }
-  }
-  return (hallCache = { ...at, rot: Math.atan2(tcx - at.x, tcz - at.z) });
+  const a = cellXZ(CIVIC[0]);
+  return { x: a.x + C / 2, z: a.z + C / 2, rot: HALL_ROT };
 }
+/** The hall's turn: its front faces +z, toward the town's blocks across the street. */
+export const HALL_ROT = 0;
 /** The middle of the town's own blocks. */
 export function townMiddle(): { x: number; z: number } {
   return { x: ALL.reduce((a, c) => a + cellXZ(c).x, 0) / ALL.length, z: ALL.reduce((a, c) => a + cellXZ(c).z, 0) / ALL.length };
 }
-/** Whether a square of half-size `h` round (x, z) reaches onto the City Hall's square (with `m` to spare). */
+/** Whether a square of half-size `h` round (x, z) reaches onto the civic block, its streets
+ *  included (with `m` to spare). */
 export function onHall(x: number, z: number, h = 0, m = 0): boolean {
   const s = hallSpot();
-  return Math.hypot(Math.max(0, Math.abs(x - s.x) - h), Math.max(0, Math.abs(z - s.z) - h)) < HALL_R + m;
+  return Math.abs(x - s.x) < CIVIC_H + h + m && Math.abs(z - s.z) < CIVIC_H + h + m;
 }
-/** Whether a block of the city grid (street included) would reach onto the City Hall's square. */
-export const hallClaims = (gx: number, gz: number): boolean => { const p = cellXZ([gx, gz]); return onHall(p.x, p.z, C / 2, 0.3); };
+/** Whether a block of the city grid is the civic block's (the grid never builds there). */
+export const hallClaims = (gx: number, gz: number): boolean => isCivic(gx, gz);
 
-export function makeOutline(pad: number, extra: [number, number][]): [number, number][] {
+export function makeOutline(pad: number, extra: [number, number][], civic = true): [number, number][] {
   const pts: [number, number][] = [...extra];
-  for (const c of [...ALL, ...BEACH]) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
+  for (const c of [...ALL, ...BEACH, ...(civic ? CIVIC : [])]) { const { x, z } = cellXZ(c); for (const dx of [-1, 1]) for (const dz of [-1, 1]) pts.push([x + dx * C / 2, z + dz * C / 2]); }
   pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const lower: [number, number][] = [], upper: [number, number][] = [];
@@ -140,6 +139,10 @@ export function grow(pts: [number, number][], d: number): [number, number][] {
 let baseHull: [number, number][] | null = null;
 /** The island's outline round the town alone (no bought land, no city grid). */
 export function baseOutline(): [number, number][] { return (baseHull ??= makeOutline(ISLAND_PAD, [])); }
+let spotHull: [number, number][] | null = null;
+/** The outline the districts' spots are measured from: the town's first island, before the
+ *  civic block was part of it (so every district keeps the spot it always had). */
+const spotOutline = (): [number, number][] => (spotHull ??= makeOutline(ISLAND_PAD, [], false));
 
 /** Land next to the island (data/land.ts): its middle and size, on sale (floating a little way
  *  off the edge) or bought (joined to the island, overlapping its edge). */
@@ -162,7 +165,7 @@ export function landSpot(k: number, bought: boolean): { x: number; z: number; r:
     // float together as one sky city above and behind the town, side by side, the first
     // straight behind it (reached by a sky lift), the next two beside it.
     void bought;
-    const hull = baseOutline(), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
+    const hull = spotOutline(), cx = hull.reduce((a, p) => a + p[0], 0) / hull.length, cz = hull.reduce((a, p) => a + p[1], 0) / hull.length;
     const exit = (dx: number, dz: number) => { let t = 0; while (t < 300 && insidePoly(hull, cx + dx * t, cz + dz * t)) t += 0.25; return t; };
     if (LAND[k].y === 0) {
       // (On the town's own street grid: its blocks line up with the town's, so the streets run
@@ -203,7 +206,7 @@ export function growGrid(landPts: [number, number][], land: number[], grow: numb
   // (Ground districts on sale too: the grid leaves their spot for them.)
   const dists = land.filter(k => landJoin(k) === "ground").map(k => landSpot(k, true));
   const inDist = (x: number, z: number) => dists.some(sp => Math.abs(x - sp.x) < 2 * C - 0.1 && Math.abs(z - sp.z) < 2 * C - 0.1);
-  const taken = new Set([...ALL, ...BEACH].map(c => `${c[0]},${c[1]}`));
+  const taken = new Set([...ALL, ...BEACH, ...CIVIC].map(c => `${c[0]},${c[1]}`));
   const back = cellXZ([0, 0]).z - C / 2;
   const fits = (gx: number, gz: number) => {
     if (taken.has(`${gx},${gz}`)) return false;
