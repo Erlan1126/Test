@@ -2737,4 +2737,5 @@ export const DE: Record<string, string> = {
   "🎄 You already got this float's tip. Try another one!": "🎄 Von diesem Wagen hast du schon Trinkgeld bekommen. Versuch einen anderen!",
   "Builders are on the {name}": "Die Bauleute bauen {name}",
   "{t} left · tap to see it": "Noch {t} · tippe zum Ansehen",
+  "The first door opens on December 1": "Das erste Türchen öffnet sich am 1. Dezember",
 };

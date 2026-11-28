@@ -3927,6 +3927,13 @@ export class TycoonUI {
     const x3 = $<HTMLButtonElement>("welcome-x3"), price = doublePrice(this.save, awayMs);
     x3.textContent = t("Double it · 💎 {n}", { n: price });
     x3.hidden = speedupsLeft(this.save) <= 0;
+    // (Without the crystals for it, Collect is the main button and doubling a quiet extra:
+    // a big pink button that only leads to the shop reads as a trap.)
+    const afford = this.save.crystals >= price;
+    x3.classList.toggle("btn-primary", afford); x3.classList.toggle("btn-secondary", !afford);
+    $("welcome-ok").classList.toggle("btn-primary", !afford); $("welcome-ok").classList.toggle("btn-secondary", afford);
+    // (The main button comes first.)
+    if (!afford) $("welcome-ok").after(x3); else $("welcome-ad").before(x3);
     let paid = false;
     // Or free, for a short optional ad (when ads are set up and today's limit isn't reached).
     const ad = $<HTMLButtonElement>("welcome-ad");

@@ -4897,3 +4897,43 @@ body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled small em {
   .earn-goal .eg-main { flex: 1 1 calc(100% - 64px); }
   .earn-goal .eg-skip { flex: 1 1 100%; flex-direction: row; justify-content: center; gap: 8px; margin-left: 60px; }
 }
+/* 320px phones: the Company tab's buy button fits "Buy ×1 · +$32.0M a sale · $698B" without clipping. */
+@media (max-width: 360px) {
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy { gap: 4px; padding: 0 10px 0 12px !important; font-size: 13px !important; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small { font-size: 11px; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small em { font-size: 9.5px; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy svg { width: 15px !important; height: 15px !important; }
+}
+/* Tap targets: small chips get at least 32px of height to hit (Apple asks for 44, these sit in text). */
+.page-intro button { min-height: 32px; padding: 0 14px; }
+#tcy-events .golden-chip { display: inline-flex; align-items: center; min-height: 32px; }
+/* Big crystal packs on a narrow phone: the picture shrinks and the price button stays inside. */
+@media (max-width: 400px) {
+  .pack-card.hero { grid-template-columns: 64px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px; }
+  .pack-card.hero:not(:has(.pack-skin)) { grid-template-columns: minmax(0, 1fr) auto; }
+  .pack-card.hero .pack-skin { width: 64px; height: 70px; }
+  .pack-card.hero b { font-size: 21px; }
+  .pack-card.hero .buy { min-width: 0; padding-left: 12px; padding-right: 12px; }
+}
+@media (max-width: 360px) { #land-buy .land-buy-btn { font-size: 15px; padding: 0 14px; white-space: normal; line-height: 1.15; } }
+/* An opened Advent door's prize (e.g. "Gingerbread house") wraps to two lines instead of "Gingerbre…". */
+.adv-in small { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 9.5px; }
+/* 320px phones and long languages (German): buttons in rows may take two lines instead of
+   being cut off at the card's edge. Found by scripts/qa-city-screens.cjs. */
+@media (max-width: 360px) {
+  #tycoon .era-go { white-space: normal; line-height: 1.1; text-align: center; }
+  #earnings .eb-hire, #earnings .eb-hire small { white-space: normal !important; }
+  #earnings .eb-hire { min-width: 0 !important; max-width: 118px; }
+  .ty-adv-hire { gap: 4px; padding: 0 10px; font-size: 13px; }
+  .ty-up { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
+  .ty-up .buy { min-width: 76px; padding: 9px 10px; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small { min-width: 0; white-space: normal; }
+  body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy small em { white-space: normal; }
+  .pack-card.hero { column-gap: 8px; padding: 10px; }
+  .pack-card.hero b { font-size: 19px; }
+  .pack-card.hero .buy { padding-left: 10px; padding-right: 10px; }
+  .mayor-card .btn, #mayor .btn { padding-left: 14px; padding-right: 14px; }
+}
+/* A big pack without a picture: its extras line sits under the amount, not in the button's column. */
+.pack-card.hero:not(:has(.pack-skin)) .pack-extras { grid-column: 1; }
+@media (max-width: 400px) { .pack-card.hero .buy { min-width: 0 !important; box-sizing: border-box; } .pack-card.hero { grid-template-columns: 64px minmax(0, 1fr) max-content; } .pack-card.hero:not(:has(.pack-skin)) { grid-template-columns: minmax(0, 1fr) max-content; } }

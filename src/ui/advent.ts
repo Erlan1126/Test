@@ -76,6 +76,8 @@ export class AdventCalendar {
     $("advent-note").textContent = ready > 1 ? t("{n} doors are waiting for you!", { n: ready })
       : ready === 1 ? (!opened.includes(day) ? t("Today's door is ready to open!") : t("A door is waiting for you!"))
       : wait ? t("Next door opens in {time}", { time: duration(wait) })
+      // (Outside December no door is open yet: never "all open" over 24 locked doors.)
+      : day === 0 ? t("The first door opens on December 1")
       : t("All 24 doors are open. Merry Christmas!");
   }
 

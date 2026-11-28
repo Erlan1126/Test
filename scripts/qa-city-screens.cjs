@@ -1,9 +1,9 @@
-// Launch QA for Buildaroo: opens every screen at several phone sizes, saves a screenshot of
+// Launch QA for Buildaroo (the city game; Skyrise has scripts/qa-screens.cjs): opens every screen at several phone sizes, saves a screenshot of
 // each and audits the layout (cut-off text, things past the screen edge, buttons on top of each
 // other, tap targets under 28 px, "undefined"/"NaN"/{placeholder} text) plus page errors.
 // Needs Playwright with Chromium, and a build served on port 8765:
 //   npm run build:city && (cd dist && python3 -m http.server 8765) &
-//   SAVE=path/to/save.json SIZES=320x568,375x667,430x932 node scripts/qa-screens.cjs
+//   SAVE=path/to/save.json SIZES=320x568,375x667,430x932 node scripts/qa-city-screens.cjs
 // SAVE is optional (a skyrise.save.v2 JSON to start from); results go to OUT (default qa-out/).
 
 const { chromium } = require('playwright');
@@ -11,7 +11,7 @@ const fs = require('fs');
 const OUT = process.env.OUT || 'qa-out';
 fs.mkdirSync(OUT, { recursive: true });
 const SIZES = (process.env.SIZES || '320x568,375x667,430x932').split(',').map(s => s.split('x').map(Number));
-const LANG = process.env.LANG2 || '';
+const LANG = process.env.GAME_LANG || process.env.LANG2 || '';
 const SCREENS = [
   ['home', ''],
   ['company', 'a.tycoon.openSheet("company")'],
@@ -46,12 +46,13 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const audit = () => {
   const vw = innerWidth, vh = innerHeight, out = [];
   const vis = e => { if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') return false; const r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false; for (let x = e; x; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.visibility === 'hidden' || cs.opacity === '0' || cs.display === 'none') return false; } return true; };
-  const open = [...document.querySelectorAll('.modal:not([hidden]), .overlay:not([hidden])')].filter(vis);
+  // (An open sheet is checked on its own; with none open, the whole screen.)
+  const open = [...document.querySelectorAll('.modal:not([hidden]), .mayor-card')].filter(vis);
   const roots = open.length ? open : [document.body];
   const name = e => (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '') || e.tagName;
   const txt = e => (e.getAttribute('aria-label') || e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 50);
   for (const root of roots) for (const e of root.querySelectorAll('*')) {
-    if (!vis(e) || e.closest('canvas, svg')) continue;
+    if (!vis(e) || e.closest('canvas, svg, details:not([open]) > :not(summary)')) continue;
     const cs = getComputedStyle(e), r = e.getBoundingClientRect();
     const t = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     // Cut-off text: an element clips its own text.
@@ -59,13 +60,19 @@ const audit = () => {
     if (t && cs.webkitLineClamp !== 'none' && cs.webkitLineClamp && e.scrollHeight > e.clientHeight + 2) out.push(['CLAMP', name(e), txt(e)]);
     // Past the screen's sides (not inside a sideways scroller).
     let sc = false; for (let x = e.parentElement; x; x = x.parentElement) { const o = getComputedStyle(x).overflowX; if (o === 'auto' || o === 'scroll' || o === 'hidden') { sc = true; break; } }
+    // Cut off by a clipping parent (not one that scrolls sideways on purpose).
+    for (let x = e.parentElement; x && x !== document.body; x = x.parentElement) {
+      const o = getComputedStyle(x).overflowX; if (o === 'visible') continue;
+      if (o === 'hidden' || o === 'clip') { const pr = x.getBoundingClientRect(); if ((r.right > pr.right + 2 || r.left < pr.left - 2) && r.width < pr.width && (e.tagName === 'BUTTON' || t)) out.push(['CUT', name(e), `${Math.round(r.right - pr.right)}px past ${name(x)} ${txt(e)}`]); }
+      break;
+    }
     if (!sc && (r.right > vw + 1 || r.left < -1) && r.width < vw * 1.5) out.push(['OFFSCREEN', name(e), `${Math.round(r.left)}..${Math.round(r.right)} ${txt(e)}`]);
     if ((e.tagName === 'BUTTON' || e.getAttribute('role') === 'button') && (r.width < 28 || r.height < 28)) out.push(['TINY', name(e), `${Math.round(r.width)}x${Math.round(r.height)} ${txt(e)}`]);
     if (t && /undefined|NaN|\{[a-z]+\}|null\b|\[object/.test(e.textContent)) out.push(['BADTEXT', name(e), txt(e)]);
   }
   // Buttons on top of one another.
   for (const root of roots) {
-    const bs = [...root.querySelectorAll('button')].filter(vis).map(b => [b, b.getBoundingClientRect()]);
+    const bs = [...root.querySelectorAll('button')].filter(b => vis(b) && !b.closest('details:not([open]) > :not(summary)')).map(b => [b, b.getBoundingClientRect()]);
     for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) {
       const [a, ra] = bs[i], [b, rb] = bs[j];
       if (a.contains(b) || b.contains(a)) continue;
@@ -98,6 +105,8 @@ const audit = () => {
       await p.waitForTimeout(700);
       if (js) { const r = await p.evaluate(code => { try { const a = window.__app; eval(code); return 'ok'; } catch (e) { return 'ERR ' + e.message; } }, js); if (r !== 'ok') { (report[id] ??= {})[`${w}x${h}`] = [['OPENFAIL', '', r]]; continue; } }
       await p.waitForTimeout(+(process.env.WAIT || 2200));
+      // (Opening animations are jumped to their end, so a slow machine doesn't audit a half-open sheet.)
+      await p.evaluate(() => document.getAnimations().forEach(a => { try { a.finish(); } catch { /* endless */ } }));
       const issues = await p.evaluate(audit);
       (report[id] ??= {})[`${w}x${h}`] = issues;
       await p.screenshot({ path: `${OUT}/${id}-${w}.png`, timeout: 90000 }).catch(e => console.log('SHOTFAIL', id, w));
