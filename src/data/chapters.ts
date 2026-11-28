@@ -2,9 +2,10 @@
 // from things the player does anyway (towers, height, people, city buildings...); finishing
 // all three pays a reward and opens the next chapter. It gives the game a beginning, a
 // middle and an end: from an empty meadow to the capital of the sky.
-import { payLevelUp } from "../logic/tycoon";
+import { payLevelUp, perSecond, stageName } from "../logic/tycoon";
 import { HAS_CITY } from "../edition";
 import { townRank, usedFloors } from "../logic/tycoon";
+import { isLot } from "../logic/props";
 import { RANKS } from "./ranks";
 import { BUSINESSES } from "./tycoon";
 import type { LandId } from "./land";
@@ -16,9 +17,18 @@ export interface ChapterGoal {
   need: number;
   have: (s: SaveData) => number;
   /** What kind of step it is (what the Next step card sends the player to do). */
-  kind?: "towers" | "height" | "terrace" | "levels" | "projects" | "managers" | "grown" | "open" | "land" | "landOpen" | "builds" | "offices";
+  kind?: "towers" | "height" | "terrace" | "levels" | "projects" | "managers" | "grown" | "open" | "land" | "landOpen" | "builds" | "offices"
+    | "income" | "milestone" | "hq" | "biz" | "homes" | "decor" | "golden";
   /** The district a "land" or "landOpen" goal is about. */
   land?: LandId;
+  /** The business a "biz" (open it) or "hq" (build its headquarters) goal is about. */
+  biz?: string;
+  /** "hq": the stage its new headquarters grows it to. */
+  stage?: number;
+  /** "milestone": the level ({lv} in the text) each business must reach. */
+  lv?: number;
+  /** The target and progress are cash (shown as $). */
+  cash?: boolean;
 }
 
 export interface Chapter {
@@ -45,7 +55,6 @@ const lv = (need: number): ChapterGoal => ({ text: "Reach {n} business levels", 
 /** The city game asks for more (each City Hall level should take a few play sessions, not
  *  minutes): `city` there, `need` in the tower game. */
 const pick = (need: number, city: number) => (HAS_CITY ? city : need);
-const lvC = (need: number, city: number): ChapterGoal => lv(pick(need, city));
 // (The city game starts in the city: its chapters ask for city builds, not towers.)
 const tw = (need: number): ChapterGoal => HAS_CITY
   // (Towers built before count too, so no one who played the tower way is held back.)
@@ -62,72 +71,98 @@ const own = (land: LandId, name: string): ChapterGoal => ({ text: `Buy the ${nam
 /** Businesses open in a district. */
 const inLand = (land: LandId, name: string, need: number): ChapterGoal => ({ text: `Open {n} businesses in the ${name}`, need, have: s => BUSINESSES.filter(b => b.land === land && (s.tycoon.levels[b.id] ?? 0) > 0).length, kind: "landOpen", land });
 
+/** Coins a second the managers make, without short boosts (a grand opening or a rush hour
+ *  never finishes a goal that's gone again a minute later). As of the last tick. */
+const earning = (s: SaveData) => perSecond(s, s.tycoon.last || Date.now(), false);
+/** Earning so much a second. */
+const income = (need: number): ChapterGoal => ({ text: "Earn {n} a second", need, have: earning, kind: "income", cash: true });
+/** Businesses at a speed milestone level (each milestone doubles a business's speed). */
+const speed = (need: number, level: number): ChapterGoal => ({ text: "Get {n} businesses to level {lv}", need, lv: level, have: s => Object.values(s.tycoon.levels).filter(l => l >= level).length, kind: "milestone" });
+/** A business's new headquarters, grown to a stage. */
+const hq = (id: string, stage: number): ChapterGoal => ({ text: "Build the {name} HQ", need: 1, biz: id, stage, have: s => ((s.tycoon.evolved[id] ?? 0) >= stage ? 1 : 0), kind: "hq" });
+/** Opening one business. */
+const openBiz = (id: string): ChapterGoal => ({ text: "Open the {name}", need: 1, biz: id, have: s => ((s.tycoon.levels[id] ?? 0) > 0 ? 1 : 0), kind: "biz" });
+/** Every home built on a lot or made bigger: the levels the city's homes have grown. */
+export const homeBuilds = (s: SaveData): number => Object.entries(s.props).reduce((a, [k, l]) => a + Math.max(0, l - (isLot(k) ? 0 : 1)), 0);
+const homes = (need: number): ChapterGoal => ({ text: "Build or upgrade {n} homes", need, have: homeBuilds, kind: "homes" });
+/** Decorations standing in the city now. */
+const decor = (need: number): ChapterGoal => ({ text: "Place {n} decorations", need, have: s => Object.values(s.placed).filter(Boolean).length, kind: "decor" });
+/** Golden customers caught, all time. */
+const golden = (need: number): ChapterGoal => ({ text: "Serve {n} golden customers", need, have: s => s.tycoon.goldenAll ?? 0, kind: "golden" });
+/** The city game's goals, or the tower game's (which stay as they were). */
+const city = (c: ChapterGoal[], tower: ChapterGoal[]): ChapterGoal[] => (HAS_CITY ? c : tower);
+
+/** The name in a goal's text ({name}: the business, or its new HQ), in English. */
+export const goalName = (g: ChapterGoal): string => (!g.biz ? "" : g.kind === "hq" ? stageName(g.biz, g.stage ?? 1) : BUSINESSES.find(b => b.id === g.biz)?.name ?? g.biz);
+
 // One chapter per town rank: Pip's story and the goal bar in the town tell the same story.
-// The last goal of each chapter is the rank itself.
+// In the tower game the last goal of each chapter is the rank itself. The city game asks for
+// varied steps instead (open a business, build an HQ, earn so much a second, homes,
+// decorations, golden customers), each about as long as the others: see scripts/pacing-sim.ts
+// for how long each City Hall level takes.
 export const CHAPTERS: Chapter[] = [
   {
     title: "The Village",
     intro: "Welcome to Skyhaven! Your first neighbor needs a place to sit and a busier street. Grow the businesses and our hamlet becomes a village, with a street market!",
     outro: "We're a village! Hear that? Stalls, shoppers, music in the plaza. And it all started with one coffee.",
-    goals: [
-      tw(pick(3, 5)),
-      { text: "Open the café terrace", need: 1, have: terrace, kind: "terrace" },
-      lvC(50, 90),
-    ],
+    goals: city(
+      [{ text: "Open the café terrace", need: 1, have: terrace, kind: "terrace" }, openBiz("flowers"), tw(3)],
+      [tw(3), { text: "Open the café terrace", need: 1, have: terrace, kind: "terrace" }, lv(50)],
+    ),
     reward: { stars: 10, crystals: 20 },
   },
   {
     title: "The Town",
     intro: "A village needs a heart. Give the block its next project, put managers to work, and Skyhaven becomes a town: with its own little tram!",
     outro: "Ding ding! The tram is running. Your neighbor already has a favorite seat by the window.",
-    goals: [
-      { text: HAS_CITY ? "Build the Flower market or the Playground" : "Finish a block project", need: 1, have: projects, kind: "projects" },
-      { text: "Hire {n} managers", need: pick(3, 4), have: managers, kind: "managers" },
-      lvC(150, 280),
-    ],
+    goals: city(
+      [{ text: "Build the Flower market or the Playground", need: 1, have: projects, kind: "projects" }, { text: "Hire {n} managers", need: 4, have: managers, kind: "managers" }, income(6e3)],
+      [{ text: "Finish a block project", need: 1, have: projects, kind: "projects" }, { text: "Hire {n} managers", need: 3, have: managers, kind: "managers" }, lv(150)],
+    ),
     reward: { stars: 15, crystals: 30 },
   },
   {
     title: "The City",
     intro: "Shops are growing into stores. Build their headquarters, and Skyhaven turns into a real city, bright lights on every corner.",
     outro: "Look at those billboards glow! People come from the other islands just to see our streets.",
-    goals: [
-      { text: HAS_CITY ? "Build a new headquarters for {n} businesses" : "Grow {n} businesses with a new HQ", need: pick(2, 3), have: grown, kind: "grown" },
-      ht(pick(60, 70)),
-      lvC(300, 550),
-    ],
+    goals: city(
+      [openBiz("cinema"), decor(3), hq("coffee", 2), speed(4, 50)],
+      [{ text: "Grow {n} businesses with a new HQ", need: 2, have: grown, kind: "grown" }, ht(60), lv(300)],
+    ),
     reward: { stars: 20, crystals: 40 },
   },
   {
     title: "The Big City",
     intro: "The whole sky is noticing us. Open more businesses and finish the block, and the airships will start coming to Skyhaven.",
     outro: "Airships over Skyhaven! Visitors from every island. We're a big city now.",
-    goals: [
-      open(pick(6, 7)),
-      { text: HAS_CITY ? "Build both the Flower market and the Playground" : "Finish both block projects", need: 2, have: projects, kind: "projects" },
-      lvC(500, 900),
-    ],
+    goals: city(
+      [openBiz("airport"), homes(30), income(60e6)],
+      [open(6), { text: "Finish both block projects", need: 2, have: projects, kind: "projects" }, lv(500)],
+    ),
     reward: { stars: 30, crystals: 60 },
   },
   {
     title: "Harbor District",
     intro: "The town is full! West of the square there's room for a harbor: boats, a fish market, a lighthouse. Buy the land and open its first businesses.",
     outro: "Smell that sea air? Fishing boats in, tourists off the ferry. The harbor was the right call.",
-    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), lvC(800, 1400)],
+    goals: [own("meadow", "Harbor District"), inLand("meadow", "Harbor District", pick(3, 4)), ...city([golden(12)], [lv(800)])],
     reward: { stars: 40, crystals: 80 },
   },
   {
     title: "Garden Hills",
     intro: "Families want to live here now. East of town, Garden Hills has room for parks, a lake and big homes. Let's make it ours.",
     outro: "A Ferris wheel over the lake! Every family in the sky wants to move to Garden Hills.",
-    goals: [own("lakeside", "Garden Hills"), inLand("lakeside", "Garden Hills", pick(3, 4)), open(10, "Open all {n} businesses in town")].map((g, i) => (i === 2 ? { ...g, have: townOpen } : g)),
+    goals: city(
+      [own("lakeside", "Garden Hills"), openBiz("spaceport"), income(6e9)],
+      [own("lakeside", "Garden Hills"), inLand("lakeside", "Garden Hills", 3), { ...open(10, "Open all {n} businesses in town"), have: townOpen }],
+    ),
     reward: { stars: 50, crystals: 100 },
   },
   {
     title: "Downtown",
     intro: "Big companies are calling. Downtown is where the towers go: offices, banks, a stock exchange. Build our business quarter!",
     outro: "Look at that skyline! Downtown makes us the business capital of the islands.",
-    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), lvC(1200, 2100)],
+    goals: [own("hills", "Downtown"), inLand("hills", "Downtown", pick(3, 4)), ...city([income(15e9)], [lv(1200)])],
     reward: { stars: 60, crystals: 120 },
   },
   {
@@ -141,7 +176,7 @@ export const CHAPTERS: Chapter[] = [
     title: "Crystal Spire",
     intro: "Higher still: glowing crystal towers round a giant spire. It will light up the whole sky at night.",
     outro: "The spire shines all the way to the horizon. Ships steer by it now!",
-    goals: [own("crystal", "Crystal Spire"), inLand("crystal", "Crystal Spire", pick(3, 4)), open(30)],
+    goals: [own("crystal", "Crystal Spire"), inLand("crystal", "Crystal Spire", pick(3, 2)), open(30)],
     reward: { stars: 80, crystals: 180 },
   },
   {
@@ -154,15 +189,27 @@ export const CHAPTERS: Chapter[] = [
 ];
 
 /** Saves from the old chapters (islands and people) move to these: the chapters whose goals
- *  are already met count as done, without paying their reward again. */
-export const CHAPTERS_V = 3;
+ *  are already met count as done, without paying their reward again.
+ *
+ *  Version 4 changed the city game's goals (earnings, speed milestones, HQs, homes, golden
+ *  customers instead of business-level counts). A save from version 3 keeps its City Hall
+ *  level as it is: its goals are worked out from the city as it stands, so a chapter half
+ *  done stays about half done. Only golden customers weren't counted before: each City Hall
+ *  level already reached counts for two, so that goal doesn't start from nothing. */
+export const CHAPTERS_V = 4;
+export const GOLDEN_PER_HALL = 2;
 export function migrateChapters(s: SaveData): boolean {
   if (s.chapters.v === CHAPTERS_V) return false;
-  let done = 0;
-  // (Never past the chapters they'd already finished: a later chapter that's met pays normally.)
-  const old = s.chapters.done;
-  while (done < Math.min(CHAPTERS.length, old) && CHAPTERS[done].goals.every(g => g.have(s) >= g.need)) done++;
-  s.chapters = { done, seen: done - 1, v: CHAPTERS_V };
+  const was = s.chapters.v;
+  let done = s.chapters.done;
+  if (was !== 3) {
+    // (Never past the chapters they'd already finished: a later chapter that's met pays normally.)
+    const old = s.chapters.done;
+    done = 0;
+    while (done < Math.min(CHAPTERS.length, old) && CHAPTERS[done].goals.every(g => g.have(s) >= g.need)) done++;
+  }
+  s.chapters = { done, seen: was === 3 ? s.chapters.seen : done - 1, v: CHAPTERS_V };
+  s.tycoon.goldenAll = Math.max(s.tycoon.goldenAll ?? 0, GOLDEN_PER_HALL * done);
   return true;
 }
 
@@ -199,4 +246,11 @@ export const GOAL_HOW: Record<NonNullable<ChapterGoal["kind"]>, string> = {
   towers: "Tap Play to build a tower.",
   height: "Tap Play and stack your tower higher.",
   offices: "Tap Build and add office floors.",
+  income: "Buy levels, hire managers and build headquarters: everything that earns more counts.",
+  milestone: "At levels 10, 25, 50, 100 and on, a business runs twice as fast. Tap one and press Buy.",
+  hq: "When the business is ready to grow, tap it and build its new headquarters.",
+  biz: "Tap Build to open it, once you have the cash.",
+  homes: "Tap Build to build on an empty lot or upgrade a home.",
+  decor: "Tap an empty lot and choose a decoration.",
+  golden: "Golden customers sparkle at your businesses now and then. Tap them before they leave!",
 };

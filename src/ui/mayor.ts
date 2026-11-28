@@ -1,7 +1,7 @@
 // Mayor Pip: the friendly face of Skyhaven. A strip on the home screen shows the current
 // chapter's next goal; Pip pops up to start each chapter and to celebrate finishing one.
 import { playerStarted } from "../edition";
-import { CHAPTERS, GOAL_HOW, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter, type ChapterGoal } from "../data/chapters";
+import { CHAPTERS, GOAL_HOW, chapterIndex, chapterReady, claimChapter, goalDone, goalName, type Chapter, type ChapterGoal } from "../data/chapters";
 import { CITY_NAME } from "../logic/city";
 import { townText } from "../logic/townname";
 import { fmt } from "../core/util";
@@ -62,7 +62,8 @@ export function mayorSvg(mood: "talk" | "happy" = "talk"): string {
 }
 export const MAYOR_SVG = mayorSvg();
 
-const goalText = (text: string, need: number) => t(text, { n: need >= 1e6 ? coins(need) : fmt(need) });
+/** A goal's line: its target ({n}, cash for an earnings goal), level ({lv}) and business or HQ ({name}) filled in. */
+export const goalText = (g: ChapterGoal): string => t(g.text, { n: num(g.need, g.cash), lv: g.lv !== undefined ? fmt(g.lv) : "", name: g.biz ? t(goalName(g)) : "" });
 /** Pip's line, with the player's own name for the town once they've named it. */
 const say = (line: string, save: SaveData) => townText(save, t(line, { city: save.cityName || t(CITY_NAME) }));
 
@@ -78,7 +79,7 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   el.classList.toggle("ready", ready);
   el.innerHTML = `<span class="mayor-mini">${MAYOR_SVG}</span>
     <span class="mayor-goal"><small>${arrowHtml(head(i, c.title))}</small>
-    <b>${esc(ready ? (HAS_CITY ? t("Upgrade the City Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next.text, next.need))}</b>
+    <b>${esc(ready ? (HAS_CITY ? t("Upgrade the City Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next))}</b>
     <i class="mayor-bar"><i style="width:${pct}%"></i></i></span>`;
   el.onclick = onTap;
 }
@@ -104,7 +105,7 @@ function opensHtml(level: number): string {
   return names.length ? `<li class="plan-opens"><span>🔓</span>${esc(t("Level {n} opens: {list}", { n: level, list: names.join(", ") }))}</li>` : "";
 }
 
-const num = (n: number) => (n >= 1e6 ? coins(n) : fmt(n));
+function num(n: number, cash = false): string { return cash || n >= 1e6 ? coins(n) : fmt(n); }
 
 /** The City Plan road: one step per chapter (done, this one, still ahead), and what's next. */
 function planRoad(save: SaveData): string {
@@ -117,8 +118,8 @@ function planRoad(save: SaveData): string {
 function goalsHtml(save: SaveData, c: Chapter): string {
   return planRoad(save) + (HAS_CITY ? `<li class="plan-to"><b>${esc(t("To reach City Hall level {n}:", { n: chapterIndex(save) + 2 }))}</b></li>` : "") + opensHtml(chapterIndex(save) + 2) + c.goals.map(g => {
     const done = goalDone(save, g), how = !done && g.kind ? GOAL_HOW[g.kind] : "";
-    return `<li class="${done ? "done" : "todo"}"${!done && g.kind ? ` data-goal="${g.kind}" role="button" tabindex="0"` : ""}><span>${done ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g.text, g.need))}${how ? `<small class="g-how">${esc(t(how))}</small>` : ""}</div>
-      <em>${done ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}${!done && g.kind ? `<i class="g-go" aria-hidden="true"></i>` : ""}</em></li>`;
+    return `<li class="${done ? "done" : "todo"}"${!done && g.kind ? ` data-goal="${g.kind}"${g.biz ? ` data-biz="${esc(g.biz)}"` : ""} role="button" tabindex="0"` : ""}><span>${done ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g))}${how ? `<small class="g-how">${esc(t(how))}</small>` : ""}</div>
+      <em>${done ? "" : `${num(Math.min(g.have(save), g.need), g.cash)} / ${num(g.need, g.cash)}`}${!done && g.kind ? `<i class="g-go" aria-hidden="true"></i>` : ""}</em></li>`;
   }).join("");
 }
 
@@ -148,7 +149,7 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   ok.focus();
   // A goal not done yet: tapping it closes the card and takes you where you do it.
   $("mayor-goals").querySelectorAll<HTMLElement>("[data-goal]").forEach(li => {
-    li.onclick = () => { $("mayor").hidden = true; goalTap(li.dataset.goal as NonNullable<ChapterGoal["kind"]>); };
+    li.onclick = () => { $("mayor").hidden = true; goalTap(li.dataset.goal as NonNullable<ChapterGoal["kind"]>, li.dataset.biz); };
   });
 }
 
@@ -189,7 +190,7 @@ export function hallReward(save: SaveData, level: number, r: { cash: number; cry
   if (u.rank > 0) chips.push(`<i class="hu-chip wide">✨ ${esc(t(RANKS[u.rank].unlock))}</i>`, `<i class="hu-chip">${esc(t("+{pct}% earnings", { pct: Math.round(RANK_BONUS * 100) }))}</i>`);
   const goals = next ? next.goals.map(g => {
     const ok = goalDone(save, g);
-    return `<li class="${ok ? "done" : "todo"}"><span>${ok ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g.text, g.need))}</div><em>${ok ? "" : `${num(Math.min(g.have(save), g.need))} / ${num(g.need)}`}</em></li>`;
+    return `<li class="${ok ? "done" : "todo"}"><span>${ok ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g))}</div><em>${ok ? "" : `${num(Math.min(g.have(save), g.need), g.cash)} / ${num(g.need, g.cash)}`}</em></li>`;
   }).join("") : "";
   const html = `<li class="hu-hero"><small>${esc(save.cityName ? t("{city} is now", { city: save.cityName }) : t("Welcome to"))}</small><b>${esc(title)}</b>
       <div class="hu-pay"><span>+${esc(coins(r.cash))}</span><span>+${r.crystals} 💎</span></div></li>`
@@ -281,6 +282,6 @@ export function mayorAsk(title: string, text: string, value: string, label: stri
   window.setTimeout(() => { inp.focus(); inp.select(); }, 50);
 }
 
-let goalTap: (kind: NonNullable<ChapterGoal["kind"]>) => void = () => {};
+let goalTap: (kind: NonNullable<ChapterGoal["kind"]>, biz?: string) => void = () => {};
 /** What tapping a goal does (set by the town: open Build, a business, the company...). */
-export function setGoalTap(f: (kind: NonNullable<ChapterGoal["kind"]>) => void): void { goalTap = f; }
+export function setGoalTap(f: (kind: NonNullable<ChapterGoal["kind"]>, biz?: string) => void): void { goalTap = f; }

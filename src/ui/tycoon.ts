@@ -311,14 +311,23 @@ export class TycoonUI {
     document.getElementById("city-rename")?.addEventListener("click", () => { this.host.sound.click(); closeModal($("settings")); this.nameCity(); });
     this.syncCityNameRow();
     // Tapping one of Pip's goals goes straight to where it's done.
-    setGoalTap(kind => {
+    setGoalTap((kind, biz) => {
       const s = this.save;
-      if (kind === "managers" || kind === "levels") {
+      const pick = (id: string) => { this.selected = id; this.selectedProp = ""; this.selectedSight = ""; this.render(); };
+      if (kind === "managers" || kind === "levels" || kind === "income" || kind === "milestone") {
         // The business that most needs it (no manager yet / the cheapest level), selected in town.
         const b = kind === "managers" ? BUSINESSES.find(x => levelOf(s, x.id) > 0 && !s.tycoon.managers.includes(x.id)) : BUSINESSES.filter(x => levelOf(s, x.id) > 0).sort((a, b2) => costOf(a, levelOf(s, a.id), 1) - costOf(b2, levelOf(s, b2.id), 1))[0];
-        if (b) { this.selected = b.id; this.selectedProp = ""; this.selectedSight = ""; this.render(); return; }
+        if (b) { pick(b.id); return; }
       }
-      if (kind === "grown") { const b = BUSINESSES.find(x => readyStage(s, x.id)); if (b) { this.selected = b.id; this.selectedProp = ""; this.selectedSight = ""; this.render(); return; } }
+      if (kind === "grown") { const b = BUSINESSES.find(x => readyStage(s, x.id)); if (b) { pick(b.id); return; } }
+      // (A goal's own business: its card has the Buy and HQ buttons.)
+      if (kind === "hq" && biz && levelOf(s, biz) > 0) { pick(biz); return; }
+      if (kind === "decor") {
+        // An empty lot, selected: its card offers the decorations.
+        const lot = this.host.bizHomes().find(k => isLot(k) && lotFree(s, k));
+        if (lot) { this.selectProp(lot); return; }
+      }
+      if (kind === "golden") { if (this.golden.id && this.golden.until > Date.now()) this.catchGolden(); else toast(t("Golden customers sparkle at your businesses now and then. Tap them before they leave!")); return; }
       this.openBuild();
     });
     const wallet = $("tcy-top").querySelector<HTMLElement>(".tcy-wallet")!;
@@ -1057,6 +1066,28 @@ export class TycoonUI {
         const b = BUSINESSES.find(x => levelOf(s, x.id) > 0 && !ty.managers.includes(x.id));
         if (!b) return null;
         return { text: t("Hire a manager for {name}", { name: t(stageName(b.id, stageNow(s, b.id))) }), sub: t("{n} of {total} managers for this chapter", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: Math.min(1, ty.coins / b.manager), tone: ty.coins >= b.manager ? "go" : "save", act: select(b.id) };
+      }
+      case "biz": {
+        // Opening the goal's business (once the City Hall allows it).
+        const i = BUSINESSES.findIndex(b => b.id === g.biz);
+        if (i < 0 || levelOf(s, g.biz!) > 0 || !unlockedBusiness(s, i)) return null;
+        const b = BUSINESSES[i], price = costOf(b, 0, 1);
+        return ty.coins >= price
+          ? { text: t("Open the {name}!", { name: t(b.name) }), sub: t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, Date.now())) }), tone: "go", act: () => this.openBuild() }
+          : { text: t("Save {n} to open the {name}", { n: coins(price), name: t(b.name) }), sub: t("A new business: it earns {n} a sale", { n: coins(b.income * multiplier(s, Date.now())) }), pct: Math.min(1, ty.coins / price), tone: "save", act: () => this.openBuild() };
+      }
+      case "hq": {
+        // The goal's own HQ: build it once the business is big enough, else grow the business.
+        const id = g.biz!, st = readyStage(s, id), name = t(stageName(id, g.stage ?? 1));
+        if (levelOf(s, id) === 0) return null;
+        if (st) return { text: t("Build the {name} HQ", { name: t(stageName(id, st)) }), sub: this.hqSub(id, st), tone: "grow", act: () => this.goHQ(id) };
+        const need = STAGE_AT[g.stage ?? 1] ?? 0;
+        return { text: t("Grow the business to level {n} for the {name} HQ", { n: fmt(need), name }), sub: t("Level {n} of {total}", { n: fmt(levelOf(s, id)), total: fmt(need) }), pct: Math.min(1, levelOf(s, id) / Math.max(1, need)), tone: "grow", act: select(id) };
+      }
+      case "homes": return propsOpen(s) ? { text: t("Build or upgrade a home"), sub: t("{n} of {total} homes for this chapter", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: Math.min(1, g.have(s) / g.need), tone: "grow", act: () => this.openBuild() } : null;
+      case "decor": {
+        const lot = this.host.bizHomes().find(k => isLot(k) && lotFree(s, k));
+        return lot ? { text: t("Place a decoration on an empty lot"), sub: t("{n} of {total} decorations for this chapter", { n: fmt(g.have(s)), total: fmt(g.need) }), pct: Math.min(1, g.have(s) / g.need), tone: "grow", act: () => this.selectProp(lot) } : null;
       }
       default: return null;
     }

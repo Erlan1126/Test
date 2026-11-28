@@ -18,8 +18,10 @@ function ready3() {
   s.tycoon.tips = 10;
   s.cafe.starter = { b: [], s: "classic", h: "rect", floors: 1 } as unknown as typeof s.cafe.starter;
   s.cafe.terrace = 2; s.cafe.moved = true;
-  // Three businesses past their HQ, enough managers, and plenty of levels.
-  s.tycoon.evolved = { coffee: 1, flowers: 1, bakery: 1 };
+  // Every goal of the chapter met: the Cinema open, decorations out, the Coffee Cart's big
+  // HQ, four businesses past level 50 (and plenty of managers and levels besides).
+  s.tycoon.evolved = { coffee: 2, flowers: 1, bakery: 1 };
+  s.placed = { a: 1, b: 1, c: 1 } as unknown as typeof s.placed;
   s.tycoon.managers = BUSINESSES.slice(0, 7).map(b => b.id);
   s.tycoon.levels = Object.fromEntries(BUSINESSES.slice(0, 6).map(b => [b.id, 120]));
   return s;

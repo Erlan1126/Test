@@ -179,8 +179,8 @@ describe("Mayor Pip's chapters", () => {
   it("pays a chapter once, only when every goal is met", () => {
     const s = freshSave();
     expect(claimChapter(s)).toBeNull();
-    // (The city game asks for 5 builds and 90 levels for the first City Hall level.)
-    s.profile.towers = 5; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 90 };
+    // (The city game asks for the café terrace, the Flower Kiosk and 3 builds for City Hall level 2.)
+    s.profile.towers = 5; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 90, flowers: 1 };
     const coins = s.tycoon.coins, crystals = s.crystals;
     // (The city game pays the chapter's stars as cash: two currencies only.)
     const r = claimChapter(s)!;
@@ -195,18 +195,15 @@ describe("Mayor Pip's chapters", () => {
     // (Every rank is a chapter's business-levels goal, in order; the districts' chapters come between.)
     const at = CHAPTERS.flatMap(c => c.goals.filter(g => g.kind === "levels").map(g => g.need));
     const { HAS_CITY } = await import("../src/edition");
-    // (The tower game's chapters end exactly at each rank; the city game, whose rank follows
-    // the City Hall, asks for more levels each time, so a City Hall level takes a while.)
+    // (The tower game's chapters end exactly at each rank; the city game's rank follows the
+    // City Hall, whose goals are varied steps instead: at most one level count a chapter.)
     if (!HAS_CITY) expect(at).toEqual(RANKS.slice(1).map(r => r.at));
-    else {
-      expect(at).toEqual([90, 280, 550, 900, 1400, 2100]);
-      at.forEach((n, i) => expect(n).toBeGreaterThan(RANKS[i + 1].at));
-    }
+    else for (const c of CHAPTERS) expect(c.goals.filter(g => g.kind === "levels").length).toBeLessThanOrEqual(1);
   });
   it("moves old story progress over without paying again", () => {
     const s = freshSave();
     s.chapters = { done: 3, seen: 3 };
-    s.profile.towers = 5; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 95 };
+    s.profile.towers = 5; s.cafe.terrace = 2; s.tycoon.levels = { coffee: 95, flowers: 1 };
     const stars = s.stars;
     expect(migrateChapters(s)).toBe(true);
     expect(s.chapters.done).toBe(1);
