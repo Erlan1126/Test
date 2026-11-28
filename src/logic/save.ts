@@ -102,7 +102,7 @@ export interface SaveData {
   land: LandId[];
   /** The town's properties (data/props.ts): their level, by key (missing means level 1). */
   props: Record<string, number>;
-  /** Neighbour requests (logic/asks.ts). */
+  /** Neighbor requests (logic/asks.ts). */
   asks: AskState;
   /** The name the player gave their city (empty: not named yet). */
   cityName: string;

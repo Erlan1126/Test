@@ -5,7 +5,7 @@ import { hallLevel, perSecond, levelOf } from "./tycoon";
 import { BUSINESSES } from "../data/tycoon";
 
 /** A city block ("g:" keys) starts as an empty lot (level 0) that you build on; the
- *  neighbourhood's homes and the districts' buildings start at level 1. */
+ *  neighborhood's homes and the districts' buildings start at level 1. */
 export const isLot = (key: string): boolean => key.startsWith("g:");
 export const propLevel = (s: SaveData, key: string): number => { const lo = isLot(key) ? 0 : 1; return Math.max(lo, Math.min(PROP_MAX, s.props[key] ?? lo)); };
 /** How many city lots City Hall lets you build on: a few to start, more every level. */

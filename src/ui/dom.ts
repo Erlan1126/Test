@@ -43,6 +43,15 @@ function toastKind(msg: string): { kind: string; ico: string } {
 }
 /** A message pop-up: a coloured card with an icon, the amounts picked out in gold, a short
  *  slide-in with a bounce, and a bar showing how long it stays. Tap it to dismiss. */
+/** Shrinks a one-line title until it fits its box (never below `min` px), instead of
+ *  cutting it off with "...". */
+export function fitText(el: HTMLElement | null, min = 11): void {
+  if (!el) return;
+  el.style.fontSize = "";
+  let size = parseFloat(getComputedStyle(el).fontSize) || 16;
+  while (el.scrollWidth > el.clientWidth + 1 && size > min) { size -= 1; el.style.fontSize = `${size}px`; }
+}
+
 export function toast(msg: string): void {
   const el = $("toast");
   // A leading emoji or symbol becomes the icon; otherwise one is picked for the kind.

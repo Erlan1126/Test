@@ -1,4 +1,4 @@
-// Neighbour requests and the savings goal.
+// Neighbor requests and the savings goal.
 //
 // Requests: the people living in the homes you've built ask for something now and then
 // (grow our home, open a shop near us, more coffee, a home for our friends). Doing it pays

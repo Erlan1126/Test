@@ -704,7 +704,7 @@ export class Sheets {
       stats.length = 0;
       const opened = Object.values(save.tycoon.levels).filter(l => l > 0).length;
       stats.push([fmt(townPeople(save)), t("people")], [1 + Math.max(0, save.chapters.done), t("City Hall level")], [opened, t("businesses")],
-        [Object.values(save.placed).filter(Boolean).length, t("decorations")], [save.cityTrophies.length, t("trophies")], [p.bestStreak, t("best streak")]);
+        [Object.values(save.placed).filter(Boolean).length, t("decorations")], [save.cityTrophies.length, t("trophies")], [save.tycoon.managers.length, t("managers")]);
       // The header is the city, not the tower game's builder title and XP.
       $("profile-title").textContent = save.cityName || t("My city");
       $("profile-xp").textContent = `${t("City Hall level {n}", { n: hallLevel(save) })} · ${t("{n} people", { n: fmt(townPeople(save)) })}`;

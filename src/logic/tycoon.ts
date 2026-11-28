@@ -624,7 +624,7 @@ export function adDoubleAway(s: SaveData, earned: number): boolean {
 
 /** Goal kinds with three sizes; each pays stars by size, all three a crystal bonus. */
 export const GOAL_TIERS: Record<GoalType, number[]> = { vip: [2, 4, 6], buy: [10, 25, 50], taps: [30, 60, 120], rush: [1, 2, 3], build: [1, 2, 3], home: [1, 2, 3], ask: [1, 2, 2], decor: [1, 2, 3], talk: [2, 4, 6], golden: [1, 2, 3] };
-/** The city game's building goals: finish builds, build or grow homes, help neighbours. */
+/** The city game's building goals: finish builds, build or grow homes, help neighbors. */
 export const BUILD_GOALS: GoalType[] = ["build", "home", "ask"];
 /** City quests, only in the city game: place or move a decoration (once City Hall allows
  *  them), chat with the people walking about, catch golden customers. */

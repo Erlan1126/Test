@@ -82,6 +82,7 @@ import { avatarBadge, avatarBadgeFor } from "./data/avatars";
 import type { FriendCity } from "./online";
 import { COIN_SVG, TycoonUI } from "./ui/tycoon";
 import { spinOpen } from "./logic/spin";
+import { dailyMayOpen, gateOpen } from "./logic/gates";
 import { hallLevel, claimDaily, dailyReward, evolve as evolveBiz, hqFloors, offlineHours, readyStage, stageNow, startBoom, tick as tickTycoon, towerBonus, townRank, unlockedBusiness, cityGrow, townHomes } from "./logic/tycoon";
 import type { BizLot } from "./render3d/bizcity";
 const NO_LOTS: BizLot[] = [];
@@ -279,8 +280,9 @@ export class App implements DailyHost {
     this.save = loadSave(this.storage);
     setSkyMode(this.save.settings.sky);
     migrateChapters(this.save);
+    if (this.save.tycoon.tips < 3) this.freshSince = Date.now();
     setLang(resolveLang(this.save.settings.lang));
-    translateDom();
+    translateDom(); this.brandDom();
     refreshMissions(this.save);
     if (!this.save.playerId) this.save.playerId = newPlayerId();
     if (!isSkinUnlocked(this.save, skinById(this.save.skin))) this.save.skin = "glass";
@@ -471,11 +473,12 @@ export class App implements DailyHost {
       && !document.querySelector(".modal:not([hidden]), .overlay:not([hidden]), #evolve:not([hidden])")
       && $("mayor").hidden && $("welcome").hidden && $("levelup").hidden && $("starter").hidden && $("rewards").hidden;
   }
-  private popups: { key: string; run: () => void }[] = [];
+  private popups: { key: string; run: () => void; ready?: () => boolean }[] = [];
   private popTimer = 0;
-  /** Shows a pop-up once the screen is calm, after the ones queued before it. */
-  private queuePopup(key: string, run: () => void): void {
-    if (!this.popups.some(x => x.key === key)) this.popups.push({ key, run });
+  /** Shows a pop-up once the screen is calm, after the ones queued before it. A pop-up with
+   *  its own `ready` also waits for that (the ones behind it don't wait for it). */
+  private queuePopup(key: string, run: () => void, ready?: () => boolean): void {
+    if (!this.popups.some(x => x.key === key)) this.popups.push({ key, run, ready });
     this.pumpPopups();
   }
   private pumpPopups(): void {
@@ -483,11 +486,16 @@ export class App implements DailyHost {
     this.popTimer = window.setTimeout(() => {
       this.popTimer = 0;
       // A beat of calm between two pop-ups, so they never arrive back to back.
-      if (this.calm()) { if (this.calmSince && Date.now() - this.calmSince > 700) { this.calmSince = 0; this.popups.shift()!.run(); } else if (!this.calmSince) this.calmSince = Date.now(); }
+      const i = this.popups.findIndex(x => !x.ready || x.ready());
+      if (i >= 0 && this.calm()) { if (this.calmSince && Date.now() - this.calmSince > 700) { this.calmSince = 0; this.popups.splice(i, 1)[0].run(); } else if (!this.calmSince) this.calmSince = Date.now(); }
       else this.calmSince = 0;
       this.pumpPopups();
     }, 400);
   }
+  /** A pop-up, a card or a sheet is on screen (a toast that would sit on one waits). */
+  popupBusy(): boolean { return !this.calm() || this.tycoon.anyCardOpen() || document.body.classList.contains("tabs-open"); }
+  /** When this session began a brand-new game (0: the game was already going). */
+  private freshSince = 0;
   private calmSince = 0;
   private startupShown = false;
 
@@ -520,10 +528,18 @@ export class App implements DailyHost {
     else if (this.state === "over") this.renderCorners();
   }
 
+  /** The city game is Buildaroo: the page's own words that name the tower game say so. */
+  private brandDom(): void {
+    if (!HAS_CITY) return;
+    $("game").setAttribute("aria-label", t("Buildaroo: your town in the sky. Tap a building to open it, drag to look around."));
+    document.querySelector(".logo")?.setAttribute("aria-label", "Buildaroo");
+    $("install-chip").textContent = t("Install Buildaroo as an app");
+  }
+
   /** The language setting changed: redraws the page's text in the new language. */
   applyLang(): void {
     if (!setLang(resolveLang(this.save.settings.lang))) return;
-    translateDom();
+    translateDom(); this.brandDom();
     this.sheets.rerenderOpen();
     this.daily.rerenderOpen();
     this.tag = "";
@@ -1719,9 +1735,12 @@ export class App implements DailyHost {
     // first sale, the café terrace and the manager. The calendar is in Goals all along.)
     // Pop-ups come one at a time, in this order: the welcome-back card (at launch), then
     // the daily calendar, then Mayor Pip's new chapter (see queuePopup).
-    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && (this.save.tycoon.tips >= 3 || p.towers >= 4) && giftState(this.save.profile.gift).ready) {
+    // (The city game: from City Hall level 2, and never over a card or a sheet, or in a new
+    // game's first minutes: it waits for a calm moment, or the next session.)
+    const dailyOk = () => HAS_CITY ? dailyMayOpen(this.save, { busy: this.tycoon.anyCardOpen() || document.body.classList.contains("tabs-open"), freshSince: this.freshSince }) : this.save.tycoon.tips >= 3 || p.towers >= 4;
+    if (cityHome && this.state === "menu" && this.dailyAuto !== dayKey(0) && this.save.seenFeatures.includes("ty-city") && (HAS_CITY ? gateOpen(save, "daily") && save.tycoon.tips >= 3 : dailyOk()) && giftState(this.save.profile.gift).ready) {
       this.dailyAuto = dayKey(0);
-      this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); });
+      this.queuePopup("daily", () => { if (giftState(this.save.profile.gift).ready) this.showDaily(); }, dailyOk);
     }
     // Mayor Pip's goal strip, and Pip introducing a new chapter once things are calm.
     if (HAS_CITY) renderMayorStrip(save, () => { this.sound.click(); openMayor(save, () => this.persist(), () => this.sound.purchase(), () => this.refresh()); });
@@ -2178,7 +2197,7 @@ export class App implements DailyHost {
    *  (The weekly league was folded into the weekly tournament: one weekly competition.) */
   private waitingRewards(now: number): string[] {
     const save = this.save, out: string[] = [];
-    if (playerStarted(save) && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
+    if (playerStarted(save) && gateOpen(save, "daily") && giftState(save.profile.gift).ready) out.push(t("🎁 Open your daily gift"));
     const rent = isOpen(save, "city") ? rentWaiting(save, now) : 0;
     if (rent >= 1) out.push(t("🏦 Collect {n} ★ of rent", { n: fmt(rent) }));
     if (chestReady(save, now)) out.push(t("🧰 Open today's chest"));
@@ -2232,7 +2251,7 @@ export class App implements DailyHost {
   private collectAll(): void {
     this.sound.ensure();
     // Today's gift opens the calendar (the rest is collected after it).
-    if (giftState(this.save.profile.gift).ready && playerStarted(this.save)) { this.showDaily(); return; }
+    if (giftState(this.save.profile.gift).ready && playerStarted(this.save) && gateOpen(this.save, "daily")) { this.showDaily(); return; }
     const save = this.save, lines: string[] = [];
     const gift = this.sheets.claimGift();
     if (gift) {

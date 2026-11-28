@@ -4826,3 +4826,8 @@ body:is(.tabs-open, .tabs-closing) .tab-page .buy:disabled:not(.owned), body:is(
   box-shadow: inset 0 0 0 1.5px #c9bff0 !important; text-shadow: none !important; }
 body:is(.tabs-open, .tabs-closing) .tab-page .buy:disabled:not(.owned) *, body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled * { opacity: 1 !important; -webkit-text-fill-color: currentColor; }
 body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled small em { color: #7a6fb5 !important; }
+
+/* The top bar's earnings: the base rate, and the short boosts on now as a chip of their own. */
+#tycity #tcy-top .tcy-wallet em .rate-boost { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font: 800 10px/15px var(--ui); font-style: normal; color: #2a1f5c; background: #ffd23c; vertical-align: 1px; }
+/* Goals: what opens with the next City Hall level. */
+.goals-later { margin: 16px 8px 6px; text-align: center; font: 700 13px/1.3 var(--ui); color: #7a70a8; }
