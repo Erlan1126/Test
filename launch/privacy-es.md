@@ -59,11 +59,17 @@ jugador aleatorio). Los nombres reportados por varios jugadores se ocultan.
 ## Informes de fallos y rendimiento
 
 Para encontrar y corregir problemas en teléfonos reales, el juego envía informes técnicos
-anónimos al servidor de Skyrise: el texto de un error si el juego falla y, después de cada
-torre, qué tan fluido funcionó (imágenes por segundo). Cada informe incluye la versión de la
-app, el modelo del teléfono y el chip gráfico, y nada más: ni id de jugador, ni apodo, ni
-partida guardada, ni ubicación. Se guardan unas semanas como máximo (los 20.000 más recientes)
-y nunca se comparten ni se venden.
+anónimos: el texto de un error si algo falla, qué pantalla estaba abierta en ese momento y,
+después de cada torre, qué tan fluido funcionó (imágenes por segundo). Cada informe incluye
+qué juego lo envió, la versión de la app, el modelo del teléfono y el chip gráfico, y nada
+más: ni id de jugador, ni apodo, ni partida guardada, ni ubicación por IP, ni contactos.
+
+Los informes van a nuestro propio servidor, donde se guardan unas semanas como máximo (los
+20.000 más recientes). También podemos enviar los mismos informes de errores a **Sentry**
+(sentry.io), un servicio de informes de fallos que solo los guarda para que los leamos, con
+el guardado de direcciones IP desactivado. Nunca se comparten ni se venden. Si no hay
+conexión, unos pocos errores recientes esperan en tu dispositivo hasta poder enviarse; en
+Ajustes hay un botón "Copiar informe de errores" si quieres enviar uno a soporte tú mismo.
 
 ## Estadísticas de juego anónimas
 

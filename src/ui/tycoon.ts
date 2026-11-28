@@ -856,7 +856,8 @@ export class TycoonUI {
           if (row && this.tab === "company") { popCoin(row.querySelector(".room-pops")!, amount); flyCoin(row.querySelector(".room-scene")!, "ty-coins"); }
         } else if (this.inCity) {
           const tag = $("tcy-labels").querySelector<HTMLElement>(`[data-tag="${id}"]`);
-          if (tag && !tag.hidden) { popCoin(tag.querySelector(".tag-pops")!, amount); if (Math.random() < 0.5) flyCoin(tag, "tcy-coins"); }
+          // (Not while a sheet covers the town: the coin would fly out from behind it, over the sheet.)
+          if (tag && !tag.hidden && !openModalEl()) { popCoin(tag.querySelector(".tag-pops")!, amount); if (Math.random() < 0.5) flyCoin(tag, "tcy-coins"); }
           // The building itself bounces as it sells (not too often, so the street stays calm).
           if (now - this.pulse.at > 900) this.pulse = { id, at: now };
         }
@@ -1201,12 +1202,12 @@ export class TycoonUI {
     if (cloud && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.cloudNote(cloud);
     if (HAS_CITY && !s.cityName && hallLevel(s) >= 2 && !s.seenFeatures.includes("name-city") && $("mayor").hidden && !openModalEl() && !document.body.classList.contains("tabs-open") && !document.querySelector(".hall-banner")) this.nameCity(true);
     this.collectDesigns(now);
-    if (!closeUp && now - this.askAt > 3000) { this.askAt = now; if (newAsk(s, homes, now)) { this.host.persist(); toast(t("💬 A neighbour has a request! Tap the bubble over their home.")); } }
+    if (!closeUp && now - this.askAt > 3000) { this.askAt = now; if (newAsk(s, homes, now)) { this.host.persist(); toast(t("💬 A neighbor has a request! Tap the bubble over their home.")); } }
     const askTags = closeUp ? "" : s.asks.list.map((a, i) => {
       const idx = homes.indexOf(a.home);
       if (idx < 0) return "";
       const done = askDone(s, a);
-      return `<button type="button" class="tag bub ask${done ? " done" : ""}" data-tag="ask-${i}" data-i="${-100 - idx}" data-h="-1" aria-label="${esc(t("A neighbour's request"))}"><span class="tag-ico">${done ? "✓" : "💬"}</span></button>`;
+      return `<button type="button" class="tag bub ask${done ? " done" : ""}" data-tag="ask-${i}" data-i="${-100 - idx}" data-h="-1" aria-label="${esc(t("A neighbor's request"))}"><span class="tag-ico">${done ? "✓" : "💬"}</span></button>`;
     }).join("");
     this.labelsDirty = true;
     // The City Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
@@ -2183,7 +2184,7 @@ export class TycoonUI {
         track("prop_upgrade");
         this.host.sound.unlock();
         vibrate(s.settings.vibrate, [15, 30, 15]);
-        if (lv === 1 && isLot(j.id)) toast(t("🏡 Built! New neighbours moved in: they shop at your businesses and pay rent."));
+        if (lv === 1 && isLot(j.id)) toast(t("🏡 Built! New neighbors moved in: they shop at your businesses and pay rent."));
         else if (lv === PROP_MAX) { fireworks(2, () => this.host.sound.firework()); toast(t("🏙️ Fully grown: a glass skyscraper!")); }
         else if (!s.seenFeatures.includes("prop-first")) { s.seenFeatures.push("prop-first"); toast(t("🏠 It grew! Every building in town can grow like this, up to a skyscraper. Each level makes every business earn more.")); }
         else toast(t("🏠 Home upgrade finished: level {n}!", { n: lv }));
@@ -2267,7 +2268,7 @@ export class TycoonUI {
     // Homes: the cheapest upgrade.
     if (propsOpen(s)) {
       const best = this.host.bizHomes().filter(key => !buildOf(s, "home", key)).map(key => ({ key, lv: propLevel(s, key), price: propPrice(s, key) })).filter(h => !propBlock(s, h.key, s.tycoon.builds?.filter(b => b.kind === "home" && isLot(b.id) && propLevel(s, b.id) === 0).length ?? 0)).sort((a, b) => a.price - b.price)[0];
-      if (best?.lv === 0) item(`data-build="home" data-id="${esc(best.key)}"`, "🏡", t("Build on an empty lot"), t("New neighbours move in: they shop at your businesses and pay rent") + time("home", best.key), best.price);
+      if (best?.lv === 0) item(`data-build="home" data-id="${esc(best.key)}"`, "🏡", t("Build on an empty lot"), t("New neighbors move in: they shop at your businesses and pay rent") + time("home", best.key), best.price);
       else if (best) item(`data-build="home" data-id="${esc(best.key)}"`, "🏠", t("Upgrade a home"), t("A bigger building: more people, more rent, +{pct}% to every business", { pct: Math.round(PROP_BONUS * 100) }) + time("home", best.key), best.price);
     }
     // The city game: headquarters and the block's projects are built by builders, like the rest.
@@ -3212,7 +3213,7 @@ export class TycoonUI {
       : k === "decor" ? tn(n, "Place or move {n} decoration", "Place or move {n} decorations", { n })
       : k === "talk" ? tn(n, "Chat with {n} resident (tap their speech bubble)", "Chat with {n} residents (tap their speech bubbles)", { n })
       : k === "golden" ? tn(n, "Catch {n} golden customer", "Catch {n} golden customers", { n })
-      : tn(n, "Help {n} neighbour", "Help {n} neighbours", { n });
+      : tn(n, "Help {n} neighbor", "Help {n} neighbors", { n });
     const icon: Record<GoalType, string> = { vip: "crown", buy: "building", taps: "sparkle", rush: "bolt", build: "building", home: "home", ask: "gift", decor: "sparkle", talk: "sparkle", golden: "crown" };
     return `<div class="ty-goals">` + g.list.map(x => {
       const done = x.p >= x.n, stars = GOAL_STARS[Math.max(0, GOAL_TIERS[x.t].indexOf(x.n))];
@@ -3311,7 +3312,7 @@ export class TycoonUI {
       });
       return;
     }
-    neighbourNote(who, h, t("A neighbour's request"), `${text}${a.kind === "more" ? ` (${pct}%)` : ""}`, reward, t("Show me"), () => {
+    neighbourNote(who, h, t("A neighbor's request"), `${text}${a.kind === "more" ? ` (${pct}%)` : ""}`, reward, t("Show me"), () => {
       if (a.kind === "grow") this.selectProp(a.home);
       else if (a.kind === "more" && b) { this.selected = b.id; this.selectedProp = ""; this.selectedSight = ""; this.render(); }
       else this.openBuild();
@@ -3641,7 +3642,7 @@ export class TycoonUI {
       track("paint", { id: s.paint[id] ?? "" }, false);
       this.host.persist(); this.host.refresh(); this.render();
     };
-    const opts = [{ label: t("Original colours"), sub: cur ? t("Free") : t("Painted now"), swatch: b.color as [string, string], on: !cur, onPick: () => { setPaint(s, id, ""); done(t("its own colours")); } },
+    const opts = [{ label: t("Original colors"), sub: cur ? t("Free") : t("Painted now"), swatch: b.color as [string, string], on: !cur, onPick: () => { setPaint(s, id, ""); done(t("its own colors")); } },
       ...PAINTS.map(p => {
         const own = ownsPaint(s, p.id);
         if (p.starter && !own) return null;
@@ -3653,7 +3654,7 @@ export class TycoonUI {
           else toast(t("Win it in the Season Pass (Goals), while a season is on"));
         } };
       }).filter((o): o is NonNullable<typeof o> => !!o)];
-    mayorChoice(t("Paint this building"), t("Pick new colours for {name}. You can change them any time.", { name: t(stageName(id, stageNow(s, id))) }), opts, t("Not now"));
+    mayorChoice(t("Paint this building"), t("Pick new colors for {name}. You can change them any time.", { name: t(stageName(id, stageNow(s, id))) }), opts, t("Not now"));
   }
 
   /** Rain or snow over the town right now (Buildaroo). */

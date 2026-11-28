@@ -3,7 +3,7 @@
 Buildaroo (the city game) and Skyrise (the tower game) are made by Big Bruce Studios LLC
 (contact: support@bigbrucestudios.com). This policy covers both; where it says Skyrise, the
 same applies to Buildaroo, which runs on the same server.
-Last updated: November 26, 2026.
+Last updated: November 28, 2026.
 
 Short version: the games have no accounts, no ads and no tracking. Your progress is saved on
 your device and backed up to our server under a random player id, so you can get it back
@@ -52,11 +52,18 @@ player id). Names reported by several players are hidden.
 
 ## Crash and performance reports
 
-To find and fix problems on real phones, the game sends anonymous technical reports to the
-Skyrise server: the text of an error if the game crashes, and after each tower how smoothly
-it ran (frames per second). Each report includes the app version, the phone model and the
-graphics chip, and nothing else: no player id, nickname, save or location. Reports are kept
-for at most a few weeks (the newest 20,000) and are never shared or sold.
+To find and fix problems on real phones, the game sends anonymous technical reports: the
+text of an error if something goes wrong, which screen was open at the time, and after each
+tower how smoothly it ran (frames per second). Each report includes which game sent it, the
+app version, the phone model and the graphics chip, and nothing else: no player id,
+nickname, save, IP-based location or contacts.
+
+Reports go to our own server, where they're kept for at most a few weeks (the newest
+20,000). We may also send the same error reports to **Sentry** (sentry.io), a crash reporting
+service that only stores them for us to read, with storing IP addresses turned off. They're
+never shared or sold. If no connection is available, a few recent errors wait on your
+device until they can be sent; Settings has a "Copy error report" button if you want to send
+one to support yourself.
 
 ## Anonymous play statistics
 
@@ -91,7 +98,7 @@ your real name, email, location or contacts.
 - No accounts or sign-in (the leaderboard uses the random player id above).
 - No ads.
 - No third-party analytics, tracking pixels or trackers (only the game's own anonymous
-  play statistics described above).
+  play statistics and the error reports described above).
 
 ## Crystal purchases on the website
 

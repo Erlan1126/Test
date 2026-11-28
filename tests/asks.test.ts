@@ -7,7 +7,7 @@ const T0 = 1_800_000_000_000;
 const town = () => { const s = defaultSave(); s.tycoon.levels = { coffee: 20 }; s.tycoon.tips = 3; s.tycoon.opening = 0; s.props["g:1,1"] = 1; s.props["t:2,0"] = 2; return s; };
 const seq = (...v: number[]) => { let i = 0; return () => v[i++ % v.length]; };
 
-describe("neighbour requests", () => {
+describe("neighbor requests", () => {
   it("come from homes that are built, at most two at a time", () => {
     const s = town(), homes = ["g:1,1", "g:5,5", "t:2,0"];
     const a = newAsk(s, homes, T0, seq(0, 0))!;

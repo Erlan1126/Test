@@ -3869,7 +3869,7 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #land-buy .land-price b { font-family: Bungee, "Arial Black", sans-serif; font-size: 28px; color: #13924f; }
 #land-buy .land-bar { display: block; width: 100%; height: 8px; border-radius: 4px; background: #ece8fb; overflow: hidden; }
 #land-buy .land-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #34d27f, #16a35a); transition: width 0.4s; }
-#land-buy .land-buy-btn { width: 100%; min-height: 54px; font-size: 17px; }
+#land-buy .land-buy-btn { width: 100%; min-height: 54px; font: 400 17px var(--display); letter-spacing: 0.02em; }
 #land-buy .land-buy-btn.short { filter: grayscale(0.6); opacity: 0.75; }
 #land-buy .land-step { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: #8a80b8; }
 #land-buy .land-step:empty { display: none; }
@@ -4881,3 +4881,14 @@ body.tabs-open .tab-page .buy:disabled:not(.owned), body.tabs-open #tycoon .room
   box-shadow: inset 0 0 0 1.5px #c9bff0 !important; text-shadow: none !important; }
 body.tabs-open .tab-page .buy:disabled:not(.owned) *, body.tabs-open #tycoon .room-bar .ty-buy:disabled * { opacity: 1 !important; -webkit-text-fill-color: currentColor; }
 body.tabs-open #tycoon .room-bar .ty-buy:disabled small em { color: #7a6fb5 !important; }
+
+/* Launch QA: rows never grow past the sheet on a 320px phone (the price stays in view). */
+.tcy-mode { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.tcy-mode > span:not(.mode-ico):not(.mode-price):not(.dot) { flex: 1 1 auto; min-width: 0; }
+.tcy-mode b { overflow-wrap: anywhere; }
+/* On a narrow phone the "Skip the wait" button goes under the goal instead of squeezing it. */
+@media (max-width: 400px) {
+  .earn-goal { flex-wrap: wrap; }
+  .earn-goal .eg-main { flex: 1 1 calc(100% - 64px); }
+  .earn-goal .eg-skip { flex: 1 1 100%; flex-direction: row; justify-content: center; gap: 8px; margin-left: 60px; }
+}

@@ -30,9 +30,9 @@ export interface LandPlot {
 
 export const LAND: LandPlot[] = [
   { id: "meadow", name: "Harbor District", icon: "⚓", what: "New land for the city: a marina with boats, a fish market, a lighthouse and seaside homes", minutes: 15, min: 50000, dir: [-1, 0], y: 0, theme: "harbor", slot: 0 },
-  { id: "lakeside", name: "Garden Hills", icon: "🎡", what: "A new neighbourhood joined to the city: big family homes, parks, a lake and a Ferris wheel", minutes: 40, min: 5000000, dir: [1, 0], y: 0, theme: "garden", slot: 1 },
+  { id: "lakeside", name: "Garden Hills", icon: "🎡", what: "A new neighborhood joined to the city: big family homes, parks, a lake and a Ferris wheel", minutes: 40, min: 5000000, dir: [1, 0], y: 0, theme: "garden", slot: 1 },
   { id: "hills", name: "Downtown", icon: "🏙️", what: "The city's business quarter: tall towers round a fountain square", minutes: 90, min: 200000000, dir: [0, 1], y: 0, theme: "downtown", slot: 2 },
-  { id: "resort", name: "Beach Resort", icon: "🏖️", what: "A seaside resort joined to the city: curved hotel towers, a pool with loungers, colourful cabanas and a beach with a pier", minutes: 130, min: 3e9, dir: [1, 1], y: 0, theme: "resort", slot: 6 },
+  { id: "resort", name: "Beach Resort", icon: "🏖️", what: "A seaside resort joined to the city: curved hotel towers, a pool with loungers, colorful cabanas and a beach with a pier", minutes: 130, min: 3e9, dir: [1, 1], y: 0, theme: "resort", slot: 6 },
   // (After the Beach Resort, last of the ground districts: placed after the others so none of
   // them moves for players who already own them.)
   { id: "canal", name: "Canal Quarter", icon: "🛶", what: "An old town of canals joined to the city: gondolas under arched bridges, a clock tower over the piazza and tall painted townhouses", minutes: 150, min: 1.5e10, dir: [-1, 1], y: 0, theme: "canal", slot: 7 },
