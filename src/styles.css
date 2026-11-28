@@ -2992,34 +2992,100 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .tcy-coach p { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.3; }
 .tcy-coach small { display: block; font: 400 10px var(--display); color: #ff4f8b; text-transform: uppercase; letter-spacing: 0.05em; }
 
-/* Tags floating over the buildings. */
 .tcy-labels { position: absolute; inset: 0; pointer-events: none; }
-.tag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 10px 6px; border: 0; border-radius: 14px; cursor: pointer; pointer-events: auto; white-space: nowrap; will-change: transform;
-  color: #2a1f3e; background: rgba(255, 255, 255, 0.9); box-shadow: 0 4px 12px rgba(40, 20, 100, 0.22); font-family: inherit; }
-.tag::after { content: ""; position: absolute; bottom: -5px; left: 50%; width: 10px; height: 10px; margin-left: -5px; transform: rotate(45deg); background: inherit; border-radius: 2px; }
-.tag b { display: flex; align-items: center; gap: 4px; font: 400 11px var(--display); }
-.tag b svg.ic { width: 14px; height: 14px; }
-.tag small { font-size: 10px; font-weight: 800; color: #d0901a; }
-.tag.sel { background: linear-gradient(135deg, var(--b1), var(--b2)); color: #fff; box-shadow: 0 0 0 3px #fff, 0 8px 18px rgba(40, 20, 100, 0.35); z-index: 2; }
-.tag.sel small { color: #fff3b0; }
-.tag.sel b svg.ic { filter: brightness(0) invert(1); }
-.tag.rushing { box-shadow: 0 0 0 3px #ff4f8b, 0 0 20px rgba(255, 79, 139, 0.7); }
-.tag-prog { display: block; width: 100%; height: 4px; margin-top: 2px; border-radius: 2px; background: rgba(0, 0, 0, 0.1); overflow: hidden; }
-.tag-prog i { display: block; height: 100%; background: linear-gradient(90deg, #ffe27a, #ffb13b); }
-.tag.lease { background: rgba(232, 51, 79, 0.92); color: #fff; }
-.tag.lease small { color: #fff3b0; }
-.tag.lease.soon { background: rgba(120, 110, 170, 0.85); }
-.tag.locked { padding: 4px 8px; background: rgba(120, 110, 170, 0.75); color: #fff; font-size: 12px; }
-.tag-flags { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
-.flag { padding: 3px 8px; border-radius: 10px; font: 400 10px var(--display); color: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); animation: ready-bob 0.9s ease-in-out infinite; }
-.flag.vip { color: #2a1f3e; background: linear-gradient(#fff3b0, #ffc93c); }
-.flag.critic { background: #6a3cff; }
-.flag.power { background: #1c1640; color: #ffe27a; }
-.flag.rush { background: linear-gradient(90deg, #ff4f8b, #ff8a3b); animation: none; }
-.flag.grow { color: #2a1f3e; background: linear-gradient(90deg, #fff3b0, #ffc93c); }
-.flag.run { background: #ff4f8b; }
+/* ---- Bubbles over the town (ui/tycoon.ts renderCity and placeTags; logic/tags.ts picks them) ----
+   Only what needs the player shows, a few at a time, and each kind has its own shape and colour:
+   a gold star (golden customer), a purple sparkle (VIP), a red notepad (food critic), a yellow
+   bolt on dark (power cut), a green arrow (ready to grow), cash (to collect), a speech bubble
+   (a neighbour's request) and a price tag (for sale). The plain medals with a business's level
+   show only when looking closely, or on the building that's tapped. */
+.tag { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 6px; margin: 0 0 6px; padding: 3px; border: 0; border-radius: 999px; cursor: pointer; pointer-events: auto; white-space: nowrap; will-change: transform;
+  font-family: inherit; color: #2a1f5c; background: #fff; box-shadow: 0 6px 14px rgba(40, 20, 100, 0.3); transition: opacity 0.25s ease, visibility 0s; }
+.tag.tag-fade { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, visibility 0s linear 0.25s; }
+.tag::after { content: ""; position: absolute; bottom: -4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; transform: rotate(45deg); background: inherit; border-radius: 2px; }
+.tag b { padding-right: 8px; font: 400 12px var(--display); }
+.tag-ico { --p: 0; position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; }
+.tag-ico svg.ti { position: relative; width: 22px; height: 22px; }
 .tag-pops { position: absolute; left: 0; right: 0; bottom: 100%; height: 60px; pointer-events: none; }
 .tag-pops .coin-pop { bottom: 0; }
+.tag-lv { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); z-index: 1; padding: 0 5px; border-radius: 999px; border: 1.5px solid #fff;
+  background: #2a1f5c; color: #fff; font: 400 9px/1.35 var(--display); font-style: normal; letter-spacing: 0.02em; white-space: nowrap; box-shadow: 0 2px 4px rgba(20, 10, 60, 0.3); }
+
+/* Visitors with a timer: bright, round (the critic a notepad-square), bobbing. */
+.tag.ev .tag-ico, .tag.up .tag-ico { width: 34px; height: 34px; }
+.tag.ev { animation: tag-bob 1s ease-in-out infinite; }
+.tag.ev-golden { background: radial-gradient(circle at 35% 30%, #fff6c0, #ffc93c 55%, #f09a00); box-shadow: 0 0 0 2px #fff, 0 0 18px rgba(255, 196, 40, 0.95), 0 6px 14px rgba(120, 70, 0, 0.35); }
+.tag.ev-vip { background: linear-gradient(160deg, #c9a8ff, #7a4cff 55%, #5a2fe0); box-shadow: 0 0 0 2px #fff, 0 0 16px rgba(140, 90, 255, 0.85), 0 6px 14px rgba(40, 20, 100, 0.35); }
+.tag.ev-critic { border-radius: 11px; background: linear-gradient(180deg, #ff9a4c, #e8402a); box-shadow: 0 0 0 2px #fff, 0 6px 14px rgba(140, 40, 10, 0.4); }
+.tag.ev-power { background: #1c1640; box-shadow: 0 0 0 2px #ffd23a, 0 0 14px rgba(255, 210, 58, 0.7), 0 6px 14px rgba(20, 10, 60, 0.45); }
+/* Ready to grow (an HQ, the City Hall, a building to upgrade): a green arrow. */
+.tag.up { background: linear-gradient(180deg, #5ee08a, #1fa85a); box-shadow: 0 0 0 2px #fff, 0 6px 14px rgba(10, 80, 40, 0.38); animation: tag-bob 1.4s ease-in-out infinite; }
+.tag.prop-up.up .tag-ico { width: 28px; height: 28px; }
+.tag.prop-up.up .tag-ico svg.ti { width: 18px; height: 18px; }
+/* Money or a gift waiting: a white square with a green rim. */
+.tag.collect { border-radius: 12px; background: #fff; box-shadow: 0 0 0 2px #3ccf78, 0 6px 14px rgba(10, 80, 40, 0.32); animation: tag-bob 1.2s ease-in-out infinite; }
+.tag.collect::after { box-shadow: 2px 2px 0 #3ccf78; }
+.tag.bottle .tag-ico svg { position: relative; animation: bottle-rock 1.4s ease-in-out infinite; }
+/* A neighbour's request: a speech bubble, its tail on the left. */
+.tag.ask { padding: 3px 5px; border-radius: 16px 16px 16px 5px; color: #6a3cff; background: #fff; box-shadow: 0 0 0 2px #6a3cff, 0 6px 14px rgba(40, 20, 100, 0.3); animation: tag-bob 1.6s ease-in-out infinite; }
+.tag.ask .tag-ico { width: 28px; height: 26px; }
+.tag.ask::after { left: 8px; margin-left: 0; bottom: -5px; box-shadow: 2px 2px 0 #6a3cff; }
+/* For sale (land, the next lot): a purple price tag with the price, like the money bar. */
+.tag.sale { padding: 3px 4px 3px 3px; border-radius: 7px 999px 999px 7px; color: #fff; background: linear-gradient(180deg, #8a6cff, #5b3fd6); box-shadow: 0 0 0 2px #fff, 0 6px 14px rgba(40, 20, 120, 0.38); }
+.tag.sale .tag-ico { width: 24px; height: 24px; }
+.tag.sale .tag-ico svg.ti { width: 18px; height: 18px; transform: rotate(-45deg); }
+.tag.sale.building { background: #ffb13b; }
+.tag.sale.building .tag-ico { font-size: 15px; }
+/* What the Next step points at: a soft purple pulse round it. */
+.tag[data-k="goal"] { animation: tag-call 1.6s ease-in-out infinite; }
+.tag.proj.offer { color: #4a3a7a; border: 2px dashed #8a6cff; }
+.tag.proj .tag-ico svg.ic { width: 24px; height: 24px; }
+
+/* The plain medals: the business in its own colours, a ring that fills as it sells, the level underneath. */
+.tag.medal .tag-ico { background: conic-gradient(#ffd23a calc(var(--p) * 1turn), rgba(42, 31, 92, 0.14) 0); }
+.tag.medal .tag-ico::before { content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: radial-gradient(120% 90% at 30% 20%, rgba(255, 255, 255, 0.55), transparent 45%), linear-gradient(160deg, var(--b1, #8a6cff), var(--b2, #5a3cff)); }
+.tag.medal .tag-ico svg.ic { position: relative; width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #f3efff 70%); }
+.tag.medal.sel { padding-right: 4px; color: #fff; background: linear-gradient(135deg, var(--b1), var(--b2)); box-shadow: 0 0 0 2px #fff, 0 8px 18px rgba(40, 20, 100, 0.35); }
+.tag.medal.sel .tag-ico { width: 44px; height: 44px; background: conic-gradient(#fff calc(var(--p) * 1turn), rgba(255, 255, 255, 0.3) 0); }
+.tag.medal.sel .tag-ico svg.ic { width: 32px; height: 32px; }
+.tag.medal.rushing { box-shadow: 0 0 0 3px #ff4f8b, 0 0 18px rgba(255, 79, 139, 0.7); }
+/* On the tapped building: what needs it, as a small badge (tap it to act). */
+.tag .badge { position: absolute; top: -8px; right: -8px; z-index: 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 2px #fff; animation: tag-bob 1s ease-in-out infinite; }
+.tag .badge svg.ti { width: 15px; height: 15px; }
+.badge.ev-golden { background: radial-gradient(circle at 35% 30%, #fff6c0, #ffc93c 55%, #f09a00); }
+.badge.ev-vip { background: linear-gradient(160deg, #c9a8ff, #6a3cff); }
+.badge.ev-critic { border-radius: 6px; background: linear-gradient(180deg, #ff9a4c, #e8402a); }
+.badge.ev-power { background: #1c1640; }
+.badge.up { background: linear-gradient(180deg, #5ee08a, #1fa85a); }
+/* The City Hall (a purple medal with its level), the first apartment block, a tapped home. */
+.tag.hall-bub:not(.up) .tag-ico { background: linear-gradient(180deg, #8a6cff, #5b3fd6); }
+.tag.hall-bub:not(.up) .tag-ico svg.ic { width: 22px; height: 22px; }
+.tag.starter .tag-ico { font-size: 18px; }
+.tag.starter.sel { color: #fff; background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }
+.tag.prop-up.sel { padding-right: 4px; color: #fff; background: linear-gradient(135deg, #7ad3ff, #4f8bff); }
+.tag.prop-up.sel .tag-ico { font-size: 16px; }
+/* Lots: the next to open a red "+" with its price; the rest a small grey "+"; a lock until the City Hall opens it. */
+.tag.lease:not(.sale) { color: #fff; background: #ff4f6d; }
+.tag.lease:not(.sale) .tag-ico { width: 24px; height: 24px; background: #fff; color: #ff4f6d; font: 400 20px/1 var(--display); }
+.tag.lease .tag-lv { background: #ff4f6d; }
+.tag.lease.later { padding: 2px; background: rgba(120, 114, 160, 0.85); }
+.tag.lease.later .tag-ico { width: 18px; height: 18px; font-size: 15px; color: #6e6896; }
+.tag.lease.hall-lock { background: rgba(42, 31, 110, 0.85); }
+.tag.lease.hall-lock .tag-ico { background: #ffd23f; color: #2a1f6e; font-size: 13px; }
+.tag.lease.hall-lock .tag-lv { background: #2a1f6e; color: #ffd23f; }
+/* A countdown over a building going up. */
+.tag.build-tm { gap: 4px; padding: 2px 9px 2px 2px; color: #fff; background: #2a1f6e; box-shadow: 0 4px 10px rgba(20, 10, 60, 0.35); }
+.tag.build-tm .tag-ico { width: 22px; height: 22px; font-size: 13px; background: #ffd23f; }
+.tag.build-tm b { padding: 0; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+/* A resident speaking (tap: a tip). */
+.tag.talk { max-width: 190px; padding: 7px 11px; border-radius: 16px; animation: talk-in 0.3s ease-out; }
+.tag.talk b { padding: 0; font: 700 12.5px/1.3 var(--ui); white-space: normal; text-align: left; }
+@keyframes tag-bob { 50% { translate: 0 -3px; } }
+@keyframes tag-call { 0%, 100% { box-shadow: 0 0 0 2px #fff, 0 6px 14px rgba(40, 20, 100, 0.3); } 50% { box-shadow: 0 0 0 2px #fff, 0 0 0 7px rgba(106, 60, 255, 0.3), 0 6px 14px rgba(40, 20, 100, 0.3); } }
+@keyframes bottle-rock { 0%, 100% { rotate: -8deg; } 50% { rotate: 8deg; } }
+@keyframes talk-in { from { opacity: 0; scale: 0.7; } to { opacity: 1; scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .tag, .tag .badge, .tag.bottle .tag-ico svg { animation: none; } .tag { transition: none; } }
 
 /* The building card. */
 .tcy-card { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); padding: 12px 14px; border-radius: 24px;
@@ -3095,12 +3161,7 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 #tcy-bar .dot[hidden] { display: none; }
 #tcy-bar .tcy-build .dot { top: -26px; right: calc(50% - 30px); }
 @media (prefers-reduced-motion: reduce) { #tcy-bar > button svg { transition: none; } }
-@media (prefers-reduced-motion: reduce) { .flag, .tcy-card, .tcy-coach { animation: none !important; } }
-.tag { padding: 4px 9px 5px; }
-.tag:not(.sel) small { display: none; }
-.tag:not(.sel) .tag-prog { width: 70%; }
-.tag:not(.sel) b { font-size: 10px; }
-.tag.lease:not(.sel) small, .tag.lease small { display: block; }
+@media (prefers-reduced-motion: reduce) { .tcy-card, .tcy-coach { animation: none !important; } }
 .tcy-card .ty-buy:disabled svg { opacity: 0.8; }
 
 /* ══════════ Simpler city: one home, three buttons, a clear next step ══════════ */
@@ -3128,17 +3189,6 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .tcy-next.tone-grow { --nx: #6a3cff; --nx-txt: #6a3cff; --nx-bg: linear-gradient(135deg, #e2d6ff, #b48cff); }
 .tcy-next.tone-learn, .tcy-next.tone-go { --nx: #19a87a; --nx-txt: #19a87a; --nx-bg: linear-gradient(135deg, #d2f7e6, #5ee0a0); }
 
-/* Clean tags: just the name, a thin progress line and at most one badge. */
-.tag { flex-direction: row !important; gap: 5px !important; padding: 5px 10px !important; border-radius: 12px !important; }
-.tag b { font-size: 11px !important; }
-.tag .tag-prog { position: absolute; left: 8px; right: 8px; bottom: 2px; width: auto !important; height: 3px; margin: 0; }
-.tag.lease { background: rgba(232, 51, 79, 0.9) !important; }
-.badge { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; font: 400 10px var(--display); color: #fff; background: #ff4f8b; animation: ready-bob 0.9s ease-in-out infinite; }
-.badge.vip { color: #2a1f3e; background: linear-gradient(#fff3b0, #ffc93c); }
-.badge.critic { background: #6a3cff; }
-.badge.power { background: #1c1640; color: #ffe27a; }
-.badge.grow { background: linear-gradient(135deg, #b48cff, #6a3cff); }
-.badge.rush { background: linear-gradient(90deg, #ff4f8b, #ff8a3b); animation: none; }
 
 /* The card: smaller, one big button. */
 .tcy-card { bottom: calc(env(safe-area-inset-bottom, 0px) + 104px) !important; padding: 12px !important; }
@@ -3186,7 +3236,7 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 .more-tile:active { transform: scale(0.96); }
 .more-ico { font-size: 30px; }
 .more-tile b { font: 400 12px var(--display); }
-@media (prefers-reduced-motion: reduce) { .tcy-next, .next-go, .badge, .card-main.grow { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .tcy-next, .next-go, .card-main.grow { animation: none !important; } }
 .more-mayor { display: flex !important; align-items: center; gap: 10px; padding: 10px 12px !important; border-radius: 18px !important; background: #fff !important; box-shadow: 0 6px 16px rgba(60, 40, 140, 0.1) !important; }
 .more-mayor .mayor-mini { flex: none; width: 52px !important; height: 52px !important; }
 .more-mayor .mayor-mini svg { width: 100%; height: 100%; }
@@ -3206,23 +3256,6 @@ body.in-tycity #menu, body.in-tycity .corner-left, body.in-tycity #settings-btn,
 body.city-home #menu, body.city-home #dock, body.city-home .corner-left, body.city-home #settings-btn, body.city-home #stars-btn, body.city-home #level-btn, body.city-home #streak-btn { display: none !important; }
 body.city-home.visiting .corner-left, body.city-home.placing .corner-left { display: none !important; }
 
-/* ---- Main Street: round icon bubbles over the buildings ---- */
-#tcy-labels .tag.bub { flex-direction: row !important; align-items: center; gap: 6px !important; padding: 3px !important; border-radius: 999px !important; background: rgba(255, 255, 255, 0.94); box-shadow: 0 6px 14px rgba(40, 20, 100, 0.28); color: #2a1f5c; }
-#tcy-labels .tag.bub::after { width: 8px; height: 8px; margin-left: -4px; bottom: -4px; }
-#tcy-labels .tag.bub .tag-ico { --p: 0; position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
-  background: conic-gradient(var(--b2, #6a3cff) calc(var(--p) * 1turn), rgba(42, 31, 92, 0.12) 0); }
-#tcy-labels .tag.bub .tag-ico::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: linear-gradient(160deg, #fff, color-mix(in srgb, var(--b1, #fff) 35%, #fff)); }
-#tcy-labels .tag.bub .tag-ico svg.ic { position: relative; width: 18px; height: 18px; }
-#tcy-labels .tag.bub b { padding-right: 8px; font: 400 12px var(--display); }
-#tcy-labels .tag.bub.sel { background: linear-gradient(135deg, var(--b1), var(--b2)); color: #fff; transform-origin: 50% 100%; }
-#tcy-labels .tag.bub.sel .tag-ico { width: 40px; height: 40px; background: conic-gradient(#fff calc(var(--p) * 1turn), rgba(255, 255, 255, 0.3) 0); }
-#tcy-labels .tag.bub.sel .tag-ico svg.ic { filter: none; width: 22px; height: 22px; }
-#tcy-labels .tag.bub.lease { background: #ff4f6d; color: #fff; padding-right: 4px !important; animation: bub-call 1.6s ease-in-out infinite; }
-#tcy-labels .tag.bub.lease .tag-ico { width: 26px; height: 26px; background: #fff; color: #ff4f6d; font: 400 20px/1 var(--display); }
-#tcy-labels .tag.bub.lease .tag-ico::before { display: none; }
-#tcy-labels .tag.bub.lease b { font-size: 12px; }
-#tcy-labels .tag.bub .badge { position: absolute; top: -8px; right: -8px; z-index: 1; }
-@keyframes bub-call { 0%, 100% { box-shadow: 0 6px 14px rgba(255, 79, 109, 0.35); } 50% { box-shadow: 0 0 0 6px rgba(255, 79, 109, 0.25), 0 6px 14px rgba(255, 79, 109, 0.35); } }
 
 /* ---- Company sheet: a slim, light header instead of the big purple block ---- */
 #tycoon .ty-hero { padding: 12px 16px 10px !important; color: #2a1f5c; background: linear-gradient(180deg, #ffffff, #f4f0ff) !important; box-shadow: 0 1px 0 rgba(42, 31, 110, 0.08), 0 6px 14px rgba(42, 31, 110, 0.06); }
@@ -3310,13 +3343,11 @@ body.city-home.visiting .corner-left, body.city-home.placing .corner-left { disp
 @media (prefers-reduced-motion: reduce) { .daily-day.today, .daily-day.pop { animation: none !important; } }
 
 /* ---- Golden customer ---- */
-.badge.golden { min-width: 26px; height: 26px; font-size: 14px; background: radial-gradient(circle at 35% 30%, #fff8c8, #ffc93c 60%, #e89a00); box-shadow: 0 0 0 2px #fff, 0 0 16px rgba(255, 200, 60, 0.9); animation: golden-bob 0.7s ease-in-out infinite; }
-@keyframes golden-bob { 50% { transform: translateY(-3px) scale(1.12); } }
 #tcy-events .golden-chip { pointer-events: auto; border: 0; cursor: pointer; font: 400 13px var(--display); color: #4a2a00; background: linear-gradient(90deg, #fff3b0, #ffc93c, #fff3b0); background-size: 200% 100%; box-shadow: 0 0 0 2px #fff, 0 6px 18px rgba(255, 180, 40, 0.6); animation: golden-shine 1.2s linear infinite; }
 @keyframes golden-shine { to { background-position: -200% 0; } }
 .tcy-next.tone-gold { background: linear-gradient(135deg, #fff8d6, #ffe27a); box-shadow: 0 0 0 2px #ffc93c, 0 10px 24px rgba(255, 180, 40, 0.45); }
 #tcy-events .opening { color: #fff; background: linear-gradient(90deg, #ff7aa8, #b04ad8); }
-@media (prefers-reduced-motion: reduce) { .badge.golden, #tcy-events .golden-chip { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { #tcy-events .golden-chip { animation: none !important; } }
 
 /* ---- 3, 2, 1, BUILD! in the streak words' style ---- */
 .countin { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; }
@@ -3377,8 +3408,6 @@ body:is(.tabs-open, .tabs-closing) #tycoon .ty-coins, body:is(.tabs-open, .tabs-
 .contract-chip.done small { color: #e9fff3; }
 /* The build sheet's contract card and the town's first-tower bubble. */
 .tcy-mode.contract { background: linear-gradient(135deg, #fff4e6, #ffe2c4) !important; box-shadow: inset 0 0 0 2px #ffc48a !important; }
-#tcy-labels .tag.bub.starter .tag-ico { font-size: 18px; }
-#tcy-labels .tag.bub.starter.sel { background: linear-gradient(135deg, #ff9a5c, #ff4f8b); }
 .ty-adv-hire.free { background: linear-gradient(180deg, #2fd17a, #13a95a); box-shadow: 0 2px 0 #0b7a40, 0 4px 10px rgba(19, 169, 90, 0.25); }
 /* Trophy names are single long words in a wide font: a touch smaller, and never cut off. */
 .modal .trophy b { font-size: 12.5px !important; overflow-wrap: anywhere; }
@@ -3422,9 +3451,6 @@ body.simple-results #over-actions .home-btn { grid-column: 1 / -1; justify-self:
 @media (prefers-reduced-motion: reduce) { .block-say { animation: none; } }
 body:is(.tabs-open, .tabs-closing) .block-say, body:is(.tabs-open, .tabs-closing) .block-skip { display: none !important; }
 
-/* The block's project spots: a dashed preview while on offer. */
-.tag.proj.offer { background: rgba(255, 255, 255, 0.82); color: #4a3a7a; border: 2px dashed #8a6cff; }
-.tag.proj.offer b { font-size: 12px; }
 
 /* The shop's Town tab: decorations for the island, then the business boosts. */
 .town-hero { display: flex; align-items: center; gap: 12px; margin: 0 0 6px; padding: 12px 14px; border: 1px solid rgba(94, 224, 160, 0.4); border-radius: 16px; background: linear-gradient(135deg, rgba(94, 224, 160, 0.2), rgba(90, 200, 255, 0.16)); }
@@ -3810,10 +3836,6 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #tycity .tcy-next { bottom: calc(env(safe-area-inset-bottom, 0px) + 110px) !important; }
 #tycity #tcy-top .tcy-wallet em { white-space: normal !important; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 10px !important; line-height: 1.15 !important; }
 
-/* Land for sale next to the island: a green bubble with the price. */
-#tycity .tag.land-sale { flex-direction: row; gap: 6px; padding: 6px 12px; background: linear-gradient(180deg, #34d27f, #16a35a) !important; color: #fff; box-shadow: 0 6px 16px rgba(10, 80, 40, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
-#tycity .tag.land-sale b { font-size: 12px; letter-spacing: 0.02em; }
-#tycity .tag.land-sale .tag-ico { background: none; box-shadow: none; width: auto; height: auto; font-size: 16px; }
 
 /* The building card: stats at a glance and what comes next. */
 #tycity .card-stars { display: inline-flex; gap: 2px; vertical-align: -1px; margin-right: 4px; }
@@ -3859,36 +3881,8 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 #land-buy .land-step { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: #8a80b8; }
 #land-buy .land-step:empty { display: none; }
 
-/* Business bubbles: a glossy medal in the business's own colors, a white icon, a ring that
-   fills as it sells, and its level on a little ribbon underneath. */
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) { padding: 3px !important; background: #fff; box-shadow: 0 8px 18px rgba(40, 20, 100, 0.32), 0 0 0 2px rgba(255, 255, 255, 0.9); }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) .tag-ico { width: 42px; height: 42px;
-  background: conic-gradient(#ffd23a calc(var(--p) * 1turn), rgba(42, 31, 92, 0.14) 0); }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) .tag-ico::before { inset: 3px;
-  background: radial-gradient(120% 90% at 30% 20%, rgba(255, 255, 255, 0.55), transparent 45%), linear-gradient(160deg, var(--b1, #8a6cff), var(--b2, #5a3cff));
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.16), inset 0 2px 0 rgba(255, 255, 255, 0.35); }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) .tag-ico svg.ic { width: 30px; height: 30px; padding: 4px; box-sizing: border-box; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffffff, #f3efff 70%); box-shadow: 0 1px 2px rgba(30, 10, 70, 0.35), inset 0 -1px 0 rgba(40, 20, 90, 0.08); }
-#tcy-labels .tag.bub .tag-lv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1; padding: 1px 6px; border-radius: 999px;
-  background: #2a1f5c; color: #fff; font: 400 9px/1.35 var(--display); font-style: normal; letter-spacing: 0.02em; white-space: nowrap; box-shadow: 0 2px 4px rgba(20, 10, 60, 0.3); border: 1.5px solid #fff; }
-#tcy-labels .tag.bub.sel:not(.lease) .tag-ico { width: 46px; height: 46px; }
-#tcy-labels .tag.bub.sel:not(.lease) .tag-ico svg.ic { width: 33px; height: 33px; }
-#tcy-labels .tag.bub:not(.lease):not(.land-sale) { margin-bottom: 6px; }
 
-/* Rent bubbles over the homes round town: a warm yellow pill with a little bounce. */
-#tcy-labels .tag.bub.rent { flex-direction: row; gap: 4px; padding: 4px 10px 4px 4px !important; background: linear-gradient(180deg, #ffe27a, #ffb21e) !important; color: #5a3a00; box-shadow: 0 6px 14px rgba(120, 70, 0, 0.35), 0 0 0 2px #fff; animation: rent-bob 1.4s ease-in-out infinite; }
-#tcy-labels .tag.bub.rent .tag-ico { width: 26px; height: 26px; background: #fff; font-size: 15px; }
-#tcy-labels .tag.bub.rent .tag-ico::before { display: none; }
-#tcy-labels .tag.bub.rent b { font: 400 12px var(--display); padding-right: 0; }
-@keyframes rent-bob { 50% { translate: 0 -4px; } }
-@media (prefers-reduced-motion: reduce) { #tcy-labels .tag.bub.rent { animation: none; } }
 
-/* Property upgrade bubbles: a green arrow over buildings that can grow now. */
-#tcy-labels .tag.bub.prop-up { padding: 3px !important; background: linear-gradient(180deg, #5ee08a, #1fa85a) !important; color: #fff; box-shadow: 0 6px 14px rgba(10, 80, 40, 0.35), 0 0 0 2px #fff; animation: rent-bob 1.4s ease-in-out infinite; }
-#tcy-labels .tag.bub.prop-up .tag-ico { width: 28px; height: 28px; background: rgba(255, 255, 255, 0.22); color: #fff; font: 400 16px/1 var(--display); }
-#tcy-labels .tag.bub.prop-up .tag-ico::before { display: none; }
-#tcy-labels .tag.bub.prop-up.sel { padding-right: 10px !important; animation: none; background: linear-gradient(135deg, #7ad3ff, #4f8bff) !important; }
-#tcy-labels .tag.bub.prop-up b { font: 400 12px var(--display); padding-right: 0; }
 
 /* Switching the card to another building: its content slides in. */
 #tcy-card.card-swap > * { animation: card-swap 0.28s cubic-bezier(.2, .9, .3, 1) both; }
@@ -3896,29 +3890,12 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 @media (prefers-reduced-motion: reduce) { #tcy-card.card-swap > * { animation: none; } }
 
 
-/* A tapped business: its bubble opens into a pill in its own colors with its name. */
-#tcy-labels .tag.bub.sel:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) { background: linear-gradient(135deg, var(--b1), var(--b2)); color: #fff; padding-right: 12px !important; }
-#tcy-labels .tag.bub.sel:not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up) b { color: #fff; }
 /* The HQ to build, under the Buy button on a business card. */
 #tycity .card-hq { display: flex; align-items: center; gap: 8px; width: 100%; margin: 8px 0 2px; padding: 9px 12px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #8a6cff, #6a3cff); color: #fff; font: 400 13px var(--display); text-align: left; box-shadow: 0 4px 10px rgba(80, 40, 200, 0.3); }
 #tycity .card-hq b { flex: 1; font-weight: 400; }
 #tycity .card-hq small { font: 700 11px sans-serif; opacity: 0.9; }
 #tycity .card-perk { margin: -2px 0 8px; font-size: 12px; font-weight: 800; color: #13924f; }
 #tycity .card-main.short { filter: grayscale(0.5); opacity: 0.75; }
-/* The City Hall's bubble: Mayor Pip's story; it pulses when a chapter is ready to finish. */
-#tycity .tag.hall { flex-direction: row; gap: 6px; padding: 6px 12px; background: linear-gradient(180deg, #8a6cff, #5b3fd6) !important; color: #fff; box-shadow: 0 6px 16px rgba(40, 20, 120, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
-#tycity .tag.hall b { font-size: 12px; letter-spacing: 0.02em; }
-#tycity .tag.hall .tag-ico { background: none; box-shadow: none; width: auto; height: auto; font-size: 16px; }
-#tycity .tag.hall.ready { background: linear-gradient(180deg, #ffcf3a, #ff9a1f) !important; animation: hallPulse 1.2s ease-in-out infinite; }
-@keyframes hallPulse { 0%, 100% { box-shadow: 0 6px 16px rgba(160, 80, 0, 0.35), 0 0 0 0 rgba(255, 207, 58, 0.7); } 50% { box-shadow: 0 6px 16px rgba(160, 80, 0, 0.35), 0 0 0 8px rgba(255, 207, 58, 0); } }
-@media (prefers-reduced-motion: reduce) { #tycity .tag.hall.ready { animation: none; } }
-/* Business bubbles: small pins that keep the city in view (bigger only when tapped). */
-#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up):not(.hall) { padding: 2px !important; box-shadow: 0 3px 8px rgba(40, 20, 100, 0.22); background: rgba(255, 255, 255, 0.88); }
-#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up):not(.hall) .tag-ico { width: 24px; height: 24px; }
-#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale):not(.starter):not(.proj):not(.prop-up):not(.hall) .tag-ico svg.ic { width: 20px; height: 20px; padding: 3px; }
-#tcy-labels .tag.bub:not(.sel) .tag-lv { bottom: -7px; padding: 0 4px; font-size: 7.5px; border-width: 1px; }
-#tcy-labels .tag.bub:not(.sel) .badge { top: -6px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; font-size: 8px; }
-#tcy-labels .tag.bub:not(.sel):not(.lease):not(.land-sale) { margin-bottom: 4px; }
 
 /* ---------- Smooth menus: fade the backdrop in, slide a closing sheet away, crossfade swaps ---------- */
 @keyframes modal-fade { from { opacity: 0; } }
@@ -3943,10 +3920,6 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 .tcy-mode.small .mode-ico { width: 38px; height: 38px; font-size: 20px; border-radius: 12px; }
 .tcy-mode.small b { font-size: 14px; }
 
-/* Lots waiting their turn: a small grey "+" (only the next one to open is red). */
-#tcy-labels .tag.bub.lease.later { background: rgba(120, 114, 160, 0.8) !important; padding: 3px !important; animation: none; opacity: 0.8; }
-#tcy-labels .tag.bub.lease.later::after { border-top-color: rgba(120, 114, 160, 0.8) !important; background: rgba(120, 114, 160, 0.8) !important; }
-#tcy-labels .tag.bub.lease.later .tag-ico { width: 20px; height: 20px; font-size: 16px; color: #6e6896; }
 
 /* Builders: the chip under the top bar, jobs in the Build menu. */
 .tcy-builds { position: absolute; z-index: 6; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 96px); display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border: 0; border-radius: 16px; color: #2a1f3e; background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(40, 20, 90, 0.18); font: 400 14px var(--display); cursor: pointer; }
@@ -3959,7 +3932,6 @@ body .scrap-grid .scrap-share:active { transform: translateY(3px); box-shadow: 0
 .tcy-mode.job { background: #fff8e8; }
 .tcy-mode .job-bar { display: block; height: 6px; margin-top: 6px; border-radius: 3px; background: #efe6d2; overflow: hidden; }
 .tcy-mode .job-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffb13b, #ff7a3b); border-radius: 3px; }
-#tcy-labels .tag.bub.land-sale.building { background: #ffb13b !important; }
 .card-main.building { background: linear-gradient(180deg, #ffd36b, #ffb13b) !important; color: #4a2a00 !important; }
 
 /* The weekly city event and the city album (in Goals). */
@@ -4052,17 +4024,9 @@ body:has(#tcy-card:not([hidden])) #toast { top: calc(env(safe-area-inset-top, 0p
 .mayor-goals li.plan-to { display: block; background: none; padding: 2px 4px 0; font: 400 13px var(--display); color: #2a1f6e; }
 .mayor-goals li.plan-opens { grid-template-columns: 22px 1fr; background: linear-gradient(90deg, rgba(255, 210, 63, 0.35), rgba(255, 210, 63, 0.12)); color: #6a4a00; }
 .mayor-goals li.plan-opens span { background: #ffd23f; box-shadow: none; }
-#tcy-labels .tag.bub.lease.hall-lock { background: rgba(42, 31, 110, 0.82); animation: none; }
-#tcy-labels .tag.bub.lease.hall-lock .tag-ico { background: #ffd23f; color: #2a1f6e; font-size: 14px; }
 #tcy-card .card-main.hall-lock { background: linear-gradient(180deg, #6a5cff, #3b2fb8) !important; color: #fff; }
 /* The Buildaroo kangaroo on the opening splash. */
 .splash-art { width: clamp(110px, 34vw, 190px); height: auto; aspect-ratio: 1; border-radius: 24%; margin-bottom: 18px; box-shadow: 0 14px 34px rgba(20, 10, 80, 0.45); animation: splash-pop 0.7s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
-/* The message in a bottle at the beach: a bobbing bubble that asks to be tapped. */
-#tcy-labels .tag.bub.bottle { background: linear-gradient(180deg, #7fe0ff, #2f9be0); }
-#tcy-labels .tag.bub.bottle .tag-ico { background: #fff; font-size: 18px; animation: bottle-bob 1.4s ease-in-out infinite; }
-@keyframes bottle-bob { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-4px) rotate(8deg); } }
-#tcy-labels .tag.bub.bottle .tag-ico::before { display: none !important; }
-#tcy-labels .tag.bub.bottle .tag-ico svg { position: relative; z-index: 1; }
 
 /* The next step as a slim pill: one short line above the Build button, out of the city's way.
    (The details are one tap away in Goals.) It fades while you move the town. */
@@ -4127,15 +4091,6 @@ svg.ic.logo { filter: drop-shadow(0 2px 3px rgba(30, 15, 80, 0.3)) !important; o
 .card-ico:has(svg.logo), #tcy-card .bc-ico:has(svg.logo) { background: none !important; box-shadow: none !important; }
 .card-ico svg.ic.logo, #tcy-card .bc-ico svg.ic.logo { width: 112% !important; height: 112% !important; filter: drop-shadow(0 3px 5px rgba(40, 10, 60, 0.35)) !important; }
 
-/* ---- Neighbour requests: a speech bubble over the home that asks ---- */
-.tag.ask { background: #fff !important; box-shadow: 0 6px 14px rgba(40, 20, 100, 0.3), inset 0 0 0 2px #6a3cff !important; animation: ask-bob 1.6s ease-in-out infinite; }
-.tag.ask .tag-ico { font-size: 18px; }
-.tag.ask::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; background: #fff; transform: translateX(-50%) rotate(45deg); box-shadow: 2px 2px 0 #6a3cff; }
-.tag.ask.done { box-shadow: 0 6px 14px rgba(20, 120, 70, 0.35), inset 0 0 0 2px #19a87a !important; animation: ask-pop 0.9s ease-in-out infinite; }
-.tag.ask.done .tag-ico { color: #19a87a; font: 400 20px/1 var(--display); }
-.tag.ask.done::after { box-shadow: 2px 2px 0 #19a87a; }
-@keyframes ask-bob { 50% { translate: 0 -4px; } }
-@keyframes ask-pop { 50% { scale: 1.12; } }
 
 /* ---- The savings goal: a thin bar along the bottom of the wallet ---- */
 .tcy-wallet { position: relative; }
@@ -4167,12 +4122,9 @@ svg.ic.logo { filter: drop-shadow(0 2px 3px rgba(30, 15, 80, 0.3)) !important; o
 @keyframes hb-out { to { opacity: 0; transform: scale(1.06); } }
 @keyframes hb-pop { from { transform: scale(0.3) rotate(-8deg); opacity: 0; } }
 @keyframes hb-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .hall-banner, .hall-banner *, .tag.ask { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .hall-banner, .hall-banner * { animation: none !important; } }
 /* A neighbour speaking in the mayor's card: a friendlier colour for their name. */
 #mayor.neighbour #mayor-name { color: #19a87a !important; }
-/* Request bubbles: a white speech bubble with a purple chat mark, easy to spot. */
-.tag.ask { width: 40px !important; height: 40px !important; padding: 0 !important; justify-content: center; border-radius: 50% !important; }
-.tag.ask .tag-ico { color: #6a3cff; }
 /* Naming the city: a big, friendly text box in Pip's card. */
 .mayor-goals li.mayor-input { display: block !important; padding: 0 !important; margin: 4px 0 2px !important; background: none !important; border: 0 !important; box-shadow: none !important; }
 .mayor-goals li.mayor-input::before { display: none !important; }
@@ -4238,8 +4190,6 @@ body.photo-mode .modal:not([hidden]), body.photo-mode .mayor-dialog, body.photo-
 .coll-trophies li b { display: block; font-size: 14px; }
 .coll-trophies li small { display: block; font-size: 12px; opacity: 0.75; }
 
-/* A building's card is open: the other bubbles step aside. */
-#tcy-labels .tag.tag-off { visibility: hidden !important; pointer-events: none !important; }
 
 /* ---------- New Era nudge: a friendly card over the town ---------- */
 .era-nudge { position: absolute; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 168px); z-index: 30; display: flex; gap: 12px; align-items: flex-start; max-width: 420px; margin: 0 auto; padding: 14px; border-radius: 20px; color: #2a1f5a; background: linear-gradient(160deg, #ffffff, #f1ebff); box-shadow: 0 10px 28px rgba(40, 20, 110, 0.3), inset 0 0 0 2px rgba(138, 92, 255, 0.25); animation: en-in 0.35s ease-out; }
@@ -4254,22 +4204,7 @@ body.photo-mode .modal:not([hidden]), body.photo-mode .mayor-dialog, body.photo-
 .era-nudge .en-btns { display: flex; gap: 8px; margin-top: 10px; }
 .era-nudge .en-btns .btn { flex: 1; padding: 9px 10px; font-size: 14px; }
 
-/* Bubbles over buildings that are off screen (or under the bars) step aside. */
-#tcy-labels .tag.tag-out { visibility: hidden !important; pointer-events: none !important; }
-/* City Hall: a round purple bubble with its level, like the businesses. */
-#tcy-labels .tag.bub.hall-bub .tag-ico { background: linear-gradient(180deg, #8a6cff, #5b3fd6); color: #fff; }
-#tcy-labels .tag.bub.hall-bub .tag-ico svg { width: 22px; height: 22px; }
-#tcy-labels .tag.bub.hall-bub.ready .tag-ico { background: linear-gradient(180deg, #ffcf3a, #ff9a1f); animation: hallPulse 1.2s ease-in-out infinite; }
-/* The next business to open: just a red "+" with its price in a small chip. */
-#tcy-labels .tag.bub.lease:not(.later):not(.hall-lock) { padding: 3px !important; }
-#tcy-labels .tag.bub.lease .tag-lv { white-space: nowrap; background: #ff4f6d; color: #fff; border-color: #fff; }
-#tcy-labels .tag.bub.lease.hall-lock .tag-lv { background: #2a1f6e; color: #ffd23f; }
 
-/* A little countdown over a building going up. */
-#tcy-labels .tag.bub.build-tm { padding: 2px 9px 2px 2px !important; gap: 4px !important; background: #2a1f6e !important; color: #fff !important; opacity: 1 !important; animation: none !important; box-shadow: 0 4px 10px rgba(20, 10, 60, 0.35) !important; }
-#tcy-labels .tag.bub.build-tm::after { border-top-color: #2a1f6e !important; background: #2a1f6e !important; }
-#tcy-labels .tag.bub.build-tm .tag-ico { width: 22px !important; height: 22px !important; font-size: 13px; background: #ffd23f !important; }
-#tcy-labels .tag.bub.build-tm b { color: #fff !important; opacity: 1 !important; font: 400 12px var(--display); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 
 /* ---------- Arrows: drawn, not the "›" letter (the display font draws it as a hook) ---------- */
 .tcy-next .next-go, #tycity .tcy-next .next-go, .mayor-goals li .g-go, .chev { font-size: 0 !important; line-height: 0 !important; }
@@ -4296,10 +4231,6 @@ body.photo-mode .modal:not([hidden]), body.photo-mode .mayor-dialog, body.photo-
 .arr::after { content: ""; position: absolute; right: 0.04em; top: 50%; width: 0.32em; height: 0.32em; border-top: 0.13em solid currentColor; border-right: 0.13em solid currentColor; transform: translateY(-50%) rotate(45deg); }
 #city-rename { flex: none; margin-left: auto; padding: 8px 16px !important; border: 0 !important; border-radius: 999px !important; font: 400 13px var(--display) !important; color: #5a34e0 !important; background: rgba(106, 60, 255, 0.12) !important; box-shadow: none !important; }
 
-/* A resident's speech bubble: white, rounded, a tail pointing at them. */
-#tcy-labels .tag.bub.talk { max-width: 190px; padding: 7px 11px !important; border-radius: 16px !important; background: #fff !important; color: #2a1f5c; box-shadow: 0 6px 16px rgba(40, 20, 100, 0.25); animation: talk-in 0.3s ease-out; }
-#tcy-labels .tag.bub.talk b { font: 700 12.5px/1.3 var(--ui); white-space: normal; text-align: left; }
-@keyframes talk-in { from { opacity: 0; transform-origin: bottom; scale: 0.7; } to { opacity: 1; scale: 1; } }
 
 /* Visiting a friend's town: only their city and the visit bar. */
 body.visiting-town #tycity > *, body.visiting-town #tcy-bar, body.visiting-town .era-nudge, body.visiting-town #toast { visibility: hidden !important; }

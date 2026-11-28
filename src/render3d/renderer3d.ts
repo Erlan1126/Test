@@ -1181,6 +1181,8 @@ export class Renderer3D {
     this.flick.t = this.flick.t * (1 - k) + (ddt / gap) * 1000 * k;
   }
   private flick = { s: 0, t: 0 };
+  /** How close the town camera is right now (bigger is closer). */
+  bizZoomNow(): number { return this.bizLook.zoom; }
   /** Zooms the town by a factor (pinch, mouse wheel). */
   bizZoom(f: number): void {
     const cu = this.camUser, held = cu.drag;
