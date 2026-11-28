@@ -48,8 +48,13 @@ function toastKind(msg: string): { kind: string; ico: string } {
 export function fitText(el: HTMLElement | null, min = 11): void {
   if (!el) return;
   el.style.fontSize = "";
+  // (The text's own width, to the fraction of a pixel: even half a pixel too wide makes the
+  // browser cut the end off for the "...", and scrollWidth rounds that away.)
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const over = () => range.getBoundingClientRect().width > el.clientWidth + 0.01;
   let size = parseFloat(getComputedStyle(el).fontSize) || 16;
-  while (el.scrollWidth > el.clientWidth + 1 && size > min) { size -= 1; el.style.fontSize = `${size}px`; }
+  while (over() && size > min) { size -= 0.5; el.style.fontSize = `${size}px`; }
 }
 
 export function toast(msg: string): void {

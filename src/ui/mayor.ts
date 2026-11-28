@@ -74,11 +74,16 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   const pct = ready ? 100 : Math.min(100, (next.have(save) / next.need) * 100);
   el.classList.toggle("ready", ready);
   el.innerHTML = `<span class="mayor-mini">${MAYOR_SVG}</span>
-    <span class="mayor-goal"><small>${esc(head(i, c.title)).replace(/→/g, `<i class="arr" aria-hidden="true"></i>`)}</small>
+    <span class="mayor-goal"><small>${arrowHtml(head(i, c.title))}</small>
     <b>${esc(ready ? (HAS_CITY ? t("Upgrade the City Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next.text, next.need))}</b>
     <i class="mayor-bar"><i style="width:${pct}%"></i></i></span>`;
   el.onclick = onTap;
 }
+
+/** A heading with "→" as HTML: the arrow drawn (the display font has no good one), and each
+ *  side kept on one line, so a long heading breaks at the arrow. */
+const arrowHtml = (text: string): string =>
+  !text.includes("→") ? esc(text) : text.split("→").map(p => `<span class="nw">${esc(p.trim())}</span>`).join(`<i class="arr" aria-hidden="true"></i>`);
 
 /** In the city game the story is the City Hall's levels: chapter i takes it to level i + 2. */
 const head = (i: number, title: string) => HAS_CITY
@@ -127,8 +132,7 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   if (nm.dataset.pip === undefined) nm.dataset.pip = nm.textContent ?? "";
   nm.textContent = nm.dataset.pip;
   $("mayor").classList.remove("neighbour");
-  // (The display font has no good "→": it is drawn.)
-  $("mayor-chapter").innerHTML = esc(chapter).replace(/→/g, `<i class="arr" aria-hidden="true"></i>`);
+  $("mayor-chapter").innerHTML = arrowHtml(chapter);
   $("mayor-text").textContent = text;
   $("mayor-goals").innerHTML = goals;
   $("mayor-goals").hidden = !goals;

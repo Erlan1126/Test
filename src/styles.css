@@ -4831,3 +4831,5 @@ body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled small em {
 #tycity #tcy-top .tcy-wallet em .rate-boost { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font: 800 10px/15px var(--ui); font-style: normal; color: #2a1f5c; background: #ffd23c; vertical-align: 1px; }
 /* Goals: what opens with the next City Hall level. */
 .goals-later { margin: 16px 8px 6px; text-align: center; font: 700 13px/1.3 var(--ui); color: #7a70a8; }
+/* A heading that breaks only at its arrow ("Now: … → Next: …"). */
+.nw { white-space: nowrap; }

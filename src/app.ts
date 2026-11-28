@@ -452,10 +452,10 @@ export class App implements DailyHost {
       vaultFullAt: this.save.tycoon.managers.length ? Date.now() + offlineHours(this.save) * 36e5 : undefined,
       holidayEnds: !HAS_CITY && hp && !hp.done ? { at: Date.now() + holidayDaysLeft(hp.h) * 864e5, name: t(hp.h.name), skin: t(skinById(hp.h.skin).name) } : undefined,
       buildDoneAt: HAS_CITY ? (this.save.tycoon.builds ?? []).map(b => b.end).filter(e => e > Date.now()).sort((a, b) => a - b)[0] : undefined,
-      eventEndsAt: HAS_CITY ? cityEventEndsAt(this.save) : undefined,
+      eventEndsAt: HAS_CITY && gateOpen(this.save, "event") ? cityEventEndsAt(this.save) : undefined,
       city: HAS_CITY,
       fireworks: HAS_CITY && playerStarted(this.save),
-      seasonEnds: (() => { const se = seasonInfo(citySeason()), p = seasonPass(this.save); return HAS_CITY && se && p && p.free.length < SP_TIERS.length ? { at: Date.now() + seasonDaysLeft() * 864e5, name: t(se.name) } : undefined; })(),
+      seasonEnds: (() => { const se = seasonInfo(citySeason()), p = seasonPass(this.save); return HAS_CITY && gateOpen(this.save, "season") && se && p && p.free.length < SP_TIERS.length ? { at: Date.now() + seasonDaysLeft() * 864e5, name: t(se.name) } : undefined; })(),
       spin: spinOpen(this.save, HAS_CITY),
       milestone: (() => { const m = HAS_CITY ? nextMilestone(this.save) : undefined, left = m ? m.at - townPeople(this.save) : 0; return m && left > 0 && left <= m.at * 0.15 ? { left, at: m.at } : undefined; })(),
     };
@@ -2253,7 +2253,8 @@ export class App implements DailyHost {
     // Today's gift opens the calendar (the rest is collected after it).
     if (giftState(this.save.profile.gift).ready && playerStarted(this.save) && gateOpen(this.save, "daily")) { this.showDaily(); return; }
     const save = this.save, lines: string[] = [];
-    const gift = this.sheets.claimGift();
+    // (The daily gift waits for its calendar, which opens with City Hall level 2.)
+    const gift = gateOpen(save, "daily") ? this.sheets.claimGift() : null;
     if (gift) {
       lines.push(t("🎁 Day {day} gift · +{n} ★", { day: gift.day, n: gift.stars }));
       for (const name of gift.trophies) lines.push(t("🏅 Trophy: {name} · +1 ★", { name }));
