@@ -2455,7 +2455,7 @@ export class App implements DailyHost {
     for (const l of lines) {
       const el = document.createElement("div");
       el.className = l.cls;
-      el.textContent = l.text;
+      el.textContent = l.text.replace(/ ([★☆💎⭐])/gu, "\u00a0$1"); // "(+1 ★)" never splits across lines
       rewards.appendChild(el);
     }
     // A new skin is offered, not forced: switching would repaint the tower you just built.

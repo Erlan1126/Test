@@ -5,6 +5,7 @@ import { App } from "./app";
 import { initDiag } from "./diag";
 import { startTabNav } from "./ui/tabnav";
 import { startIcons } from "./ui/icons";
+import { startFit } from "./ui/fit";
 import { EDITION } from "./edition";
 import { toast } from "./ui/dom";
 import { hallBanner } from "./ui/mayor";
@@ -35,6 +36,7 @@ const app = new App(logoSvg);
 // The game's own icons in place of emoji (after the page's text is in the right language).
 startIcons();
 startTabNav();
+startFit();
 // Automated tests drive the game through this handle.
 if (new URLSearchParams(location.search).has("debug")) { (window as unknown as { __app: App }).__app = app; (window as unknown as { __toast: typeof toast }).__toast = toast; (window as unknown as { __hallBanner: typeof hallBanner }).__hallBanner = hallBanner; }
 

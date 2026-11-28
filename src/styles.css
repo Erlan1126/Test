@@ -4728,3 +4728,19 @@ body.colorblind #floor-tag.garden { background: rgba(0, 158, 115, 0.95); color: 
 body.big-text > :not(canvas) { zoom: 1.15; }
 /* One-handed play: the pause button sits at the bottom, within reach of the thumb. */
 body.one-hand #pause { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: auto; right: calc(16px + env(safe-area-inset-right, 0px)); width: 52px; height: 52px; }
+/* Sheets are solid: at 94% white, the logo and home-screen strip behind showed through as
+   faint ghost text wherever the phone can't blur what's behind. */
+.modal .sheet { background: linear-gradient(180deg, #ffffff 0%, #f3f5fc 220px, #eef1fa 100%); }
+/* The weekly tournament card on the light sheets: it kept the dark theme's pale gold title,
+   white note and dark prize chips, which were hard to read. */
+.modal .tourney-top b { color: #a85a00; }
+.modal .tourney small { color: var(--text); }
+.modal .tourney-prizes span { background: #fff; color: var(--text); box-shadow: 0 1px 0 rgba(27, 31, 74, 0.08); }
+.modal .tourney-prizes span.on { outline-color: #f0a500; background: #fff4d0; }
+/* Trophies: one per row on phones, so long names (Groundbreaker, and longer in German) aren't
+   cut off at the card's edge. */
+@media (max-width: 400px) { .trophy-grid { grid-template-columns: 1fr; } }
+.trophy > span:last-child { min-width: 0; }
+/* While Zephyr's (or Pip's) card is open, the goal strip it came from steps aside: it peeked
+   out beside the face, half covered. */
+body:has(#mayor:not([hidden])) #mayor-strip { visibility: hidden; }

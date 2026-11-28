@@ -488,7 +488,9 @@ export class Sound {
   /** A cup set down on the counter, and a small bell: the first coffee sold. Quiet. */
   counter(): void { this.tone(420, 0.06, "triangle", 0.05); this.tone(300, 0.05, "sine", 0.04, 0.01); this.bell(1568, 0.5, 0.035, 0.06); }
   /** A soft swish for sheets sliding up. */
-  whoosh(): void { this.noise(0.22, 0.05, 500, "bandpass", 1.2, 0, 0.04, 2400); }
+  // (Levels checked by rendering every sound offline: celebrations sit near -29 dB RMS,
+  // landings near -35, interface clicks well below. The whoosh was nearly silent at -61.)
+  whoosh(): void { this.noise(0.22, 0.12, 500, "bandpass", 1.2, 0, 0.04, 2400); }
   land(): void { this.thud(0.8); }
   cut(): void {
     this.thud(0.8);
@@ -566,5 +568,6 @@ export class Sound {
   wind(): void { this.noise(1.8, 0.08, 500, "lowpass", 1, 0, 0.6); }
   rewind(): void { this.tone(160, 0.5, "sawtooth", 0.04, 0, 900); this.bell(640, 0.6, 0.06, 0.1); this.noise(0.5, 0.04, 400, "bandpass", 1, 0, 0.1, 3000); }
   win(): void { [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => this.bell(523 * Math.pow(2, n / 12), 0.8, 0.07, i * 0.07, (i / 6) * 1.2 - 0.6)); }
-  fail(): void { this.tone(260, 0.6, "sawtooth", 0.05, 0, 60); this.tone(130, 0.5, "triangle", 0.2, 0.05, 50); this.noise(0.6, 0.05, 300, "lowpass", 1, 0.05); }
+  // (Losing is softer than winning: a few dB below the win fanfare, not as loud as it.)
+  fail(): void { this.tone(260, 0.6, "sawtooth", 0.035, 0, 60); this.tone(130, 0.5, "triangle", 0.13, 0.05, 50); this.noise(0.6, 0.035, 300, "lowpass", 1, 0.05); }
 }
