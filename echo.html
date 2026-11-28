@@ -281,7 +281,7 @@
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
   .tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 10px 12px 11px; border-radius: 18px; border: 1px solid var(--edge); background: rgba(18,21,32,0.88); color: var(--txt); font: inherit; text-align: left; overflow: hidden; transition: transform 0.12s; }
   .tile:active { transform: scale(0.95); }
-  .tile.locked { opacity: 0.55; filter: grayscale(0.6); } #hardBtn.locked { opacity: 0.85; filter: grayscale(0.3); } .tile.locked b::after { content: " 🔒"; font-size: 11px; }
+  .tile.locked { opacity: 0.55; filter: grayscale(0.6); } #hardBtn.free { opacity: 1; filter: none; } #hardBtn.free b::after { content: none; } .tile.locked b::after { content: ""; display: inline-block; width: 11px; height: 11px; margin-left: 5px; vertical-align: 0; background: currentColor; opacity: 0.75; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2.5' fill='black'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center/contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2.5' fill='black'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center/contain no-repeat; }
   .tile b { font-size: 15px; font-weight: 800; } .tile small { font-size: 11px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .tile-art { height: 34px; width: 100%; display: flex; align-items: flex-end; gap: 3px; margin-bottom: 6px; }
   .t-city { background: linear-gradient(180deg, rgba(255,190,100,0.16), rgba(18,21,32,0.9)); }
@@ -357,7 +357,7 @@
   .op-skip { position: absolute; top: calc(16px + var(--top)); right: 16px; padding: 8px 14px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: rgba(255,255,255,0.75); font: inherit; font-size: 13px; }
   .op-go { position: relative; width: min(320px, 100%); animation: rise 0.6s ease both; }
   .shop-upg { display: grid !important; grid-template-columns: 44px 1fr auto; gap: 12px; }
-  .shop-upg .ui { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), rgba(255,255,255,0.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+  .shop-upg .ui { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; color: var(--acc); background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), rgba(255,255,255,0.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
   .shop-upg .lv { display: flex; gap: 4px; margin-top: 6px; } .shop-upg .lv i { width: 22px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); } .shop-upg .lv i.on { background: linear-gradient(90deg, #ffd98a, #ffb84d); box-shadow: 0 0 6px rgba(255,184,77,0.6); }
   .shop-upg small b { color: #8dff9a; font-weight: 700; }
   #shopList li.dawn { flex-direction: column; align-items: stretch; gap: 8px; background: linear-gradient(135deg, rgba(255,190,90,0.10), rgba(139,233,255,0.06)); }
@@ -494,7 +494,7 @@
     <div class="tiles">
       <button class="tile t-city" id="stagesBtn"><span class="tile-art" aria-hidden="true"><i style="height:45%"></i><i style="height:75%"></i><i style="height:55%"></i><i style="height:95%"></i><i style="height:60%"></i></span><b>City</b><small id="tileCity">0/60 lit</small></button>
       <button class="tile t-daily" id="dailyRunBtn"><span class="tile-art" aria-hidden="true"><em></em></span><b>Daily</b><small id="tileDaily">New neighbour</small></button>
-      <button class="tile t-endless" id="hardBtn"><span class="tile-art" aria-hidden="true"><u></u></span><b>Night shift</b><small id="tileEndless">How far?</small></button>
+      <button class="tile t-endless" id="hardBtn"><span class="tile-art" aria-hidden="true"><u></u></span><b id="tileEndlessName">Night shift</b><small id="tileEndless">How far?</small></button>
     </div>
   </div>
 </div>
@@ -596,7 +596,9 @@
       </section>
       <section class="set-group about"><h3>About</h3>
       <p><b>Lumen Rush</b> <span id="aboutVersion"></span><br>Made by Big Bruce Studios LLC.</p>
-      <p><b>Privacy.</b> No account, no ads, no tracking. Lumen Rush collects nothing about you: your progress is saved only on this device, and the game asks nothing from other sites. <a href="lumen-rush-privacy.html">Privacy policy</a></p>
+      <p><b>Privacy.</b> No account, no ads, no tracking. Your progress is saved only on this device. If the game hits an error, an anonymous crash report (what went wrong, the game version and the phone model, nothing about you) is sent so it can be fixed. <a href="lumen-rush-privacy.html">Privacy policy</a></p>
+      <div class="set"><label>Send crash reports<small>Anonymous, only when something goes wrong</small></label><button class="toggle" id="setDiag" aria-label="Send crash reports"></button></div>
+      <button class="btn" id="copyDiag">Copy error report</button>
       <p><b>Help or ideas?</b> <a href="mailto:support@bigbrucestudios.com?subject=Lumen%20Rush">support@bigbrucestudios.com</a></p>
       <p class="credits">Text in Inter by Rasmus Andersson (SIL Open Font License). Music and sounds are made live by the game.</p>
       </section>
@@ -605,6 +607,7 @@
   </div>
 </div>
 
+<script src="echo/diag.js"></script>
 <script src="echo/core.js"></script>
 <script src="echo/save.js"></script>
 <script src="echo/audio.js"></script>

@@ -82,7 +82,7 @@ function runnerStart(R) {
     R.outage = !R.stageInfo.daily && Math.floor((R.stageInfo.n - 1) / 10) === outageDistrict();
     Object.assign(R, { stageLen: R.stageInfo.len, darkX: -75, motesTotal: 0, motesGot: 0, trace: [], traceT: 0, stageT: 0, hitsTaken: 0, nextEv: 1e9 });
     const nw = !R.attract && STAGE_NEW[R.stageInfo.n];
-    R.banner = 2.6;
+    R.banner = R.tut ? 0 : 2.6;   // the very first stage teaches first; its title card would cover the lesson
     if (nw && !R.tut) runMsg(nw[0], nw[1], 3, true);
     if (R.outage && !R.attract && !R.tut) runMsg("⚡ Outage week", "Some lights flicker out · every light counts double", 2.6, true);
     if (R.stageInfo.boss) { R.ev = { kind: "heart", t: 1e9, hits: 0 }; R.hearted = { all: true }; for (const f of [0.3, 0.6, 0.85]) R.ups.push({ x: R.stageInfo.len * f, y: 26 + runR() * 6, kind: "shard" });
@@ -271,7 +271,7 @@ function swingHold(down) {
     R.vx *= 1.04; R.vy *= 1.04; R.spinV = 6; R.pChain = 0; R.lights += 1; swingFlow(R, 0.06);
     if (!R.attract) { runBonus("Good +1 ✦", 0, R.dist + 2, R.x); sfx.clear(); }
   } else { R.spinV = 4; R.pChain = 0; }
-  if (!R.attract) sfx.whoosh(Math.hypot(R.vx, R.vy));
+  if (!R.attract) sfx.whoosh(Math.hypot(R.vx, R.vy) / 22);
   if (R.tut === 1 || R.tut === 3) runnerTutStep();
 }
 function runnerTutStep() {

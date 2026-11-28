@@ -25,7 +25,7 @@ document.getElementById("shopList").addEventListener("click", e => {
 const hex = c => "#" + (c >>> 0).toString(16).padStart(6, "0");
 function lockerHtml() {
   const L = runnerLook(), glow = save.glow || 0, tile = (key, i, it, swatch, sub, cur) => {
-    const own = L.own[key + i], earn = it.reward != null && !own, tag = cur ? "Wearing" : own ? "Owned · tap to wear" : earn ? `🔒 Relight ${STAGE_CHAPTERS[it.reward]}` : `✦ ${it.cost.toLocaleString()}`;
+    const own = L.own[key + i], earn = it.reward != null && !own, tag = cur ? "Wearing" : own ? "Owned · tap to wear" : earn ? `Relight ${STAGE_CHAPTERS[it.reward]}` : `✦ ${it.cost.toLocaleString()}`;
     return `<button class="lk-tile${cur ? " on" : ""}${own ? "" : " buy"}" data-lk="${key}:${i}" ${earn || (!own && glow < it.cost) ? "disabled" : ""}><i style="--c:${swatch}"></i><b>${it.name}</b>${sub ? `<small>${sub}</small>` : ""}<em>${tag}</em></button>`;
   };
   const caps = save.capsules || 0, ch = runnerChar(), prism = "linear-gradient(90deg,#ff3d7f,#ffc23d,#3dffa8,#3d9eff,#b03dff)";

@@ -40,7 +40,7 @@ const DM_POOL = [
   { k: "perfect", goal: 30, text: n => `Land ${n} Perfects today` },
   { k: "pchain", goal: 5, text: n => `Chain ${n} Perfects in a row`, max: true },
   { k: "lights", goal: 250, text: n => `Catch ${n} lights today` },
-  { k: "free", goal: 40, text: n => `Light up ${n} buildings today` },
+  { k: "free", goal: 40, text: n => `Light up ${n} windows today` },
   { k: "stars", goal: 3, text: () => "Earn 3 stars on any stage", max: true },
   { k: "daily", goal: 1, text: () => "Bring light to today's neighbour" },
   { k: "nightlit", goal: 15, text: n => `Light ${n} windows in one Night shift`, max: true },
@@ -78,7 +78,7 @@ const WEEK_EVENTS = [
   { id: "frost", name: "Gold Rush Week", text: "Gold anchors everywhere" },
   { id: "shadow", name: "Dark Week", text: "The dark is faster, ×1.5 score" },
   { id: "rush", name: "Overdrive Week", text: "Flow fills twice as fast" },
-  { id: "spring", name: "Spring Week", text: "Spring anchors everywhere" },
+  { id: "spring", name: "Bounce Week", text: "Springy lights fling you up" },
 ];
 const weekEvent = () => WEEK_EVENTS[weekNumber() % WEEK_EVENTS.length];
 
@@ -142,11 +142,10 @@ async function shareRun(score, metres, combo, seed) {
   for (let q = 0; q < 40; q++) glowAt(Math.random() * 720, Math.random() * 900, 6, "255,215,130");
   glowAt(360, 560, 160, "150,235,255");
   g.fillStyle = "#fff"; g.beginPath(); g.arc(360, 560, 46, 0, Math.PI * 2); g.fill();
-  g.fillStyle = "#123049"; g.beginPath(); g.ellipse(344, 556, 6, 9, 0, 0, Math.PI * 2); g.ellipse(376, 556, 6, 9, 0, 0, Math.PI * 2); g.fill();
   g.textAlign = "center"; g.fillStyle = "#eef8ff"; g.font = "800 60px Inter, system-ui, sans-serif"; g.fillText("LUMEN RUSH", 360, 120);
-  g.font = "600 110px system-ui, sans-serif"; g.fillText(score.toLocaleString(), 360, 300);
-  g.font = "34px system-ui, sans-serif"; g.fillStyle = "#ffd98a"; g.fillText(`${metres} m  ·  ${combo} combo`, 360, 370);
-  g.font = "italic 34px Georgia, serif"; g.fillStyle = "#c8d6ee"; g.fillText("Can you glide further?", 360, 780);
+  g.font = "800 110px Inter, system-ui, sans-serif"; g.fillText(score.toLocaleString(), 360, 300);
+  g.font = "600 34px Inter, system-ui, sans-serif"; g.fillStyle = "#ffd98a"; g.fillText(`${metres} m  ·  ${combo} combo`, 360, 370);
+  g.font = "italic 500 34px Inter, system-ui, sans-serif"; g.fillStyle = "#c8d6ee"; g.fillText("Can you light more of the city?", 360, 780);
   const url = challengeLink(seed, score), text = `I scored ${score.toLocaleString()} in Lumen Rush (${metres} m). Run my street and beat me: ${url}`;
   try {
     const blob = await new Promise(res => c.toBlob(res, "image/png"));

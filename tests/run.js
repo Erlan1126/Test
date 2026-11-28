@@ -32,6 +32,9 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   page.on("request", r => { if (!r.url().startsWith(URL.replace(/echo\.html$/, "")) && !r.url().startsWith("data:")) requests.push(r.url()); });
+  // Crash reports never reach the real server from a test: they are answered here and kept to look at.
+  const diagSent = []; page.diagSent = diagSent;
+  await page.route("https://skyrise.erlanstudios.workers.dev/**", route => { diagSent.push(JSON.parse(route.request().postData() || "{}")); route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: '{"ok":true}' }); });
   await page.goto(URL);
   // Start from a clean save.
   await page.evaluate(() => localStorage.clear());
@@ -45,6 +48,38 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
   const t0 = Date.now();
 
   // ---------------------------------------------------------------- Lumen Rush: the swing
+  section("Lumen Rush: crash reports");
+  {
+    const { page, errors, requests } = await openGame(browser);
+    await page.waitForTimeout(300);
+    const quiet = page.diagSent.length === 0 && requests.length === 0;
+    // A broken frame mid-run: reported, and the game keeps going.
+    const r = await page.evaluate(async () => {
+      save.run = null; runSave(); save.run.tutDone = 1; startRun();
+      const real = runDraw; let boom = 3;
+      runDraw = (...a) => { if (boom-- > 0) throw new Error("test boom"); return real(...a); };
+      const t0 = run.t; await new Promise(r => setTimeout(r, 400));
+      runDraw = real;
+      return { alive: run.t > t0 + 0.1, log: diag.log().map(i => i.msg + " @ " + i.data.where) };
+    });
+    await page.evaluate(() => diag.flush());
+    await page.waitForTimeout(300);
+    const sent = page.diagSent.flatMap(b => b.items.map(i => ({ v: b.v, ...i })));
+    check("nothing is sent when nothing goes wrong", quiet, page.diagSent.length + " sent");
+    check("a broken frame doesn't freeze the run", r.alive);
+    check("the error is kept on the device with where it happened", r.log.length >= 1 && /test boom @ run · /.test(r.log[0]), r.log[0]);
+    check("and sent once (same error is not sent over and over), tagged as Lumen Rush", sent.length === 1 && /^lumen \d/.test(sent[0].v) && sent[0].data.game === "lumen" && sent[0].msg === "test boom", JSON.stringify(sent).slice(0, 160));
+    check("the report holds nothing personal (no save, no name)", !JSON.stringify(page.diagSent).includes('"stars"') && !/"name"/.test(JSON.stringify(page.diagSent)));
+    // Turned off in Settings: kept on the device for "Copy error report", never sent.
+    const n0 = page.diagSent.length;
+    const off = await page.evaluate(async () => { show("settings"); $("setDiag").click(); const pressed = $("setDiag").getAttribute("aria-pressed"); diag.report(new Error("while off")); diag.flush(); await new Promise(r => setTimeout(r, 1800)); return { pressed, stored: save.settings.diag, kept: diag.log().some(i => i.msg === "while off") }; });
+    check("Send crash reports can be turned off, and then nothing is sent", off.pressed === "false" && off.stored === false && off.kept && page.diagSent.length === n0, JSON.stringify(off));
+    const copy = await page.evaluate(async () => { $("copyDiag").click(); await new Promise(r => setTimeout(r, 200)); return [...document.querySelectorAll("#toasts *")].map(t => t.textContent).join("|") + "|" + $("saveCode").value.slice(0, 40); });
+    check("Copy error report gives testers the errors to paste", /Error report copied|Select the report|Lumen Rush/.test(copy), copy);
+    check("no page errors besides the test's own", errors.filter(e => !/test boom|while off/.test(e)).length === 0, errors.join(" | "));
+    await page.close();
+  }
+
   section("Lumen Rush: the swing");
   {
     const { page, errors } = await openGame(browser);
@@ -236,7 +271,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
         const o = {}; o.sixtyPeople = STAGE_PEOPLE.length === STAGES_N && STAGE_PEOPLE.every(p => p[0] && p[1]);
         stageSave().unlocked = 60; startStage(4); const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60);
         await new Promise(r => setTimeout(r, 1500));
-        o.theCardNamesWhoYouReached = $("stPerson").textContent.includes(stagePerson(4)[0]) && !$("stPerson").hidden;
+        o.theCardNamesWhoYouReached = $("stPerson").textContent.toLowerCase().includes(stagePerson(4)[0].toLowerCase()) && !$("stPerson").hidden;
         { startStage(5); const C = run; C.teth = null; C.hold = false; C.inv = 9; C.px = C.stageLen + 0.5; C.py = 30; for (let q = 0; q < 60 && !C.cleared; q++) runUpdate(1 / 60); await new Promise(r => setTimeout(r, 2300)); R.stageTime = C.stageTime; R.motesGot = C.motesGot; R.motesTotal = C.motesTotal; R.perfects = C.perfects; R.cleared2 = C.cleared; }
         o.theCardCountsUpTheRealNumbers = R.cleared2 && $("stTime").textContent === R.stageTime.toFixed(1) && $("stLights").textContent === `${R.motesGot}/${R.motesTotal}` && $("stPerf").textContent === String(R.perfects);
         // The last stage: the first clear ends on dawn over the city.
@@ -318,7 +353,7 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       $("todayAwards").click(); out.awardsListEveryAward = $("shopTitle").textContent === "Awards" && document.querySelectorAll("#shopList li").length === RUN_ACHS.length;
       $("tabHome").click(); out.homeClosesTheSheets = $("sheet").hidden && $("todayPanel").hidden && on("titleScreen");
       // Settings.
-      $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 5 && !!$("setSpeed");
+      $("settingsBtn").click(); out.settingsOpen = on("settingsScreen") && document.querySelectorAll("#settingsScreen .toggle").length === 6 && !!$("setSpeed");
       { const sp = $("setSpeed"); sp.click(); const a1 = sp.textContent; sp.click(); const a2 = sp.textContent; sp.click(); out.gameSpeedCyclesThroughThreeSpeeds = a1 === "85%" && a2 === "70%" && sp.textContent === "100%" && save.settings.speed === 1; }
       { $("setBig").click(); const big = document.body.classList.contains("bigtext"); $("setBig").click(); out.largerTextTogglesOnAndOff = big && !document.body.classList.contains("bigtext"); }
       const c0 = !!save.settings.calm; $("setCalm").click(); out.reduceMotionToggles = save.settings.calm === !c0 && $("setCalm").getAttribute("aria-pressed") === String(!c0);

@@ -59,6 +59,8 @@ const STAGE_PEOPLE = [
 const DAILY_PEOPLE = [["Felix", "He'd been holding a candle for hours."], ["Hana", "Her cat finally came out from under the bed."], ["Mr. Duarte", "He reads the letter he'd been saving."], ["Priya", "She can see her plants are okay."], ["Gus", "His model train circles the window again."], ["Odette", "She plays one more song on the piano."], ["Tariq", "He finds his daughter's lost earring."], ["Lou", "The kettle's on. Stay a minute?"], ["Ayla", "She writes the last page of her diary."], ["Bram", "His telescope points at you now."], ["Cleo", "She paints the sunrise from memory."], ["Nico", "His aquarium shimmers blue again."], ["Saoirse", "She reads her grandmother's recipe."], ["Wes", "He finally finds the light switch. It works."]];
 const stagePerson = n => n === 0 ? DAILY_PEOPLE[dayNumber() % DAILY_PEOPLE.length] : STAGE_PEOPLE[(n - 1) % STAGE_PEOPLE.length];
 const stageChapter = n => STAGE_CHAPTERS[Math.min(STAGE_CHAPTERS.length - 1, Math.floor((n - 1) / 10))];
+// A name inside a sentence: "You brought light to the twins", not "to The twins".
+const midName = w => w.replace(/^The /, "the ");
 const stageWaiting = n => { const w = stagePerson(n)[0]; return `${w} ${/^(The twins|The night nurses|The harbour crews|Mo and Ari)$/.test(w) ? "are" : "is"} waiting`; };
 // The weekly outage: one district a week flickers (some anchors go dark for moments) but every light there counts double.
 // Each district's chapter of the story, shown the first time you arrive there.
@@ -184,13 +186,13 @@ function stageClear(R) {
   R.wantShotAt = R.t + 1.3;   // the picture to share: their window lit, them waving
   sfx.unlock(); buzz([20, 40, 20]);
   if (!info.daily && n % 10 === 0) runMsg(`${stageChapter(n)} shines again!`, n === STAGES_N ? "Dawn has come back to the city" : `On to ${stageChapter(n + 1)}`, 2.6, true);
-  else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${stagePerson(info.n)[0]}`, starText(stars), 2, true);
+  else runMsg(stars === 3 ? "Perfect stage!" : `Light brought home to ${midName(stagePerson(info.n)[0])}`, starText(stars), 2, true);
   setTimeout(() => { if (run === R) showStageCard(true); }, 1300);
 }
 function stageFail() {
-  const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; musicStop(); sfx.fail();
+  const R = run; if (!R || R.cleared) return; R.over = 0.001; R.failed = true; R.msgs.length = 0; musicStop(); sfx.fail();
   // How far you got, and your best on this stage.
-  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime && !R.rush) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
+  if (!R.stageInfo.daily && !R.cpUsed && !R.raceTime && !R.rush) { const S = stageSave(), pct = Math.max(0, Math.min(99, Math.floor(Math.max(R.pxHi || 0, R.px) / R.stageLen * 100))); S.pct = S.pct || {}; R.failPct = pct; R.newBestPct = pct >= 10 && pct > (S.pct[R.stage] || 0); if (R.newBestPct) S.pct[R.stage] = pct; R.bestPct = S.pct[R.stage]; persist(); }
   if (!R.stageInfo.daily && !R.raceTime && !R.attract && !R.rush) { const S = stageSave(); S.fails = S.fails || {}; S.fails[R.stage] = (S.fails[R.stage] || 0) + 1; persist(); }
   if (R.rush) { R.rush.time += R.stageT || 0; R.rush.lights += R.lights; R.rush.perfects += R.perfects; setTimeout(() => { if (run === R) showRushCard(false); }, 650); return; }
   setTimeout(() => { if (run === R) showStageCard(false); }, 650);
@@ -208,7 +210,7 @@ function showStageCard(won) {
   const info = R.stageInfo, el = $("stageCard");
   $("stTitle").textContent = info.daily ? "Daily stage" : `Stage ${info.n}`;
   // Who you brought the light to (or who is still waiting).
-  { const [who, line] = stagePerson(info.n), pe = $("stPerson"); if (pe) { pe.hidden = false; pe.innerHTML = won ? `<b>You brought light to ${who}.</b><span>“${line}”</span><small>${info.daily ? "Back tomorrow: someone new will be waiting" : `${homesLit()} of ${STAGES_N} homes relit${(() => { const nr = nextStarReward(), have = stageTotalStars(); return nr ? ` · ${nr[0] - have} ★ to the ${rewardName(nr)}` : ""; })()}`}</small>` : `<b>${stageWaiting(info.n).replace("waiting", "still waiting")} in the dark.</b><span>Try again. They're counting on you.</span>`; } }
+  { const [who, line] = stagePerson(info.n), pe = $("stPerson"); if (pe) { pe.hidden = false; pe.innerHTML = won ? `<b>You brought light to ${midName(who)}.</b><span>“${line}”</span><small>${info.daily ? "Back tomorrow: someone new will be waiting" : `${homesLit()} of ${STAGES_N} homes relit${(() => { const nr = nextStarReward(), have = stageTotalStars(); return nr ? ` · ${nr[0] - have} ★ to the ${rewardName(nr)}` : ""; })()}`}</small>` : `<b>${stageWaiting(info.n).replace("waiting", "still waiting")} in the dark.</b><span>Try again. They're counting on you.</span>`; } }
   $("stBadge").textContent = won ? (R.newBest ? "New best" : "") : R.failPct != null ? `${R.failPct}%${R.newBestPct ? " · New best!" : ""}` : "Out of light";
   $("stStars").innerHTML = [0, 1, 2].map(q => `<span class="${won && q < R.stageStars ? "" : "off"}">★</span>`).join("");
   $("stStars").classList.toggle("lost", !won);
@@ -235,7 +237,7 @@ function showStageCard(won) {
 async function stageShare() {
   const R = run; if (!R) return;
   const info = R.stageInfo, url = R.trace && R.trace.length ? stageLink(info.n, R.stageTime || 0, R.trace) : location.href;
-  const text = `I brought the light back to ${stagePerson(info.n)[0]} in ${info.daily ? "today's Lumen Rush daily stage" : `Lumen Rush · Stage ${info.n}`}: ${starText(R.stageStars || 0)} in ${(R.stageTime || 0).toFixed(1)} s. Race my ghost:`;
+  const text = `I brought the light back to ${midName(stagePerson(info.n)[0])} in ${info.daily ? "today's Lumen Rush daily stage" : `Lumen Rush · Stage ${info.n}`}: ${starText(R.stageStars || 0)} in ${(R.stageTime || 0).toFixed(1)} s. Race my ghost:`;
   try {
     if (R.moment && navigator.canShare) {
       const img = new Image(); img.src = R.moment; await img.decode();
@@ -244,7 +246,7 @@ async function stageShare() {
       const gr = g.createLinearGradient(0, 860, 0, 1280); gr.addColorStop(0, "rgba(6,7,11,0)"); gr.addColorStop(1, "rgba(6,7,11,0.92)"); g.fillStyle = gr; g.fillRect(0, 860, 720, 420);
       g.fillStyle = "#fff"; g.font = "800 64px Inter, system-ui, sans-serif"; g.textAlign = "center"; g.fillText(info.daily ? "Daily stage" : `Stage ${info.n}`, 360, 1080);
       g.fillStyle = "#ffd98a"; g.font = "700 60px Inter, system-ui, sans-serif"; g.fillText(`${starText(R.stageStars || 0)}  ${(R.stageTime || 0).toFixed(1)} s`, 360, 1160);
-      g.fillStyle = "#ffffff"; g.font = "700 32px Inter, system-ui, sans-serif"; g.fillText(`Light brought home to ${stagePerson(info.n)[0]}`, 360, 990);
+      g.fillStyle = "#ffffff"; g.font = "700 32px Inter, system-ui, sans-serif"; g.fillText(`Light brought home to ${midName(stagePerson(info.n)[0])}`, 360, 990);
       g.fillStyle = "rgba(255,255,255,0.75)"; g.font = "italic 500 26px Inter, system-ui, sans-serif"; g.fillText(`“${stagePerson(info.n)[1]}”`, 360, 1032, 660);
       g.fillStyle = "#8be9ff"; g.font = "800 34px Inter, system-ui, sans-serif"; g.fillText("LUMEN RUSH", 360, 1230);
       const blob = await new Promise(res => c.toBlob(res, "image/jpeg", 0.85)), file = new File([blob], "lumen-rush.jpg", { type: "image/jpeg" });
@@ -272,7 +274,7 @@ function stagesHtml() {
   for (let c = 0; c < STAGE_CHAPTERS.length; c++) {
     let got = 0; for (let n = c * 10 + 1; n <= c * 10 + 10; n++) if (S.best[n] && S.best[n].stars) got++;
     const open = c * 10 + 1 <= S.unlocked;
-    h += `<li class="district ${got === 10 ? "full" : ""} ${open ? "" : "shut"} ${c === outageDistrict() ? "outage" : ""}"><div class="dist-head"><b>${STAGE_CHAPTERS[c]}${c === outageDistrict() ? ` <em class="out-badge">⚡ Outage week · ×2 lights</em>` : ""}</b><span>${open ? `${got}/10 lit` : "Locked"}</span></div><div class="skyline">`;
+    h += `<li class="district ${got === 10 ? "full" : ""} ${open ? "" : "shut"} ${c === outageDistrict() ? "outage" : ""}"><div class="dist-head"><b>${STAGE_CHAPTERS[c]}${c === outageDistrict() && open ? ` <em class="out-badge">⚡ Outage week · ×2 lights</em>` : ""}</b><span>${open ? `${got}/10 lit` : "Locked"}</span></div><div class="skyline">`;
     for (let n = c * 10 + 1; n <= c * 10 + 10; n++) {
       const b = S.best[n], locked = n > S.unlocked, r = seeded(n * 131)(), ht = n % 10 === 0 ? 100 : 46 + Math.round(r * 40);
       h += `<button class="bld${b && b.stars ? " lit" : ""}${locked ? " lock" : ""}${n === nx && !locked ? " next" : ""}${n === mapPick ? " sel" : ""}${n % 10 === 0 ? " boss" : ""}" style="height:${ht}%" data-pick="${n}" ${locked ? "disabled" : ""} aria-label="Stage ${n}"><i></i><i></i><small>${n}</small></button>`;
@@ -331,7 +333,7 @@ function showRushCard(won) {
   $("stTitle").textContent = "Boss rush";
   $("stBadge").textContent = won ? (newBest ? "New best" : "") : `${Q.i} of ${n}`;
   $("stStars").innerHTML = Q.list.map((b, q) => `<span class="${q < Q.i ? "" : "off"}">★</span>`).join(""); $("stStars").classList.toggle("lost", !won);
-  { const pe = $("stPerson"); pe.hidden = false; pe.innerHTML = won ? `<b>All ${n} bosses beaten in a row.</b><span>“The Hush has nowhere left to hide.”</span><small>+${gift} ✦</small>` : `<b>${BOSSES[Math.min(5, Math.floor((Q.list[Q.i] - 1) / 10))][0]} stopped you.</b><span>${Q.i} of ${n} bosses beaten</span><small>+${gift} ✦</small>`; }
+  { const pe = $("stPerson"); pe.hidden = false; pe.innerHTML = won ? `<b>All ${n} bosses beaten in a row.</b><span>“The Hush has nowhere left to hide.”</span><small>+${gift} ✦</small>` : `<b>${BOSSES[Math.min(5, Math.floor((Q.list[Q.i] - 1) / 10))][0]} stopped you.</b><span>${Q.i} of ${n} bosses beaten</span>${gift ? `<small>+${gift} ✦</small>` : ""}`; }
   el.hidden = false;
   $("stTime").textContent = won ? Q.time.toFixed(1) : "–"; $("stLights").textContent = String(Q.lights); $("stPerf").textContent = String(Q.perfects);
   $("stNote").textContent = won ? (newBest && best ? `${(best - Q.time).toFixed(1)} s faster than your best` : best ? `Your best: ${best.toFixed(1)} s` : "Your first full boss rush!") : best ? `Your best for all ${n}: ${best.toFixed(1)} s` : "Each boss you beat gives a heart back.";

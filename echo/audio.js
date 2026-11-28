@@ -169,16 +169,16 @@ const sfx = {
   coin(n = 0) { const p = [0, 2, 4, 7, 9][n % 5] + 12 * Math.min(2, Math.floor(n / 5) % 3); note(988 * Math.pow(2, p / 12), { dur: 0.13, vol: 0.07, type: "square", lowpass: 4200, attack: 0.002, echo: 0.15 }); note(1976 * Math.pow(2, p / 12), { at: 0.04, dur: 0.1, vol: 0.03, type: "triangle", echo: 0 }); },
   jump() { noise({ filter: "highpass", freq: 900, glide: 3200, dur: 0.22, attack: 0.01, vol: 0.07 }); note(330, { dur: 0.16, vol: 0.06, type: "square", lowpass: 1600, glide: 660, attack: 0.003, echo: 0 }); },
   land() { note(110, { dur: 0.1, vol: 0.12, glide: 60, echo: 0, attack: 0.002 }); },
-  crash() { noise({ filter: "lowpass", freq: 1800, glide: 120, dur: 0.6, attack: 0.002, vol: 0.3 }); note(90, { dur: 0.45, vol: 0.3, glide: 35, echo: 0.2, attack: 0.002 }); note(220, { at: 0.02, dur: 0.25, vol: 0.08, type: "square", lowpass: 900, glide: 80, echo: 0 }); },
+  crash() { noise({ filter: "lowpass", freq: 1800, glide: 120, dur: 0.6, attack: 0.002, vol: 0.2 }); note(90, { dur: 0.45, vol: 0.2, glide: 35, echo: 0.2, attack: 0.002 }); note(220, { at: 0.02, dur: 0.25, vol: 0.08, type: "square", lowpass: 900, glide: 80, echo: 0 }); },
   power() { [0, 4, 7, 12, 16].forEach((d, i) => note(523 * Math.pow(2, d / 12), { at: i * 0.05, dur: 0.3, vol: 0.06, type: "square", lowpass: 3000, echo: 0.3 })); },
   close() { noise({ filter: "bandpass", freq: 600, glide: 2400, q: 1.2, dur: 0.3, attack: 0.02, vol: 0.12 }); },
   // A star landing on the end card: each one a step higher; the third rings longer.
   star(i = 0) { const d = [0, 4, 7][i] || 0; note(659.25 * Math.pow(2, d / 12), { dur: i === 2 ? 0.9 : 0.35, vol: 0.07, type: "triangle", echo: 0.6 }); note(1318.5 * Math.pow(2, d / 12), { at: 0.02, dur: 0.25, vol: 0.03, fm: 3, fmDepth: 0.5, echo: 0.6 }); if (i === 2) [12, 16, 19].forEach((x, k) => note(659.25 * Math.pow(2, x / 12), { at: 0.18 + k * 0.07, dur: 0.8, vol: 0.04, type: "triangle", echo: 0.8 })); },
   clear() { note(784, { dur: 0.12, vol: 0.05, type: "triangle", echo: 0.2 }); note(1175, { at: 0.06, dur: 0.16, vol: 0.05, type: "triangle", echo: 0.2 }); },
-  // Letting go: a soft whoosh (the number moves it a little to one side).
-  whoosh: (dx = 0) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.06, pan: dx / 3, echo: 0.5 }),
+  // Letting go: a soft whoosh, fuller the faster you fly (0..1). (It used to take the speed as a pan, so every whoosh sat hard right.)
+  whoosh: (k = 0.5) => noise({ freq: 400, glide: 1200, q: 1.2, dur: 0.5, attack: 0.15, vol: 0.07 + 0.07 * Math.max(0, Math.min(1, k)), echo: 0.5 }),
   // A Perfect rings the current chord of the music, a step higher with each one in a chain.
-  perfect(n = 1) { if (music.on) { const up = Math.min(6, n - 1); [0, 2, 4].forEach((d, i) => note(beatHz(music.root + d + up, 2), { at: i * 0.045, dur: 0.26, vol: 0.06, type: "triangle", echo: 0.4 })); return; } const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.06, type: "triangle", echo: 0.35 })); },
+  perfect(n = 1) { if (music.on) { const up = Math.min(6, n - 1); [0, 2, 4].forEach((d, i) => note(beatHz(music.root + d + up, 2), { at: i * 0.045, dur: 0.26, vol: 0.08, type: "triangle", echo: 0.4 })); return; } const p = Math.min(14, (n - 1) * 2); [0, 4, 7].forEach((d, i) => note(784 * Math.pow(2, (d + p) / 12), { at: i * 0.045, dur: 0.22, vol: 0.08, type: "triangle", echo: 0.35 })); },
   flip() { [0, 7, 12].forEach((d, i) => note(659 * Math.pow(2, d / 12), { at: i * 0.06, dur: 0.18, vol: 0.06, type: "square", lowpass: 3200, echo: 0.3 })); },
   bump() { note(140, { dur: 0.16, vol: 0.12, glide: 70, echo: 0.2 }); },
   light() { [0, 2, 4, 7].forEach((d, i) => note(pitch(d, 1), { at: i * 0.07, dur: 0.9, vol: 0.09, fm: 3.5, fmDepth: 0.8, echo: 0.8 })); },

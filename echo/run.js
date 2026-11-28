@@ -11,15 +11,15 @@ const RUN = {
   missions: [
     { kind: "lights", goal: 40, text: n => `Gather ${n} lights in one run` },
     { kind: "dist", goal: 400, text: n => `Reach ${n} m` },
-    { kind: "free", goal: 6, text: n => `Light up ${n} buildings in one run` },
+    { kind: "free", goal: 6, text: n => `Light up ${n} windows in one run` },
     { kind: "nohit", goal: 300, text: n => `Reach ${n} m without being touched` },
     { kind: "trail", goal: 3, text: n => `Make ${n} perfect releases in one run` },
     { kind: "biome", goal: 2, text: n => `Reach district ${n}` },
   ],
   upgrades: [
     { id: "magnet", name: "Light magnet", tiers: [40, 90, 160], tip: lv => `Lights fly to you from ${9 + lv * 2} m` },
-    { id: "song", name: "Longer power-ups", tiers: [50, 110, 190], tip: lv => `Power-ups last ${100 + lv * 20}% as long` },
-    { id: "heart", name: "Extra heart", tiers: [120], tip: lv => `Start every stage with ${3 + lv} hearts` },
+    { id: "song", name: "Longer power-ups", tiers: [50, 110, 190], tip: lv => `Power-ups last longer: ${100 + lv * 20}%` },
+    { id: "heart", name: "Extra heart", tiers: [120], tip: lv => `Hearts at the start of every stage: ${3 + lv}` },
   ],
 };
 const runUpg = id => ((save.run || {}).upg || {})[id] || 0;
@@ -33,7 +33,7 @@ function runSave() {
 
 let run = null;
 function startRun(opts = {}) {
-  audio();
+  if (!opts.attract) audio();   // the swinging city behind the home screen waits for a first touch (browsers block sound before one)
   const r = runSave();
   const daily = !!opts.daily;
   run = {
@@ -133,7 +133,7 @@ function runEnd() {
     $("roDist").textContent = runMetres().toLocaleString(); $("roLights").textContent = (run.lights + (run.streakBonus || 0)).toLocaleString(); $("roCombo").textContent = run.comboBest;
     const li = run.levelInfo;
     $("runLevel").textContent = `Level ${li.after.lv}` + (li.after.lv > li.before.lv ? " · Level up!" : "") + ` · +${li.gained} xp`;
-    if (run.mode3) $("runLevel").textContent += ` · ${run.lit} relit${cityPct() ? ` · City ${cityPct()}%` : ""}` + (run.cityTiers ? ` · +${run.cityTiers * 50} ✦` : "") + (run.gotCapsule ? " · Light capsule!" : "");
+    if (run.mode3) $("runLevel").textContent += `${cityPct() ? ` · City ${cityPct()}%` : ""}` + (run.cityTiers ? ` · +${run.cityTiers * 50} ✦` : "") + (run.gotCapsule ? " · Light capsule!" : "");
     $("runLevelBar").style.width = `${Math.round(li.after.into / li.after.need * 100)}%`;
     if (best) { sfx.win(); buzz([20, 40, 20, 40]); }
     $("runOverInfo").textContent = `${runMetres()} m · ✦ ${run.lights} lights · best combo ${run.comboBest}`;
@@ -145,7 +145,7 @@ function runEnd() {
       $("runOverTitle").textContent = "Night shift over"; $("roCombo").textContent = lit; $("roCombo").nextElementSibling.textContent = "windows lit";
       $("runOverBest").textContent = nb ? "Week's best" : best ? "New best" : `Best ${r.best.toLocaleString()}`;
     } else if ($("roCombo").nextElementSibling) $("roCombo").nextElementSibling.textContent = "best combo";
-    $("runOverDaily").textContent = (run.mode3 && !run.stageInfo && !run.challenge && !run.daily ? `This week's best: ${(r.night || {}).best || 0} windows · ` : "") + `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}-day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
+    $("runOverDaily").textContent = (run.mode3 && !run.stageInfo && !run.challenge && !run.daily ? `This week's best: ${(r.night || {}).best || 0} windows · ` : "") + `Daily missions ${dm.list.filter(m => m.done).length}/3` + (streakNow() ? ` · ${streakNow()}‑day streak` : "") + (run.streakBonus ? ` · +${run.streakBonus} streak lights` : "") + (run.seasonPaid ? ` · season +${run.seasonPaid}` : "");
     runMissions($("runOverMissions")); runShop();
     $("runOver").hidden = false;
   }, 900);
@@ -269,9 +269,9 @@ function runDraw(ctx, W, H) {
   if (R.flash < 0) { if (!(save.settings && save.settings.calm)) { ctx.fillStyle = `rgba(255,230,170,${-R.flash * 0.35})`; ctx.fillRect(0, 0, W, H); } R.flash = Math.min(0, R.flash + 0.03); }
 
   // One message at a time in the middle, sliding in and fading out.
-  const msg = R.msgs[0];
+  const msg = R.paused ? null : R.msgs[0];   // a paused picture shows only the pause card
   if (msg && !R.banner) {
-    const age = msg.dur - msg.t, y = Math.max(H * 0.19, 160) + Math.max(0, 0.2 - age) * 40;
+    const age = msg.dur - msg.t, y = Math.max(H * 0.19, 160) + ($("toasts") && $("toasts").childElementCount ? 52 : 0) + Math.max(0, 0.2 - age) * 40;   // under a toast, not behind it
     ctx.globalAlpha = Math.min(1, msg.t * 2.5, age * 5); ctx.textAlign = "center";
     ctx.font = `700 ${Math.round(U * 0.042 * TS)}px Inter, system-ui, sans-serif`;
     const t1 = msg.text, t2 = msg.sub || "", w1 = ctx.measureText(t1).width; ctx.font = `500 ${Math.round(U * 0.034 * TS)}px Inter, system-ui, sans-serif`; const w2 = ctx.measureText(t2).width;
@@ -289,7 +289,7 @@ function runDraw(ctx, W, H) {
     if (held) { ctx.fillStyle = "rgba(191,244,255,0.35)"; ctx.beginPath(); ctx.arc(cx, cy, rr * pulse, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = "#eaf6ff"; ctx.beginPath(); ctx.arc(cx, cy, rr * 0.28, 0, Math.PI * 2); ctx.fill();
   }
-  if (R.tutText) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(U * 0.055 * TS)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
+  if (R.tutText && !R.paused) { ctx.globalAlpha = 0.65 + 0.35 * Math.sin(R.t * 4); ctx.textAlign = "center"; ctx.fillStyle = "#eaf6ff"; ctx.font = `600 ${Math.round(U * 0.055 * TS)}px Inter, system-ui, sans-serif`; ctx.fillText(R.tutText, W / 2, H * 0.86); ctx.globalAlpha = 1; }
   // Speed: streaks rushing out from the middle when the runner is flying.
   const calmFx = !!(save.settings && save.settings.calm);
   if (R.od > 0 && (R.v || 0) > 16 && !R.over && !R.attract && !calmFx) {
@@ -346,11 +346,15 @@ function runLoop(now) {
   const c0 = $("runCanvas"), c = smoothCanvas(c0, true), d = canvasD(), W = c0.clientWidth, H = c0.clientHeight;
   if (c.width !== Math.round(W * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
   const dt = Math.min(0.05, (now - (run.last || now)) / 1000); run.last = now; paceTick((now - (pace.last || now)) / 1000); pace.last = now;
-  // A split-second freeze on a grab or a Perfect makes it land (the picture still draws).
-  if (run.hitstop > 0 && !run.paused) run.hitstop -= dt; else if (!run.paused) runUpdate(dt * (run.slow || 1) * (run.attract ? 1 : save.settings.speed || 1));
-  const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
-  // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
-  if (!run.paused || !run.drawnPaused) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
+  // One bad frame is reported and skipped, never a frozen game (an error here used to stop the loop).
+  try {
+    // A split-second freeze on a grab or a Perfect makes it land (the picture still draws).
+    if (run.hitstop > 0 && !run.paused) run.hitstop -= dt; else if (!run.paused) runUpdate(dt * (run.slow || 1) * (run.attract ? 1 : save.settings.speed || 1));
+    const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+    // While paused, the picture stands still: draw it once, then rest (saves battery and heat).
+    if (run && (!run.paused || !run.drawnPaused)) { runDraw(ctx, W, H); run.drawnPaused = run.paused; }
+  } catch (e) { diag.report(e, "caught"); }
+  if (!run) { runLoop.on = false; return; }
   // The best moment of the run, kept as a picture to share.
   if (run && run.wantShot) { run.wantShot = false; try { run.moment = c.toDataURL("image/jpeg", 0.72); } catch (e) {} run.shotAt = run.t; }
   requestAnimationFrame(runLoop);
@@ -401,7 +405,7 @@ function runPauseInfo() {
   who.textContent = `${stageWaiting(R.stageInfo.n)} · ${pct}% of the way`;
   const g = (stars, text, now, ok, alive = true) => `<li class="${ok ? "ok" : alive ? "" : "no"}"><b>${stars}</b><span>${text}</span><em>${now}</em></li>`;
   ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +
-    g("★★★", `70% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
+    g("★★★", `70% lights · no hits · ${par.toFixed(1)}\u00a0s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0}\u00a0hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)}\u00a0s`, false, !R.hitsTaken && (R.stageT || 0) < par);
 }
 document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over || !$("runContinue").hidden) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
@@ -432,12 +436,14 @@ function titleLoop(now) {
   const keep = run; run = titleRun;
   const dt = Math.min(0.05, (now - (titleRun.last || now)) / 1000); titleRun.last = now;
   // It swings by itself.
-  runnerAuto(); titleRun.inv = Math.max(titleRun.inv, 0);
-  runUpdate(dt);
-  if (titleRun.dist > 60000) { titleRun = null; run = keep; startTitleRun(); return; }
-  const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
-  if (W) runDraw(ctx, W, H);
-  run = keep;
+  try {
+    runnerAuto(); titleRun.inv = Math.max(titleRun.inv, 0);
+    runUpdate(dt);
+    if (titleRun.dist > 60000) { titleRun = null; run = keep; startTitleRun(); return; }
+    const ctx = c.ctx || c.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0);
+    if (W) runDraw(ctx, W, H);
+  } catch (e) { diag.report(e, "caught"); }
+  finally { if (run === titleRun) run = keep; }   // the real run is always given back
   titleRaf = requestAnimationFrame(titleLoop);
 }
 // Tapping the city behind the title plays (a challenge link starts the friend's run).
@@ -449,10 +455,12 @@ function runBuy(id) {
   save.glow -= cost; r.upg[u.id] = lv + 1; persist(); sfx.unlock(); buzz(20); return true;
 }
 function runShopHtml() {
-  const icons = { magnet: "🧲", song: "⏳", heart: "❤" };
+  // Line icons in the same style as the rest of the menus (emoji looked different on every phone).
+  const ic = d => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const icons = { magnet: ic('<path d="M6 4v8a6 6 0 0 0 12 0V4"/><path d="M6 8h4M14 8h4"/><path d="M10 4v8a2 2 0 0 0 4 0V4"/>'), song: ic('<path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>'), heart: ic('<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" fill="currentColor" fill-opacity="0.25"/>') };
   return RUN.upgrades.map(u => {
     const lv = runUpg(u.id), next = u.tiers[lv], afford = next != null && (save.glow || 0) >= next;
-    return `<li class="shop-upg"><span class="ui">${icons[u.id] || "✦"}</span><span><b>${u.name}</b><small>${u.tip(lv)}${next != null ? ` → <b>${u.tip(lv + 1).replace(/^.*?(\d+[^ ]*).*$/, "$1")}</b>` : ""}</small><span class="lv">${u.tiers.map((_, q) => `<i class="${q < lv ? "on" : ""}"></i>`).join("")}</span></span>` +
+    return `<li class="shop-upg"><span class="ui">${icons[u.id] || "✦"}</span><span><b>${u.name}</b><small>${u.tip(lv)}${next != null ? ` → <b>${u.tip(lv + 1).replace(/^.*?(\d+(?: m|%)?)$/, "$1")}</b>` : ""}</small><span class="lv">${u.tiers.map((_, q) => `<i class="${q < lv ? "on" : ""}"></i>`).join("")}</span></span>` +
       (next == null ? `<em>Maxed</em>` : `<button data-run="${u.id}" ${afford ? "" : "disabled"}>✦ ${next}</button>`) + "</li>";
   }).join("");
 }

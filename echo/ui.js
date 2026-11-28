@@ -61,10 +61,10 @@ function renderTitle() {
   { const g = save.glow || 0; $("chipLights").querySelector("b").textContent = g >= 10000 ? `${(Math.floor(g / 100) / 10).toLocaleString()}k` : g.toLocaleString(); }
   $("chipLevel").textContent = `Lv ${lumiLevel(rs.xp || 0).lv}`;
   { const ds = save.dailyStage && save.dailyStage.day === dayNumber() ? save.dailyStage : null; $("tileDaily").textContent = ds ? `${"★".repeat(ds.stars || 1)} · ${ds.time.toFixed(1)} s` : `${stagePerson(0)[0]} waits`; }
-  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("tileEndless").textContent = !open ? "Free swing" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Light the city"; }
+  { const open = endlessOpen(); $("hardBtn").classList.toggle("locked", !open); $("hardBtn").classList.toggle("free", !open); $("tileEndlessName").textContent = open ? "Night shift" : "Free swing"; $("tileEndless").textContent = !open ? "Just swing" : rs.night && rs.night.week === weekNumber() && rs.night.best ? `Week: ${rs.night.best} windows` : rs.best ? `Best ${rs.best.toLocaleString()}` : "Light the city"; }
   $("todayDot").hidden = calState().claimed;
   { const n = stageNext(), st = stageStars(n); $("playLabel").textContent = st ? `Replay stage ${n}` : "Bring the light"; $("playSub").textContent = st ? `${starText(st)} · go for 3 stars` : `Stage ${n} · ${stageChapter(n)}`;
-    const [who, line] = stagePerson(n); $("heroWhere").textContent = `Stage ${n}${n % 10 === 0 ? " · Boss" : ""} · ${stageChapter(n)}`; $("heroWho").textContent = stageWaiting(n); $("heroLine").textContent = st ? `“${line}”` : "Their window is still dark. Bring the light home."; }
+    const [who, line] = stagePerson(n); $("heroWhere").textContent = `Stage ${n}${n % 10 === 0 ? " · Boss" : ""}`; $("heroWho").textContent = stageWaiting(n); $("heroLine").textContent = st ? `“${line}”` : "Their window is still dark. Bring the light home."; }
   if (stageRace && !stageRace.done) { $("playLabel").textContent = "Race your friend"; $("playSub").textContent = `${stageRace.n ? `Stage ${stageRace.n}` : "Daily stage"} · beat ${stageRace.time.toFixed(1)} s`; }
   else if (challengeFrom) { $("playLabel").textContent = "Accept challenge"; $("playSub").textContent = `Beat ${challengeFrom.score.toLocaleString()}`; }
   // The daily gift waits on the Today tab (its dot); nothing pops up over Play.
@@ -93,7 +93,7 @@ function openToday() { renderToday2(); $("sheet").hidden = true; $("todayPanel")
 function renderToday2() {
   const st = calState(), we = weekEvent();
   $("weekEv").textContent = `${we.name} · ${we.text}`;
-  $("calStreak").textContent = streakNow() ? `${streakNow()}-day streak · +${Math.round(streakBonus() * 100)}% lights` : "Play a run to start a streak";
+  $("calStreak").textContent = streakNow() ? `${streakNow()}‑day streak · +${Math.round(streakBonus() * 100)}% lights` : "Play a run to start a streak";
   $("calGrid").innerHTML = CAL.map((n, i) => `<div class="${i + 1 < st.day || (i + 1 === st.day && st.claimed) ? "past" : i + 1 === st.day ? "now" : ""}">Day ${i + 1}<b>${n}</b></div>`).join("");
   $("calClaim").disabled = st.claimed; $("calClaim").textContent = st.claimed ? "Come back tomorrow" : `Claim +${CAL[st.day - 1]} ✦`;
   const dm = dailyMissions();
@@ -123,6 +123,7 @@ function renderSettings() {
   $("setFps").setAttribute("aria-pressed", String(!!st.fps));
   $("setCalm").setAttribute("aria-pressed", String(!!st.calm));
   $("setTapMode").setAttribute("aria-pressed", String(!!st.tapMode));
+  $("setDiag").setAttribute("aria-pressed", String(st.diag !== false));
   $("setBig").setAttribute("aria-pressed", String(!!st.bigText));
   $("setSpeed").textContent = `${Math.round((st.speed || 1) * 100)}%`;
   $("saveCode").value = "";
@@ -139,6 +140,13 @@ $("setSfx").addEventListener("input", e => { save.settings.sfx = +e.target.value
 $("setSfx").addEventListener("change", () => sfx.light());
 tap("setVibrate", () => { save.settings.vibrate = !save.settings.vibrate; persist(); renderSettings(); buzz(20); });
 tap("setCalm", () => { save.settings.calm = !save.settings.calm; persist(); renderSettings(); });
+tap("setDiag", () => { save.settings.diag = save.settings.diag === false; persist(); renderSettings(); });
+// For testers: everything that went wrong on this device lately, ready to paste into a message.
+tap("copyDiag", async () => {
+  const log = diag.log(), text = `Lumen Rush ${GAME_VERSION} · ${navigator.userAgent}\n` + (log.length ? log.map(i => `${new Date(i.data.t).toISOString()} [${i.data.where}] ${i.msg}\n${i.data.stack}`).join("\n\n") : "No errors recorded on this device.");
+  try { await navigator.clipboard.writeText(text); toast(log.length ? `Error report copied (${log.length})` : "No errors recorded: nothing to report"); }
+  catch (e) { const box = $("saveCode"); box.value = text; document.querySelector("details.backup").open = true; box.focus(); box.select(); toast("Select the report in the box and copy it"); }
+});
 tap("setTapMode", () => { save.settings.tapMode = !save.settings.tapMode; persist(); renderSettings(); });
 tap("setBig", () => { save.settings.bigText = !save.settings.bigText; persist(); renderSettings(); applyBigText(); });
 // Game speed: 100% → 85% → 70% → back. Everything in a run slows together, the dark included.
