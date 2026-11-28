@@ -54,7 +54,7 @@ checked. "Auto" lines are checked by `npm test`, `npm run typecheck` or a script
 - [ ] Publisher is Big Bruce Studios everywhere; app ids `com.bigbrucestudios.*`.
 
 ## How to check
-- `npm test` (332 tests) and `npm run typecheck`.
+- `npm test` (330 tests) and `npm run typecheck`.
 - `scripts/qa-screens.cjs`: every screen and sheet tab at one size and language, with
   screenshots and a list of cut-off text, sideways scrolling, overlapping buttons, small touch
   targets and script errors.
@@ -90,8 +90,8 @@ session. 13 problems found and fixed in this pass (see PR #29, section 18).
 | No difficulty cliffs | **Pass** | `tests/playtest.test.ts`. |
 | No dead ends | **Pass** | Every screen in the sweep has a way back. |
 | Accessibility settings | **Pass** | `tests/access.test.ts`. |
-| Labels and 44 pt touch targets | **Pass** | Sweep found no small targets. |
+| Labels and 44 pt touch targets | **Partly** | Sweep found no small icon buttons; a screen-reader pass (VoiceOver) still needs a phone. |
 | Reduced motion | **Pass** | The game reads the phone's setting. |
 | Store listing matches build | **Not yet checked** | Screenshots should be retaken after this pass. |
-| Privacy and terms reachable | **Pass** | Linked from Settings. |
+| Privacy and terms reachable | **Not yet** | Not on this branch: the Settings legal group (privacy, terms, support, restore purchases) comes with Buildaroo's PR #30. The privacy policy should also mention the anonymous error reports (and Sentry, if turned on). |
 | Big Bruce Studios everywhere | **Partly** | App ids done. Challenge links still use the `erlanstudios.workers.dev` server address until a Big Bruce Studios address is added in Cloudflare. |
