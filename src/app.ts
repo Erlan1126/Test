@@ -3028,6 +3028,7 @@ export class App implements DailyHost {
   bizScreen(i: number, height: number): { base: [number, number]; top: [number, number] } | null {
     return this.renderer instanceof Renderer3D ? this.renderer.bizScreen(i, height) : null;
   }
+  bizPulse(id: string, kind: "buy" | "speed" | "hire"): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPulse(id, kind); }
 
   /** While a full menu covers the town, it's drawn a few times a second instead of every
    *  frame: nothing behind the sheet needs to be smooth, and the phone stays cool. */

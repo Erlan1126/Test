@@ -545,6 +545,34 @@ export class Sound {
   unlock(): void { [0, 7, 12, 16, 19].forEach((n, i) => this.bell(392 * Math.pow(2, n / 12), 0.8, 0.06, 0.4 + i * 0.07, (i / 4) * 1.2 - 0.6)); }
   star(): void { [0, 7, 12].forEach((n, i) => this.bell(1046 * Math.pow(2, n / 12), 0.6, 0.05, 0.2 + i * 0.08)); }
   coins(): void { [0, 4, 7, 12].forEach((n, i) => this.bell(1318 * Math.pow(2, n / 12), 0.25, 0.035, i * 0.055, Math.random() * 1.2 - 0.6)); }
+  /** Ka-ching: a business level bought. `streak` counts quick buys in a row (0 for the
+   *  first); each one rings a semitone higher, up to an octave. */
+  buy(streak = 0): void {
+    const up = Math.pow(2, Math.min(12, streak) / 12), pan = Math.random() * 0.6 - 0.3;
+    // The drawer: a short metallic clack.
+    this.noise(0.05, 0.05, 3200, "bandpass", 3, 0);
+    this.tone(260 * up, 0.06, "triangle", 0.05, 0, 180);
+    // The bell: two bright notes, a fourth apart.
+    this.bell(1568 * up, 0.35, 0.06, 0.03, pan);
+    this.bell(2093 * up, 0.5, 0.055, 0.09, -pan);
+    this.bell(4186 * up, 0.2, 0.012, 0.09, -pan);
+  }
+  /** The cash register for "Sell now": keys, the drawer sliding out and one low ding. */
+  register(): void {
+    this.noise(0.03, 0.04, 2600, "bandpass", 4, 0);
+    this.noise(0.03, 0.04, 2900, "bandpass", 4, 0.045);
+    this.noise(0.12, 0.05, 900, "bandpass", 1.5, 0.09, 0.01, 400);
+    this.bell(1046, 0.45, 0.06, 0.1);
+    this.bell(1318, 0.35, 0.025, 0.1, 0.3);
+  }
+  /** A speed milestone: a rising whoosh into a quick bright run and a high sparkle. */
+  speedUp(): void {
+    this.noise(0.45, 0.05, 600, "bandpass", 1.2, 0, 0.2, 4200);
+    this.tone(220, 0.4, "sawtooth", 0.025, 0, 880);
+    [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => this.bell(784 * Math.pow(2, n / 12), 0.45, 0.05, 0.28 + i * 0.035, (i / 6) * 1.2 - 0.6));
+    this.bell(3136, 0.9, 0.025, 0.55, 0.4);
+    this.thud(0.4);
+  }
   /** A little fanfare for a premium purchase. */
   purchase(): void {
     [0, 4, 7, 12].forEach((n, i) => this.tone(392 * Math.pow(2, n / 12), 0.5, "triangle", 0.06, i * 0.09));

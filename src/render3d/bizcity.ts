@@ -481,6 +481,8 @@ export interface BizCity {
   homes(): { x: number; z: number; top: number; key: string; y: number }[];
   /** Where a district business stands (its building or its lot for lease), or null. */
   bizAt(i: number): { x: number; z: number; y: number; top: number } | null;
+  /** A town business's own building group (for a bounce when it's bought), if it has one. */
+  lotGroup(id: string): THREE.Group | undefined;
   /** Everything else worth a tap: city blocks, parks, landmarks, district sights. */
   sights(): Sight[];
   /** The building designs standing in the town ("level:design"). */
@@ -4403,6 +4405,7 @@ export function buildBizCity(lots: BizLot[], st: BizStyle = DEFAULT_STYLE, grown
       return out;
     },
     bizAt: i => bizSpots[i] ?? null,
+    lotGroup: id => lotGroups.get(id),
     paradeRoute: want => paradeRoute(want),
     paradeQuiet: on => { paradeQuiet = on; },
     look(l) { fx.look(l); Object.assign(look, l); },
