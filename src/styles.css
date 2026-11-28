@@ -4937,3 +4937,14 @@ body:is(.tabs-open, .tabs-closing) #tycoon .room-bar .ty-buy:disabled small em {
 /* A big pack without a picture: its extras line sits under the amount, not in the button's column. */
 .pack-card.hero:not(:has(.pack-skin)) .pack-extras { grid-column: 1; }
 @media (max-width: 400px) { .pack-card.hero .buy { min-width: 0 !important; box-sizing: border-box; } .pack-card.hero { grid-template-columns: 64px minmax(0, 1fr) max-content; } .pack-card.hero:not(:has(.pack-skin)) { grid-template-columns: minmax(0, 1fr) max-content; } }
+/* The business card's name on a 320px phone: "Coffee / Cart" on two lines, never "COFF / EE…"
+   (a word only breaks if it can't fit on its own). */
+#tcy-card .bc-title b { overflow-wrap: break-word; word-break: normal; }
+@media (max-width: 360px) {
+  #tcy-card .bc-ico { width: 40px; height: 40px; border-radius: 13px; font-size: 22px; }
+  #tcy-card .bc-lv { min-width: 42px; padding: 4px 6px; }
+  #tcy-card .bc-lv b { font-size: 15px; }
+  #tcy-card .bc-title b { font-size: 15px; }
+  #tcy-card .bc-title small { font-size: 9px; letter-spacing: 0.04em; }
+  #tcy-card .bc-paint { margin-right: 4px; }
+}
