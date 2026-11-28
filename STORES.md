@@ -5,13 +5,13 @@ The phone apps are the same game wrapped as a native app with Capacitor (`androi
 Android Studio. This page lists the steps only you can do, because they need your own
 accounts, payments and identity.
 
-Store text, screenshots and product lists are ready in `launch/stores/`:
+Store text, screenshots, product lists, age rating and privacy answers for all three games
+are in `store/` (start with `store/README.md`):
 
-- `app-store.md`: every App Store Connect field
-- `google-play.md`: every Play Console field
-- `app-store-screenshots/`: 1290 × 2796
-- `google-play-screenshots/`: 1080 × 1920
-- `feature-graphic.png`: 1024 × 500
+- `store/skyrise/LISTING.md`, `store/buildaroo/LISTING.md`, `store/lumen-rush/LISTING.md`:
+  every App Store Connect and Play Console field, with screenshots in the same folders
+- `store/RATINGS-AND-PRIVACY.md`: age rating, App Privacy, IARC and Data safety answers
+- `store/site/`: the privacy, support and studio pages for bigbrucestudios.com
 
 ## Costs and timing
 
@@ -31,7 +31,7 @@ Mac minute counts as 10). A Skyrise iPhone build takes about 10–15 minutes.
 - [x] **Studio contact email:** support@bigbrucestudios.com, forwarded to your Gmail with
       Porkbun's free email forwarding. Already filled in across `launch/`.
 - [ ] **Privacy policy link:** https://www.bigbrucestudios.com/privacy/ (already filled in
-      across `launch/stores/`). It works once the studio site is live on Cloudflare Pages.
+      across `store/`). It works once the studio site in `store/site/` is live on Cloudflare Pages.
 
 The publisher is **Big Bruce Studios LLC** (Florida). Enroll both store accounts as an
 **Organization** under the LLC (D-U-N-S number required), not as an individual.
@@ -70,11 +70,11 @@ store's own testing tracks.
 - [ ] Run the build again (Actions → Android app → **Run workflow**) and download
       `skyrise-release-aab`. That `.aab` file is what you upload to Google Play.
 - [ ] In the Play Console: **Create app**, then fill in everything from
-      `launch/stores/google-play.md`.
+      `store/skyrise/LISTING.md`.
 - [ ] Testing → **Closed testing**: upload the `.aab`, add at least 12 testers and send
       them the link. Wait 14 days.
 - [ ] Create the 6 Sky Crystal packs (Monetize → Products; ids and prices are in
-      `launch/stores/google-play.md`) and set up your payments profile.
+      `store/skyrise/LISTING.md`) and set up your payments profile.
 - [ ] Apply for production and publish.
 
 ## Step 3: App Store
@@ -85,7 +85,7 @@ store's own testing tracks.
       **+** → App IDs → App → description "Skyrise", Bundle ID **Explicit**:
       `com.bigbrucestudios.buildaroo`. Leave capabilities as they are; in-app purchase is on by default.
 - [ ] Create the app in App Store Connect (My Apps → **+** → New App) using
-      `launch/stores/app-store.md`.
+      `store/skyrise/LISTING.md`.
 - [ ] **Let GitHub sign and upload builds:** in App Store Connect → **Users and Access**
       → **Integrations** → **App Store Connect API** → Team Keys → **+**. Name it
       "GitHub", access **Admin**, then download the `.p8` file. It can only be downloaded once.
@@ -101,7 +101,7 @@ store's own testing tracks.
          turns green.
 - [ ] Install **TestFlight** on your iPhone, add yourself as an internal tester, and play it.
 - [ ] Business → **Agreements**: accept the Paid Apps Agreement and add bank and tax info.
-- [ ] Create the 6 Sky Crystal packs (consumable) from `app-store.md`.
+- [ ] Create the 6 Sky Crystal packs (consumable) from `store/skyrise/LISTING.md`.
 - [ ] On the 1.0 version page: pick the build, add screenshots and the in-app purchases,
       then **Add for Review** → **Submit**.
 
