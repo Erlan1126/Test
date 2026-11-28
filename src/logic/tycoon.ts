@@ -70,6 +70,8 @@ export interface TycoonState {
   builders: number;
   /** Builds finished, all time (the City Plan counts them). */
   built: number;
+  /** Golden customers caught, all time (a City Hall goal counts them). */
+  goldenAll?: number;
 }
 
 export type GoalType = "vip" | "buy" | "taps" | "rush" | "build" | "home" | "ask" | "decor" | "talk" | "golden";
@@ -79,7 +81,7 @@ export interface CompanyGoal { t: GoalType; n: number; p: number }
 export const ECONOMY = 2;
 
 export const newTycoon = (): TycoonState =>
-  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 }, offices: 0, builds: [], builders: 0, built: 0 });
+  ({ coins: 0, lifetime: 0, levels: { coffee: 1 }, managers: [], runs: {}, gems: 0, boost: false, last: 0, eras: 0, rankBest: 0, floors: 0, rush: { id: "", until: 0 }, speedups: { day: "", n: 0 }, econ: ECONOMY, fresh: false, tips: 0, goals: { day: "", list: [], bonus: false }, evolved: {}, upgrades: [], advisors: [], picks: 0, vault: 0, boom: 0, reviews: {}, opening: 0, golden: { day: "", n: 0 }, offices: 0, builds: [], builders: 0, built: 0, goldenAll: 0 });
 
 export const businessById = (id: string): Business | undefined => BUSINESSES.find(b => b.id === id);
 export const levelOf = (s: SaveData, id: string): number => s.tycoon.levels[id] ?? 0;
@@ -725,5 +727,6 @@ export function goldenTip(s: SaveData, now = Date.now()): number {
   const cheapest = Math.min(...owned.map(x => costOf(x, levelOf(s, x.id), 1)));
   const n = Math.max(perSecond(s, now, false) * 300, cheapest * 0.4, 250) * tipMult(s);
   earn(s, n);
+  s.tycoon.goldenAll = (s.tycoon.goldenAll ?? 0) + 1;
   return n;
 }
