@@ -53,5 +53,45 @@ checked. "Auto" lines are checked by `npm test`, `npm run typecheck` or a script
 - [ ] Privacy policy and terms reachable from Settings; what is collected is stated.
 - [ ] Publisher is Big Bruce Studios everywhere; app ids `com.bigbrucestudios.*`.
 
-## Scorecard
-(Filled in at each QA pass.)
+## How to check
+- `npm test` (332 tests) and `npm run typecheck`.
+- `scripts/qa-screens.cjs`: every screen and sheet tab at one size and language, with
+  screenshots and a list of cut-off text, sideways scrolling, overlapping buttons, small touch
+  targets and script errors.
+- `scripts/qa-first-session.cjs`: a brand-new player's launch, tutorial, miss, rewind offer,
+  first results and trip home.
+- `scripts/qa-sound-levels.cjs`: renders every sound offline and prints its levels.
+- `npm run playtest`: bot players of four skills, for difficulty.
+
+## Scorecard: Skyrise, 28 November 2026 (PR #29)
+Checked in headless Chromium at iPhone SE (375×667) and iPhone Pro Max (430×932) sizes, in
+English, Spanish, French, German and Portuguese: 42 screens and tabs each, plus the first
+session. 13 problems found and fixed in this pass (see PR #29, section 18).
+
+| Line | Result | Notes |
+|---|---|---|
+| Zero crashes and script errors | **Pass** (in browser) | No errors in 8 full sweeps and the first-session run. Needs the same on TestFlight builds. |
+| Errors reported | **Pass** | Own server always; Sentry once a DSN is pasted in `src/data/server.ts`. |
+| Saves survive kill, update, reinstall | **Pass** (tests) | Save and recovery tests pass; kill-during-tower still to try on a phone. |
+| Offline play | **Pass** | Online features hide or say they can't connect. |
+| Steady 60 fps on mid-range phones | **Not yet checked** | Needs a real phone. Each tower reports its fps to `/diag`; read it with the Diagnostics workflow after TestFlight play. |
+| Cold start under 3 s | **Not yet checked** | Needs a real phone. |
+| No hitch on landmark, layer, banner | **Not yet checked** | Needs a real phone. |
+| Every screen reviewed, no cut-off text | **Pass** | Last sweeps: nothing cut off in any of the 5 languages at either size. |
+| No leftover words from the other game | **Pass** | Tests and sweep. |
+| Every line translated | **Pass** | i18n test. |
+| No typos, consistent naming | **Pass** (reviewed) | Read through every English screen in the sweep screenshots. |
+| Safe areas | **Not yet checked** | Needs a notched iPhone or the simulator. |
+| One font set, one icon set | **Pass** | Bungee, Lilita One and the UI font; every emoji now drawn as the game's own icon. |
+| Animations consistent | **Partly** | No flicker found in the sweeps. Durations vary from screen to screen; left as they are, since changing them now risks new glitches. |
+| Sound levels matched, no clipping | **Pass** | Every sound peaks below -13 dB; celebrations near -29 dB RMS, landings near -35 dB, interface clicks lower. |
+| Buttons: pressed state, sound, haptic | **Pass** | Shared button styles and handler. |
+| First tower teaches, shows a perfect, gives a goal | **Pass** | First-session run. |
+| No difficulty cliffs | **Pass** | `tests/playtest.test.ts`. |
+| No dead ends | **Pass** | Every screen in the sweep has a way back. |
+| Accessibility settings | **Pass** | `tests/access.test.ts`. |
+| Labels and 44 pt touch targets | **Pass** | Sweep found no small targets. |
+| Reduced motion | **Pass** | The game reads the phone's setting. |
+| Store listing matches build | **Not yet checked** | Screenshots should be retaken after this pass. |
+| Privacy and terms reachable | **Pass** | Linked from Settings. |
+| Big Bruce Studios everywhere | **Partly** | App ids done. Challenge links still use the `erlanstudios.workers.dev` server address until a Big Bruce Studios address is added in Cloudflare. |
