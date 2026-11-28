@@ -41,7 +41,7 @@ import type { Debris } from "./render/effects";
 import { makeShareImage, preloadLogo } from "./render/previews";
 import { Renderer, type Shot } from "./render/renderer";
 import { Renderer3D, webglAvailable } from "./render3d/renderer3d";
-import { flushDiag, reportError, reportPerf } from "./diag";
+import { flushDiag, reportError, reportPerf, setDiagState } from "./diag";
 import { flushStats, statsOpen, statsTower, track } from "./stats";
 import { HAS_CITY, playerStarted } from "./edition";
 import { cityEventEndsAt } from "./logic/cityevent";
@@ -290,6 +290,7 @@ export class App implements DailyHost {
     this.persist();
     this.tutorial = !this.save.tutorialDone;
     statsOpen(this.save.profile.towers);
+    setDiagState(() => `${this.state}${HAS_CITY && this.tycoon.inCity ? " city" : ""}`);
     // Game Center (iPhone): sign in quietly a moment after launch, then send what's earned.
     if (gameCenterAvailable()) setTimeout(() => void gameCenterSignIn().then(ok => { if (ok) void gameCenterSync(this.save, 0, 0); }), 2500);
     setTimeout(() => void flushStats(getLang()), 8000);

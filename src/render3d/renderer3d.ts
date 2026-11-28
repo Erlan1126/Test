@@ -36,6 +36,7 @@ import { buildRoof, roofFor, type RoofKind } from "./rooftops";
 import { TownRainbow } from "./rainbow";
 import { SkyLife } from "./skylife";
 import { HAS_CITY } from "../edition";
+import { reportError } from "../diag";
 
 /** Most triangles the landing shadow can need (round floors have many sides). */
 /** The home screen's best tower is shown at most this many floors high. */
@@ -268,6 +269,9 @@ export class Renderer3D {
     document.body.classList.add("webgl"); // the scene fades in on its first full frame
     this.gl = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: "high-performance" });
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
+    // The phone took the graphics chip away (memory pressure, or the app was in the
+    // background too long): worth knowing how often that happens out there.
+    glCanvas.addEventListener("webglcontextlost", () => reportError(new Error("WebGL context lost")));
     // Checking every new shader for errors makes the browser stop and wait for it to finish
     // compiling, a visible hitch each time. The shaders are fixed and tested, so only check
     // when asked to (?shadercheck).

@@ -2497,4 +2497,8 @@ export const FR: Record<string, string> = {
   "One-handed play": "Jouer à une main",
   "Pause button at the bottom, by your thumb": "Bouton pause en bas, sous le pouce",
   "{icon} Only {n} floors short of the {name}. A new tower waits there!": "{icon} Plus que {n} étages avant : {name}. Une nouvelle tour t'y attend !",
+  "Copy error report": "Copier le rapport d'erreurs",
+  "For testers: paste it into a message to us": "Pour les testeurs : collez-le dans un message pour nous",
+  "Copied! Paste it into a message to us.": "Copié ! Collez-le dans un message pour nous.",
+  "Couldn't copy here. Take a screenshot of Settings instead.": "Copie impossible ici. Faites plutôt une capture des Réglages.",
 };

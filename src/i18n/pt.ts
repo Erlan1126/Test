@@ -2497,4 +2497,8 @@ export const PT: Record<string, string> = {
   "One-handed play": "Jogar com uma mão",
   "Pause button at the bottom, by your thumb": "Botão de pausa embaixo, perto do polegar",
   "{icon} Only {n} floors short of the {name}. A new tower waits there!": "{icon} Faltaram só {n} andares para {name}. Uma nova torre espera por você lá!",
+  "Copy error report": "Copiar relatório de erros",
+  "For testers: paste it into a message to us": "Para testadores: cole numa mensagem para nós",
+  "Copied! Paste it into a message to us.": "Copiado! Cole numa mensagem para nós.",
+  "Couldn't copy here. Take a screenshot of Settings instead.": "Não foi possível copiar aqui. Faça uma captura de Ajustes.",
 };

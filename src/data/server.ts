@@ -11,3 +11,10 @@ export const SERVER_URL: string = "https://skyrise.erlanstudios.workers.dev";
  * server/README.md). The phone apps always use the App Store and Google Play instead.
  */
 export const WEB_PAYMENTS: boolean = false;
+
+/**
+ * Optional: also send crash and error reports to Sentry (sentry.io, free plan). Paste the
+ * project's DSN here (one project per game), e.g. "https://abc123@o123.ingest.us.sentry.io/456" (Sentry → Settings
+ * → Projects → this game → Client Keys). While it's empty, errors go only to our own server.
+ */
+export const SENTRY_DSN: Record<"skyrise" | "buildaroo", string> = { skyrise: "", buildaroo: "" };

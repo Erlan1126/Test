@@ -8,6 +8,7 @@ import { GUIDE, TOWER_GUIDE } from "../data/guide";
 import { CITY_NAME } from "../logic/city";
 import { layerForMeters, SKY_LAYERS } from "../data/layers";
 import { applyAccess } from "./access";
+import { errorReport } from "../diag";
 import { DECOR, DECOR_BONUS, UPGRADES_CASH, type Decor } from "../data/decor";
 import { coins } from "../data/tycoon";
 import { hallLevel } from "../logic/tycoon";
@@ -757,6 +758,7 @@ export class Sheets {
     $<HTMLInputElement>("set-music").checked = st.music;
     $<HTMLInputElement>("set-vibrate").checked = st.vibrate;
     $<HTMLInputElement>("set-saver").checked = st.saver;
+    $("copy-errors-note").textContent = t("For testers: paste it into a message to us");
     $<HTMLInputElement>("set-colorblind").checked = st.colorblind;
     $<HTMLInputElement>("set-bigtext").checked = st.bigText;
     $<HTMLInputElement>("set-onehand").checked = st.oneHand;
@@ -875,6 +877,16 @@ export class Sheets {
       toast(t("Tips will show on your next tower"));
     });
 
+    $("copy-errors").addEventListener("click", async () => {
+      this.click();
+      const note = $("copy-errors-note");
+      try {
+        await navigator.clipboard.writeText(errorReport());
+        note.textContent = t("Copied! Paste it into a message to us.");
+      } catch {
+        note.textContent = t("Couldn't copy here. Take a screenshot of Settings instead.");
+      }
+    });
     $("copy-recovery").addEventListener("click", async () => {
       const code = this.host.cloudCode();
       if (!code) return;
