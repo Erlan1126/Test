@@ -726,6 +726,13 @@ export class TycoonUI {
     // after this must not have the city pop back up on top of it.)
   }
 
+  private spent = { coins: 0, crystals: 0 };
+  /** Draws the open Build or Goals sheet again (after a purchase: new prices). */
+  private refreshSheets(): void {
+    if (!$("tcy-buildsheet").hidden) this.openBuild();
+    if (!$("tcy-goalsheet").hidden) this.renderGoalsSheet();
+  }
+
   /** A building's card is open (a business, a home or a sight). */
   anyCardOpen(): boolean { return this.inCity && !!(this.selected || this.selectedProp || this.selectedSight); }
   /** Text about the town, with the player's own name for it once they've named it. */
@@ -828,6 +835,9 @@ export class TycoonUI {
     this.guideHand();
     this.placeSay();
     const now = Date.now(), s = this.save, sheet = !$("tycoon").hidden;
+    // Something was bought (cash or crystals went down): an open sheet shows the new prices.
+    if (s.tycoon.coins < this.spent.coins - 1e-9 || s.crystals < this.spent.crystals) this.refreshSheets();
+    this.spent = { coins: s.tycoon.coins, crystals: s.crystals };
     if (now - this.lastTick > 120) {
       this.lastTick = now;
       tick(s, now);

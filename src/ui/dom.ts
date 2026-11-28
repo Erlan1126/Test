@@ -107,6 +107,10 @@ function ghostOut(el: HTMLElement): void {
 
 export function openModal(el: HTMLElement, focusEl?: HTMLElement | null): void {
   if (el.hidden) {
+    // Sheets never stack on the Build sheet: a tab or any other sheet opening closes it
+    // (else it stays underneath with its old prices).
+    const build = document.getElementById("tcy-buildsheet");
+    if (build && build !== el && !build.hidden) closeModal(build);
     openers.set(el, document.activeElement);
     window.dispatchEvent(new Event("skyrise:sheet"));
     // (Straight from another menu: swap in place, no second slide.)
