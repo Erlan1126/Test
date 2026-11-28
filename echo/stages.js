@@ -121,9 +121,9 @@ function stageGhostAt(tr, t) {
 }
 // A friend's challenge from a link: ?st=<stage>&gt=<time>&g=<ghost>.
 const stageRace = (() => {
-  try { const q = new URLSearchParams(location.search), n = Number(q.get("st")), g = q.get("g"); if (!(n >= 0) || q.get("st") == null || !g) return null; const tr = ghostDecode(g); return tr ? { n, time: Number(q.get("gt")) || 0, trace: tr } : null; } catch (e) { return null; }
+  try { const q = new URLSearchParams(location.search), n = Number(q.get("st")), g = q.get("g"); if (!(n >= 0) || q.get("st") == null || !g) return null; if (n === 0 && Number(q.get("d")) !== dayNumber()) return null; const tr = ghostDecode(g); return tr ? { n, time: Number(q.get("gt")) || 0, trace: tr } : null; } catch (e) { return null; }
 })();
-const stageLink = (n, time, trace) => `${location.origin}${location.pathname}?st=${n}&gt=${time.toFixed(1)}&g=${ghostEncode(trace)}`;
+const stageLink = (n, time, trace) => `${location.origin}${location.pathname}?st=${n}${n === 0 ? `&d=${dayNumber()}` : ""}&gt=${time.toFixed(1)}&g=${ghostEncode(trace)}`;   /* the daily course changes each day: the link says which */
 
 // ---------- Playing a stage ----------
 function startStage(n, opts = {}) {
@@ -138,7 +138,7 @@ function startStage(n, opts = {}) {
   $("stageCard").hidden = true;
   const attempt = !info.daily && S.att ? S.att[n] : 0;
   startRun({ stage: n, ghost: opts.cp ? null : race ? race.trace : own, ghostLabel: race ? "FRIEND" : own ? "BEST" : "", raceTime: race ? race.time : 0 });
-  if (run && run.stage === n) run.attempt = attempt;
+  if (run && run.stage === n) { run.attempt = attempt; run.race = race; }
   // Starting again from the halfway lantern: swing in from the anchor there, with the time you had.
   if (opts.cp && run && run.stage === n) {
     const R = run, cp = opts.cp; swingGen(R, cp.x + 220);
@@ -282,8 +282,8 @@ document.getElementById("shopList").addEventListener("click", e => {
   $("sheet").hidden = true; const n = Number(b.dataset.stage);
   if (screen === "title") { $("titleScreen").classList.add("launch"); setTimeout(() => startStage(n), 200); } else startStage(n);
 });
-document.getElementById("stNext").addEventListener("click", () => { const go = $("stNext").dataset.go; if (go === "dawn") { $("stageCard").hidden = true; playFinale(() => { run = null; showTitle(); openSheet("stages"); }); return; } startStage(Number(go)); });
-document.getElementById("stRetry").addEventListener("click", () => run && startStage(run.stage));
+document.getElementById("stNext").addEventListener("click", () => { const go = $("stNext").dataset.go; if (go === "dawn") { $("stageCard").hidden = true; playFinale(() => { run = null; showTitle(); openSheet("stages"); }); return; } startStage(Number(go), run && run.race && go === String(run.stage) ? { race: run.race } : {}); });
+document.getElementById("stRetry").addEventListener("click", () => run && startStage(run.stage, run.race ? { race: run.race } : {}));
 document.getElementById("stStages").addEventListener("click", () => { $("stageCard").hidden = true; run = null; showTitle(); openSheet("stages"); });
 document.getElementById("stShare").addEventListener("click", stageShare);
 document.getElementById("stFromCp").addEventListener("click", () => { if (run && run.cp) startStage(run.stage, { cp: run.cp }); });

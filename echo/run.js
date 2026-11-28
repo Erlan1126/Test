@@ -160,6 +160,7 @@ function runHud() {
     set("tm", tm, v => { $("runScore").textContent = v; }); set("tcls", cls, v => { $("runScore").className = "score " + v; });
     // Stars as you earn them: 40% of the lights, then 70% with no hits under par (dims once it's out of reach).
     const sh = (run.motesGot || 0) / Math.max(1, run.motesTotal || 1), s2 = sh >= 0.4, s3ok = !run.hitsTaken && run.stageT <= par, s3 = sh >= 0.7 && s3ok;
+    $("runStars").hidden = false;   /* (a Night shift run hides them; the cached key below may not change) */
     set("stars", `${s2}${s3}${s3ok}${!!run.cleared}`, () => { const st = $("runStars"); st.hidden = false; const is = st.children; is[0].className = run.cleared ? "on" : ""; is[1].className = s2 ? "on" : ""; is[2].className = s3 ? "on" : s3ok ? "" : "lost"; });
   } else {
     // The Night shift: windows lit is the score; this week's best underneath.
@@ -377,7 +378,7 @@ function runPauseInfo() {
   ul.innerHTML = g("★", "Reach their home", `${pct}%`, false) + g("★★", "Catch 40% of the lights", `${Math.round(share * 100)}%`, share >= 0.4) +
     g("★★★", `70% lights, no hits, under ${par.toFixed(1)} s`, `${Math.round(share * 100)}% · ${R.hitsTaken || 0} hit${R.hitsTaken === 1 ? "" : "s"} · ${(R.stageT || 0).toFixed(1)} s`, false, !R.hitsTaken && (R.stageT || 0) < par);
 }
-document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
+document.getElementById("runPauseBtn").addEventListener("click", e => { e.stopPropagation(); if (!run || run.over || run.paused || run.cleared) return; run.paused = true; runPauseInfo(); $("runPause").hidden = false; musicStop(); });
 document.getElementById("runResume").addEventListener("click", () => { run.paused = false; run.hold = false; run.grabBuf = 0; run.last = 0; $("runPause").hidden = true; musicStart(4242, 2); });
 document.getElementById("runQuit").addEventListener("click", () => { run = null; showTitle(); });
 document.getElementById("runAgain").addEventListener("click", () => startRun({ daily: run && run.daily, challenge: run && run.challenge }));
@@ -437,5 +438,5 @@ function runShop() {
 
 // Leaving the app mid-run pauses it.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
+  if (document.hidden && screen === "run" && run && !run.over && !run.paused && !run.attract && !run.cleared) { run.paused = true; run.drawnPaused = false; runPauseInfo(); $("runPause").hidden = false; musicStop(); }
 });

@@ -238,6 +238,21 @@ async function openGame(browser, size = { width: 390, height: 844 }) {
       });
       for (const [k, v] of Object.entries(cp)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
     }
+    // Audit round 5: pause after a clear, drone close calls, HUD stars after a Night shift, friend-race retry, daily links.
+    {
+      const a5 = await page.evaluate(async () => {
+        const o = {}; stageSave().unlocked = 60; save.chapSeen = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 };
+        startStage(2); runHud(); startRun({}); runHud(); startStage(2); runHud(); o.starsShowOnAStageAfterANightShift = !$("runStars").hidden;
+        startStage(3); { const R = run; R.teth = null; R.hold = false; R.inv = 9; R.px = R.stageLen + 0.5; R.py = 30; runUpdate(1 / 60); $("runPause").hidden = true; $("runPauseBtn").click(); document.dispatchEvent(new Event("visibilitychange")); o.noPauseAfterTheFinish = R.cleared === true && $("runPause").hidden && !R.paused; clearTimeout(R.cardTO); }
+        const flyPast = (dy) => { startStage(12); const R = run; R.haz = []; R.anchors = R.anchors.filter(a => a.x < R.px - 5); R.teth = null; R.hold = false; R.inv = 0; R.hearts = 3; const y = R.py, z = { kind: "drone", x: R.px + 6, y0: y + 0.9 + dy, amp: 0, ph: 0 }; R.haz.push(z);
+          for (let q = 0; q < 120 && R.px < z.x + 4; q++) { R.py = y; R.vy = 0; R.vx = 12; runUpdate(1 / 60); } return [R.nearN || 0, R.hitsTaken || 0]; };
+        const hit = flyPast(0), skim = flyPast(2.6); o.hittingADroneIsNotACloseCall = hit[1] === 1 && hit[0] === 0; o.skimmingADroneIsACloseCall = skim[0] === 1 && skim[1] === 0;
+        const race = { n: 25, time: 30, trace: [[0, 30], [5, 31], [10, 32]] }; startStage(25, { race }); $("stNext").dataset.go = "25"; $("stNext").click(); o.retryKeepsTheFriendsGhost = run.stage === 25 && run.race === race && run.raceTime === 30; $("stageCard").hidden = true;
+        o.dailyLinksSayWhichDay = stageLink(0, 10, [[0, 0], [1, 1]]).includes(`&d=${dayNumber()}`) && !stageLink(5, 10, [[0, 0], [1, 1]]).includes("&d=");
+        run = null; showTitle(); return o;
+      });
+      for (const [k, v] of Object.entries(a5)) check(k.replace(/([A-Z])/g, " $1").toLowerCase(), v);
+    }
     // Hidden testing tools: five taps on the Settings title.
     check("testing tools stay hidden until five taps", await page.evaluate(() => { const hid = $("devGroup").hidden; for (let q = 0; q < 5; q++) $("settingsTitle").click(); return hid && !$("devGroup").hidden && $("devDistricts").children.length === 7; }));
     // The finale: clearing stage 60 leads to the dawn, and back to the city.

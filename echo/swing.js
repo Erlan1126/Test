@@ -508,8 +508,10 @@ function runnerUpdate(dt) {
         const fx = R.px + R.vx * tt, fy = R.py + 0.9 + R.vy * tt - SWING.G * (R.mod === "moon" ? 0.72 : 1) * tt * tt / 2; if (Math.hypot(z.x - fx, zy - fy) < 2.2) w = true;
         if (R.teth && !w) { const ax = R.teth.x, ay = R.teth.y, dx = R.px - ax, dy = R.py - ay, rr = Math.hypot(dx, dy) || 1, om = (dx * R.vy - dy * R.vx) / (rr * rr), th = Math.atan2(dy, dx) + om * tt; if (Math.hypot(z.x - (ax + Math.cos(th) * rr), zy - (ay + Math.sin(th) * rr + 0.9)) < 2.2) w = true; } } z.warn = w ? Math.min(1, (z.warn || 0) + dt * 8) : Math.max(0, (z.warn || 0) - dt * 4); }
       // A drone that hits you breaks apart: one hit per drone, never the same one twice.
-      if (d < 1.2 && !comet) { if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
-      else if (d < 3.5 && !z.near && !R.attract) { z.near = true; progressEvent("near"); R.nearN = (R.nearN || 0) + 1; runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
+      if (d < 1.2 && !comet) { z.hit = true; if (!(R.inv > 0)) { z.dead = true; R.bursts.push({ x: z.x, y: z.y, t: 0, c: 0xff2b4a, big: true }); } swingHit(R, "Drone!"); }
+      else if (d < 3.5) z.skim = true;
+      /* A close call is paid once you're past the drone, and only if it never hit you. */
+      if (z.skim && !z.near && !z.hit && !z.dead && !R.attract && R.px > z.x + 2) { z.near = true; progressEvent("near"); R.nearN = (R.nearN || 0) + 1; runBonus("Close call! +2 ✦", 2, R.dist + 2, R.x); sfx.close(); R.slowT = 0.3; }
     }
   }
   // The first run teaches by doing: let go, then hold.

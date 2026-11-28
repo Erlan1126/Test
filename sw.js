@@ -1,7 +1,7 @@
 // Offline support for Skyrise and Lumen Rush. Pages load from the network first so updates show up
 // right away, and fall back to the saved copy when there is no connection. Both games' files
 // are saved when the service worker installs, so they work offline after the first visit.
-const CACHE = "games-v73";
+const CACHE = "games-v74";
 const CORE = [
   "./",
   "index.html",
