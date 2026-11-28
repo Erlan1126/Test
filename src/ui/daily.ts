@@ -503,7 +503,7 @@ export class DailySheets {
     if (friends) { void this.renderFriends(); return; }
     if (HAS_CITY) { void this.renderCityBoard(tab === "week" ? "hall" : "people"); return; }
     const global = on.kind === "global";
-    $("ranks-sub2").textContent = global ? t("Builders all over the world") : t("Friends you share Skyrise with");
+    $("ranks-sub2").textContent = global ? t("Builders all over the world") : HAS_CITY ? t("Friends you share Buildaroo with") : t("Friends you share Skyrise with");
     const el = $("rank-list");
     if (global && !el.children.length) el.innerHTML = `<p class="history-empty">${esc(t("Loading…"))}</p>`;
     const board = await on.board(tab, today, week);

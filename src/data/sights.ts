@@ -13,7 +13,7 @@ const BLOCKS: Record<number, [string, string, string]> = {
 };
 
 const PLACES: Record<string, [string, string, string]> = {
-  park: ["🌳", "Pocket park", "A little park with a pond, a bench and flower beds, where the neighbours take a break."],
+  park: ["🌳", "Pocket park", "A little park with a pond, a bench and flower beds, where the neighbors take a break."],
   lighthouse: ["🗼", "Lighthouse", "Its lamp sweeps over the sea at night and guides the boats home."],
   "th-marina": ["⛵", "Harbor marina", "Sailboats moored along the pier. The Harbor's heart."],
   "th-market": ["🧺", "Harbor market", "Fresh fish and fruit under striped awnings."],
@@ -41,7 +41,7 @@ const PLACES: Record<string, [string, string, string]> = {
   rank6: ["👑", "Skyhaven Tower", "The golden tower over everything: Skyhaven is a Sky Capital."],
   rank7: ["🏝️", "Floating island", "The island beside the town, joined by a rope bridge."],
   lot: ["🏡", "Empty lot", "Room for new homes. Sell a few coffees first, then you can build here."],
-  home: ["🏠", "Family home", "A neighbour's home. Soon you can upgrade homes for rent."],
+  home: ["🏠", "Family home", "A neighbor's home. Soon you can upgrade homes for rent."],
 };
 
 /** The card text for a tapped place (or null if it isn't one we know). */

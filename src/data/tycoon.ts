@@ -224,15 +224,17 @@ export const VAULT_COST = [2e4, 2e6, 2e8];
 export const FESTIVAL_MULT = 2;
 
 /** The daily rewards calendar: seven days, each better than the last; day 7 is the big one.
- *  Cash is minutes of your company's earnings (with a floor for young companies). The
- *  streak resets if a day is missed, and the week starts again after day 7. */
+ *  Cash is minutes of your company's base earnings (with a floor for young companies): a
+ *  small welcome on day 1 (5 minutes), doubling on each cash day up to an hour on day 7, so
+ *  it's a nice extra and never more than the player earns by playing. The streak resets if
+ *  a day is missed, and the week starts again after day 7. */
 export interface DailyReward { cash?: number; min?: number; gems?: number; advisor?: boolean }
 export const DAILY_REWARDS: DailyReward[] = [
-  { cash: 20, min: 300 },
+  { cash: 5, min: 100 },
   { gems: 10 },
-  { cash: 45, min: 800 },
+  { cash: 15, min: 300 },
   { gems: 15 },
-  { cash: 90, min: 2000 },
+  { cash: 30, min: 800 },
   { gems: 25 },
-  { advisor: true, gems: 50, cash: 180, min: 5000 },
+  { advisor: true, gems: 50, cash: 60, min: 2000 },
 ];

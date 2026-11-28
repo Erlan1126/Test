@@ -43,6 +43,20 @@ function toastKind(msg: string): { kind: string; ico: string } {
 }
 /** A message pop-up: a coloured card with an icon, the amounts picked out in gold, a short
  *  slide-in with a bounce, and a bar showing how long it stays. Tap it to dismiss. */
+/** Shrinks a one-line title until it fits its box (never below `min` px), instead of
+ *  cutting it off with "...". */
+export function fitText(el: HTMLElement | null, min = 11): void {
+  if (!el) return;
+  el.style.fontSize = "";
+  // (The text's own width, to the fraction of a pixel: even half a pixel too wide makes the
+  // browser cut the end off for the "...", and scrollWidth rounds that away.)
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const over = () => range.getBoundingClientRect().width > el.clientWidth + 0.01;
+  let size = parseFloat(getComputedStyle(el).fontSize) || 16;
+  while (over() && size > min) { size -= 0.5; el.style.fontSize = `${size}px`; }
+}
+
 export function toast(msg: string): void {
   const el = $("toast");
   // A leading emoji or symbol becomes the icon; otherwise one is picked for the kind.
@@ -98,6 +112,10 @@ function ghostOut(el: HTMLElement): void {
 
 export function openModal(el: HTMLElement, focusEl?: HTMLElement | null): void {
   if (el.hidden) {
+    // Sheets never stack on the Build sheet: a tab or any other sheet opening closes it
+    // (else it stays underneath with its old prices).
+    const build = document.getElementById("tcy-buildsheet");
+    if (build && build !== el && !build.hidden) closeModal(build);
     openers.set(el, document.activeElement);
     window.dispatchEvent(new Event("skyrise:sheet"));
     // (Straight from another menu: swap in place, no second slide.)

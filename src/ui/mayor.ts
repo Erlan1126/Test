@@ -3,6 +3,7 @@
 import { playerStarted } from "../edition";
 import { CHAPTERS, GOAL_HOW, chapterIndex, chapterReady, claimChapter, goalDone, type Chapter, type ChapterGoal } from "../data/chapters";
 import { CITY_NAME } from "../logic/city";
+import { townText } from "../logic/townname";
 import { fmt } from "../core/util";
 import { coins } from "../data/tycoon";
 import { HAS_CITY } from "../edition";
@@ -59,7 +60,8 @@ export function mayorSvg(mood: "talk" | "happy" = "talk"): string {
 export const MAYOR_SVG = mayorSvg();
 
 const goalText = (text: string, need: number) => t(text, { n: need >= 1e6 ? coins(need) : fmt(need) });
-const say = (line: string) => t(line, { city: t(CITY_NAME) });
+/** Pip's line, with the player's own name for the town once they've named it. */
+const say = (line: string, save: SaveData) => townText(save, t(line, { city: save.cityName || t(CITY_NAME) }));
 
 /** The home screen strip: the next goal of the current chapter, or "complete!". */
 export function renderMayorStrip(save: SaveData, onTap: () => void): void {
@@ -72,16 +74,24 @@ export function renderMayorStrip(save: SaveData, onTap: () => void): void {
   const pct = ready ? 100 : Math.min(100, (next.have(save) / next.need) * 100);
   el.classList.toggle("ready", ready);
   el.innerHTML = `<span class="mayor-mini">${MAYOR_SVG}</span>
-    <span class="mayor-goal"><small>${esc(head(i, c.title))}</small>
+    <span class="mayor-goal"><small>${arrowHtml(head(i, c.title))}</small>
     <b>${esc(ready ? (HAS_CITY ? t("Upgrade the City Hall! Tap here") : t("Chapter complete! Tap to celebrate")) : goalText(next.text, next.need))}</b>
     <i class="mayor-bar"><i style="width:${pct}%"></i></i></span>`;
   el.onclick = onTap;
 }
 
+/** A heading with "→" as HTML: the arrow drawn (the display font has no good one), and each
+ *  side kept on one line, so a long heading breaks at the arrow. */
+const arrowHtml = (text: string): string =>
+  !text.includes("→") ? esc(text) : text.split("→").map(p => `<span class="nw">${esc(p.trim())}</span>`).join(`<i class="arr" aria-hidden="true"></i>`);
+
 /** In the city game the story is the City Hall's levels: chapter i takes it to level i + 2. */
 const head = (i: number, title: string) => HAS_CITY
-  ? t("City Hall level {n} · {title}", { n: i + 1, title: t(title) })
+  ? t("Now: {now} (Lv {n}) → Next: {next} (Lv {m})", { now: t(hallTitle(i + 1)), n: i + 1, next: t(title), m: i + 2 })
   : t("Chapter {n}: {title}", { n: i + 1, title: t(title) });
+/** What the town is called at a City Hall level: chapter k's title is what level k + 2 makes
+ *  it (the first level is the hamlet it starts as). */
+export const hallTitle = (level: number): string => level <= 1 ? "Hamlet" : (CHAPTERS[level - 2] ?? CHAPTERS[CHAPTERS.length - 1]).title;
 /** What the City Hall's next level opens, as a line for the goal list ("" if nothing). */
 function opensHtml(level: number): string {
   if (!HAS_CITY) return "";
@@ -95,7 +105,8 @@ const num = (n: number) => (n >= 1e6 ? coins(n) : fmt(n));
 
 /** The City Plan road: one step per chapter (done, this one, still ahead), and what's next. */
 function planRoad(save: SaveData): string {
-  const i = chapterIndex(save), next = CHAPTERS[i + 1];
+  // (The city game names the level its goals lead to: this chapter's.)
+  const i = chapterIndex(save), next = HAS_CITY ? CHAPTERS[i] : CHAPTERS[i + 1];
   return `<li class="plan-road"><div>${CHAPTERS.map((c, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}" title="${esc(t(c.title))}"></i>`).join("")}</div>
     <small>${esc(next ? (HAS_CITY ? t("City Hall level {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length + 1, title: t(next.title) }) : t("City Plan: chapter {n} of {total} · next: {title}", { n: i + 1, total: CHAPTERS.length, title: t(next.title) })) : t("City Plan: the last chapter!"))}</small></li>`;
 }
@@ -121,7 +132,7 @@ function show(chapter: string, text: string, goals: string, reward: string, butt
   if (nm.dataset.pip === undefined) nm.dataset.pip = nm.textContent ?? "";
   nm.textContent = nm.dataset.pip;
   $("mayor").classList.remove("neighbour");
-  $("mayor-chapter").textContent = chapter;
+  $("mayor-chapter").innerHTML = arrowHtml(chapter);
   $("mayor-text").textContent = text;
   $("mayor-goals").innerHTML = goals;
   $("mayor-goals").hidden = !goals;
@@ -152,13 +163,13 @@ export function openMayor(save: SaveData, persist: () => void, celebrate: () => 
     // The city game: a big banner over the City Hall first (the camera flies to it), then
     // Pip with the reward and what the new level opens.
     if (HAS_CITY) { hallBanner(i + 2, save.cityName); vibrate(save.settings.vibrate, [20, 40, 20]); }
-    window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro), opensHtml(i + 2),
+    window.setTimeout(() => show(HAS_CITY ? t("City Hall level {n}!", { n: i + 2 }) : t("Chapter {n} complete!", { n: i + 1 }), say(c.outro, save), opensHtml(i + 2),
       `<span>${r.cash ? `+${esc(coins(r.cash))}` : `+${r.stars} ★`}</span><span>+${r.crystals} 💎</span>`,
       next ? (HAS_CITY ? t("Let's build!") : t("On to chapter {n}!", { n: i + 2 })) : t("Thanks, Mayor!"),
       () => { if (next) { introduce(save, persist); } after(); }), HAS_CITY ? 2600 : 0);
     return;
   }
-  show(head(i, c.title), say(c.intro), goalsHtml(save, c), "", t("Let's build!"), after);
+  show(head(i, c.title), say(c.intro, save), goalsHtml(save, c), "", t("Let's build!"), after);
 }
 
 /** Pip introduces the current chapter once (the first time the player reaches it). */
@@ -169,7 +180,7 @@ export function introduce(save: SaveData, persist: () => void): boolean {
   persist();
   // Its goals are already done: no introduction, the strip says "Chapter complete!" instead.
   if (chapterReady(save)) return false;
-  show(head(i, c.title), say(c.intro), goalsHtml(save, c), "", t("Let's build!"), () => {});
+  show(head(i, c.title), say(c.intro, save), goalsHtml(save, c), "", t("Let's build!"), () => {});
   return true;
 }
 

@@ -92,6 +92,19 @@ export function newRecoveryCode(): string {
 
 export const formatRecoveryCode = (c: string): string => c.replace(/(.{4})(?=.)/g, "$1-");
 
+/** Retries that wait longer after each failure: 20 s, 40 s, 80 s... up to `cap` (10 min). */
+export class Backoff {
+  private fails = 0;
+  private until = 0;
+  constructor(private readonly base = 20e3, private readonly cap = 10 * 60e3, private readonly clock = () => Date.now()) {}
+  /** May we try now? */
+  ready(): boolean { return this.clock() >= this.until; }
+  /** The wait after `n` failures in a row (ms). */
+  delay(n = this.fails): number { return n <= 0 ? 0 : Math.min(this.cap, this.base * 2 ** (n - 1)); }
+  fail(): void { this.fails++; this.until = this.clock() + this.delay(); }
+  ok(): void { this.fails = 0; this.until = 0; }
+}
+
 export class Online {
   /** The leaderboard can be shown. */
   ready = false;
@@ -273,27 +286,38 @@ export class Online {
    *  Returns false if the server can't be reached. */
   private async ensureAccount(save: SaveData, persist: () => void): Promise<boolean> {
     if (!save.onlineToken) {
-      let res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
-      if (res.status === 409) {
-        // This id was registered but the reply never arrived (or another device took it
-        // over). Start over with a fresh id instead of being locked out for good.
-        save.playerId = newPlayerId();
-        save.recoveryCode = "";
-        res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
-      }
-      if (!res.ok) return false;
-      save.onlineToken = String((await res.json() as { token?: string }).token ?? "");
+      // (Offline, or the server is down: wait longer after each failure, up to ten minutes,
+      // instead of asking again every few seconds.)
+      if (!this.signUp.ready()) return false;
+      try {
+        let res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
+        if (res.status === 409) {
+          // This id was registered but the reply never arrived (or another device took it
+          // over). Start over with a fresh id instead of being locked out for good.
+          save.playerId = newPlayerId();
+          save.recoveryCode = "";
+          res = await fetch(`${API}/players`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId }) });
+        }
+        if (!res.ok) { this.signUp.fail(); return false; }
+        save.onlineToken = String((await res.json() as { token?: string }).token ?? "");
+      } catch (e) { this.signUp.fail(); throw e; }
+      this.signUp.ok();
       persist();
     }
-    if (!save.recoveryCode) {
+    if (!save.recoveryCode && this.recovery.ready()) {
       const code = newRecoveryCode();
-      const res = await fetch(`${API}/recovery`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, code }) });
-      if (!res.ok) return true;
+      try {
+        const res = await fetch(`${API}/recovery`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ player: save.playerId, token: save.onlineToken, code }) });
+        if (!res.ok) { this.recovery.fail(); return true; }
+      } catch { this.recovery.fail(); return true; }
+      this.recovery.ok();
       save.recoveryCode = code;
       persist();
     }
     return true;
   }
+  private readonly signUp = new Backoff();
+  private readonly recovery = new Backoff();
 
   /** Worldwide board: sends a finished Classic or Daily tower, or keeps it for later if
    *  there's no connection. */
