@@ -474,8 +474,12 @@ export class TycoonUI {
       this.frameUntil = Math.max(this.frameUntil, Date.now() + (intro ? 180000 : 4000));
       this.render();
       if (intro) {
-        // Pip speaks once the neighbor is in (or the arrival was skipped).
-        const note = () => this.welcomeNote(() => this.walkToCart());
+        // A first look at the town's City Hall in its corner, then back to the cart.
+        if (HAS_CITY) this.later(700, () => { this.host.visitLandmark(-4, 3000); });
+        // Pip speaks once the neighbor is in (or the arrival was skipped), and once the camera
+        // is back from the City Hall: his words point at the apartment block.
+        const back = Date.now() + (HAS_CITY ? 4600 : 0);
+        const note = () => { const w = back - Date.now(); if (w > 0) setTimeout(() => this.welcomeNote(() => this.walkToCart()), w); else this.welcomeNote(() => this.walkToCart()); };
         if (this.story.stage === "arrive") this.afterArrival = note;
         else setTimeout(note, 1600);
       } else this.later(4000, () => { if (this.save.tycoon.tips > 0) { this.frameUntil = 0; this.render(); } });
@@ -2240,7 +2244,8 @@ export class TycoonUI {
     const hireRow = hired < MAX_HIRED ? `<button type="button" class="tcy-mode city hire small" data-build="hire"><span class="mode-ico">${iconSvg("brick")}</span><span><b>${esc(t("Hire a builder"))}</b><small>${esc(t("Build two things at once. Yours for good."))}</small></span><span class="mode-price gem">💎${BUILDER_PRICES[hired]}</span></button>` : "";
     // (While every builder is busy, hiring one comes first.)
     if (hireRow && jobs.length >= builderCount(s, now)) rows.push(hireRow);
-    head(t("Build"));
+    // (The sheet's title already says "Build": its list only gets a heading when builders' jobs sit above it.)
+    if (rows.length) head(t("Ready to build"));
     const time = (kind: BuildKind, id = "") => " · ⏱ " + fmtLeft(buildTime(s, kind, id, now));
     const projects = () => {
       if (!HAS_CITY || !projectsOpen(s.cafe)) return;
