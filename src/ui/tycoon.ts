@@ -3867,7 +3867,7 @@ export class TycoonUI {
     for (let i = 1; i <= rk; i++) if (!s.seenFeatures.includes(`rank-${i}`)) s.seenFeatures.push(`rank-${i}`);
   }
   /** The City Hall's level-up is starting: cards and selections close. */
-  partyStart(): void { this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); }
+  partyStart(): void { this.closeTabs(); if (!$("tycoon").hidden) closeModal($("tycoon")); this.selected = ""; this.selectedProp = ""; this.selectedSight = ""; this.render(); }
 
   /** A new town rank: fireworks now, and Mayor Pip's note once nothing else is open. */
   private momentDone = false;

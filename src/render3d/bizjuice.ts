@@ -11,7 +11,7 @@ const still = (): boolean => typeof matchMedia === "function" && matchMedia("(pr
 
 const CONFETTI = [0xffd23f, 0xff7a5c, 0xff5fa2, 0x7b6cff, 0x3fc5ff, 0x5ee08a];
 
-export type BurstKind = "sparkle" | "confetti" | "dust";
+export type BurstKind = "sparkle" | "confetti" | "dust" | "puff";
 
 export class BizJuice {
   readonly group = new THREE.Group();
@@ -115,6 +115,12 @@ export class BizJuice {
         vx = Math.cos(a) * (1.5 + r * 2.5) * spread; vz = Math.sin(a) * (1.5 + r * 2.5) * spread; vy = 4 + Math.random() * 4;
         this.tmp.setHex(CONFETTI[k % CONFETTI.length]);
         this.base[i] = 6 + Math.random() * 5; this.life[i] = 1.3 + Math.random() * 0.6; this.drag[i] = 1.2; this.grav[i] = 7;
+      } else if (kind === "puff") {
+        // A big, billowing cloud (a building going down): grey-brown, slow, rising.
+        vx = Math.cos(a) * (1.2 + r * 1.8) * spread; vz = Math.sin(a) * (1.2 + r * 1.8) * spread; vy = 0.6 + Math.random() * 1.6;
+        const g = 0.62 + Math.random() * 0.18;
+        this.tmp.setRGB(g * 1.05, g, g * 0.9);
+        this.base[i] = 30 + Math.random() * 26; this.life[i] = 1.4 + Math.random() * 0.8; this.drag[i] = 1.8; this.grav[i] = -0.4;
       } else {
         vx = Math.cos(a) * (1.6 + r * 1.4) * spread; vz = Math.sin(a) * (1.6 + r * 1.4) * spread; vy = 0.3 + Math.random() * 0.8;
         this.tmp.setRGB(0.94, 0.88, 0.76);

@@ -985,6 +985,8 @@ export class Renderer3D {
         if (lots.length) {
           this.biz = buildBizCity(lots, style, grown, cafe ?? undefined);
           if (hallUp) this.hallRise();
+          // (The town rebuilt for something else while the old hall was sinking: it stays sunk.)
+          else if (this.hallFx?.kind === "sink") { const g = this.biz.hall(); if (g) Object.assign(this.hallFx, { g, sx: g.scale.x, sy: g.scale.y, sz: g.scale.z, y: g.position.y }); }
           this.shadowAt.set(1e9, 0, 0);
           this.biz.group.position.set(BIZ_SLOT.x, BIZ_SLOT.y, BIZ_SLOT.z);
           this.scene.add(this.biz.group);
@@ -1202,7 +1204,7 @@ export class Renderer3D {
     const j = this.juice;
     j.burst("confetti", at.x, at.y + at.top, at.z, big ? 56 : 36, big ? 1.5 : 1.2);
     j.burst("sparkle", at.x, at.y + at.top * 0.7, at.z, big ? 34 : 18, 1.3);
-    if (big) j.ringAt3(at.x, at.y + 0.15, at.z, 2.2);
+    if (big) j.ringAt3(at.x, at.y + 0.15, at.z, 1.0);
   }
   private hallLive(j: BizJuice): void {
     const fx = this.hallFx;
@@ -1211,8 +1213,8 @@ export class Renderer3D {
     this.biz!.group.userData.moving = true;
     if (fx.kind === "sink") {
       // Dust bursts out as it starts to go, and again as it's swallowed.
-      if (at && fx.step === 0) { fx.step = 1; j.burst("dust", at.x, at.y + 0.4, at.z, 30, 2.4); }
-      if (at && fx.step === 1 && k > 0.55) { fx.step = 2; j.burst("dust", at.x, at.y + 0.3, at.z, 30, 2.8); }
+      if (at && fx.step === 0) { fx.step = 1; j.burst("puff", at.x, at.y + 0.4, at.z, 34, 1.6); }
+      if (at && fx.step === 1 && k > 0.5) { fx.step = 2; j.burst("puff", at.x, at.y + 0.6, at.z, 34, 2.0); }
       const e = Math.min(1, k) ** 2;
       g.scale.set(fx.sx * (1 + e * 0.06), fx.sy * Math.max(0.03, 1 - e), fx.sz * (1 + e * 0.06));
       // (A rumble as it goes.)
@@ -1221,7 +1223,7 @@ export class Renderer3D {
       if (k > 1 && now - fx.at > fx.ms + 4000) { g.scale.set(fx.sx, fx.sy, fx.sz); g.position.y = fx.y; this.hallFx = null; }
       return;
     }
-    if (at && fx.step === 0) { fx.step = 1; j.burst("dust", at.x, at.y + 0.3, at.z, 34, 2.6); }
+    if (at && fx.step === 0) { fx.step = 1; j.burst("puff", at.x, at.y + 0.3, at.z, 28, 1.5); }
     if (k >= 1) {
       g.scale.set(fx.sx, fx.sy, fx.sz);
       g.position.y = fx.y;

@@ -193,7 +193,7 @@ export function hallReward(save: SaveData, level: number, r: { cash: number; cry
     return `<li class="${ok ? "done" : "todo"}"><span>${ok ? "✓" : ""}</span><div class="g-txt">${esc(goalText(g))}</div><em>${ok ? "" : `${num(Math.min(g.have(save), g.need), g.cash)} / ${num(g.need, g.cash)}`}</em></li>`;
   }).join("") : "";
   const html = `<li class="hu-hero"><small>${esc(save.cityName ? t("{city} is now", { city: save.cityName }) : t("Welcome to"))}</small><b>${esc(title)}</b>
-      <div class="hu-pay"><span>+${esc(coins(r.cash))}</span><span>+${r.crystals} 💎</span></div></li>`
+      <div class="hu-pay"><i>+${esc(coins(r.cash))}</i><i>+${r.crystals} 💎</i></div></li>`
     + (chips.length ? `<li class="hu-head">${esc(t("Now open"))}</li><li class="hu-chips">${chips.join("")}</li>` : "")
     + (next ? `<li class="hu-head">${esc(t("Next: City Hall level {n}", { n: level + 1 }))}</li>${goals}` : "");
   show(t("City Hall level {n}!", { n: level }), done ? say(done.outro, save) : "", html, "", next ? t("Let's build!") : t("Thanks, Mayor!"), onOk);
