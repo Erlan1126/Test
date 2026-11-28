@@ -2169,7 +2169,8 @@ export class TycoonUI {
     const hireRow = hired < MAX_HIRED ? `<button type="button" class="tcy-mode city hire small" data-build="hire"><span class="mode-ico">${iconSvg("brick")}</span><span><b>${esc(t("Hire a builder"))}</b><small>${esc(t("Build two things at once. Yours for good."))}</small></span><span class="mode-price gem">💎${BUILDER_PRICES[hired]}</span></button>` : "";
     // (While every builder is busy, hiring one comes first.)
     if (hireRow && jobs.length >= builderCount(s, now)) rows.push(hireRow);
-    head(t("Build"));
+    // (The sheet's title already says "Build": its list only gets a heading when builders' jobs sit above it.)
+    if (rows.length) head(t("Ready to build"));
     const time = (kind: BuildKind, id = "") => " · ⏱ " + fmtLeft(buildTime(s, kind, id, now));
     // The café terrace: the first thing a new player builds.
     if (s.cafe.terrace === 0 && !buildOf(s, "terrace", "")) item(`data-build="terrace"`, "☕", t("Café terrace"), t("Tables and chairs by the Coffee Cart: your neighbor can sit, and the cart earns more") + time("terrace"), TERRACE_PRICE);

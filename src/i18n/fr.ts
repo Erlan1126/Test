@@ -1898,6 +1898,7 @@ export const FR: Record<string, string> = {
   "Upgrade a home": "Améliorer une maison",
   "A bigger building: more people, more rent, +{pct}% to every business": "Un plus grand bâtiment : plus d'habitants, plus de loyer, +{pct}% pour chaque entreprise",
   "Headquarters": "Sièges",
+  "Ready to build": "Prêt à construire",
   "Tower mini-game": "Mini-jeu des tours",
   "Stack a tower": "Empiler une tour",
   "Every floor adds two office floors, plus cash": "Chaque étage ajoute deux étages de bureaux, plus de l'argent",
