@@ -2534,7 +2534,7 @@ export class TycoonUI {
         if (!intro) {
           intro = document.createElement("div");
           intro.className = "page-intro";
-          intro.innerHTML = `<span class="pi-ico">?</span><p>${esc(t((HAS_CITY && PAGE_INTRO_CITY[k]) || PAGE_INTRO[k]))}</p><button type="button">${esc(t("Got it"))}</button>`;
+          intro.innerHTML = `<span class="pi-ico">?</span><p>${esc(HAS_CITY && k === "goals" && !gateOpen(this.save, "quests") ? t("City Hall goals are your big goal. Each new City Hall level opens more to do here.") : t((HAS_CITY && PAGE_INTRO_CITY[k]) || PAGE_INTRO[k]))}</p><button type="button">${esc(t("Got it"))}</button>`;
           intro.querySelector("button")!.onclick = () => { this.save.seenFeatures.push(introKey); this.host.persist(); for (const p of pages) $(p.id).querySelector(".page-intro")?.remove(); };
         }
         (sub ?? head).after(intro);

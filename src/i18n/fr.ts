@@ -2470,4 +2470,5 @@ export const FR: Record<string, string> = {
   "Next: {title} (Lv {n})": "Ensuite : {title} (Nv {n})",
   "×{n} boosted": "×{n} boosté",
   "More goals open at City Hall level {n}": "D'autres objectifs s'ouvrent avec la mairie au niveau {n}",
+  "City Hall goals are your big goal. Each new City Hall level opens more to do here.": "Les objectifs de la mairie sont ton grand but. Chaque nouveau niveau de la mairie ouvre plus de choses à faire ici.",
 };
