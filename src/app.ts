@@ -2980,6 +2980,7 @@ export class App implements DailyHost {
   bizResident(): [number, number] | null { return this.renderer instanceof Renderer3D ? this.renderer.bizResident() : null; }
   bizPan(dx: number, dy: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPan(dx, dy); }
   bizZoom(f: number): void { if (this.renderer instanceof Renderer3D) this.renderer.bizZoom(f); }
+  bizZoomNow(): number { return this.renderer instanceof Renderer3D ? this.renderer.bizZoomNow() : 1; }
   bizPanEnd(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizPanEnd(); }
   bizHold(): void { if (this.renderer instanceof Renderer3D) this.renderer.bizHold(); }
   paradeStart(): void { if (this.renderer instanceof Renderer3D) this.renderer.startParade(); }

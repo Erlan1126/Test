@@ -40,6 +40,8 @@ import type { Sound } from "../sound";
 import { $, closeModal, displayName, esc, fitText, LOCK_ICON, openModal, openModalEl, toast, vibrate, wireModal } from "./dom";
 import { burst, confetti, fireworks } from "./fx";
 import { iconSvg } from "./icons";
+import { TAG_ICON } from "./tagicons";
+import { CLOSE_ZOOM, pickTags, type TagIn, type TagKind } from "../logic/tags";
 import { cleanCityName } from "../logic/save";
 import { gateOpen, nextGateHall } from "../logic/gates";
 import { openPay, rateView } from "../logic/tycoon";
@@ -124,6 +126,8 @@ export interface TycoonHost {
   bizDesigns(): string[];
   bizPan(dx: number, dy: number): void;
   bizZoom(f: number): void;
+  /** How close the town camera is right now (bigger is closer). */
+  bizZoomNow(): number;
   bizPanEnd(): void;
   bizHold(): void;
   /** The holiday parade in the town: start one, follow its lead float with the camera for
@@ -502,7 +506,10 @@ export class TycoonUI {
   private reactions(now: number): void {
     if (!this.inCity || now < this.reactAt || document.body.classList.contains("tabs-open") || openModalEl() || this.frameUntil > now) return;
     this.reactAt = now + 6000 + Math.random() * 7000;
-    const tags = [...$("tcy-labels").querySelectorAll<HTMLElement>(".tag[data-i]:not(.lease):not(.proj)")].filter(tg => tg.style.visibility !== "hidden" && Number(tg.dataset.i) >= 0);
+    // (Only over a business whose bubble is showing, and only while few are: a reaction is a
+    // little extra, never one more thing in a crowded street.)
+    const shown = $("tcy-labels").querySelectorAll(".tag:not(.tag-fade)").length;
+    const tags = shown > 3 ? [] : [...$("tcy-labels").querySelectorAll<HTMLElement>(".tag.medal[data-i]:not(.tag-fade)")].filter(tg => tg.style.visibility !== "hidden" && Number(tg.dataset.i) >= 0);
     if (!tags.length) return;
     const tag = tags[Math.floor(Math.random() * tags.length)], r = tag.getBoundingClientRect();
     if (r.top < 90 || r.bottom > window.innerHeight - 200) return;
@@ -1053,7 +1060,8 @@ export class TycoonUI {
   private nextStep(): { text: string; sub: string; pct?: number; tone: string; act: () => void } {
     const s = this.save, ty = s.tycoon, live = this.liveState();
     const nameOf = (id: string) => t(stageName(id, stageNow(s, id)));
-    const select = (id: string) => () => { this.selected = id; this.selectedProp = ""; this.selectedSight = ""; this.render(); };
+    // (The step remembers the building it points at: its bubble then stays in view.)
+    const select = (id: string) => Object.assign(() => { this.selected = id; this.selectedProp = ""; this.selectedSight = ""; this.render(); }, { target: id });
     // First steps come before anything else: the first sale, then (if ready) the café
     // terrace, then a level, then a manager.
     const cart = BUSINESSES[0];
@@ -1195,28 +1203,34 @@ export class TycoonUI {
     // (One timed banner at a time: a golden customer, else the grand opening or a boom.)
     this.put($("tcy-events"), gold || ($("ty-events").querySelector(".boom")?.outerHTML ?? ""));
     // The player's first tower has its own bubble (a caption during the first look at it).
-    const starterTag = s.cafe.starter ? `<button type="button" class="tag bub starter${live.frame ? " sel" : ""}" data-tag="starter" data-i="-1" data-h="-1"><span class="tag-ico">🏢</span>${live.frame ? `<b>${esc(HAS_CITY && s.profile.towers === 0 ? t("Your first building!") : t("Your first tower!"))}</b>` : ""}</button>` : "";
+    const starterTag = s.cafe.starter ? `<button type="button" class="tag bub starter${live.frame ? " sel" : ""}" data-tag="starter" data-i="-1" data-h="-1" data-k="info"${live.frame ? ` data-pin="1"` : ""}><span class="tag-ico">🏢</span>${live.frame ? `<b>${esc(HAS_CITY && s.profile.towers === 0 ? t("Your first building!") : t("Your first tower!"))}</b>` : ""}</button>` : "";
     // The block's project spots: a dashed preview while on offer (tap to choose), an icon once open.
     // (Once a project is open, the scene itself shows it: no bubble.)
     const projTag = (id: ProjectId, i: number, ico: string, name: string) => {
       if (s.cafe.done.includes(id) || !projectsOpen(s.cafe)) return "";
-      return `<button type="button" class="tag bub proj offer" data-tag="proj-${id}" data-i="${i}" data-h="-1" aria-label="${esc(t(name))}"><span class="tag-ico">${iconSvg(ico)}</span></button>`;
+      return `<button type="button" class="tag bub proj offer" data-tag="proj-${id}" data-i="${i}" data-h="-1" data-k="goal" aria-label="${esc(t(name))}"><span class="tag-ico">${iconSvg(ico)}</span></button>`;
     };
-    const blockTags = s.cafe.terrace === 2 ? projTag("flowers", -2, "flower", "Flower market") + projTag("play", -3, "slide", "Playground") : "";
+    // (Only once the first steps are done, when the Next step brings them up, and one at a
+    // time: the apartment block doesn't wear a crown of bubbles before the player knows why.)
+    const blockTags = s.cafe.terrace === 2 && ty.tips >= 3 ? projTag("flowers", -2, "flower", "Flower market") || projTag("play", -3, "slide", "Playground") : "";
+    // The building the Next step points at keeps its bubble in view.
+    const aim = (this.nextAct as { target?: string } | null)?.target ?? "";
     // (During a story close-up only the Coffee Cart keeps its bubble: nothing covers the
     // neighbor and their moment.)
     const closeUp = live.frame;
     // Land for sale next to the island: a green "for sale" bubble over it, with its price.
     const sale = landOnSale(s), sk = sale ? LAND.indexOf(sale) : -1;
     const landJob = sale ? buildOf(s, "land", sale.id) : null;
-    const landTag = sale && !closeUp ? `<button type="button" class="tag bub land-sale${landJob ? " building" : ""}" data-tag="land-${sale.id}" data-i="${-10 - sk}" data-h="-1"><span class="tag-ico">${landJob ? "🏗️" : "🏞️"}</span><b>${landJob ? esc(t("Building · {t}", { t: fmtLeft(landJob.end - now) })) : `${esc(t("For sale"))} · ${esc(coins(landPrice(s, sale)))}`}</b></button>` : "";
+    // (Only when the company can buy it, or it is the City Hall's next goal.)
+    const landGoal = CHAPTERS[chapterIndex(s)]?.goals.find(g => !goalDone(s, g))?.kind === "land";
+    const landTag = sale && !closeUp && (landJob || landGoal || ty.coins >= landPrice(s, sale)) ? `<button type="button" class="tag bub land-sale sale${landJob ? " building" : ""}" data-tag="land-${sale.id}" data-i="${-10 - sk}" data-h="-1" data-k="${landJob ? "info" : "sale"}"><span class="tag-ico">${landJob ? "🏗️" : TAG_ICON.price}</span><b>${landJob ? esc(t("Building · {t}", { t: fmtLeft(landJob.end - now) })) : `${esc(t("For sale"))} · ${esc(coins(landPrice(s, sale)))}`}</b></button>` : "";
     // Properties: a little ↑ over the (up to three) cheapest ones the company can upgrade
     // now, and the selected one highlighted.
     const homes = this.host.bizHomes(), propTags = closeUp || !propsOpen(s) ? "" : homes
       .map((key, idx) => ({ key, idx, lv: propLevel(s, key), price: propPrice(s, key, now) }))
       .filter(h => h.key === this.selectedProp || (!propBlock(s, h.key) && h.price <= ty.coins))
-      .sort((a, b) => (a.key === this.selectedProp ? -1 : b.key === this.selectedProp ? 1 : a.price - b.price)).slice(0, 3)
-      .map(h => `<button type="button" class="tag bub prop-up${h.key === this.selectedProp ? " sel" : ""}" data-tag="prop-${h.key}" data-i="${-100 - h.idx}" data-h="-1" aria-label="${esc(t("Upgrade this building"))}"><span class="tag-ico">${h.key === this.selectedProp ? "🏠" : "⬆"}</span>${h.key === this.selectedProp ? `<b>${esc(t("Lv {n}", { n: h.lv }))}</b>` : ""}</button>`).join("");
+      .sort((a, b) => (a.key === this.selectedProp ? -1 : b.key === this.selectedProp ? 1 : a.price - b.price)).slice(0, this.selectedProp ? 2 : 1)
+      .map(h => `<button type="button" class="tag bub prop-up${h.key === this.selectedProp ? " sel" : " up"}" data-tag="prop-${h.key}" data-i="${-100 - h.idx}" data-h="-1" data-k="${h.key === this.selectedProp ? "info" : "grow"}" data-u="-1"${h.key === this.selectedProp ? ` data-pin="1"` : ""} aria-label="${esc(t("Upgrade this building"))}"><span class="tag-ico">${h.key === this.selectedProp ? "🏠" : TAG_ICON.up}</span>${h.key === this.selectedProp ? `<b>${esc(t("Lv {n}", { n: h.lv }))}</b>` : ""}</button>`).join("");
     // Neighbor requests: a speech bubble over the home that asks (a green tick once done).
     // Once the city is worth keeping: its recovery code, so a new phone can bring it back.
     const cloud = HAS_CITY && hallLevel(s) >= 3 && !s.seenFeatures.includes("cloud-note") ? this.host.cloudCode() : null;
@@ -1229,13 +1243,15 @@ export class TycoonUI {
       const idx = homes.indexOf(a.home);
       if (idx < 0) return "";
       const done = askDone(s, a);
-      return `<button type="button" class="tag bub ask${done ? " done" : ""}" data-tag="ask-${i}" data-i="${-100 - idx}" data-h="-1" aria-label="${esc(t("A neighbor's request"))}"><span class="tag-ico">${done ? "✓" : "💬"}</span></button>`;
+      return `<button type="button" class="tag bub ${done ? "collect" : "ask"}" data-tag="ask-${i}" data-i="${-100 - idx}" data-h="-1" data-k="${done ? "collect" : "ask"}" aria-label="${esc(t("A neighbor's request"))}"><span class="tag-ico">${done ? TAG_ICON.cash : TAG_ICON.chat}</span></button>`;
     }).join("");
     this.labelsDirty = true;
     // The City Hall: Mayor Pip's story, with what this chapter needs (a "!" when a chapter
     // is ready to finish).
     const ci = chapterIndex(s), ch = CHAPTERS[ci], ready = !!ch && chapterReady(s);
-    const hallTag = ch && !closeUp ? `<button type="button" class="tag bub hall-bub${ready ? " ready" : ""}" data-tag="hall" data-i="-4" data-h="-1" aria-label="${esc(ready ? t("Upgrade ready!") : t("City Hall · Lv {n}", { n: hallLevel(s) }))}">${ready ? `<span class="badge grow">↑</span>` : ""}<span class="tag-ico">${iconSvg("building")}<i class="tag-lv">${esc(fmt(hallLevel(s)))}</i></span></button>` : "";
+    const hallTag = !ch || closeUp ? "" : ready
+      ? `<button type="button" class="tag bub hall-bub up" data-tag="hall" data-i="-4" data-h="-1" data-k="grow" data-u="1" aria-label="${esc(t("Upgrade ready!"))}"><span class="tag-ico">${TAG_ICON.up}</span></button>`
+      : `<button type="button" class="tag bub hall-bub" data-tag="hall" data-i="-4" data-h="-1" data-k="info" aria-label="${esc(t("City Hall · Lv {n}", { n: hallLevel(s) }))}"><span class="tag-ico">${iconSvg("building")}<i class="tag-lv">${esc(fmt(hallLevel(s)))}</i></span></button>`;
     // Only one business says "Open" in red at a time: the one to open next (the cheapest
     // waiting; the tapped one if the player picked another). The rest wait as small grey "+",
     // so a new player knows where to begin.
@@ -1244,40 +1260,55 @@ export class TycoonUI {
     if (this.selected && levelOf(s, this.selected) === 0) nextOpen = this.selected;
     if (this.bottleOn() && !this.bottleTold) { this.bottleTold = true; toast(t("🍾 Something washed up on the beach!")); }
     if (!this.bottleOn()) this.bottleTold = false;
-    const bottleTag = !closeUp && this.bottleOn() ? `<button type="button" class="tag bub bottle" data-tag="bottle" data-i="-5" data-h="0.55" aria-label="${esc(t("A message in a bottle"))}"><span class="tag-ico"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><g transform="rotate(-35 16 16)"><rect x="13" y="2" width="6" height="5" rx="1.5" fill="#a0683a"/><path d="M13.5 7h5v3.5c3 1.4 4.5 3.6 4.5 6.5v10.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 9 27.5V17c0-2.9 1.5-5.1 4.5-6.5z" fill="#5fd0a0" stroke="#1f7a5a" stroke-width="1.4"/><rect x="11.5" y="16" width="9" height="9" rx="1" fill="#f6ecd0" stroke="#c8a870" stroke-width="0.8"/><path d="M13 19h6M13 21.5h5" stroke="#b08850" stroke-width="0.9"/><path d="M11.5 13.5c1-1.2 2-1.8 3-2" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g></svg></span></button>` : "";
+    const bottleTag = !closeUp && this.bottleOn() ? `<button type="button" class="tag bub bottle collect" data-tag="bottle" data-i="-5" data-h="0.55" data-k="collect" data-u="1" aria-label="${esc(t("A message in a bottle"))}"><span class="tag-ico"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><g transform="rotate(-35 16 16)"><rect x="13" y="2" width="6" height="5" rx="1.5" fill="#a0683a"/><path d="M13.5 7h5v3.5c3 1.4 4.5 3.6 4.5 6.5v10.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 9 27.5V17c0-2.9 1.5-5.1 4.5-6.5z" fill="#5fd0a0" stroke="#1f7a5a" stroke-width="1.4"/><rect x="11.5" y="16" width="9" height="9" rx="1" fill="#f6ecd0" stroke="#c8a870" stroke-width="0.8"/><path d="M13 19h6M13 21.5h5" stroke="#b08850" stroke-width="0.9"/><path d="M11.5 13.5c1-1.2 2-1.8 3-2" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/></g></svg></span></button>` : "";
     // A little timer over everything being built (the time counts down in placeTags).
     const buildTags = closeUp ? "" : (s.tycoon.builds ?? []).filter(j => j.end > now && j.kind !== "land").map(j => {
       const at = j.kind === "home" ? (homes.indexOf(j.id) >= 0 ? -100 - homes.indexOf(j.id) : null)
         : j.kind === "hq" ? BUSINESSES.findIndex(b => b.id === j.id)
         : j.kind === "project" ? (j.id === "flowers" ? -2 : -3) : -1;
       if (at === null || at === -1 && !s.cafe.starter && j.kind !== "terrace") return "";
-      return `<button type="button" class="tag bub build-tm" data-tag="build-${esc(j.kind)}" data-i="${at}" data-h="-1" data-end="${j.end}" aria-label="${esc(t("Builders at work"))}"><span class="tag-ico">🔨</span><b class="tm-t">${esc(fmtLeft(j.end - now))}</b></button>`;
+      return `<button type="button" class="tag bub build-tm" data-tag="build-${esc(j.kind)}" data-i="${at}" data-h="-1" data-k="info" data-end="${j.end}" aria-label="${esc(t("Builders at work"))}"><span class="tag-ico">🔨</span><b class="tm-t">${esc(fmtLeft(j.end - now))}</b></button>`;
     }).join("");
     // A resident walking in the street, saying something (tap: a little tip).
-    const talkTag = !closeUp && this.talk && this.talk.until > now ? `<button type="button" class="tag bub talk" data-tag="talk" data-i="-6" data-h="0.75"><b>${esc(this.talk.text)}</b></button>` : "";
+    const talkTag = !closeUp && this.talk && this.talk.until > now ? `<button type="button" class="tag bub talk" data-tag="talk" data-i="-6" data-h="0.75" data-k="collect" data-u="-1"><b>${esc(this.talk.text)}</b></button>` : "";
     this.put($("tcy-labels"), bottleTag + hallTag + starterTag + landTag + buildTags + talkTag + propTags + askTags + (closeUp ? "" : blockTags) + BUSINESSES.map((b, i) => {
       if (closeUp && b.id !== "coffee") return "";
       const lv = levelOf(s, b.id), owned = lv > 0, open = unlockedBusiness(s, i);
       // (The next business waiting for the City Hall: a lock with the level it needs.)
-      if (!owned && !open && !b.land && hallLocked(s, b.id) && shownBusiness(s, i)) return `<button type="button" class="tag bub lease hall-lock" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("City Hall level {n}", { n: hallNeed(b.id) }))}"><span class="tag-ico">🔒<i class="tag-lv">${esc(t("Lv {n}", { n: hallNeed(b.id) }))}</i></span></button>`;
+      if (!owned && !open && !b.land && hallLocked(s, b.id) && shownBusiness(s, i)) return `<button type="button" class="tag bub lease hall-lock" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="info" aria-label="${esc(t("City Hall level {n}", { n: hallNeed(b.id) }))}"><span class="tag-ico">🔒<i class="tag-lv">${esc(t("Lv {n}", { n: hallNeed(b.id) }))}</i></span></button>`;
       if (!owned && !open) return "";
-      if (!owned && b.id !== nextOpen) return `<button type="button" class="tag bub lease later" data-tag="${b.id}" data-i="${i}" data-h="-1" aria-label="${esc(t("For lease"))}"><span class="tag-ico">+</span></button>`;
-      if (!owned) return `<button type="button" class="tag bub lease${this.selected === b.id ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1"><span class="tag-ico">+<i class="tag-lv">${esc(coins(costOf(b, 0, 1)))}</i></span>${this.selected === b.id ? `<b>${esc(t("Open"))}</b>` : ""}</button>`;
-      const st = stageNow(s, b.id), grow = readyStage(s, b.id), sel = this.selected === b.id;
-      // At most one badge: what needs you most.
-      const badge = live.golden === b.id ? `<span class="badge golden" data-act="golden">✨</span>`
-        : live.vip === b.id ? `<span class="badge vip" data-act="vip">VIP</span>`
-        : live.critic === b.id ? `<span class="badge critic" data-act="critic">★</span>`
-        : live.power === b.id ? `<span class="badge power" data-act="power">!</span>`
-        : grow ? `<span class="badge grow">↑</span>`
-        : live.rush === b.id ? `<span class="badge rush">×${RUSH_MULT}</span>` : "";
-      // A round icon bubble whose ring fills as the building works; its name shows once tapped.
-      return `<button type="button" class="tag bub${sel ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1" style="--b1:${b.color[0]};--b2:${b.color[1]}">
+      if (!owned && b.id !== nextOpen) return `<button type="button" class="tag bub lease later" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="info" aria-label="${esc(t("For lease"))}"><span class="tag-ico">+</span></button>`;
+      const sel = this.selected === b.id, pin = sel ? ` data-pin="1"` : "";
+      // The next lot to open: a price tag once the company can pay for it (or the Next step
+      // points at it), otherwise only when looking closely.
+      if (!owned) {
+        const price = costOf(b, 0, 1), k: TagKind = sel || aim === b.id ? "goal" : ty.coins >= price ? "sale" : "info";
+        if (k === "sale") return `<button type="button" class="tag bub lease sale" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="sale" aria-label="${esc(t("For lease"))}"><span class="tag-ico">${TAG_ICON.price}</span><b>${esc(coins(price))}</b></button>`;
+        return `<button type="button" class="tag bub lease${sel ? " sel" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="${k}"${pin}><span class="tag-ico">+<i class="tag-lv">${esc(coins(price))}</i></span>${sel ? `<b>${esc(t("Open"))}</b>` : ""}</button>`;
+      }
+      const st = stageNow(s, b.id), grow = readyStage(s, b.id);
+      // What needs the player here, if anything: a visitor with a timer, then an HQ to build.
+      const ev = live.golden === b.id ? "golden" : live.vip === b.id ? "vip" : live.critic === b.id ? "critic" : live.power === b.id ? "power" : "";
+      const evIco = ev === "golden" ? TAG_ICON.star : ev === "vip" ? TAG_ICON.sparkle : ev === "critic" ? TAG_ICON.note : TAG_ICON.bolt;
+      const evName = ev === "golden" ? t("Golden customer · {n}s", { n: Math.max(0, Math.ceil((this.golden.until - now) / 1000)) }) : ev === "vip" ? t("VIP customer: tap for a tip") : ev === "critic" ? t("Food critic: tap to serve") : t("Power cut!");
+      const evUrg = ev === "golden" ? 4 : ev === "vip" ? 3 : ev === "critic" ? 2 : 1;
+      if (ev && !sel) return `<button type="button" class="tag bub ev ev-${ev}" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="event" data-u="${evUrg}" data-act="${ev}" aria-label="${esc(evName)}"><span class="tag-ico">${evIco}</span><span class="tag-pops"></span></button>`;
+      if (grow && !sel) return `<button type="button" class="tag bub up" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="grow" aria-label="${esc(t("Ready to grow!"))}"><span class="tag-ico">${TAG_ICON.up}</span><span class="tag-pops"></span></button>`;
+      // Otherwise the plain medal with its level (looking closely, tapped, or the one to sell
+      // from by hand while it has no manager), and on the tapped one what needs it as a badge.
+      const badge = ev ? `<span class="badge ev-${ev}" data-act="${ev}">${evIco}</span>` : grow ? `<span class="badge up">${TAG_ICON.up}</span>` : "";
+      const k: TagKind = sel ? "info" : aim === b.id ? "goal" : !ty.managers.includes(b.id) ? "run" : "info";
+      return `<button type="button" class="tag bub medal${sel ? " sel" : ""}${live.rush === b.id ? " rushing" : ""}" data-tag="${b.id}" data-i="${i}" data-h="-1" data-k="${k}"${pin} style="--b1:${b.color[0]};--b2:${b.color[1]}">
         ${badge}<span class="tag-ico">${iconSvg(b.icon)}<i class="tag-lv">${esc(fmt(lv))}</i></span>${sel ? `<b>${esc(t(stageName(b.id, st)))}</b>` : ""}<span class="tag-pops"></span>
       </button>`;
     }).join(""));
-    // (Rebuilt bubbles go straight to their buildings, so none flashes in the corner.)
-    if (this.labelsDirty) { this.labelsDirty = false; this.placeTags(); }
+    // (Rebuilt bubbles go straight to their buildings, so none flashes in the corner, and
+    // start shown or faded as they were.)
+    if (this.labelsDirty) {
+      this.labelsDirty = false;
+      for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) tag.classList.toggle("tag-fade", !this.tagShown.has(tag.dataset.tag ?? ""));
+      this.placeTags();
+    }
     // The next step.
     const n = this.nextStep();
     this.nextAct = n.act;
@@ -1374,28 +1405,42 @@ export class TycoonUI {
     return y;
   }
 
-  /** Keeps each tag floating over its building as the camera moves. */
+  /** Keeps each tag floating over its building as the camera moves, and shows only the few
+   *  that matter (logic/tags.ts): the rest fade out. */
   private tagSize = new WeakMap<HTMLElement, { w: number; h: number }>();
-  /** How far each bubble is lifted out of the way of the ones in front (eased). */
+  /** The bubbles shown last time (by data-tag), so they hold their place and rebuilt ones
+   *  start as they were. */
+  private tagShown = new Set<string>();
+  /** How far each bubble is lifted out of the way of a more urgent one (eased). */
   private tagLift = new WeakMap<HTMLElement, number>();
+  /** Reused every frame (no garbage while the town moves). */
+  private tagItems: (TagIn & { tag: HTMLElement; base: number })[] = [];
   private placeTags(): void {
     // (All reads first, then all writes: reading a size after moving a tag would make the
     // browser lay the page out again for every tag, every frame, which is what made dragging
-    // the town feel heavy.)
-    const items: { tag: HTMLElement; x: number; y: number; base: number; w: number; h: number }[] = [], hide: HTMLElement[] = [];
+    // the town feel heavy. Positions come from the camera, sizes are measured once per bubble.)
+    const items = this.tagItems;
+    items.length = 0;
+    const hide: HTMLElement[] = [];
+    // (The money bar's bottom edge, measured: on a small phone it reaches further down, and no
+    // bubble may sit on it.)
+    const hudBottom = Math.max(118, this.hudBottom() + 8), W = window.innerWidth, H = window.innerHeight;
     for (const tag of $("tcy-labels").querySelectorAll<HTMLElement>(".tag")) {
       const p = this.host.bizScreen(Number(tag.dataset.i), Number(tag.dataset.h));
       if (!p) { hide.push(tag); continue; }
-      // (A bubble's size is measured once, when it's made or changes, not every frame.)
       let sz = this.tagSize.get(tag);
       // (New content means new bubble elements, so the cache can't go stale.)
       if (!sz || !sz.w) { sz = { w: tag.offsetWidth, h: tag.offsetHeight + 6 }; if (sz.w) this.tagSize.set(tag, sz); else sz = { w: 44, h: 46 }; }
-      items.push({ tag, x: p.top[0], y: p.top[1], base: p.base[1], w: sz.w, h: sz.h });
+      const pin = tag.dataset.pin === "1", sale = tag.classList.contains("land-sale");
+      let x = p.top[0], y = p.top[1];
+      const out = !pin && !sale && (x < -4 || x > W + 4 || y - sz.h < hudBottom || y > H - 178);
+      // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars, and
+      // a pinned one slides down under the money bar, still right over its building.)
+      { const m = sz.w / 2 + 6; x = Math.max(m, Math.min(W - m, x)); }
+      if (pin) y = Math.max(y, hudBottom + sz.h);
+      if (sale) y = Math.max(hudBottom + sz.h + 24, Math.min(H - 230, y));
+      items.push({ tag, kind: (tag.dataset.k ?? "info") as TagKind, x, y, w: sz.w, h: sz.h, urgent: Number(tag.dataset.u ?? 0), pin, out, was: this.tagShown.has(tag.dataset.tag ?? ""), base: p.base[1] });
     }
-    for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
-    // (The money bar's bottom edge, measured: on a small phone it reaches further down, and no
-    // bubble may sit on it.)
-    const hudBottom = Math.max(118, this.hudBottom() + 8);
     const nowMs = Date.now();
     for (const it of items) {
       const end = it.tag.dataset.end;
@@ -1403,49 +1448,29 @@ export class TycoonUI {
       const tx = it.tag.querySelector<HTMLElement>(".tm-t"), v = fmtLeft(Math.max(0, Number(end) - nowMs));
       if (tx && tx.textContent !== v) tx.textContent = v;
     }
-    // With a building's card open, only its own bubble stays: the rest step aside, so
-    // nothing piles up round the building the camera is looking at.
+    // Which ones show: what needs the player, a handful at a time, never one on another. (With
+    // a building's card open, only its own bubble stays; looking closely, the levels come back.)
     const focus = !!(this.selected || this.selectedProp || this.selectedSight);
-    for (const it of items) it.tag.classList.toggle("tag-off", focus && !it.tag.classList.contains("sel"));
-    // Front buildings keep their spot; a bubble that would sit on another moves up a little.
-    items.sort((a, b) => b.base - a.base);
-    // (Spaced by each bubble's own height, so the small pins stack close, not in a tall column.)
-    const placed: { x: number; y: number; w: number; h: number }[] = [];
-    for (const it of items) {
-      const w = it.w, h = it.h;
-      // (Bubbles that stepped aside don't push the others around, but still follow their
-      // building, so they come back in the right place.)
-      const off = focus && it.tag.classList.contains("tag-off");
-      const y0 = it.y;
-      for (let guard = 0; guard < 6 && !off; guard++) {
-        const hit = placed.find(o => Math.abs(o.x - it.x) < (o.w + w) / 2 - 2 && Math.abs(o.y - it.y) < (o.h + h) / 2 - 2);
-        if (!hit) break;
-        it.y = hit.y - (hit.h + h) / 2;
-      }
-      // (A bubble lifted out of another's way glides there instead of jumping, and doesn't
-      // flick back and forth while the camera moves and the two only just touch.)
-      const want = it.y - y0, had = this.tagLift.get(it.tag) ?? want;
+    const pick = pickTags(items, { cx: W / 2, cy: (hudBottom + H - 178) / 2, close: this.host.bizZoomNow() >= CLOSE_ZOOM, focus, top: hudBottom });
+    this.tagShown.clear();
+    for (const tag of hide) if (tag.style.visibility !== "hidden") tag.style.visibility = "hidden";
+    items.forEach((it, k) => {
+      const on = pick.show[k];
+      if (on) this.tagShown.add(it.tag.dataset.tag ?? "");
+      if (it.tag.classList.contains("tag-fade") === on) it.tag.classList.toggle("tag-fade", !on);
+      // (A bubble lifted out of a more urgent one's way glides there instead of jumping, and
+      // doesn't flick back and forth while the camera moves and the two only just touch.)
+      const want = on ? pick.y[k] - it.y : 0, had = this.tagLift.get(it.tag) ?? want;
       const lift = Math.abs(want - had) < 3 ? had : had + (want - had) * 0.25;
       this.tagLift.set(it.tag, lift);
-      it.y = y0 + lift;
-      if (!off) placed.push({ x: it.x, y: y0 + want, w, h });
-      // (The land-for-sale bubble always stays on screen, so it can be found and tapped.)
-      // (Every bubble stays on screen; the island-for-sale one also stays clear of the bars.)
-      const keep = it.tag.classList.contains("land-sale") || it.tag.classList.contains("sel");
-      const outside = it.x < -4 || it.x > window.innerWidth + 4 || it.y - it.h < hudBottom || it.y > window.innerHeight - 178;
-      it.tag.classList.toggle("tag-out", !keep && outside);
-      { const m = it.w / 2 + 6; it.x = Math.max(m, Math.min(window.innerWidth - m, it.x)); }
-      // A bubble that stays (the first building's caption, the selected one) never covers the
-      // money bar: it slides down under it, still right over its building.
-      if (keep) it.y = Math.max(it.y, hudBottom + it.h);
-      if (it.tag.classList.contains("land-sale")) { it.y = Math.max(150, Math.min(window.innerHeight - 230, it.y)); it.tag.style.opacity = this.selected || this.selectedProp || this.selectedSight ? "0" : ""; it.tag.style.pointerEvents = this.selected || this.selectedProp || this.selectedSight ? "none" : ""; }
+      it.y += lift;
       const tr = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) translate(-50%, -100%)`;
       if (it.tag.style.visibility) it.tag.style.visibility = "";
       if (it.tag.style.transform !== tr) it.tag.style.transform = tr;
-      // Buildings nearer the front draw their tags on top.
-      const zi = it.tag.classList.contains("sel") ? "999" : String(Math.round(it.base));
+      // Buildings nearer the front draw their tags on top (the tapped one above all).
+      const zi = it.pin ? "999" : String(Math.round(it.base));
       if (it.tag.style.zIndex !== zi) it.tag.style.zIndex = zi;
-    }
+    });
   }
 
   /** A tap in the city: on a tag, or on a building (the nearest one under the finger). */
