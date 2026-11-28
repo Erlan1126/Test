@@ -14,7 +14,7 @@ Everything the App Store and Google Play ask for, per game, ready to paste and u
 | Feature graphic 1024 × 500, icon 512 × 512 | yes | yes (Nov 14 art) | yes |
 | Preview video | `preview-886x1920.mp4` | `app-preview-886x1920.mp4` (Nov 27, 23.8 s) | none |
 | Expected age rating | 4+ / Everyone / PEGI 3 | 4+ / Everyone / PEGI 3 | 4+ / Everyone / PEGI 3 |
-| Privacy label | 4 linked + 2 not-linked types, no tracking | same | Data Not Collected |
+| Privacy label | 4 linked + 4 not-linked types, no tracking | same | 2 not-linked types (crash and diagnostics), no tracking |
 | Store name | Buildaroo: City Tycoon | Skyrise: Tower Stack | Lumen Rush (name not final) |
 
 - **Age rating, App Privacy, IARC, Data safety and target audience answers** for all three,

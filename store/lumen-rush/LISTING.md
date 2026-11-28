@@ -15,7 +15,8 @@ six bosses).
    (`com.bigbrucestudios.lumenrush` suggested), a portrait lock, and the in-game Back button
    wired to Android's Back. That's a separate piece of work; the listing below is ready for it.
 
-It has no purchases, ads, accounts or server, so the money and privacy parts are simple.
+It has no purchases, ads or accounts, and sends only anonymous crash reports, so the money and
+privacy parts are simple.
 
 ---
 
@@ -37,7 +38,8 @@ It has no purchases, ads, accounts or server, so the money and privacy parts are
 - **Content rights:** "No, it does not contain, show, or access third-party content."
   (The Inter font is bundled under the SIL Open Font License, which allows this.)
 - **Age rating:** `../RATINGS-AND-PRIVACY.md` → Lumen Rush. Expected **4+**.
-- **App privacy:** "Data Not Collected" (see `../RATINGS-AND-PRIVACY.md`).
+- **App privacy:** "Data Not Linked to You": Crash Data and Other Diagnostic Data only, no
+  tracking (see `../RATINGS-AND-PRIVACY.md`).
 - **Privacy policy URL:** `https://www.bigbrucestudios.com/privacy/` (has a Lumen Rush
   section; the game's own page `lumen-rush-privacy.html` says the same).
 - **Support URL:** `https://www.bigbrucestudios.com/support/`
@@ -48,8 +50,9 @@ It has no purchases, ads, accounts or server, so the money and privacy parts are
 
 > Lumen Rush is a one-touch swinging game. Hold anywhere to grab the ringed light, keep
 > holding to reel in, let go to fly. The first stage teaches it with slow motion. No account,
-> no sign-in, no purchases, no ads, and the game makes no network requests: progress is saved
-> on the device. Stage 1 starts from the Play button on the home screen.
+> no sign-in, no purchases, no ads. Progress is saved on the device. The only network
+> request is an anonymous crash report if the game hits an error (it can be turned off in
+> Settings). Stage 1 starts from the Play button on the home screen.
 
 ## 4. Store text (English)
 

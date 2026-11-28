@@ -1,7 +1,7 @@
 # Age ratings and privacy answers, all three games
 
 Every answer below was checked against the code on 2026-11-26 (Buildaroo and Skyrise:
-branch `claude/skyrise-living-block` plus PRs #29 and #30; Lumen Rush: `main` plus PR #28).
+branch `claude/skyrise-living-block` plus PRs #29 and #30; Lumen Rush: `main` plus PR #28, which added crash reports on 2026-11-28).
 If a game changes in one of the ways listed under "Answers that would change", update the
 store forms before submitting that version.
 
@@ -17,10 +17,10 @@ What each game sends over the network, from the code:
 | Cloud backup of the save (incl. which packs were bought) | yes | yes | no |
 | Challenge links | yes | yes | share link only, made on the phone |
 | Anonymous play statistics (separate random id) | yes | yes | no |
-| Crash and frame-rate reports (phone model, GPU) | yes | yes | no |
+| Crash and frame-rate reports (phone model, GPU) | yes | yes | crash reports only (error, game version, phone model and screen size, current screen/stage); can be turned off in Settings |
 | Game Center scores and achievements (iPhone) | yes | yes | no |
 | Ads, third-party analytics, tracking | none | none | none |
-| Server | our Cloudflare Worker (`server/`) | same | none (GitHub Pages hosts the web page) |
+| Server | our Cloudflare Worker (`server/`) | same | the same Worker's `/diag` endpoint, for crash reports only (GitHub Pages hosts the web page) |
 
 ---
 
@@ -102,14 +102,31 @@ user, even when the id is random and there is no account. The statistics and cra
 use a separate id (or none), so they stay "not linked". Earlier drafts in `launch/stores/`
 marked everything "not linked"; use this table.
 
+Crash reports were rechecked on 2026-11-28 (`src/diag.ts`, including the Sentry option PR #29
+adds): they carry the error, app version, phone model and graphics chip, and no player id,
+nickname or save, so Crash Data, Performance Data and Other Diagnostic Data stay **not linked**.
+If Sentry is switched on for any of the three games, turn on **Prevent Storing of IP Addresses**
+in that Sentry project's Security & Privacy settings, so the reports stay unlinked.
+
 The iOS privacy manifest (`ios/App/App/PrivacyInfo.xcprivacy`, PR #30) declares only
 required-reason APIs and no tracking domains, which matches.
 
 ### Lumen Rush
 
-"Do you or your third-party partners collect data from this app?" **No.** The label then
-reads "Data Not Collected". (True today: the game makes no network requests except loading
-its own files.)
+Since PR #28, Lumen Rush sends an anonymous crash report to our report server when the game
+hits an error (`echo/diag.js`). It carries no player id or anything else that ties reports to a
+person or to each other, so the label is "Data Not Linked to You", with nothing else.
+
+"Do you or your third-party partners collect data from this app?" **Yes.**
+"Is data used to track users?" **No.**
+
+| Data type | Linked to the user | Purposes | What it is |
+|---|---|---|---|
+| Diagnostics → **Crash Data** | No | App Functionality | the error message and where in the code it happened |
+| Diagnostics → **Other Diagnostic Data** | No | App Functionality | game version, phone model and screen size, and what the game was doing (for example "run · stage 12") |
+
+Everything else: not collected. (If you'd rather keep "Data Not Collected", the only way is to
+remove crash reporting from the store version; turning it off by default isn't enough.)
 
 ---
 
@@ -141,8 +158,9 @@ Expected: **ESRB Everyone, PEGI 3, USK 0**, with interactive elements "Users Int
   characters), but the cartoon style means Google may ask. If Google puts either game under
   the Families policy, it already qualifies on ads and SDKs (none) but would need a neutral
   age screen before nicknames are shown; that's a code change to plan for only if asked.
-- **Lumen Rush:** target **13+** as well, or add under-13 groups freely: with no data
-  collection, ads or purchases it meets the Families policy as it is.
+- **Lumen Rush:** target **13+** as well, or add under-13 groups freely: with no ads,
+  purchases or personal data, and crash reports that hold no identifiers, it meets the
+  Families policy as it is.
 
 ## 5. Google Play Data safety (Policy → App content → Data safety)
 
@@ -172,8 +190,20 @@ links only (no city).
 
 ### Lumen Rush
 
-- Does your app collect or share any of the required user data types? **No.** That's the
-  whole form. (Answer again if a store version ever adds purchases, ads or a server.)
+- Does your app collect or share any of the required user data types? **Yes** (crash reports).
+- Is all user data encrypted in transit? **Yes** (HTTPS only)
+- Do you provide a way for users to request that their data is deleted? **Yes**
+  (`https://www.bigbrucestudios.com/support/#delete`). Reports hold nothing that identifies a
+  player, and only the newest are kept.
+- Shared with third parties: **No.**
+
+| Data type | Collected | Processed ephemerally | Required or optional | Purposes |
+|---|---|---|---|---|
+| App info and performance → **Crash logs** | Yes | No | Optional (Settings → Send crash reports) | Analytics |
+| App info and performance → **Diagnostics** (phone model, screen size, game version) | Yes | No | Optional | Analytics |
+
+Nothing else. If Sentry is switched on later (`SENTRY_DSN` in `echo/diag.js`), the answers
+stay the same, since Sentry only processes the reports for us.
 
 ---
 
@@ -185,3 +215,4 @@ links only (no city).
 | A chat, comments or public posts are added | Messaging and Chat Yes (still 4+); Social Media likely Yes (**13+**). |
 | Spins, chests or capsules can be bought | Loot Boxes Yes (**9+**, 16+ in Australia). |
 | Lumen Rush gets purchases, leaderboards or analytics | redo all of its Lumen Rush rows; its privacy page section also changes. |
+| Lumen Rush's crash reports start including a player id or save data | Crash Data and Other Diagnostic Data become **linked**. |
